@@ -31,12 +31,9 @@ using multibody::MakeNameToVelocitiesMap;
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
                                  const MatrixXd& K_p, const MatrixXd& K_d,
                                  const MatrixXd& W,
-                                 const MultibodyPlant<double>& plant_w_spr,
-                                 const MultibodyPlant<double>& plant_wo_spr)
-    : plant_w_spr_(plant_w_spr),
-      plant_wo_spr_(plant_wo_spr),
-      world_w_spr_(plant_w_spr_.world_frame()),
-      world_wo_spr_(plant_wo_spr_.world_frame()),
+                                 const MultibodyPlant<double>& plant)
+    : plant_(plant),
+      world_(plant_.world_frame()),
       name_(name),
       n_y_(n_y),
       n_ydot_(n_ydot),
@@ -56,8 +53,7 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
 
 // Update
 void OscTrackingData::Update(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
-    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    const VectorXd& x, const Context<double>& context,
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_since_state_switch, const int fsm_state, const VectorXd& v_proj) {
   fsm_state_ = fsm_state;
@@ -67,7 +63,7 @@ void OscTrackingData::Update(
   }
   DRAKE_ASSERT(IsActive(fsm_state));
 
-  UpdateActual(x_w_spr, context_w_spr, x_wo_spr, context_wo_spr, t);
+  UpdateActual(x, context, t);
   UpdateDesired(traj, t, t_since_state_switch);
   // 3. Update error
   // Careful: must update y and y_des before calling UpdateYError()
@@ -77,21 +73,14 @@ void OscTrackingData::Update(
 }
 
 void OscTrackingData::UpdateActual(
-    const Eigen::VectorXd& x_w_spr,
-    const drake::systems::Context<double>& context_w_spr,
-    const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr, double t) {
+    const Eigen::VectorXd& x,
+    const drake::systems::Context<double>& context,
+    double t) {
   // 1. Update actual output
-  if (use_springs_in_eval_) {
-    UpdateY(x_w_spr, context_w_spr);
-    UpdateYdot(x_w_spr, context_w_spr);
-  } else {
-    UpdateY(x_wo_spr, context_wo_spr);
-    UpdateYdot(x_wo_spr, context_wo_spr);
-  }
-
-  UpdateJ(x_wo_spr, context_wo_spr);
-  UpdateJdotV(x_wo_spr, context_wo_spr);
+  UpdateY(x, context);
+  UpdateYdot(x, context);
+  UpdateJ(x, context);
+  UpdateJdotV(x, context);
 }
 
 void OscTrackingData::UpdateDesired(

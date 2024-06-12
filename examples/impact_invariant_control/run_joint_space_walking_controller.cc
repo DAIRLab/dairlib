@@ -172,7 +172,7 @@ int DoMain(int argc, char* argv[]) {
     MatrixXd K_p = gains.JointKp[joint_idx] * MatrixXd::Identity(1, 1);
     MatrixXd K_d = gains.JointKd[joint_idx] * MatrixXd::Identity(1, 1);
     joint_tracking_data_vec.push_back(std::make_unique<JointSpaceTrackingData>(
-        joint_name + "_traj", K_p, K_d, W, plant, plant));
+        joint_name + "_traj", K_p, K_d, W, plant));
     joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
                                                         joint_name + "dot");
     joint_tracking_data_vec[joint_idx]->SetImpactInvariantProjection(true);

@@ -25,8 +25,7 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
   RotTaskSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
   void AddFrameToTrack(
       const std::string& body_name,
@@ -37,21 +36,19 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
 
  protected:
   std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
-      body_frames_w_spr_;
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
-      body_frames_wo_spr_;
+      body_frames_;
 
  private:
-  void UpdateY(const Eigen::VectorXd& x_w_spr,
-               const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateY(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
   void UpdateYError() final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                  const drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYdot(const Eigen::VectorXd& x,
+                  const drake::systems::Context<double>& context) final;
   void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateJ(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                   const drake::systems::Context<double>& context) final;
   void UpdateYddotDes(double t, double t_since_state_switch) override;
   void CheckDerivedOscTrackingData() final;
 

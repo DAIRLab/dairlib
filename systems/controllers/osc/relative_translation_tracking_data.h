@@ -23,27 +23,24 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
   RelativeTranslationTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      const drake::multibody::MultibodyPlant<double>& plant,
       OptionsTrackingData* to_frame_data, OptionsTrackingData* from_frame_data);
 
-  void Update(const Eigen::VectorXd& x_w_spr,
-              const drake::systems::Context<double>& context_w_spr,
-              const Eigen::VectorXd& x_wo_spr,
-              const drake::systems::Context<double>& context_wo_spr,
+  void Update(const Eigen::VectorXd& x,
+              const drake::systems::Context<double>& context,
               const drake::trajectories::Trajectory<double>& traj, double t,
               double t_gait_cycle, int fsm_state,
               const Eigen::VectorXd& v_proj) final;
 
  private:
-  void UpdateY(const Eigen::VectorXd& x_wo_spr,
-               const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_wo_spr,
-                  const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateY(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
+  void UpdateYdot(const Eigen::VectorXd& x,
+                  const drake::systems::Context<double>& context) final;
+  void UpdateJ(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                   const drake::systems::Context<double>& context) final;
 
   void CheckDerivedOscTrackingData() final;
 

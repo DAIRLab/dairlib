@@ -23,8 +23,7 @@ class JointSpaceTrackingData final : public OptionsTrackingData {
   JointSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
   // For single joint
   void AddJointToTrack(const std::string& joint_pos_name,
@@ -39,23 +38,21 @@ class JointSpaceTrackingData final : public OptionsTrackingData {
       const std::vector<std::string>& joint_vel_names);
 
  private:
-  void UpdateY(const Eigen::VectorXd& x_w_spr,
-               const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                  const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateY(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
+  void UpdateYdot(const Eigen::VectorXd& x,
+                  const drake::systems::Context<double>& context) final;
+  void UpdateJ(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context) final;
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                   const drake::systems::Context<double>& context) final;
 
   void CheckDerivedOscTrackingData() final;
 
-  // `joint_pos_idx_wo_spr` is the index of the joint position
-  // `joint_vel_idx_wo_spr` is the index of the joint velocity
-  std::unordered_map<int, std::vector<int>> joint_pos_idx_w_spr_;
-  std::unordered_map<int, std::vector<int>> joint_vel_idx_w_spr_;
-  std::unordered_map<int, std::vector<int>> joint_pos_idx_wo_spr_;
-  std::unordered_map<int, std::vector<int>> joint_vel_idx_wo_spr_;
+  // `joint_pos_idx` is the index of the joint position
+  // `joint_vel_idx` is the index of the joint velocity
+  std::unordered_map<int, std::vector<int>> joint_pos_idx_;
+  std::unordered_map<int, std::vector<int>> joint_vel_idx_;
 };
 
 }  // namespace controllers

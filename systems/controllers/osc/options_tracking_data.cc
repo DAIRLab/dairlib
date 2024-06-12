@@ -19,25 +19,20 @@ namespace dairlib::systems::controllers {
 OptionsTrackingData::OptionsTrackingData(
     const string& name, int n_y, int n_ydot, const MatrixXd& K_p,
     const MatrixXd& K_d, const MatrixXd& W,
-    const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
-    : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {
+    const MultibodyPlant<double>& plant)
+    : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant) {
   yddot_cmd_lb_ = std::numeric_limits<double>::lowest() * VectorXd::Ones(n_ydot_);
   yddot_cmd_ub_ = std::numeric_limits<double>::max() * VectorXd::Ones(n_ydot_);
 }
 
 void OptionsTrackingData::UpdateActual(
-    const Eigen::VectorXd& x_w_spr,
-    const drake::systems::Context<double>& context_w_spr,
-    const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr, double t) {
-  OscTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                context_wo_spr, t);
+    const Eigen::VectorXd& x,
+    const drake::systems::Context<double>& context, double t) {
+  OscTrackingData::UpdateActual(x, context, t);
 
   if (with_view_frame_) {
     view_frame_rot_T_ =
-        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_w_spr);
+        view_frame_->CalcWorldToFrameRotation(plant_, context);
     if (!is_rotational_tracking_data_) {
       y_ = view_frame_rot_T_ * y_;
       ydot_ = view_frame_rot_T_ * ydot_;

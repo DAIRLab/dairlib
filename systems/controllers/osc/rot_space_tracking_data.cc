@@ -20,10 +20,8 @@ namespace dairlib::systems::controllers {
 /**** RotTaskSpaceTrackingData ****/
 RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
-    const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
-    : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                          plant_w_spr, plant_wo_spr) {
+    const MatrixXd& W, const MultibodyPlant<double>& plant)
+    : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W, plant) {
   is_rotational_tracking_data_ = true;
 }
 
@@ -35,20 +33,18 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
     int fsm_state, const std::string& body_name,
     const Eigen::Isometry3d& frame_pose) {
   AddFiniteStateToTrack(fsm_state);
-  DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
-  DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));
-  body_frames_w_spr_[fsm_state] =
-      &plant_w_spr_.GetBodyByName(body_name).body_frame();
-  body_frames_wo_spr_[fsm_state] =
-      &plant_wo_spr_.GetBodyByName(body_name).body_frame();
+  DRAKE_DEMAND(plant_.HasBodyNamed(body_name));
+  DRAKE_DEMAND(plant_.HasBodyNamed(body_name));
+  body_frames_[fsm_state] =
+      &plant_.GetBodyByName(body_name).body_frame();
   frame_poses_[fsm_state] = frame_pose;
 }
 
-void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
-                                       const Context<double>& context_w_spr) {
-  auto transform_mat = plant_w_spr_.CalcRelativeTransform(
-      context_w_spr, plant_w_spr_.world_frame(),
-      *body_frames_w_spr_[fsm_state_]);
+void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x,
+                                       const Context<double>& context) {
+  auto transform_mat = plant_.CalcRelativeTransform(
+      context, plant_.world_frame(),
+      *body_frames_[fsm_state_]);
   Quaterniond y_quat(transform_mat.rotation() *
                      frame_poses_[fsm_state_].linear());
   Eigen::Vector4d y_4d;
@@ -69,14 +65,14 @@ void RotTaskSpaceTrackingData::UpdateYError() {
 }
 
 void RotTaskSpaceTrackingData::UpdateYdot(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
-  MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
-  plant_w_spr_.CalcJacobianSpatialVelocity(
-      context_w_spr, JacobianWrtVariable::kV, *body_frames_w_spr_[fsm_state_],
-      frame_poses_[fsm_state_].translation(), world_w_spr_, world_w_spr_,
+    const VectorXd& x, const Context<double>& context) {
+  MatrixXd J_spatial(6, plant_.num_velocities());
+  plant_.CalcJacobianSpatialVelocity(
+      context, JacobianWrtVariable::kV, *body_frames_[fsm_state_],
+      frame_poses_[fsm_state_].translation(), world_, world_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
-          x_w_spr.tail(plant_w_spr_.num_velocities());
+          x.tail(plant_.num_velocities());
 }
 
 void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
@@ -98,24 +94,24 @@ void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
 }
 
-void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                       const Context<double>& context_wo_spr) {
-  MatrixXd J_spatial(6, plant_wo_spr_.num_velocities());
-  plant_wo_spr_.CalcJacobianSpatialVelocity(
-      context_wo_spr, JacobianWrtVariable::kV, *body_frames_wo_spr_[fsm_state_],
-      frame_poses_[fsm_state_].translation(), world_wo_spr_, world_wo_spr_,
+void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
+                                       const Context<double>& context) {
+  MatrixXd J_spatial(6, plant_.num_velocities());
+  plant_.CalcJacobianSpatialVelocity(
+      context, JacobianWrtVariable::kV, *body_frames_[fsm_state_],
+      frame_poses_[fsm_state_].translation(), world_, world_,
       &J_spatial);
   J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
 }
 
 void RotTaskSpaceTrackingData::UpdateJdotV(
-    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr) {
+    const VectorXd& x, const Context<double>& context) {
   JdotV_ =
-      plant_wo_spr_
-          .CalcBiasSpatialAcceleration(context_wo_spr, JacobianWrtVariable::kV,
-                                       *body_frames_wo_spr_[fsm_state_],
+      plant_
+          .CalcBiasSpatialAcceleration(context, JacobianWrtVariable::kV,
+                                       *body_frames_[fsm_state_],
                                        frame_poses_[fsm_state_].translation(),
-                                       world_wo_spr_, world_wo_spr_)
+                                       world_, world_)
           .rotational();
 }
 
@@ -136,9 +132,5 @@ void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
   }
 }
 
-void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  if (!body_frames_w_spr_.empty()) {
-    body_frames_w_spr_ = body_frames_wo_spr_;
-  }
-}
+void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {}
 }  // namespace dairlib::systems::controllers

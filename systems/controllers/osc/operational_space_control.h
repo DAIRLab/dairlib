@@ -264,12 +264,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
-  std::vector<std::unique_ptr<OscTrackingData>>* GetAllTrackingData() {
-    return tracking_data_vec_.get();
-  }
-  OscTrackingData* GetTrackingDataByIndex(int index) {
-    return tracking_data_vec_->at(index).get();
-  }
 
   // Optional features
   void SetUpDoubleSupportPhaseBlending(double ds_duration,
@@ -296,6 +290,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
             FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
 
+  std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
+  AllocateTrackingData() const;
 
   // OSC LeafSystem builder
   void Build();
@@ -384,6 +380,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex impact_info_port_;
   drake::systems::InputPortIndex ff_input_port_;
 
+  // Caches
+  drake::systems::CacheIndex osc_solution_cache_;
+
   // Discrete update
   int prev_fsm_state_idx_;
   int prev_event_time_idx_;
@@ -433,9 +432,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // MathematicalProgram
   mutable InverseDynamicsQp id_qp_;
 
-  // OSC solution
-  mutable id_qp_solution osc_solution_;
-
+  // Impact Invariant Control
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
 
@@ -461,9 +458,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::vector<std::string>> contact_names_map_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
-  std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
-      tracking_data_vec_ =
-          std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
+  mutable std::vector<std::unique_ptr<OscTrackingData>> tracking_data_vec_{};
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

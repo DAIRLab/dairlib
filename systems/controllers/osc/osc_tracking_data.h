@@ -16,13 +16,42 @@ namespace controllers {
 static constexpr int kSpaceDim = 3;
 static constexpr int kQuaternionDim = 4;
 
+struct OscTrackingDataState {
+  double time_through_trajectory_ = 0;
+
+  // Actual outputs, Jacobian and dJ/dt * v
+  Eigen::VectorXd y_;
+  Eigen::VectorXd error_y_;
+  Eigen::VectorXd ydot_;
+  Eigen::VectorXd error_ydot_;
+  Eigen::MatrixXd J_;
+  Eigen::VectorXd JdotV_;
+
+  // PD control gains
+  Eigen::MatrixXd K_p_;
+  Eigen::MatrixXd K_d_;
+
+  // Desired output
+  Eigen::VectorXd y_des_;
+  Eigen::VectorXd ydot_des_;
+  Eigen::VectorXd yddot_des_;
+  Eigen::VectorXd yddot_des_converted_;
+
+  // Commanded acceleration after feedback terms
+  Eigen::VectorXd yddot_command_;
+
+  // OSC solution
+  Eigen::VectorXd yddot_command_sol_;
+};
+
 class OscTrackingData {
  public:
   OscTrackingData(const std::string& name, int n_y, int n_ydot,
                   const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
                   const Eigen::MatrixXd& W,
-                  const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-                  const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+                  const drake::multibody::MultibodyPlant<double>& plant);
+
+  OscTrackingDataState AllocateState();
 
   virtual ~OscTrackingData() = default;
 
@@ -41,10 +70,8 @@ class OscTrackingData {
   //  - `t`, current time
   //  - `t`, time since the last state switch
   //  - `v_proj`, impact invariant velocity projection
-  virtual void Update(const Eigen::VectorXd& x_w_spr,
-                      const drake::systems::Context<double>& context_w_spr,
-                      const Eigen::VectorXd& x_wo_spr,
-                      const drake::systems::Context<double>& context_wo_spr,
+  virtual void Update(const Eigen::VectorXd& x,
+                      const drake::systems::Context<double>& context,
                       const drake::trajectories::Trajectory<double>& traj,
                       double t, double t_since_state_switch, int fsm_state,
                       const Eigen::VectorXd& v_proj);
@@ -55,11 +82,6 @@ class OscTrackingData {
     return active_fsm_states_.count(fsm_state) || active_fsm_states_.count(-1);
   }
   void CheckOscTrackingData();
-
-  // Set whether to use springs in the calculation of the actual outputs
-  void SetSpringsInKinematicCalculation(bool use_springs_in_eval) {
-    use_springs_in_eval_ = use_springs_in_eval;
-  }
 
   // Set whether to use the impact invariant projection
   void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
@@ -101,21 +123,17 @@ class OscTrackingData {
   const std::set<int>& GetActiveStates() { return active_fsm_states_; };
   int GetYDim() const { return n_y_; };
   int GetYdotDim() const { return n_ydot_; };
-  const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
-    return plant_w_spr_;
-  };
-  const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
-    return plant_wo_spr_;
+
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
   };
 
   void StoreYddotCommandSol(const Eigen::VectorXd& dv);
 
  protected:
   virtual void UpdateActual(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr, double t);
+      const Eigen::VectorXd& x,
+      const drake::systems::Context<double>& context, double t);
 
   // Output dimension
   int n_y_;
@@ -125,7 +143,6 @@ class OscTrackingData {
   int fsm_state_;
 
   // Flags
-  bool use_springs_in_eval_ = true;
   bool impact_invariant_projection_ = false;
   bool no_derivative_feedback_ = false;
 
@@ -165,12 +182,10 @@ class OscTrackingData {
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
-  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
-  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
 
   // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  const drake::multibody::BodyFrame<double>& world_;
 
   // Trajectory name
   std::string name_;

@@ -105,6 +105,10 @@ OperationalSpaceControl::OperationalSpaceControl(
                           &OperationalSpaceControl::CheckTracking)
                       .get_index();
 
+  osc_solution_cache_ = DeclareCacheEntry(
+      "osc_solution", &OperationalSpaceControl::SolveIDQP).cache_index();
+
+
   const std::map<string, int>& vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
 
@@ -189,12 +193,12 @@ void OperationalSpaceControl::AddKinematicConstraint(
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, double t_lb, double t_ub) {
-  tracking_data_vec_->push_back(std::move(tracking_data));
+  tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.emplace_back(VectorXd::Zero(0));
 
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
-  string traj_name = tracking_data_vec_->back()->GetName();
+  string traj_name = tracking_data_vec_.back()->GetName();
   if (traj_name_to_port_index_map_.find(traj_name) ==
       traj_name_to_port_index_map_.end()) {
     PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
@@ -206,7 +210,7 @@ void OperationalSpaceControl::AddTrackingData(
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
-  tracking_data_vec_->push_back(std::move(tracking_data));
+  tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
 }
 
@@ -234,22 +238,13 @@ void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
-  for (auto& tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
-    DRAKE_DEMAND(&tracking_data->plant_w_spr() == &plant_);
+    DRAKE_DEMAND(&tracking_data->plant() == &plant_);
   }
 
   // Construct QP
   id_qp_.Build(solver_choice_ == OscSolverChoice::kFastOSQP);
-
-  // Initialize solution
-  osc_solution_.dv_sol_ = Eigen::VectorXd(n_v_);
-  osc_solution_.u_sol_ = Eigen::VectorXd(n_u_);
-  osc_solution_.lambda_c_sol_ = Eigen::VectorXd(id_qp_.nc());
-  osc_solution_.lambda_h_sol_ = Eigen::VectorXd(id_qp_.nh());
-  osc_solution_.epsilon_sol_ = Eigen::VectorXd(id_qp_.nc_active());
-  osc_solution_.u_prev_ = Eigen::VectorXd(n_u_);
-
 
   // Add costs
   // 1. input cost
@@ -291,7 +286,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // 4. Tracking cost
-  for (const auto& data : *tracking_data_vec_) {
+  for (const auto& data : tracking_data_vec_) {
     id_qp_.AddQuadraticCost(data->GetName(), MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_), id_qp_.dv());
   }
@@ -385,8 +380,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Update costs
   // 4. Tracking cost
-  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i).get();
+  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
+    auto tracking_data = tracking_data_vec_.at(i).get();
 
     if (tracking_data->IsActive(fsm_state)) {
       // Check whether or not it is a constant trajectory, and update
@@ -394,7 +389,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       if (fixed_position_vec_.at(i).size() != 0) {
         // Create constant trajectory and update
         tracking_data->Update(
-            x_w_spr, *context_, x_w_spr, *context_,
+            x_w_spr, *context_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
             t_since_last_state_switch, fsm_state, v_proj);
       } else {
@@ -407,8 +402,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
-        tracking_data->Update(x_w_spr, *context_, x_w_spr,
-                              *context_, traj, t,
+        tracking_data->Update(x_w_spr, *context_, traj, t,
                               t_since_last_state_switch, fsm_state, v_proj);
       }
 
@@ -550,7 +544,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     osqp_solver_->DisableWarmStart();
   }
 
-  for (auto& tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state)) {
       tracking_data->StoreYddotCommandSol(sol->dv_sol_);
     }
@@ -659,8 +653,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   M_Jt_ = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
-  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i).get();
+  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
+    auto tracking_data = tracking_data_vec_.at(i).get();
 
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
@@ -669,7 +663,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       if (fixed_position_vec_.at(i).size() != 0) {
         // Create constant trajectory and update
         tracking_data->Update(
-            x_w_spr, *context_, x_wo_spr, *context_,
+            x_w_spr, *context_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
             t_since_last_state_switch, fsm_state, v_proj);
       } else {
@@ -680,8 +674,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             EvalAbstractInput(context, port_index);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        tracking_data->Update(x_w_spr, *context_, x_wo_spr,
-                              *context_, traj, t,
+        tracking_data->Update(x_w_spr, *context_, traj, t,
                               t_since_last_state_switch, fsm_state, v_proj);
       }
     }
@@ -690,7 +683,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
-  for (auto& tracking_data : *tracking_data_vec_) {
+  for (auto& tracking_data : tracking_data_vec_) {
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
       A.block(start_row, 0, tracking_data->GetYdotDim(),
@@ -742,14 +735,17 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
 
+  auto osc_solution = get_cache_entry(
+      osc_solution_cache_).Eval<id_qp_solution>(context);
+
   const std::vector<std::pair<std::string, const Eigen::VectorXd&>>
   potential_regularization_cost_names_and_vars {
-      {"input_cost", osc_solution_.u_sol_},
-      {"acceleration_cost", osc_solution_.dv_sol_},
-      {"soft_constraint_cost", osc_solution_.epsilon_sol_},
-      {"input_smoothing_cost", osc_solution_.u_sol_},
-      {"lambda_c_reg", osc_solution_.lambda_c_sol_},
-      {"lambda_h_cost", osc_solution_.lambda_h_sol_}
+      {"input_cost", osc_solution.u_sol_},
+      {"acceleration_cost", osc_solution.dv_sol_},
+      {"soft_constraint_cost", osc_solution.epsilon_sol_},
+      {"input_smoothing_cost", osc_solution.u_sol_},
+      {"lambda_c_reg", osc_solution.lambda_c_sol_},
+      {"lambda_h_cost", osc_solution.lambda_h_sol_}
   };
 
   output->regularization_cost_names.clear();
@@ -766,17 +762,17 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->num_regularization_costs = output->regularization_costs.size();
 
   lcmt_osc_qp_output qp_output;
-  qp_output.solve_time = osc_solution_.solve_time_;
+  qp_output.solve_time = osc_solution.solve_time_;
   qp_output.u_dim = n_u_;
   qp_output.lambda_c_dim = id_qp_.nc();
   qp_output.lambda_h_dim = id_qp_.nh();
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = id_qp_.nc_active();
-  qp_output.u_sol = CopyVectorXdToStdFloatVector(osc_solution_.u_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdFloatVector(osc_solution_.lambda_c_sol_);
-  qp_output.lambda_h_sol = CopyVectorXdToStdFloatVector(osc_solution_.lambda_h_sol_);
-  qp_output.dv_sol = CopyVectorXdToStdFloatVector(osc_solution_.dv_sol_);
-  qp_output.epsilon_sol = CopyVectorXdToStdFloatVector(osc_solution_.epsilon_sol_);
+  qp_output.u_sol = CopyVectorXdToStdFloatVector(osc_solution.u_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdFloatVector(osc_solution.lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdFloatVector(osc_solution.lambda_h_sol_);
+  qp_output.dv_sol = CopyVectorXdToStdFloatVector(osc_solution.dv_sol_);
+  qp_output.epsilon_sol = CopyVectorXdToStdFloatVector(osc_solution.epsilon_sol_);
   output->qp_output = qp_output;
 
   output->tracking_data = std::vector<lcmt_osc_tracking_data>();
@@ -787,8 +783,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_costs.clear();
   output->tracking_data_names.clear();
 
-  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i).get();
+  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
+    auto tracking_data = tracking_data_vec_.at(i).get();
 
     lcmt_osc_tracking_data osc_output;
     osc_output.y_dim = tracking_data->GetYDim();
@@ -824,7 +820,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       VectorXd y_tracking_cost = VectorXd::Zero(1);
       id_qp_.get_cost_evaluator(
           tracking_data->GetName()
-      ).Eval(osc_solution_.dv_sol_, &y_tracking_cost);
+      ).Eval(osc_solution.dv_sol_, &y_tracking_cost);
       total_cost += y_tracking_cost[0];
       output->tracking_costs.push_back(y_tracking_cost[0]);
       output->tracking_data.push_back(osc_output);
@@ -843,24 +839,29 @@ void OperationalSpaceControl::CalcOptimalInput(
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, state_port_));
 
-  SolveIDQP(context, &osc_solution_);
+  auto osc_solution = get_cache_entry(
+      osc_solution_cache_).Eval<id_qp_solution>(context);
 
   // Assign the control input
-  control->SetDataVector(osc_solution_.u_sol_);
+  control->SetDataVector(osc_solution.u_sol_);
   control->set_timestamp(robot_output->get_timestamp());
 }
 
 void OperationalSpaceControl::CheckTracking(
     const drake::systems::Context<double>& context,
     TimestampedVector<double>* output) const {
-  auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+  auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
+  auto osc_solution = get_cache_entry(
+      osc_solution_cache_).Eval<id_qp_solution>(context);
+
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);
   if (id_qp_.has_cost_named("soft_constraint_cost")) {
     id_qp_.get_cost_evaluator("soft_constraint_cost").Eval(
-        osc_solution_.epsilon_sol_, &y_soft_constraint_cost);
+        osc_solution.epsilon_sol_, &y_soft_constraint_cost);
   }
   if (y_soft_constraint_cost[0] > 1e5 || isnan(y_soft_constraint_cost[0])) {
     output->get_mutable_value()(0) = 1.0;

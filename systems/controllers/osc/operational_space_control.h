@@ -31,6 +31,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/framework_common.h"
 
 namespace dairlib::systems::controllers {
 
@@ -290,8 +291,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
             FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
 
-  std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
-  AllocateTrackingData() const;
+  std::unique_ptr<std::vector<OscTrackingDataState>>
+  AllocateTrackingDataStates() const;
 
   // OSC LeafSystem builder
   void Build();
@@ -322,6 +323,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SolveIDQP(const drake::systems::Context<double>& context,
                  id_qp_solution* solution) const;
 
+  void UpdateTrackingData(const drake::systems::Context<double>& context,
+                          std::vector<OscTrackingDataState>* states) const;
+
   // Updates the contact force regularization to a desired contact force of
   // supporting the robot's weight evenly across each contact point
   // TODO (@Brian-Acosta) we should support having an input port for this kind
@@ -334,12 +338,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
   // s.t. constraints
   // In the IROS 2021 paper, the problem was unconstrained and could be solved
-  // using the closed form least squares solution
-  void UpdateImpactInvariantProjection(
-      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context, double t,
-      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M) const;
+  // using the closed form least squares solution.
+  //
+  // Returns v_perp, where v - v_perp is the projection of v to the impact
+  // invariant subspace
+  Eigen::VectorXd CalcImpactInvariantProjection(
+      int fsm_state, int next_fsm_state, const Eigen::MatrixXd& M,
+      const Eigen::VectorXd& v,
+      const std::vector<OscTrackingDataState>& up_to_date_td_state) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -369,6 +375,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Caches
   drake::systems::CacheIndex osc_solution_cache_;
+  drake::systems::CacheIndex tracking_data_cache_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -419,10 +426,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // MathematicalProgram
   mutable InverseDynamicsQp id_qp_;
 
-  // Impact Invariant Control
-  mutable Eigen::VectorXd ii_lambda_sol_;
-  mutable Eigen::MatrixXd M_Jt_;
-
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
   /// could consider using acceleration cost instead.
@@ -446,7 +449,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // OSC tracking data (stored as a pointer because of caching)
   std::vector<std::unique_ptr<OscTrackingData>> tracking_data_vec_{};
-  mutable std::vector<OscTrackingDataState> tracking_data_states_{};
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

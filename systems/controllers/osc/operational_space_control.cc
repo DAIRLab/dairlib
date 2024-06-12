@@ -108,6 +108,11 @@ OperationalSpaceControl::OperationalSpaceControl(
   osc_solution_cache_ = DeclareCacheEntry(
       "osc_solution", &OperationalSpaceControl::SolveIDQP).cache_index();
 
+  tracking_data_cache_ = DeclareCacheEntry(
+      "tracking_data_states",
+      drake::systems::ValueProducer(
+          this, &OperationalSpaceControl::AllocateTrackingDataStates,
+          &OperationalSpaceControl::UpdateTrackingData)).cache_index();
 
   const std::map<string, int>& vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
@@ -193,7 +198,6 @@ void OperationalSpaceControl::AddKinematicConstraint(
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, double t_lb, double t_ub) {
-  tracking_data_states_.push_back(tracking_data->AllocateState());
   tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.emplace_back(VectorXd::Zero(0));
 
@@ -211,9 +215,17 @@ void OperationalSpaceControl::AddTrackingData(
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
-  tracking_data_states_.push_back(tracking_data->AllocateState());
   tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
+}
+
+std::unique_ptr<std::vector<OscTrackingDataState>>
+OperationalSpaceControl::AllocateTrackingDataStates() const {
+  auto states = std::make_unique<std::vector<OscTrackingDataState>>();
+  for (const auto& data: tracking_data_vec_) {
+    states->push_back(data->AllocateState());
+  }
+  return states;
 }
 
 // Osc checkers and constructor
@@ -347,6 +359,96 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
+void OperationalSpaceControl::UpdateTrackingData(
+    const drake::systems::Context<double> &context,
+    std::vector<OscTrackingDataState> *states) const {
+
+  auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
+
+  VectorXd x = robot_output->GetState();
+
+  double timestamp = robot_output->get_timestamp();
+  int fsm_state = -1;
+  int next_fsm_state = -1;
+  double alpha = 0;
+  double clock_time = timestamp;
+  double prev_event_time = 0;
+
+  VectorXd u_sol(n_u_);
+  if (used_with_finite_state_machine_) {
+    // Read in finite state machine
+    auto fsm_output = this->EvalVectorInput(context, fsm_port_);
+    fsm_state = fsm_output->get_value()(0);
+
+    if (this->get_input_port(clock_port_).HasValue(context)) {
+      auto clock = this->EvalVectorInput(context, clock_port_);
+      clock_time = clock->get_value()(0);
+    }
+
+    if (this->get_input_port_impact_info().HasValue(context)) {
+      auto impact_info = dynamic_cast<const ImpactInfoVector<double>*>(
+          this->EvalVectorInput(context, impact_info_port_));
+      alpha = impact_info->GetAlpha();
+      next_fsm_state = impact_info->GetCurrentContactMode();
+    }
+    // Get discrete states
+    prev_event_time =
+        context.get_discrete_state(prev_event_time_idx_).get_value()(0);
+  }
+
+  // Update tracking data jacobians, etc.
+  VectorXd v_proj = VectorXd::Zero(n_v_);
+  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
+    const auto tracking_data = tracking_data_vec_.at(i).get();
+    auto &tracking_data_state = states->at(i);
+
+    if (tracking_data->IsActive(fsm_state)) {
+      if (fixed_position_vec_.at(i).size() != 0) {
+        // Create constant trajectory and update
+        tracking_data->Update(
+            x, *context_,
+            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), clock_time,
+            timestamp - prev_event_time, fsm_state, v_proj, tracking_data_state);
+      } else {
+        const string &traj_name = tracking_data->GetName();
+        int port_index = traj_name_to_port_index_map_.at(traj_name);
+        const drake::AbstractValue *input_traj =
+            this->EvalAbstractInput(context, port_index);
+        DRAKE_DEMAND(input_traj != nullptr);
+        const auto &traj =
+            input_traj->get_value<drake::trajectories::Trajectory<double>>();
+        // Update
+        tracking_data->Update(
+            x, *context_, traj, clock_time, timestamp - prev_event_time,
+            fsm_state, v_proj, tracking_data_state);
+      }
+    }
+  }
+
+  // Do impact invariant projection
+  if (alpha != 0) {
+    MatrixXd M(n_v_, n_v_);
+    plant_.CalcMassMatrix(*context_, &M);
+
+    VectorXd v_perp = CalcImpactInvariantProjection(
+        fsm_state, next_fsm_state, M, x.tail(n_v_), *states);
+    // Need to call Update before this to get the updated jacobian
+    v_proj = alpha * v_perp;
+  }
+
+  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
+    const auto tracking_data = tracking_data_vec_.at(i).get();
+    auto &tracking_data_state = states->at(i);
+    if (tracking_data->IsActive(fsm_state) && tracking_data->GetImpactInvariantProjection()) {
+      tracking_data->MakeImpactInvariantCorrection(
+          clock_time, timestamp - prev_event_time, fsm_state, v_proj,
+          tracking_data_state);
+    }
+  }
+
+}
+
 VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
@@ -363,51 +465,16 @@ VectorXd OperationalSpaceControl::SolveQp(
       contact_names_map_.at(fsm_state) : std::vector<std::string>();
   id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
 
-
-  //  Invariant Impacts
-  //  Only update when near an impact
-  bool near_impact = alpha != 0;
-  VectorXd v_proj = VectorXd::Zero(n_v_);
-
-  if (near_impact) {
-    MatrixXd M(n_v_, n_v_);
-    plant_.CalcMassMatrix(*context_, &M);
-
-    UpdateImpactInvariantProjection(
-        x_w_spr, x_w_spr, context, t, t_since_last_state_switch,
-        fsm_state, next_fsm_state, M);
-    // Need to call Update before this to get the updated jacobian
-    v_proj = alpha * M_Jt_ * ii_lambda_sol_ + 1e-13 * VectorXd::Ones(n_v_);
-  }
+  const auto& tracking_data_states = get_cache_entry(
+      tracking_data_cache_).Eval<std::vector<OscTrackingDataState>>(context);
 
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
     const auto tracking_data = tracking_data_vec_.at(i).get();
-    auto& tracking_data_state = tracking_data_states_.at(i);
+    const auto& tracking_data_state = tracking_data_states.at(i);
 
     if (tracking_data->IsActive(fsm_state)) {
-      // Check whether or not it is a constant trajectory, and update
-      // TrackingData
-      if (fixed_position_vec_.at(i).size() != 0) {
-        // Create constant trajectory and update
-        tracking_data->Update(
-            x_w_spr, *context_,
-            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
-      } else {
-        // Read in traj from input port
-        const string& traj_name = tracking_data->GetName();
-        int port_index = traj_name_to_port_index_map_.at(traj_name);
-        const drake::AbstractValue* input_traj =
-            this->EvalAbstractInput(context, port_index);
-        DRAKE_DEMAND(input_traj != nullptr);
-        const auto& traj =
-            input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        // Update
-        tracking_data->Update(x_w_spr, *context_, traj, t,
-                              t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
-      }
 
       const VectorXd& ddy_t = tracking_data_state.yddot_command_;
       const MatrixXd& W = tracking_data_state.time_varying_weight_;
@@ -547,11 +614,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     osqp_solver_->DisableWarmStart();
   }
 
-  for (int i = 0; i < tracking_data_vec_.size(); ++i) {
-    if (tracking_data_vec_.at(i)->IsActive(fsm_state)) {
-      tracking_data_states_.at(i).StoreYddotCommandSol(sol->dv_sol_);
-    }
-  }
   return sol->u_sol_;
 }
 
@@ -622,19 +684,24 @@ void OperationalSpaceControl::UpdateContactForceRegularization(
   }
 }
 
+namespace {
+static inline bool has_active_ii_proj(
+    const OscTrackingData* data, int fsm_state) {
+  return data->IsActive(fsm_state) and data->GetImpactInvariantProjection();
+}
+}
+
 // TODO (@Yangwill) test that this is equivalent to the previous impact
 //  invariant implementation
-void OperationalSpaceControl::UpdateImpactInvariantProjection(
-    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
-    const Context<double>& context, double t, double t_since_last_state_switch,
-    int fsm_state, int next_fsm_state, const MatrixXd& M) const {
+Eigen::VectorXd OperationalSpaceControl::CalcImpactInvariantProjection(
+    int fsm_state, int next_fsm_state, const Eigen::MatrixXd &M,
+    const VectorXd& v,
+    const std::vector<OscTrackingDataState> &up_to_date_td_state) const {
 
   auto map_iterator = contact_names_map_.find(next_fsm_state);
 
   if (map_iterator == contact_names_map_.end()) {
-    ii_lambda_sol_ = VectorXd::Zero(id_qp_.nc() + id_qp_.nh());
-    M_Jt_ = MatrixXd::Zero(n_v_, id_qp_.nc() + id_qp_.nh());
-    return;
+    return VectorXd::Zero(n_v_);
   }
 
   std::vector<std::string> next_contact_set = map_iterator->second;
@@ -653,36 +720,13 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     J_next.block(row_start, 0, id_qp_.nh(), n_v_) =
         id_qp_.get_holonomic_evaluators().EvalFullJacobian(*context_);
   }
-  M_Jt_ = M.llt().solve(J_next.transpose());
+
+  Eigen::MatrixXd M_Jt = M.llt().solve(J_next.transpose());
 
   int active_tracking_data_dim = 0;
-  for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
-    const auto tracking_data = tracking_data_vec_.at(i).get();
-    auto& tracking_data_state = tracking_data_states_.at(i);
-
-
-    if (tracking_data->IsActive(fsm_state) &&
-        tracking_data->GetImpactInvariantProjection()) {
-      VectorXd v_proj = VectorXd::Zero(n_v_);
+  for (const auto& tracking_data : tracking_data_vec_) {
+    if (has_active_ii_proj(tracking_data.get(), fsm_state)) {
       active_tracking_data_dim += tracking_data->GetYdotDim();
-      if (fixed_position_vec_.at(i).size() != 0) {
-        // Create constant trajectory and update
-        tracking_data->Update(
-            x_w_spr, *context_,
-            PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
-      } else {
-        // Read in traj from input port
-        const string& traj_name = tracking_data->GetName();
-        int port_index = traj_name_to_port_index_map_.at(traj_name);
-        const drake::AbstractValue* input_traj =
-            EvalAbstractInput(context, port_index);
-        const auto& traj =
-            input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        tracking_data->Update(
-            x_w_spr, *context_, traj, t, t_since_last_state_switch, fsm_state,
-            v_proj, tracking_data_state);
-      }
     }
   }
 
@@ -690,12 +734,11 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
   for (int i = 0; i < tracking_data_vec_.size(); ++i) {
-    if (tracking_data_vec_.at(i)->IsActive(fsm_state) &&
-        tracking_data_vec_.at(i)->GetImpactInvariantProjection()) {
+    if (has_active_ii_proj(tracking_data_vec_.at(i).get(), fsm_state)) {
       A.block(start_row, 0, tracking_data_vec_.at(i)->GetYdotDim(),
-              active_constraint_dim) = tracking_data_states_.at(i).J_ * M_Jt_;
+              active_constraint_dim) = up_to_date_td_state.at(i).J_ * M_Jt;
       ydot_err_vec.segment(start_row, tracking_data_vec_.at(i)->GetYdotDim()) =
-          tracking_data_states_.at(i).error_ydot_;
+          up_to_date_td_state.at(i).error_ydot_;
       start_row += tracking_data_vec_.at(i)->GetYdotDim();
     }
   }
@@ -707,11 +750,12 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       A.transpose() * A;
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + id_qp_.nh());
   VectorXd Ab = A.transpose() * ydot_err_vec;
+
   if (id_qp_.nh() > 0) {
     MatrixXd J_h = id_qp_.get_holonomic_evaluators().EvalFullJacobian(
         *context_);
-    MatrixXd C = J_h * M_Jt_;
-    VectorXd d = J_h * x_w_spr.tail(n_v_);
+    MatrixXd C = J_h * M_Jt;
+    VectorXd d = J_h * v;
     A_constrained.block(active_constraint_dim, 0, id_qp_.nh(), active_constraint_dim) =
         C;
     A_constrained.block(0, active_constraint_dim, active_constraint_dim, id_qp_.nh()) =
@@ -721,9 +765,11 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     b_constrained << Ab;
   }
 
-  ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
+  MatrixXd ii_lambda_sol = A_constrained.completeOrthogonalDecomposition()
                        .solve(b_constrained)
                        .head(active_constraint_dim);
+
+  return M_Jt * ii_lambda_sol + 1e-13 * VectorXd::Ones(n_v_);
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(
@@ -789,9 +835,12 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_costs.clear();
   output->tracking_data_names.clear();
 
+  const auto& tracking_data_states = get_cache_entry(
+      tracking_data_cache_).Eval<std::vector<OscTrackingDataState>>(context);
+
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
     const auto& tracking_data = tracking_data_vec_.at(i).get();
-    const auto& tracking_data_state = tracking_data_states_.at(i);
+    const auto& tracking_data_state = tracking_data_states.at(i);
 
     lcmt_osc_tracking_data osc_output;
     osc_output.y_dim = tracking_data->GetYDim();
@@ -826,7 +875,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       osc_output.yddot_command = CopyVectorXdToStdFloatVector(
           tracking_data_state.yddot_command_);
       osc_output.yddot_command_sol = CopyVectorXdToStdFloatVector(
-          tracking_data_state.yddot_command_sol_);
+          tracking_data_state.CalcYddotCommandSol(osc_solution.dv_sol_));
 
       VectorXd y_tracking_cost = VectorXd::Zero(1);
       id_qp_.get_cost_evaluator(

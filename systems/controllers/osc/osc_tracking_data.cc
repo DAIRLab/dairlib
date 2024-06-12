@@ -54,7 +54,6 @@ OscTrackingDataState OscTrackingData::AllocateState() const {
   state.yddot_des_ = VectorXd::Zero(n_ydot_);
   state.yddot_des_converted_ = VectorXd::Zero(n_ydot_);
   state.yddot_command_ = VectorXd::Zero(n_ydot_);
-  state.yddot_command_sol_ = VectorXd::Zero(n_ydot_);
 
   state.J_ = MatrixXd::Zero(n_ydot_, plant_.num_velocities());
   state.JdotV_ = VectorXd::Zero(n_ydot_);

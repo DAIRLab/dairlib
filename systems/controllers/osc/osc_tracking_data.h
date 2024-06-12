@@ -39,7 +39,6 @@ struct OscTrackingDataState {
 
   // Commanded acceleration after feedback terms
   Eigen::VectorXd yddot_command_;
-  Eigen::VectorXd yddot_command_sol_;
 
   // Members of low-pass filter
   Eigen::VectorXd filtered_y_;
@@ -47,8 +46,8 @@ struct OscTrackingDataState {
   Eigen::MatrixXd time_varying_weight_;
   double last_timestamp_ = -1;
 
-  void StoreYddotCommandSol(const Eigen::VectorXd& dv) {
-      yddot_command_sol_ = J_ * dv + JdotV_;
+  Eigen::VectorXd CalcYddotCommandSol(const Eigen::VectorXd& dv) const {
+      return J_ * dv + JdotV_;
   }
 };
 
@@ -85,6 +84,14 @@ class OscTrackingData {
                       const Eigen::VectorXd& v_proj,
                       OscTrackingDataState& tracking_data_state) const;
 
+  void MakeImpactInvariantCorrection(
+      double t, double t_since_state_switch, int fsm_state,
+      const Eigen::VectorXd& v_proj,
+      OscTrackingDataState& tracking_data_state) const {
+    UpdateYdotError(v_proj, tracking_data_state);
+    UpdateYddotCmd(t, t_since_state_switch, tracking_data_state);
+  }
+
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
   bool IsActive(int fsm_state) const {
@@ -103,9 +110,9 @@ class OscTrackingData {
   }
 
   // Get whether to use the impact invariant projection
-  bool GetImpactInvariantProjection() { return impact_invariant_projection_; }
+  bool GetImpactInvariantProjection() const { return impact_invariant_projection_; }
   // Get whether to use no derivative feedback near impacts
-  bool GetNoDerivativeFeedback() { return no_derivative_feedback_; }
+  bool GetNoDerivativeFeedback() const { return no_derivative_feedback_; }
 
   // Getters used by osc block
   const Eigen::MatrixXd& GetKp() const { return K_p_; }

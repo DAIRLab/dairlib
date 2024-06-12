@@ -375,22 +375,20 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant, plant);
+      gains.W_swing_foot, plant);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
   stance_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "com_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant, plant);
+      gains.W_swing_foot, plant);
   stance_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_left");
   stance_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_right");
 
   swing_ft_data_local = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant, plant, swing_foot_data.get(),
+      gains.W_swing_foot, plant, swing_foot_data.get(),
       stance_foot_data.get());
-
-  swing_ft_data_local->SetSpringsInKinematicCalculation(true);
 
   pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
       plant.GetBodyByName("pelvis"));
@@ -403,7 +401,7 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   center_of_mass_data = std::make_unique<ComTrackingData>(
       "alip_com_traj", gains.K_p_com, gains.K_d_com,
-      gains.W_com, plant, plant);
+      gains.W_com, plant);
   center_of_mass_data->SetViewFrame(pelvis_view_frame);
   center_of_mass_data->AddFiniteStateToTrack(-1);
 
@@ -411,22 +409,22 @@ MpfcOscDiagram::MpfcOscDiagram(
   // Pelvis rotation tracking (pitch and roll)
   pelvis_balance_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
-      gains.W_pelvis_balance, plant, plant);
+      gains.W_pelvis_balance, plant);
   pelvis_balance_data->AddFrameToTrack("pelvis");
 
   // Pelvis rotation tracking (yaw)
   pelvis_heading_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
-      gains.W_pelvis_heading, plant, plant);
+      gains.W_pelvis_heading, plant);
   pelvis_heading_data->AddFrameToTrack("pelvis");
 
   // Swing toe joint tracking
   swing_toe_data_left = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant, plant);
+      gains.W_swing_toe, plant);
   swing_toe_data_right = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant, plant);
+      gains.W_swing_toe, plant);
   swing_toe_data_right->AddStateAndJointToTrack(left_stance_state, "toe_right",
                                                 "toe_rightdot");
   swing_toe_data_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -434,7 +432,7 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   swing_hip_yaw_data = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
-      gains.W_hip_yaw, plant, plant);
+      gains.W_hip_yaw, plant);
   swing_hip_yaw_data->AddStateAndJointToTrack(
       left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
   swing_hip_yaw_data->AddStateAndJointToTrack(

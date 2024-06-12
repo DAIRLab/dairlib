@@ -6,7 +6,6 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
 
-
 namespace dairlib {
 namespace systems {
 namespace controllers {

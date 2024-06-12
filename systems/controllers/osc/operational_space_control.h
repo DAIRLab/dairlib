@@ -264,12 +264,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
-  std::vector<std::unique_ptr<OscTrackingData>>* GetAllTrackingData() {
-    return tracking_data_vec_.get();
-  }
-  OscTrackingData* GetTrackingDataByIndex(int index) {
-    return tracking_data_vec_->at(index).get();
-  }
 
   // Optional features
   void SetUpDoubleSupportPhaseBlending(double ds_duration,
@@ -296,22 +290,40 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
             FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
 
+  std::unique_ptr<std::vector<OscTrackingDataState>>
+  AllocateTrackingDataStates() const;
 
   // OSC LeafSystem builder
   void Build();
 
  private:
+
+  struct id_qp_solution {
+    Eigen::VectorXd dv_sol_;
+    Eigen::VectorXd u_sol_;
+    Eigen::VectorXd lambda_c_sol_;
+    Eigen::VectorXd lambda_h_sol_;
+    Eigen::VectorXd epsilon_sol_;
+    Eigen::VectorXd u_prev_;
+    double solve_time_;
+  };
+
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x_w_spr,
-                          const Eigen::VectorXd& x_wo_spr,
+  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
                           double t_since_last_state_switch, double alpha,
-                          int next_fsm_state) const;
+                          int next_fsm_state, id_qp_solution* sol) const;
+
+  void SolveIDQP(const drake::systems::Context<double>& context,
+                 id_qp_solution* solution) const;
+
+  void UpdateTrackingData(const drake::systems::Context<double>& context,
+                          std::vector<OscTrackingDataState>* states) const;
 
   // Updates the contact force regularization to a desired contact force of
   // supporting the robot's weight evenly across each contact point
@@ -325,25 +337,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
   // s.t. constraints
   // In the IROS 2021 paper, the problem was unconstrained and could be solved
-  // using the closed form least squares solution
-  void UpdateImpactInvariantProjection(
-      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context, double t,
-      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M) const;
-
-  // Solves the optimization problem:
-  // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
-  // s.t. constraints
-  // By adding constraints on lambda, we can impose scaling on the
-  // impact-invariant projection.
-  // The current constraints are lambda \in convex_hull \alpha * [-FC, FC]
-  // defined by the normal impulse from the nominal trajectory
-  void UpdateImpactInvariantProjectionQP(
-      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context, double t,
-      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M) const;
+  // using the closed form least squares solution.
+  //
+  // Returns v_perp, where v - v_perp is the projection of v to the impact
+  // invariant subspace
+  Eigen::VectorXd CalcImpactInvariantProjection(
+      int fsm_state, int next_fsm_state, const Eigen::MatrixXd& M,
+      const Eigen::VectorXd& v,
+      const std::vector<OscTrackingDataState>& up_to_date_td_state) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -356,6 +357,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
+
   // Safety function that triggers when the tracking cost is too high
   void CheckTracking(const drake::systems::Context<double>& context,
                      TimestampedVector<double>* output) const;
@@ -370,9 +372,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex impact_info_port_;
   drake::systems::InputPortIndex ff_input_port_;
 
+  // Caches
+  drake::systems::CacheIndex osc_solution_cache_;
+  drake::systems::CacheIndex tracking_data_cache_;
+
   // Discrete update
-  int prev_fsm_state_idx_;
-  int prev_event_time_idx_;
+  drake::systems::DiscreteStateIndex prev_fsm_state_idx_;
+  drake::systems::DiscreteStateIndex prev_mode_fsm_state_idx_;
+  drake::systems::DiscreteStateIndex prev_event_time_idx_;
 
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string,
@@ -419,18 +426,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // MathematicalProgram
   mutable InverseDynamicsQp id_qp_;
 
-  // OSC solution
-  std::unique_ptr<Eigen::VectorXd> dv_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
-  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_prev_;
-  mutable double solve_time_{};
-
-  mutable Eigen::VectorXd ii_lambda_sol_;
-  mutable Eigen::MatrixXd M_Jt_;
-
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
   /// could consider using acceleration cost instead.
@@ -453,9 +448,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::vector<std::string>> contact_names_map_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
-  std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
-      tracking_data_vec_ =
-          std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
+  std::vector<std::unique_ptr<OscTrackingData>> tracking_data_vec_{};
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
@@ -466,7 +459,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int right_support_state_{};
   std::vector<int> ds_states_{};
   double w_blend_constraint_ = 10;  // for soft constraint
-  mutable double prev_distinct_fsm_state_ = -1;
 };
 
 }  // namespace dairlib::systems::controllers

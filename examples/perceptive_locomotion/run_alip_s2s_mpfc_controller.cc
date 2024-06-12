@@ -103,8 +103,6 @@ DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-
-
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   auto instance_w_spr = AddCassieMultibody(

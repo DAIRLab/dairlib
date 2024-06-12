@@ -314,16 +314,16 @@ int DoMain(int argc, char* argv[]) {
 
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis, plant, plant);
+      osc_gains.W_pelvis, plant);
   auto stance_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "stance_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   auto left_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   pelvis_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftStance,
                                                 "pelvis");
   pelvis_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightStance,
@@ -349,11 +349,11 @@ int DoMain(int argc, char* argv[]) {
   auto left_foot_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-          osc_gains.W_swing_foot, plant, plant);
+          osc_gains.W_swing_foot, plant);
   auto right_foot_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-          osc_gains.W_swing_foot, plant, plant);
+          osc_gains.W_swing_foot, plant);
   left_foot_yz_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kLeftFlight, "toe_left");
   right_foot_yz_tracking_data->AddStateAndPointToTrack(
@@ -361,10 +361,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   left_hip_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kRightStance, "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
@@ -381,11 +381,11 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-      osc_gains.W_swing_foot, plant, plant);
+      osc_gains.W_swing_foot, plant);
   auto right_hip_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-          osc_gains.W_swing_foot, plant, plant);
+          osc_gains.W_swing_foot, plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kLeftFlight, "pelvis");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(
@@ -394,17 +394,17 @@ int DoMain(int argc, char* argv[]) {
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "left_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-          osc_gains.W_swing_foot, plant, plant, left_foot_tracking_data.get(),
+          osc_gains.W_swing_foot, plant, left_foot_tracking_data.get(),
           left_hip_tracking_data.get());
   auto right_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
-          osc_gains.W_swing_foot, plant, plant, right_foot_tracking_data.get(),
+          osc_gains.W_swing_foot, plant, right_foot_tracking_data.get(),
           right_hip_tracking_data.get());
   auto pelvis_trans_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-          osc_gains.W_pelvis, plant, plant, pelvis_tracking_data.get(),
+          osc_gains.W_pelvis, plant, pelvis_tracking_data.get(),
           stance_foot_tracking_data.get());
   left_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   right_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
@@ -436,7 +436,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-      osc_gains.W_pelvis_rot, plant, plant);
+      osc_gains.W_pelvis_rot, plant);
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RunningFsmState::kLeftStance, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
@@ -466,10 +466,10 @@ int DoMain(int argc, char* argv[]) {
   // Swing toe joint tracking
   auto left_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
+      osc_gains.W_swing_toe, plant);
   auto right_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
-      osc_gains.W_swing_toe, plant, plant);
+      osc_gains.W_swing_toe, plant);
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
       RunningFsmState::kRightStance, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
@@ -486,10 +486,10 @@ int DoMain(int argc, char* argv[]) {
   // Swing hip yaw joint tracking
   auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_left_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant, plant);
+      osc_gains.W_hip_yaw, plant);
   auto right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant, plant);
+      osc_gains.W_hip_yaw, plant);
   left_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_left",
                                               "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",

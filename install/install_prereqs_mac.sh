@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # look in WORKSPACE file for appropriate commit number
-DRAKE_COMMIT="v1.24.0"
+DRAKE_COMMIT="v1.28.0"
 
 ubuntu_codename=$(lsb_release -sc)
 

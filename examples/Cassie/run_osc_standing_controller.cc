@@ -264,7 +264,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
   right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
   osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
-  
+
   osc->SetSolverOptionsFromYaml("examples/Cassie/osc/solver_settings/fcc_qp_options_standing.yaml");
   // Build OSC problem
   osc->Build();

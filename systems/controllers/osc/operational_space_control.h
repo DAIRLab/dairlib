@@ -31,7 +31,6 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/framework_common.h"
 
 namespace dairlib::systems::controllers {
 

@@ -528,7 +528,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc_controller_for_alip_mpfc");
-  DrawAndSaveDiagramGraph(*this);
+  //DrawAndSaveDiagramGraph(*this);
 }
 
 void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(

@@ -47,7 +47,7 @@ int DoMain() {
   MultibodyPlant<double> plant(1e-5);  // non-zero timestep to avoid continuous
   // model warnings
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile(
+  parser.AddModels(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
                                                    Eigen::Vector3d::UnitZ());

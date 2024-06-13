@@ -66,10 +66,10 @@ void runDircon() {
   Parser parser(&plant_double);
   Parser parser_vis(&plant_vis, &scene_graph);
 
-  parser.AddModelFromFile(urdf_path);
+  parser.AddModels(urdf_path);
   plant_double.Finalize();
 
-  parser_vis.AddModelFromFile(urdf_path);
+  parser_vis.AddModels(urdf_path);
   plant_vis.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_pointer;

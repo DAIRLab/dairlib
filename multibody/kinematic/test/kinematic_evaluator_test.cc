@@ -36,7 +36,7 @@ class KinematicEvaluatorTest : public ::testing::Test {
     std::string full_name =
         dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
 
-    parser.AddModelFromFile(full_name);
+    parser.AddModels(full_name);
 
     plant_->WeldFrames(plant_->world_frame(), plant_->GetFrameByName("base"),
                        drake::math::RigidTransform<double>());

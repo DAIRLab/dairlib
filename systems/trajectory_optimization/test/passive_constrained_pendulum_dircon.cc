@@ -56,7 +56,7 @@ void runDircon() {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Parser parser(&plant, &scene_graph);
 
-  parser.AddModelFromFile(sdf_path);
+  parser.AddModels(sdf_path);
 
   plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base_link"),

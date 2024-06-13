@@ -5,6 +5,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
+#include "multibody/visualization_utils.h"
 
 namespace py = pybind11;
 
@@ -22,7 +23,8 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, std::string>())
       .def(py::init<std::string, int, double, std::string>())
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
-      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
+      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"))
+      .def("GetMeshcat", &MultiposeVisualizer::GetMeshcat);
 
   m.def("MakeNameToPositionsMap",
         py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),

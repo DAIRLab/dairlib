@@ -80,7 +80,7 @@ int do_main() {
   scene_graph.set_name("scene_graph");
 
   multibody::Parser parser(&multibody_plant, &scene_graph);
-  parser.AddModelFromFile(dairlib::FindResourceOrThrow(
+  parser.AddModels(dairlib::FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"));
 
   multibody_plant.WeldFrames(

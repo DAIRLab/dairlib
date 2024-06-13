@@ -48,7 +48,7 @@ int DoMain() {
   scene_graph.set_name("scene_graph");
   MultibodyPlant<double> plant(1e-5);
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile(
+  parser.AddModels(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.Finalize();
 

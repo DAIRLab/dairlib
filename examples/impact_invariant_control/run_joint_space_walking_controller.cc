@@ -75,7 +75,7 @@ int DoMain(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
       "examples/impact_invariant_control/five_link_biped.urdf");
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();
@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -146,8 +146,15 @@ int DoMain(int argc, char* argv[]) {
       plant, foot_contact_disp, plant.GetBodyByName("right_foot").body_frame(),
       Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
 
-  osc->AddStateAndContactPoint(0, &left_foot_evaluator);
-  osc->AddStateAndContactPoint(1, &right_foot_evaluator);
+  osc->AddContactPoint(
+      "left_foot",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_foot_evaluator),
+      {0});
+  osc->AddContactPoint(
+      "right_foot",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_foot_evaluator),
+      {1});
+
 
   // Create maps for joints
   map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant);

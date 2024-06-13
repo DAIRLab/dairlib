@@ -1,12 +1,60 @@
 #pragma once
+#include "dairlib/lcmt_cf_mpfc_output.hpp"
+#include "lcm/lcm_trajectory.h"
+#include "systems/controllers/footstep_planning/contact_modes.h"
+
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 
 namespace dairlib::systems::controllers {
 
 class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
-  CFMPFCOutputReceiver();
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CFMPFCOutputReceiver);
 
+  /*!
+   * Constructs the MPFC receiver, which converts the pmfc output message into
+   * trajectories, etc. which are usable by downstream systems
+   *
+   * @param ordered_left_contact_names left foot contact point names, as they
+   * appear in the OSC, in the order that they are declared to the MPC
+   *
+   * @param ordered_right_contact_names right foot contact names, following the
+   * same convention as above
+   */
+  CFMPFCOutputReceiver(std::vector<std::string> ordered_left_contact_names,
+                       std::vector<std::string> ordered_right_contact_names);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return get_input_port(input_port_state_);
+  }
+
+ private:
+  void CopyFsm(const drake::systems::Context<double>& context,
+               lcmt_fsm_info* out) const;
+
+  void CopyPitch(const drake::systems::Context<double>& context,
+                 drake::systems::BasicVector<double>* pitch) const;
+
+  void CopyFootstepTarget(const drake::systems::Context<double>& context,
+                          drake::systems::BasicVector<double>* target) const;
+
+  void CalcOrientationTraj(const drake::systems::Context<double>& context,
+                           drake::trajectories::Trajectory<double>* traj) const;
+
+  void CalcComTraj(const drake::systems::Context<double>& context,
+                   drake::trajectories::Trajectory<double>* traj) const;
+
+  void CalcDesiredForce(const std::string& contact_name,
+                        const drake::systems::Context<double>& context,
+                        drake::systems::BasicVector<double>* f) const;
+
+  const std::vector<std::string> left_contact_names_;
+  const std::vector<std::string> right_contact_names_;
+
+  drake::systems::InputPortIndex input_port_state_;
+  drake::systems::InputPortIndex input_port_mpfc_output_;
 };
 
 }

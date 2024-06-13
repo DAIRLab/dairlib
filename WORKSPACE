@@ -133,8 +133,8 @@ ROS2_PACKAGES = [
 ] + [
     # These are possible RMW implementations. Uncomment one and only one to
     # change implementations
-    "rmw_cyclonedds_cpp",
-    # "rmw_fastrtps_cpp",
+    #"rmw_cyclonedds_cpp",
+    "rmw_fastrtps_cpp",
 ]
 
 ros2_local_repository(

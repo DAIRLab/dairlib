@@ -1,6 +1,5 @@
 #include "ideal_landmark_source.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace perception {
@@ -14,8 +13,6 @@ using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::RigidBodyFrame;
 
-using systems::OutputVector;
-
 IdealLandmarkSource::IdealLandmarkSource(
     const MultibodyPlant<double> &plant, Context<double> *context,
     const RigidBodyFrame<double>& landmark_frame) :
@@ -23,7 +20,7 @@ IdealLandmarkSource::IdealLandmarkSource(
 
   DRAKE_DEMAND(&(landmark_frame.GetParentPlant()) == &plant);
 
-  DeclareVectorInputPort("x, u, t", OutputVector<double>(plant));
+  DeclareVectorInputPort("x", plant.num_positions() + plant.num_velocities());
   DeclareAbstractOutputPort(
       "lcmt_landmark_array", &IdealLandmarkSource::CalcLandmarks);
 }

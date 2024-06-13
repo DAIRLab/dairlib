@@ -48,7 +48,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_double(dt, 1e-3,
+DEFINE_double(dt, 1e-4,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");

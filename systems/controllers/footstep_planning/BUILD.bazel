@@ -56,6 +56,17 @@ cc_library(
 )
 
 cc_library(
+    name = "cf_mpfc_output_receiver",
+    srcs = ["cf_mpfc_output_receiver.cc"],
+    hdrs = ["cf_mpfc_output_receiver.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "cf_mpfc",
     hdrs = ["cf_mpfc.h"],
     srcs = ["cf_mpfc.cc"],

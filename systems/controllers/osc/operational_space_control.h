@@ -334,7 +334,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex clock_port_;
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex impact_info_port_;
-  drake::systems::InputPortIndex ff_input_port_;
 
   // Caches
   drake::systems::CacheIndex osc_solution_cache_;

@@ -19,14 +19,13 @@ DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2
 #DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
-load("//:environ.bzl", "environ_repository")
+load("//:environ.bzl", "drake_repository")
+load("//:environ.bzl", "inekf_repository")
 
-environ_repository(
-    name = "environ",
-    vars = ["DAIRLIB_LOCAL_DRAKE_PATH"],
-)
-
-load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+drake_repository(name="drake_path")
+inekf_repository(name="inekf_path")
+load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -66,6 +65,10 @@ add_default_workspace()
 load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
 
 osqp_repository(name = "osqp")
+
+load("@dairlib//tools/workspace/fcc_qp:repository.bzl", "fcc_qp_repository")
+
+fcc_qp_repository(name = "fcc_qp")
 
 load("@dairlib//tools/workspace/cgal:repository.bzl", "cgal_repository")
 
@@ -125,20 +128,6 @@ new_local_repository(
     path = "tools/workspace/ros/bundle_ws/install",
 )
 
-# Locally developed and installed ROS packages
-environ_repository(
-    name = "environ_local_ros",
-    vars = ["LOCAL_ROS_INSTALL_PATH"],
-)
-
-load("@environ_local_ros//:environ.bzl", "LOCAL_ROS_INSTALL_PATH")
-
-new_local_repository(
-    name = "ros-local",
-    build_file = "tools/workspace/ros/ros-local.bazel",
-    path = LOCAL_ROS_INSTALL_PATH,
-)
-
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",
@@ -178,17 +167,6 @@ INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "73295b46ebdfb60df425f3f72496b32773ec282538435e2b8e3a4c66faf484e3"
 
-# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
-# displays the suggested new value for the CHECKSUM.
-# INEKF_CHECKSUM = "0" * 64
-
-# Load an environment variable.
-environ_repository(
-    name = "environ_inekf",
-    vars = ["DAIRLIB_LOCAL_INEKF_PATH"],
-)
-
-load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -272,15 +250,13 @@ http_archive(
     ],
 )
 
-environ_repository(
-    name = "environ_home",
-    vars = ["HOME"],
+## For some reason, this is needed for the clion bazel plugin to work on
+# clion 2024.1.3:
+http_archive(
+    name = "rules_java",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+    ],
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
 )
 
-load("@environ_home//:environ.bzl", "HOME")
-
-new_local_repository(
-    name = "fcc_qp",
-    build_file = "tools/workspace/fcc_qp/BUILD.bazel",
-    path = "{}/workspace/sandbox/fcc_qp/".format(HOME),
-)

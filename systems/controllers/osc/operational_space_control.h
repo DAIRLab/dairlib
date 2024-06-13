@@ -180,13 +180,19 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    */
   const drake::systems::InputPort<double>& get_input_port_tracking_data(
       const std::string& name) const {
-    try {
-      return this->get_input_port(traj_name_to_port_index_map_.at(name));
-    } catch (std::exception& e) {
-      std::cerr << "Cannot find tracking data named: " << name << std::endl;
-    }
-    return this->get_input_port(0);
+    DRAKE_DEMAND(traj_name_to_port_index_map_.contains(name));
+    return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
+
+  /*!
+   * Input port for a desired contact force (only evaluated during the modes
+   * where the contact force is active)
+   */
+   const drake::systems::InputPort<double>& get_input_port_lambda_c_des(const
+      std::string& name) const {
+     DRAKE_DEMAND(contact_name_to_lambda_des_port_map_.contains(name));
+     return this->get_input_port(contact_name_to_lambda_des_port_map_.at(name));
+   }
 
   /***** Regularization cost weights *****/
 
@@ -330,6 +336,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // TODO (@Brian-Acosta) we should support having an input port for this kind
   //  of thing instead
   void UpdateContactForceRegularization(
+      const drake::systems::Context<double>& context,
       const std::vector<std::string>& contacts_currently_active) const;
 
 
@@ -384,6 +391,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string,
            drake::systems::InputPortIndex> traj_name_to_port_index_map_;
+
+  std::map<std::string,
+           drake::systems::InputPortIndex> contact_name_to_lambda_des_port_map_;
 
   // MBP's.
   const drake::multibody::MultibodyPlant<double>& plant_;

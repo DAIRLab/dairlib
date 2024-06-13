@@ -176,6 +176,9 @@ void OperationalSpaceControl::AddContactPoint(
     const std::string& name,
     std::unique_ptr<const multibody::WorldPointEvaluator<double>> evaluator,
     std::vector<int> fsm_states) {
+
+  DRAKE_DEMAND(not name.empty());
+
   if (fsm_states.empty()) {
     fsm_states.push_back(-1);
   }
@@ -186,6 +189,9 @@ void OperationalSpaceControl::AddContactPoint(
       contact_names_map_.insert({i, {name}});
     }
   }
+
+  contact_name_to_lambda_des_port_map_[name] = DeclareVectorInputPort(
+      "lamba_c_des_" + name, 3).get_index();
 
   DRAKE_DEMAND(mu_ > 0);
   id_qp_.AddContactConstraint(name, std::move(evaluator), mu_);
@@ -579,7 +585,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    UpdateContactForceRegularization(active_contact_names);
+    UpdateContactForceRegularization(context, active_contact_names);
   }
 
   if (W_lambda_h_reg_.size() > 0) {
@@ -678,17 +684,23 @@ void OperationalSpaceControl::SolveIDQP(
 }
 
 void OperationalSpaceControl::UpdateContactForceRegularization(
+    const Context<double>& context,
     const vector<std::string> &contacts_currently_active) const {
+
+  int n = contacts_currently_active.size();
+  double lambda_z_des = n > 0 ? 9.81 * plant_.CalcTotalMass(*context_) / n : 0;
+
   if (id_qp_.has_cost_named("lambda_c_reg")) {
-    int n = contacts_currently_active.size();
-    double lambda_z_des = n > 0 ? 9.81 * plant_.CalcTotalMass(*context_) / n : 0;
-    Eigen::Vector3d lambda_des(0.0, 0.0, lambda_z_des);
-
     Eigen::VectorXd lambda_des_stacked = VectorXd::Zero(id_qp_.nc());
-
-    for (const auto & cname: contacts_currently_active) {
-      int i = id_qp_.get_contact_variable_start(cname);
-      lambda_des_stacked.segment<3>(i) = lambda_des;
+    for (const auto& cname : contacts_currently_active) {
+      int start = id_qp_.get_contact_variable_start(cname);
+      if (get_input_port_lambda_c_des(cname).HasValue(context)) {
+        lambda_des_stacked.segment<3>(start) = EvalVectorInput(
+            context,
+            contact_name_to_lambda_des_port_map_.at(cname))->value();
+      } else {
+        lambda_des_stacked(start + 2) = lambda_z_des;
+      }
     }
 
     double c = lambda_des_stacked.transpose() * W_lambda_c_reg_ * lambda_des_stacked;

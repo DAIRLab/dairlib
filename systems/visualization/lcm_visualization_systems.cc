@@ -91,10 +91,11 @@ LcmPoseDrawer::LcmPoseDrawer(
 
   Eigen::VectorXd alpha_scale;
   if (add_transparency) {
-    alpha_scale = 1.0 * VectorXd::LinSpaced(N_ - 1, 0.1, 0.4);
+    alpha_scale = 1.0 * VectorXd::LinSpaced(N_ - 1, 0.2, 0.5);
   } else {
     alpha_scale = 1.0 * VectorXd::Ones(N_ - 1);
   }
+  alpha_scale.reverseInPlace();
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
       model_file, N_ - 1, alpha_scale, "", meshcat);

@@ -16,22 +16,21 @@ namespace dairlib::systems::controllers {
 ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
                                  const MatrixXd& K_d, const MatrixXd& W,
                                  const MultibodyPlant<double>& plant)
-    : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant) {
-}
+    : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant) {}
 
 void ComTrackingData::UpdateY(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    const VectorXd& x, const Context<double>& context,
     OscTrackingDataState& tracking_data_state) const {
   tracking_data_state.y_ =
-      plant_.CalcCenterOfMassPositionInWorld(context_w_spr);
+      plant_.CalcCenterOfMassPositionInWorld(context);
 }
 
 void ComTrackingData::UpdateYdot(
-    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    const VectorXd& x, const Context<double>& context,
     OscTrackingDataState& tracking_data_state) const {
   tracking_data_state.ydot_ =
       plant_.CalcCenterOfMassTranslationalVelocityInWorld(
-      context_w_spr);
+      context);
 }
 
 void ComTrackingData::UpdateJ(

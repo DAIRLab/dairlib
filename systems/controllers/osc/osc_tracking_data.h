@@ -46,10 +46,15 @@ struct OscTrackingDataState {
   Eigen::MatrixXd time_varying_weight_;
   double last_timestamp_ = -1;
 
+  /*!
+   * Calculate the operational space acceleration of this tracking data
+   * at it's current state, given a generalized acceleration dv
+   */
   Eigen::VectorXd CalcYddotCommandSol(const Eigen::VectorXd& dv) const {
-      return J_ * dv + JdotV_;
+    return J_ * dv + JdotV_;
   }
 };
+
 
 class OscTrackingData {
  public:
@@ -69,10 +74,10 @@ class OscTrackingData {
   //  - update the errors (Calling virtual methods)
   //  - update commanded accelerations (desired output with pd control)
   // Inputs/Arguments:
-  //  - `x_w_spr`, state of the robot (with spring)
-  //  - `context_w_spr`, plant context of the robot (without spring)
-  //  - `x_wo_spr`, state of the robot (with spring)
-  //  - `context_wo_spr`, plant context of the robot (without spring)
+  //  - `x`, state of the robot (with spring)
+  //  - `context`, plant context of the robot (without spring)
+  //  - `x`, state of the robot (with spring)
+  //  - `context`, plant context of the robot (without spring)
   //  - `traj`, desired trajectory
   //  - `t`, current time
   //  - `t`, time since the last state switch
@@ -121,7 +126,7 @@ class OscTrackingData {
 
   // Getters
   const std::string& GetName() const { return name_; };
-  const std::set<int>& GetActiveStates() { return active_fsm_states_; };
+  const std::set<int>& GetActiveStates() const { return active_fsm_states_; };
   int GetYDim() const { return n_y_; };
   int GetYdotDim() const { return n_ydot_; };
 
@@ -154,8 +159,8 @@ class OscTrackingData {
   // Cost weights
   Eigen::MatrixXd W_;
 
-  /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
-  /// but in the optimization it uses `plant_wo_spr_`. The reason of using
+  /// OSC calculates feedback positions/velocities from `plant_`,
+  /// but in the optimization it uses `plant_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -171,20 +176,20 @@ class OscTrackingData {
                      OscTrackingDataState& tracking_data_state) const;
   // Update actual output methods
   virtual void UpdateY(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x,
+      const drake::systems::Context<double>& context,
       OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateYdot(
-      const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr,
+      const Eigen::VectorXd& x,
+      const drake::systems::Context<double>& context,
       OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateJ(
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr,
+      const Eigen::VectorXd& x,
+      const drake::systems::Context<double>& context,
       OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateJdotV(
-      const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr,
+      const Eigen::VectorXd& x,
+      const drake::systems::Context<double>& context,
       OscTrackingDataState& tracking_data_state) const = 0;
 
   // Update error methods

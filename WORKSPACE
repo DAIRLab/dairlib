@@ -4,6 +4,7 @@
 workspace(name = "dairlib")
 
 # Support for apple toolchains on Bazel 7+
+# https://github.com/bazelbuild/apple_support/releases
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(

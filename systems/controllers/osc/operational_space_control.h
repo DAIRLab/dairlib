@@ -260,9 +260,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     );
   };
 
-  std::unique_ptr<std::vector<OscTrackingDataState>>
-  AllocateTrackingDataStates() const;
-
   // OSC LeafSystem builder
   void Build();
 
@@ -292,6 +289,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SolveIDQP(const drake::systems::Context<double>& context,
                  id_qp_solution* solution) const;
 
+  std::unique_ptr<std::vector<OscTrackingDataState>>
+  AllocateTrackingDataStates() const;
+
   void UpdateTrackingData(const drake::systems::Context<double>& context,
                           std::vector<OscTrackingDataState>* states) const;
 
@@ -299,9 +299,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Solves the optimization problem:
   // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
-  // s.t. constraints
-  // In the IROS 2021 paper, the problem was unconstrained and could be solved
-  // using the closed form least squares solution.
+  // s.t. holonomic constraints
+  //
+  // In the IROS 2021 paper, "Impact Invariant Control with Applications to
+  // Bipedal Locomotion" by Yang and Posa the problem was unconstrained and
+  // could be solved using the closed form least squares solution.
   //
   // Returns v_perp, where v - v_perp is the projection of v to the impact
   // invariant subspace

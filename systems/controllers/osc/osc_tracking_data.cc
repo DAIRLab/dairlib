@@ -39,9 +39,7 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
       n_ydot_(n_ydot),
       K_p_(K_p),
       K_d_(K_d),
-      W_(W) {
-
-}
+      W_(W) {}
 
 OscTrackingDataState OscTrackingData::AllocateState() const {
   OscTrackingDataState state;

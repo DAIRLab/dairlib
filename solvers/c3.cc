@@ -757,6 +757,56 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   return *z_sol_;
 }
 
+vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
+                                     vector<VectorXd>& WZ, int admm_iteration) {
+  vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
+  int i;
+
+  if (options_.num_threads > 0) {
+    omp_set_dynamic(0);  // Explicitly disable dynamic teams
+    omp_set_num_threads(options_.num_threads);  // Set number of threads
+    omp_set_max_active_levels(1);
+  }
+
+#pragma omp parallel for num_threads(options_.num_threads)
+  for (i = 0; i < N_; i++) {
+    if (options_.use_robust_formulation &&
+        admm_iteration ==
+            (options_.admm_iter - 1)) {  // only on the last iteration
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveRobustSingleProjection(
+              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+              admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveRobustSingleProjection(
+              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+              admm_iteration, i + 1);
+        }
+      } else {
+        deltaProj[i] = SolveRobustSingleProjection(
+            U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+            admm_iteration, -1);
+      }
+    } else {
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
+                                               c_[i], admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
+                                               c_[i], admm_iteration, i + 1);
+        }
+      } else {
+        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, -1);
+      }
+    }
+  }
+
+  return deltaProj;
+}
+
 void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                              double upper_bound, int constraint) {
   if (constraint == 1) {
@@ -788,35 +838,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
-                                     vector<VectorXd>& WZ, int admm_iteration) {
-  vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
-  int i;
 
-  if (options_.num_threads > 0) {
-    omp_set_dynamic(0);  // Explicitly disable dynamic teams
-    omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(1);
-  }
-
-#pragma omp parallel for num_threads(options_.num_threads)
-  for (i = 0; i < N_; i++) {
-    if (warm_start_) {
-      if (i == N_ - 1) {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                             c_[i], admm_iteration, -1);
-      } else {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                             c_[i], admm_iteration, i + 1);
-      }
-    } else {
-      deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                           c_[i], admm_iteration, -1);
-    }
-  }
-
-  return deltaProj;
-}
 
 std::vector<Eigen::VectorXd> C3::GetWarmStartX() const {
   return warm_start_x_[0];

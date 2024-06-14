@@ -29,8 +29,8 @@ class C3 {
     std::vector<Eigen::MatrixXd> U;
   };
   /// @param LCS LCS parameters
-  /// @param Q, R, G, U Cost function parameters
-  C3(const LCS& lcs, const CostMatrices& costs,
+  /// @param Q, R, G, U Cost Matrices
+  C3(const LCS& LCS, const CostMatrices& costs,
      const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
   virtual ~C3() = default;
@@ -61,6 +61,8 @@ class C3 {
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
   /// @param G A pointer to the G variables from previous step
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @return solution is saved in C3 object
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
                 std::vector<Eigen::MatrixXd>* G,
@@ -68,8 +70,12 @@ class C3 {
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
-  /// @param WD A pointer to the (w - delta) variables
   /// @param G A pointer to the G variables from previous step
+  /// @param WD A pointer to the (w - delta) variables
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param is_final_solve Indicating final admm iteration in case of any
+  /// polishing steps
+  /// @return z MPC solution
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        const std::vector<Eigen::MatrixXd>& G,
                                        const std::vector<Eigen::VectorXd>& WD,
@@ -77,10 +83,11 @@ class C3 {
                                        bool is_final_solve = false);
 
   /// Solve the projection problem for all timesteps
-  /// @param WZ A pointer to the (z + w) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param U Matrix for consensus cost
+  /// @param WZ (z + w) variables
+  /// @param admm_iteration ADMM iteration for accurate warm starting
   std::vector<Eigen::VectorXd> SolveProjection(
-      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,
+      const std::vector<Eigen::MatrixXd>& U, std::vector<Eigen::VectorXd>& WZ,
       int admm_iteration);
 
   /// allow users to add constraints (adds for all timesteps)
@@ -89,7 +96,7 @@ class C3 {
   void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, int constraint);
 
-  /// allow user to remove all constraints
+  /// remove all constraints
   void RemoveConstraints();
 
   /// Get QP warm start
@@ -99,8 +106,12 @@ class C3 {
 
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
-  /// @param U A pointer to the U variables
+  /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param E, F, H, c LCS contact parameters
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param warm_start_index knot point index for warm starting
+  /// @return delta_k
   virtual Eigen::VectorXd SolveSingleProjection(
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
@@ -176,8 +187,10 @@ class C3 {
   double solve_time_ = 0;
   bool h_is_zero_;
 
-  drake::solvers::MathematicalProgram prog_;
+  /// MathematicalProgram for QP step
   drake::solvers::OsqpSolver osqp_;
+  drake::solvers::MathematicalProgram prog_;
+  /// Decision variables for QP step
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
@@ -187,6 +200,7 @@ class C3 {
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
+  // workspace and input limit constraints
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
 

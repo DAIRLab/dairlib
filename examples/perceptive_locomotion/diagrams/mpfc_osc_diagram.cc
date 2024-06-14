@@ -516,6 +516,9 @@ MpfcOscDiagram::MpfcOscDiagram(
   output_port_switching_time_ = builder.ExportOutput(
       fsm->get_output_port_time_until_switch(), "time_until_switch"
   );
+  output_port_swing_ft_traj_tracking_error_ = builder.ExportOutput(
+      osc->get_output_port_tracking_error("swing_ft_traj"), "swing_ft_traj_tracking_error"
+  );
   input_port_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcm_robot_output"
   );

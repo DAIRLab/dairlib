@@ -124,7 +124,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 spaces.MultiBinary,
             ),
         )
-
+        self.MTL = False
         self.batch_size = batch_size
         self.n_epochs = n_epochs
         self.clip_range = clip_range
@@ -238,9 +238,12 @@ class RecurrentPPO(OnPolicyAlgorithm):
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                #print(self._last_obs.shape)
                 episode_starts = th.tensor(self._last_episode_starts, dtype=th.float32, device=self.device)
-                actions, values, log_probs, lstm_states = self.policy.forward(obs_tensor, lstm_states, episode_starts)
-
+                if self.MTL:
+                    actions, values, log_probs, lstm_states, _ = self.policy.forward(obs_tensor, lstm_states, episode_starts)
+                else:
+                    actions, values, log_probs, lstm_states = self.policy.forward(obs_tensor, lstm_states, episode_starts)
             actions = actions.cpu().numpy()
 
             # Rescale and perform action
@@ -325,6 +328,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
         entropy_losses = []
         pg_losses, value_losses = [], []
         clip_fractions = []
+        if self.MTL:
+            multi_losses = []
 
         continue_training = True
 
@@ -345,12 +350,20 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 if self.use_sde:
                     self.policy.reset_noise(self.batch_size)
 
-                values, log_prob, entropy = self.policy.evaluate_actions(
-                    rollout_data.observations,
-                    actions,
-                    rollout_data.lstm_states,
-                    rollout_data.episode_starts,
-                )
+                if self.MTL:
+                    values, log_prob, entropy, multi_task = self.policy.evaluate_actions(
+                        rollout_data.observations,
+                        actions,
+                        rollout_data.lstm_states,
+                        rollout_data.episode_starts,
+                    )
+                else:
+                    values, log_prob, entropy = self.policy.evaluate_actions(
+                        rollout_data.observations,
+                        actions,
+                        rollout_data.lstm_states,
+                        rollout_data.episode_starts,
+                    )
 
                 values = values.flatten()
                 # Normalize advantage
@@ -394,8 +407,16 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     entropy_loss = -th.mean(entropy[mask])
 
                 entropy_losses.append(entropy_loss.item())
-
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                if self.MTL:
+                    multi_loss = th.mean(((rollout_data.observations[:, 3*64*64+6+23:3*64*64+6+23+23] - multi_task)**2)[mask])
+                    multi_losses.append(multi_loss.item())
+                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + 0.1 * multi_loss
+                else:
+                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                # print(f'Policy loss : {policy_loss}')
+                # print(f'Entropy loss : {self.ent_coef * entropy_loss}')
+                # print(f'Value loss : {self.vf_coef * value_loss}')
+                # print(f'Multi loss : {0.1 * multi_loss}')
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -433,6 +454,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
         self.logger.record("train/entropy_loss", np.mean(entropy_losses))
         self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))
         self.logger.record("train/value_loss", np.mean(value_losses))
+        if self.MTL:
+            self.logger.record("train/multi_loss", np.mean(multi_losses))
         self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
         self.logger.record("train/clip_fraction", np.mean(clip_fractions))
         self.logger.record("train/loss", loss.item())

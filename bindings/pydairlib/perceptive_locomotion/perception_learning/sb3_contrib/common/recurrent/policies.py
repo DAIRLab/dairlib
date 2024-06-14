@@ -66,8 +66,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        lstm_actor,
-        lstm_critic,
+        #lstm_actor,
+        #lstm_critic,
         net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
@@ -108,13 +108,13 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
             optimizer_class,
             optimizer_kwargs,
         )
-
+        self.MTL = False
         self.lstm_kwargs = lstm_kwargs or {}
         self.shared_lstm = shared_lstm # Do not share LSTM
         self.enable_critic_lstm = enable_critic_lstm # True
 
-        self.lstm_actor = lstm_actor
-        self.lstm_critic = lstm_critic
+        self.lstm_actor = self.mlp_extractor.actor_combined_lstm
+        self.lstm_critic = self.mlp_extractor.critic_combined_lstm
 
         # For the predict() method, to initialize hidden states
         # (n_lstm_layers, batch_size, lstm_hidden_size)
@@ -224,9 +224,9 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
 
         pi_features = self.mlp_extractor.multihead_actor(features)
         vf_features = self.mlp_extractor.multihead_critic(features)
-        
-        latent_pi, lstm_states_pi = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
-        latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
+
+        latent_pi, lstm_states_pi = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.mlp_extractor.actor_combined_lstm)
+        latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)
@@ -237,6 +237,10 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         actions = actions.reshape((-1, *self.action_space.shape))
+
+        if self.MTL:
+            multitask_outputs = self.mlp_extractor.actor_multitask(latent_pi)
+            return actions, values, log_prob, RNNStates(lstm_states_pi, lstm_states_vf), multitask_outputs
 
         return actions, values, log_prob, RNNStates(lstm_states_pi, lstm_states_vf)
 
@@ -260,7 +264,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
 
         features = self.mlp_extractor.multihead_actor(features)
 
-        latent_pi, lstm_states = self._process_sequence(features, lstm_states, episode_starts, self.lstm_actor)
+        latent_pi, lstm_states = self._process_sequence(features, lstm_states, episode_starts, self.mlp_extractor.actor_combined_lstm)
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         return self._get_action_dist_from_latent(latent_pi), lstm_states
 
@@ -283,7 +287,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features = super(ActorCriticPolicy, self).extract_features(obs, self.vf_features_extractor)
         
         features = self.mlp_extractor.multihead_critic(features)
-        latent_vf, lstm_states_vf = self._process_sequence(features, lstm_states, episode_starts, self.lstm_critic)
+        latent_vf, lstm_states_vf = self._process_sequence(features, lstm_states, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)
         return self.value_net(latent_vf)
@@ -309,8 +313,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         pi_features = self.mlp_extractor.multihead_actor(features)
         vf_features = self.mlp_extractor.multihead_critic(features)
         
-        latent_pi, _ = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
-        latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
+        latent_pi, _ = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.mlp_extractor.actor_combined_lstm)
+        latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)
@@ -318,6 +322,10 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
         log_prob = distribution.log_prob(actions)
         values = self.value_net(latent_vf)
+        if self.MTL:
+            multi_task = self.mlp_extractor.actor_multitask(latent_pi)
+            return values, log_prob, distribution.entropy(), multi_task
+
         return values, log_prob, distribution.entropy()
 
     def _predict(

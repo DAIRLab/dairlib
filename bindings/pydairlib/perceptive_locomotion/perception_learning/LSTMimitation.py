@@ -298,6 +298,8 @@ class CustomNetwork(nn.Module):
             nn.Tanh(),
         )
 
+        #self.actor_multitask = nn.Linear(self.latent_dim_pi, 23)
+
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
         critic_combined_features = self.multihead_critic(observations)
@@ -341,6 +343,10 @@ class CustomNetwork(nn.Module):
     def forward_critic(self, features: th.Tensor) -> th.Tensor:
         critic_actions = self.critic_combined_fc(features)
         return critic_actions
+    
+    # def multitask_actor(self, features: th.Tensor) -> th.Tensor:
+    #     multitask_outputs = self.actor_multitask(features)
+    #     return multitask_outputs
 
 # LSTM forward is done in RecurrentActorCriticPolicy
 class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
@@ -349,8 +355,8 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_actor = CustomNetwork().actor_combined_lstm,
-        lstm_critic = CustomNetwork().critic_combined_lstm,
+        #lstm_actor = CustomNetwork().actor_combined_lstm,
+        #lstm_critic = CustomNetwork().critic_combined_lstm,
         lstm_hidden_size: int = 64,
         n_lstm_layers: int = 2,
         *args,
@@ -361,8 +367,8 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
             observation_space,
             action_space,
             lr_schedule,
-            lstm_actor,
-            lstm_critic,
+            #lstm_actor,
+            #lstm_critic,
             lstm_hidden_size = 64,
             n_lstm_layers = 2,
             *args,
@@ -414,6 +420,7 @@ def pretrain_agent(
     patience = 5,
     min_delta=0.0000000001
 ):
+    MTL = False # Multi-task Learning
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
     device = th.device("cuda" if use_cuda else "cpu")
@@ -425,15 +432,17 @@ def pretrain_agent(
       criterion = nn.CrossEntropyLoss()
 
     model = student.policy.to(device)
+    # print(model)
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
     best_loss = float('inf')
     epochs_no_improve = 0
-
+    input('Start Training...')
     def train(model, device, train_loader, optimizer):
         model.train()
         total_loss = []
+        total_multi_loss = []
         sequence_length = 64
         lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2])
         
@@ -460,32 +469,53 @@ def pretrain_agent(
             
             optimizer.zero_grad()
             batch_loss = 0.0
+            if MTL:
+                batch_multi_loss = 0.0
 
             for i in range(sequences.size(1)):
                 sequence_data = sequences[:, i, :]
                 sequence_target = target_sequences[:, i, :]
-
+                if MTL:
+                    multi_target = sequence_data[:, -23:]
+                #print(sequence_data.shape)
                 if i == 0:
                     episode_starts = th.zeros(sequence_length, device=device)
                     episode_starts[0] = 1
                 else:
                     episode_starts = th.zeros(sequence_length, device=device)
-
-                action, _, _, states = model(sequence_data, states, episode_starts)
+                if MTL:
+                    action, _, _, states, multi_task = model(sequence_data, states, episode_starts)
+                else:
+                    action, _, _, states = model(sequence_data, states, episode_starts)
                 if (i+1 == sequences.size(1)):
                     action = action[:16]
                     sequence_target = sequence_target[:16]
+                    if MTL:
+                        multi_task = multi_task[:16]
+                        multi_target = multi_target[:16]
 
                 loss = criterion(action.to(th.float32), sequence_target.to(th.float32))
-                batch_loss += loss
+                if MTL:
+                    multi_loss = criterion(multi_task.to(th.float32) , multi_target.to(th.float32))
+                    batch_loss += loss + 0.1 * multi_loss
+                    batch_multi_loss += multi_loss
+                else:
+                    batch_loss += loss
             
             batch_loss.backward()
             optimizer.step()
             total_loss.append(batch_loss.item() / sequences.size(1))
+            if MTL:
+                total_multi_loss.append(batch_multi_loss.item() / sequences.size(1))
 
             if batch_idx % log_interval == 0 and batch_idx > 0:
                 current_loss = np.mean(total_loss[-log_interval:])
-                print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
+                current_multi_loss = np.mean(total_multi_loss[-log_interval:])
+                if MTL:
+                    print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
+                    f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tLoss: {current_multi_loss*0.1:.6f}")
+                else:
+                    print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
                     f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}")
 
         return np.mean(total_loss)
@@ -525,22 +555,35 @@ def pretrain_agent(
                 for i in range(sequences.size(1)):
                     sequence_data = sequences[:, i, :]
                     sequence_target = target_sequences[:, i, :]
+                    if MTL:
+                        multi_target = sequence_data[:, -23:]
 
                     if i == 0:
                         episode_starts = th.zeros(sequence_length, device=device)
                         episode_starts[0] = 1
                     else:
                         episode_starts = th.zeros(sequence_length, device=device)
-
-                    action, _, _, states = model(sequence_data, states, episode_starts)
+                    
+                    if MTL:
+                        action, _, _, states, multi_task = model(sequence_data, states, episode_starts)
+                    else:
+                        action, _, _, states = model(sequence_data, states, episode_starts)
                     action_prediction = action.double()
 
                     if (i+1 == sequences.size(1)):
                         action_prediction = action_prediction[:16]
                         sequence_target = sequence_target[:16]
+                        if MTL:
+                            multi_task = multi_task[:16]
+                            multi_target = multi_target[:16]
 
                     loss = criterion(action_prediction, sequence_target)
-                    total_loss += loss
+                    if MTL:
+                        multi_loss = criterion(multi_task.to(th.float32) , multi_target.to(th.float32))
+                        total_loss += loss + 0.1 * multi_loss
+                    else:
+                        total_loss += loss
+                    #total_loss += loss
         
         return total_loss / data_len
 
@@ -594,10 +637,10 @@ def _main():
 
     obs_data = path.join(perception_learning_base_folder, 'tmp/observations_new1.npy')
     action_data = path.join(perception_learning_base_folder, 'tmp/actions_new1.npy')
-    
+
     expert_observations = np.load(obs_data)
     expert_actions = np.load(action_data)
-    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions)
+    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=0.85)
     print(f"Total Dataset: {len(expert_observations)}, Train Dataset: {len(train_expert_dataset)}, Test Dataset: {len(test_expert_dataset)}")
 
     pretrain_agent(
@@ -605,7 +648,7 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=15,
+        epochs=30,
         scheduler_gamma=0.7,
         learning_rate=1.,
         log_interval=10,
@@ -613,10 +656,10 @@ def _main():
         seed=64,
         train_batch_size=400,
         test_batch_size=400,
-        patience=20,
+        patience=3,
     )
 
-    student.save("RPPO_initialize_no_batch_norm_new4")
+    student.save("RPPO_init")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

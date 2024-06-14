@@ -205,12 +205,19 @@ void OperationalSpaceControl::AddTrackingData(
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
   string traj_name = tracking_data_vec_.back()->GetName();
+  DRAKE_DEMAND(not traj_name.empty());
   if (traj_name_to_port_index_map_.find(traj_name) ==
       traj_name_to_port_index_map_.end()) {
     PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
     traj_name_to_port_index_map_[traj_name] = this->DeclareAbstractInputPort(
         traj_name, drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
+    traj_name_to_tracking_error_port_map_[traj_name] = this->DeclareVectorOutputPort(
+      traj_name + "_tracking_error_y", 1, 
+      [this, traj_name](const Context<double>& context, BasicVector<double>* out) {
+        this->GetTrackingErrorMagnitude(traj_name, context, out);
+      }
+    ).get_index();
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
@@ -785,6 +792,22 @@ Eigen::VectorXd OperationalSpaceControl::CalcImpactInvariantProjection(
                        .head(active_constraint_dim);
 
   return M_Jt * ii_lambda_sol + 1e-13 * VectorXd::Ones(n_v_);
+}
+
+void OperationalSpaceControl::GetTrackingErrorMagnitude(
+    const std::string& traj_name, const Context<double>& context, 
+    BasicVector<double>* out) const {
+  
+  const auto& tracking_data_states = get_cache_entry(
+      tracking_data_cache_).Eval<std::vector<OscTrackingDataState>>(context);
+
+  for (const auto& state : tracking_data_states) {
+    if (state.name_ == traj_name) {
+      out->get_mutable_value()(0) = state.error_y_.norm();
+      return;
+    }
+  }  
+  throw std::runtime_error("tracking data " + traj_name + " was not found");
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(

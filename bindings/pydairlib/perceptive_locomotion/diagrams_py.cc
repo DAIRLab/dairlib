@@ -64,6 +64,9 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_output_port_switching_time",
            &MpfcOscDiagram::get_output_port_switching_time,
            py_rvp::reference_internal)
+      .def("get_output_port_swing_ft_tracking_error",
+           &MpfcOscDiagram::get_output_port_swing_ft_tracking_error,
+           py_rvp::reference_internal)
       .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal)
       .def("SetSwingFootPositionAtLiftoff",
            &MpfcOscDiagram::SetSwingFootPositionAtLiftoff);

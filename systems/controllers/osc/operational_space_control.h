@@ -134,6 +134,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_output_port(failure_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_tracking_error(
+    const std::string& traj_name) const {
+    DRAKE_DEMAND(traj_name_to_tracking_error_port_map_.contains(traj_name));
+    return this->get_output_port(
+      traj_name_to_tracking_error_port_map_.at(traj_name));
+  }
+
   /*!
    * Input: OutputVector containing the robot state
    */
@@ -322,6 +329,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SolveIDQP(const drake::systems::Context<double>& context,
                  id_qp_solution* solution) const;
 
+  void GetTrackingErrorMagnitude(
+    const std::string& traj_name,
+    const drake::systems::Context<double>& context, 
+    drake::systems::BasicVector<double>* out) const;
+
   void UpdateTrackingData(const drake::systems::Context<double>& context,
                           std::vector<OscTrackingDataState>* states) const;
 
@@ -384,6 +396,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string,
            drake::systems::InputPortIndex> traj_name_to_port_index_map_;
+
+  std::map<std::string, 
+           drake::systems::OutputPortIndex> traj_name_to_tracking_error_port_map_;
 
   // MBP's.
   const drake::multibody::MultibodyPlant<double>& plant_;

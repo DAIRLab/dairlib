@@ -93,12 +93,12 @@ int DoMain(int argc, char** argv) {
   params.com_pos_bound = 0.2 * Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
-  params.R = 0.05 * Eigen::Matrix3d::Identity();
+  params.R = 0.2 * Eigen::Matrix3d::Identity();
   params.Qf = 100 * Eigen::Matrix4d::Identity();
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "LogToConsole", 1);
+      drake::solvers::GurobiSolver::id(), "LogToConsole", 0);
   params.mu = 0.8;
 
   DiagramBuilder<double> builder;

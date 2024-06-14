@@ -298,6 +298,7 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
   mpc_debug->solution_result = std::to_string(mpc_sol.solution_result);
 
   mpc_debug->np = 3;
+  mpc_debug->nf = mpc_sol.ff.front().rows();
   mpc_debug->nxa = 4;
   mpc_debug->nxc = SrbDim;
   mpc_debug->nk = mpc_sol.xc.size();
@@ -316,6 +317,10 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
   mpc_debug->pp.clear();
   mpc_debug->xx.clear();
   mpc_debug->xc.clear();
+  mpc_debug->ff.clear();
+  for(const auto& ff : mpc_sol.ff) {
+    mpc_debug->ff.push_back(CopyVectorXdToStdVector(ff));
+  }
   for (const auto & xx : mpc_sol.xx) {
     vector<double> x(4);
     Vector4d::Map(x.data()) = xx;

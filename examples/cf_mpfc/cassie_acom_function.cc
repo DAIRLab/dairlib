@@ -196,7 +196,6 @@ template drake::MatrixX<AutoDiffXd> EvalJOmegaWorldAcomEwrtWorld(
 Eigen::Matrix3d CalcCassieAcomOrientationInWorld(
     const drake::multibody::MultibodyPlant<double>& cassie,
     const drake::systems::Context<double>& context) {
-  std::cout << "entered function\n";
   Eigen::VectorXd q_joint = cassie.GetPositions(context).tail<16>();
   return cassie.EvalBodyPoseInWorld(
       context, cassie.GetBodyByName("pelvis")).rotation().matrix() *

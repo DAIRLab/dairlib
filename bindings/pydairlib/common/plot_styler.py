@@ -13,12 +13,12 @@ class PlotStyler():
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 9, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 5
+    matplotlib.rcParams['figure.figsize'] = 8, 8
     plt.rcParams['figure.dpi'] = 200
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 24}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 2
+    matplotlib.rcParams['lines.linewidth'] = 3
     plt.set_cmap('tab20')
   @staticmethod
   def set_compact_styling():
@@ -47,12 +47,13 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    self.dpi = matplotlib.rcParams['figure.dpi']
+    # self.dpi = matplotlib.rcParams['figure.dpi']
+    self.dpi = 200
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    plt.rc('legend', fontsize=13)
-    plt.rc('axes', labelsize=14, titlesize=14)
-    plt.rc('xtick', labelsize=14)
-    plt.rc('ytick', labelsize=14)
+    plt.rc('legend', fontsize=16)
+    plt.rc('axes', labelsize=18, titlesize=18)
+    plt.rc('xtick', labelsize=16)
+    plt.rc('ytick', labelsize=16)
     matplotlib.rcParams['figure.figsize'] = matplotlib.rcParams['figure.figsize']
     matplotlib.rcParams['figure.autolayout'] = True
     matplotlib.rcParams['axes.xmargin'] = 0

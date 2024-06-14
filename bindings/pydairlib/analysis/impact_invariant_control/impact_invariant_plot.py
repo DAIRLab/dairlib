@@ -27,7 +27,7 @@ from pydrake.systems.framework import DiagramBuilder
 
 
 def blend_sigmoid(t, tau, window):
-  x = (t + window) / tau
+  x = (window - t) / tau
   return np.exp(x) / (1 + np.exp(x))
 
 def blend_function(t, tau, window, blend_type = 'sigmoid'):
@@ -103,6 +103,7 @@ def main():
 
   # manually construct state legend
   empty_ps = plot_styler.PlotStyler()
+  empty_ps.set_paper_styling()
   legend_handles = []
   for i in range(selected_joint_indices.start, selected_joint_indices.stop):
     legend_handles.append(Line2D([0], [0], color=empty_ps.cmap(2 * i),
@@ -174,7 +175,7 @@ def main():
     if (np.abs(t[i] - transition_time) < 1.5 * window_length):
       sign = (t[i] < transition_time).astype(np.float32) - (transition_time <  t[i]).astype(np.float32)
       # if (t[i] < transition_time):
-      alpha = blend_function(sign * (t[i] - transition_time), tau,
+      alpha = blend_function(np.abs(t[i] - transition_time), tau,
                             window_length, blend_type)
     alphas[i] = alpha
     vel_desired[i] = x_des[-nv:]
@@ -217,18 +218,19 @@ def main():
                         xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_proj_vel_plot.cmap(2*i))
     tracking_proj_vel_plot.plot(t, vel_proj_actual[:, i],
                         xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_proj_vel_plot.cmap(2*i + 1))
-  tracking_proj_vel_plot.axes[0].set_ylim(ylim)
+  # tracking_proj_vel_plot.axes[0].set_ylim(ylim)
   tracking_proj_vel_plot.axes[0].legend(handles=legend_handles, loc='lower right')
   tracking_proj_vel_plot.save_fig('rabbit_proj_vel_tracking.png')
 
   tracking_error_plot = plot_styler.PlotStyler()
   tracking_error_plot.plot(t, np.linalg.norm(vel_desired[:, selected_joint_indices] - vel_actual[:, selected_joint_indices], axis=-1),
-                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(0))
-  # tracking_error_plot.plot(t, np.linalg.norm(vel_proj_desired[:, selected_joint_indices] - vel_proj_actual[:, selected_joint_indices], axis=-1),
-  #                   xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(2))
-  # tracking_error_plot.axes[0].legend(['Velocity Error', 'Projected Velocity Error'])
-  tracking_error_plot.axes[0].legend(['Velocity Error'])
-  tracking_error_plot.save_fig('rabbit_tracking_errors_gen_vel_only.png')
+                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.blue)
+  tracking_error_plot.plot(t, np.linalg.norm(vel_proj_desired[:, selected_joint_indices] - vel_proj_actual[:, selected_joint_indices], axis=-1),
+                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.red)
+  tracking_error_plot.axes[0].legend(['Velocity Error', 'Projected Velocity Error'])
+  # tracking_error_plot.axes[0].legend(['Velocity Error'])
+  # tracking_error_plot.save_fig('rabbit_tracking_errors_gen_vel_only.png')
+  tracking_error_plot.save_fig('rabbit_tracking_errors.png')
 
   corrected_vel_plot = plot_styler.PlotStyler()
   corrected_vel_plot.plot(t, vel_corrected,

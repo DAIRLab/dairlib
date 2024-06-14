@@ -10,7 +10,7 @@ plot_style: 'paper' # compact, paper, default
 # Log time to stop at (seconds, -1 for whole log)
 start_time: 2.0
 #duration: 0.47
-duration: 25
+duration: 3
 
 # Plant properties
 use_springs: true
@@ -41,7 +41,7 @@ foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 pt_on_foot_to_plot: ['rear']  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: false
+plot_qp_costs: true
 plot_qp_solve_time: false
 plot_qp_solutions: false
 plot_tracking_costs: false

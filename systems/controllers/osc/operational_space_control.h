@@ -222,7 +222,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
   // Constraint methods
-  void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
 
   void AddContactPoint(

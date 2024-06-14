@@ -61,7 +61,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   // Adds the URDF model to the trifinger plant.
-  multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
+  multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, true);
   Parser parser(&plant, &scene_graph);
 
   drake::multibody::ModelInstanceIndex trifinger_index =

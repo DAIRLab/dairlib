@@ -58,7 +58,7 @@ int DoMain(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant(0.0);
-  multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
+  multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, true);
 
   // Adds the URDF model to the trifinger plant.
   Parser parser(&plant, &scene_graph);

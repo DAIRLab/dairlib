@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
-#include "examples/franka/systems/end_effector_force_trajectory.h"
+#include "examples/franka/systems/end_effector_force.h"
 #include "examples/franka/systems/end_effector_orientation.h"
-#include "examples/franka/systems/end_effector_trajectory.h"
+#include "examples/franka/systems/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -143,7 +143,7 @@ int DoMain(int argc, char* argv[]) {
       controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>();
+      builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =

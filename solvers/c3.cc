@@ -380,7 +380,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
+vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                                      vector<VectorXd>& WZ, int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
   int i;
@@ -399,29 +399,29 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
       if (warm_start_) {
         if (i == N_ - 1) {
           deltaProj[i] = SolveRobustSingleProjection(
-              G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
               admm_iteration, -1);
         } else {
           deltaProj[i] = SolveRobustSingleProjection(
-              G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
               admm_iteration, i + 1);
         }
       } else {
         deltaProj[i] = SolveRobustSingleProjection(
-            G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
+            U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
             admm_iteration, -1);
       }
     } else {
       if (warm_start_) {
         if (i == N_ - 1) {
-          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
                                                c_[i], admm_iteration, -1);
         } else {
-          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
                                                c_[i], admm_iteration, i + 1);
         }
       } else {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
                                              c_[i], admm_iteration, -1);
       }
     }

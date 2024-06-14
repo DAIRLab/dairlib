@@ -7,8 +7,8 @@ cc_library(
         ":c3_state_sender",
         ":c3_trajectory_generator",
         ":end_effector_force_trajectory",
-        ":end_effector_orientation",
-        ":end_effector_trajectory",
+        ":end_effector_orientation_trajectory",
+        ":end_effector_position_trajectory",
         ":external_force_generator",
         ":franka_kinematics",
         ":franka_state_translator",
@@ -30,9 +30,9 @@ cc_library(
 )
 
 cc_library(
-    name = "end_effector_trajectory",
-    srcs = ["end_effector_trajectory.cc"],
-    hdrs = ["end_effector_trajectory.h"],
+    name = "end_effector_position_trajectory",
+    srcs = ["end_effector_position.cc"],
+    hdrs = ["end_effector_position.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -44,8 +44,8 @@ cc_library(
 
 cc_library(
     name = "end_effector_force_trajectory",
-    srcs = ["end_effector_force_trajectory.cc"],
-    hdrs = ["end_effector_force_trajectory.h"],
+    srcs = ["end_effector_force.cc"],
+    hdrs = ["end_effector_force.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -56,7 +56,7 @@ cc_library(
 )
 
 cc_library(
-    name = "end_effector_orientation",
+    name = "end_effector_orientation_trajectory",
     srcs = ["end_effector_orientation.cc"],
     hdrs = ["end_effector_orientation.h"],
     deps = [

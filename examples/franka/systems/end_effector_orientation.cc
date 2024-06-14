@@ -13,7 +13,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorOrientationGenerator::EndEffectorOrientationGenerator() {
+EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGenerator() {
   auto pp = drake::trajectories::PiecewiseQuaternionSlerp<double>();
 
   trajectory_port_ =
@@ -27,11 +27,11 @@ EndEffectorOrientationGenerator::EndEffectorOrientationGenerator() {
   PiecewiseQuaternionSlerp<double> empty_slerp_traj;
   Trajectory<double>& traj_inst = empty_slerp_traj;
   this->DeclareAbstractOutputPort("end_effector_orientation", traj_inst,
-                                  &EndEffectorOrientationGenerator::CalcTraj)
+                                  &EndEffectorOrientationTrajectoryGenerator::CalcTraj)
       .get_index();
 }
 
-void EndEffectorOrientationGenerator::CalcTraj(
+void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);

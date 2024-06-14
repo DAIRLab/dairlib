@@ -5,10 +5,10 @@
 
 namespace dairlib {
 
-class EndEffectorOrientationGenerator
+class EndEffectorOrientationTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorOrientationGenerator();
+  EndEffectorOrientationTrajectoryGenerator();
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_port_);

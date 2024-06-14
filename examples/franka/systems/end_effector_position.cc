@@ -1,4 +1,4 @@
-#include "end_effector_trajectory.h"
+#include "end_effector_position.h"
 #include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"

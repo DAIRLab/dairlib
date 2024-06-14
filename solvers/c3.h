@@ -29,7 +29,7 @@ class C3 {
     std::vector<Eigen::MatrixXd> U;
   };
   /// @param LCS LCS parameters
-  /// @param Q, R, G, U Cost function parameters
+  /// @param Q, R, G, U Cost Matrices
   C3(const LCS& LCS, const CostMatrices& costs,
      const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
 
@@ -37,9 +37,7 @@ class C3 {
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
-  /// @param delta A pointer to the copy variable solution
-  /// @param w A pointer to the scaled dual variable solution
-  /// @return The first control action to take, u[0]
+  /// @return void
   void Solve(const Eigen::VectorXd& x0);
 
   /// Solve a single ADMM step
@@ -47,14 +45,20 @@ class C3 {
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
   /// @param G A pointer to the G variables from previous step
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @return solution is saved in C3 object
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
                 std::vector<Eigen::MatrixXd>* G, int admm_iteration);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
-  /// @param WD A pointer to the (w - delta) variables
   /// @param G A pointer to the G variables from previous step
+  /// @param WD A pointer to the (w - delta) variables
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param is_final_solve Indicating final admm iteration in case of any
+  /// polishing steps
+  /// @return z MPC solution
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        const std::vector<Eigen::MatrixXd>& G,
                                        const std::vector<Eigen::VectorXd>& WD,
@@ -62,10 +66,11 @@ class C3 {
                                        bool is_final_solve = false);
 
   /// Solve the projection problem for all timesteps
-  /// @param WZ A pointer to the (z + w) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param U Matrix for consensus cost
+  /// @param WZ (z + w) variables
+  /// @param admm_iteration ADMM iteration for accurate warm starting
   std::vector<Eigen::VectorXd> SolveProjection(
-      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,
+      const std::vector<Eigen::MatrixXd>& U, std::vector<Eigen::VectorXd>& WZ,
       int admm_iteration);
 
   /// allow users to add constraints (adds for all timesteps)
@@ -74,23 +79,31 @@ class C3 {
   void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, int constraint);
 
-  /// allow user to remove all constraints
+  /// remove all constraints
   void RemoveConstraints();
 
-  /// Solve a single projection step
-  /// @param E, F, H, c LCS parameters
-  /// @param U A pointer to the U variables
+  /// Solve a projection step for a single knot point k
+  /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param E, F, H, c LCS contact parameters
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param warm_start_index knot point index for warm starting
+  /// @return delta_k
   virtual Eigen::VectorXd SolveSingleProjection(
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
-  /// Solve a robust single projection step
-  /// @param E, F, H, c LCS parameters
-  /// @param U A pointer to the U variables
+  /// Solve a robust (friction cone) projection step for a single knot point k
+  /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param E, F, H, c LCS contact parameters
+  /// @param W_x, W_l, W_u, w Linearization of J_t v_{k+1} wrt x_k, lambda_k,
+  /// u_k
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param warm_start_index knot point index for warm starting
+  /// @return delta_k
   virtual Eigen::VectorXd SolveRobustSingleProjection(
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
@@ -99,6 +112,7 @@ class C3 {
       const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
       const int admm_iteration, const int& warm_start_index) = 0;
 
+  /// Solve a robust (friction cone) projection step for a single knot point
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
@@ -150,22 +164,22 @@ class C3 {
   double solve_time_ = 0;
   bool h_is_zero_;
 
-  drake::solvers::MathematicalProgram prog_;
-  // QP step variables
+  /// MathematicalProgram for QP step
   drake::solvers::OsqpSolver osqp_;
+  drake::solvers::MathematicalProgram prog_;
+  /// Decision variables for QP step
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
-  // QP step constraints
+  /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
+  // initial state constraint
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
+  // workspace and input limit constraints
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
-
-  /// Projection step variables are defined outside of the MathematicalProgram
-  /// interface
-
+  /// QP step costs
   std::vector<drake::solvers::QuadraticCost*> target_cost_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;

@@ -6,6 +6,7 @@ namespace dairlib::systems::controllers::cf_mpfc_utils {
 
 using drake::systems::Context;
 using drake::AutoDiffXd;
+using drake::AutoDiffVecXd;
 using drake::math::InitializeAutoDiff;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
@@ -105,8 +106,8 @@ CentroidalState<double> GetCentroidalState(
 template <typename T>
 CentroidalStateDeriv<T> SRBDynamics(
     const CentroidalState<T>& state,
-    const std::vector<Vector3<T>>& contact_points,
     const std::vector<Vector3<T>>& contact_forces,
+    const std::vector<Vector3d>& contact_points,
     const Matrix3d& I, double m) {
   DRAKE_DEMAND(contact_points.size() == contact_forces.size());
 
@@ -132,33 +133,69 @@ void LinearizeSRBDynamics(
     const std::vector<Vector3d>& contact_points,
     const std::vector<Vector3d>& contact_forces,
     const Eigen::Matrix3d& I, double m,
-    Eigen::MatrixXd& A, Eigen::MatrixXd& Bp, Eigen::MatrixXd&Bf, Eigen::VectorXd& c) {
+    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& c) {
 
   std::vector<Eigen::VectorXd> vars;
   vars.push_back(x);
-  for (const auto& p : contact_points) {
-    vars.push_back(p);
-  }
   for (const auto & f : contact_forces) {
     vars.push_back(f);
   }
 
   VectorX<AutoDiffXd> vars_ad = InitializeAutoDiff(stack(vars));
-  VectorX<AutoDiffXd> p_ad = vars_ad.segment(SrbDim, 3 * contact_points.size());
-  VectorX<AutoDiffXd> f_ad = vars_ad.segment(
-      SrbDim + 3 * contact_points.size(), 3 * contact_forces.size());
+  VectorX<AutoDiffXd> f_ad = vars_ad.tail(3 * contact_forces.size());
 
   CentroidalState<AutoDiffXd> x_ad = vars_ad.head<SrbDim>();
 
   CentroidalStateDeriv<AutoDiffXd> xdot_ad = SRBDynamics(
-      x_ad, unstack<AutoDiffXd, 3>(p_ad), unstack<AutoDiffXd, 3>(f_ad), I, m);
+      x_ad, unstack<AutoDiffXd, 3>(f_ad), contact_points, I, m);
 
   MatrixXd AB = ExtractGradient(xdot_ad);
 
   A = AB.leftCols<SrbDim>();
-  Bp = AB.middleCols(SrbDim, p_ad.rows());
-  Bf = AB.rightCols(f_ad.rows());
   c = ExtractValue(xdot_ad);
+}
+
+
+void LinearizeDirectCollocationConstraint(
+    double h, const CentroidalState<double>& x0,
+    const CentroidalState<double>& x1,
+    const Eigen::VectorXd& u0, const Eigen::VectorXd& u1,
+    const std::vector<Eigen::Vector3d>& contact_points,
+    const Matrix3d& I, double m, MatrixXd& A, MatrixXd& B, VectorXd& b) {
+
+  int nc = contact_points.size();
+
+  Eigen::VectorXd varsd = stack<double>({x0, x1, u0, u1});
+  AutoDiffVecXd vars = InitializeAutoDiff(varsd);
+
+
+  const CentroidalState<AutoDiffXd> x0_ad = vars.segment<SrbDim>(0);
+  const CentroidalState<AutoDiffXd> x1_ad = vars.segment<SrbDim>(SrbDim);
+  const AutoDiffVecXd u0_ad = vars.segment(2*SrbDim, 3*nc);
+  const AutoDiffVecXd u1_ad = vars.segment(2*SrbDim + 3*nc, 3*nc);
+
+
+  const CentroidalStateDeriv<AutoDiffXd> xdot0 = SRBDynamics(
+      x0_ad,   unstack<AutoDiffXd, 3>(u0_ad), contact_points, I, m);
+
+  const CentroidalStateDeriv<AutoDiffXd> xdot1 = SRBDynamics(
+      x1_ad,   unstack<AutoDiffXd, 3>(u1_ad), contact_points, I, m);
+
+  // Cubic interpolation to get xcol and xdotcol.
+  const CentroidalState<AutoDiffXd> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
+  const CentroidalStateDeriv<AutoDiffXd> xdotcol = -1.5 * (x0 - x1) / h - .25 *
+      (xdot0 + xdot1);
+  const AutoDiffVecXd ucol = 0.5 * (u0_ad + u1_ad);
+
+  const CentroidalStateDeriv<AutoDiffXd> g = SRBDynamics(
+      xcol,  unstack<AutoDiffXd, 3>(ucol), contact_points, I, m);
+
+  CentroidalStateDeriv<AutoDiffXd> f = xdotcol - g;
+  MatrixXd J = ExtractGradient(f);
+  A = J.block<SrbDim, 2 * SrbDim>(0,0);
+  B = J.block(0, 2*SrbDim, SrbDim, 2*3*nc);
+  b = A * stack<double>({x0, x1}) + B * stack<double>({u0, u1}) -
+      ExtractValue(f);
 }
 
 template <typename T>
@@ -199,7 +236,7 @@ void LinearizeReset(
 }
 
 template CentroidalStateDeriv<double> SRBDynamics(const CentroidalState<double>&, const std::vector<Vector3d>&, const std::vector<Vector3d>&, const Matrix3d&, double);
-template CentroidalStateDeriv<AutoDiffXd> SRBDynamics(const CentroidalState<AutoDiffXd>&, const std::vector<drake::Vector3<AutoDiffXd>>&, const std::vector<drake::Vector3<AutoDiffXd>>&, const Matrix3d&, double);
+template CentroidalStateDeriv<AutoDiffXd> SRBDynamics(const CentroidalState<AutoDiffXd>&,  const std::vector<drake::Vector3<AutoDiffXd>>&, const std::vector<Vector3d>&, const Matrix3d&, double); // noqa
 template Vector4<double> CalculateReset(const CentroidalState<double>& x_pre, const Vector3<double>& p_pre, const Vector3<double>& p_post, const Eigen::Matrix3d& I, double m);
 template Vector4<AutoDiffXd> CalculateReset(const CentroidalState<AutoDiffXd>& x_pre, const Vector3<AutoDiffXd>& p_pre, const Vector3<AutoDiffXd>& p_post, const Eigen::Matrix3d& I, double m);
 

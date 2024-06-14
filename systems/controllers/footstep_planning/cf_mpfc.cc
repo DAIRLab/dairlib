@@ -78,7 +78,7 @@ cf_mpfc_solution CFMPFC::Solve(
 
   // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
   //   Linearizing (or consider alternate rotation representation)
-  for (int i = 0; i < params_.nknots - 1; ++i) {
+  for (int i = 0; i < params_.nknots; ++i) {
     if (use_prev_sol) {
       xc.push_back(prev_sol.xc.at(i));
       ff.push_back(prev_sol.ff.at(i));
@@ -115,8 +115,6 @@ cf_mpfc_solution CFMPFC::Solve(
 
   for (int i = 0; i < params_.nknots; ++i) {
     mpfc_solution.xc.push_back(result.GetSolution(xc_.at(i)));
-  }
-  for (int i = 0; i < params_.nknots - 1; ++i) {
     mpfc_solution.ff.push_back(result.GetSolution(ff_.at(i)));
   }
   for (int i = 0; i < params_.nmodes; ++i) {
@@ -140,6 +138,7 @@ cf_mpfc_solution CFMPFC::Solve(
   std::chrono::duration<double> total_time = end - start;
   std::chrono::duration<double> solve_time = solver_end - solver_start;
 
+  mpfc_solution.total_time = total_time.count();
   mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.init = true;
@@ -154,10 +153,6 @@ void CFMPFC::MakeMPCVariables() {
   for (int i = 0; i < params_.nknots; ++i) {
     xc_.push_back(prog_->NewContinuousVariables(SrbDim,
                                                 "xc" + std::to_string(i)));
-  }
-  // TODO (@Brian-Acosta) move this up to add another force variable
-  //  when changing from ZOH to trapezoidal collocation
-  for (int i = 0; i < params_.nknots - 1; ++i) {
     ff_.push_back(prog_->NewContinuousVariables(3 * nc,
                                                 "ff" + std::to_string(i)));
   }
@@ -182,14 +177,14 @@ void CFMPFC::MakeMPCCosts() {
   DRAKE_DEMAND(terminal_cost_ == nullptr);
 
   int nc = params_.contacts_in_stance_frame.size();
-  for (int i = 0; i < params_.nknots - 1; ++i) {
+  for (int i = 0; i < params_.nknots; ++i) {
     // state and input cost for first model phase
     // TODO (@Brian-Acosta) After initial prototype, make sure to include
     //  the appropriate CoM height cost and CoM Vel cost to incorporate
     //  footstep height change
     centroidal_state_cost_.push_back(
         prog_->AddQuadraticCost(
-            MatrixXd::Identity(SrbDim, SrbDim), VectorXd::Zero(SrbDim), xc_.at(i+1)
+            MatrixXd::Identity(SrbDim, SrbDim), VectorXd::Zero(SrbDim), xc_.at(i)
         ));
     centroidal_input_cost_.push_back(
         prog_->AddQuadraticCost(
@@ -329,8 +324,8 @@ void CFMPFC::MakeDynamicsConstraints() {
   for (int i = 0; i < params_.nmodes - 2; ++i) {
     M.block<4,4>(AlipDim * i, AlipDim * i) = A_;
     M.block<4,4>(AlipDim * i, AlipDim * (i + 1)) = -Matrix4d::Identity();
-    M.block<4,2>(AlipDim * i, AlipDim * params_.nmodes + FootstepDim * (i+1)) = B_;
-    M.block<4,2>(AlipDim * i, AlipDim * params_.nmodes + FootstepDim * i) = - B_;
+    M.block<4,2>(AlipDim * i, AlipDim * (params_.nmodes - 1) + FootstepDim * (i+1)) = B_;
+    M.block<4,2>(AlipDim * i, AlipDim * (params_.nmodes - 1) + FootstepDim * i) = - B_;
   }
   // first footstep is not part of the ALIP dynamics
   vector<VectorXDecisionVariable> pp;
@@ -345,7 +340,7 @@ void CFMPFC::MakeDynamicsConstraints() {
   int nc = params_.contacts_in_stance_frame.size();
   MatrixXd A(
       SrbDim * (params_.nknots - 1),
-      SrbDim * params_.nknots + FootstepDim * nc * (params_.nknots - 1));
+      (SrbDim + FootstepDim * nc) * params_.nknots );
   A.setIdentity();
 
   srb_dynamics_c_ = prog_->AddLinearEqualityConstraint(
@@ -411,32 +406,25 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
 
   // Dynamics constraint order: x0, x1, ... xn, f0, ... fn-1
   MatrixXd A_dyn = srb_dynamics_c_->GetDenseA();
-  A_dyn.setIdentity();
+  A_dyn.setZero();
   VectorXd b_dyn = srb_dynamics_c_->lower_bound();
   b_dyn.setZero();
 
   MatrixXd A;
-  MatrixXd Bp;
-  MatrixXd Bf;
+  MatrixXd B;
   VectorXd c;
 
   for (int i = 0; i < params_.nknots - 1; ++i) {
-    cf_mpfc_utils::LinearizeSRBDynamics(
-        xc.at(i),
+    cf_mpfc_utils::LinearizeDirectCollocationConstraint(
+        h, xc.at(i), xc.at(i+1), ff.at(i), ff.at(i+1),
         params_.contacts_in_stance_frame,
-        unstack<double, 3>(ff.at(i)),
-        I, params_.gait_params.mass,
-        A, Bp, Bf, c
-    );
-    // xdot = A (x - xk*) + B(f - fk*) + c
-    // x_k+1 - x_k = h * A * (x_k - xk*) + h * B * (f_k - fk*) + h * c
-    // (h * A + I) x_k - x_k+1 + (h * B) * f_k = h * (B * fk* + A * xk* - c)
-    int nc = Bf.cols();
-    A_dyn.block<SrbDim, SrbDim>(SrbDim*i, SrbDim*i) += A * h;
-    A_dyn.block<SrbDim, SrbDim>(SrbDim*i, SrbDim * (i+1)) =
-        -Matrix<double, SrbDim, SrbDim>::Identity();
-    A_dyn.block(SrbDim * i, SrbDim * params_.nknots + nc * i, SrbDim, nc) = h * Bf;
-    b_dyn.segment<SrbDim>(SrbDim * i) = h * (A * xc.at(i) + Bf * ff.at(i) - c);
+        I, params_.gait_params.mass, A, B, c);
+
+    int nc = B.cols() / 2;
+
+    A_dyn.block<SrbDim,  2 * SrbDim>(SrbDim*i, SrbDim*i) = A;
+    A_dyn.block(SrbDim * i, SrbDim * params_.nknots + nc * i, SrbDim,  2*nc) = B;
+    b_dyn.segment<SrbDim>(SrbDim * i) = c;
   }
   srb_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
@@ -477,7 +465,7 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   Qx.topLeftCorner<9,9>() = 1000 * Matrix<double, 9, 9>::Identity();
   MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
 
-  for (int i = 0; i < params_.nknots - 1; ++i) {
+  for (int i = 0; i < params_.nknots; ++i) {
     centroidal_state_cost_.at(i).evaluator()->UpdateCoefficients(
         2 * Qx, -2 * Qx * xd, xd.transpose() * Qx * xd, true);
     centroidal_input_cost_.at(i).evaluator()->UpdateCoefficients(

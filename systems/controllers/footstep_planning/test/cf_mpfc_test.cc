@@ -27,12 +27,11 @@ void TestDynamics() {
   auto start = std::chrono::high_resolution_clock::now();
 
   Eigen::MatrixXd A;
-  Eigen::MatrixXd Bp;
   Eigen::MatrixXd Bf;
   Eigen::VectorXd c;
 
   cf_mpfc_utils::LinearizeSRBDynamics(
-      srbd_state, {p}, {f}, Eigen::Matrix3d::Identity(), mass, A, Bp, Bf, c);
+      srbd_state, {p}, {f}, Eigen::Matrix3d::Identity(), mass, A, Bf, c);
 
 
   Eigen::MatrixXd Ax;
@@ -71,9 +70,8 @@ void TestMPFC() {
   cf_mpfc_params params;
 
   params.gait_params = test_gait;
-  params.gait_params = test_gait;
   params.nmodes = 3;
-  params.nknots = 4;
+  params.nknots = 3;
   params.contacts_in_stance_frame = {0.09 * Vector3d::UnitX(), -0.09 * Vector3d::UnitX()};
   params.soft_constraint_cost = 1000;
   params.com_pos_bound = Eigen::Vector2d::Ones();
@@ -84,7 +82,9 @@ void TestMPFC() {
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "LogToConsole", 0);
+      drake::solvers::GurobiSolver::id(), "LogToConsole", 1);
+  params.solver_options.SetOption(
+      drake::solvers::CommonSolverOption::kPrintToConsole, 1);
   params.mu = 1;
 
   CFMPFC mpfc(params);
@@ -104,14 +104,14 @@ void TestMPFC() {
              alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
              prev_sol);
 
-  std::cout << "Solve took " << sol.optimizer_time << "seconds\n";
+  std::cout << "Solve took " << sol.total_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";
 
   auto sol2 = mpfc.Solve(srbd_state, Vector3d::Zero(), 0.24, Vector2d::Zero(),
                         alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
                         sol);
 
-  std::cout << "Second solve took " << sol2.optimizer_time << "seconds\n";
+  std::cout << "Second solve took " << sol2.total_time << "seconds\n";
   std::cout << "Second solution Result: " << sol2.solution_result << "\n";
 }
 

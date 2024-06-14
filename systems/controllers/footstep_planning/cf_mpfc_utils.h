@@ -73,13 +73,32 @@ void LinearizeSRBDynamics(
     const std::vector<Eigen::Vector3d>& contact_points,
     const std::vector<Eigen::Vector3d>& contact_forces,
     const Eigen::Matrix3d& I, double m,
-    Eigen::MatrixXd& A, Eigen::MatrixXd& Bp, Eigen::MatrixXd&Bf, Eigen::VectorXd& c);
+    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& c);
+
+/*!
+ * TODO (@Brian-Acosta) add df/dh
+ * Linearize collocation constraint into A [x0 x1] + B[u0 u1] = b
+ * @param x0 state at knot 0
+ * @param x1 state at knot 1
+ * @param u0 input at knot 0
+ * @param u1 input at knot 1
+ * @param A df_dx
+ * @param B df_du
+ * @param b df_dx * x* + df_du u* - f(x*, u*)
+ */
+void LinearizeDirectCollocationConstraint(
+    double h,
+    const CentroidalState<double>& x0, const CentroidalState<double>& x1,
+    const Eigen::VectorXd& u0, const Eigen::VectorXd& u1,
+    const std::vector<Eigen::Vector3d>& contact_points,
+    const Eigen::Matrix3d& I, double m,
+    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& b);
 
 template <typename T>
 CentroidalStateDeriv<T> SRBDynamics(
     const CentroidalState<T>& state,
-    const std::vector<drake::Vector3<T>>& contact_points,
     const std::vector<drake::Vector3<T>>& contact_forces,
+    const std::vector<Eigen::Vector3d>& contact_points,
     const Eigen::Matrix3d& I, double m);
 
 template <typename T>

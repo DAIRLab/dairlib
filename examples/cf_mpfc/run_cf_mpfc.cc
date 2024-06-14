@@ -86,7 +86,6 @@ int DoMain(int argc, char** argv) {
   systems::controllers::cf_mpfc_params params;
 
   params.gait_params = test_gait;
-  params.gait_params = test_gait;
   params.nmodes = 3;
   params.nknots = 6;
 

@@ -3,6 +3,11 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "contact_modes",
+    hdrs = ["contact_modes.h"],
+)
+
+cc_library(
     name = "alip_mpfc_s2s_system",
     srcs = ["alip_mpfc_s2s_system.cc"],
     hdrs = ["alip_mpfc_s2s_system.h"],
@@ -60,16 +65,18 @@ cc_library(
     srcs = ["cf_mpfc_output_receiver.cc"],
     hdrs = ["cf_mpfc_output_receiver.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
+        ":contact_modes",
         "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
     name = "cf_mpfc",
-    hdrs = ["cf_mpfc.h"],
     srcs = ["cf_mpfc.cc"],
+    hdrs = ["cf_mpfc.h"],
     deps = [
         ":alip_utils",
         ":cf_mpfc_utils",

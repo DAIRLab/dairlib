@@ -12,6 +12,7 @@ struct lcmt_cf_mpfc_solution {
 
     int32_t np;
     int32_t nk;
+    int32_t nf;
     int32_t nmodes;
     int32_t nmodes_minus_1;
 
@@ -21,6 +22,7 @@ struct lcmt_cf_mpfc_solution {
     double desired_velocity[2];
 
     double xc[nk][nxc];
+    double ff[nk][nf];
     double pp[nmodes][np];
     double xx[nmodes_minus_1][nxa];
 }

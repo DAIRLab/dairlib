@@ -30,8 +30,6 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
 
-
-
 CFMPFCSystem::CFMPFCSystem(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
     drake::multibody::ModelInstanceIndex model_instance,
@@ -170,7 +168,6 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
       VectorXd::Zero(SrbDim + 3);
   init_state_and_stance_pos.head<SrbDim>() = x;
   init_state_and_stance_pos.tail<3>() = p_b;
-
 
   auto prev_sol = state->get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
 

@@ -6,6 +6,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib::systems::controllers {
 
@@ -24,10 +25,31 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
    * same convention as above
    */
   CFMPFCOutputReceiver(std::vector<std::string> ordered_left_contact_names,
-                       std::vector<std::string> ordered_right_contact_names);
+                       std::vector<std::string> ordered_right_contact_names,
+                       const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_mpfc_output() const {
+    return get_input_port(input_port_mpfc_output_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return get_output_port(output_port_fsm_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_pitch() const {
+    return get_output_port(output_port_pitch_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_footstep_target()
+  const {
+    return get_output_port(output_port_footstep_target_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_orientation()
+  const {
+    return get_output_port(output_port_orientation_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_com() const {
+    return get_output_port(output_port_com_);
   }
 
  private:
@@ -40,21 +62,47 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
   void CopyFootstepTarget(const drake::systems::Context<double>& context,
                           drake::systems::BasicVector<double>* target) const;
 
-  void CalcOrientationTraj(const drake::systems::Context<double>& context,
+  void CopyOrientationTraj(const drake::systems::Context<double>& context,
                            drake::trajectories::Trajectory<double>* traj) const;
 
-  void CalcComTraj(const drake::systems::Context<double>& context,
+  void CalcOrientationTraj(const drake::systems::Context<double>& context,
+                           drake::trajectories::PiecewiseQuaternionSlerp<double>* traj) const;
+
+  void CopyComTraj(const drake::systems::Context<double>& context,
                    drake::trajectories::Trajectory<double>* traj) const;
+
+  void CalcComTraj(const drake::systems::Context<double>& context,
+                   drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
   void CalcDesiredForce(const std::string& contact_name,
                         const drake::systems::Context<double>& context,
                         drake::systems::BasicVector<double>* f) const;
+
+  void RegisterContact(const std::string& name);
+
+  [[nodiscard]] const lcmt_cf_mpfc_output& get_mpfc_output(
+      const drake::systems::Context<double>& context) const {
+    return EvalAbstractInput(
+        context, input_port_mpfc_output_)->get_value<lcmt_cf_mpfc_output>();
+  }
 
   const std::vector<std::string> left_contact_names_;
   const std::vector<std::string> right_contact_names_;
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_mpfc_output_;
+
+  drake::systems::OutputPortIndex output_port_fsm_;
+  drake::systems::OutputPortIndex output_port_pitch_;
+  drake::systems::OutputPortIndex output_port_footstep_target_;
+  drake::systems::OutputPortIndex output_port_orientation_;
+  drake::systems::OutputPortIndex output_port_com_;
+
+  drake::systems::CacheIndex com_trajectory_cache_;
+  drake::systems::CacheIndex wbo_trajectory_cache_;
+
+  std::unordered_map<std::string, drake::systems::OutputPortIndex>
+    desired_force_output_port_map_;
 };
 
 }

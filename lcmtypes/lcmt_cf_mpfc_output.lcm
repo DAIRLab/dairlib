@@ -5,10 +5,6 @@ struct lcmt_cf_mpfc_output
     double next_footstep_in_stance_frame[3];
     lcmt_fsm_info fsm;
 
-    int32_t nc;
-    int32_t nx;
-
-    double contact_points_in_foot_frame[nc][3];
-    lcmt_saved_traj contact_force_trajs[nc];
-    lcmt_saved_traj complex_state_traj;
+    lcmt_saved_traj contact_force_traj;
+    lcmt_saved_traj state_traj;
 }

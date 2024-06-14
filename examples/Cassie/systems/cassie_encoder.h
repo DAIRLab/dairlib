@@ -70,7 +70,7 @@ class CassieEncoder final : public drake::systems::LeafSystem<double> {
 
  protected:
   void UpdateFilter(const drake::systems::Context<double>& context,
-                    systems::BasicVector<double>* output) const;
+                    drake::systems::BasicVector<double>* output) const;
 
  private:
   struct DriveFilter {

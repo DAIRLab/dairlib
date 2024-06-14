@@ -1,0 +1,69 @@
+group "simulations" {
+    cmd "franka_sim" {
+        exec = "bazel-bin/examples/franka/franka_sim";
+        host = "localhost";
+    }
+    cmd "franka_kinematics" {
+        exec = "bazel-bin/examples/franka/forward_kinematics_for_lcs";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/franka/franka_visualizer";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
+    cmd "start_logging" {
+        exec = "python3 start_logging.py sim";
+        host = "localhost";
+    }
+}
+
+group "controllers" {
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/franka/franka_osc_controller";
+        host = "localhost";
+    }
+    cmd "franka_c3" {
+        exec = "bazel-bin/examples/franka/franka_c3_controller";
+        host = "localhost";
+    }
+    cmd "mujoco_mpc" {
+        exec = "../mujoco_mpc/build/bin/standalone_controller";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+script "c3_mpc" {
+    start cmd "franka_sim";
+    start cmd "franka_osc";
+    start cmd "franka_c3";
+}
+
+script "mjmpc_with_drake_sim" {
+    start cmd "franka_sim";
+    start cmd "franka_osc";
+    start cmd "mujoco_mpc";
+    start cmd "franka_kinematics";
+}
+
+script "start_operator_commands" {
+    start cmd "visualizer";
+}
+
+script "stop_controllers_and_simulators" {
+    stop group "simulations";
+    stop group "controllers";
+}

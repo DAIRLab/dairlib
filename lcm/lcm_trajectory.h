@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,7 +27,8 @@ class LcmTrajectory {
   /// lcmt_trajectory_block is the lcmtype analog
   struct Trajectory {
     Trajectory() = default;
-    Trajectory(std::string traj_name, const lcmt_trajectory_block& traj_block);
+    Trajectory(const std::string& traj_name,
+               const lcmt_trajectory_block& traj_block);
 
     std::string traj_name;
     Eigen::VectorXd time_vector;
@@ -39,9 +41,8 @@ class LcmTrajectory {
   LcmTrajectory() = default;
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
-                const std::string& name,
-                const std::string& description,
-                bool get_metadata=true);
+                const std::string& name, const std::string& description,
+                bool get_metadata = false);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
@@ -64,8 +65,18 @@ class LcmTrajectory {
 
   lcmt_metadata GetMetadata() const { return metadata_; }
 
+  bool HasTrajectory(const std::string& trajectory_name) const {
+    return trajectories_.count(trajectory_name) > 0;
+  }
+
   const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
-    return trajectories_.at(trajectory_name);
+    try {
+      return trajectories_.at(trajectory_name);
+    } catch (std::exception& e) {
+      std::cerr << "Trajectory: " << trajectory_name << " does not exist."
+                << std::endl;
+      throw std::out_of_range("");
+    }
   }
 
   /// Add additional LcmTrajectory::Trajectory objects
@@ -76,8 +87,8 @@ class LcmTrajectory {
   const std::vector<std::string>& GetTrajectoryNames() const {
     return trajectory_names_;
   }
-
   lcmt_saved_traj GenerateLcmObject() const;
+
  protected:
   /// Constructs a lcmt_metadata object with a specified name and description
   /// Other relevant metadata details such as datatime and git status are
@@ -85,7 +96,6 @@ class LcmTrajectory {
   void ConstructMetadataObject(std::string name, std::string description);
 
  private:
-
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;
   std::vector<std::string> trajectory_names_;

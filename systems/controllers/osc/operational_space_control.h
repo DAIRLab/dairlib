@@ -17,10 +17,11 @@
 #include "solvers/fast_osqp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/controllers/osc/external_force_tracking_data.h"
+#include "systems/controllers/osc/inverse_dynamics_qp.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/inverse_dynamics_qp.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -97,10 +98,9 @@ namespace dairlib::systems::controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
-      bool used_with_finite_state_machine = true);
+  OperationalSpaceControl(const drake::multibody::MultibodyPlant<double>& plant,
+                          drake::systems::Context<double>* context,
+                          bool used_with_finite_state_machine = true);
 
   /***** Input/output ports *****/
 
@@ -221,17 +221,29 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    */
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
+  /*!
+   * @brief Enables limits on the joint acceleration variables
+   */
+  void SetAccelerationConstraints(bool constraint_status) {
+    if (ddq_max_.isZero() and constraint_status) {
+      throw std::runtime_error(
+          "Attempting to set acceleration limits when acceleration limits have "
+          "not been defined for the plant.");
+    }
+    with_acceleration_constraints_ = constraint_status;
+  }
+
   // Constraint methods
   void SetContactFriction(double mu) { mu_ = mu; }
 
   void AddContactPoint(
       const std::string& name,
       std::unique_ptr<const multibody::WorldPointEvaluator<double>> evaluator,
-      std::vector<int> fsm_states={});
+      std::vector<int> fsm_states = {});
 
   void AddKinematicConstraint(
       std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
-      evaluator);
+          evaluator);
 
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
@@ -240,6 +252,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data,
                        double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
+  void AddForceTrackingData(
+      std::unique_ptr<ExternalForceTrackingData> tracking_data);
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
@@ -262,8 +276,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     SetOsqpSolverOptions(
         drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
             FindResourceOrThrow(yaml_string))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
-    );
+            .GetAsSolverOptions(drake::solvers::OsqpSolver::id()));
   };
   // OSC LeafSystem builder
   void Build();
@@ -356,6 +369,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd K_joint_pos_;
   Eigen::MatrixXd K_joint_vel_;
 
+  // robot joint acceleration limits
+  Eigen::VectorXd ddq_min_;
+  Eigen::VectorXd ddq_max_;
+
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
@@ -395,6 +412,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::pair<int, double>>
       fsm_to_w_input_map_;  // each pair is (joint index, weight)
 
+  // flags to enable constraints on decision variables
+  bool with_acceleration_constraints_ = false;
+
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
@@ -406,6 +426,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
       tracking_data_vec_ =
           std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
+  std::unique_ptr<std::vector<std::unique_ptr<ExternalForceTrackingData>>>
+      force_tracking_data_vec_ = std::make_unique<
+          std::vector<std::unique_ptr<ExternalForceTrackingData>>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

@@ -2,7 +2,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "controllers_all",
     srcs = [],
@@ -10,6 +9,15 @@ cc_library(
         ":affine_controller",
         ":controller_failure_aggregator",
         ":fsm_event_time",
+        ":gravity_compensator",
+    ],
+)
+
+cc_library(
+    name = "c3_systems",
+    deps = [
+        ":c3_controller",
+        ":lcs_factory_system",
     ],
 )
 
@@ -37,6 +45,48 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "lcs_factory_system",
+    srcs = ["c3/lcs_factory_system.cc"],
+    hdrs = ["c3/lcs_factory_system.h"],
+    deps = [
+        "//multibody:utils",
+        "//solvers:c3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_controller",
+    srcs = ["c3/c3_controller.cc"],
+    hdrs = ["c3/c3_controller.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "gravity_compensator",
+    srcs = [
+        "gravity_compensator.cc",
+    ],
+    hdrs = [
+        "gravity_compensator.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -181,39 +231,6 @@ cc_library(
     deps = [
         ":control_utils",
         "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "safe_velocity_controller",
-    srcs = ["safe_velocity_controller.cc"],
-    hdrs = ["safe_velocity_controller.h"],
-    deps = [
-        "//common",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "endeffector_position_controller",
-    srcs = ["endeffector_position_controller.cc"],
-    hdrs = ["endeffector_position_controller.h"],
-    deps = [
-        "//common",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "endeffector_velocity_controller",
-    srcs = ["endeffector_velocity_controller.cc"],
-    hdrs = ["endeffector_velocity_controller.h"],
-    deps = [
-        "//common",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

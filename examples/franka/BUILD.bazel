@@ -1,0 +1,211 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_binary(
+    name = "franka_sim",
+    srcs = ["franka_sim.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_osc_controller",
+    srcs = ["franka_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:controllers_all",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_c3_controller",
+    srcs = ["franka_c3_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_visualizer",
+    srcs = ["franka_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_out",
+    srcs = ["franka_bridge_driver_out.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_in",
+    srcs = ["franka_bridge_driver_in.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_ros_lcm_bridge",
+    srcs = ["franka_ros_lcm_bridge.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    tags = ["ros"],
+    deps = [
+        ":parameters",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/ros:franka_ros_channels",
+        "//systems/ros:franka_ros_lcm_conversions",
+        "//systems/ros:ros_pubsub_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "@ros",
+    ],
+)
+
+cc_binary(
+    name = "franka_lcm_ros_bridge",
+    srcs = ["franka_lcm_ros_bridge.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    tags = ["ros"],
+    deps = [
+        ":parameters",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/ros:franka_ros_channels",
+        "//systems/ros:franka_ros_lcm_conversions",
+        "//systems/ros:ros_pubsub_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "@ros",
+    ],
+)
+
+cc_library(
+    name = "parameters",
+    hdrs = [
+        "parameters/franka_c3_controller_params.h",
+        "parameters/franka_c3_scene_params.h",
+        "parameters/franka_drake_lcm_driver_channels.h",
+        "parameters/franka_lcm_channels.h",
+        "parameters/franka_osc_controller_params.h",
+        "parameters/franka_sim_params.h",
+        "parameters/franka_sim_scene_params.h",
+    ],
+    data = glob([
+        "*yaml",
+    ]),
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

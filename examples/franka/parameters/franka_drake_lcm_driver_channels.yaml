@@ -1,0 +1,2 @@
+franka_status_channel: PANDA_STATUS # lcmt_panda_status
+franka_command_channel: PANDA_COMMAND # lcmt_panda_command

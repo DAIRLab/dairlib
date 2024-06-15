@@ -31,7 +31,7 @@ class C3 {
   /// @param LCS LCS parameters
   /// @param Q, R, G, U Cost Matrices
   C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
+     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
   virtual ~C3() = default;
 

@@ -52,6 +52,9 @@
           <xyz>
               1 0 0
           </xyz>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
       </axis>
   </joint>
   <joint name="planar_z" type="prismatic">
@@ -61,7 +64,11 @@
           <xyz>
               0 0 1
           </xyz>
-      </axis>  </joint>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
+      </axis>
+  </joint>
   <joint name="planar_roty" type="continuous">
       <parent>base_xz</parent>
       <child>passive_block</child>
@@ -69,6 +76,9 @@
           <xyz>
               0 1 0
           </xyz>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
       </axis>
   </joint>
 </model>

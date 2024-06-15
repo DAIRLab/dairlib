@@ -77,7 +77,6 @@ int DoMain(int argc, char* argv[]) {
           FindResourceOrThrow(controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  DiagramBuilder<double> plant_builder;
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
@@ -108,6 +107,7 @@ int DoMain(int argc, char* argv[]) {
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
+  DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser lcs_parser(&plant_for_lcs);

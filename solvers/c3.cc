@@ -40,7 +40,7 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 }
 
 C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_desired, const C3Options& options)
+       const vector<VectorXd>& x_des, const C3Options& options)
     : warm_start_(options.warm_start),
       N_((lcs.A_).size()),
       n_((lcs.A_)[0].cols()),
@@ -58,11 +58,11 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       R_(costs.R),
       U_(costs.U),
       G_(costs.G),
-      x_desired_(x_desired),
+      x_desired_(x_des),
       options_(options),
       h_is_zero_(lcs.H_[0].isZero(0)),
-      prog_(MathematicalProgram()),
-      osqp_(OsqpSolver()) {
+      osqp_(OsqpSolver()),
+      prog_(MathematicalProgram()) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);

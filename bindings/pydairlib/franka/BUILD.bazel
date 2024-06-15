@@ -62,6 +62,7 @@ py_binary(
     data = [
     ],
     deps = [
+        "//bindings/pydairlib/solvers:c3_py",
         "@drake//bindings/pydrake",
     ],
 )

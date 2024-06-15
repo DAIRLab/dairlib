@@ -2,19 +2,18 @@
 <sdf version="1.7">
 
 <model name="active_block">
-  <link name="center"/>
   <link name="active_block">
     <inertial>
         <pose>0 0 0 0 0 0</pose>
         <mass>1</mass>
-      <inertia>
-     <ixx>0.014167</ixx>
-     <ixy>0</ixy>
-     <ixz>0</ixz>
-     <iyy>0.33417</iyy>
-     <iyz>0</iyz>
-     <izz>0.34667</izz>
-    </inertia>
+        <inertia>
+         <ixx>0.014167</ixx>
+         <ixy>0</ixy>
+         <ixz>0</ixz>
+         <iyy>0.33417</iyy>
+         <iyz>0</iyz>
+         <izz>0.34667</izz>
+        </inertia>
     </inertial>
         <visual name="active_block">
           <pose>0 0 0 0 0 0</pose>
@@ -44,7 +43,7 @@
     </collision>
   </link>
   <joint name="planar_x" type="prismatic">
-      <parent>center</parent>
+      <parent>world</parent>
       <child>active_block</child>
       <axis>
           <xyz>
@@ -53,8 +52,11 @@
           <limit>
               <lower>-1.0</lower>
               <upper>1.0</upper>
-              <effort>5.0</effort>
+              <effort>10.0</effort>
           </limit>
+          <dynamics>
+              <damping>0.0</damping>
+          </dynamics>
       </axis>
   </joint>
 </model>

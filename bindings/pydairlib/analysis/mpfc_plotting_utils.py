@@ -11,7 +11,7 @@ _fsm_state_names = ['Left Stance (LS)',
                     'Double Support Post Right (DSPR)']
 
 
-def process_mpfc_debug_data(data):
+def process_alip_mpfc_debug_data(data):
     n = len(data)
     nmodes = data[0].nmodes
 
@@ -50,6 +50,45 @@ def process_mpfc_debug_data(data):
         'desired_velocity': desired_velocity,
         'nominal_first_stance_time': nominal_first_stance_time,
         'solution_first_stance_time': solution_first_stance_time,
+        'pp': pp,
+        'xx': xx,
+    }
+
+
+def process_cf_mpfc_debug_data(data):
+    n = len(data)
+    nmodes = data[0].nmodes
+    nxc = 18
+
+    t_mpc = np.zeros((n,))
+    fsm = np.zeros((n,), dtype=int)
+    solve_time = np.zeros((n,))
+    optimizer_time = np.zeros((n,))
+    initial_state = np.zeros((n, nxc))
+    initial_stance_foot = np.zeros((n, 3))
+    desired_velocity = np.zeros((n, 2))
+    pp = [np.zeros((nmodes, 3))] * n
+    xx = [np.zeros((nmodes - 1, 4))] * n
+
+    for i, msg in enumerate(data):
+        t_mpc[i] = msg.utime * 1e-6
+        fsm[i] = msg.fsm_state
+        solve_time[i] = msg.solve_time_us * 1e-6
+        optimizer_time[i] = msg.optimizer_time_us * 1e-6
+        initial_state[i] = msg.initial_state
+        initial_stance_foot[i] = msg.initial_stance_foot
+        desired_velocity[i] = msg.desired_velocity
+        pp[i] = np.array(msg.pp)
+        xx[i] = np.array(msg.xx)
+
+    return {
+        't_mpc': t_mpc,
+        'fsm': fsm,
+        'solve_time': solve_time,
+        'optimizer_time': optimizer_time,
+        'initial_state': initial_state,
+        'initial_stance_foot': initial_stance_foot,
+        'desired_velocity': desired_velocity,
         'pp': pp,
         'xx': xx,
     }
@@ -99,7 +138,7 @@ def plot_initial_state(mpc_data, time_slice=None):
         time_slice)
     ps = plot_styler.PlotStyler()
 
-    xslice = slice(4)
+    xslice = slice(0, 3, 1)
 
     plotting_utils.make_plot(
         mpc_data,
@@ -107,10 +146,10 @@ def plot_initial_state(mpc_data, time_slice=None):
         time_slice,
         ['initial_state'],
         {'initial_state': xslice},
-        {'initial_state': ['x', 'y', 'Lx', 'Ly']},
+        {'initial_state': []},
         {'xlabel': 'Time (s)',
          'ylabel': 'Initial State',
-         'title': 'Initial ALIP State'},
+         'title': 'Initial State'},
         ps
     )
     add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
@@ -192,8 +231,12 @@ def plot_solve_time(mpc_data, time_slice=None):
     return ps
 
 
-def mpfc_debug_callback(data_dict, channel):
-    return process_mpfc_debug_data(data_dict[channel])
+def alip_mpfc_debug_callback(data_dict, channel):
+    return process_alip_mpfc_debug_data(data_dict[channel])
+
+
+def cf_mpfc_debug_callback(data_dict, channel):
+    return process_cf_mpfc_debug_data(data_dict[channel])
 
 
 def contact_callback(data_dict, channel):

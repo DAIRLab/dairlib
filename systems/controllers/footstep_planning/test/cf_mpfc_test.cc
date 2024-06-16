@@ -62,7 +62,7 @@ void TestMPFC() {
       0.3,
       0.1,
       0.3,
-      Vector2d::UnitX(),
+      Vector2d::Zero(),
       alip_utils::Stance::kLeft,
       alip_utils::ResetDiscretization::kZOH
   };
@@ -71,14 +71,14 @@ void TestMPFC() {
 
   params.gait_params = test_gait;
   params.nmodes = 3;
-  params.nknots = 3;
+  params.nknots = 5;
   params.contacts_in_stance_frame = {0.09 * Vector3d::UnitX(), -0.09 * Vector3d::UnitX()};
   params.soft_constraint_cost = 1000;
   params.com_pos_bound = Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
   params.R = Eigen::Matrix3d::Identity();
-  params.Qf = Eigen::Matrix4d::Identity();
+  params.Qf = 100 * Eigen::Matrix4d::Identity();
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
@@ -107,12 +107,29 @@ void TestMPFC() {
   std::cout << "Solve took " << sol.total_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";
 
-  auto sol2 = mpfc.Solve(srbd_state, Vector3d::Zero(), 0.24, Vector2d::Zero(),
-                        alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
-                        sol);
+  std::cout << "\nFootstep Solution:\n";
+  for (const auto& p : sol.pp) {
+    std::cout << p.transpose() << std::endl;
+  }
 
-  std::cout << "Second solve took " << sol2.total_time << "seconds\n";
-  std::cout << "Second solution Result: " << sol2.solution_result << "\n";
+  std::cout << "\nALIP state solution:\n";
+  for (const auto& x : sol.xx) {
+    std::cout << x.transpose() << std::endl;
+  }
+
+  std::cout << "\nSRB state solution:\n";
+  for (const auto& xc : sol.xc) {
+    std::cout << xc.transpose() << std::endl;
+  }
+
+  std::cout << "\nSRB input solution:\n";
+  for (const auto& f : sol.ff) {
+    std::cout << f.transpose() << std::endl;
+  }
+
+  std::cout << "\nInitial ALIP state sol:\n";
+  std::cout << sol.xi.transpose() << std::endl;
+
 }
 
 

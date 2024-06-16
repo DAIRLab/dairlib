@@ -138,7 +138,6 @@ cf_mpfc_solution CFMPFC::Solve(
   std::chrono::duration<double> total_time = end - start;
   std::chrono::duration<double> solve_time = solver_end - solver_start;
 
-  mpfc_solution.total_time = total_time.count();
   mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.init = true;
@@ -426,6 +425,7 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
     A_dyn.block(SrbDim * i, SrbDim * params_.nknots + nc * i, SrbDim,  2*nc) = B;
     b_dyn.segment<SrbDim>(SrbDim * i) = c;
   }
+  std::cout << A_dyn << std::endl;
   srb_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
 
@@ -462,7 +462,7 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   }
 
   MatrixXd Qx = MatrixXd::Identity(SrbDim, SrbDim);
-  Qx.topLeftCorner<9,9>() = 1000 * Matrix<double, 9, 9>::Identity();
+  Qx.topLeftCorner<9,9>() = 0.01 * Matrix<double, 9, 9>::Identity();
   MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
 
   for (int i = 0; i < params_.nknots; ++i) {

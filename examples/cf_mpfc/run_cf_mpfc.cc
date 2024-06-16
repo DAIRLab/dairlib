@@ -78,7 +78,7 @@ int DoMain(int argc, char** argv) {
       0.3,
       0.1,
       0.3,
-      Vector2d::UnitX(),
+      Vector2d::Zero(),
       systems::controllers::alip_utils::Stance::kLeft,
       systems::controllers::alip_utils::ResetDiscretization::kFOH
   };

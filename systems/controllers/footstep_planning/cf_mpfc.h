@@ -77,6 +77,7 @@ class CFMPFC {
       alip_utils::Stance stance, const Eigen::Matrix3d& I,
       const cf_mpfc_solution& prev_sol);
 
+  const cf_mpfc_params& params() { return params_; }
  protected:
   void MakeMPCVariables();
   void MakeMPCCosts();

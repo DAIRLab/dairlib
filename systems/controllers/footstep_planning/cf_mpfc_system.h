@@ -1,7 +1,7 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
 #include <dairlib/lcmt_cf_mpfc_solution.hpp>
-#include <dairlib/lcmt_alip_mpc_output.hpp>
+#include <dairlib/lcmt_cf_mpfc_output.hpp>
 
 #include "cf_mpfc.h"
 #include "cf_mpfc_utils.h"
@@ -60,11 +60,7 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
       drake::systems::State<double>* state) const;
 
   void CopyMpcOutput(const drake::systems::Context<double>& context,
-                     lcmt_alip_mpc_output* traj) const;
-  void CopyAnkleTorque(const drake::systems::Context<double>& context,
-                       lcmt_saved_traj* traj) const;
-  void CopyFsmOutput(const drake::systems::Context<double>& context,
-                     drake::systems::BasicVector<double>* fsm) const;
+                     lcmt_cf_mpfc_output* out) const;
   void CopyMPFCDebug(const drake::systems::Context<double>& context,
                      lcmt_cf_mpfc_solution* msg) const;
   int GetFsmForOutput(const drake::systems::Context<double>& context) const;

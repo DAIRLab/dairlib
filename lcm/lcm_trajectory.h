@@ -26,6 +26,7 @@ class LcmTrajectory {
   /// lcmt_trajectory_block is the lcmtype analog
   struct Trajectory {
     Trajectory() = default;
+    Trajectory(std::string traj_name, int rows, int cols);
     Trajectory(std::string traj_name, const lcmt_trajectory_block& traj_block);
 
     std::string traj_name;

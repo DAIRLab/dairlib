@@ -77,14 +77,18 @@ void LinearizeSRBDynamics(
 
 /*!
  * TODO (@Brian-Acosta) add df/dh
- * Linearize collocation constraint into A [x0 x1] + B[u0 u1] = b
+ *
+ * Linearizes a trapezoidal direct collocation constraint into the form
+ * A [x0 x1] + B [u0 u1] = b by first linearizing the continuous dynamics,
+ * then making a trapezoidal approximation of integrating the dynamics
+ *
  * @param x0 state at knot 0
  * @param x1 state at knot 1
  * @param u0 input at knot 0
  * @param u1 input at knot 1
  * @param A df_dx
  * @param B df_du
- * @param b df_dx * x* + df_du u* - f(x*, u*)
+ * @param b drift term
  */
 void LinearizeDirectCollocationConstraint(
     double h,

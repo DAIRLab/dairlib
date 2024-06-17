@@ -12,6 +12,9 @@ class SwingFootTrajSolver {
   static constexpr int kPolyDegXY = 7;
 
  public:
+
+  // TODO (@Brian-Acosta) this might be more numerically stable by using an
+  //  orthonormal polynomial basis
   explicit SwingFootTrajSolver();
 
   // Find a swing foot trajectory with continuous accelerations given by a 9th

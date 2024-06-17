@@ -88,9 +88,6 @@ CFMPFCSystem::CFMPFCSystem(
       "lcmt_alip_mpc_output", &CFMPFCSystem::CopyMpcOutput
   ).get_index();
 
-  fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &CFMPFCSystem::CopyFsmOutput).get_index();
-
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
       "lcmt_cf_mpfc_solution", &CFMPFCSystem::CopyMPFCDebug).get_index();
 }
@@ -194,20 +191,15 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void CFMPFCSystem::CopyFsmOutput(
-    const Context<double> &context, BasicVector<double> *fsm) const {
-  fsm->get_mutable_value() << GetFsmForOutput(context);
-}
 
 void CFMPFCSystem::CopyMpcOutput(
-    const Context<double> &context, lcmt_alip_mpc_output* mpc_output) const {
+    const Context<double> &context, lcmt_cf_mpfc_output* mpc_output) const {
 
   const auto& mpc_sol =
       context.get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
 
   // Copy next footstep
   Vector3d footstep_in_stance_frame = mpc_sol.pp.at(1) - mpc_sol.pp.at(0);
-  footstep_in_stance_frame(2) = 0;
   for (int i = 0; i < 3; i++) {
     mpc_output->next_footstep_in_stance_frame[i] = footstep_in_stance_frame(i);
   }
@@ -222,8 +214,33 @@ void CFMPFCSystem::CopyMpcOutput(
   mpc_output->fsm.next_switch_time_us = 1e6 *
       context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
 
-  // copy ankle torque traj
-  CopyAnkleTorque(context, &(mpc_output->u_traj));
+
+  double next_impact_time = context.get_discrete_state(
+      next_impact_time_state_idx_).GetAtIndex(0);
+  double current_time = robot_output->get_timestamp();
+
+  int dim_c = 3 * trajopt_.params().contacts_in_stance_frame.size();
+  int nk = trajopt_.params().nknots;
+
+  LcmTrajectory::Trajectory force_traj("force_traj", dim_c, nk);
+  LcmTrajectory::Trajectory acom_traj("acom_traj", 4, nk);
+  LcmTrajectory::Trajectory acom_traj_dot("acom_traj_dot", 4, nk);
+  LcmTrajectory::Trajectory com_traj("com_traj", 3, nk);
+  LcmTrajectory::Trajectory com_traj_dot("com_traj_dot", 3, nk);
+
+  for (int i = 0; i < trajopt_.params().nknots; ++i) {
+    double t =  current_time + i * (next_impact_time - current_time) / (nk - 1);
+    force_traj.time_vector(i) = t;
+    acom_traj.time_vector(i) = t;
+    com_traj.time_vector(i) = t;
+    acom_traj_dot.time_vector(i) = t;
+    com_traj_dot.time_vector(i) = t;
+
+    force_traj.datapoints.col(i)= mpc_sol.ff.at(i);
+    com_traj.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_idx);
+    com_traj_dot.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_dot_idx);
+  }
+
 }
 
 int CFMPFCSystem::GetFsmForOutput(
@@ -251,29 +268,6 @@ double CFMPFCSystem::GetPrevImpactTimeForOutput(
     return t_prev;
   }
   return t_prev + double_stance_duration_;
-}
-
-void CFMPFCSystem::CopyAnkleTorque(
-    const Context<double> &context, lcmt_saved_traj *traj) const {
-  double t  = dynamic_cast<const OutputVector<double>*>(
-      this->EvalVectorInput(context, state_input_port_))->get_timestamp();
-  const auto& mpc_sol =
-      context.get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
-
-  // TODO (@Brian-Acosta) copy ankle torque for testing, then change OSC for
-  //  force tracking
-
-//  throw std::runtime_error("uninitialized");
-  double u_sol = 0;
-
-  LcmTrajectory::Trajectory input_traj;
-  input_traj.traj_name = "input_traj";
-  input_traj.datatypes = vector<std::string>(1, "double");
-  input_traj.datapoints = Eigen::RowVector2d::Constant(u_sol);
-  input_traj.time_vector = Eigen::Vector2d(t, std::numeric_limits<double>::infinity());
-  LcmTrajectory lcm_traj(
-      {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);
-  *traj = lcm_traj.GenerateLcmObject();
 }
 
 void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,

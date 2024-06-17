@@ -38,6 +38,13 @@ std::string exec(const char* cmd) {
   return result;
 }
 
+LcmTrajectory::Trajectory::Trajectory(string traj_name, int rows, int cols) {
+  this->traj_name = traj_name;
+  this->time_vector = VectorXd::Zero(cols);
+  this->datapoints = MatrixXd::Zero(rows, cols);
+  this->datatypes = vector<string>(rows, "double");
+}
+
 LcmTrajectory::Trajectory::Trajectory(string traj_name,
                                       const lcmt_trajectory_block& traj_block) {
   int num_points = traj_block.num_points;

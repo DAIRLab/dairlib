@@ -165,14 +165,16 @@ void LinearizeDirectCollocationConstraint(
 
   int nc = contact_points.size();
 
-  Eigen::VectorXd varsd = stack<double>({x0, x1, u0, u1});
-  AutoDiffVecXd vars = InitializeAutoDiff(varsd);
+  Eigen::VectorXd varsd0 = stack<double>({x0, u0});
+  Eigen::VectorXd varsd1 = stack<double>({x1, u1});
+  AutoDiffVecXd vars0 = InitializeAutoDiff(varsd0);
+  AutoDiffVecXd vars1 = InitializeAutoDiff(varsd1);
 
 
-  const CentroidalState<AutoDiffXd> x0_ad = vars.segment<SrbDim>(0);
-  const CentroidalState<AutoDiffXd> x1_ad = vars.segment<SrbDim>(SrbDim);
-  const AutoDiffVecXd u0_ad = vars.segment(2*SrbDim, 3*nc);
-  const AutoDiffVecXd u1_ad = vars.segment(2*SrbDim + 3*nc, 3*nc);
+  const CentroidalState<AutoDiffXd> x0_ad = vars0.segment<SrbDim>(0);
+  const CentroidalState<AutoDiffXd> x1_ad = vars1.segment<SrbDim>(0);
+  const AutoDiffVecXd u0_ad = vars0.segment(SrbDim, 3*nc);
+  const AutoDiffVecXd u1_ad = vars1.segment(SrbDim,3*nc);
 
 
   const CentroidalStateDeriv<AutoDiffXd> xdot0 = SRBDynamics(
@@ -181,21 +183,23 @@ void LinearizeDirectCollocationConstraint(
   const CentroidalStateDeriv<AutoDiffXd> xdot1 = SRBDynamics(
       x1_ad,   unstack<AutoDiffXd, 3>(u1_ad), contact_points, I, m);
 
-  // Cubic interpolation to get xcol and xdotcol.
-  const CentroidalState<AutoDiffXd> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
-  const CentroidalStateDeriv<AutoDiffXd> xdotcol = -1.5 * (x0 - x1) / h - .25 *
-      (xdot0 + xdot1);
-  const AutoDiffVecXd ucol = 0.5 * (u0_ad + u1_ad);
+  MatrixXd J0 = ExtractGradient(xdot0);
+  MatrixXd J1 = ExtractGradient(xdot1);
 
-  const CentroidalStateDeriv<AutoDiffXd> g = SRBDynamics(
-      xcol,  unstack<AutoDiffXd, 3>(ucol), contact_points, I, m);
+  A = MatrixXd::Zero(SrbDim, 2*SrbDim);
+  B = MatrixXd::Zero(SrbDim, 2*3*nc);
+  b = VectorXd::Zero(SrbDim);
 
-  CentroidalStateDeriv<AutoDiffXd> f = xdotcol - g;
-  MatrixXd J = ExtractGradient(f);
-  A = J.block<SrbDim, 2 * SrbDim>(0,0);
-  B = J.block(0, 2*SrbDim, SrbDim, 2*3*nc);
-  b = A * stack<double>({x0, x1}) + B * stack<double>({u0, u1}) -
-      ExtractValue(f);
+
+  A.block<SrbDim, SrbDim>(0,0) =
+      Matrix<double, SrbDim, SrbDim>::Identity() + 0.5 * h * J0.block<SrbDim, SrbDim>(0,0);
+  A.block<SrbDim, SrbDim>(0, SrbDim) =
+      -Matrix<double, SrbDim, SrbDim>::Identity() + 0.5 * h * J1.block<SrbDim, SrbDim>(0,0);
+
+  B.block(0, 0, SrbDim, 3*nc) = 0.5 * h * J0.rightCols(3*nc);
+  B.block(0, 3*nc, SrbDim, 3*nc) = 0.5 * h * J1.rightCols(3*nc);
+
+  b = -0.5 * h * (ExtractValue(xdot0) + ExtractValue(xdot1));
 }
 
 template <typename T>

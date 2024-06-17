@@ -61,7 +61,7 @@ void TestMPFC() {
       32.0,
       0.3,
       0.1,
-      0.3,
+      0.4,
       Vector2d::Zero(),
       alip_utils::Stance::kLeft,
       alip_utils::ResetDiscretization::kZOH
@@ -117,9 +117,19 @@ void TestMPFC() {
     std::cout << x.transpose() << std::endl;
   }
 
-  std::cout << "\nSRB state solution:\n";
+  std::cout << "\nCoM solution:\n";
   for (const auto& xc : sol.xc) {
-    std::cout << xc.transpose() << std::endl;
+    std::cout << xc.segment<3>(cf_mpfc_utils::com_idx).transpose() << std::endl;
+  }
+
+  std::cout << "\nw solution:\n";
+  for (const auto& xc : sol.xc) {
+    std::cout << xc.segment<3>(cf_mpfc_utils::w_idx).transpose() << std::endl;
+  }
+
+  std::cout << "\ncom_dot solution:\n";
+  for (const auto& xc : sol.xc) {
+    std::cout << xc.segment<3>(cf_mpfc_utils::com_dot_idx).transpose() << std::endl;
   }
 
   std::cout << "\nSRB input solution:\n";

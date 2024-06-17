@@ -425,7 +425,7 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
     A_dyn.block(SrbDim * i, SrbDim * params_.nknots + nc * i, SrbDim,  2*nc) = B;
     b_dyn.segment<SrbDim>(SrbDim * i) = c;
   }
-  std::cout << A_dyn << std::endl;
+//  std::cout << A_dyn << std::endl;
   srb_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
 
@@ -453,6 +453,9 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   xd(4) = 1;
   xd(8) = 1;
   xd(cf_mpfc_utils::com_idx + 2) = params_.gait_params.height;
+
+  double s = stance == Stance::kLeft ? -1 : 1;
+  xd(cf_mpfc_utils::com_idx + 1) = 0.5 * s * params_.gait_params.stance_width;
   xd.segment<2>(cf_mpfc_utils::com_dot_idx) = vdes;
 
   int nc = params_.contacts_in_stance_frame.size();
@@ -466,10 +469,11 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
 
   for (int i = 0; i < params_.nknots; ++i) {
+    double m = (i == 0 or i == params_.nknots - 1) ? 1 : 2;
     centroidal_state_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * Qx, -2 * Qx * xd, xd.transpose() * Qx * xd, true);
+        m * Qx, -m * Qx * xd, 0.5 * m * xd.transpose() * Qx * xd, true);
     centroidal_input_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * Qf, -2 * Qf * fd, fd.transpose() * Qf * fd, true);
+        m * Qf, -m * Qf * fd, 0.5 * m * fd.transpose() * Qf * fd, true);
   }
 }
 

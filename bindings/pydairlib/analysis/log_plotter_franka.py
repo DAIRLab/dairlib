@@ -50,6 +50,7 @@ def main():
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     default_channels = franka_plots.franka_default_channels
+    print(default_channels)
     robot_output, robot_input, osc_debug = \
         get_log_data(log,  # log
                      default_channels,  # lcm channels
@@ -139,8 +140,13 @@ def main():
 
         # plots y - z trajectories
         # plot.axes[0].scatter(c3_tracking_target['x'][0, 7], c3_tracking_target['x'][0, 9], marker='s')
-        plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
-        plot.plot(c3_tracking_actual['x'][:, 0:1], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
+        # plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
+        # plot.plot(c3_tracking_actual['x'][:, 0:1], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
+        
+        # plot.plot(c3_tracking_actual['t'], c3_tracking_target['x'][:, 7:10], subplot_index = 0, xlabel='Time (t)', grid=False)
+        # plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 7:10], subplot_index = 0, xlabel='Time (t)', grid=False)
+        plot.plot(c3_tracking_actual['t'], c3_tracking_target['x'][:, 7:10] - c3_tracking_actual['x'][:, 7:10], subplot_index = 0, xlabel='Time (t)', ylabel='Position Tracking Error (m)', grid=False)
+        # plot.plot(c3_tracking_actual['x'][:, 7], c3_tracking_actual['x'][:, 8], subplot_index = 0, xlabel='Time (t)', grid=False)
 
         # plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 8:9], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
         # plot.plot(c3_tracking_target['x'][:, 1:2], c3_tracking_target['x'][:, 2:3], subplot_index = 0)
@@ -154,8 +160,9 @@ def main():
         # plot.axes[0].set_xlim([0.4, 0.8])
         # plot.axes[0].set_ylim([0.35, 0.65])
 
-        plot.add_legend(['Tray Path', 'End Effector Path'])
-        # plot.add_legend(['tray target x', 'tray target y', 'tray target z'])
+        # plot.add_legend(['Tray Path', 'End Effector Path'])
+        # plot.add_legend(['Target', 'End Effector Path'])
+        plot.add_legend(['object tracking error x', 'object tracking error y', 'object tracking error z'])
         # plot.add_legend(['tray', 'end effector'])
         # plot.save_fig('c3_actual_xz_plot')
 
@@ -195,16 +202,16 @@ def main():
     if plot_config.plot_end_effector:
         end_effector_plotter = plot_styler.PlotStyler(nrows=2)
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
-                                        franka_context, ['plate'],
-                                        {'plate': np.zeros(3)},
-                                        {'plate': [0, 1, 2]},
+                                        franka_context, ['end_effector_tip'],
+                                        {'end_effector_tip': np.zeros(3)},
+                                        {'end_effector_tip': [0, 1, 2]},
                                         ps=end_effector_plotter,
                                         subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
-                                         franka_context, ['plate'],
-                                         {'plate': np.zeros(3)},
-                                         {'plate': [0, 1, 2]},
+                                         franka_context, ['end_effector_tip'],
+                                         {'end_effector_tip': np.zeros(3)},
+                                         {'end_effector_tip': [0, 1, 2]},
                                          ps=end_effector_plotter,
                                          subplot_index=1)
 

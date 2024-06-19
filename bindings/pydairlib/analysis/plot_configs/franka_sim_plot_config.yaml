@@ -2,7 +2,7 @@
 channel_x: "FRANKA_STATE_SIMULATION"
 channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
-# channel_c3: "C3_DEBUG"
+channel_c3: "C3_DEBUG_CURR"
 # channel_c3: "C3_DEBUG_BEST"
 channel_tray: "OBJECT_STATE_SIMULATION"
 channel_c3_target: "C3_TARGET"
@@ -23,9 +23,9 @@ plot_style: 'compact' # compact, paper, default
 
 # Give a start and end for how long you want to plot the data. 
 # Helps load faster.
-start_time: 0
+start_time: 0    #Start point for where to plot log from 
 #duration: 0.47
-duration: -1
+duration:  65  #-1 means do full log plot
 # Plant properties
 
 # Desired RobotOutput plots

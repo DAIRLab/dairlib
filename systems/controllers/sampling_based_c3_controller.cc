@@ -628,7 +628,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   for (int i = 0; i < N_; i++) {
     // Set up matrices for LCMTrajectory object.
     // Manually simulate forward using the dynamics.
-    knots.col(i) = x_sol[1];
+    knots.col(i) = x_sol[i];
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 

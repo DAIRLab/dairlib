@@ -66,6 +66,7 @@ cc_library(
     hdrs = ["cf_mpfc_output_receiver.h"],
     deps = [
         ":contact_modes",
+        "//common:eigen_utils",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",

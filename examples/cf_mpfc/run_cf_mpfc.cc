@@ -47,7 +47,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-DEFINE_string(channel_mpc_output, "ALIP_MPC", "LCM channel for mpc output");
+DEFINE_string(channel_mpc_output, "CF_MPFC", "LCM channel for mpc output");
 
 DEFINE_string(channel_mpc_debug, "CF_MPFC_DEBUG", "channel for debugging");
 
@@ -162,7 +162,7 @@ int DoMain(int argc, char** argv) {
   );
 
   auto mpc_output_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_alip_mpc_output>(
+      LcmPublisherSystem::Make<lcmt_cf_mpfc_output>(
           FLAGS_channel_mpc_output, &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 

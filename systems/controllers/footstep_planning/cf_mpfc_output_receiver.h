@@ -71,8 +71,14 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
   void CopyComTraj(const drake::systems::Context<double>& context,
                    drake::trajectories::Trajectory<double>* traj) const;
 
+  void CalcLcmTraj(const drake::systems::Context<double>& context,
+                   LcmTrajectory* lcm_traj) const;
+
   void CalcComTraj(const drake::systems::Context<double>& context,
                    drake::trajectories::PiecewisePolynomial<double>* traj) const;
+
+  void CalcForceTraj(const drake::systems::Context<double>& context,
+                    drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
   void CalcDesiredForce(const std::string& contact_name,
                         const drake::systems::Context<double>& context,
@@ -84,6 +90,21 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context) const {
     return EvalAbstractInput(
         context, input_port_mpfc_output_)->get_value<lcmt_cf_mpfc_output>();
+  }
+
+  [[nodiscard]] bool mode_match (const std::string& contact_name, int fsm_state) const {
+    if (std::find(left_contact_names_.begin(),
+                  left_contact_names_.end(), contact_name) != left_contact_names_.end()) {
+      return fsm_state == kLeft or fsm_state == kPostRightDouble;
+    }
+    return fsm_state == kRight or fsm_state == kPostLeftDouble;
+  }
+
+  const std::vector<std::string>& contacts_this_mode(int fsm_state) const {
+    if (fsm_state == kRight or fsm_state == kPostLeftDouble) {
+      return right_contact_names_;
+    }
+    return left_contact_names_;
   }
 
   const std::vector<std::string> left_contact_names_;
@@ -100,6 +121,8 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
 
   drake::systems::CacheIndex com_trajectory_cache_;
   drake::systems::CacheIndex wbo_trajectory_cache_;
+  drake::systems::CacheIndex force_traj_cache_;
+  drake::systems::CacheIndex lcm_traj_cache_;
 
   std::unordered_map<std::string, drake::systems::OutputPortIndex>
     desired_force_output_port_map_;

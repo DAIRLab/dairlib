@@ -224,7 +224,6 @@ void CFMPFCSystem::CopyMpcOutput(
 
   LcmTrajectory::Trajectory force_traj("force_traj", dim_c, nk);
   LcmTrajectory::Trajectory acom_traj("acom_traj", 4, nk);
-  LcmTrajectory::Trajectory acom_traj_dot("acom_traj_dot", 4, nk);
   LcmTrajectory::Trajectory com_traj("com_traj", 3, nk);
   LcmTrajectory::Trajectory com_traj_dot("com_traj_dot", 3, nk);
 
@@ -233,14 +232,25 @@ void CFMPFCSystem::CopyMpcOutput(
     force_traj.time_vector(i) = t;
     acom_traj.time_vector(i) = t;
     com_traj.time_vector(i) = t;
-    acom_traj_dot.time_vector(i) = t;
     com_traj_dot.time_vector(i) = t;
 
     force_traj.datapoints.col(i)= mpc_sol.ff.at(i);
     com_traj.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_idx);
     com_traj_dot.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_dot_idx);
-  }
 
+    Matrix3d Ri;
+    for (int j = 0; j < 3; ++j) {
+      Ri.col(j) = mpc_sol.xc.at(i).segment<3>(3*j);
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+    acom_traj.datapoints.col(i) = drake::math::RotationMatrix<double>::ProjectToRotationMatrix(Ri).ToQuaternionAsVector4();
+    auto end = std::chrono::high_resolution_clock::now();
+  }
+  LcmTrajectory traj(
+      {force_traj, acom_traj, com_traj, com_traj_dot},
+      {"force_traj", "acom_traj", "com_traj", "com_traj_dot"},
+      "cf_mpfc_solution", "cf_mpfc_solution", false);
+  mpc_output->srb_trajs = traj.GenerateLcmObject();
 }
 
 int CFMPFCSystem::GetFsmForOutput(

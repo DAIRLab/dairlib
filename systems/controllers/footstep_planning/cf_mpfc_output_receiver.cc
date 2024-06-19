@@ -1,6 +1,7 @@
 #include "cf_mpfc_output_receiver.h"
 
 #include "systems/framework/output_vector.h"
+#include "common/eigen_utils.h"
 
 namespace dairlib::systems::controllers {
 
@@ -46,11 +47,23 @@ CFMPFCOutputReceiver::CFMPFCOutputReceiver(
 
   PiecewiseQuaternionSlerp<double> slerp;
   Trajectory<double> &model_slerp = slerp;
+
+  lcm_traj_cache_ = DeclareCacheEntry(
+      "lcm_traj_cache", &CFMPFCOutputReceiver::CalcLcmTraj,
+      {input_port_ticket(input_port_mpfc_output_)}).cache_index();
+
   output_port_orientation_ = DeclareAbstractOutputPort(
       "wbo_trajectory", model_slerp,
-      &CFMPFCOutputReceiver::CopyOrientationTraj).get_index();
+      &CFMPFCOutputReceiver::CopyOrientationTraj,
+      {cache_entry_ticket(lcm_traj_cache_)}).get_index();
+
   wbo_trajectory_cache_ = DeclareCacheEntry(
-      "wbo_traj_cache", &CFMPFCOutputReceiver::CalcOrientationTraj).cache_index();
+      "wbo_traj_cache", &CFMPFCOutputReceiver::CalcOrientationTraj,
+      {cache_entry_ticket(lcm_traj_cache_)}).cache_index();
+
+  force_traj_cache_ = DeclareCacheEntry(
+      "force_traj_cache", &CFMPFCOutputReceiver::CalcForceTraj,
+      {cache_entry_ticket(lcm_traj_cache_)}).cache_index();
 
   PiecewisePolynomial<double> pp;
   Trajectory<double> &model_pp = pp;
@@ -115,8 +128,59 @@ void CFMPFCOutputReceiver::CopyOrientationTraj(
 void CFMPFCOutputReceiver::CalcDesiredForce(
     const std::string &contact_name, const Context<double> &context,
     BasicVector<double> *f) const {
-  // TODO (@Brian-Acosta) figure out the right way to do this
-  f->get_mutable_value().setZero();
+
+  auto fsm = get_mpfc_output(context).fsm;
+  int fsm_state = fsm.fsm_state;
+  f->SetZero();
+
+  if (mode_match(contact_name, fsm_state)) {
+
+    double t = dynamic_cast<const OutputVector<double>*>(
+        EvalVectorInput(context, input_port_state_))->get_timestamp();
+
+    const auto& contact_names = contacts_this_mode(fsm_state);
+    int f_idx = std::find(contact_names.begin(), contact_names.end(), contact_name) - contact_names.begin();
+    const auto& f_traj = get_cache_entry(force_traj_cache_).Eval<PiecewisePolynomial<double>>(context);
+    f->get_mutable_value() = f_traj.value(t).block<3, 1>(3 * f_idx, 0);
+  }
+}
+
+void CFMPFCOutputReceiver::CalcLcmTraj(
+    const Context<double> &context, LcmTrajectory *lcm_traj) const {
+  const auto &mpfc_output = get_mpfc_output(context);
+  *lcm_traj = LcmTrajectory(mpfc_output.srb_trajs);
+}
+
+void CFMPFCOutputReceiver::CalcForceTraj(
+    const drake::systems::Context<double> &context,
+    drake::trajectories::PiecewisePolynomial<double> *traj) const {
+  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
+  const auto& force_traj = lcm_traj.GetTrajectory("force_traj");
+  *traj = PiecewisePolynomial<double>::FirstOrderHold(
+      force_traj.time_vector, force_traj.datapoints);
+}
+
+void CFMPFCOutputReceiver::CalcComTraj(
+    const Context<double> &context, PiecewisePolynomial<double> *traj) const {
+  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
+  const auto& com_traj = lcm_traj.GetTrajectory("com_traj");
+  const auto& com_traj_dot = lcm_traj.GetTrajectory("com_traj_dot");
+  *traj = PiecewisePolynomial<double>::CubicHermite(
+      com_traj.time_vector, com_traj.datapoints, com_traj_dot.datapoints);
+}
+
+void CFMPFCOutputReceiver::CalcOrientationTraj(
+    const Context<double> &context,PiecewiseQuaternionSlerp<double> *traj) const {
+  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
+  const auto& acom_traj = lcm_traj.GetTrajectory("acom_traj");
+
+  std::vector<drake::Quaternion<double>> quats(acom_traj.datapoints.cols());
+  for (int i = 0; i < acom_traj.datapoints.cols(); ++i) {
+    Eigen::Vector4d q = acom_traj.datapoints.col(i);
+    quats.at(i) = drake::Quaternion<double>(q);
+  }
+  *traj = PiecewiseQuaternionSlerp<double>(
+      CopyVectorXdToStdVector(acom_traj.time_vector), quats);
 }
 
 }

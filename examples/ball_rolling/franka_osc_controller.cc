@@ -242,7 +242,7 @@ int DoMain(int argc, char* argv[]) {
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.6 * VectorXd::Ones(1));
+                            1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);

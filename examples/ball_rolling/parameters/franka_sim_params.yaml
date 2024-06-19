@@ -41,7 +41,7 @@ realtime_rate: 1
 
 # TODO: Set the initial locations to something sensical
 # q_init_franka: [2.48, 1.6, -2.4, -1.77, 1.38, 0.72, 0.638]
-q_init_franka: [2.39, 1.5, -1.48, -1.84, 1.62, 1.64, 0.54]
+q_init_franka: [0, 0.297, 0, -2.222, 0, 2.497, 0]
 # q_init_franka: [-0.12, 1.6, 1.48, -1.8, -1.62, 1.64, 1.69]
 # q_init_franka: [-0.39, 1.6, 1.53, -2.13, -1.61, 1.58, 1.73]
 

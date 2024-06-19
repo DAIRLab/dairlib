@@ -292,16 +292,16 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
-  auto object_zero_velocity_source =
-      builder.AddSystem<drake::systems::ConstantVectorSource>(
-          VectorXd::Zero(6));
+//   auto object_zero_velocity_source =
+//       builder.AddSystem<drake::systems::ConstantVectorSource>(
+//           VectorXd::Zero(6));
   builder.Connect(control_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
   builder.Connect(control_target->get_output_port_object_target(),
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
-  builder.Connect(object_zero_velocity_source->get_output_port(),
+  builder.Connect(control_target->get_output_port_object_velocity_target(),
                   target_state_mux->get_input_port(3));
 
 

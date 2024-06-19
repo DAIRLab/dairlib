@@ -36,12 +36,16 @@ TargetGenerator::TargetGenerator(
                               "object_target", BasicVector<double>(7),
                               &TargetGenerator::CalcObjectTarget)
                           .get_index();
+  object_velocity_target_port_ = this->DeclareVectorOutputPort(
+                              "object_velocity_target", BasicVector<double>(6),
+                              &TargetGenerator::CalcObjectVelocityTarget)
+                          .get_index();
 }
 
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& fixed_goal_y, const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
     const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, 
     const double& ee_goal_height, const double& object_half_width) {
   // Set the target parameters
@@ -53,7 +57,7 @@ void TargetGenerator::SetRemoteControlParameters(
   lead_angle_ = lead_angle;
   fixed_goal_x_ = fixed_goal_x;
   fixed_goal_y_ = fixed_goal_y;
-  fixed_target_orientation_ = fixed_target_orientation;
+  target_object_orientation_ = target_object_orientation;
   step_size_ = step_size;
   start_point_x_ = start_point_x;
   start_point_y_ = start_point_y;
@@ -190,7 +194,34 @@ void TargetGenerator::CalcObjectTarget(
     DRAKE_THROW_UNLESS(false);
   }
 
-  target_obj_state << fixed_target_orientation_, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
+  target_obj_state << target_object_orientation_, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
+  target->SetFromVector(target_obj_state);
+}
+
+
+void TargetGenerator::CalcObjectVelocityTarget(
+    const drake::systems::Context<double>& context,
+    BasicVector<double>* target) const {
+  const StateVector<double>* object_state =
+      (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
+  // Get target orientation
+  Eigen::Quaterniond y_quat_des(target_object_orientation_[0], 
+                                target_object_orientation_[1], 
+                                target_object_orientation_[2], 
+                                target_object_orientation_[3]);
+  const VectorX<double> &q = object_state->GetPositions().head(4);
+  Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+  Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
+  VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
+
+  VectorXd target_obj_state = VectorXd::Zero(6);
+
+  //  tray_position(0) = 0.55;
+  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
+  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
+  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
+  //  tray_position(2) = 0.45;
+  target_obj_state << angle_error, VectorXd::Zero(3); 
   target->SetFromVector(target_obj_state);
 }
 

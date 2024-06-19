@@ -34,15 +34,22 @@ class TargetGenerator
     return this->get_output_port(object_target_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_object_velocity_target()
+  const {
+    return this->get_output_port(object_velocity_target_port_);
+  }
+
   void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& fixed_goal_y, const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
     const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, const double& ee_goal_height, const double& object_half_width);
 
  private:
   void CalcEndEffectorTarget(const drake::systems::Context<double>& context,
                              drake::systems::BasicVector<double>* target) const;
   void CalcObjectTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
+   void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -52,6 +59,7 @@ class TargetGenerator
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex object_target_port_;
+  drake::systems::OutputPortIndex object_velocity_target_port_;
 
   int trajectory_type_;
   double traj_radius_;
@@ -60,7 +68,7 @@ class TargetGenerator
   double lead_angle_;
   double fixed_goal_x_;
   double fixed_goal_y_;
-  Eigen::VectorXd fixed_target_orientation_;
+  Eigen::VectorXd target_object_orientation_;
   double step_size_;
   double start_point_x_;
   double start_point_y_;

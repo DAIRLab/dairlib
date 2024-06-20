@@ -63,35 +63,33 @@ class Controller(LeafSystem):
                                              self.active_block_index))
         self.contact_geoms = list()
         for geom_id in passive_block_contact_points:
-            # contact_geoms.append([geom_id, passive_block_contact_points[0]])
             self.contact_geoms.append((active_block_contact_points[0], geom_id))
-        self.num_friction_directions = 2
+        self.num_friction_directions = 1
         self.mu = [0.4, 0.4]
-        self.dt = 0.5
-        self.N = 5
+        self.dt = 0.05
+        self.N = 10
         self.contact_model = ContactModel.kAnitescu
         # self.contact_model = ContactModel.kStewartAndTrinkle
-        self.Q = np.diag(np.array([100, 100, 1, 1, 1, 1, 1, 1]))
-        self.R = 10 * np.eye(1)
-        self.G = 0.5 * np.eye(8 + 8 + 1)
-        self.U = 0.5 * np.eye(8 + 8 + 1)
-        # self.G = np.eye(8 + 12 + 1)
-        # self.U = np.eye(8 + 12 + 1)
-        self.c3_options.admm_iter = 8
-        self.c3_options.rho = 2
-        self.c3_options.rho_scale = 2
+        self.Q = 50 * np.diag(np.array([1000, 5000, 10, 10, 5, 10, 5, 5]))
+        self.R = 5 * np.eye(1)
+        # self.G = 0.5 * np.eye(8 + 8 + 1)
+        self.G = 0.1 * np.diag(np.hstack((np.ones(4), 0.1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+        self.U = 0.1 * np.diag(np.hstack((np.ones(4), 0.1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+        self.c3_options.admm_iter = 4
+        self.c3_options.rho = 0
+        self.c3_options.rho_scale = 4
         self.c3_options.num_threads = 4
         self.c3_options.delta_option = 1
         self.c3_options.contact_model = "anitescu"
-        self.c3_options.warm_start = 0
-        self.c3_options.use_predicted_x0 = 0
+        self.c3_options.warm_start = 1
+        self.c3_options.use_predicted_x0 = 1
         self.c3_options.end_on_qp_step = 0
-        self.c3_options.use_robust_formulation = 0
+        self.c3_options.use_robust_formulation = 1
         self.c3_options.solve_time_filter_alpha = 0.95
         self.c3_options.publish_frequency = 0
-        self.c3_options.u_horizontal_limits = np.array([-10, 10])
+        self.c3_options.u_horizontal_limits = np.array([-5, 5])
         self.c3_options.u_vertical_limits = np.array([0, 0])
-        self.c3_options.workspace_limits = [np.array([1, 1, 1, -1000, 1000])]
+        self.c3_options.workspace_limits = [np.array([1, 0, 0, -0.5, 0.5])] # unused
         self.c3_options.workspace_margins = 0.05
         self.c3_options.N = self.N
         self.c3_options.gamma = 1.0
@@ -108,6 +106,7 @@ class Controller(LeafSystem):
         self.last_update_time = -1
         self.c3_solver = None
         self.x_des = np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+        self.predicted_x1 = self.x_des
 
 
     def CalcOutput(self, context, output):
@@ -117,16 +116,24 @@ class Controller(LeafSystem):
         self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
         self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, np.array([0]))
         self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
-        # if context.get_time() > self.last_update_time + (self.N * self.dt):
-        if context.get_time() > self.last_update_time + (self.dt):
-            print("cost: ", (x.value() - self.x_des).T @ self.Q @ (x.value() - self.x_des))
-            print((x.value() - self.x_des)[:2])
+        # if context.get_time() > self.last_update_time + (5 * self.dt):
+        if context.get_time() > self.last_update_time + (self.dt): # execute first knot point of the plan
+            if context.get_time() // 10 % 2 == 0:
+                self.x_des =  np.array([0.0, -0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+            else:
+                self.x_des =  np.array([0.0, 0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             print("time: ", context.get_time())
+            print("current cost: ", (x.value() - self.x_des).T @ self.Q @ (x.value() - self.x_des))
+            print("desired x: ", self.x_des)
+            print("predicted x1: ", self.predicted_x1)
+            print("actual x1: ", x.value())
             # import pdb; pdb.set_trace()
             lcs = LinearizePlantToLCS(self.plant_for_lcs, self.context_for_lcs,
                                       self.plant_ad, self.context_ad, self.contact_geoms,
                                       self.num_friction_directions, self.mu, self.dt, self.N,
                                       self.contact_model)
+            # print(lcs.D_[0])
+            # import pdb; pdb.set_trace()
             Qs = []
             for i in range(self.N + 1):
                 Qs.append(1.0 ** i * self.Q)
@@ -136,19 +143,25 @@ class Controller(LeafSystem):
                 self.c3_solver = C3MIQP(lcs, costs, (self.N + 1) * [self.x_des], self.c3_options)
             else:
                 print("updating target")
+                self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])
             self.c3_solver.Solve(x.value())
             u_sol = self.c3_solver.GetInputSolution()
             x_sol = self.c3_solver.GetStateSolution()
-            print(np.array(x_sol)[:, 0])
-            print(np.array(x_sol)[:, 1])
+
+            # print((x.value() - self.x_des)[:2])
+            # print(np.array(x_sol)[:, 0])
+            # print(np.array(x_sol)[:, 1])
+            self.predicted_x1 = np.array(x_sol)[1, :]
             timestamps = context.get_time() + self.dt * np.arange(self.N)
             self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, np.array(u_sol).T)
+            # self.u = PiecewisePolynomial.FirstOrderHold(timestamps, np.array(u_sol).T)
             self.last_update_time = context.get_time()
-        output.set_value(1 * self.u.value(context.get_time()))
+        output.set_value(self.u.value(context.get_time()))
 
 
 def main():
+    np.set_printoptions(3, threshold=3, suppress=True)
     builder = DiagramBuilder()
 
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.001)

@@ -7,15 +7,15 @@
         <link name="base_xz"/>
         <link name="passive_block">
             <inertial>
-                <pose>0 0 0 0 0 0</pose>
-                <mass>0.2</mass>
+                <pose>0 0 -0.05 0 0 0</pose>
+                <mass>1</mass>
                 <inertia>
-                    <ixx>0.0028333</ixx>
+                    <ixx>4e-07</ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>0.0028333</iyy>
+                    <iyy>0.04</iyy>
                     <iyz>0</iyz>
-                    <izz>0.0053333</izz>
+                    <izz>0.04</izz>
                 </inertia>
             </inertial>
             <visual name="passive_block">
@@ -30,7 +30,7 @@
                 </geometry>
             </visual>
             <collision name="left">
-                <pose>-0.2 0.0 -0.05 0 0 0 </pose>
+                <pose>-0.2 0.0 -0.049 0 0 0 </pose>
                 <geometry>
                     <sphere>
                         <radius>0.001"</radius>
@@ -38,7 +38,7 @@
                 </geometry>
             </collision>
             <collision name="right">
-                <pose>0.2 0.0 -0.05 0 0 0 </pose>
+                <pose>0.2 0.0 -0.049 0 0 0 </pose>
                 <geometry>
                     <sphere>
                         <radius>0.001"</radius>

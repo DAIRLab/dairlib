@@ -7,12 +7,12 @@
         <pose>0 0 0 0 0 0</pose>
         <mass>1</mass>
         <inertia>
-         <ixx>0.014167</ixx>
-         <ixy>0</ixy>
-         <ixz>0</ixz>
-         <iyy>0.33417</iyy>
-         <iyz>0</iyz>
-         <izz>0.34667</izz>
+          <ixx>0.014167</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.33417</iyy>
+          <iyz>0</iyz>
+          <izz>0.34667</izz>
         </inertia>
     </inertial>
         <visual name="active_block">

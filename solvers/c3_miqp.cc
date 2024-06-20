@@ -11,7 +11,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
-//  env_.set("LogToConsole", "1");
+  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "1");
   env_.set("Threads", "0");
   env_.start();
@@ -211,7 +211,9 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
   MatrixXd P_t(m_, n_ + m_ + k_);
   int constraint_rows = m_;
   P_t << W_x, W_l, W_u;
-
+//  std::cout << "W_x: " << W_x << std::endl;
+//  std::cout << "W_l: " << W_l << std::endl;
+//  std::cout << "W_u: " << W_u << std::endl;
   // stewart and trinkle
 //  P_t << E, F, H;
 //  MatrixXd P_t2 = P_t.bottomRows(((m_ / 6) * 4) / 7 * 3);

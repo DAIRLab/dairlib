@@ -96,17 +96,27 @@ LCS LCSFactory::LinearizePlantToLCS(
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
-        contact_geoms[i]);  // deleted num_friction_directions (check with
-    // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+        contact_geoms[i]);
+    if (num_friction_directions == 1) {
+      Eigen::Vector3d planar_normal;
+      planar_normal << 0, -1, 0;
+      auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+    } else {
+      auto [phi_i, J_i] =
+          collider.EvalPolytope(context, num_friction_directions);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+    }
+
     // J_i is 3 x n_v
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
-
-    phi(i) = phi_i;
-    J_n.row(i) = J_i.row(0);
-    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
   }
 
   auto M_ldlt = ExtractValue(M).ldlt();

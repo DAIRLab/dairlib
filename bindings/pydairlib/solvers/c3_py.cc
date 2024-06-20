@@ -75,6 +75,7 @@ PYBIND11_MODULE(c3, m) {
            arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
       .def("Solve", &C3MIQP::Solve, arg("x0"))
       .def("UpdateTarget", &C3MIQP::UpdateTarget, arg("x0"))
+      .def("UpdateLCS", &C3MIQP::UpdateLCS, arg("lcs"))
       .def("ADMMStep", &C3MIQP::ADMMStep, arg("x0"), arg("delta"), arg("w"),
            arg("G"), arg("admm_iteration"))
       .def("SolveQP", &C3MIQP::SolveQP, arg("x0"), arg("G"), arg("WD"),

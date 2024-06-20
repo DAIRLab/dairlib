@@ -84,7 +84,7 @@ class Controller(LeafSystem):
         self.c3_options.warm_start = 1
         self.c3_options.use_predicted_x0 = 1
         self.c3_options.end_on_qp_step = 0
-        self.c3_options.use_robust_formulation = 1
+        self.c3_options.use_robust_formulation = 0
         self.c3_options.solve_time_filter_alpha = 0.95
         self.c3_options.publish_frequency = 0
         self.c3_options.u_horizontal_limits = np.array([-5, 5])
@@ -116,8 +116,9 @@ class Controller(LeafSystem):
         self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
         self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, np.array([0]))
         self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
-        # if context.get_time() > self.last_update_time + (5 * self.dt):
-        if context.get_time() > self.last_update_time + (self.dt): # execute first knot point of the plan
+        if context.get_time() > self.last_update_time + (5 * self.dt):
+        # if context.get_time() > self.last_update_time + (self.dt): # execute first knot point of the plan
+        #     self.x_des = np.array([0.5 * np.sin(context.get_time()), 0.5 * np.sin(context.get_time()), 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             if context.get_time() // 10 % 2 == 0:
                 self.x_des =  np.array([0.0, -0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             else:
@@ -143,7 +144,7 @@ class Controller(LeafSystem):
                 self.c3_solver = C3MIQP(lcs, costs, (self.N + 1) * [self.x_des], self.c3_options)
             else:
                 print("updating target")
-                self.c3_solver.UpdateLCS(lcs)
+                # self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])
             self.c3_solver.Solve(x.value())
             u_sol = self.c3_solver.GetInputSolution()
@@ -192,7 +193,7 @@ def main():
     context = simulator.get_context()
     plant.SetPositions(diagram.GetMutableSubsystemContext(plant,
                                                           simulator.get_mutable_context()),
-                       np.array([0.0, 0.3, 0.1, 0]))  # active x, passive: x, z, theta
+                       np.array([0.0, 0.0, 0.1, 0]))  # active x, passive: x, z, theta
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(60.0)

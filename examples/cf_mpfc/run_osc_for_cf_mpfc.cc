@@ -65,6 +65,7 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::SwingFootTrajectoryGenerator;
+using systems::controllers::CassieAcomTrackingData;
 
 using multibody::FixedJointEvaluator;
 using multibody::MakeNameToVelocitiesMap;
@@ -384,6 +385,86 @@ int DoMain(int argc, char** argv) {
   auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
       plant.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
+
+
+  // Swing toe joint tracking
+  auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
+      "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant);
+  auto swing_toe_traj_right = std::make_unique<JointSpaceTrackingData>(
+      "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
+      gains.W_swing_toe, plant);
+  swing_toe_traj_right->AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                                "toe_rightdot");
+  swing_toe_traj_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                               "toe_leftdot");
+
+  auto hip_yaw_traj_gen =
+      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
+
+  // Swing hip yaw joint tracking
+  auto swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
+      "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
+      gains.W_hip_yaw, plant);
+  swing_hip_yaw_traj->AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
+                                              "hip_yaw_rightdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
+                                              "hip_yaw_leftdot");
+
+  auto center_of_mass_traj = std::make_unique<ComTrackingData>(
+      "com_traj", gains.K_p_com, gains.K_d_com,
+      gains.W_com, plant);
+  center_of_mass_traj->SetViewFrame(pelvis_view_frame);
+  center_of_mass_traj->AddFiniteStateToTrack(-1);
+
+  auto acom_traj = std::make_unique<CassieAcomTrackingData>(
+      "acom_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
+      gains.W_pelvis_balance, plant);
+  acom_traj->SetViewFrame(pelvis_view_frame);
+
+  osc->AddTrackingData(std::move(swing_toe_traj_left));
+  osc->AddTrackingData(std::move(swing_toe_traj_right));
+  osc->AddTrackingData(std::move(swing_ft_traj_local));
+  osc->AddTrackingData(std::move(swing_hip_yaw_traj));
+  osc->AddTrackingData(std::move(center_of_mass_traj));
+  osc->AddTrackingData(std::move(acom_traj));
+
+  // Set double support duration for force blending
+  osc->SetUpDoubleSupportPhaseBlending(
+      double_support_duration, left_stance_state, right_stance_state,
+      {post_left_double_support_state, post_right_double_support_state});
+
+  osc->Build();
+
+
+  // Connect ports
+  builder.Connect(state_receiver->get_output_port(0),
+                  osc->get_input_port_robot_output());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
+  builder.Connect(mpc_receiver->get_output_port_com(),
+                  osc->get_input_port_tracking_data("com_traj"));
+  builder.Connect(mpc_receiver->get_output_port_orientation(),
+                  osc->get_input_port_tracking_data("acom_traj"));
+  builder.Connect(swing_traj_gen->get_output_port_swing_foot_traj(),
+                  osc->get_input_port_tracking_data("swing_ft_traj"));
+  builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
+  builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
+  builder.Connect(cassie_out_to_radio->get_output_port(),
+                  hip_yaw_traj_gen->get_radio_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_yaw_traj_gen->get_fsm_input_port());
+  builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
+                  osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
+  builder.Connect(fsm->get_output_port_fsm(),
+                  osc->get_input_port_fsm());
+
+  for (const std::string& name: {"left_heel", "left_toe", "right_heel", "right_toe"}) {
+    builder.Connect(mpc_receiver->get_output_port_fdes(name),
+                    osc->get_input_port_lambda_c_des(name));
+  }
+
 
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(

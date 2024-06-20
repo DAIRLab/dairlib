@@ -31,17 +31,6 @@ namespace dairlib::systems::controllers {
 
 double pitch = 0; //-0.2;
 
-Eigen::MatrixXd MapWToQuatDot(const Eigen::Vector4d& Q) {
-  // clang-format off
-  Eigen::MatrixXd ret(4,3);
-  ret <<  -Q(1), -Q(2), -Q(3),
-      Q(0),  Q(3), -Q(2),
-      -Q(3),  Q(0),  Q(1),
-      Q(2), -Q(1),  Q(0);
-  ret *= 0.5;
-  // clang-format on
-  return ret;
-}
 
 template <typename T>
 drake::MatrixX<T> E_from_Quat(const drake::VectorX<T>& Q) {
@@ -81,54 +70,6 @@ drake::MatrixX<T> R_from_Quat(const drake::VectorX<T>& Q) {
   // clang-format on
   return R;
 }
-
-drake::VectorX<double> EvalQBaseAcom(const drake::VectorX<double>& q) {
-  DRAKE_DEMAND(q.size() == 16);
-  drake::VectorX<double> Q(4);
-  Q(1) = getQx(q);
-  Q(2) = getQy(q);
-  Q(3) = getQz(q);
-  // Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
-  Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
-
-  // Hack -- set offset here
-  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
-                       1 * sin(pitch / 2), 0 * sin(pitch / 2));
-  Quaterniond y_current(Q(0),Q(1),Q(2),Q(3));
-  y_current = y_current * y_offset;
-  y_current.normalize();
-  Q << y_current.w(), y_current.vec();
-  // End of Hack
-
-  return Q;
-};
-drake::VectorX<AutoDiffXd> EvalQBaseAcom(const drake::VectorX<AutoDiffXd>& q) {
-  DRAKE_DEMAND(q.size() == 16);
-  drake::VectorX<AutoDiffXd> Q(4);
-  Q(1) = getQx(q);
-  Q(2) = getQy(q);
-  Q(3) = getQz(q);
-
-  // Not sure why we cannot do std::sqrt() operation, so I just do it manually
-  // below
-  //   Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
-  AutoDiffXd x = 1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3));
-  Q(0).value() = std::sqrt(x.value());
-  Q(0).derivatives() = x.derivatives() / (2 * Q(0).value());
-
-  // cout << "ExtractGradient(Q) = \n" << ExtractGradient(Q) << endl;
-
-  // Hack -- set offset here
-  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
-                       1 * sin(pitch / 2), 0 * sin(pitch / 2));
-  Quaterniond y_current(Q(0).value(),Q(1).value(),Q(2).value(),Q(3).value());
-  y_current = y_current * y_offset;
-  y_current.normalize();
-  Q << y_current.w(), y_current.vec();
-  // End of Hack
-
-  return Q;
-};
 
 template <typename T>
 drake::MatrixX<T> EvalJOmegaBaseAcomEwrtAcom(const drake::VectorX<T>& q) {
@@ -175,9 +116,6 @@ template drake::MatrixX<AutoDiffXd> E_from_Quat(
 template drake::MatrixX<double> R_from_Quat(const drake::VectorX<double>& Q);
 template drake::MatrixX<AutoDiffXd> R_from_Quat(
     const drake::VectorX<AutoDiffXd>& Q);
-// template drake::VectorX<double> EvalQBaseAcom(const drake::VectorX<double>&
-// q); template drake::VectorX<AutoDiffXd> EvalQBaseAcom(const
-// drake::VectorX<AutoDiffXd>& q);
 template drake::MatrixX<double> EvalJOmegaBaseAcomEwrtAcom(
     const drake::VectorX<double>& q);
 template drake::MatrixX<AutoDiffXd> EvalJOmegaBaseAcomEwrtAcom(

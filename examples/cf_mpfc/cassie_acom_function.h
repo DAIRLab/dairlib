@@ -21,6 +21,9 @@ Eigen::Matrix3d CalcCassieAcomOrientationInWorld(
     const drake::multibody::MultibodyPlant<double>& cassie,
     const drake::systems::Context<double>& context);
 
+drake::VectorX<double> EvalQBaseAcom(const drake::VectorX<double>& q);
+drake::VectorX<AutoDiffXd> EvalQBaseAcom(const drake::VectorX<AutoDiffXd>& q);
+
 template <typename T>
 T getQx(const drake::VectorX<T>& q);
 template <typename T>

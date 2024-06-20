@@ -26,6 +26,8 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
    */
   CFMPFCOutputReceiver(std::vector<std::string> ordered_left_contact_names,
                        std::vector<std::string> ordered_right_contact_names,
+                       std::vector<int> fsm_states,
+                       std::vector<alip_utils::PointOnFramed> contact_points,
                        const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -50,6 +52,11 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::OutputPort<double>& get_output_port_com() const {
     return get_output_port(output_port_com_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_fdes(
+      const std::string& name) const {
+    DRAKE_DEMAND(desired_force_output_port_map_.contains(name));
+    return get_output_port(desired_force_output_port_map_.at(name));
   }
 
  private:

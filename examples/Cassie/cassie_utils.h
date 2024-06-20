@@ -7,6 +7,7 @@
 #include "common/find_resource.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "multibody/kinematic/distance_evaluator.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "systems/framework/geared_motor.h"
 
 #include "drake/multibody/plant/multibody_plant.h"

@@ -11,10 +11,30 @@ cc_binary(
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//lcmtypes:lcmt_robot",
-        "//systems:system_utils",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
+        "//systems:system_utils",
         "//systems/controllers/footstep_planning:cf_mpfc_system",
+        "//systems/framework:lcm_driven_loop",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_for_cf_mpfc",
+    srcs = ["run_osc_for_cf_mpfc.cc"],
+    deps = [
+        ":cassie_acom_tracking_data",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:cf_mpfc_output_receiver",
+        "//systems/controllers/footstep_planning:swing_foot_trajectory_generator",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:fsm_lcm_systems",
+        "@drake//:drake_shared_library",
         "@gflags",
     ],
 )
@@ -24,6 +44,17 @@ cc_library(
     srcs = ["cassie_acom_function.cc"],
     hdrs = ["cassie_acom_function.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_acom_tracking_data",
+    srcs = ["cassie_acom_tracking_data.cc"],
+    hdrs = ["cassie_acom_tracking_data.h"],
+    deps = [
+        ":cassie_acom",
+        "//systems/controllers/osc:options_tracking_data",
         "@drake//:drake_shared_library",
     ],
 )

@@ -73,16 +73,16 @@ class Controller(LeafSystem):
         self.Q = 50 * np.diag(np.array([1000, 5000, 10, 10, 5, 10, 5, 5]))
         self.R = 5 * np.eye(1)
         # self.G = 0.5 * np.eye(8 + 8 + 1)
-        self.G = 0.1 * np.diag(np.hstack((np.ones(4), 0.1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
-        self.U = 0.1 * np.diag(np.hstack((np.ones(4), 0.1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
-        self.c3_options.admm_iter = 4
+        self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+        self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+        self.c3_options.admm_iter = 10
         self.c3_options.rho = 0
-        self.c3_options.rho_scale = 4
+        self.c3_options.rho_scale = 2
         self.c3_options.num_threads = 4
         self.c3_options.delta_option = 1
         self.c3_options.contact_model = "anitescu"
         self.c3_options.warm_start = 1
-        self.c3_options.use_predicted_x0 = 1
+        self.c3_options.use_predicted_x0 = 0
         self.c3_options.end_on_qp_step = 0
         self.c3_options.use_robust_formulation = 0
         self.c3_options.solve_time_filter_alpha = 0.95
@@ -116,7 +116,7 @@ class Controller(LeafSystem):
         self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
         self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, np.array([0]))
         self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
-        if context.get_time() > self.last_update_time + (5 * self.dt):
+        if context.get_time() > self.last_update_time + (1 * self.dt):
         # if context.get_time() > self.last_update_time + (self.dt): # execute first knot point of the plan
         #     self.x_des = np.array([0.5 * np.sin(context.get_time()), 0.5 * np.sin(context.get_time()), 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             if context.get_time() // 10 % 2 == 0:
@@ -149,6 +149,13 @@ class Controller(LeafSystem):
             self.c3_solver.Solve(x.value())
             u_sol = self.c3_solver.GetInputSolution()
             x_sol = self.c3_solver.GetStateSolution()
+            w_sol = self.c3_solver.GetDualWSolution()
+            delta_sol = self.c3_solver.GetDualDeltaSolution()
+            z_sol = self.c3_solver.GetFullSolution()
+            # print(w_sol)
+            print(delta_sol)
+            print(z_sol)
+            import pdb; pdb.set_trace()
 
             # print((x.value() - self.x_des)[:2])
             # print(np.array(x_sol)[:, 0])
@@ -162,7 +169,7 @@ class Controller(LeafSystem):
 
 
 def main():
-    np.set_printoptions(3, threshold=3, suppress=True)
+    # np.set_printoptions(3, threshold=3, suppress=True)
     builder = DiagramBuilder()
 
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.001)

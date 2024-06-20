@@ -30,7 +30,7 @@
                 </geometry>
             </visual>
             <collision name="left">
-                <pose>-0.2 0.0 -0.049 0 0 0 </pose>
+                <pose>-0.2 0.0 -0.048 0 0 0 </pose>
                 <geometry>
                     <sphere>
                         <radius>0.001"</radius>
@@ -38,7 +38,7 @@
                 </geometry>
             </collision>
             <collision name="right">
-                <pose>0.2 0.0 -0.049 0 0 0 </pose>
+                <pose>0.2 0.0 -0.048 0 0 0 </pose>
                 <geometry>
                     <sphere>
                         <radius>0.001"</radius>

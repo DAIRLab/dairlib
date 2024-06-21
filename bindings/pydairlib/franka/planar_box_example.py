@@ -75,10 +75,12 @@ class Controller(LeafSystem):
         self.R = 5 * np.eye(1)
         self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
         self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+        # self.G = 0.1 * np.diag(np.ones(13))
+        # self.U = 0.1 * np.diag(np.ones(13))
 
-        # self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 5 * np.ones(1))))
-        # self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 5 * np.ones(1))))
-        self.c3_options.admm_iter = 10
+        # self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 0.01 * np.ones(8), 5 * np.ones(1))))
+        # self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 0.01 * np.ones(8), 5 * np.ones(1))))
+        self.c3_options.admm_iter = 2
         self.c3_options.rho = 0
         self.c3_options.rho_scale = 2
         self.c3_options.num_threads = 4
@@ -111,43 +113,49 @@ class Controller(LeafSystem):
         self.c3_solver = None
         self.x_des = np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.predicted_x1 = self.x_des
-
+        self.lcs_pred = self.x_des
+        Qs = []
+        for i in range(self.N + 1):
+            Qs.append(1.0 ** i * self.Q)
+        # costs = CostMatrices((self.N + 1) * [self.Q], self.N * [self.R], self.N * [self.G], self.N * [self.U])
+        self.costs = CostMatrices(Qs, self.N * [self.R], self.N * [self.G], self.N * [self.U])
 
     def CalcOutput(self, context, output):
 
 
-        if context.get_time() > self.last_update_time + (3 * self.dt):
+        if context.get_time() > self.last_update_time + (0.1 * self.dt):
             x = self.EvalVectorInput(context, 0)
-            x_u = np.hstack((x.value(), self.u.value(context.get_time())[0]))
+            x0 = x.value()
+            # u0 = np.zeros(1)
+            u0 = self.u.value(context.get_time())[0]
+            x_u = np.hstack((x.value(), u0))
             x_u_ad = InitializeAutoDiff(x_u)
+
             if context.get_time() // 10 % 2 == 0:
                 self.x_des =  np.array([0.0, -0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             else:
                 self.x_des =  np.array([0.0, 0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             print("time: ", context.get_time())
-            print("current cost: ", (x.value() - self.x_des).T @ self.Q @ (x.value() - self.x_des))
+            print("current cost: ", (x.value() - self.x_des).T @ (x.value() - self.x_des))
             print("desired x: ", self.x_des)
-            print("predicted x1: ", self.predicted_x1)
+            print("planned x1: ", self.predicted_x1)
+            print("lcs pred x1: ", self.lcs_pred)
             print("actual x1: ", x.value())
             # import pdb; pdb.set_trace()
-            self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
-            self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, self.u.value(context.get_time()))
+            self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x0)
+            self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, u0)
             self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
             lcs = LinearizePlantToLCS(self.plant_for_lcs, self.context_for_lcs,
                                       self.plant_ad, self.context_ad, self.contact_geoms,
                                       self.num_friction_directions, self.mu, self.dt, self.N,
                                       self.contact_model)
-            Qs = []
-            for i in range(self.N + 1):
-                Qs.append(1.0 ** i * self.Q)
-            # costs = CostMatrices((self.N + 1) * [self.Q], self.N * [self.R], self.N * [self.G], self.N * [self.U])
-            costs = CostMatrices(Qs, self.N * [self.R], self.N * [self.G], self.N * [self.U])
+
             if self.c3_solver == None:
-                self.c3_solver = C3MIQP(lcs, costs, (self.N + 1) * [self.x_des], self.c3_options)
+                self.c3_solver = C3MIQP(lcs, self.costs, (self.N + 1) * [self.x_des], self.c3_options)
             else:
                 self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])
-            self.c3_solver.Solve(x.value())
+            self.c3_solver.Solve(x0)
             u_sol = self.c3_solver.GetInputSolution()
             x_sol = self.c3_solver.GetStateSolution()
             w_sol = self.c3_solver.GetDualWSolution()
@@ -160,8 +168,12 @@ class Controller(LeafSystem):
             delta_sol = np.array(delta_sol)
             z_sol = np.array(z_sol)
 
-
             self.predicted_x1 = x_sol[1, :]
+            self.lcs_pred = lcs.Simulate(x0, u_sol[0])
+            # print(next_pred)
+            # next_pred = lcs.Simulate(next_pred, u_sol[0])
+            # print(next_pred)
+            # import pdb; pdb.set_trace()
             timestamps = context.get_time() + self.dt * np.arange(self.N)
             self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, u_sol.T)
             # self.u = PiecewisePolynomial.FirstOrderHold(timestamps, np.array(u_sol).T)
@@ -205,7 +217,7 @@ def main():
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
     meshcat.StartRecording()
-    simulator.AdvanceTo(20.0)
+    simulator.AdvanceTo(40.0)
     meshcat.StopRecording()
     meshcat.PublishRecording()
     with open("planar_box_visualization.html", "r+") as f:

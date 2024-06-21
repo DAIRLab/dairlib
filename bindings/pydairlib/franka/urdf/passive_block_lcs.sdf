@@ -2,20 +2,59 @@
 <sdf version="1.7">
 
     <model name="passive_block">
-        <link name="base"/>
-        <link name="base_x"/>
-        <link name="base_xz"/>
-        <link name="passive_block">
+        <link name="base">
             <inertial>
-                <pose>0 0 -0.05 0 0 0</pose>
-                <mass>1</mass>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>0</mass>
                 <inertia>
-                    <ixx>4e-07</ixx>
+                    <ixx>0</ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>0.04</iyy>
+                    <iyy>0</iyy>
                     <iyz>0</iyz>
-                    <izz>0.04</izz>
+                    <izz>0</izz>
+                </inertia>
+            </inertial>
+        </link>
+        <link name="base_x">
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>0</mass>
+                <inertia>
+                    <ixx>0</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0</iyy>
+                    <iyz>0</iyz>
+                    <izz>0</izz>
+                </inertia>
+            </inertial>
+        </link>
+        <link name="base_xz">
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>0</mass>
+                <inertia>
+                    <ixx>0</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0</iyy>
+                    <iyz>0</iyz>
+                    <izz>0</izz>
+                </inertia>
+            </inertial>
+        </link>
+        <link name="passive_block">
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>1</mass>
+                <inertia>
+                    <ixx>0.014167</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0.014167</iyy>
+                    <iyz>0</iyz>
+                    <izz>0.026667</izz>
                 </inertia>
             </inertial>
             <visual name="passive_block">

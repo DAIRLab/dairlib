@@ -76,9 +76,7 @@ SamplingC3Controller::SamplingC3Controller(
   n_u_ = plant_.num_actuators();
 
   n_x_ = n_q_ + n_v_;
-  // This dt is used for the radio input, not the C3 problem. Does this need to 
-  // change?
-  dt_ = c3_options_.dt;
+
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
@@ -286,7 +284,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
+  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.planning_dt);
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -310,29 +308,31 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Allow the x-box controller to set the state of the system.
   if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_curr_plan_.isZero()) {
+    // Use fixed approximate loop time for acceleration capping heuristic.
+    float approximate_loop_dt = 0.05;
     x_lcs_curr[0] = std::clamp(
-      x_pred_curr_plan_[0], x_lcs_curr[0] - 10 * dt_ * dt_,
-      x_lcs_curr[0] + 10 * dt_ * dt_
+      x_pred_curr_plan_[0], x_lcs_curr[0] - 10 * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[0] + 10 * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[1] = std::clamp(
-      x_pred_curr_plan_[1], x_lcs_curr[1] - 10 * dt_ * dt_,
-      x_lcs_curr[1] + 10 * dt_ * dt_
+      x_pred_curr_plan_[1], x_lcs_curr[1] - 10 * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[1] + 10 * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[2] = std::clamp(
-      x_pred_curr_plan_[2], x_lcs_curr[2] - 10 * dt_ * dt_,
-      x_lcs_curr[2] + 10 * dt_ * dt_
+      x_pred_curr_plan_[2], x_lcs_curr[2] - 10 * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[2] + 10 * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 0] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 0], x_lcs_curr[n_q_ + 0] - 10 * dt_,
-      x_lcs_curr[n_q_ + 0] + 10 * dt_
+      x_pred_curr_plan_[n_q_ + 0], x_lcs_curr[n_q_ + 0] - 10 * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 0] + 10 * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 1] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 1], x_lcs_curr[n_q_ + 1] - 10 * dt_,
-      x_lcs_curr[n_q_ + 1] + 10 * dt_
+      x_pred_curr_plan_[n_q_ + 1], x_lcs_curr[n_q_ + 1] - 10 * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 1] + 10 * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 2] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 2], x_lcs_curr[n_q_ + 2] - 10 * dt_,
-      x_lcs_curr[n_q_ + 2] + 10 * dt_
+      x_pred_curr_plan_[n_q_ + 2], x_lcs_curr[n_q_ + 2] - 10 * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 2] + 10 * approximate_loop_dt
     );
   }
 
@@ -868,7 +868,8 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], c3_options_.dt,
+      c3_options_.num_friction_directions, 
+      c3_options_.mu[c3_options_.num_contacts_index], c3_options_.planning_dt,
       c3_options_.N, contact_model);
 }
 
@@ -956,7 +957,8 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   }
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], c3_options_.dt,
+      c3_options_.num_friction_directions, 
+      c3_options_.mu[c3_options_.num_contacts_index], c3_options_.planning_dt,
       c3_options_.N, contact_model);
   // Revert the context.
   UpdateContext(lcs_x->get_data());

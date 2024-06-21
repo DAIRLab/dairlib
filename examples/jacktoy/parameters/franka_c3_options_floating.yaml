@@ -17,7 +17,9 @@ mu: [[0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 1, 0.4615, 0.4615, 0.4615],
     [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615]]
-dt: 0.05    # This is used by the radio input currently but we don't use it.
+dt: 100    # This is not used for the sampling_based controller that uses 
+           # planning and execution dt instead. This param is being left in 
+           #  for compatibility with other c3 controllers.
 planning_dt: 0.1
 execution_dt: 0.03
 num_friction_directions: 2
@@ -34,7 +36,7 @@ num_contacts_index: 0
 num_contacts: [4,6,5,7]
 N: 5
 # This param has to do with the xbox input?
-use_predicted_x0: true
+use_predicted_x0: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0, 0.75]

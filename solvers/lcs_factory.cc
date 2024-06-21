@@ -99,7 +99,7 @@ LCS LCSFactory::LinearizePlantToLCS(
         contact_geoms[i]);
     if (num_friction_directions == 1) {
       Eigen::Vector3d planar_normal;
-      planar_normal << 0, -1, 0;
+      planar_normal << 0, 1, 0;
       auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
       phi(i) = phi_i;
       J_n.row(i) = J_i.row(0);
@@ -177,7 +177,6 @@ LCS LCSFactory::LinearizePlantToLCS(
         dt * dt * qdotNv * MinvJ_t_T;
     D.block(n_q, 2 * n_contacts, n_v,
             2 * n_contacts * num_friction_directions) = dt * MinvJ_t_T;
-
     D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;

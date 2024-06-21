@@ -47,6 +47,7 @@ class Controller(LeafSystem):
                                       self.plant_for_lcs.GetFrameByName("base",
                                                                         self.passive_block_index))
         self.plant_for_lcs.Finalize()
+
         lcs_diagram = lcs_builer.Build()
 
         diagram_context = lcs_diagram.CreateDefaultContext()
@@ -72,15 +73,18 @@ class Controller(LeafSystem):
         # self.contact_model = ContactModel.kStewartAndTrinkle
         self.Q = 50 * np.diag(np.array([1000, 5000, 10, 10, 5, 10, 5, 5]))
         self.R = 5 * np.eye(1)
-        # self.G = 0.5 * np.eye(8 + 8 + 1)
         self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
         self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
+
+        # self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 5 * np.ones(1))))
+        # self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 5 * np.ones(1))))
         self.c3_options.admm_iter = 10
         self.c3_options.rho = 0
         self.c3_options.rho_scale = 2
         self.c3_options.num_threads = 4
         self.c3_options.delta_option = 1
         self.c3_options.contact_model = "anitescu"
+        # self.c3_options.contact_model = "stewart_and_trinkle"
         self.c3_options.warm_start = 1
         self.c3_options.use_predicted_x0 = 0
         self.c3_options.end_on_qp_step = 0
@@ -110,15 +114,12 @@ class Controller(LeafSystem):
 
 
     def CalcOutput(self, context, output):
-        x = self.EvalVectorInput(context, 0)
-        x_u = np.hstack((x.value(), np.array([0])))
-        x_u_ad = InitializeAutoDiff(x_u)
-        self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
-        self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, np.array([0]))
-        self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
-        if context.get_time() > self.last_update_time + (1 * self.dt):
-        # if context.get_time() > self.last_update_time + (self.dt): # execute first knot point of the plan
-        #     self.x_des = np.array([0.5 * np.sin(context.get_time()), 0.5 * np.sin(context.get_time()), 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+
+        if context.get_time() > self.last_update_time + (3 * self.dt):
+            x = self.EvalVectorInput(context, 0)
+            x_u = np.hstack((x.value(), self.u.value(context.get_time())[0]))
+            x_u_ad = InitializeAutoDiff(x_u)
             if context.get_time() // 10 % 2 == 0:
                 self.x_des =  np.array([0.0, -0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             else:
@@ -129,12 +130,13 @@ class Controller(LeafSystem):
             print("predicted x1: ", self.predicted_x1)
             print("actual x1: ", x.value())
             # import pdb; pdb.set_trace()
+            self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs, x.value())
+            self.plant_for_lcs.get_actuation_input_port().FixValue(self.context_for_lcs, self.u.value(context.get_time()))
+            self.plant_ad.get_actuation_input_port().FixValue(self.context_ad, x_u_ad[-1])
             lcs = LinearizePlantToLCS(self.plant_for_lcs, self.context_for_lcs,
                                       self.plant_ad, self.context_ad, self.contact_geoms,
                                       self.num_friction_directions, self.mu, self.dt, self.N,
                                       self.contact_model)
-            # print(lcs.D_[0])
-            # import pdb; pdb.set_trace()
             Qs = []
             for i in range(self.N + 1):
                 Qs.append(1.0 ** i * self.Q)
@@ -143,8 +145,7 @@ class Controller(LeafSystem):
             if self.c3_solver == None:
                 self.c3_solver = C3MIQP(lcs, costs, (self.N + 1) * [self.x_des], self.c3_options)
             else:
-                print("updating target")
-                # self.c3_solver.UpdateLCS(lcs)
+                self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])
             self.c3_solver.Solve(x.value())
             u_sol = self.c3_solver.GetInputSolution()
@@ -152,17 +153,17 @@ class Controller(LeafSystem):
             w_sol = self.c3_solver.GetDualWSolution()
             delta_sol = self.c3_solver.GetDualDeltaSolution()
             z_sol = self.c3_solver.GetFullSolution()
-            # print(w_sol)
-            print(delta_sol)
-            print(z_sol)
-            import pdb; pdb.set_trace()
 
-            # print((x.value() - self.x_des)[:2])
-            # print(np.array(x_sol)[:, 0])
-            # print(np.array(x_sol)[:, 1])
-            self.predicted_x1 = np.array(x_sol)[1, :]
+            u_sol = np.array(u_sol)
+            x_sol = np.array(x_sol)
+            w_sol = np.array(w_sol)
+            delta_sol = np.array(delta_sol)
+            z_sol = np.array(z_sol)
+
+
+            self.predicted_x1 = x_sol[1, :]
             timestamps = context.get_time() + self.dt * np.arange(self.N)
-            self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, np.array(u_sol).T)
+            self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, u_sol.T)
             # self.u = PiecewisePolynomial.FirstOrderHold(timestamps, np.array(u_sol).T)
             self.last_update_time = context.get_time()
         output.set_value(self.u.value(context.get_time()))
@@ -203,7 +204,13 @@ def main():
                        np.array([0.0, 0.0, 0.1, 0]))  # active x, passive: x, z, theta
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
-    simulator.AdvanceTo(60.0)
+    meshcat.StartRecording()
+    simulator.AdvanceTo(20.0)
+    meshcat.StopRecording()
+    meshcat.PublishRecording()
+    with open("planar_box_visualization.html", "r+") as f:
+        f.write(meshcat.StaticHtml())
+    print("done simulating")
 
 
 if __name__ == '__main__':

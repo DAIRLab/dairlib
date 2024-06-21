@@ -2,6 +2,7 @@
 #include "dairlib/lcmt_cf_mpfc_output.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/footstep_planning/contact_modes.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -26,9 +27,10 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
    */
   CFMPFCOutputReceiver(std::vector<std::string> ordered_left_contact_names,
                        std::vector<std::string> ordered_right_contact_names,
-                       std::vector<int> fsm_states,
+                       const std::vector<int>& fsm_states,
                        std::vector<alip_utils::PointOnFramed> contact_points,
-                       const drake::multibody::MultibodyPlant<double>& plant);
+                       const drake::multibody::MultibodyPlant<double>& plant,
+                       drake::systems::Context<double>* context);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);
@@ -114,6 +116,10 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
     return left_contact_names_;
   }
 
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
+  std::unordered_map<int, alip_utils::PointOnFramed> fsm_to_stance_foot_map_;
+
   const std::vector<std::string> left_contact_names_;
   const std::vector<std::string> right_contact_names_;
 
@@ -133,6 +139,8 @@ class CFMPFCOutputReceiver : public drake::systems::LeafSystem<double> {
 
   std::unordered_map<std::string, drake::systems::OutputPortIndex>
     desired_force_output_port_map_;
+
+  std::string floating_base_ = "pelvis";
 };
 
 }

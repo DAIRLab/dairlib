@@ -2,6 +2,7 @@
 
 #include "systems/framework/output_vector.h"
 #include "common/eigen_utils.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib::systems::controllers {
 
@@ -19,9 +20,16 @@ using Eigen::Vector2d;
 CFMPFCOutputReceiver::CFMPFCOutputReceiver(
     std::vector<std::string> ordered_left_contact_names,
     std::vector<std::string> ordered_right_contact_names,
-    const drake::multibody::MultibodyPlant<double> &plant) :
+    const std::vector<int>& fsm_states,
+    std::vector<alip_utils::PointOnFramed> contact_points,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context) :
     left_contact_names_(ordered_left_contact_names),
-    right_contact_names_(ordered_right_contact_names) {
+    right_contact_names_(ordered_right_contact_names),
+    plant_(plant),
+    context_(context) {
+
+  DRAKE_DEMAND(fsm_states.size() == contact_points.size());
 
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(plant)).get_index();
@@ -73,6 +81,10 @@ CFMPFCOutputReceiver::CFMPFCOutputReceiver(
   com_trajectory_cache_ = DeclareCacheEntry(
       "com_traj_cache", &CFMPFCOutputReceiver::CalcComTraj).cache_index();
 
+  for (int i = 0; i < fsm_states.size(); ++i) {
+    DRAKE_DEMAND(not fsm_to_stance_foot_map_.contains(fsm_states.at(i)));
+    fsm_to_stance_foot_map_.insert({fsm_states.at(i), contact_points.at(i)});
+  }
 }
 
 void CFMPFCOutputReceiver::RegisterContact(const std::string &name) {
@@ -165,8 +177,31 @@ void CFMPFCOutputReceiver::CalcComTraj(
   const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
   const auto& com_traj = lcm_traj.GetTrajectory("com_traj");
   const auto& com_traj_dot = lcm_traj.GetTrajectory("com_traj_dot");
+
+  int fsm = get_mpfc_output(context).fsm.fsm_state;
+  Vector3d p;
+
+  VectorXd q = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, input_port_state_))->GetPositions();
+
+  multibody::SetPositionsIfNew<double>(plant_, q, context_);
+  const auto& stance = fsm_to_stance_foot_map_.at(fsm);
+  plant_.CalcPointsPositions(
+      *context_, stance.second, stance.first, plant_.world_frame(), &p);
+  p = multibody::ReExpressWorldVector3InBodyYawFrame(
+      plant_, *context_, floating_base_, p);
+
+  Eigen::MatrixXd foot_pos(
+      com_traj.datapoints.rows(), com_traj.datapoints.cols());
+
+  for (int i = 0; i < com_traj.datapoints.cols(); ++i) {
+    foot_pos.col(i) = p;
+  }
+
   *traj = PiecewisePolynomial<double>::CubicHermite(
-      com_traj.time_vector, com_traj.datapoints, com_traj_dot.datapoints);
+      com_traj.time_vector,
+      com_traj.datapoints + foot_pos,
+      com_traj_dot.datapoints);
 }
 
 void CFMPFCOutputReceiver::CalcOrientationTraj(

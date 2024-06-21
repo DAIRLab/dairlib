@@ -227,8 +227,9 @@ void CFMPFCSystem::CopyMpcOutput(
   LcmTrajectory::Trajectory com_traj("com_traj", 3, nk);
   LcmTrajectory::Trajectory com_traj_dot("com_traj_dot", 3, nk);
 
+  double next_time = std::max(next_impact_time, current_time + 1e-3);
   for (int i = 0; i < trajopt_.params().nknots; ++i) {
-    double t =  current_time + i * (next_impact_time - current_time) / (nk - 1);
+    double t =  current_time + i * (next_time - current_time) / (nk - 1);
     force_traj.time_vector(i) = t;
     acom_traj.time_vector(i) = t;
     com_traj.time_vector(i) = t;

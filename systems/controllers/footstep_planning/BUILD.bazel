@@ -65,6 +65,7 @@ cc_library(
     srcs = ["cf_mpfc_output_receiver.cc"],
     hdrs = ["cf_mpfc_output_receiver.h"],
     deps = [
+        ":alip_utils",
         ":contact_modes",
         "//common:eigen_utils",
         "//lcm:lcm_trajectory_saver",

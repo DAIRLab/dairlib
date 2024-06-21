@@ -20,6 +20,16 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_controller_switch",
+    srcs = ["run_controller_switch.cc"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_osc_for_cf_mpfc",
     srcs = ["run_osc_for_cf_mpfc.cc"],
     deps = [

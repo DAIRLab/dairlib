@@ -5,7 +5,6 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/hip_yaw_traj_gen.h"
-#include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
@@ -89,7 +88,7 @@ DEFINE_string(gains_filename,
               "examples/cf_mpfc/gains/osc_gains.yaml",
               "Filepath containing osc gains");
 
-DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");
+DEFINE_string(channel_mpc, "CF_MPFC", "cf_mpfc output lcm channel");
 
 int DoMain(int argc, char** argv) {
 
@@ -153,12 +152,6 @@ int DoMain(int argc, char** argv) {
           FLAGS_channel_mpc, &lcm_local));
   std::vector<std::string> left_contact_names{"left_heel", "left_toe"};
   std::vector<std::string> right_contact_names{"right_heel", "right_toe"};
-  auto mpc_receiver = builder.AddSystem<CFMPFCOutputReceiver>(
-      left_contact_names, right_contact_names, plant);
-  builder.Connect(mpc_subscriber->get_output_port(),
-                  mpc_receiver->get_input_port_mpfc_output());
-  builder.Connect(state_receiver->get_output_port(),
-                  mpc_receiver->get_input_port_state());
 
 
   // Create command sender.
@@ -200,6 +193,22 @@ int DoMain(int argc, char** argv) {
   double left_support_duration = 0.3;
   double right_support_duration = 0.3;
   double double_support_duration = 0.1;
+
+  vector<int> fsm_states_for_mpc{
+    left_stance_state, right_stance_state,
+    post_left_double_support_state, post_right_double_support_state};
+  vector<std::pair<const Vector3d, const Frame<double>&>> contacts_for_mpc{
+    left_toe_mid, right_toe_mid, right_toe_mid, left_toe_mid};
+
+  auto mpc_receiver = builder.AddSystem<CFMPFCOutputReceiver>(
+      left_contact_names, right_contact_names, fsm_states_for_mpc,
+      contacts_for_mpc, plant, context.get());
+
+  builder.Connect(mpc_subscriber->get_output_port(),
+                  mpc_receiver->get_input_port_mpfc_output());
+  builder.Connect(state_receiver->get_output_port(),
+                  mpc_receiver->get_input_port_state());
+
 
   auto fsm = builder.AddSystem<FsmReceiver>(plant);
   builder.Connect(mpc_receiver->get_output_port_fsm(),
@@ -406,10 +415,10 @@ int DoMain(int argc, char** argv) {
   auto swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant);
-  swing_hip_yaw_traj->AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                              "hip_yaw_rightdot");
-  swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                              "hip_yaw_leftdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
 
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "com_traj", gains.K_p_com, gains.K_d_com,
@@ -436,7 +445,6 @@ int DoMain(int argc, char** argv) {
 
   osc->Build();
 
-
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
@@ -457,14 +465,13 @@ int DoMain(int argc, char** argv) {
                   hip_yaw_traj_gen->get_fsm_input_port());
   builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
                   osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
-  builder.Connect(fsm->get_output_port_fsm(),
-                  osc->get_input_port_fsm());
+  builder.Connect(osc->get_output_port_osc_command(),
+                  command_sender->get_input_port());
 
   for (const std::string& name: {"left_heel", "left_toe", "right_heel", "right_toe"}) {
     builder.Connect(mpc_receiver->get_output_port_fdes(name),
                     osc->get_input_port_lambda_c_des(name));
   }
-
 
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(

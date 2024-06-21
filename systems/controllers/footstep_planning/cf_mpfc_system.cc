@@ -191,6 +191,14 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
+namespace {
+
+Eigen::Vector4d rpy_to_quat(const Eigen::Vector3d& rpy) {
+  Eigen::Quaternion<double> q = drake::math::RollPitchYawd(rpy).ToQuaternion();
+  return Vector4d(q.w(), q.x(), q.y(), q.z());
+}
+
+}
 
 void CFMPFCSystem::CopyMpcOutput(
     const Context<double> &context, lcmt_cf_mpfc_output* mpc_output) const {
@@ -239,12 +247,9 @@ void CFMPFCSystem::CopyMpcOutput(
     com_traj.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_idx);
     com_traj_dot.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_dot_idx);
 
-    Matrix3d Ri;
-    for (int j = 0; j < 3; ++j) {
-      Ri.col(j) = mpc_sol.xc.at(i).segment<3>(3*j);
-    }
     auto start = std::chrono::high_resolution_clock::now();
-    acom_traj.datapoints.col(i) = drake::math::RotationMatrix<double>::ProjectToRotationMatrix(Ri).ToQuaternionAsVector4();
+    acom_traj.datapoints.col(i) = rpy_to_quat(
+        mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::theta_idx));
     auto end = std::chrono::high_resolution_clock::now();
   }
   LcmTrajectory traj(

@@ -87,10 +87,10 @@ int DoMain(int argc, char** argv) {
 
   params.gait_params = test_gait;
   params.nmodes = 3;
-  params.nknots = 4;
+  params.nknots = 5;
 
   params.soft_constraint_cost = 1000;
-  params.com_pos_bound = 0.2 * Eigen::Vector2d::Ones();
+  params.com_pos_bound = 0.4 * Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
   params.R = 0.2 * Eigen::Matrix3d::Identity();

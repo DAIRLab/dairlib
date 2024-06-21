@@ -85,6 +85,7 @@ CFMPFCOutputReceiver::CFMPFCOutputReceiver(
     DRAKE_DEMAND(not fsm_to_stance_foot_map_.contains(fsm_states.at(i)));
     fsm_to_stance_foot_map_.insert({fsm_states.at(i), contact_points.at(i)});
   }
+
 }
 
 void CFMPFCOutputReceiver::RegisterContact(const std::string &name) {
@@ -212,7 +213,8 @@ void CFMPFCOutputReceiver::CalcOrientationTraj(
   std::vector<drake::Quaternion<double>> quats(acom_traj.datapoints.cols());
   for (int i = 0; i < acom_traj.datapoints.cols(); ++i) {
     Eigen::Vector4d q = acom_traj.datapoints.col(i);
-    quats.at(i) = drake::Quaternion<double>(q);
+    quats.at(i) = drake::Quaternion<double>(q
+        (0), q(1), q(2), q(3));
   }
   *traj = PiecewiseQuaternionSlerp<double>(
       CopyVectorXdToStdVector(acom_traj.time_vector), quats);

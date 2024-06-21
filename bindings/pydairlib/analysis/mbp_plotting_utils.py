@@ -479,7 +479,7 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
         time_slice,
         keys,
         {},
-        {},
+        {key: [key] for key in keys},
         {'xlabel': 'Time',
          'ylabel': '',
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)

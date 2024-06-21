@@ -21,7 +21,7 @@ plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: false
 plot_commanded_efforts: false
-plot_contact_forces: false
+plot_contact_forces: true
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
 special_efforts_to_plot: [ ]
@@ -35,12 +35,12 @@ foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 0, 1, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: false
-plot_tracking_costs: False
-plot_qp_solve_time: False
+plot_qp_costs: true
+plot_tracking_costs: true
+plot_qp_solve_time: true
 tracking_datas_to_plot:
 #  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
 #  pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
-#  pelvis_heading_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
-#  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] }
-  swing_ft_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+#  acom_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel' ]}
+#  com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel'  ] }
+#  swing_ft_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

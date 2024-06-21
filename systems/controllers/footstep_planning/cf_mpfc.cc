@@ -461,15 +461,15 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   int nc = params_.contacts_in_stance_frame.size();
   VectorXd fd = VectorXd::Zero(3 * nc);
   for (int i = 0; i < nc; ++i) {
-    fd.segment<3>(3*1) = (9.81 * params_.gait_params.mass / nc) * Vector3d::UnitZ();
+    fd.segment<3>(3*i) = (9.81 * params_.gait_params.mass / nc) * Vector3d::UnitZ();
   }
 
   MatrixXd Qx = MatrixXd::Identity(SrbDim, SrbDim);
-  Qx.topLeftCorner<9,9>() = 0.01 * Matrix<double, 9, 9>::Identity();
+  Qx(cf_mpfc_utils::com_idx+2, cf_mpfc_utils::com_idx+2) = 100;
   MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
 
   for (int i = 0; i < params_.nknots; ++i) {
-    double m = (i == 0 or i == params_.nknots - 1) ? 1 : 2;
+    double m = (i == 0) ? 1 : 2;
     centroidal_state_cost_.at(i).evaluator()->UpdateCoefficients(
         m * Qx, -m * Qx * xd, 0.5 * m * xd.transpose() * Qx * xd, true);
     centroidal_input_cost_.at(i).evaluator()->UpdateCoefficients(

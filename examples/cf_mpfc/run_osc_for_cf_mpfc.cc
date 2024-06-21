@@ -198,7 +198,7 @@ int DoMain(int argc, char** argv) {
     left_stance_state, right_stance_state,
     post_left_double_support_state, post_right_double_support_state};
   vector<std::pair<const Vector3d, const Frame<double>&>> contacts_for_mpc{
-    left_toe_mid, right_toe_mid, right_toe_mid, left_toe_mid};
+    left_toe_mid, right_toe_mid, left_toe_mid, right_toe_mid};
 
   auto mpc_receiver = builder.AddSystem<CFMPFCOutputReceiver>(
       left_contact_names, right_contact_names, fsm_states_for_mpc,
@@ -292,7 +292,7 @@ int DoMain(int argc, char** argv) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, context.get(), true,
-      systems::controllers::OscSolverChoice::kFCCQP);
+      systems::controllers::OscSolverChoice::kFastOSQP);
 
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
@@ -430,6 +430,7 @@ int DoMain(int argc, char** argv) {
       "acom_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant);
   acom_traj->SetViewFrame(pelvis_view_frame);
+  acom_traj->AddStateToTrack(-1);
 
   osc->AddTrackingData(std::move(swing_toe_traj_left));
   osc->AddTrackingData(std::move(swing_toe_traj_right));
@@ -438,10 +439,10 @@ int DoMain(int argc, char** argv) {
   osc->AddTrackingData(std::move(center_of_mass_traj));
   osc->AddTrackingData(std::move(acom_traj));
 
-  // Set double support duration for force blending
-  osc->SetUpDoubleSupportPhaseBlending(
-      double_support_duration, left_stance_state, right_stance_state,
-      {post_left_double_support_state, post_right_double_support_state});
+//  // Set double support duration for force blending
+//  osc->SetUpDoubleSupportPhaseBlending(
+//      double_support_duration, left_stance_state, right_stance_state,
+//      {post_left_double_support_state, post_right_double_support_state});
 
   osc->Build();
 

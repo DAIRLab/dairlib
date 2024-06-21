@@ -1,6 +1,7 @@
 #include <iostream>
 #include "cf_mpfc_utils.h"
 #include "common/eigen_utils.h"
+#include "drake/math/roll_pitch_yaw.h"
 
 namespace dairlib::systems::controllers::cf_mpfc_utils {
 
@@ -73,6 +74,8 @@ CentroidalState<double> GetCentroidalState(
 
   // Orientation: R_YA = R_YW * R_WA
   Matrix3d R_YA = R_WY.transpose() * acom_function(plant, plant_context);
+  Eigen::Vector3d theta = drake::math::RollPitchYaw<double>(
+      RotationMatrixd(R_YA)).vector();
 
   // COM position
   Vector3d CoM_w = plant.CalcCenterOfMassPositionInWorld(plant_context);
@@ -94,9 +97,7 @@ CentroidalState<double> GetCentroidalState(
   Vector3d omega_w = I.inverse() * plant.CalcSpatialMomentumInWorldAboutPoint(
       plant_context, CoM_w).rotational();
 
-  x.segment<3>(R_x_idx) = R_YA.col(0);
-  x.segment<3>(R_y_idx) = R_YA.col(1);
-  x.segment<3>(R_z_idx) = R_YA.col(2);
+  x.segment<3>(theta_idx) = theta;
   x.segment<3>(com_idx) = R_WY.transpose() * (CoM_w - p_w);
   x.segment<3>(w_idx) = R_WY.transpose() * omega_w;
   x.segment<3>(com_dot_idx) = R_WY.transpose() * CoM_w_dot;
@@ -113,10 +114,7 @@ CentroidalStateDeriv<T> SRBDynamics(
 
   CentroidalStateDeriv<T> xdot = CentroidalStateDeriv<T>::Zero();
 
-  const drake::Vector3<T> w = state.template segment<3>(w_idx);
-  for (int i = 0; i < 3; ++i) {
-    xdot.template segment<3>(3 * i) = w.cross(state.template segment<3>(3*i));
-  }
+  xdot.template segment<3>(theta_idx) = xdot.template segment<3>(w_idx);
   xdot.template segment<3>(com_idx) = state.template segment<3>(com_dot_idx);
 
   for (int i = 0; i < contact_points.size(); ++i) {
@@ -124,7 +122,7 @@ CentroidalStateDeriv<T> SRBDynamics(
     xdot.template segment<3>(w_idx) += I.inverse() * r.cross(contact_forces[i]);
     xdot.template segment<3>(com_dot_idx) += (1.0 / m) * contact_forces[i];
   }
-  xdot[17] -= 9.81;
+  xdot(com_dot_idx + 2) -= 9.81;
   return xdot;
 }
 

@@ -138,7 +138,7 @@ def plot_initial_state(mpc_data, time_slice=None):
         time_slice)
     ps = plot_styler.PlotStyler()
 
-    xslice = slice(0, 3, 1)
+    xslice = slice(18)
 
     plotting_utils.make_plot(
         mpc_data,

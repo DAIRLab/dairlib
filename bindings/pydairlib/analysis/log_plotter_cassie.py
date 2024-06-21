@@ -47,14 +47,6 @@ def plotter_main(plot_config, log):
                      mbp_plots.load_default_channels,  # processing callback
                      plant, controller_plant, channel_x, channel_u, channel_osc)
 
-    if plot_config.plot_contact_forces:
-        contact_output = get_log_data(log,  # log
-            cassie_plots.cassie_contact_channels,  # lcm channels
-            plot_config.start_time,
-            plot_config.duration,
-            mbp_plots.load_force_channels,  # processing callback
-            'CASSIE_CONTACT_DRAKE')  # processing callback arguments
-
     ps = PlotStyler()
     ps.set_default_styling()
 
@@ -158,6 +150,15 @@ def plotter_main(plot_config, log):
             plot,
             osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names
         )
+
+    ''' Plot Lambda'''
+    if plot_config.plot_contact_forces:
+        plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12, 1))
+        mbp_plots.add_fsm_to_plot(
+            plot,
+            osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names
+        )
+
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:

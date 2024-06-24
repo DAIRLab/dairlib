@@ -69,6 +69,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   // initial state constraint
 //  if (warm_start_index == 0){
+//    std::cout << "imposing initial state constraint" << std::endl;
 //    for (int i = 0; i < n_; ++i){
 //      model.addConstr(delta_k[i] == delta_c[i]);
 //    }

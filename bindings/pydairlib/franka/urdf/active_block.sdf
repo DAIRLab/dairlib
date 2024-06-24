@@ -50,8 +50,8 @@
               1 0 0
           </xyz>
           <limit>
-              <lower>-2.0</lower>
-              <upper>2.0</upper>
+              <lower>-5.0</lower>
+              <upper>5.0</upper>
               <effort>50.0</effort>
           </limit>
           <dynamics>

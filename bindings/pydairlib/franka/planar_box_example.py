@@ -69,31 +69,29 @@ class Controller(LeafSystem):
         self.mu = [0.4, 0.4]
         self.dt = 0.05
         self.N = 10
-        self.contact_model = ContactModel.kAnitescu
-        # self.contact_model = ContactModel.kStewartAndTrinkle
-        self.Q = 50 * np.diag(np.array([1000, 5000, 10, 10, 5, 10, 5, 5]))
-        self.R = 5 * np.eye(1)
-        self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
-        self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 100 * np.ones(4), 5 * np.ones(1))))
-        # self.G = 0.1 * np.diag(np.ones(13))
-        # self.U = 0.1 * np.diag(np.ones(13))
+        # self.contact_model = ContactModel.kAnitescu
+        self.contact_model = ContactModel.kStewartAndTrinkle
+        self.Q = 50 * np.diag(np.array([1000, 1000, 500, 500, 10, 10, 1, 1]))
+        self.R = 10 * np.eye(1)
+        # self.G = 0.1 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(4), 1 * np.ones(1))))
+        # self.U = 0.1 * np.diag(np.hstack((1 * np.ones(4), 1 * np.ones(4), 1 * np.ones(4), 10000 * np.ones(1))))
 
-        # self.U = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 0.01 * np.ones(8), 5 * np.ones(1))))
-        # self.G = 0.1 * np.diag(np.hstack((np.ones(4), 1 * np.ones(4), 0.01 * np.ones(8), 5 * np.ones(1))))
-        self.c3_options.admm_iter = 2
+        self.G = 10 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(2), 1000 * np.ones(6), 1 * np.ones(1))))
+        self.U = 10 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 10000000 * np.ones(1))))
+        self.c3_options.admm_iter = 5
         self.c3_options.rho = 0
-        self.c3_options.rho_scale = 2
-        self.c3_options.num_threads = 4
+        self.c3_options.rho_scale = 4
+        self.c3_options.num_threads = 1
         self.c3_options.delta_option = 1
-        self.c3_options.contact_model = "anitescu"
-        # self.c3_options.contact_model = "stewart_and_trinkle"
+        # self.c3_options.contact_model = "anitescu"
+        self.c3_options.contact_model = "stewart_and_trinkle"
         self.c3_options.warm_start = 1
-        self.c3_options.use_predicted_x0 = 0
+        self.c3_options.use_predicted_x0 = 1
         self.c3_options.end_on_qp_step = 0
         self.c3_options.use_robust_formulation = 0
         self.c3_options.solve_time_filter_alpha = 0.95
         self.c3_options.publish_frequency = 0
-        self.c3_options.u_horizontal_limits = np.array([-5, 5])
+        self.c3_options.u_horizontal_limits = np.array([-100, 100])
         self.c3_options.u_vertical_limits = np.array([0, 0])
         self.c3_options.workspace_limits = [np.array([1, 0, 0, -0.5, 0.5])] # unused
         self.c3_options.workspace_margins = 0.05
@@ -123,11 +121,12 @@ class Controller(LeafSystem):
     def CalcOutput(self, context, output):
 
 
-        if context.get_time() > self.last_update_time + (0.1 * self.dt):
+        if context.get_time() > self.last_update_time + (1.0 * self.dt):
             x = self.EvalVectorInput(context, 0)
             x0 = x.value()
             # u0 = np.zeros(1)
-            u0 = self.u.value(context.get_time())[0]
+            u0 = self.u.value(self.u.value(self.u.get_segment_times()[0]))[0]
+            print("u0: ", u0)
             x_u = np.hstack((x.value(), u0))
             x_u_ad = InitializeAutoDiff(x_u)
 
@@ -136,8 +135,8 @@ class Controller(LeafSystem):
             else:
                 self.x_des =  np.array([0.0, 0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             print("time: ", context.get_time())
-            print("current cost: ", (x.value() - self.x_des).T @ (x.value() - self.x_des))
-            print("desired x: ", self.x_des)
+            # print("current cost: ", (x.value() - self.x_des).T @ (x.value() - self.x_des))
+            # print("desired x: ", self.x_des)
             print("planned x1: ", self.predicted_x1)
             print("lcs pred x1: ", self.lcs_pred)
             print("actual x1: ", x.value())
@@ -170,19 +169,20 @@ class Controller(LeafSystem):
 
             self.predicted_x1 = x_sol[1, :]
             self.lcs_pred = lcs.Simulate(x0, u_sol[0])
-            # print(next_pred)
-            # next_pred = lcs.Simulate(next_pred, u_sol[0])
-            # print(next_pred)
-            # import pdb; pdb.set_trace()
+
             timestamps = context.get_time() + self.dt * np.arange(self.N)
             self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, u_sol.T)
             # self.u = PiecewisePolynomial.FirstOrderHold(timestamps, np.array(u_sol).T)
             self.last_update_time = context.get_time()
-        output.set_value(self.u.value(context.get_time()))
+        # import pdb; pdb.set_trace()
+        # print(self.u.value(self.u.get_segment_times()[1]))
+        output.set_value(self.u.value(self.u.get_segment_times()[0]))
+        # output.set_value(np.array([-3]))
 
 
 def main():
-    # np.set_printoptions(3, threshold=3, suppress=True)
+    np.set_printoptions(3, threshold=8, suppress=True)
+    # np.set_printoptions(3, threshold=8)
     builder = DiagramBuilder()
 
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.001)

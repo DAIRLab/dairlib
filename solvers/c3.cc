@@ -148,6 +148,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
+    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
@@ -282,10 +283,13 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   if (U_[0].isZero(0)) {
     *delta = SolveProjection(*Gv, ZW, admm_iteration);
-
   } else {
     *delta = SolveProjection(U_, ZW, admm_iteration);
   }
+//  std::cout << "z after projection: " << ZW[0].transpose() << std::endl;
+//  std::cout << "delta after projection: " << delta->at(0).transpose() << std::endl;
+//  std::cout << "z after projection: " << ZW[1].transpose() << std::endl;
+//  std::cout << "delta after projection: " << delta->at(1).transpose() << std::endl;
 
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
@@ -418,7 +422,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                                                c_[i], admm_iteration, -1);
         } else {
           deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, i + 1);
+                                               c_[i], admm_iteration, i);
         }
       } else {
         deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],

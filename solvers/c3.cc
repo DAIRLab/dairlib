@@ -223,10 +223,10 @@ void C3::Solve(const VectorXd& x0) {
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
   vector<MatrixXd> Gv = G_;
 
-  for (int i = 0; i < N_; ++i) {
-    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-                                        -2 * R_.at(i) * u_sol_->at(i));
-  }
+//  for (int i = 0; i < N_; ++i) {
+//    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+//                                        -2 * R_.at(i) * u_sol_->at(i));
+//  }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter);
@@ -408,7 +408,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
         } else {
           deltaProj[i] = SolveRobustSingleProjection(
               U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, i + 1);
+              admm_iteration, i);
         }
       } else {
         deltaProj[i] = SolveRobustSingleProjection(

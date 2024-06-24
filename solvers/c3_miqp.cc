@@ -121,6 +121,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   return delta_kc;
 }
 
+// Need to input friction ratio as a parameter
 VectorXd C3MIQP::SolveRobustSingleProjection(
     const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E,
     const MatrixXd& F, const MatrixXd& H, const VectorXd& c,
@@ -244,7 +245,7 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     /// tangential velocity expr is the tangential velocity in the SAME direction as the friction force
     if (i % 2 == 1) {
       model.addConstr(delta_k[n_ + i - 1] - delta_k[n_ + i] <=
-                      (0.5 / 0.6) * (delta_k[n_ + i] + delta_k[n_ + i - 1]) +
+                      (0.2 / 0.4) * (delta_k[n_ + i] + delta_k[n_ + i - 1]) +
                           M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
                       M * (reduced_friction_cone_binary[i]));
@@ -252,7 +253,7 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
           M * (1 - reduced_friction_cone_binary[i]));
     } else {
       model.addConstr(delta_k[n_ + i + 1] - delta_k[n_ + i] <=
-                      (0.5 / 0.6) * (delta_k[n_ + i] + delta_k[n_ + i + 1]) +
+                      (0.2 / 0.4) * (delta_k[n_ + i] + delta_k[n_ + i + 1]) +
                           M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
                       M * (reduced_friction_cone_binary[i]));

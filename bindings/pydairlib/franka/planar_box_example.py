@@ -3,9 +3,7 @@ from pydrake.all import (
     AddMultibodyPlantSceneGraph,
     ContactVisualizer,
     DiagramBuilder,
-    ExternallyAppliedSpatialForce,
     LeafSystem,
-    List,
     MeshcatVisualizer,
     ModelVisualizer,
     Parser,
@@ -25,7 +23,6 @@ from c3 import *
 class Controller(LeafSystem):
     def __init__(self, plant, plant_context):
         LeafSystem.__init__(self)
-        forces_cls = Value[List[ExternallyAppliedSpatialForce]]
         self.DeclareVectorOutputPort(
             "controller_output", 1, self.CalcOutput
         )
@@ -69,26 +66,31 @@ class Controller(LeafSystem):
         self.mu = [0.4, 0.4]
         self.dt = 0.05
         self.N = 10
-        # self.contact_model = ContactModel.kAnitescu
-        self.contact_model = ContactModel.kStewartAndTrinkle
-        self.Q = 50 * np.diag(np.array([1000, 1000, 500, 500, 10, 10, 1, 1]))
-        self.R = 10 * np.eye(1)
-        # self.G = 0.1 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(4), 1 * np.ones(1))))
-        # self.U = 0.1 * np.diag(np.hstack((1 * np.ones(4), 1 * np.ones(4), 1 * np.ones(4), 10000 * np.ones(1))))
 
-        self.G = 10 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(2), 1000 * np.ones(6), 1 * np.ones(1))))
-        self.U = 10 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 10000000 * np.ones(1))))
+        self.contact_model = ContactModel.kAnitescu
+        self.Q = 50 * np.diag(np.array([1500, 1000, 500, 500, 10, 10, 1, 1]))
+        self.R = 5 * np.eye(1)
+        self.G = 0.005 * np.diag(np.hstack((1 * np.ones(4), 50000 * np.ones(4), 10000 * np.ones(4), 1 * np.ones(1))))
+        self.U = 5 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(4), 100000 * np.ones(1))))
+        self.c3_options.contact_model = "anitescu"
+
+        # self.contact_model = ContactModel.kStewartAndTrinkle
+        # self.Q = 50 * np.diag(np.array([1000, 1000, 500, 500, 10, 10, 1, 1]))
+        # self.R = 10 * np.eye(1)
+        # self.G = 10 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(2), 1000 * np.ones(6), 1 * np.ones(1))))
+        # self.U = 10 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 10000000 * np.ones(1))))
+        # self.c3_options.contact_model = "stewart_and_trinkle"
+
         self.c3_options.admm_iter = 5
         self.c3_options.rho = 0
         self.c3_options.rho_scale = 4
-        self.c3_options.num_threads = 1
+        self.c3_options.num_threads = 10
         self.c3_options.delta_option = 1
-        # self.c3_options.contact_model = "anitescu"
-        self.c3_options.contact_model = "stewart_and_trinkle"
+
         self.c3_options.warm_start = 1
-        self.c3_options.use_predicted_x0 = 1
+        self.c3_options.use_predicted_x0 = 0
         self.c3_options.end_on_qp_step = 0
-        self.c3_options.use_robust_formulation = 0
+        self.c3_options.use_robust_formulation = 1
         self.c3_options.solve_time_filter_alpha = 0.95
         self.c3_options.publish_frequency = 0
         self.c3_options.u_horizontal_limits = np.array([-100, 100])
@@ -114,8 +116,7 @@ class Controller(LeafSystem):
         self.lcs_pred = self.x_des
         Qs = []
         for i in range(self.N + 1):
-            Qs.append(1.0 ** i * self.Q)
-        # costs = CostMatrices((self.N + 1) * [self.Q], self.N * [self.R], self.N * [self.G], self.N * [self.U])
+            Qs.append(1.1 ** i * self.Q)
         self.costs = CostMatrices(Qs, self.N * [self.R], self.N * [self.G], self.N * [self.U])
 
     def CalcOutput(self, context, output):
@@ -124,19 +125,17 @@ class Controller(LeafSystem):
         if context.get_time() > self.last_update_time + (1.0 * self.dt):
             x = self.EvalVectorInput(context, 0)
             x0 = x.value()
-            # u0 = np.zeros(1)
             u0 = self.u.value(self.u.value(self.u.get_segment_times()[0]))[0]
-            print("u0: ", u0)
+
             x_u = np.hstack((x.value(), u0))
             x_u_ad = InitializeAutoDiff(x_u)
 
             if context.get_time() // 10 % 2 == 0:
-                self.x_des =  np.array([0.0, -0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+                self.x_des =  np.array([0.0, -0.5, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             else:
-                self.x_des =  np.array([0.0, 0.3, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+                self.x_des =  np.array([0.0, 0.5, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
             print("time: ", context.get_time())
-            # print("current cost: ", (x.value() - self.x_des).T @ (x.value() - self.x_des))
-            # print("desired x: ", self.x_des)
+            print("u: ", u0)
             print("planned x1: ", self.predicted_x1)
             print("lcs pred x1: ", self.lcs_pred)
             print("actual x1: ", x.value())
@@ -151,6 +150,9 @@ class Controller(LeafSystem):
 
             if self.c3_solver == None:
                 self.c3_solver = C3MIQP(lcs, self.costs, (self.N + 1) * [self.x_des], self.c3_options)
+                self.c3_solver.UpdateLCS(lcs)
+                self.c3_solver.AddLinearConstraint(np.array([1]), self.c3_options.u_horizontal_limits[0], self.c3_options.u_horizontal_limits[1], 2)
+                self.c3_solver.AddLinearConstraint(np.array([1, 0, 0, 0, 0, 0, 0, 0]), -1.0, 1.0, 1)
             else:
                 self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])
@@ -163,9 +165,9 @@ class Controller(LeafSystem):
 
             u_sol = np.array(u_sol)
             x_sol = np.array(x_sol)
-            w_sol = np.array(w_sol)
-            delta_sol = np.array(delta_sol)
-            z_sol = np.array(z_sol)
+            # w_sol = np.array(w_sol)
+            # delta_sol = np.array(delta_sol)
+            # z_sol = np.array(z_sol)
 
             self.predicted_x1 = x_sol[1, :]
             self.lcs_pred = lcs.Simulate(x0, u_sol[0])
@@ -217,12 +219,14 @@ def main():
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
     meshcat.StartRecording()
-    simulator.AdvanceTo(40.0)
-    meshcat.StopRecording()
-    meshcat.PublishRecording()
-    with open("planar_box_visualization.html", "r+") as f:
-        f.write(meshcat.StaticHtml())
-    print("done simulating")
+    try:
+        simulator.AdvanceTo(40.0)
+    except:
+        meshcat.StopRecording()
+        meshcat.PublishRecording()
+        with open("planar_box_visualization.html", "r+") as f:
+            f.write(meshcat.StaticHtml())
+        print("done simulating")
 
 
 if __name__ == '__main__':

@@ -62,6 +62,7 @@ py_binary(
     data = [
     ],
     deps = [
+        "//bindings/pydairlib/common:plot_styler",
         "//bindings/pydairlib/solvers:c3_py",
         "@drake//bindings/pydrake",
     ],

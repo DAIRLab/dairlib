@@ -32,19 +32,14 @@ class PlotStyler():
     font = {'size': font_size}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
-    plt.set_cmap('tab20')
 
   def __init__(self, figure=None, nrows=1, ncols=1):
-
-    # plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)  # List is [left, bottom, width, height]
-    # self.cmap = plt.get_cmap('tab10')
     self.cmap = plt.get_cmap('tab20')
     self.blue = '#011F5B'
     self.red = '#990000'
     self.yellow = '#F2C100'
     self.grey = '#909090'
     self.orange = '#FE7F0E'
-    # self.directory = None
     self.dpi = plt.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
     plt.rc('legend', fontsize=24)
@@ -58,6 +53,7 @@ class PlotStyler():
     # matplotlib.rcParams['toolbar'] = 'None'
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
+
     if figure is None:
       self.fig, self.axes = plt.subplots(nrows=nrows, ncols=ncols,
                                          sharex='all', dpi=self.dpi)
@@ -68,7 +64,8 @@ class PlotStyler():
       self.axes = [self.axes]
     # self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
-    plt.subplots_adjust(left=0.1, right=0.85, bottom=0.15, top=0.75)  # List is [left, bottom, width, height]
+    # plt.subplots_adjust(left=0.1, right=0.85, bottom=0.15, top=0.75)  # List is [left, bottom, width, height]
+    plt.set_cmap('tab20')
     return
 
   def attach(self):

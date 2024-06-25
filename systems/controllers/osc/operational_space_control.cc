@@ -712,7 +712,7 @@ void OperationalSpaceControl::UpdateContactForceRegularization(
 }
 
 namespace {
-static inline bool has_active_ii_proj(
+inline bool has_active_ii_proj(
     const OscTrackingData* data, int fsm_state) {
   return data->IsActive(fsm_state) and data->GetImpactInvariantProjection();
 }

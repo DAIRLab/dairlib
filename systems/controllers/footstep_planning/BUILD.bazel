@@ -81,7 +81,7 @@ cc_library(
     hdrs = ["cf_mpfc.h"],
     deps = [
         ":alip_utils",
-        ":cf_mpfc_utils",
+        ":nonlinear_pendulum_utils",
         "//common:eigen_utils",
         "//geometry:convex_polygon_set",
         "//solvers:constraints",

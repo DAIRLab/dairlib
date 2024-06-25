@@ -3,7 +3,7 @@
 #include <chrono>
 #include <map>
 
-#include "cf_mpfc_utils.h"
+#include "nonlinear_pendulum_utils.h"
 #include "geometry/convex_polygon_set.h"
 #include "solvers/optimization_utils.h"
 
@@ -28,13 +28,11 @@ using drake::solvers::BoundingBoxConstraint;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearEqualityConstraint;
 
-using cf_mpfc_utils::CentroidalState;
-using cf_mpfc_utils::CentroidalStateDeriv;
 
 struct cf_mpfc_solution {
   bool init = false;
-  std::vector<CentroidalState<double>> xc{}; // SRB State
-  std::vector<Eigen::VectorXd> ff{}; // SRB Input
+  std::vector<drake::Vector6d> xc{}; // nonlinear_pendulum state
+  std::vector<Eigen::VectorXd> uu{}; // nonlinear_pendulum input
   Eigen::Vector4d xi{};              // ALIP state at beginning of next stance phase
   std::vector<Eigen::Vector4d> xx{}; // step-to-step alip state
   std::vector<Eigen::VectorXd> ee{}; // workspace soft constraint slack variable
@@ -57,9 +55,9 @@ struct cf_mpfc_params {
   double mu{};
   double time_regularization{};
   double soft_constraint_cost{};
-  std::vector<Eigen::Vector3d> contacts_in_stance_frame{};
   Eigen::Vector2d com_pos_bound{};
   Eigen::Vector2d com_vel_bound{};
+  Eigen::Vector2d input_bounds{};
   Eigen::MatrixXd Q{};
   Eigen::MatrixXd R{};
   Eigen::MatrixXd Qf{};
@@ -72,9 +70,8 @@ class CFMPFC {
   explicit CFMPFC(cf_mpfc_params params);
 
   cf_mpfc_solution Solve(
-      const CentroidalState<double>& x,
-      const Eigen::Vector3d& p, double t, const Eigen::Vector2d& vdes,
-      alip_utils::Stance stance, const Eigen::Matrix3d& I,
+      const drake::Vector6d& x, const Eigen::Vector3d& p, double t,
+      const Eigen::Vector2d& vdes, alip_utils::Stance stance,
       const cf_mpfc_solution& prev_sol);
 
   const cf_mpfc_params& params() { return params_; }
@@ -82,21 +79,19 @@ class CFMPFC {
   void MakeMPCVariables();
   void MakeMPCCosts();
   void MakeFootstepConstraints();
-  void MakeFrictionConeConstraints();
+  void MakeComplexInputConstraints();
   void MakeStateConstraints();
   void MakeDynamicsConstraints();
   void MakeInitialConditionsConstraints();
 
   void UpdateInitialConditions(
-      const CentroidalState<double>& x, const Eigen::Vector3d& p);
-  void UpdateSRBDynamicsConstraint(
-      const vector<CentroidalState<double>>& xc,
-      const vector<Eigen::VectorXd>& ff, const Eigen::Matrix3d& I, double t);
+      const drake::Vector6d& x, const Eigen::Vector3d& p);
+  void UpdateComplexDynamicsConstraints(
+      const vector<drake::Vector6d>& xc, const vector<Eigen::Vector2d>& uu, double t);
   void UpdateModelSwitchConstraint(
-      CentroidalState<double> xc, const Eigen::Vector3d& p_pre,
-      const Eigen::Vector3d& p_post, const Eigen::Matrix3d &I);
+      const drake::Vector6d& x, const Eigen::Vector3d& p_pre,const Eigen::Vector3d& p_post);
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
-  void UpdateSRBDCosts(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
+  void UpdateComplexModelCosts(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateFootstepCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes);
@@ -109,14 +104,13 @@ class CFMPFC {
     DRAKE_DEMAND(params_.nknots >= 2);
     DRAKE_DEMAND(params_.gait_params.double_stance_duration > 0);
     DRAKE_DEMAND(params_.soft_constraint_cost >= 0);
-    DRAKE_DEMAND(not params_.contacts_in_stance_frame.empty());
   }
 
   void Check() {
     DRAKE_DEMAND(initial_foot_c_ != nullptr);
     DRAKE_DEMAND(initial_state_c_ != nullptr);
     DRAKE_DEMAND(initial_alip_state_c_ != nullptr);
-    DRAKE_DEMAND(srb_dynamics_c_ != nullptr);
+    DRAKE_DEMAND(complex_dynamics_c_ != nullptr);
     DRAKE_DEMAND(alip_dynamics_c_ != nullptr);
     DRAKE_DEMAND(terminal_cost_ != nullptr);
     DRAKE_DEMAND(model_switch_c_ != nullptr);
@@ -124,12 +118,12 @@ class CFMPFC {
     DRAKE_DEMAND(not workspace_c_.empty());
     DRAKE_DEMAND(not no_crossover_c_.empty());
     DRAKE_DEMAND(not reachability_c_.empty());
-    DRAKE_DEMAND(not centroidal_state_cost_.empty());
-    DRAKE_DEMAND(not centroidal_input_cost_.empty());
+    DRAKE_DEMAND(not complex_state_cost_.empty());
+    DRAKE_DEMAND(not complex_input_cost_.empty());
     DRAKE_DEMAND(not tracking_cost_.empty());
     DRAKE_DEMAND(not footstep_cost_.empty());
     DRAKE_DEMAND(not soft_constraint_cost_.empty());
-    DRAKE_DEMAND(not fcone_constraints_.empty());
+    DRAKE_DEMAND(not complex_input_constraints_.empty());
   };
 
   // problem data:
@@ -146,7 +140,7 @@ class CFMPFC {
   vector<VectorXDecisionVariable> pp_{}; // footstep sequence
   vector<VectorXDecisionVariable> xc_{}; // Centroidal (SRBD) state
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
-  vector<VectorXDecisionVariable> ff_{}; // Centroidal (SRBD) input
+  vector<VectorXDecisionVariable> uu_{}; // Centroidal (SRBD) input
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
   VectorXDecisionVariable xi_;           // initial ALIP State
 
@@ -155,7 +149,7 @@ class CFMPFC {
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;      // |   x   |   x
   std::shared_ptr<LinearEqualityConstraint> initial_alip_state_c_ = nullptr; // |   x   |  N/A
   std::shared_ptr<LinearEqualityConstraint> model_switch_c_ = nullptr;       // |   x   |   x
-  std::shared_ptr<LinearEqualityConstraint> srb_dynamics_c_ = nullptr;       // |   x   |   x
+  std::shared_ptr<LinearEqualityConstraint> complex_dynamics_c_ = nullptr;       // |   x   |   x
   std::shared_ptr<LinearEqualityConstraint> alip_dynamics_c_ = nullptr;      // |   x   |  N/A
 //  std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;  // |       |
 
@@ -163,12 +157,12 @@ class CFMPFC {
   vector<Binding<LinearConstraint>> workspace_c_{};        // |   x   |  N/A
   vector<Binding<LinearConstraint>> no_crossover_c_{};     // |   x   |   x
   vector<Binding<LinearConstraint>> reachability_c_{};     // |   x   |  N/A
-  vector<Binding<LinearConstraint>> fcone_constraints_{};  // |   x   |  N/A
+  vector<Binding<BoundingBoxConstraint>> complex_input_constraints_{};  // |   x   |  N/A
 
                                                            // | Init  | Updater
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr; // |   x   |   x
-  vector<Binding<QuadraticCost>> centroidal_state_cost_{}; // |   x   |   x
-  vector<Binding<QuadraticCost>> centroidal_input_cost_{}; // |   x   |   x
+  vector<Binding<QuadraticCost>> complex_state_cost_{}; // |   x   |   x
+  vector<Binding<QuadraticCost>> complex_input_cost_{}; // |   x   |   x
   vector<Binding<QuadraticCost>> tracking_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> footstep_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};  // |   x   |  N/A

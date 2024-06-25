@@ -2,22 +2,19 @@
 
 namespace dairlib::systems::controllers {
 
-using cf_mpfc_utils::SrbDim;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using drake::Vector6d;
 
 void TestDynamics() {
-  cf_mpfc_utils::CentroidalState<double> srbd_state;
 
   double mass = 30;
+  Vector6d x;
 
-  srbd_state.setZero();
-  srbd_state(0) = 1;
-  srbd_state(4) = 1;
-  srbd_state(8) = 1;
-  srbd_state(10) = -0.1;
-  srbd_state(11) = 1;
-  srbd_state(15) = 0.2;
+  x.setZero();
+  x(1) = -0.1;
+  x(2) = 1;
+  x(3) = 1;
 
   Eigen::Vector3d p = Eigen::Vector3d::Zero();
   Eigen::Vector3d f = Eigen::Vector3d::Zero();
@@ -27,27 +24,26 @@ void TestDynamics() {
   auto start = std::chrono::high_resolution_clock::now();
 
   Eigen::MatrixXd A;
-  Eigen::MatrixXd Bf;
+  Eigen::MatrixXd B;
   Eigen::VectorXd c;
 
-  cf_mpfc_utils::LinearizeSRBDynamics(
-      srbd_state, {p}, {f}, Eigen::Matrix3d::Identity(), mass, A, Bf, c);
-
+  nonlinear_pendulum::LinearizeTrapezoidalCollocationConstraint(
+      0.1, x, x, Vector2d::Zero(), Vector2d::Zero(), mass, A, B, c);
 
   Eigen::MatrixXd Ax;
   Eigen::MatrixXd Bd;
   Eigen::Vector4d a;
 
 
-  cf_mpfc_utils::LinearizeReset(
-      srbd_state, p, -0.2 * Eigen::Vector3d::UnitY(), Eigen::Matrix3d::Identity(), mass, Ax, Bd, a);
+  nonlinear_pendulum::LinearizeALIPReset(
+      x, p, -0.2 * Eigen::Vector3d::UnitY(), mass, Ax, Bd, a);
   auto end = std::chrono::high_resolution_clock::now();
 
   std::cout << "AD took " <<
             std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " us.\n";
 
   std::cout << "Dynamics\nA:\n" << A << std::endl
-            << "Bf:\n" << Bf << std::endl
+            << "Bf:\n" << B << std::endl
             << "c:\n" << c << std::endl;
 
   std::cout << "Reset\nAx:\n" << Ax << std::endl
@@ -61,7 +57,7 @@ void TestMPFC() {
       32.0,
       0.3,
       0.1,
-      0.4,
+      0.2,
       Vector2d::Zero(),
       alip_utils::Stance::kLeft,
       alip_utils::ResetDiscretization::kZOH
@@ -69,13 +65,14 @@ void TestMPFC() {
 
   cf_mpfc_params params;
 
+  params.tracking_cost_type = alip_utils::kGait;
   params.gait_params = test_gait;
   params.nmodes = 3;
   params.nknots = 5;
-  params.contacts_in_stance_frame = {0.09 * Vector3d::UnitX(), -0.09 * Vector3d::UnitX()};
   params.soft_constraint_cost = 1000;
   params.com_pos_bound = Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
+  params.input_bounds =  8 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
   params.R = Eigen::Matrix3d::Identity();
   params.Qf = 100 * Eigen::Matrix4d::Identity();
@@ -89,20 +86,19 @@ void TestMPFC() {
 
   CFMPFC mpfc(params);
 
-  cf_mpfc_utils::CentroidalState<double> srbd_state;
-  srbd_state.setZero();
-  srbd_state(0) = 1;
-  srbd_state(4) = 1;
-  srbd_state(8) = 1;
-  srbd_state(10) = -0.1;
-  srbd_state(11) = 1;
-  srbd_state(15) = 0;
+  Vector6d x;
+
+  x.setZero();
+  x(0) = 0.01;
+  x(1) = 0.1;
+  x(2) = 1;
+  x(3) = 1;
+
 
   cf_mpfc_solution prev_sol{};
 
-  auto sol = mpfc.Solve(srbd_state, Vector3d::Zero(), 0.25, Vector2d::Zero(),
-             alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
-             prev_sol);
+  auto sol = mpfc.Solve(x, Vector3d::Zero(), 0.25, Vector2d::Zero(),
+             alip_utils::Stance::kRight, prev_sol);
 
   std::cout << "Solve took " << sol.total_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";
@@ -113,28 +109,23 @@ void TestMPFC() {
   }
 
   std::cout << "\nALIP state solution:\n";
-  for (const auto& x : sol.xx) {
-    std::cout << x.transpose() << std::endl;
+  for (const auto& xx : sol.xx) {
+    std::cout << xx.transpose() << std::endl;
   }
 
-  std::cout << "\nCoM solution:\n";
+  std::cout << "\nPendulum Pos solution:\n";
   for (const auto& xc : sol.xc) {
-    std::cout << xc.segment<3>(cf_mpfc_utils::com_idx).transpose() << std::endl;
+    std::cout << xc.head<3>().transpose() << std::endl;
   }
 
-  std::cout << "\nw solution:\n";
+  std::cout << "\nPendulum Vel solution:\n";
   for (const auto& xc : sol.xc) {
-    std::cout << xc.segment<3>(cf_mpfc_utils::w_idx).transpose() << std::endl;
+    std::cout << xc.tail<3>().transpose() << std::endl;
   }
 
-  std::cout << "\ncom_dot solution:\n";
-  for (const auto& xc : sol.xc) {
-    std::cout << xc.segment<3>(cf_mpfc_utils::com_dot_idx).transpose() << std::endl;
-  }
-
-  std::cout << "\nSRB input solution:\n";
-  for (const auto& f : sol.ff) {
-    std::cout << f.transpose() << std::endl;
+  std::cout << "\npendulum input solution:\n";
+  for (const auto& u : sol.uu) {
+    std::cout << u.transpose() << std::endl;
   }
 
   std::cout << "\nInitial ALIP state sol:\n";
@@ -145,6 +136,7 @@ void TestMPFC() {
 
 int DoMain(int argc, char* argv[]) {
   TestMPFC();
+  TestDynamics();
   return 0;
 }
 

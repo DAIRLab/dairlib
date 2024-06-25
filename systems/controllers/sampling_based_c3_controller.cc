@@ -103,7 +103,6 @@ SamplingC3Controller::SamplingC3Controller(
     c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
                                         x_desired_placeholder, c3_options_);
-
   } else if (c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
@@ -111,7 +110,6 @@ SamplingC3Controller::SamplingC3Controller(
     c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
-
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -231,7 +229,7 @@ SamplingC3Controller::SamplingC3Controller(
     "repos_traj_execute", lcm_traj, 
     &SamplingC3Controller::OutputReposTrajExecute
   ).get_index();
-  // NOTE: We reuse c3_execution_lcm_traj_ to set the right type for the port.
+  // NOTE: We reuse lcm_traj to set the right type for the port.
   traj_execute_port_ = this->DeclareAbstractOutputPort(
     "traj_execute", lcm_traj, 
     &SamplingC3Controller::OutputTrajExecute
@@ -245,6 +243,9 @@ SamplingC3Controller::SamplingC3Controller(
   // This port will output all samples except the current location.
   // all_sample_locations_port_ does not include the current location. So 
   // index 0 is the first sample.
+  // TODO: @Sharanya Look into LcmPoseDrawer and see if there is a way to skip 
+  // the 0th 0th index while visualizing. If yes, then make this port bigger by 
+  // 1 and include current location.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
     "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), 
     &SamplingC3Controller::OutputAllSampleLocations
@@ -361,7 +362,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
 
   // Add the previous best repositioning target to the candidate states at the 
-  // first index always.
+  // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_){
     // Add the prev best repositioning target to the candidate states.
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
@@ -400,27 +401,37 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Create an LCS object.
     // Preprocessing the contact pairs
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
+    bool use_closest_ee_obj_contact;
+    // num_contacts_index 0 and 2 mean model closest ee-obj pair.
+    // num_contacts_index 2 includes ee-ground contact. This is already handled 
+    // in franka_c3_controller.cc.
     if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-      // Find closest ee-obj contact pairs
-      resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-          plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-          c3_options_.num_contacts[c3_options_.num_contacts_index], true);
+      use_closest_ee_obj_contact = true;
     }
+    // num_contacts_index 1 and 3 mean model each ee-capsule pair.
+    // num_contacts_index 3 includes ee-ground contact. This is already handled 
+    // in franka_c3_controller.cc.
     else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
-      // Use all contact pairs
-      resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-          plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-          c3_options_.num_contacts[c3_options_.num_contacts_index], false);
+      use_closest_ee_obj_contact = false;
     }
-    auto sample_system = solvers::LCSFactory::LinearizePlantToLCS(
+    else{
+      throw std::runtime_error("unknown or unsupported num_contacts_index");
+    }
+    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+      c3_options_.num_contacts[c3_options_.num_contacts_index], 
+      use_closest_ee_obj_contact);
+
+    solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], 
       c3_options_.planning_dt, N_, contact_model);
-    solvers::LCS lcs_object_sample = sample_system;
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
   }
+  // Reset the context to the current lcs state. 
+  UpdateContext(x_lcs_curr);
 
   // Preparation for parallelization.
   // This size is adapting to the number of samples based on mode.
@@ -462,8 +473,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       auto cost_trajectory_pair = test_c3_object->CalcCost(
         sampling_params_.cost_type);
       double c3_cost = cost_trajectory_pair.first;
-      // TODO: This doesn't work because of the unique_ptr. Figure out how to fix.
-       #pragma omp critical
+
+      #pragma omp critical
       {
         c3_objects.at(i) = test_c3_object;
       }
@@ -479,11 +490,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   // End of parallelization
 
-  // TODO: Review what is happening here. If we always fix the state in the
-  // CURRENT_REPOSITION_INDEX to be the prev one, then we only want to replace
-  // it if the newer sample is hysterisis_between_repositioning_samples better.
   // Review the cost results to determine the best sample.
-  double best_additional_sample_cost = -1;
+  double best_additional_sample_cost;
   if (num_total_samples > 1) {
     std::vector<double> additional_sample_cost_vector = 
       std::vector<double>(all_sample_costs_.begin()+1, all_sample_costs_.end());
@@ -529,7 +537,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // the current best sample by the hysterisis amount, then we continue 
       // pursuing the previous repositioning target.
       if(all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
-        sampling_params_.hysterisis_between_repos_targets){
+        sampling_params_.hysteresis_between_repos_targets){
           best_sample_index_ = CURRENT_REPOSITION_INDEX;
           best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
           finished_reposition_flag_ = false;
@@ -546,13 +554,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the execution trajectories.  Both C3 and repositioning trajectories
   // are updated, but the is_doing_c3_ flag determines which one is used via the
   // downstream selector system.
-  SamplingC3Controller::UpdateContext(x_lcs_curr);
-  // Grab the drake context time and pass it to the C3traj update functions.
+  // Grab the drake context time and pass it to the C3traj & Repostraj update 
+  // functions.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
-  // Grab the drake context time and pass it to the Repostraj update functions.
-  // TODO: Do we need to do this again or can we just use the same time?
-  t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
   // Adding delay
@@ -931,7 +936,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   VectorXd x_sample = lcs_x->get_data();
   x_sample.head(3) = all_sample_locations_[best_sample_index_];
   UpdateContext(x_sample);
-
+  // TODO
   solvers::ContactModel contact_model;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model = solvers::ContactModel::kStewartAndTrinkle;

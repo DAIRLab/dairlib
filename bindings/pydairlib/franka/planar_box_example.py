@@ -75,10 +75,10 @@ class Controller(LeafSystem):
         self.c3_options.contact_model = "anitescu"
 
         # self.contact_model = ContactModel.kStewartAndTrinkle
-        # self.Q = 50 * np.diag(np.array([1000, 1000, 500, 500, 10, 10, 1, 1]))
-        # self.R = 10 * np.eye(1)
-        # self.G = 10 * np.diag(np.hstack((1 * np.ones(4), 1000 * np.ones(4), 1000 * np.ones(2), 1000 * np.ones(6), 1 * np.ones(1))))
-        # self.U = 10 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 10000000 * np.ones(1))))
+        # self.Q = 50 * np.diag(np.array([1500, 1000, 500, 500, 10, 10, 1, 1]))
+        # self.R = 5 * np.eye(1)
+        # self.G = .005 * np.diag(np.hstack((1 * np.ones(4), 50000 * np.ones(4), 500000 * np.ones(2), 10000 * np.ones(6), 1 * np.ones(1))))
+        # self.U = 5 * np.diag(np.hstack((10 * np.ones(4), 1 * np.ones(4), 1 * np.ones(8), 100000 * np.ones(1))))
         # self.c3_options.contact_model = "stewart_and_trinkle"
 
         self.c3_options.admm_iter = 5
@@ -88,7 +88,7 @@ class Controller(LeafSystem):
         self.c3_options.delta_option = 1
 
         self.c3_options.warm_start = 1
-        self.c3_options.use_predicted_x0 = 0
+        self.c3_options.use_predicted_x0 = 0 # not necessary because we're not solving in a separate loop
         self.c3_options.end_on_qp_step = 0
         self.c3_options.use_robust_formulation = 1
         self.c3_options.solve_time_filter_alpha = 0.95
@@ -122,7 +122,7 @@ class Controller(LeafSystem):
     def CalcOutput(self, context, output):
 
 
-        if context.get_time() > self.last_update_time + (1.0 * self.dt):
+        if context.get_time() > self.last_update_time + (0.99 * self.dt):
             x = self.EvalVectorInput(context, 0)
             x0 = x.value()
             u0 = self.u.value(self.u.value(self.u.get_segment_times()[0]))[0]
@@ -176,11 +176,8 @@ class Controller(LeafSystem):
             self.u = PiecewisePolynomial.ZeroOrderHold(timestamps, u_sol.T)
             # self.u = PiecewisePolynomial.FirstOrderHold(timestamps, np.array(u_sol).T)
             self.last_update_time = context.get_time()
-        # import pdb; pdb.set_trace()
-        # print(self.u.value(self.u.get_segment_times()[1]))
-        output.set_value(self.u.value(self.u.get_segment_times()[0]))
-        # output.set_value(np.array([-3]))
-
+        # output.set_value(self.u.value(context.get_time()))
+        output.set_value(self.u.value(context.get_time()))
 
 def main():
     np.set_printoptions(3, threshold=8, suppress=True)

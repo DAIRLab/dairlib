@@ -108,7 +108,10 @@ class PlotStyler():
     return
 
   def save_fig(self, filename):
-    self.fig.savefig(self.directory + filename, dpi=400, bbox_inches='tight')
+    if filename[0] == '/':
+      self.fig.savefig(filename, dpi=400, bbox_inches='tight')
+    else:
+      self.fig.savefig(self.directory + filename, dpi=400, bbox_inches='tight')
     return
 
   def add_legend(self, labels, loc=0, subplot_index=0):

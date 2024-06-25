@@ -58,7 +58,11 @@ py_binary(
 
 py_binary(
     name = "planar_box_example",
-    srcs = ["planar_box_example.py"],
+    srcs = [
+        "planar_box_controller.py",
+        "planar_box_example.py",
+        ":parameters/c3_options.py",
+    ],
     data = [
     ],
     deps = [

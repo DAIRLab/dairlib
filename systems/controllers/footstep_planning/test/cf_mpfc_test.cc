@@ -17,10 +17,6 @@ void TestDynamics() {
   x(3) = 1;
 
   Eigen::Vector3d p = Eigen::Vector3d::Zero();
-  Eigen::Vector3d f = Eigen::Vector3d::Zero();
-  f(1) = -0.1 * 9.81 * mass;
-  f(2) = 9.81 * mass;
-
   auto start = std::chrono::high_resolution_clock::now();
 
   Eigen::MatrixXd A;
@@ -43,7 +39,7 @@ void TestDynamics() {
             std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " us.\n";
 
   std::cout << "Dynamics\nA:\n" << A << std::endl
-            << "Bf:\n" << B << std::endl
+            << "B:\n" << B << std::endl
             << "c:\n" << c << std::endl;
 
   std::cout << "Reset\nAx:\n" << Ax << std::endl
@@ -68,14 +64,14 @@ void TestMPFC() {
   params.tracking_cost_type = alip_utils::kGait;
   params.gait_params = test_gait;
   params.nmodes = 3;
-  params.nknots = 5;
+  params.nknots = 4;
   params.soft_constraint_cost = 1000;
-  params.com_pos_bound = Eigen::Vector2d::Ones();
+  params.com_pos_bound = 0.4 * Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
-  params.input_bounds =  8 * Eigen::Vector2d::Ones();
+  params.input_bounds =  9 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
-  params.R = Eigen::Matrix3d::Identity();
-  params.Qf = 100 * Eigen::Matrix4d::Identity();
+  params.R = 10 * Eigen::Matrix3d::Identity();
+  params.Qf = 1000 * Eigen::Matrix4d::Identity();
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
@@ -90,15 +86,17 @@ void TestMPFC() {
 
   x.setZero();
   x(0) = 0.01;
-  x(1) = 0.1;
-  x(2) = 1;
+  x(1) = -0.1;
+  x(2) = params.gait_params.height;
   x(3) = 1;
 
 
   cf_mpfc_solution prev_sol{};
 
-  auto sol = mpfc.Solve(x, Vector3d::Zero(), 0.25, Vector2d::Zero(),
+  auto sol_1 = mpfc.Solve(x, Vector3d::Zero(), 0.25, Vector2d::Zero(),
              alip_utils::Stance::kRight, prev_sol);
+  auto sol = mpfc.Solve(x, Vector3d::Zero(), 0.24, Vector2d::Zero(),
+                        alip_utils::Stance::kRight, sol_1);
 
   std::cout << "Solve took " << sol.total_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";

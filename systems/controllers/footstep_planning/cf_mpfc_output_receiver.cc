@@ -2,6 +2,7 @@
 
 #include "systems/framework/output_vector.h"
 #include "common/eigen_utils.h"
+#include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
 
 namespace dairlib::systems::controllers {
@@ -10,7 +11,6 @@ using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::trajectories::Trajectory;
 using drake::trajectories::PiecewisePolynomial;
-using drake::trajectories::PiecewiseQuaternionSlerp;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -18,30 +18,11 @@ using Eigen::Vector2d;
 
 
 CFMPFCOutputReceiver::CFMPFCOutputReceiver(
-    std::vector<std::string> ordered_left_contact_names,
-    std::vector<std::string> ordered_right_contact_names,
-    const std::vector<int>& fsm_states,
-    std::vector<alip_utils::PointOnFramed> contact_points,
-    const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context) :
-    left_contact_names_(ordered_left_contact_names),
-    right_contact_names_(ordered_right_contact_names),
-    plant_(plant),
-    context_(context) {
-
-  DRAKE_DEMAND(fsm_states.size() == contact_points.size());
-
+    const drake::multibody::MultibodyPlant<double>& plant) {
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(plant)).get_index();
   input_port_mpfc_output_ = DeclareAbstractInputPort(
       "lcmt_cf_mpfc_output", drake::Value<lcmt_cf_mpfc_output>()).get_index();
-
-  for (const std::string &name : ordered_left_contact_names) {
-    RegisterContact(name);
-  }
-  for (const std::string &name : ordered_right_contact_names) {
-    RegisterContact(name);
-  }
 
   output_port_fsm_ = DeclareAbstractOutputPort(
       "fsm_info", &CFMPFCOutputReceiver::CopyFsm).get_index();
@@ -53,49 +34,17 @@ CFMPFCOutputReceiver::CFMPFCOutputReceiver(
       "footstep_target", 3,
       &CFMPFCOutputReceiver::CopyFootstepTarget).get_index();
 
-  PiecewiseQuaternionSlerp<double> slerp;
-  Trajectory<double> &model_slerp = slerp;
-
-  lcm_traj_cache_ = DeclareCacheEntry(
-      "lcm_traj_cache", &CFMPFCOutputReceiver::CalcLcmTraj,
-      {input_port_ticket(input_port_mpfc_output_)}).cache_index();
-
-  output_port_orientation_ = DeclareAbstractOutputPort(
-      "wbo_trajectory", model_slerp,
-      &CFMPFCOutputReceiver::CopyOrientationTraj,
-      {cache_entry_ticket(lcm_traj_cache_)}).get_index();
-
-  wbo_trajectory_cache_ = DeclareCacheEntry(
-      "wbo_traj_cache", &CFMPFCOutputReceiver::CalcOrientationTraj,
-      {cache_entry_ticket(lcm_traj_cache_)}).cache_index();
-
-  force_traj_cache_ = DeclareCacheEntry(
-      "force_traj_cache", &CFMPFCOutputReceiver::CalcForceTraj,
-      {cache_entry_ticket(lcm_traj_cache_)}).cache_index();
-
   PiecewisePolynomial<double> pp;
-  Trajectory<double> &model_pp = pp;
-  output_port_com_ = DeclareAbstractOutputPort(
-      "com_traj", model_pp, &CFMPFCOutputReceiver::CopyComTraj).get_index();
+  drake::trajectories::Trajectory<double>& traj_instance = pp;
+  output_port_r_traj_ = DeclareAbstractOutputPort(
+      "rtraj", traj_instance,&CFMPFCOutputReceiver::CopyRTraj).get_index();
 
-  com_trajectory_cache_ = DeclareCacheEntry(
-      "com_traj_cache", &CFMPFCOutputReceiver::CalcComTraj).cache_index();
+  output_port_ankle_torque_ = DeclareVectorOutputPort(
+      "u", 1, &CFMPFCOutputReceiver::CopyAnkleTorque).get_index();
 
-  for (int i = 0; i < fsm_states.size(); ++i) {
-    DRAKE_DEMAND(not fsm_to_stance_foot_map_.contains(fsm_states.at(i)));
-    fsm_to_stance_foot_map_.insert({fsm_states.at(i), contact_points.at(i)});
-  }
-
-}
-
-void CFMPFCOutputReceiver::RegisterContact(const std::string &name) {
-  DRAKE_DEMAND(not desired_force_output_port_map_.contains(name));
-  desired_force_output_port_map_[name] = DeclareVectorOutputPort(
-      "lambda_c_des_" + name, 3,
-      [this, name](const Context<double> &context, BasicVector<double> *f) {
-        this->CalcDesiredForce(name, context, f);
-      }
-  ).get_index();
+  traj_cache_ = DeclareCacheEntry(
+      "lcm_traj_cache", &CFMPFCOutputReceiver::CalcInputTraj,
+      {input_port_ticket(input_port_mpfc_output_)}).cache_index();
 }
 
 void CFMPFCOutputReceiver::CopyFsm(
@@ -124,100 +73,41 @@ void CFMPFCOutputReceiver::CopyFootstepTarget(
       get_mpfc_output(context).next_footstep_in_stance_frame);
 }
 
-void CFMPFCOutputReceiver::CopyComTraj(
-    const Context<double> &context, Trajectory<double> *traj) const {
-  auto pp_traj = dynamic_cast<PiecewisePolynomial<double>*>(traj);
-  *pp_traj = get_cache_entry(
-      com_trajectory_cache_).Eval<PiecewisePolynomial<double>>(context);
-}
-
-void CFMPFCOutputReceiver::CopyOrientationTraj(
-    const Context<double> &context, Trajectory<double> *traj) const {
-  auto slerp_traj = dynamic_cast<PiecewiseQuaternionSlerp<double>*>(traj);
-  *slerp_traj = get_cache_entry(
-      wbo_trajectory_cache_).Eval<PiecewiseQuaternionSlerp<double>>(context);
-}
-
-void CFMPFCOutputReceiver::CalcDesiredForce(
-    const std::string &contact_name, const Context<double> &context,
-    BasicVector<double> *f) const {
-
-  auto fsm = get_mpfc_output(context).fsm;
-  int fsm_state = fsm.fsm_state;
-  f->SetZero();
-
-  if (mode_match(contact_name, fsm_state)) {
-
-    double t = dynamic_cast<const OutputVector<double>*>(
-        EvalVectorInput(context, input_port_state_))->get_timestamp();
-
-    const auto& contact_names = contacts_this_mode(fsm_state);
-    int f_idx = std::find(contact_names.begin(), contact_names.end(), contact_name) - contact_names.begin();
-    const auto& f_traj = get_cache_entry(force_traj_cache_).Eval<PiecewisePolynomial<double>>(context);
-    f->get_mutable_value() = f_traj.value(t).block<3, 1>(3 * f_idx, 0);
-  }
-}
-
-void CFMPFCOutputReceiver::CalcLcmTraj(
-    const Context<double> &context, LcmTrajectory *lcm_traj) const {
+void CFMPFCOutputReceiver::CalcInputTraj(
+    const Context<double> &context,
+    drake::trajectories::PiecewisePolynomial<double>* traj) const {
   const auto &mpfc_output = get_mpfc_output(context);
-  *lcm_traj = LcmTrajectory(mpfc_output.srb_trajs);
-}
+  LcmTrajectory lcm_traj(mpfc_output.trajs);
 
-void CFMPFCOutputReceiver::CalcForceTraj(
-    const drake::systems::Context<double> &context,
-    drake::trajectories::PiecewisePolynomial<double> *traj) const {
-  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
-  const auto& force_traj = lcm_traj.GetTrajectory("force_traj");
   *traj = PiecewisePolynomial<double>::FirstOrderHold(
-      force_traj.time_vector, force_traj.datapoints);
+      lcm_traj.GetTrajectory("input_traj").time_vector,
+      lcm_traj.GetTrajectory("input_traj").datapoints);
 }
 
-void CFMPFCOutputReceiver::CalcComTraj(
-    const Context<double> &context, PiecewisePolynomial<double> *traj) const {
-  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
-  const auto& com_traj = lcm_traj.GetTrajectory("com_traj");
-  const auto& com_traj_dot = lcm_traj.GetTrajectory("com_traj_dot");
+void CFMPFCOutputReceiver::CopyAnkleTorque(
+    const Context<double> &context, BasicVector<double> *u) const {
 
-  int fsm = get_mpfc_output(context).fsm.fsm_state;
-  Vector3d p;
+  double t = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, input_port_state_))->get_timestamp();
 
-  VectorXd q = dynamic_cast<const OutputVector<double>*>(
-      EvalVectorInput(context, input_port_state_))->GetPositions();
-
-  multibody::SetPositionsIfNew<double>(plant_, q, context_);
-  const auto& stance = fsm_to_stance_foot_map_.at(fsm);
-  plant_.CalcPointsPositions(
-      *context_, stance.second, stance.first, plant_.world_frame(), &p);
-  p = multibody::ReExpressWorldVector3InBodyYawFrame(
-      plant_, *context_, floating_base_, p);
-
-  Eigen::MatrixXd foot_pos(
-      com_traj.datapoints.rows(), com_traj.datapoints.cols());
-
-  for (int i = 0; i < com_traj.datapoints.cols(); ++i) {
-    foot_pos.col(i) = p;
-  }
-
-  *traj = PiecewisePolynomial<double>::CubicHermite(
-      com_traj.time_vector,
-      com_traj.datapoints + foot_pos,
-      com_traj_dot.datapoints);
+  const auto& input_traj =
+      get_cache_entry(traj_cache_).Eval<PiecewisePolynomial<double>>(context);
+  u->get_mutable_value()(0) = input_traj.value(t)(0);
 }
 
-void CFMPFCOutputReceiver::CalcOrientationTraj(
-    const Context<double> &context,PiecewiseQuaternionSlerp<double> *traj) const {
-  const auto& lcm_traj = get_cache_entry(lcm_traj_cache_).Eval<LcmTrajectory>(context);
-  const auto& acom_traj = lcm_traj.GetTrajectory("acom_traj");
+void CFMPFCOutputReceiver::CopyRTraj(
+    const Context<double> &context, Trajectory<double> *out) const {
+  double t = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, input_port_state_))->get_timestamp();
 
-  std::vector<drake::Quaternion<double>> quats(acom_traj.datapoints.cols());
-  for (int i = 0; i < acom_traj.datapoints.cols(); ++i) {
-    Eigen::Vector4d q = acom_traj.datapoints.col(i);
-    quats.at(i) = drake::Quaternion<double>(q
-        (0), q(1), q(2), q(3));
-  }
-  *traj = PiecewiseQuaternionSlerp<double>(
-      CopyVectorXdToStdVector(acom_traj.time_vector), quats);
+  const auto& input_traj =
+      get_cache_entry(traj_cache_).Eval<PiecewisePolynomial<double>>(context);
+  VectorXd yddot = input_traj.value(t);
+  VectorXd y = VectorXd::Zero(yddot.rows());
+  VectorXd ydot = VectorXd::Zero(yddot.rows());
+
+  *dynamic_cast<PiecewisePolynomial<double>*>(out) =
+      polynomials::ConstantAccelerationTrajectory(y, ydot, yddot, t);
 }
 
 }

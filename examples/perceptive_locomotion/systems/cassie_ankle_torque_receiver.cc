@@ -23,23 +23,30 @@ CassieAnkleTorqueReceiver::CassieAnkleTorqueReceiver(
   fsm_input_port_ = DeclareVectorInputPort("fsm", 1).get_index();
   input_traj_input_port_ = DeclareAbstractInputPort(
       "input_traj", drake::Value<lcmt_saved_traj>()).get_index();
+  input_value_input_port_ = DeclareVectorInputPort("input_value", 1).get_index();
 }
 
 void CassieAnkleTorqueReceiver::CopyInput(
     const drake::systems::Context<double> &context,
     drake::systems::BasicVector<double> *out) const {
-  auto lcm_traj = EvalInputValue<lcmt_saved_traj>(
-      context, input_traj_input_port_);
   int fsm = static_cast<int>(
       EvalVectorInput(context, fsm_input_port_)->get_value()(0));
 
   auto it = std::find(left_right_fsm_states_.begin(),
                       left_right_fsm_states_.end(), fsm);
+
   if (it == left_right_fsm_states_.end()) {
     out->SetZero();
   } else {
-    double u = lcm_traj->num_trajectories != 1 ?
-               0 : lcm_traj->trajectories.front().datapoints.front().front();
+    double u = 0;
+    if (get_input_port(input_traj_input_port_).HasValue(context)) {
+      auto lcm_traj = EvalInputValue<lcmt_saved_traj>(
+          context, input_traj_input_port_);
+      u = lcm_traj->num_trajectories != 1 ?
+          0 : lcm_traj->trajectories.front().datapoints.front().front();
+    } else {
+      u = EvalVectorInput(context, input_value_input_port_)->GetAtIndex(0);
+    }
     out->SetZero();
     out->SetAtIndex(fsm_to_stance_ankle_map_.at(fsm), u);
   }

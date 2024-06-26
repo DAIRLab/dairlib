@@ -43,6 +43,7 @@ cc_library(
 cc_library(
     name = "osc_tracking_datas",
     deps = [
+        ":distance_tracking_data",
         ":com_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",
@@ -132,6 +133,20 @@ cc_library(
     deps = [
         ":options_tracking_data",
         ":trans_space_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "distance_tracking_data",
+    srcs = ["distance_tracking_data.cc"],
+    hdrs = ["distance_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        ":trans_space_tracking_data",
+        ":com_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

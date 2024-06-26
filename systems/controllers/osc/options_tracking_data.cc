@@ -2,6 +2,7 @@
 #include "common/eigen_utils.h"
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;

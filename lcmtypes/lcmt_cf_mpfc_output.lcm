@@ -4,5 +4,5 @@ struct lcmt_cf_mpfc_output
 {
     double next_footstep_in_stance_frame[3];
     lcmt_fsm_info fsm;
-    lcmt_saved_traj srb_trajs;
+    lcmt_saved_traj trajs;
 }

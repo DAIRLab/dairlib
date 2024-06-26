@@ -68,6 +68,7 @@ cc_library(
         ":alip_utils",
         ":contact_modes",
         "//common:eigen_utils",
+        "//common:polynomial_utils",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",

@@ -75,7 +75,7 @@ cf_mpfc_solution CFMPFC::Solve(
   std::vector<Vector6d> xc;
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
 
-  bool use_prev_sol = false;
+  bool use_prev_sol = prev_sol.success and prev_sol.init and prev_sol.stance == stance;
 
   // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
   //   Linearizing (or consider alternate rotation representation)
@@ -222,19 +222,17 @@ void CFMPFC::MakeFootstepConstraints() {
 //  constexpr double bigM = 20.0;
   DRAKE_DEMAND(reachability_c_.empty());
   DRAKE_DEMAND(no_crossover_c_.empty());
-  Matrix<double, 2, 6> A_reach = Matrix<double, 2, 6>::Zero();
+
+  Matrix<double, 2, 4> A_reach = Matrix<double, 2, 4>::Zero();
   A_reach.leftCols<2>() = -Matrix2d::Identity();
-  A_reach.block<2, 2>(0, 2) = -Matrix2d::Identity();
   A_reach.rightCols<2>() = Matrix2d::Identity();
-  for (int i = 1; i < params_.nmodes - 1; ++i) {
-    // TODO (@Brian-Acosta) reimpose footstep constraint on first mode
-    VectorXDecisionVariable x = xx_.at(i-1).head<2>();
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
     reachability_c_.push_back(
         prog_->AddLinearConstraint(
             A_reach,
-            -params_.com_pos_bound,
-            params_.com_pos_bound,
-            {x, pp_.at(i).head<2>(), pp_.at(i + 1).head<2>()}
+            -2*params_.com_pos_bound,
+            2*params_.com_pos_bound,
+            {pp_.at(i).head<2>(), pp_.at(i + 1).head<2>()}
         ));
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(
@@ -427,7 +425,8 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
   xd(2) = params_.gait_params.height;
   Vector2d ud = Vector2d::Zero();
 
-  MatrixXd Qx = 10 * MatrixXd::Identity(6, 6);
+  MatrixXd Qx = MatrixXd::Identity(6, 6);
+  Qx(2,2) = 10;
   MatrixXd Qu = MatrixXd::Identity(2, 2);
 
   for (int i = 0; i < params_.nknots; ++i) {

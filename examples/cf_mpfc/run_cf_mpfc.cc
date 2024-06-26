@@ -77,7 +77,7 @@ int DoMain(int argc, char** argv) {
       32.0,
       0.3,
       0.1,
-      0.3,
+      0.2,
       Vector2d::Zero(),
       systems::controllers::alip_utils::Stance::kLeft,
       systems::controllers::alip_utils::ResetDiscretization::kFOH
@@ -90,8 +90,8 @@ int DoMain(int argc, char** argv) {
   params.nknots = 5;
 
   params.soft_constraint_cost = 1000;
-  params.com_pos_bound = 0.4 * Eigen::Vector2d::Ones();
-  params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
+  params.com_pos_bound = 0.25 * Eigen::Vector2d::Ones();
+  params.com_vel_bound = 1.5 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
   params.R = 0.2 * Eigen::Matrix3d::Identity();
   params.Qf = 100 * Eigen::Matrix4d::Identity();
@@ -107,10 +107,6 @@ int DoMain(int argc, char** argv) {
 
   auto left_toe = LeftToeFront(plant);
   auto left_heel = LeftToeRear(plant);
-
-  auto stance_frame = CassieTransformFootToToeFrame();
-  params.contacts_in_stance_frame = {
-      stance_frame * left_heel.first, stance_frame * left_toe.first};
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -138,8 +134,7 @@ int DoMain(int argc, char** argv) {
       left_right_fsm_states,
       post_left_right_fsm_states,
       left_right_toe,
-      params,
-      systems::controllers::CalcCassieAcomOrientationInWorld
+      params
   );
 
   auto state_receiver =

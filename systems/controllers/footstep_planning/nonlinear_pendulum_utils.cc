@@ -107,7 +107,7 @@ void LinearizeALIPReset(
     MatrixXd& Ax, MatrixXd& Bp, Vector4d& b) {
 
   VectorX<AutoDiffXd> vars = InitializeAutoDiff(stack<double>({x, p_post}));
-  Vector6<AutoDiffXd> x_ad = vars.template head<6>();
+  Vector6<AutoDiffXd> x_ad = vars.head<6>();
   Vector3<AutoDiffXd> p_ad = vars.tail<3>();
 
   Vector4<AutoDiffXd> x_post = CalcALIPReset(x_ad, p_pre, p_ad, m);
@@ -131,9 +131,9 @@ Vector6<T> CalcPendulumDynamics(
   Vector6<T> xdot;
   xdot(theta_y_idx) = xp(l_y_idx) / (m * r * r);
   xdot(theta_x_idx) = xp(l_x_idx) / (m * r * r);
-  xdot(r_idx) = xp(r_idx);
+  xdot(r_idx) = xp(rdot_idx);
   xdot(l_y_idx) = m * g * x + u(0);
-  xdot(l_x_idx) = -m*g*y;
+  xdot(l_x_idx) = -m * g * y;
   xdot(rdot_idx) = u(1);
   return xdot;
 }

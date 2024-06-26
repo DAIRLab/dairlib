@@ -15,7 +15,6 @@ using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
 
 using alip_utils::Stance;
-using cf_mpfc_utils::SrbDim;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -30,18 +29,18 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
 
+constexpr int ComplexDim = 6;
+
 CFMPFCSystem::CFMPFCSystem(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
     drake::multibody::ModelInstanceIndex model_instance,
     std::vector<int> left_right_stance_fsm_states,
     std::vector<int> post_left_right_fsm_states,
     std::vector<PointOnFramed> left_right_foot,
-    const cf_mpfc_params& mpfc_params,
-    std::function<Matrix3d(const MultibodyPlant<double>&, const Context<double>&)> acom_function) :
+    const cf_mpfc_params& mpfc_params) :
     plant_(plant),
     context_(plant_context),
     model_instance_(model_instance),
-    acom_function_(acom_function),
     trajopt_(mpfc_params),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
     post_left_right_fsm_states_(post_left_right_fsm_states),
@@ -66,8 +65,7 @@ CFMPFCSystem::CFMPFCSystem(
   fsm_state_idx_ = DeclareDiscreteState(1);
   next_impact_time_state_idx_ = DeclareDiscreteState(1);
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
-  initial_conditions_state_idx_ =
-      DeclareDiscreteState(SrbDim + 3);
+  initial_conditions_state_idx_ = DeclareDiscreteState(ComplexDim + 3);
 
   mpc_solution_idx_ = DeclareAbstractState(
       drake::Value<cf_mpfc_solution>()
@@ -79,8 +77,7 @@ CFMPFCSystem::CFMPFCSystem(
 
   // Input ports
   state_input_port_ = DeclareVectorInputPort(
-      "x, u, t", OutputVector<double>(nq_, nv_, nu_))
-      .get_index();
+      "x, u, t", OutputVector<double>(nq_, nv_, nu_)).get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
 
   // output ports
@@ -151,26 +148,21 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   const auto& floating_base_frame = plant_.get_body(
       *(plant_.GetFloatingBaseBodies().begin())).body_frame();
 
-  Matrix3d I = cf_mpfc_utils::CalcRotationalInertiaAboutCoM(
-      plant_, *context_, model_instance_, floating_base_frame
-  ).CopyToFullMatrix3();
 
   Vector3d p_b = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", p_w);
 
-  cf_mpfc_utils::CentroidalState<double> x = cf_mpfc_utils::GetCentroidalState(
-      plant_, *context_, model_instance_, acom_function_, stance_foot);
+  VectorXd x = nonlinear_pendulum::CalcPendulumState(
+      plant_, *context_, stance_foot, "pelvis");
 
-  VectorXd init_state_and_stance_pos =
-      VectorXd::Zero(SrbDim + 3);
-  init_state_and_stance_pos.head<SrbDim>() = x;
+  VectorXd init_state_and_stance_pos = VectorXd::Zero(ComplexDim + 3);
+  init_state_and_stance_pos.head<ComplexDim>() = x;
   init_state_and_stance_pos.tail<3>() = p_b;
 
   auto prev_sol = state->get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
 
   const auto mpc_solution = trajopt_.Solve(
-      x, p_b, tnom_remaining, vdes, stance, I, prev_sol
-  );
+      x, p_b, tnom_remaining, vdes, stance, prev_sol);
 
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
@@ -189,15 +181,6 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   }
 
   return drake::systems::EventStatus::Succeeded();
-}
-
-namespace {
-
-Eigen::Vector4d rpy_to_quat(const Eigen::Vector3d& rpy) {
-  Eigen::Quaternion<double> q = drake::math::RollPitchYawd(rpy).ToQuaternion();
-  return Vector4d(q.w(), q.x(), q.y(), q.z());
-}
-
 }
 
 void CFMPFCSystem::CopyMpcOutput(
@@ -227,36 +210,25 @@ void CFMPFCSystem::CopyMpcOutput(
       next_impact_time_state_idx_).GetAtIndex(0);
   double current_time = robot_output->get_timestamp();
 
-  int dim_c = 3 * trajopt_.params().contacts_in_stance_frame.size();
   int nk = trajopt_.params().nknots;
+  int nu = 2;
 
-  LcmTrajectory::Trajectory force_traj("force_traj", dim_c, nk);
-  LcmTrajectory::Trajectory acom_traj("acom_traj", 4, nk);
-  LcmTrajectory::Trajectory com_traj("com_traj", 3, nk);
-  LcmTrajectory::Trajectory com_traj_dot("com_traj_dot", 3, nk);
+  LcmTrajectory::Trajectory input("input_traj", 2, nk);
+  LcmTrajectory::Trajectory state("state_traj", 6, nk);
 
   double next_time = std::max(next_impact_time, current_time + 1e-3);
   for (int i = 0; i < trajopt_.params().nknots; ++i) {
     double t =  current_time + i * (next_time - current_time) / (nk - 1);
-    force_traj.time_vector(i) = t;
-    acom_traj.time_vector(i) = t;
-    com_traj.time_vector(i) = t;
-    com_traj_dot.time_vector(i) = t;
-
-    force_traj.datapoints.col(i)= mpc_sol.ff.at(i);
-    com_traj.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_idx);
-    com_traj_dot.datapoints.col(i) = mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::com_dot_idx);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    acom_traj.datapoints.col(i) = rpy_to_quat(
-        mpc_sol.xc.at(i).segment<3>(cf_mpfc_utils::theta_idx));
-    auto end = std::chrono::high_resolution_clock::now();
+    input.time_vector(i) = t;
+    state.time_vector(i) = t;
+    input.datapoints.col(i )= mpc_sol.uu.at(i);
+    state.datapoints.col(i) = mpc_sol.xc.at(i);
   }
   LcmTrajectory traj(
-      {force_traj, acom_traj, com_traj, com_traj_dot},
-      {"force_traj", "acom_traj", "com_traj", "com_traj_dot"},
+      {input, state},
+      {"input_traj", "state_traj"},
       "cf_mpfc_solution", "cf_mpfc_solution", false);
-  mpc_output->srb_trajs = traj.GenerateLcmObject();
+  mpc_output->trajs = traj.GenerateLcmObject();
 }
 
 int CFMPFCSystem::GetFsmForOutput(
@@ -308,15 +280,15 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
   mpc_debug->solution_result = std::to_string(mpc_sol.solution_result);
 
   mpc_debug->np = 3;
-  mpc_debug->nf = mpc_sol.ff.front().rows();
+  mpc_debug->nu = mpc_sol.uu.front().rows();
   mpc_debug->nxa = 4;
-  mpc_debug->nxc = SrbDim;
+  mpc_debug->nxc = ComplexDim;
   mpc_debug->nk = mpc_sol.xc.size();
   mpc_debug->nmodes = mpc_sol.pp.size();
   mpc_debug->nmodes_minus_1 = mpc_debug->nmodes - 1;
 
-  mpc_debug->initial_state.reserve(SrbDim);
-  Eigen::Map<Eigen::VectorXd>(mpc_debug->initial_state.data(), SrbDim) = ic.head<SrbDim>();
+  mpc_debug->initial_state.reserve(ComplexDim);
+  Eigen::Map<Eigen::VectorXd>(mpc_debug->initial_state.data(), ComplexDim) = ic.head<ComplexDim>();
 
   mpc_debug->initial_stance_foot.reserve(3);
   Eigen::Map<Vector3d>(mpc_debug->initial_stance_foot.data(), 3) = ic.tail<3>();
@@ -327,9 +299,9 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
   mpc_debug->pp.clear();
   mpc_debug->xx.clear();
   mpc_debug->xc.clear();
-  mpc_debug->ff.clear();
-  for(const auto& ff : mpc_sol.ff) {
-    mpc_debug->ff.push_back(CopyVectorXdToStdVector(ff));
+  mpc_debug->uu.clear();
+  for(const auto& ff : mpc_sol.uu) {
+    mpc_debug->uu.push_back(CopyVectorXdToStdVector(ff));
   }
   for (const auto & xx : mpc_sol.xx) {
     vector<double> x(4);
@@ -342,8 +314,8 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
     mpc_debug->pp.push_back(p);
   }
   for (const auto& xc : mpc_sol.xc) {
-    vector<double> x(SrbDim);
-    VectorXd::Map(x.data(), SrbDim) = xc;
+    vector<double> x(ComplexDim);
+    VectorXd::Map(x.data(), ComplexDim) = xc;
     mpc_debug->xc.push_back(x);
   }
   Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;

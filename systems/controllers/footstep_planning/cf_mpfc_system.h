@@ -4,7 +4,7 @@
 #include <dairlib/lcmt_cf_mpfc_output.hpp>
 
 #include "cf_mpfc.h"
-#include "cf_mpfc_utils.h"
+#include "nonlinear_pendulum_utils.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -24,10 +24,7 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<int> left_right_stance_fsm_states,
       std::vector<int> post_left_right_fsm_states,
       std::vector<PointOnFramed> left_right_foot,
-      const cf_mpfc_params& mpfc_params,
-      std::function<Eigen::Matrix3d(
-          const drake::multibody::MultibodyPlant<double>&,
-          const drake::systems::Context<double>&)> acom_function);
+      const cf_mpfc_params& mpfc_params);
 
   void MakeDrivenByStandaloneSimulator(double update_period) {
     DeclareInitializationUnrestrictedUpdateEvent(
@@ -104,9 +101,6 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::ModelInstanceIndex model_instance_;
-  std::function<Eigen::Matrix3d(
-      const drake::multibody::MultibodyPlant<double>&,
-      const drake::systems::Context<double>&)> acom_function_;
 
   std::map<int, const alip_utils::PointOnFramed> stance_foot_map_;
   int nq_;

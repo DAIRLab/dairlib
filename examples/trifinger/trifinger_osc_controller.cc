@@ -1,9 +1,11 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "dairlib/lcmt_estimated_joint_friction_trifinger.hpp"
 #include "dairlib/lcmt_fingertips_delta_position.hpp"
 #include "examples/trifinger/systems/fingertips_delta_position_receiver.h"
 #include "examples/trifinger/systems/fingertips_target_traj_demultiplexer.h"
+#include "examples/trifinger/systems/trifinger_joint_friction_compensation.h"
 #include "multibody/multibody_utils.h"
 #include "parameters/trifinger_lcm_channels.h"
 #include "parameters/trifinger_osc_controller_params.h"
@@ -110,15 +112,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.trifinger_input_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-
-  auto osc_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.osc_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
   auto trifinger_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
-  auto osc_command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant_context.get(), false);
   auto osc_debug_pub =
@@ -175,14 +171,33 @@ int DoMain(int argc, char* argv[]) {
       target_traj_demultiplexer->get_output_port_fingertip_240_target_traj(),
       osc->get_input_port_tracking_data("fingertip_240_target"));
 
-  builder.Connect(osc->get_output_port_osc_command(),
-                  trifinger_command_sender->get_input_port(0));
+  if (controller_params.require_friction_compensation) {
+    auto joint_friction_compensator =
+        builder.AddSystem<dairlib::systems::JointFrictionCompensator>(
+            plant, plant_context.get());
+    auto estimated_friction_torque_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<
+                          dairlib ::lcmt_estimated_joint_friction_trifinger>(
+            lcm_channel_params.estimated_friction_torque, &lcm,
+            TriggerTypeSet({TriggerType::kForced})));
+    builder.Connect(state_receiver->get_output_port(0),
+                    joint_friction_compensator->get_input_port_state());
+    builder.Connect(
+        osc->get_output_port_osc_command(),
+        joint_friction_compensator->get_uncompensated_torque_input_port());
+    builder.Connect(
+        joint_friction_compensator->get_compensated_torque_output_port(),
+        trifinger_command_sender->get_input_port(0));
+    builder.Connect(
+        joint_friction_compensator->get_estimated_friction_torque_port(),
+        estimated_friction_torque_pub->get_input_port());
+  } else {
+    builder.Connect(osc->get_output_port_osc_command(),
+                    trifinger_command_sender->get_input_port(0));
+  }
+
   builder.Connect(trifinger_command_sender->get_output_port(),
                   trifinger_command_pub->get_input_port());
-  builder.Connect(osc_command_sender->get_output_port(),
-                  osc_command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_command(),
-                  osc_command_sender->get_input_port(0));
   builder.Connect(osc->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());
   builder.Connect(state_receiver->get_output_port(0),

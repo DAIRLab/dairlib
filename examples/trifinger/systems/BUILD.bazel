@@ -41,3 +41,16 @@ cc_library(
         "@ros2//:std_msgs_cc",
     ],
 )
+
+cc_library(
+    name = "trifinger_joint_friction_compensation",
+    srcs = ["trifinger_joint_friction_compensation.cc"],
+    hdrs = ["trifinger_joint_friction_compensation.h"],
+    deps = [
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

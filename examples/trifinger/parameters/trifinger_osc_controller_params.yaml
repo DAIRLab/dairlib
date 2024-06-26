@@ -10,6 +10,7 @@ min_fingertips_delta_position: [-0.015, -0.015, 0]
 max_fingertips_delta_position: [0.015, 0.015, 0]
 
 home_position: [0, -0.8, -1.3, 0, -0.8, -1.3, 0, -0.8, -1.3]
+require_friction_compensation: false
 
 # OSCGains settings
 w_input: 0.00 # unused
@@ -39,14 +40,14 @@ Fingertip0Kp:
     0, 200, 0,
     0, 0, 200 ]
 Fingertip0Kd:
-  [ 20, 0, 0,
-    0, 20, 0,
-    0, 0, 20 ]
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40 ]
 
 Fingertip120W:
-  [1, 0, 0,
-   0, 1, 0,
-   0, 0, 1]
+  [0, 0, 0,
+   0, 0, 0,
+   0, 0, 0]
 Fingertip120Kp:
   [ 200, 0, 0,
     0, 200, 0,
@@ -57,9 +58,9 @@ Fingertip120Kd:
     0, 0, 20 ]
 
 Fingertip240W:
-  [1, 0, 0,
-   0, 1, 0,
-   0, 0, 1]
+  [0, 0, 0,
+   0, 0, 0,
+   0, 0, 0]
 Fingertip240Kp:
   [ 200, 0, 0,
     0, 200, 0,

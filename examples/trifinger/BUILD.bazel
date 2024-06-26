@@ -68,6 +68,7 @@ cc_binary(
         "//examples/trifinger/parameters:trifinger_osc_controller_params",
         "//examples/trifinger/systems:fingertips_delta_position_receiver",
         "//examples/trifinger/systems:fingertips_target_traj_demultiplexer",
+        "//examples/trifinger/systems:trifinger_joint_friction_compensation",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody:visualization_utils",

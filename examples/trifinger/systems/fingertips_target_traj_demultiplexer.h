@@ -44,10 +44,9 @@ class FingertipsTargetTrajDemultiplexer
       drake::trajectories::Trajectory<double>* target_traj) const {
     this->CopyToOutput(context, 6, 3, target_traj);
   }
-  void CopyToOutput(
-      const drake::systems::Context<double>& context, const int start_index,
-      const int size,
-      drake::trajectories::Trajectory<double>* target_traj) const;
+  void CopyToOutput(const drake::systems::Context<double>& context,
+                    const int start_index, const int size,
+                    drake::trajectories::Trajectory<double>* target_traj) const;
 
   drake::systems::Context<double>* context_;
 

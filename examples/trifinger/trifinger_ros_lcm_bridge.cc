@@ -92,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
 
   Parser parser(&plant);
   auto trifinger_index = parser.AddModels(
-      dairlib::FindResourceOrThrow(sim_params.trifinger_model))[0];
+      FindResourceOrThrow(sim_params.trifinger_model))[0];
   auto cube_index =
       parser.AddModels(FindResourceOrThrow(sim_params.cube_model))[0];
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();

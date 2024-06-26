@@ -4,3 +4,4 @@ trifinger_input_channel: TRIFINGER_INPUT_SIMULATION # lcmt_robot_input
 osc_channel: OSC_TRIFINGER
 osc_debug_channel: OSC_DEBUG_TRIFINGER
 fingertips_delta_position_channel: FINGERTIPS_DELTA_POSITION
+estimated_friction_torque: ESTIMATED_FRICTION_TORQUE

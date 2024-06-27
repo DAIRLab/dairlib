@@ -61,7 +61,6 @@ void TestMPFC() {
 
   cf_mpfc_params params;
 
-  params.tracking_cost_type = alip_utils::kGait;
   params.gait_params = test_gait;
   params.nmodes = 3;
   params.nknots = 4;

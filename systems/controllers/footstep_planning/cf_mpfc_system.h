@@ -3,15 +3,110 @@
 #include <dairlib/lcmt_cf_mpfc_solution.hpp>
 #include <dairlib/lcmt_cf_mpfc_output.hpp>
 
+#include "solvers/solver_options_io.h"
 #include "cf_mpfc.h"
 #include "nonlinear_pendulum_utils.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
+
 namespace dairlib::systems::controllers {
 
 using alip_utils::PointOnFramed;
+
+struct cf_mpfc_params_io {
+  int nmodes;
+  int nknots;
+  double mu;
+  double time_regularization;
+  double soft_constraint_cost;
+  std::vector<double> com_pos_bound;
+  std::vector<double> com_vel_bound;
+  std::vector<double> input_bounds;
+  std::vector<double> Q;
+  std::vector<double> R;
+  std::vector<double> Qf;
+  std::vector<double> Qc;
+  std::vector<double> Rc;
+  std::string tracking_cost_type;
+
+  // gait params
+  double height;
+  double stance_width;
+  double single_stance_duration;
+  double double_stance_duration;
+  std::string reset_discretization_method;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(nmodes));
+    a->Visit(DRAKE_NVP(nknots));
+    a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(time_regularization));
+    a->Visit(DRAKE_NVP(soft_constraint_cost));
+    a->Visit(DRAKE_NVP(com_pos_bound));
+    a->Visit(DRAKE_NVP(com_vel_bound));
+    a->Visit(DRAKE_NVP(input_bounds));
+    a->Visit(DRAKE_NVP(Q));
+    a->Visit(DRAKE_NVP(R));
+    a->Visit(DRAKE_NVP(Qf));
+    a->Visit(DRAKE_NVP(Qc));
+    a->Visit(DRAKE_NVP(Rc));
+    a->Visit(DRAKE_NVP(tracking_cost_type));
+    a->Visit(DRAKE_NVP(height));
+    a->Visit(DRAKE_NVP(single_stance_duration));
+    a->Visit(DRAKE_NVP(double_stance_duration));
+    a->Visit(DRAKE_NVP(stance_width));
+    a->Visit(DRAKE_NVP(reset_discretization_method));
+  }
+
+  static cf_mpfc_params get_params_from_yaml(
+      const std::string& yaml_path,
+      const std::string &solver_options_yaml_path,
+      const drake::multibody::MultibodyPlant<double> &plant,
+      const drake::systems::Context<double> &context) {
+    auto io = drake::yaml::LoadYamlFile<cf_mpfc_params_io>(yaml_path);
+    cf_mpfc_params params_out;
+
+    params_out.nmodes = io.nmodes;
+    params_out.nknots = io.nknots;
+    params_out.soft_constraint_cost = io.soft_constraint_cost;
+    params_out.time_regularization = io.time_regularization;
+    params_out.mu = io.mu;
+
+    // gait params
+    params_out.gait_params.height = io.height;
+    params_out.gait_params.mass = plant.CalcTotalMass(context);
+    params_out.gait_params.single_stance_duration = io.single_stance_duration;
+    params_out.gait_params.double_stance_duration = io.double_stance_duration;
+    params_out.gait_params.stance_width = io.stance_width;
+    params_out.gait_params.reset_discretization_method =
+        alip_utils::reset_discretization(io.reset_discretization_method);
+
+    params_out.com_pos_bound =
+        Eigen::Vector2d::Map(io.com_vel_bound.data());
+    params_out.com_vel_bound =
+        Eigen::Vector2d::Map(io.com_vel_bound.data());
+    params_out.input_bounds =
+        Eigen::Vector2d::Map(io.input_bounds.data());
+    params_out.Q = Eigen::Map <
+        Eigen::Matrix < double, 4, 4, Eigen::RowMajor >> (io.Q.data());
+    params_out.Qf = Eigen::Map <
+        Eigen::Matrix < double, 4, 4, Eigen::RowMajor >> (io.Qf.data());
+    params_out.R = Eigen::Map <
+        Eigen::Matrix < double, 3, 3, Eigen::RowMajor >> (io.R.data());
+    params_out.Qc = Eigen::Map<
+        Eigen::Matrix<double, 6, 6, Eigen::RowMajor>>(io.Qc.data());
+    params_out.Rc = Eigen::Map<
+        Eigen::Matrix<double, 2, 2, Eigen::RowMajor>>(io.Qc.data());
+    params_out.tracking_cost_type =
+        alip_utils::alip_tracking_cost_type(io.tracking_cost_type);
+    return params_out;
+  }
+};
 
 class CFMPFCSystem : public drake::systems::LeafSystem<double> {
  public:

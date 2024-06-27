@@ -1,7 +1,8 @@
 #pragma once
 
 #include "drake/solvers/solver_options.h"
-
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 
 namespace dairlib::solvers {
 

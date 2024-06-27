@@ -39,7 +39,6 @@ struct cf_mpfc_solution {
   std::vector<Eigen::Vector3d> pp{}; // footstep positions
   alip_utils::Stance stance{};
 
-
   bool success;
   double t_nom;
   double total_time;
@@ -61,7 +60,10 @@ struct cf_mpfc_params {
   Eigen::MatrixXd Q{};
   Eigen::MatrixXd R{};
   Eigen::MatrixXd Qf{};
-  alip_utils::AlipTrackingCostType tracking_cost_type = alip_utils::kGait;
+  Eigen::MatrixXd Qc{};
+  Eigen::MatrixXd Rc{};
+  alip_utils::AlipTrackingCostType tracking_cost_type =
+      alip_utils::AlipTrackingCostType::kVelocity;
   drake::solvers::SolverOptions solver_options{};
 };
 
@@ -161,6 +163,7 @@ class CFMPFC {
 
                                                            // | Init  | Updater
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr; // |   x   |   x
+  std::shared_ptr<QuadraticCost> complex_state_final_cost_ = nullptr;
   vector<Binding<QuadraticCost>> complex_state_cost_{}; // |   x   |   x
   vector<Binding<QuadraticCost>> complex_input_cost_{}; // |   x   |   x
   vector<Binding<QuadraticCost>> tracking_cost_{};         // |   x   |   x

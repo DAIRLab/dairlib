@@ -31,6 +31,7 @@ using Eigen::VectorXd;
 
 using systems::controllers::CFMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
+using systems::controllers::cf_mpfc_params_io;
 
 using drake::multibody::SpatialInertia;
 using drake::multibody::RotationalInertia;
@@ -55,6 +56,13 @@ DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
 
+DEFINE_string(gains_yaml, "examples/cf_mpfc/gains/mpfc_gains.yaml",
+              "mpc gains yaml");
+
+DEFINE_string(solver_options_yaml,
+              "examples/cf_mpfc/gains/gurobi_options_planner.yaml",
+              "solver options yaml");
+
 int DoMain(int argc, char** argv) {
 
   // Build Cassie MBP
@@ -71,35 +79,6 @@ int DoMain(int argc, char** argv) {
 
   std::unique_ptr<drake::systems::Context<double>> plant_context =
       plant.CreateDefaultContext();
-
-  auto test_gait = systems::controllers::alip_utils::AlipGaitParams {
-      0.85,
-      32.0,
-      0.3,
-      0.1,
-      0.2,
-      Vector2d::Zero(),
-      systems::controllers::alip_utils::Stance::kLeft,
-      systems::controllers::alip_utils::ResetDiscretization::kFOH
-  };
-
-  systems::controllers::cf_mpfc_params params;
-
-  params.gait_params = test_gait;
-  params.nmodes = 3;
-  params.nknots = 5;
-
-  params.soft_constraint_cost = 1000;
-  params.com_pos_bound = 0.25 * Eigen::Vector2d::Ones();
-  params.com_vel_bound = 1.5 * Eigen::Vector2d::Ones();
-  params.Q = Eigen::Matrix4d::Identity();
-  params.R = 0.2 * Eigen::Matrix3d::Identity();
-  params.Qf = 100 * Eigen::Matrix4d::Identity();
-  params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "Presolve", 1);
-  params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "LogToConsole", 0);
-  params.mu = 0.8;
 
   DiagramBuilder<double> builder;
 
@@ -126,6 +105,9 @@ int DoMain(int argc, char** argv) {
   auto left_toe_mid = PointOnFramed(mid_contact_point, plant.GetFrameByName("toe_left"));
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
+
+  auto params = cf_mpfc_params_io::get_params_from_yaml(
+      FLAGS_gains_yaml, FLAGS_solver_options_yaml, plant, *plant_context);
 
   auto foot_placement_controller = builder.AddSystem<CFMPFCSystem>(
       plant,
@@ -200,8 +182,6 @@ int DoMain(int argc, char** argv) {
 
   loop.Simulate();
   return 0;
-
-
 
 }
 }

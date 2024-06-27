@@ -208,6 +208,10 @@ void CFMPFC::MakeMPCCosts() {
       Matrix4d::Identity(), Vector4d::Zero(), 0, xx_.back()
   ).evaluator();
 
+  complex_state_final_cost_ = prog_->AddQuadraticCost(
+      MatrixXd::Identity(6, 6), Vector6d::Zero(), 0, xc_.back()
+  ).evaluator();
+
   // build cost matrices
   alip_utils::MakeAlipStepToStepCostMatrices(
       params_.gait_params, params_.Q, params_.Qf,
@@ -436,6 +440,8 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
     complex_input_cost_.at(i).evaluator()->UpdateCoefficients(
         m * Qu, -m * Qu * ud, 0.5 * m * ud.transpose() * Qu * ud, true);
   }
+  complex_state_final_cost_->UpdateCoefficients(
+      100 * Qx, -100 * Qx * xd, 100 * xd.transpose() * Qx * xd, true);
 }
 
 void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
@@ -458,7 +464,8 @@ void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
 }
 
 void CFMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
-  if (params_.tracking_cost_type == alip_utils::kVelocity) {
+  if (params_.tracking_cost_type ==
+      alip_utils::AlipTrackingCostType::kVelocity) {
     UpdateTrackingCostVelocity(vdes);
     UpdateTerminalCostVelocity(vdes);
   } else {

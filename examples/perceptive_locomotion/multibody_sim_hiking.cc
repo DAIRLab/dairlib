@@ -95,7 +95,7 @@ DEFINE_bool(time_stepping, true,
             "If 'false', the plant is modeled as a continuous system.");
 
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
-DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
+DEFINE_double(toe_spread, .05, "Initial toe spread in m.");
 DEFINE_double(ros_state_pub_period, 0.01, "tf and pose publish period");
 DEFINE_double(points_pub_period, 1.0/30.0, "pointcloud publish period");
 DEFINE_double(dt, 5e-4,

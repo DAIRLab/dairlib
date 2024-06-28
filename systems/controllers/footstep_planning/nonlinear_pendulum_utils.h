@@ -48,4 +48,6 @@ drake::Vector4<T> CalcALIPReset(
     const drake::Vector6<T>& x_pre, const Eigen::Vector3d& p_pre,
     const drake::Vector3<T>& p_post, double m);
 
+Eigen::Vector4d CalcAlipStateAtTouchdown(const Vector6d& x, double m, double t);
+
 }

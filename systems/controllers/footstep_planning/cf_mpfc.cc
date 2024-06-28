@@ -1,5 +1,6 @@
 #include "cf_mpfc.h"
 #include "common/eigen_utils.h"
+#include "drake/systems/controllers/linear_quadratic_regulator.h"
 
 namespace dairlib {
 namespace systems {
@@ -17,6 +18,7 @@ using drake::solvers::LinearConstraint;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::BoundingBoxConstraint;
 using drake::solvers::VectorXDecisionVariable;
+using drake::systems::controllers::DiscreteTimeLinearQuadraticRegulator;
 
 using drake::solvers::LinearEqualityConstraint;
 using drake::Vector6d;
@@ -50,6 +52,12 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
   );
   A_ = A;
   B_ = B;
+  auto lqr_result = DiscreteTimeLinearQuadraticRegulator(
+      A_, B_, params_.Q, params_.R.topLeftCorner<2,2>());
+  lqr_K_ = lqr_result.K;
+  lqr_S_ = lqr_result.S;
+  std::cout << "lqr s: \n" << lqr_S_ << std::endl;
+
   MakeMPCVariables();
   MakeMPCCosts();
   MakeFootstepConstraints();
@@ -95,8 +103,8 @@ cf_mpfc_solution CFMPFC::Solve(
     xc.push_back(x);
   }
 
-  double s = stance == Stance::kLeft ? -1 : 1;
-  Vector3d p_post = use_prev_sol ? prev_sol.pp.at(1) : p + s * params_.gait_params.stance_width * Vector3d::UnitY();
+  Vector3d p_post = use_prev_sol ? prev_sol.pp.at(1) :
+                                   p + CalcS2SLQRInput(x, vdes, t, stance);
 
   UpdateComplexDynamicsConstraints(xc, uu,  t);
   UpdateModelSwitchConstraint(x, p, p_post);
@@ -215,7 +223,7 @@ void CFMPFC::MakeMPCCosts() {
 
   // build cost matrices
   alip_utils::MakeAlipStepToStepCostMatrices(
-      params_.gait_params, params_.Q, params_.Qf,
+      params_.gait_params, params_.Q, lqr_S_,
       Q_proj_, Q_proj_f_,
       g_proj_p1_, g_proj_p2_,
       p2o_premul_, projection_to_p2o_complement_,
@@ -530,6 +538,22 @@ void CFMPFC::UpdateTerminalCostGait(const Eigen::Vector2d &vdes,
       2* params_.Qf, -2 * params_.Qf * xd, 0, true);
 }
 
+Vector3d CFMPFC::CalcS2SLQRInput(
+    const Vector6d &x, const Vector2d &vdes, double t,
+    alip_utils::Stance stance) const {
+
+  AlipGaitParams gait_params = params_.gait_params;
+  gait_params.desired_velocity = vdes;
+  gait_params.initial_stance_foot = stance;
+
+  const auto [x0, x1] = alip_utils::MakePeriodicAlipGait(gait_params);
+  const auto ud = alip_utils::MakeP2Orbit(gait_params).front();
+  Vector4d x_alip = nonlinear_pendulum::CalcAlipStateAtTouchdown(
+      x, gait_params.mass, t);
+  Vector3d footstep = Vector3d::Zero();
+  footstep.head<2>() = ud - lqr_K_ * (x_alip - x0);
+  return footstep;
+}
 
 }
 }

@@ -52,7 +52,7 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.21
+mid_foot_height: 0.15
 final_foot_height: 0.02
 final_foot_velocity_z: 0.9
 
@@ -60,13 +60,13 @@ final_foot_velocity_z: 0.9
 lipm_height: 0.83
 
 # OSC gains
-mu: 0.5
+mu: 0.8
 
 w_accel: 0.0
 w_soft_constraint: 8000
-w_input_reg: 0.0001
+w_input_reg: 0.00001
 w_input: 0.0000
-w_lambda: 0.0001
+w_lambda: 0.00001
 impact_threshold: 0.025
 impact_tau: 0.005
 
@@ -85,7 +85,7 @@ CoMW:
 CoMKp:
   [   0,   0,     0,
       0,    0,    0,
-      0,    0,    10]
+      0,    0,    1]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,

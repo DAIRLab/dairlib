@@ -162,6 +162,20 @@ Vector4<T> CalcALIPReset(
   return x_post;
 }
 
+Vector4d CalcAlipStateAtTouchdown(const Vector6d& xp, double m, double t) {
+  double r = xp(r_idx);
+  double theta_y = xp(theta_y_idx);
+  double theta_x = xp(theta_x_idx);
+  double x = r * sin(theta_y);
+  double y = -r * sin(theta_x);
+  double z = sqrt(r*r - x*x + y*y);
+  double ly = xp(l_y_idx);
+  double lx = xp(l_x_idx);
+
+  Vector4d alip_state(x, y, ly, lx);
+  return alip_utils::CalcAd(z, m, t) * alip_state;
+}
+
 
 template Vector4<AutoDiffXd> CalcALIPReset(const Vector6<AutoDiffXd>&, const Vector3d&, const Vector3<AutoDiffXd>&, double);
 template Vector6<AutoDiffXd> CalcPendulumDynamics(const Vector6<AutoDiffXd>&, const Vector2<AutoDiffXd>&, double);

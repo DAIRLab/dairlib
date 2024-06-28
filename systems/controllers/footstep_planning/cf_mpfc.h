@@ -101,6 +101,9 @@ class CFMPFC {
   void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
   void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
+  Eigen::Vector3d CalcS2SLQRInput(
+      const drake::Vector6d& x, const Eigen::Vector2d& vdes,
+      double t, alip_utils::Stance stance) const;
 
   void ValidateParams() const {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
@@ -175,6 +178,8 @@ class CFMPFC {
   // some useful matrices and dynamics quantities for ALIP step to step portion
   Eigen::Matrix4d A_;
   Eigen::Matrix<double, 4, 2> B_;
+  Eigen::Matrix<double, 2, 4> lqr_K_;
+  Eigen::Matrix4d lqr_S_;
   Eigen::Matrix4d Q_proj_;
   Eigen::Matrix4d Q_proj_f_;
   Eigen::Matrix<double, 4, 2> g_proj_p1_;

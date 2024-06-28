@@ -76,6 +76,7 @@ cf_mpfc_solution CFMPFC::Solve(
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
 
   bool use_prev_sol = prev_sol.success and prev_sol.init and prev_sol.stance == stance;
+  use_prev_sol = false;
 
   // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
   //   Linearizing (or consider alternate rotation representation)
@@ -253,7 +254,18 @@ void CFMPFC::MakeFootstepConstraints() {
 void CFMPFC::MakeComplexInputConstraints() {
   DRAKE_DEMAND(complex_input_constraints_.empty());
   for (const auto& u : uu_) {
+    double a_max = std::min(9.81, params_.input_bounds(1));
+    double l = params_.foot_length / 2.0;
+    Matrix2d A = Matrix2d::Zero();
+    Vector2d lb = Vector2d::Constant(- params_.gait_params.mass * a_max);
+    Vector2d ub = Vector2d::Constant(kInfinity);
+    A(0, 1) = params_.gait_params.mass;
+    A(1, 1) = params_.gait_params.mass;
+    A(0, 0) = 1 / l;
+    A(1, 0) = -1 / l;
     complex_input_constraints_.push_back(
+        prog_->AddLinearConstraint(A, lb, ub,u));
+    complex_input_bounds_.push_back(
         prog_->AddBoundingBoxConstraint(
             -params_.input_bounds, params_.input_bounds, u));
   }
@@ -429,9 +441,8 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
   xd(2) = params_.gait_params.height;
   Vector2d ud = Vector2d::Zero();
 
-  MatrixXd Qx = MatrixXd::Identity(6, 6);
-  Qx(2,2) = 10;
-  MatrixXd Qu = MatrixXd::Identity(2, 2);
+  MatrixXd Qx = params_.Qc;
+  MatrixXd Qu = params_.Rc;
 
   for (int i = 0; i < params_.nknots; ++i) {
     double m = (i == 0 or i == params_.nknots -1) ? 1 : 2;
@@ -441,7 +452,7 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
         m * Qu, -m * Qu * ud, 0.5 * m * ud.transpose() * Qu * ud, true);
   }
   complex_state_final_cost_->UpdateCoefficients(
-      100 * Qx, -100 * Qx * xd, 100 * xd.transpose() * Qx * xd, true);
+      1000 * Qx, -1000 * Qx * xd, 500 * xd.transpose() * Qx * xd, true);
 }
 
 void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {

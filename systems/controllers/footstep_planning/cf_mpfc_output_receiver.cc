@@ -5,6 +5,8 @@
 #include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
 
+#include <iostream>
+
 namespace dairlib::systems::controllers {
 
 using drake::systems::Context;
@@ -102,9 +104,10 @@ void CFMPFCOutputReceiver::CopyRTraj(
 
   const auto& input_traj =
       get_cache_entry(traj_cache_).Eval<PiecewisePolynomial<double>>(context);
-  VectorXd yddot = input_traj.value(t);
-  VectorXd y = VectorXd::Zero(yddot.rows());
-  VectorXd ydot = VectorXd::Zero(yddot.rows());
+
+  VectorXd yddot = VectorXd::Constant(1, input_traj.value(t)(1));
+  VectorXd y = VectorXd::Constant(yddot.rows(), 0.85);
+  VectorXd ydot = VectorXd::Zero(yddot.rows(), 0);
 
   *dynamic_cast<PiecewisePolynomial<double>*>(out) =
       polynomials::ConstantAccelerationTrajectory(y, ydot, yddot, t);

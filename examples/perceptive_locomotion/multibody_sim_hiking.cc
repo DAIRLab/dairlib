@@ -143,7 +143,7 @@ int do_main(int argc, char* argv[]) {
 
   std::string urdf;
   if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   } else {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }

@@ -497,7 +497,6 @@ int DoMain(int argc, char** argv) {
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "com_traj", gains.K_p_com, gains.K_d_com,
       gains.W_com, plant);
-  center_of_mass_traj->SetViewFrame(pelvis_view_frame);
   center_of_mass_traj->AddFiniteStateToTrack(left_stance_state);
   center_of_mass_traj->AddFiniteStateToTrack(post_left_double_support_state);
   center_of_mass_traj->AddFiniteStateToTrack(right_stance_state);

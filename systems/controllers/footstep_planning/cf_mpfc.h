@@ -52,6 +52,7 @@ struct cf_mpfc_params {
   int nmodes{};
   int nknots{};
   double mu{};
+  double foot_length{};
   double time_regularization{};
   double soft_constraint_cost{};
   Eigen::Vector2d com_pos_bound{};
@@ -159,7 +160,8 @@ class CFMPFC {
   vector<Binding<LinearConstraint>> workspace_c_{};        // |   x   |  N/A
   vector<Binding<LinearConstraint>> no_crossover_c_{};     // |   x   |   x
   vector<Binding<LinearConstraint>> reachability_c_{};     // |   x   |  N/A
-  vector<Binding<BoundingBoxConstraint>> complex_input_constraints_{};  // |   x   |  N/A
+  vector<Binding<LinearConstraint>> complex_input_constraints_{};  // |   x   |  N/A
+  vector<Binding<BoundingBoxConstraint>> complex_input_bounds_{};
 
                                                            // | Init  | Updater
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr; // |   x   |   x

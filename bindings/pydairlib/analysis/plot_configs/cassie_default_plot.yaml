@@ -42,5 +42,5 @@ tracking_datas_to_plot:
 #  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
 #  pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  acom_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel' ]}
-#  com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel'  ] }
+  leg_length: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel'  ] }
 #  swing_ft_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

@@ -83,6 +83,7 @@ void DistanceTrackingData::UpdateJdotV(
 void DistanceTrackingData::CheckDerivedOscTrackingData() {
   to_frame_data_->CheckOscTrackingData();
   from_frame_data_->CheckOscTrackingData();
+  DRAKE_DEMAND(to_frame_data_->view_frame() == from_frame_data_->view_frame());
   DRAKE_DEMAND(K_p_.rows() == 1);
   DRAKE_DEMAND(K_p_.cols() == 1);
   DRAKE_DEMAND(K_d_.rows() == 1);

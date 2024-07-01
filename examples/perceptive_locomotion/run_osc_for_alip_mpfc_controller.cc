@@ -336,7 +336,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, context.get(), true,
-      systems::controllers::OscSolverChoice::kFCCQP);
+      systems::controllers::OscSolverChoice::kFastOSQP);
 
   // Cost
   int n_v = plant.num_velocities();
@@ -547,6 +547,10 @@ int DoMain(int argc, char* argv[]) {
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_right_motor", post_left_double_support_state, w_ankle_tracking);
   }
+
+  osc->SetSolverOptionsFromYaml(
+      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
+
   osc->Build();
 
   // Connect ports

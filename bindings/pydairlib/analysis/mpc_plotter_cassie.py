@@ -35,11 +35,6 @@ def main():
         "CF_MPFC_DEBUG"
     )
 
-    # contact_data = get_log_data(
-    #     log_mpc, mpfc_channels, 0, -1, mpfc_plots.contact_callback,
-    #     "NETWORK_CASSIE_CONTACT_DISPATCHER"
-    # )
-
     _ = mpfc_plots.plot_solve_time(mpfc_debug_data)
     _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
     _ = mpfc_plots.plot_initial_state(mpfc_debug_data)

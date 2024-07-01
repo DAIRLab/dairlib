@@ -305,21 +305,31 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  private:
 
   struct id_qp_solution {
-    Eigen::VectorXd dv_sol_;
-    Eigen::VectorXd u_sol_;
-    Eigen::VectorXd lambda_c_sol_;
-    Eigen::VectorXd lambda_h_sol_;
-    Eigen::VectorXd epsilon_sol_;
-    Eigen::VectorXd u_prev_;
-    double solve_time_;
+    Eigen::VectorXd dv_sol_ = Eigen::VectorXd::Zero(0);
+    Eigen::VectorXd u_sol_ = Eigen::VectorXd::Zero(0);
+    Eigen::VectorXd lambda_c_sol_ = Eigen::VectorXd::Zero(0);
+    Eigen::VectorXd lambda_h_sol_ = Eigen::VectorXd::Zero(0);
+    Eigen::VectorXd epsilon_sol_ = Eigen::VectorXd::Zero(0);
+    Eigen::VectorXd u_prev_ = Eigen::VectorXd::Zero(0);
+    double solve_time_ = 0;
   };
+
+  void InitializeSolution (id_qp_solution* sol) const {
+    sol->dv_sol_ = Eigen::VectorXd::Zero(n_v_);
+    sol->u_sol_ = Eigen::VectorXd::Zero(n_u_);
+    sol->lambda_c_sol_ = Eigen::VectorXd::Zero(id_qp_.nc());
+    sol->lambda_h_sol_ = Eigen::VectorXd::Zero(id_qp_.nh());
+    sol->epsilon_sol_ = Eigen::VectorXd::Zero(id_qp_.nc_active());
+    sol->u_prev_ = Eigen::VectorXd::Zero(n_u_);
+    sol->solve_time_ = 0;
+  }
 
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x,
+  void SolveQp(const Eigen::VectorXd& x,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
                           double t_since_last_state_switch, double alpha,
@@ -419,17 +429,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool used_with_finite_state_machine_;
 
   // Solver
-  std::unique_ptr<solvers::FCCQPSolver> fccqp_solver_;
+  std::unique_ptr<solvers::FCCQPSolver> fccqp_solver_ = nullptr;
   drake::solvers::SolverOptions fcc_qp_solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/fcc_qp_options_default.yaml"))
           .GetAsSolverOptions(dairlib::solvers::FCCQPSolver::id());
 
-  std::unique_ptr<solvers::FastOsqpSolver> osqp_solver_;
+  std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_ = nullptr;
   drake::solvers::SolverOptions osqp_solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .GetAsSolverOptions(solvers::FastOsqpSolver::id());
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   const OscSolverChoice solver_choice_;
 

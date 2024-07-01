@@ -4,7 +4,7 @@ mu: 0.8
 foot_length: 0.10
 time_regularization: 60
 soft_constraint_cost: 1000
-height: 0.85
+height: 0.88
 single_stance_duration: 0.3
 double_stance_duration: 0.1
 stance_width: 0.3

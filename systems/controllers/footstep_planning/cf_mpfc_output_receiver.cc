@@ -107,7 +107,7 @@ void CFMPFCOutputReceiver::CopyRTraj(
 
   VectorXd yddot = VectorXd::Constant(1, input_traj.value(t)(1));
   VectorXd y = VectorXd::Constant(yddot.rows(), 0.85);
-  VectorXd ydot = VectorXd::Zero(yddot.rows(), 0);
+  VectorXd ydot = VectorXd::Zero(yddot.rows());
 
   *dynamic_cast<PiecewisePolynomial<double>*>(out) =
       polynomials::ConstantAccelerationTrajectory(y, ydot, yddot, t);

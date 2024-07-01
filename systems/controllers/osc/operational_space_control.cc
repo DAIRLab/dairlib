@@ -336,7 +336,7 @@ void OperationalSpaceControl::Build() {
   }
 
   fccqp_solver_ = std::make_unique<solvers::FCCQPSolver>();
-  osqp_solver_ = std::make_unique<solvers::FastOsqpSolver>();
+  osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
   id_qp_.get_mutable_prog().SetSolverOptions(fcc_qp_solver_options_);
   id_qp_.get_mutable_prog().SetSolverOptions(osqp_solver_options_);
 }
@@ -364,9 +364,9 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
         << timestamp;
-    if (osqp_solver_->IsInitialized()) {
-      osqp_solver_->DisableWarmStart();
-    }
+//    if (osqp_solver_->IsInitialized()) {
+//      osqp_solver_->DisableWarmStart();
+//    }
   }
   return drake::systems::EventStatus::Succeeded();
 }
@@ -467,11 +467,14 @@ void OperationalSpaceControl::UpdateTrackingData(
 
 }
 
-VectorXd OperationalSpaceControl::SolveQp(
+void OperationalSpaceControl::SolveQp(
     const VectorXd& x,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double t_since_last_state_switch, double alpha, int next_fsm_state,
     OperationalSpaceControl::id_qp_solution* sol) const {
+
+  DRAKE_DEMAND(osqp_solver_ != nullptr);
+  DRAKE_DEMAND(fccqp_solver_ != nullptr);
 
   // Update context
   SetPositionsIfNew<double>(
@@ -602,9 +605,10 @@ VectorXd OperationalSpaceControl::SolveQp(
         id_qp_.get_ordered_friction_coeffs());
   }
 
-  if (!osqp_solver_->IsInitialized()) {
-    osqp_solver_->InitializeSolver(id_qp_.get_prog(), osqp_solver_options_);
-  }
+
+//  if (!osqp_solver_->IsInitialized()) {
+//    osqp_solver_->InitializeSolver(id_qp_.get_prog(), osqp_solver_options_);
+//  }
 
   // Solve the QP
   MathematicalProgramResult result;
@@ -617,6 +621,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     case kFastOSQP:
       result = osqp_solver_->Solve(id_qp_.get_prog());
       sol->solve_time_ = result.get_solver_details<drake::solvers::OsqpSolver>().run_time;
+      break;
+    default:
+      throw std::runtime_error("unrecognized solver option");
   }
 
   if (result.is_success()) {
@@ -628,20 +635,23 @@ VectorXd OperationalSpaceControl::SolveQp(
     sol->lambda_h_sol_ = result.GetSolution(id_qp_.lambda_h());
     sol->epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
     fccqp_solver_->set_warm_start(true);
-    osqp_solver_->EnableWarmStart();
+//    osqp_solver_->EnableWarmStart();
   } else {
     sol->u_prev_ = 0.99 * sol->u_sol_ + VectorXd::Random(n_u_);
     fccqp_solver_->set_warm_start(false);
-    osqp_solver_->DisableWarmStart();
+//    osqp_solver_->DisableWarmStart();
   }
-
-  return sol->u_sol_;
 }
 
 
 void OperationalSpaceControl::SolveIDQP(
     const drake::systems::Context<double> &context,
     OperationalSpaceControl::id_qp_solution *solution) const {
+
+  DRAKE_DEMAND(solution != nullptr);
+  if (solution->u_prev_.rows() == 0) {
+    InitializeSolution(solution);
+  }
 
   // Read in current state and time
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
@@ -675,11 +685,10 @@ void OperationalSpaceControl::SolveIDQP(
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-    u_sol = SolveQp(x, context, clock_time, fsm_state(0),
+    SolveQp(x, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0), alpha, next_fsm_state, solution);
   } else {
-    u_sol = SolveQp(x, context, current_time, -1, current_time,
-                    0, -1, solution);
+    SolveQp(x, context, current_time, -1, current_time, 0, -1, solution);
   }
 }
 

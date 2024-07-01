@@ -534,6 +534,9 @@ int DoMain(int argc, char** argv) {
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_right_motor", post_left_double_support_state, w_ankle_tracking);
   }
+
+  osc->SetSolverOptionsFromYaml(
+      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
   osc->Build();
 
   // Connect ports

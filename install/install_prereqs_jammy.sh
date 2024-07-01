@@ -18,6 +18,7 @@ wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/se
 mkdir source_distribution
 cd source_distribution
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_prereqs.sh"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_bazelisk.sh"
 # skipping drake's "install_prereqs_user_environment.sh"
 touch install_prereqs_user_environment.sh
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"

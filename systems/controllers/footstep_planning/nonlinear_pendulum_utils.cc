@@ -3,6 +3,7 @@
 #include "multibody/multibody_utils.h"
 #include "drake/math/autodiff_gradient.h"
 
+#include <iostream>
 namespace dairlib::systems::controllers::nonlinear_pendulum {
 
 using alip_utils::PointOnFramed;

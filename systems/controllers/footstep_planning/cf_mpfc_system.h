@@ -90,7 +90,7 @@ struct cf_mpfc_params_io {
         alip_utils::reset_discretization(io.reset_discretization_method);
 
     params_out.com_pos_bound =
-        Eigen::Vector2d::Map(io.com_vel_bound.data());
+        Eigen::Vector2d::Map(io.com_pos_bound.data());
     params_out.com_vel_bound =
         Eigen::Vector2d::Map(io.com_vel_bound.data());
     params_out.input_bounds =

@@ -84,33 +84,34 @@ cf_mpfc_solution CFMPFC::Solve(
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
 
   bool use_prev_sol = prev_sol.success and prev_sol.init and prev_sol.stance == stance;
-  use_prev_sol = false;
 
   // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
   //   Linearizing (or consider alternate rotation representation)
-  for (int i = 0; i < params_.nknots - 1; ++i) {
+  for (int i = 0; i < params_.nknots; ++i) {
     if (use_prev_sol) {
       xc.push_back(prev_sol.xc.at(i));
-      uu.push_back(prev_sol.uu.at(i));
+      uu.at(i) = prev_sol.uu.at(i);
     } else {
       xc.push_back(x);
     }
   }
   if (use_prev_sol) {
-    xc.push_back(prev_sol.xc.back());
     xc.front() = x;
-  } else {
-    xc.push_back(x);
   }
 
   Vector3d p_post = use_prev_sol ? prev_sol.pp.at(1) :
                                    p + CalcS2SLQRInput(x, vdes, t, stance);
 
   UpdateComplexDynamicsConstraints(xc, uu,  t);
-  UpdateModelSwitchConstraint(x, p, p_post);
+  UpdateModelSwitchConstraint(xc.back(), p, p_post);
 
   auto solver_start = std::chrono::steady_clock::now();
   auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+
+  if (not result.is_success()) {
+    std::cout << "solve failed with code "
+              << result.get_solution_result() << std::endl;
+  }
   auto solver_end = std::chrono::steady_clock::now();
 
   cf_mpfc_solution mpfc_solution;
@@ -124,6 +125,8 @@ cf_mpfc_solution CFMPFC::Solve(
   }
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     mpfc_solution.xx.push_back(result.GetSolution(xx_.at(i)));
+  }
+  for (int i = 0; i < params_.nmodes - 2; ++i) {
     mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
   }
   mpfc_solution.xi = result.GetSolution(xi_);
@@ -163,6 +166,8 @@ void CFMPFC::MakeMPCVariables() {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     xx_.push_back(prog_->NewContinuousVariables(4,
                                                 "xx" + std::to_string(i + 1)));
+  }
+  for (int i = 0; i < params_.nmodes - 2; ++i) {
     ee_.push_back(prog_->NewContinuousVariables(1,
                                                 "ee" + std::to_string(i + 1)));
   }
@@ -205,6 +210,9 @@ void CFMPFC::MakeMPCCosts() {
             Matrix4d::Identity(), Vector4d::Zero(),
             {pp_.at(i).head<2>(), pp_.at(i + 1).head<2>()}
         ));
+  }
+
+  for (int i = 0; i < params_.nmodes - 2; ++i) {
     soft_constraint_cost_.push_back(
         prog_->AddQuadraticCost(
             2 * params_.soft_constraint_cost * MatrixXd::Identity(1, 1),
@@ -212,7 +220,6 @@ void CFMPFC::MakeMPCCosts() {
             ee_.at(i)
         ));
   }
-
   terminal_cost_ = prog_->AddQuadraticCost(
       Matrix4d::Identity(), Vector4d::Zero(), 0, xx_.back()
   ).evaluator();
@@ -223,7 +230,7 @@ void CFMPFC::MakeMPCCosts() {
 
   // build cost matrices
   alip_utils::MakeAlipStepToStepCostMatrices(
-      params_.gait_params, params_.Q, lqr_S_,
+      params_.gait_params, params_.Q, params_.Qf,
       Q_proj_, Q_proj_f_,
       g_proj_p1_, g_proj_p2_,
       p2o_premul_, projection_to_p2o_complement_,
@@ -239,6 +246,7 @@ void CFMPFC::MakeFootstepConstraints() {
   Matrix<double, 2, 4> A_reach = Matrix<double, 2, 4>::Zero();
   A_reach.leftCols<2>() = -Matrix2d::Identity();
   A_reach.rightCols<2>() = Matrix2d::Identity();
+
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     reachability_c_.push_back(
         prog_->AddLinearConstraint(
@@ -309,9 +317,9 @@ void CFMPFC::MakeStateConstraints() {
   ub.tail<8>() = stack<double>({state_bound, state_bound});
 
 
-  for (int i = 0; i < params_.nmodes - 1; ++i) {
+  for (int i = 0; i < params_.nmodes - 2; ++i) {
     workspace_c_.push_back(
-        prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i), ee_.at(i)})
+        prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
     //std::cout << workspace_c_.at(i).ToLatex() << std::endl;
   }
@@ -460,7 +468,7 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
         m * Qu, -m * Qu * ud, 0.5 * m * ud.transpose() * Qu * ud, true);
   }
   complex_state_final_cost_->UpdateCoefficients(
-      1000 * Qx, -1000 * Qx * xd, 500 * xd.transpose() * Qx * xd, true);
+       Qx, -Qx * xd, 0.5 * xd.transpose() * Qx * xd, true);
 }
 
 void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {

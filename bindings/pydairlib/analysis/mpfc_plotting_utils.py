@@ -69,6 +69,7 @@ def process_cf_mpfc_debug_data(data):
     initial_state = np.zeros((n, nxc))
     initial_stance_foot = np.zeros((n, 3))
     desired_velocity = np.zeros((n, 2))
+    xi = np.zeros((n, 4))
     xc = [np.zeros((nknots, nxc))] * n
     uc = [np.zeros((nknots, nuc))] * n
     pp = [np.zeros((nmodes, 3))] * n
@@ -82,6 +83,7 @@ def process_cf_mpfc_debug_data(data):
         initial_state[i] = msg.initial_state
         initial_stance_foot[i] = msg.initial_stance_foot
         desired_velocity[i] = msg.desired_velocity
+        xi[i] = msg.initial_alip_state
         pp[i] = np.array(msg.pp)
         xx[i] = np.array(msg.xx)
         xc[i] = np.array(msg.xc)
@@ -93,10 +95,13 @@ def process_cf_mpfc_debug_data(data):
         'solve_time': solve_time,
         'optimizer_time': optimizer_time,
         'initial_state': initial_state,
+        'initial_alip_state': xi,
         'initial_stance_foot': initial_stance_foot,
         'desired_velocity': desired_velocity,
         'pp': pp,
         'xx': xx,
+        'xc': xc,
+        'uc': uc,
     }
 
 
@@ -136,6 +141,28 @@ def plot_contact(contact_data, mpc_data, time_slice=None):
     )
     add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
 
+    return ps
+
+
+def plot_initial_alip_state(mpc_data, time_slice=None):
+    time_slice = slice(len(mpc_data['t_mpc'])) if time_slice is None else (
+        time_slice)
+    xslice = slice(0, 4, 1)
+
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        mpc_data,
+        't_mpc',
+        time_slice,
+        ['initial_alip_state'],
+        {'initial_alip_state': xslice},
+        {'initial_alip_state': ['x', 'y', 'Lx', 'Ly']},
+        {'xlabel': 'Time (s)',
+         'ylabel': 'Initial Alip State',
+         'title': 'Initial ALip State'},
+        ps
+    )
+    add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
     return ps
 
 

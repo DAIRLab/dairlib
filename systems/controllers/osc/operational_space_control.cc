@@ -107,7 +107,10 @@ OperationalSpaceControl::OperationalSpaceControl(
                       .get_index();
 
   osc_solution_cache_ = DeclareCacheEntry(
-      "osc_solution", &OperationalSpaceControl::SolveIDQP).cache_index();
+      "osc_solution",
+      drake::systems::ValueProducer(
+          this, &OperationalSpaceControl::AllocateSolution,
+          &OperationalSpaceControl::SolveIDQP)).cache_index();
 
   tracking_data_cache_ = DeclareCacheEntry(
       "tracking_data_states",
@@ -233,6 +236,21 @@ OperationalSpaceControl::AllocateTrackingDataStates() const {
     states->push_back(data->AllocateState());
   }
   return states;
+}
+
+std::unique_ptr<OperationalSpaceControl::id_qp_solution>
+OperationalSpaceControl::AllocateSolution() const {
+  DRAKE_DEMAND(this->id_qp_.built());
+  std::unique_ptr<id_qp_solution> sol =
+      std::make_unique<id_qp_solution>();
+  sol->u_sol_ = VectorXd::Zero(this->n_u_);
+  sol->u_prev_ = VectorXd::Zero(this->n_u_);
+  sol->dv_sol_ = VectorXd::Zero(this->n_v_);
+  sol->lambda_h_sol_ = VectorXd::Zero(this->id_qp_.nh());
+  sol->lambda_c_sol_ = VectorXd::Zero(this->id_qp_.nc());
+  sol->epsilon_sol_ = VectorXd::Zero(this->id_qp_.nc_active());
+  sol->solve_time_ = 0;
+  return sol;
 }
 
 // Osc checkers and constructor
@@ -647,11 +665,6 @@ void OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::SolveIDQP(
     const drake::systems::Context<double> &context,
     OperationalSpaceControl::id_qp_solution *solution) const {
-
-  DRAKE_DEMAND(solution != nullptr);
-  if (solution->u_prev_.rows() == 0) {
-    InitializeSolution(solution);
-  }
 
   // Read in current state and time
   auto robot_output = dynamic_cast<const OutputVector<double>*>(

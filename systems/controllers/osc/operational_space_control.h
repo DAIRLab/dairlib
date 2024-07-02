@@ -296,9 +296,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
             FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
 
-  std::unique_ptr<std::vector<OscTrackingDataState>>
-  AllocateTrackingDataStates() const;
-
   // OSC LeafSystem builder
   void Build();
 
@@ -314,15 +311,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     double solve_time_ = 0;
   };
 
-  void InitializeSolution (id_qp_solution* sol) const {
-    sol->dv_sol_ = Eigen::VectorXd::Zero(n_v_);
-    sol->u_sol_ = Eigen::VectorXd::Zero(n_u_);
-    sol->lambda_c_sol_ = Eigen::VectorXd::Zero(id_qp_.nc());
-    sol->lambda_h_sol_ = Eigen::VectorXd::Zero(id_qp_.nh());
-    sol->epsilon_sol_ = Eigen::VectorXd::Zero(id_qp_.nc_active());
-    sol->u_prev_ = Eigen::VectorXd::Zero(n_u_);
-    sol->solve_time_ = 0;
-  }
+  std::unique_ptr<id_qp_solution> AllocateSolution() const;
+
+  std::unique_ptr<std::vector<OscTrackingDataState>>
+  AllocateTrackingDataStates() const;
 
   // Osc checkers and constructor-related methods
   void CheckCostSettings();

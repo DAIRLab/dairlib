@@ -277,9 +277,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   std::unique_ptr<id_qp_solution> AllocateSolution() const;
 
-  std::unique_ptr<std::vector<OscTrackingDataState>>
-  AllocateTrackingDataStates() const;
-
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();

@@ -3,6 +3,23 @@
 
 workspace(name = "dairlib")
 
+# Support for apple toolchains on Bazel 7+
+# https://github.com/bazelbuild/apple_support/releases
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "c4bb2b7367c484382300aee75be598b92f847896fb31bbd22f3a2346adf66a80",
+    url = "https://github.com/bazelbuild/apple_support/releases/download/1.15.1/apple_support.1.15.1.tar.gz",
+)
+
+load(
+    "@build_bazel_apple_support//lib:repositories.bzl",
+    "apple_support_dependencies",
+)
+
+apple_support_dependencies()
+
 # dairlib can use either a local version of drake or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_DRAKE_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged
@@ -22,8 +39,10 @@ DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2
 load("//:environ.bzl", "drake_repository")
 load("//:environ.bzl", "inekf_repository")
 
-drake_repository(name="drake_path")
-inekf_repository(name="inekf_path")
+drake_repository(name = "drake_path")
+
+inekf_repository(name = "inekf_path")
+
 load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
 load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 

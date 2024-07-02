@@ -99,24 +99,24 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   // Built the Cassie MBPs
-  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  AddCassieMultibody(&plant_w_spr, nullptr, true,
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  AddCassieMultibody(&plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
-  plant_w_spr.Finalize();
+  plant.Finalize();
 
-  auto context_w_spr = plant_w_spr.CreateDefaultContext();
+  auto plant_context = plant.CreateDefaultContext();
 
   // Get contact frames and position
-  auto left_toe = LeftToeFront(plant_w_spr);
-  auto left_heel = LeftToeRear(plant_w_spr);
-  auto right_toe = RightToeFront(plant_w_spr);
-  auto right_heel = RightToeRear(plant_w_spr);
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
+  auto right_toe = RightToeFront(plant);
+  auto right_heel = RightToeRear(plant);
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
-  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
-  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant_w_spr);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, right_toe};
@@ -132,7 +132,7 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
-      plant_w_spr, FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
+      plant, FindResourceOrThrow(FLAGS_folder_path + FLAGS_traj_name));
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name + "_processed";
   if (osc_gains.relative_feet) {
     output_traj_path += "_rel";
@@ -241,33 +241,33 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant);
   // This actually outputs the target position of the pelvis not the true
   // center of mass
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), pelvis_trans_traj,
+          plant, plant_context.get(), pelvis_trans_traj,
           feet_contact_points, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
+      plant, plant_context.get(), "hip_left", true, l_foot_trajectory,
       l_hip_trajectory, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
+      plant, plant_context.get(), "hip_right", false, r_foot_trajectory,
       r_hip_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<BasicTrajectoryPassthrough>(
           pelvis_rot_trajectory, "pelvis_rot_traj", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
-      plant_w_spr, transition_times, FLAGS_contact_based_fsm,
+      plant, transition_times, FLAGS_contact_based_fsm,
       gains.impact_threshold,
       (osc_jump::JUMPING_FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
+      builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, context_w_spr.get(), true);
+      plant, plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -315,16 +315,16 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(gains.mu);
 
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      plant, left_heel.first, left_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
+      plant, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
   vector<int> stance_modes = {
       osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
@@ -350,30 +350,30 @@ int DoMain(int argc, char* argv[]) {
       stance_modes
   );
 
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Fix the springs in the dynamics
-  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
-  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);
+  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant);
   auto left_fixed_knee_spring =
-      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_left"),
+      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_left"),
                           vel_idx_map.at("knee_joint_leftdot"), 0);
   auto right_fixed_knee_spring =
-      FixedJointEvaluator(plant_w_spr, pos_idx_map.at("knee_joint_right"),
+      FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_right"),
                           vel_idx_map.at("knee_joint_rightdot"), 0);
   auto left_fixed_ankle_spring = FixedJointEvaluator(
-      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
+      plant, pos_idx_map.at("ankle_spring_joint_left"),
       vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
   auto right_fixed_ankle_spring = FixedJointEvaluator(
-      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
+      plant, pos_idx_map.at("ankle_spring_joint_right"),
       vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
   evaluators.add_evaluator(&left_fixed_knee_spring);
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
 
-  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
-  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
@@ -383,10 +383,10 @@ int DoMain(int argc, char* argv[]) {
   /**** Tracking Data for OSC *****/
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_com, osc_gains.K_d_com,
-      osc_gains.W_com, plant_w_spr, plant_w_spr);
+      osc_gains.W_com, plant);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis, plant_w_spr, plant_w_spr);
+      osc_gains.W_pelvis, plant);
   for (auto mode : stance_modes) {
     pelvis_tracking_data->AddStateAndPointToTrack(mode, "pelvis");
     pelvis_rot_tracking_data->AddStateAndFrameToTrack(mode, "pelvis");
@@ -400,10 +400,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_ft_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-      osc_gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      osc_gains.W_flight_foot, plant);
   auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_ft_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-      osc_gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      osc_gains.W_flight_foot, plant);
   left_foot_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT,
@@ -411,10 +411,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-      osc_gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      osc_gains.W_flight_foot, plant);
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-      osc_gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      osc_gains.W_flight_foot, plant);
   left_hip_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT, "hip_left");
   right_hip_tracking_data->AddStateAndPointToTrack(osc_jump::FLIGHT,
                                                    "hip_right");
@@ -422,21 +422,21 @@ int DoMain(int argc, char* argv[]) {
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "left_ft_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-          osc_gains.W_flight_foot, plant_w_spr, plant_w_spr,
+          osc_gains.W_flight_foot, plant,
           left_foot_tracking_data.get(), left_hip_tracking_data.get());
   auto right_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "right_ft_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,
-          osc_gains.W_flight_foot, plant_w_spr, plant_w_spr,
+          osc_gains.W_flight_foot, plant,
           right_foot_tracking_data.get(), right_hip_tracking_data.get());
 
   // Flight phase hip yaw tracking
   auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_left_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant_w_spr, plant_w_spr);
+      osc_gains.W_hip_yaw, plant);
   auto right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
-      osc_gains.W_hip_yaw, plant_w_spr, plant_w_spr);
+      osc_gains.W_hip_yaw, plant);
   left_hip_yaw_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddStateAndJointToTrack(
@@ -454,10 +454,10 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = osc_gains.swing_toe_kd * MatrixXd::Identity(1, 1);
   auto left_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
-      plant_w_spr, plant_w_spr);
+      plant);
   auto right_toe_angle_tracking_data = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
-      plant_w_spr, plant_w_spr);
+      plant);
 
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
       left_heel, left_toe};
@@ -466,11 +466,11 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), l_toe_trajectory,
+          plant, plant_context.get(), l_toe_trajectory,
           pos_map["toe_left"], left_foot_points, "left_toe_angle_traj");
   auto right_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc_jump::FlightToeAngleTrajGenerator>(
-          plant_w_spr, context_w_spr.get(), r_toe_trajectory,
+          plant, plant_context.get(), r_toe_trajectory,
           pos_map["toe_right"], right_foot_points, "right_toe_angle_traj");
 
   left_toe_angle_tracking_data->AddStateAndJointToTrack(

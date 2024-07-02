@@ -23,8 +23,7 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
   TransTaskSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_sp);
+      const drake::multibody::MultibodyPlant<double>& plant);
   void AddPointToTrack(
       const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
@@ -34,19 +33,21 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
 
  protected:
   std::unordered_map<int, const drake::multibody::RigidBodyFrame<double>*>
-      body_frames_w_spr_;
-  std::unordered_map<int, const drake::multibody::RigidBodyFrame<double>*>
-      body_frames_wo_spr_;
+      body_frames_;
 
  private:
-  void UpdateY(const Eigen::VectorXd& x_w_spr,
-               const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                  const drake::systems::Context<double>& context_w_spr) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               const drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   const drake::systems::Context<double>& context_wo_spr) final;
+  void UpdateY(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
+  void UpdateYdot(const Eigen::VectorXd& x,
+                  const drake::systems::Context<double>& context,
+                  OscTrackingDataState& tracking_data_state) const final;
+  void UpdateJ(const Eigen::VectorXd& x,
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                   const drake::systems::Context<double>& context,
+                   OscTrackingDataState& tracking_data_state) const final;
 
   void CheckDerivedOscTrackingData() final;
 

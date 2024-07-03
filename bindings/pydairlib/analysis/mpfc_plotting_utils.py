@@ -179,7 +179,7 @@ def plot_initial_state(mpc_data, time_slice=None):
         time_slice,
         ['initial_state'],
         {'initial_state': xslice},
-        {'initial_state': []},
+        {'initial_state': ['theta-y', 'theta-x', 'r', 'Ly', 'Lx', 'rdot']},
         {'xlabel': 'Time (s)',
          'ylabel': 'Initial State',
          'title': 'Initial State'},

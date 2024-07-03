@@ -53,13 +53,14 @@ Vector6d CalcPendulumState(
 
   double r = com_s.norm();
   double theta_y = atan2(com_s.x(), com_s.z());
-  double theta_x = -atan2(com_s.y(), com_s.z());
+  double theta_x = atan2(-com_s.y(), com_s.z());
 
   Vector6d x;
   x(theta_y_idx) = theta_y;
   x(theta_x_idx) = theta_x;
   x(r_idx) = r;
-  x.segment<2>(l_y_idx) = L_s.head<2>();
+  x(l_y_idx) = L_s.y();
+  x(l_x_idx) = L_s.x();
   x(rdot_idx) = com_dot_s.dot(com_s) / com_s.norm();
   return x;
 }
@@ -124,14 +125,14 @@ Vector6<T> CalcPendulumDynamics(
   T r = xp(r_idx);
   T theta_y = xp(theta_y_idx);
   T theta_x = xp(theta_x_idx);
-  T x = r * sin(theta_y);
-  T y = -r * sin(theta_x);
+  T x = r * cos(theta_x) * sin(theta_y);
+  T y = -r * cos(theta_y) * sin(theta_x);
 
   double g = 9.81;
 
   Vector6<T> xdot;
-  xdot(theta_y_idx) = xp(l_y_idx) / (m * r * r);
-  xdot(theta_x_idx) = xp(l_x_idx) / (m * r * r);
+  xdot(theta_y_idx) = xp(l_y_idx) / (m * r * r * cos(theta_x) * cos(theta_x));
+  xdot(theta_x_idx) = xp(l_x_idx) / (m * r * r * cos(theta_y) * cos(theta_y));
   xdot(r_idx) = xp(rdot_idx);
   xdot(l_y_idx) = m * g * x + u(0);
   xdot(l_x_idx) = -m * g * y;
@@ -146,12 +147,12 @@ Vector4<T> CalcALIPReset(
   const T& theta_y = x_pre(theta_y_idx);
   const T& theta_x = x_pre(theta_x_idx);
   const T& rdot = x_pre(rdot_idx);
-  const T theta_y_dot = x_pre(l_y_idx) / (m * r * r);
-  const T theta_x_dot = x_pre(l_x_idx) / (m * r * r);
-  const T x = r * sin(theta_y);
-  const T y = -r * sin(theta_x);
-  const T xdot = rdot * sin(theta_y) + r * theta_y_dot * cos(theta_y);
-  const T ydot = -rdot * sin(theta_x) - r * theta_x_dot * cos(theta_x);
+  const T theta_y_dot = x_pre(l_y_idx) / (m * r * r * cos(theta_x) * cos(theta_x));
+  const T theta_x_dot = x_pre(l_x_idx) / (m * r * r * cos(theta_y) * cos(theta_y));
+  const T x = r * cos(theta_x) * sin(theta_y);
+  const T y = -r * cos(theta_y) * sin(theta_x);
+  const T xdot = rdot * sin(theta_y) * cos(theta_x) + r * theta_y_dot * cos(theta_y) * cos(theta_x) - r * theta_x_dot * sin(theta_y) * sin(theta_x);
+  const T ydot = -rdot * sin(theta_x) * cos(theta_y) - r * theta_x_dot * cos(theta_x) * cos(theta_y) + r * theta_y_dot * sin(theta_x) * sin(theta_y);
   const T zdot = (-rdot * r + xdot*x + ydot * y) / sqrt(r*r - x*x - y*y);
 
   Vector3<T> v(xdot, ydot, zdot);
@@ -167,8 +168,8 @@ Vector4d CalcAlipStateAtTouchdown(const Vector6d& xp, double m, double t) {
   double r = xp(r_idx);
   double theta_y = xp(theta_y_idx);
   double theta_x = xp(theta_x_idx);
-  double x = r * sin(theta_y);
-  double y = -r * sin(theta_x);
+  double x = r * cos(theta_x) * sin(theta_y);
+  double y = -r * cos(theta_y) * sin(theta_x);
   double z = sqrt(r*r - x*x + y*y);
   double ly = xp(l_y_idx);
   double lx = xp(l_x_idx);

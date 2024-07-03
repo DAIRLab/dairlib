@@ -12,7 +12,7 @@ reset_discretization_method: 'ZOH'
 tracking_cost_type: 'gait'
 com_pos_bound: [0.5, 0.35]
 com_vel_bound: [2.0, 1.0]
-input_bounds: [15.0, 2.0]
+input_bounds: [20.0, 5.0]
 
 Qf:
   [  100.0, 0, 0, 0,
@@ -32,5 +32,5 @@ Qc: [ 0.0, 0, 0, 0, 0, 0,
       0, 0, 0, 0.0, 0, 0,
       0, 0, 0, 0, 0.0, 0,
       0, 0, 0, 0, 0, 0.01 ]
-Rc: [ 10, 0,
-       0, 10 ]
+Rc: [ 0.1, 0,
+       0, 5.0 ]

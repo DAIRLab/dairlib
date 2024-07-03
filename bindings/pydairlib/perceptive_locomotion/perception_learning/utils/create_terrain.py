@@ -30,7 +30,7 @@ def flat_terrain(init_y = 10, init_x = -2.5, end_x = 31):
             outfile.write(f"  - {data}\n")
 
 
-def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = True):
+def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = False):
     '''
     To Create random blocks with values up to 4 decimal point
     '''
@@ -39,7 +39,9 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = True):
             data = yaml.safe_load(file)
 
         # Number of cubes
-        n = np.random.randint(5, 15)
+        #n = np.random.randint(10, 15)
+        n = np.random.randint(10, 20) # Easy terrain
+        n = 20
         cubes = []
         for stone in data['stones']:
             center, _, dimensions, _ = stone
@@ -54,19 +56,23 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = True):
             normals[:, 2] = np.maximum(normals[:, 2], 0.1)
             normals /= np.linalg.norm(normals, axis=1, keepdims=True)
             
-            yaws = np.random.uniform(0, 2*np.pi, size=n)
+            yaws = np.random.uniform(0, np.pi, size=n) #np.zeros((n,))
             
             for pos, norm, yaw in zip(positions, normals, yaws):
                 pos = np.round(pos, 4).tolist()
                 norm = np.round(norm, 4).tolist()
-                size = np.round(np.random.uniform(0.25, 0.35, size=3), 4).tolist()
+                size = np.round(np.random.uniform(0.15, 0.35, size=3), 4).tolist()
+                #size = np.round(np.random.uniform(0.15, 0.25, size=3), 4).tolist() # Easy terrain
+                #size = np.round(np.random.uniform(0.2, 0.35, size=3), 4).tolist() # Medium terrain
+                #size = np.round(np.random.uniform(0.25, 0.4, size=3), 4).tolist() # Hard terrain
                 yaw = round(yaw, 4)
 
                 # Reject if stones are within [0.5, 0.5]
-                if abs(pos[0]) > 1:
+                # if abs(pos[0]) > 1:
+                if abs(pos[0]) > 0.5:
                     cubes.append([pos, norm, size, [yaw]])
                     
-        output_file_name = f'flat_{i}.yaml'
+        output_file_name = f'terrain/flat_{i}.yaml'
 
         with open(output_file_name, 'w') as outfile:
             outfile.write("stones:\n")
@@ -75,36 +81,6 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = True):
             for cube in cubes:
                 outfile.write(f"  - {cube}\n")
         print(f'YAML file "{output_file_name}" has been created.')
-        
-
-def make_stairs(width: float, depth: float, height: float, n: int,
-                direction: str) -> SquareSteppingStoneList:
-    """
-        Make a staircase centered at the origin.
-    """
-    assert (n % 2 == 1)  # must have an odd number of steps
-    assert (direction == 'up' or direction == 'down')
-    signed_height = height if direction == 'up' else -height
-    stones = []
-    for i in range(n):
-        steps_from_center = i - ((n - 1) / 2)
-        x_center = depth * steps_from_center
-        y_center = 0
-        z_center = signed_height * steps_from_center
-        stone = [
-            [x_center, y_center, z_center],
-            [0., 0., 1.],
-            [depth, width, height],
-            [0.0]
-        ]
-        stones.append(stone)
-
-    stepping_stone_list = SquareSteppingStoneList([], [], [])
-    stepping_stone_list.stones = stones
-    stepping_stone_list.footholds, stepping_stone_list.cubes = \
-        SquareSteppingStoneList.GetFootholdsWithMargin(stones, 0)
-
-    return stepping_stone_list
 
 def staircase(start_x=-4.5, end_x=30., initial_y_dim = 10., y_increment=0.3):
     '''
@@ -143,7 +119,7 @@ def staircase(start_x=-4.5, end_x=30., initial_y_dim = 10., y_increment=0.3):
         for data in stones:
             outfile.write(f"  - {data}\n")
 
-def flat_stair(start_x=-3.5, end_x=30., initial_y_dim=10., y_increment=0.3, flat_terrain=4.0):
+def flat_stair(start_x=-3.5, end_x=30., initial_y_dim=15., y_increment=0.3, flat_terrain=4.0):
     '''
     Make flat-staircase (up)
     flat_terrain: Flat terrain phase in meters
@@ -193,7 +169,7 @@ def flat_stair(start_x=-3.5, end_x=30., initial_y_dim=10., y_increment=0.3, flat
     print(f'YAML file "{output_file_name}" has been created.')
 
 def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.,
-                    y_increment=0.3,start_flat=4., stair_up=15., Gaussian=True):
+                    y_increment=0.3,start_flat=4., stair_up=15., end_flat=4.0, Gaussian=True):
     initial_z_center = 0.0
 
     stones = []
@@ -202,9 +178,9 @@ def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.
     x_center = start_x
     x_dim = 1.0
     z_dim = 0.1
-
+    
     # Flat terrain phase
-    end_flat = end_x - 4.0
+    end_flat = end_x - end_flat
 
     for i in range(num_blocks):
         while x_center <= end_x:
@@ -215,13 +191,19 @@ def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.
 
             # Up phase
             elif start_flat < x_center <= stair_up:
-                z_dim = round(np.random.uniform(0.2, 0.35), 5)
-                z_center = round(z_center + z_dim / 2, 5)
+                #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                
+                z_center = round(z_center + z_dim / 2, 5) # + for upstair | - for downstair
 
             # Down phase
             elif stair_up < x_center <= end_flat:
-                z_dim = round(np.random.uniform(0.2, 0.35), 5)
-                z_center = round(z_center - z_dim / 2, 5)
+                #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                
+                z_center = round(z_center - z_dim / 2, 5) # - for upstair | + for downstair
 
             # Flat phase
             else:
@@ -235,7 +217,7 @@ def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.
             stones.append(stone)
 
             prev_x_dim = x_dim
-            x_dim = round(np.random.uniform(1., 2.0), 5) if x_center > start_flat else 1.0
+            x_dim = round(np.random.uniform(.5, 1.5), 5) if x_center > start_flat else 1.0 # stair length 50 cm ~ 1.5m
             avg_x_dim = (prev_x_dim + x_dim) / 2
             x_center = round(x_center + avg_x_dim, 5)
 
@@ -244,14 +226,18 @@ def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.
 
         for stone in stones:
             # Number of cubes
-            n = np.random.randint(5, 15)
+            # n = np.random.randint(10, 15)
+            #n = np.random.randint(1, 10) # Easy terrain
+            #n = np.random.randint(5, 10) # Medium terrain
+            n = np.random.randint(5, 15) # Hard terrain
+            
             cubes = []
             for stone in stones:
                 center, _, dimensions, _ = stone
 
                 if Gaussian:
                     dimensions = np.array(dimensions)
-                    positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))\
+                    positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))
                 else:
                     positions = np.random.uniform(-0.5, 0.5, size=(n, 3)) * dimensions + center
                 
@@ -259,19 +245,28 @@ def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.
                 normals[:, 2] = np.maximum(normals[:, 2], 0.1)
                 normals /= np.linalg.norm(normals, axis=1, keepdims=True)
 
-                yaws = np.random.uniform(0, 2*np.pi, size=n)
+                yaws = np.random.uniform(0, np.pi, size=n)
 
                 for pos, norm, yaw in zip(positions, normals, yaws):
                     pos = np.round(pos, 4).tolist()
                     norm = np.round(norm, 4).tolist()
-                    size = np.round(np.random.uniform(0.15, 0.35, size=3), 4).tolist()
+                    #size = np.round(np.random.uniform(0.15, 0.3, size=3), 4).tolist()
+                    #size = np.round(np.random.uniform(0.1, 0.2, size=3), 4).tolist() # Easy terrain
+                    #size = np.round(np.random.uniform(0.15, 0.25, size=3), 4).tolist() # Medium terrain
+                    size = np.round(np.random.uniform(0.15, 0.3, size=3), 4).tolist() # Hard terrain
+
                     yaw = round(yaw, 4)
 
+                    # Reject if stones are within [1., 1.]
+                    # if abs(pos[0]) > 1:
+
                     # Reject if stones are within [0.5, 0.5]
-                    if abs(pos[0]) > 1:
+                    if abs(pos[0]) > 0.5:
                         cubes.append([pos, norm, size, [yaw]])
 
-        output_file_name = f'flat_stair_{i}.yaml'
+        # ustair for upward staircase
+        # dstair for downward staircase
+        output_file_name = f'terrain/ustair_{i}.yaml'
 
         with open(output_file_name, 'w') as outfile:
             outfile.write("stones:\n")
@@ -329,5 +324,10 @@ def plot_terrain(file_path: str = './flat_stair_flat.yaml'):
     plt.show()
 
 if __name__ == '__main__':
-    file_path = './flat_stair_flat.yaml'
+    file_path = './terrain/ustair_0.yaml'
     plot_terrain(file_path=file_path)
+    
+    #flat_terrain(init_y = 15, init_x = -2.5, end_x = 21)
+    #flat_random_blocks(num_blocks=1000, Gaussian=False)
+    
+    #flat_stair_flat(num_blocks=1, start_x=-3.5, end_x=12., initial_y_dim=15., y_increment=0.3, start_flat=1., stair_up=5., end_flat=2.0, Gaussian=False)

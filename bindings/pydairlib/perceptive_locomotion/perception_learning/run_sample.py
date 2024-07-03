@@ -80,29 +80,25 @@ def run_play(sim_params, model_path=None):
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 3e4
-    #test_folder = "rl/vdes_depth/"
-    #model_path = path.join(test_folder, 'best_model.zip')
     
     lstm=True
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
-
-    model_path = 'RPPO_initialize_no_batch_norm_new.zip'
-    model_path = 'logs/rl_model_675000_steps.zip'
+    
+    model_path = 'RPPO_multitask.zip'
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
     input("Start..")
     total_reward = 0
-
-    for _ in range(int(max_steps)):
+    model.policy.eval()
+    for i in range(int(max_steps)):
         if lstm:
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, _states = model.predict(obs, deterministic=True)
-
+        
         obs, reward, terminated, truncated, info = env.step(action)
-
         if lstm:
             episode_starts = terminated
             

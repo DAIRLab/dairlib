@@ -16,6 +16,8 @@ from pydairlib.perceptive_locomotion.diagrams import (
     PerceptionModuleDiagram
 )
 
+from pydairlib.analysis.mbp_plotting_utils import make_mbp_name_vectors
+
 from pydairlib.systems.footstep_planning import Stance
 from pydairlib.systems.plant_visualizer import PlantVisualizer
 from pydairlib.systems.perception import GridMapVisualizer
@@ -70,8 +72,11 @@ class ObservationPublisher(LeafSystem):
             'lqr_reference': self.DeclareVectorInputPort(
                 "xd_ud", 6
             ).get_index(),
-            'x_xd' : self.DeclareVectorInputPort(
-                "x_xd", self.ns
+            # 'x_xd' : self.DeclareVectorInputPort(
+            #     "x_xd", self.ns
+            # ).get_index(),
+            'x' : self.DeclareVectorInputPort(
+                "x", self.ns
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
                 'vdes', 2
@@ -85,7 +90,7 @@ class ObservationPublisher(LeafSystem):
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*self.height*self.height+6+23+23 + 3*self.height*self.height, self.calculate_obs
+                "observations", 3*self.height*self.height+6+16+23 + 3*self.height*self.height, self.calculate_obs
             ).get_index()
         }
         if self.simulate_perception:
@@ -140,22 +145,29 @@ class ObservationPublisher(LeafSystem):
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
-        alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
+        # alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
+        alip = self.EvalVectorInput(context, self.input_port_indices['x']).get_value()
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
         
         if self.noise:
-            pass
+            uniformj = np.random.uniform(low=-0.003, high=0.003, size=joint_angle.shape(0))
+            joint_angle += uniformj
+            
+            # Offset for hmap
+            uniformh = np.random.uniform(low=-0.02, high=0.02)
+            hmap += uniformh
+            hmap = hmap.reshape(-1)
+
         else:
             hmap = hmap.reshape(-1)
             gt_hmap = gt_hmap.reshape(-1)
-            joint_angle = states[:23]
+            joint_angle = states[7:23] # Only joint angles (reject pelvis)
             joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
             gt_joint_angle = gt_states[:23]
 
-        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap))
-
+        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # 24621
         output.set_value(out)
 
 class RewardSystem(LeafSystem):
@@ -164,6 +176,7 @@ class RewardSystem(LeafSystem):
 
         self.params = alip_params
         self.cassie_sim = sim_env
+        self.prev_fsm = None
 
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
@@ -186,7 +199,10 @@ class RewardSystem(LeafSystem):
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
                 'vdes', 2
-            ).get_index()
+            ).get_index(),
+            'swing_ft_tracking_error': self.DeclareVectorInputPort(
+                'swing_ft_tracking_error', 1
+            ).get_index(),
         }
 
         self.output_port_indices = {
@@ -209,8 +225,7 @@ class RewardSystem(LeafSystem):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         xd = xd_ud.value()[:4]
         ud = xd_ud.value()[4:]
-        LQRreward = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
-        LQRreward = np.exp(-5*LQRreward)
+        LQRcost = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
 
         x_u_t = self.EvalVectorInput(context, self.input_port_indices['state']).value()
         pos_vel = x_u_t[:45]
@@ -230,13 +245,6 @@ class RewardSystem(LeafSystem):
             context,
             self.input_port_indices['vdes']
         ).value().ravel()
-        
-        velocity_reward = np.exp(-5*np.linalg.norm(vdes[:2] - bf_vel[:2]))
-        #velocity_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0])) + np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
-        
-        # penalize angular velocity about the z axis
-        #angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
-        angular_reward = np.exp(-np.linalg.norm(bf_ang))
 
         left_penalty = 0
         right_penalty = 0
@@ -253,34 +261,46 @@ class RewardSystem(LeafSystem):
         right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
-        if left_angle > 0.3:
-            left_penalty = -1
-        if right_angle > 0.3:
-            right_penalty = -1
+        track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
-        # forward_velocity = abs(bf_vel[0])
-        # if forward_velocity < 0.1:
-        #     forward_penalty = -10
-        # else:
-        #     forward_penalty = 0
+        # velocity_reward = np.exp(-3*np.linalg.norm(vdes[:2] - bf_vel[:2]))
+        vx_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0]))
+        vy_reward = np.exp(-5*np.linalg.norm(vdes[1] - bf_vel[1]))
+        
+        # penalize angular velocity about the z axis
+        angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
+        track_penalty = 0.0
 
-        # if forward_penalty < 0:
-        #     reward = forward_penalty
-        # elif left_angle > 0.3 and right_angle > 0.3:
-        if left_angle > 0.3 and right_angle > 0.3:
-            reward = left_penalty + right_penalty
-        elif left_angle > 0.3 and not right_angle > 0.3:
-            reward = left_penalty
-        elif right_angle > 0.3 and not left_angle > 0.3:
-            reward = right_penalty
+        if track_error > 0.05:
+            track_penalty = min(np.exp(2.5*(track_error-0.05)) - 1, 2)
+
+        fsm = self.EvalVectorInput(context, self.input_port_indices['fsm']).value()
+
+        if left_angle > 0.35:# and (fsm == 0. or fsm == 4.):
+            left_penalty = 1.
+        if right_angle > 0.35:# and (fsm == 1. or fsm == 3.):
+            right_penalty = 1.
+        
+        if self.prev_fsm == 3. and fsm == 1.:
+            ud_penalty = 0.
+            LQRreward = 0.
+        elif self.prev_fsm == 4. and fsm == 0.:
+            ud_penalty = 0.
+            LQRreward = 0.
         else:
-            reward = 0.5*LQRreward + 0.25*velocity_reward + 0.125*angular_reward # 0.75*velocity_reward + 0.25*angular_reward
+            LQRreward = np.exp(-3*LQRcost)
+            
+            # Footstep regularization
+            ud_penalty = np.linalg.norm(u - ud)
+
+        self.prev_fsm = fsm.copy()
+    
+        reward = 0.2 * LQRreward + 0.4 * vx_reward + 0.2 * vy_reward + 0.2 * angular_reward \
+                - (left_penalty + right_penalty) - track_penalty - 0.2 * ud_penalty
 
         # reward normalize to 0 ~ 1
-        #reward = 0.5*LQRreward + 0.25*velocity_reward + 0.125*angular_reward + left_penalty + right_penalty
-        #reward = 0.75*velocity_reward + 0.25*angular_reward + left_penalty + right_penalty# -2
-        #reward = 0.3*LQRreward + 0.25*velocity_reward + 0.35*angular_reward + left_penalty + right_penalty # -3
-    
+        #reward = 0.3*(LQRreward + track_reward + velocity_reward) + 0.1*angular_reward
+
         output[0] = reward
 
 class InitialConditionsServer:
@@ -360,7 +380,9 @@ class CassieFootstepControllerEnvironment(Diagram):
         self.nv = self.controller_plant.num_velocities() # 22
         self.na = self.controller_plant.num_actuators() # 10
         self.ns = self.controller_plant.num_multibody_states() # 45
-
+        # q,v,u = make_mbp_name_vectors(self.controller_plant) # For printing out the joints etc.
+        # print(v)
+        
         builder = DiagramBuilder()
         self.controller = MpfcOscDiagram(
             self.controller_plant,
@@ -538,6 +560,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_switching_time(),
                 'time_until_switch'
             ),
+            'swing_ft_tracking_error': builder.ExportOutput(
+                self.controller.get_output_port_swing_ft_tracking_error(),
+                'swing_ft_tracking_error'
+            ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
@@ -656,9 +682,13 @@ class CassieFootstepControllerEnvironment(Diagram):
     def AddToBuilderObservations(self, builder: DiagramBuilder):
         obs_pub = ObservationPublisher(self.controller_plant, noise=False, simulate_perception=self.params.simulate_perception)
         builder.AddSystem(obs_pub)
+        # builder.Connect(
+        #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
+        #     obs_pub.get_input_port_by_name("x_xd")
+        # )
         builder.Connect(
-            self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
-            obs_pub.get_input_port_by_name("x_xd")
+            self.ALIPfootstep_controller.get_output_port_by_name("x"),
+            obs_pub.get_input_port_by_name("x")
         )
         if self.params.simulate_perception:
             builder.Connect(
@@ -710,6 +740,10 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.Connect(
             self.get_output_port_by_name("gt_x_u_t"),
             reward.get_input_port_by_name("state")
+        )
+        builder.Connect(
+            self.get_output_port_by_name("swing_ft_tracking_error"),
+            reward.get_input_port_by_name("swing_ft_tracking_error")
         )
 
         builder.ExportOutput(reward.get_output_port(), "reward")

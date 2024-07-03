@@ -300,6 +300,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_switching_time(),
                 'time_until_switch'
             ),
+            'swing_ft_tracking_error': builder.ExportOutput(
+                self.controller.get_output_port_swing_ft_tracking_error(),
+                'swing_ft_tracking_error'
+            ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'

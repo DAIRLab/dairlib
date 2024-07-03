@@ -132,7 +132,10 @@ class RecurrentRolloutBuffer(RolloutBuffer):
         self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
         self.cell_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
 
-    def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
+        ### Mirror ###
+        self.mirror_actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
+
+    def add(self, *args, lstm_states: RNNStates, mirror_action: np.ndarray, **kwargs) -> None:
         """
         :param hidden_states: LSTM cell and hidden state
         """
@@ -140,6 +143,10 @@ class RecurrentRolloutBuffer(RolloutBuffer):
         self.cell_states_pi[self.pos] = np.array(lstm_states.pi[1].cpu().numpy())
         self.hidden_states_vf[self.pos] = np.array(lstm_states.vf[0].cpu().numpy())
         self.cell_states_vf[self.pos] = np.array(lstm_states.vf[1].cpu().numpy())
+
+        ### Mirror ###
+        mirror_action = mirror_action.reshape((self.n_envs, self.action_dim))
+        self.mirror_actions[self.pos] = np.array(mirror_action)
 
         super().add(*args, **kwargs)
 
@@ -168,6 +175,7 @@ class RecurrentRolloutBuffer(RolloutBuffer):
                 "hidden_states_vf",
                 "cell_states_vf",
                 "episode_starts",
+                "mirror_actions",### Mirror ###
             ]:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
@@ -239,6 +247,7 @@ class RecurrentRolloutBuffer(RolloutBuffer):
             lstm_states=RNNStates(lstm_states_pi, lstm_states_vf),
             episode_starts=self.pad_and_flatten(self.episode_starts[batch_inds]),
             mask=self.pad_and_flatten(np.ones_like(self.returns[batch_inds])),
+            mirror_actions=self.pad(self.mirror_actions[batch_inds]).reshape((padded_batch_size,) + self.mirror_actions.shape[1:]), ### Mirror ###
         )
 
 

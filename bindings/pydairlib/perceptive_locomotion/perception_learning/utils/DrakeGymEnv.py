@@ -229,7 +229,7 @@ class DrakeGymEnv(gym.Env):
         self.action_port.FixValue(context, action)
         truncated = False
         # Observation prior to advancing the simulation.
-        prev_observation = self.observation_port.Eval(context)
+        prev_observation = self.observation_port.Eval(context).astype(np.float32)
         info = dict()
         try:
             status = self.simulator.AdvanceTo(time + self.time_step)
@@ -254,13 +254,13 @@ class DrakeGymEnv(gym.Env):
             reward = 0
             return prev_observation, reward, terminated, truncated, info
 
-        observation = self.observation_port.Eval(context)
+        observation = self.observation_port.Eval(context).astype(np.float32)
         reward = self.reward(self.simulator.get_system(), context)
         terminated = (
             not truncated
             and (status.reason()
                  == SimulatorStatus.ReturnReason.kReachedTerminationCondition))
-
+        #print(f'step observation: {observation.dtype}')
         return observation, reward, terminated, truncated, info
 
     def reset(self, *,
@@ -288,8 +288,9 @@ class DrakeGymEnv(gym.Env):
 
         context = self.reset_handler(self.simulator, seed)
 
-        observations = self.observation_port.Eval(context)
-        return observations, dict()
+        observation = self.observation_port.Eval(context).astype(np.float32)
+        #print(f'reset observation: {observation.dtype}')
+        return observation, dict()
 
     def render(self):
         """

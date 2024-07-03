@@ -98,9 +98,24 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
     return sim_env, controller, diagram
 
-def check_termination(sim_env, diagram_context) -> bool:
+def check_termination(sim_env, diagram_context, time) -> bool:
     plant = sim_env.cassie_sim.get_plant()
     plant_context = plant.GetMyContextFromRoot(diagram_context)
+
+    sim_context = sim_env.GetMyMutableContextFromRoot(diagram_context)
+    track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+
+    front_contact_pt = np.array((-0.0457, 0.112, 0))
+    rear_contact_pt = np.array((0.088, 0, 0))
+
+    toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+    left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+    left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+    
+    toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+    right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+    right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+
     left_toe_pos = plant.CalcPointsPositions(
         plant_context, plant.GetBodyByName("toe_left").body_frame(),
         np.array([0.02115, 0.056, 0.]), plant.world_frame()
@@ -113,7 +128,11 @@ def check_termination(sim_env, diagram_context) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    return z1 < 0.2 or z2 < 0.2
+    if right_angle > 0.3 or left_angle > 0.3:
+        print(right_angle)
+        print(left_angle)
+        input("==")
+    return z1 < 0.2 or z2 < 0.2 #or left_angle > 0.4 or right_angle > 0.4# or (track_error > 0.7 and time > 2)
 
 def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     
@@ -121,12 +140,14 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         fname=os.path.join(
             perception_learning_base_folder,
             #'tmp/index/initial_conditions_2.npz'
-            'tmp/ic.npz'
+            'tmp/ic_new.npz'
         )
     )
     
     datapoint = ic_generator.random()
-    v_des_theta = 0.15
+    #datapoint = ic_generator.choose(1)
+    
+    v_des_theta = 0.1
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
@@ -160,6 +181,43 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         value=datapoint['desired_velocity']
     )
 
+    ### Flip initial conditions ###
+    # from pydrake.math import RigidTransform, RotationMatrix
+    
+    # simulator.reset_context(context)
+    # x = np.concatenate((datapoint['q'], datapoint['v']))
+    # print(x)
+    
+    # xnew = np.zeros((45))
+    # plant = sim_env.cassie_sim.get_plant()
+    # plant_context = plant.GetMyContextFromRoot(context)
+    # R_WB = plant.EvalBodyPoseInWorld(context=plant_context,
+    #         body=plant.GetBodyByName("pelvis")).rotation().matrix()
+    # #Construct a matrix R, which reflects 3d vectors across the x-z plane of the pelvis
+    # n = np.array([[0], [1], [0]])
+    # R = np.eye(3) - 2 * n @ n.T
+    # new_R_WB = R @ R_WB
+    # new_R_WB[:, 1] *= -1
+    # q = RotationMatrix(new_R_WB).ToQuaternion().wxyz()
+    # # Assign the transformed state
+    # xnew[0:4] = q
+    # xnew[7:23] = x[7:23]
+    # xnew[29:45] = x[29:45]
+    # xnew[4:7] = R @ x[4:7]
+    # xnew[26:29] = R @ x[26:29]
+    # xnew[23:26] = R @ x[23:26]
+    # print(xnew)
+
+    # xnew[7:15], xnew[15:23] = xnew[15:23], xnew[7:15].copy()
+    # xnew[7:9] = -xnew[7:9]
+    # xnew[15:17] = -xnew[15:17]
+    # xnew[29:37], xnew[37:45] = xnew[37:45], xnew[29:37].copy()
+    # xnew[29:31] = -xnew[29:31]
+    # xnew[37:39] = -xnew[37:39]
+
+    # print(xnew)
+    # input("=====")
+
     simulator.reset_context(context)
     ALIPtmp = []
     FOOTSTEPtmp = []
@@ -169,9 +227,9 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     JOINTtmp = []
     ACTtmp = []
     terminate = False
-
+    time = 0.0
     for i in range(1, 401): # 20 seconds
-        if check_termination(sim_env, context):
+        if check_termination(sim_env, context, time):
             terminate = True
             break
         simulator.AdvanceTo(t_init + 0.05*i)
@@ -179,14 +237,17 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
+            fsm = controller.get_input_port_by_name('fsm').Eval(controller_context)
             joint_angle = states[:23]
             actuator = states[-10:]
-
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
             xd = xd_ud[:4]
             ud = xd_ud[4:]
             x = controller.get_output_port_by_name('x').Eval(controller_context)
             
+            #sim_context = sim_env.GetMyMutableContextFromRoot(diagram_context)
+            track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+
             # Depth map
             dmap_query = controller.EvalAbstractInput(
                 controller_context, controller.input_port_indices['height_map']
@@ -211,8 +272,15 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
                     np.array([ud[0], ud[1], 0])
                 )
                 dmap_query.plot_surface(
-                    "hmap", grid_world[0], grid_world[1],
+                    "dmap", grid_world[0], grid_world[1],
                     grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+                
+                # grid_world = hmap_query.calc_height_map_world_frame(
+                #     np.array([ud[0], ud[1], 0])
+                # )
+                # hmap_query.plot_surface(
+                #     "hmap", grid_world[0], grid_world[1],
+                #     grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -266,8 +334,8 @@ def main():
     sim_params.simulate_perception = True
 
     # Visualization is False by default
-    #sim_params.visualize = True
-    #sim_params.meshcat = Meshcat()
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
     
     HMAP = []
     DMAP = []
@@ -300,22 +368,22 @@ def main():
                     terrain = 'params/flat.yaml'
             
             else:
-                rand = np.random.randint(1, 3)
+                #rand = np.random.randint(1, 3)
+                rand = 2
                 if rand == 1:
-                    rand = np.random.randint(0, 500)
+                    rand = np.random.randint(0, 1000)
                     terrain = f'params/flat/flat_{rand}.yaml'
 
                 else:
-                    rand = np.random.randint(0, 500)
-                    terrain = f'params/stair/flat_stair_{rand}.yaml'
-
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
         else:
             terrain = 'params/stair_curriculum.yaml'
         
         #os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
+        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=True)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")
 
         if not terminate:

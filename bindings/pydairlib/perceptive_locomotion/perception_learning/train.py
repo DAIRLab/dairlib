@@ -328,7 +328,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         lr_schedule: Callable[[float], float],
         lstm_actor = CustomNetwork().actor_combined_lstm,
         lstm_critic = CustomNetwork().critic_combined_lstm,
-        optimizer_class= th.optim.Adam, #torch.optim.RAdam Try RAdam with decoupled_weight_decay=True
+        optimizer_class= th.optim.RAdam, #torch.optim.RAdam Try RAdam with decoupled_weight_decay=True
         optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
         *args,
         **kwargs,
@@ -368,19 +368,21 @@ def _run_training(config, args):
     
     if not args.test:
         input("Starting...")
-        # if visualize is True > TypeError: cannot pickle 'pydrake.geometry.Meshcat' object
+        # if visualize is True -> TypeError: cannot pickle 'pydrake.geometry.Meshcat' object
         sim_params_train.visualize = False 
         sim_params_train.meshcat = None
         env = make_vec_env(
                            env_name,
                            n_envs=num_env,
-                           seed=0,
+                           #seed=0,
                            vec_env_cls=SubprocVecEnv,
                            env_kwargs={
                             'sim_params': sim_params_train,
-                           })
+                           },
+                           #vec_env_kwargs=dict(start_method="spawn")
+                           )
         env = VecNormalize(venv=env, norm_obs=False)
-
+        #check_env(env)
     else:
         input("Testing...")
         sim_params_train.visualize = False
@@ -388,32 +390,35 @@ def _run_training(config, args):
         env = gym.make(env_name,
                        sim_params = sim_params_train,
                        )
+        check_env(env)
     
     if args.test:
-        model = PPO(
+        model = RecurrentPPO(
             policy_type, env, learning_rate = linear_schedule(3e-4), n_steps=int(512/num_env), n_epochs=10,
             batch_size=16*num_env, ent_coef=0.01, use_sde=True, verbose=1,
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'pretrained_RPPO.zip'
+        model_path = 'RPPO_multitask1.zip'
 
-        # model = RecurrentPPO(policy_type, env, learning_rate = 3e-5, max_grad_norm = 0.5, #linear_schedule(1e-5)
+        # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
-        #                 n_steps=int(64*num_env/num_env), n_epochs=5,
-        #                 batch_size=32*num_env, seed=42,
+        #                 n_steps=int(1024*num_env/num_env), n_epochs=10,
+        #                 batch_size=64*num_env, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = 1e-5, max_grad_norm = 0.5,
-                        clip_range = 0.2, ent_coef=0.03, clip_range_vf=0.5, target_kl = .2,
-                        n_steps=int(512*num_env/num_env), n_epochs=10, # 400 | 100
-                        batch_size=64*num_env, seed=1, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-5), max_grad_norm = 0.5, # linear_schedule(3e-6)
+                        clip_range = 0.1, ent_coef=0.0, target_kl = .02, vf_coef=0.15, clip_range_vf=None,
+                        n_steps=int(512), n_epochs=10,
+                        batch_size=64*num_env, seed=42, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    sim_params_eval.visualize = True
-    sim_params_eval.meshcat = Meshcat()
+    #sim_params_eval.visualize = True
+    #sim_params_eval.meshcat = Meshcat()
+    sim_params_train.visualize = False
+    sim_params_train.meshcat = None
     eval_env = gym.make(env_name, sim_params = sim_params_eval,)
 
     eval_env = DummyVecEnv([lambda: eval_env])
@@ -433,7 +438,7 @@ def _run_training(config, args):
         name_prefix="rl_model",
     )
 
-    callback = CallbackList([checkpoint_callback, eval_callback])
+    callback = CallbackList([checkpoint_callback])
 
     input("Start learning...")
 
@@ -458,12 +463,12 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 25
+        num_env = 20
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 5e6 if not args.test else 5,
+        "total_timesteps": 10e6 if not args.test else 5,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
@@ -472,10 +477,9 @@ def _main():
     }
     _run_training(config, args)
 
-gym.envs.register(
+if __name__ == '__main__':
+    gym.envs.register(
         id="DrakeCassie-v0",
         entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv",
         )
-
-if __name__ == '__main__':
     _main()

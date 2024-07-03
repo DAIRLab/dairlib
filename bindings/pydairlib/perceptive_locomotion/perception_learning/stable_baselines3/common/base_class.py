@@ -647,7 +647,7 @@ class BaseAlgorithm(ABC):
         custom_objects: Optional[Dict[str, Any]] = None,
         print_system_info: bool = False,
         force_reset: bool = True,
-        init_cnn_weights: bool = True,
+        init_cnn_weights: bool = False,
         **kwargs,
     ) -> SelfBaseAlgorithm:
         """
@@ -684,7 +684,6 @@ class BaseAlgorithm(ABC):
             custom_objects=custom_objects,
             print_system_info=print_system_info,
         )
-
         assert data is not None, "No data found in the saved file"
         assert params is not None, "No params found in the saved file"
 
@@ -736,10 +735,10 @@ class BaseAlgorithm(ABC):
         )
 
         # load parameters
+        #data["_n_updates"] = 0 # Start updates at 0
         model.__dict__.update(data)
         model.__dict__.update(kwargs)
         model._setup_model()
-
         try:
             # put state_dicts back in place
             model.set_parameters(params, exact_match=True, device=device)
@@ -780,12 +779,12 @@ class BaseAlgorithm(ABC):
 
         #print(model.policy.mlp_extractor.actor_cnn.state_dict())
         #print(model.policy.mlp_extractor.critic_cnn_gt.state_dict())
+
         if init_cnn_weights:
             actor_cnn_weights = model.policy.mlp_extractor.actor_cnn.state_dict()
-            model.policy.mlp_extractor.critic_cnn.load_state_dict(actor_cnn_weights)
+            #model.policy.mlp_extractor.critic_cnn.load_state_dict(actor_cnn_weights)
             model.policy.mlp_extractor.critic_cnn_gt.load_state_dict(actor_cnn_weights)
         #print(model.policy.mlp_extractor.critic_cnn_gt.state_dict())
-
         return model
 
     def get_parameters(self) -> Dict[str, Dict]:

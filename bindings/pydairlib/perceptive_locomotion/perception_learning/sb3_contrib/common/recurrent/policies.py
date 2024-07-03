@@ -66,8 +66,6 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        #lstm_actor,
-        #lstm_critic,
         net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
@@ -108,7 +106,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
             optimizer_class,
             optimizer_kwargs,
         )
-        self.MTL = False
+        self.MTL = True ##
         self.lstm_kwargs = lstm_kwargs or {}
         self.shared_lstm = shared_lstm # Do not share LSTM
         self.enable_critic_lstm = enable_critic_lstm # True
@@ -136,6 +134,13 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
             self.critic = nn.Linear(self.features_dim, lstm_hidden_size)
 
         # Setup optimizer with initial learning rate
+        # actor_params = list(self.mlp_extractor.actor_cnn.parameters()) + list(self.mlp_extractor.actor_combined_lstm.parameters()) + \
+        #                 list(self.action_net.parameters())
+        # #print(self.mlp_extractor.actor_combined_lstm.parameters())
+        # critic_params = list(self.mlp_extractor.critic_cnn.parameters()) + list(self.mlp_extractor.critic_cnn_gt.parameters()) + \
+        #                 list(self.mlp_extractor.critic_combined_lstm.parameters()) + list(self.value_net.parameters())
+        # self.actor_optimizer = self.optimizer_class(actor_params, lr=lr_schedule(1), **self.optimizer_kwargs)
+        # self.critic_optimizer = self.optimizer_class(critic_params, lr=3e-4, **self.optimizer_kwargs)
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
 
     def _build_mlp_extractor(self) -> None:
@@ -228,8 +233,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         latent_pi, lstm_states_pi = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.mlp_extractor.actor_combined_lstm)
         latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
-        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
-        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+        # latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        # latent_vf = self.mlp_extractor.forward_critic(latent_vf)
 
         # Evaluate the values for the given observations
         values = self.value_net(latent_vf)
@@ -265,7 +270,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features = self.mlp_extractor.multihead_actor(features)
 
         latent_pi, lstm_states = self._process_sequence(features, lstm_states, episode_starts, self.mlp_extractor.actor_combined_lstm)
-        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        # latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         return self._get_action_dist_from_latent(latent_pi), lstm_states
 
     def predict_values(
@@ -289,7 +294,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features = self.mlp_extractor.multihead_critic(features)
         latent_vf, lstm_states_vf = self._process_sequence(features, lstm_states, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
-        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+        # latent_vf = self.mlp_extractor.forward_critic(latent_vf)
         return self.value_net(latent_vf)
 
     def evaluate_actions(
@@ -316,10 +321,10 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         latent_pi, _ = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.mlp_extractor.actor_combined_lstm)
         latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.mlp_extractor.critic_combined_lstm)
 
-        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
-        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+        # latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        # latent_vf = self.mlp_extractor.forward_critic(latent_vf)
 
-        distribution = self._get_action_dist_from_latent(latent_pi)
+        distribution = self._get_action_dist_from_latent(latent_pi, rpo=False)
         log_prob = distribution.log_prob(actions)
         values = self.value_net(latent_vf)
         if self.MTL:

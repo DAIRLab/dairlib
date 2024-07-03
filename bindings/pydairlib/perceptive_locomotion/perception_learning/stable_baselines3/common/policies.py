@@ -443,7 +443,7 @@ class ActorCriticPolicy(BasePolicy):
         ``th.optim.Adam`` by default
     :param optimizer_kwargs: Additional keyword arguments,
         excluding the learning rate, to pass to the optimizer
-    :param rpo_alpha: The alpha value used in RPO, 0.5 by default
+    :param rpo_alpha: The alpha value used in RPO, 0.01 by default
     """
 
     def __init__(
@@ -465,7 +465,7 @@ class ActorCriticPolicy(BasePolicy):
         normalize_images: bool = True,
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        rpo_alpha: float = 0.01,
+        rpo_alpha: float = 0.001,
     ):
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
@@ -693,12 +693,16 @@ class ActorCriticPolicy(BasePolicy):
         :return: Action distribution
         """
         mean_actions = self.action_net(latent_pi)
+        self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6], device='cuda:0')) # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m]
 
         if rpo:
             z = th.FloatTensor(mean_actions.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)#.to(device)
             mean_actions = mean_actions + z.to(mean_actions.device)
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
+            #self.log_std = nn.Parameter(th.tensor([-1.6860, -1.8651, -1.7630], device='cuda:0'))
+            #print(self.log_std)
+            #print(self.action_dist.proba_distribution(mean_actions, self.log_std).entropy()[0])
             return self.action_dist.proba_distribution(mean_actions, self.log_std)
         elif isinstance(self.action_dist, CategoricalDistribution):
             # Here mean_actions are the logits before the softmax

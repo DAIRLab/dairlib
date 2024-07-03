@@ -126,11 +126,19 @@ class SubprocVecEnv(VecEnv):
         self.waiting = True
 
     def step_wait(self) -> VecEnvStepReturn:
-        results = [remote.recv() for remote in self.remotes]
+        try:
+            results = [remote.recv() for remote in self.remotes]
+        except EOFError:
+            print("EOFError!!")
+            print(self.remotes)
+            results = []
         self.waiting = False
-        obs, rews, dones, infos, self.reset_infos = zip(*results)  # type: ignore[assignment]
-        return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos  # type: ignore[return-value]
-
+        if results:
+            obs, rews, dones, infos, self.reset_infos = zip(*results)  # type: ignore[assignment]
+            return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos  # type: ignore[return-value]
+        else:
+            return None, None, None, None
+        
     def reset(self) -> VecEnvObs:
         for env_idx, remote in enumerate(self.remotes):
             remote.send(("reset", (self._seeds[env_idx], self._options[env_idx])))

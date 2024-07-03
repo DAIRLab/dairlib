@@ -103,9 +103,24 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
     return sim_env, controller, diagram
 
-def check_termination(sim_env, diagram_context) -> bool:
+def check_termination(sim_env, diagram_context, time) -> bool:
     plant = sim_env.cassie_sim.get_plant()
     plant_context = plant.GetMyContextFromRoot(diagram_context)
+
+    sim_context = sim_env.GetMyMutableContextFromRoot(diagram_context)
+    track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+
+    front_contact_pt = np.array((-0.0457, 0.112, 0))
+    rear_contact_pt = np.array((0.088, 0, 0))
+
+    toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+    left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+    left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+    
+    toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+    right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+    right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+
     left_toe_pos = plant.CalcPointsPositions(
         plant_context, plant.GetBodyByName("toe_left").body_frame(),
         np.array([0.02115, 0.056, 0.]), plant.world_frame()
@@ -118,7 +133,7 @@ def check_termination(sim_env, diagram_context) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    return z1 < 0.2 or z2 < 0.2
+    return z1 < 0.2 or z2 < 0.2 #or left_angle > 0.35 or right_angle > 0.35 or (track_error > 0.4 and time > 2.)
 
 # Use Temporal Difference (TD(0)) as the Value target
 def calculate_returns(rewards, gamma=0.99):
@@ -137,12 +152,12 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/ic.npz'
+            'tmp/ic_new.npz'
         )
     )
     
     datapoint = ic_generator.random()
-    v_des_theta = 0.15
+    v_des_theta = 0.1
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
@@ -189,20 +204,21 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     GTJOINTtmp = []
     REWARDtmp = []
     terminate = False
+    time = 0.0
+    for i in range(1, 201): # 10 seconds
 
-    for i in range(1, 401): # 20 seconds
-
-        if check_termination(sim_env, context):
+        if check_termination(sim_env, context, time):
             terminate = True
             break
         simulator.AdvanceTo(t_init + 0.05*i)
 
         if simulate_perception:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
-            alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            #alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            alip = controller.get_output_port_by_name('x').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
             gt_states = controller.get_input_port_by_name('gt_x_u_t').Eval(controller_context)
-            joint_angle = states[:23]
+            joint_angle = states[7:23]
             gt_joint_angle = gt_states[:23]
             #actuator = states[-10:]
 
@@ -213,7 +229,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             u = footstep[:2]
 
             '''
-            Reward for Critic
+            Reward for Critic X
             '''
             LQRreward = (x - xd).T @ Q @ (x - xd) + (u - ud).T @ R @ (u - ud)
             LQRreward = np.exp(-5*LQRreward)
@@ -266,7 +282,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
-            joint_angle = states[:23]
+            joint_angle = states[7:23]
             
             xd = xd_ud[:4]
             ud = xd_ud[4:]
@@ -316,33 +332,35 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
     GTJOINT = []
     RETURN = []
     FOOTSTEP = []
-
+    time = 0.0
     print(f"Starting simulation {sim_id}...")
-    np.random.seed(sim_id + 32 * 3) # + 32 to change seed value
-    for i in range(5):
+    np.random.seed(sim_id + 32 * 3321) # + 32 to change seed value
+    for i in range(6):
         if random_terrain:
-            rand = 2
-
+            rand = np.random.randint(1,3)
             if rand == 1:
-                rand = np.random.randint(1, 8)
-                if rand in [1, 2, 3]:
-                    terrain = 'params/stair_curriculum.yaml'
-                elif rand in [4, 5, 6]:
-                    terrain = 'params/wavy_terrain.yaml'
+                rand = np.random.randint(1, 13)
+                if rand in [1,2,3,4,5]:
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/easy/stair_down/dstair_{rand}.yaml'
                 else:
-                    terrain = 'params/flat.yaml'
-            
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/easy/stair_up/ustair_{rand}.yaml'
+
             else:
-                rand = np.random.randint(1, 10)
-                if rand == 1:
-                    rand = np.random.randint(0, 500)
-                    terrain = f'params/flat/flat_{rand}.yaml'
-                else: # 2,3,4,5
-                    rand = np.random.randint(0, 500)
-                    terrain = f'params/stair/flat_stair_{rand}.yaml'
+                rand = np.random.randint(1, 13)
+                if rand in [1,2,3,4,5]:
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/medium/stair_down/dstair_{rand}.yaml'
+                else:
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
+
         else:
             terrain = 'params/stair_curriculum.yaml'
-        
+
+        rand = np.random.randint(0, 1000)
+        terrain = f'params/hard/flat/flat_{rand}.yaml'
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         hmap, dmap, alip, vdes, joint, gtjoint, Return, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
@@ -372,7 +390,7 @@ def main():
 
     print("Starting multiprocessing simulations...")
 
-    num_processes = 26#int(os.cpu_count() / 2)
+    num_processes = 24
     pool = multiprocessing.Pool(processes=num_processes)
 
     tasks = [(i, sim_params, checkpoint_path, perception_learning_base_folder) for i in range(num_processes)]
@@ -427,7 +445,7 @@ def main():
         f'/GTJOINT.npy', GTJOINT
     )
 
-    print("Saving returns ...")
+    print("Saving rewards ...")
 
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
@@ -446,13 +464,13 @@ def main():
     VDES = np.asarray(VDES)
     JOINT = np.asarray(JOINT)
     GTJOINT = np.asarray(GTJOINT)
-    HMAP = np.asarray(HMAP)
+    # HMAP = np.asarray(HMAP)
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
-    HMAP = HMAP.reshape((HMAP.shape[0], -1))
+    # HMAP = HMAP.reshape((HMAP.shape[0], -1))
 
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT, HMAP), axis=1)
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT), axis=1)
     )
 
 if __name__ == '__main__':

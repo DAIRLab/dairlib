@@ -124,7 +124,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 spaces.MultiBinary,
             ),
         )
-        self.MTL = False
+
         self.batch_size = batch_size
         self.n_epochs = n_epochs
         self.clip_range = clip_range
@@ -132,11 +132,14 @@ class RecurrentPPO(OnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
         self._last_lstm_states = None
+        self._last_mirror_lstm_states = None
 
         if _init_setup_model:
             self._setup_model()
 
     def _setup_model(self) -> None:
+        self.MTL = True # Multi-task Learning
+        self.mirror = True # Mirror Loss
         self._setup_lr_schedule()
         self.set_random_seed(self.seed)
 
@@ -161,6 +164,19 @@ class RecurrentPPO(OnPolicyAlgorithm):
         single_hidden_state_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
         # hidden and cell states for actor and critic
         self._last_lstm_states = RNNStates(
+            (
+                th.zeros(single_hidden_state_shape, device=self.device),
+                th.zeros(single_hidden_state_shape, device=self.device),
+            ),
+            (
+                th.zeros(single_hidden_state_shape, device=self.device),
+                th.zeros(single_hidden_state_shape, device=self.device),
+            ),
+        )
+
+        ### Mirror ###
+        if self.mirror:
+            self._last_mirror_lstm_states = RNNStates(
             (
                 th.zeros(single_hidden_state_shape, device=self.device),
                 th.zeros(single_hidden_state_shape, device=self.device),
@@ -229,6 +245,10 @@ class RecurrentPPO(OnPolicyAlgorithm):
         callback.on_rollout_start()
 
         lstm_states = deepcopy(self._last_lstm_states)
+        
+        ### Mirror ###
+        if self.mirror:
+            mirror_lstm_states = deepcopy(self._last_mirror_lstm_states)
 
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
@@ -237,13 +257,37 @@ class RecurrentPPO(OnPolicyAlgorithm):
 
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
-                obs_tensor = obs_as_tensor(self._last_obs, self.device)
-                #print(self._last_obs.shape)
+                obs_tensor = obs_as_tensor(self._last_obs, self.device) # torch.Size([n_env, 24621])
+
                 episode_starts = th.tensor(self._last_episode_starts, dtype=th.float32, device=self.device)
                 if self.MTL:
                     actions, values, log_probs, lstm_states, _ = self.policy.forward(obs_tensor, lstm_states, episode_starts)
                 else:
                     actions, values, log_probs, lstm_states = self.policy.forward(obs_tensor, lstm_states, episode_starts)
+                
+                if self.mirror:
+                    image = obs_tensor[:, 2*64*64:3*64*64].clone()
+                    image = image.view(-1, 64, 64)
+                    image = th.flip(image, [1])
+                    image = image.view(-1, 64*64)
+                    y_pos = obs_tensor[:, 64*64:2*64*64].clone()
+                    y_pos = y_pos.view(-1, 64, 64)
+                    y_pos = th.flip(-y_pos, [1])
+                    y_pos = y_pos.view(-1, 64*64)
+                    obs = obs_tensor[:, 3*64*64:3*64*64+6+16].clone()
+                    ALIP, vdes, joint = obs[:, :4].clone(), obs[:, 4:6].clone(), obs[:, -16:].clone()
+                    ALIP[:, 1:3] = -ALIP[:, 1:3]
+                    vdes[:, 1] = -vdes[:, 1]
+                    joint[:, [0,1,2,3,4,5,6,7]], joint[:, [8,9,10,11,12,13,14,15]] = joint[:, [8,9,10,11,12,13,14,15]], joint[:, [0,1,2,3,4,5,6,7]]
+                    joint[:, [0,1]], joint[:, [8,9]] = -joint[:, [0,1]], -joint[:, [8,9]] # Negate hip roll & hip yaw
+                    
+                    mirror_obs_tensor = th.cat((obs_tensor[:, :64*64].clone(), y_pos, image, ALIP, vdes, joint, obs_tensor[:, 3*64*64+6+16:].clone()), dim=1)
+                    if self.MTL:
+                        mirror_actions, mirror_values, _, mirror_lstm_states, _ = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts)
+                    else:
+                        mirror_actions, mirror_values, _, mirror_lstm_states = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts) 
+                    mirror_actions = mirror_actions.cpu().numpy()
+
             actions = actions.cpu().numpy()
 
             # Rescale and perform action
@@ -286,19 +330,35 @@ class RecurrentPPO(OnPolicyAlgorithm):
                         episode_starts = th.tensor([False], dtype=th.float32, device=self.device)
                         terminal_value = self.policy.predict_values(terminal_obs, terminal_lstm_state, episode_starts)[0]
                     rewards[idx] += self.gamma * terminal_value
-            rollout_buffer.add(
-                self._last_obs,
-                actions,
-                rewards,
-                self._last_episode_starts,
-                values,
-                log_probs,
-                lstm_states=self._last_lstm_states,
-            )
+            if self.mirror:
+                rollout_buffer.add(
+                    self._last_obs,
+                    actions,
+                    rewards,
+                    self._last_episode_starts,
+                    values,
+                    log_probs,
+                    lstm_states=self._last_lstm_states,
+                    ### Mirror ###
+                    mirror_action=mirror_actions,
+                    #mirror_value=mirror_values,
+                )
+            else:
+                rollout_buffer.add(
+                    self._last_obs,
+                    actions,
+                    rewards,
+                    self._last_episode_starts,
+                    values,
+                    log_probs,
+                    lstm_states=self._last_lstm_states,
+                )
 
             self._last_obs = new_obs
             self._last_episode_starts = dones
             self._last_lstm_states = lstm_states
+            if self.mirror:
+                self._last_mirror_lstm_states = mirror_lstm_states ### Mirror ###
 
         with th.no_grad():
             # Compute value for the last timestep
@@ -318,7 +378,9 @@ class RecurrentPPO(OnPolicyAlgorithm):
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update optimizer learning rate
+        #self._update_learning_rate(self.policy.actor_optimizer)
         self._update_learning_rate(self.policy.optimizer)
+
         # Compute current clip range
         clip_range = self.clip_range(self._current_progress_remaining)
         # Optional: clip range for the value function
@@ -330,6 +392,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
         clip_fractions = []
         if self.MTL:
             multi_losses = []
+        if self.mirror:
+            mirror_losses = []
 
         continue_training = True
 
@@ -408,16 +472,20 @@ class RecurrentPPO(OnPolicyAlgorithm):
 
                 entropy_losses.append(entropy_loss.item())
                 if self.MTL:
-                    multi_loss = th.mean(((rollout_data.observations[:, 3*64*64+6+23:3*64*64+6+23+23] - multi_task)**2)[mask])
+                    multi_loss = th.mean(((rollout_data.observations[:, 3*64*64+6+16+7:3*64*64+6+16+23] - multi_task)**2)[mask])
                     multi_losses.append(multi_loss.item())
-                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + 0.1 * multi_loss
+                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + 0.5 * multi_loss
                 else:
                     loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
-                # print(f'Policy loss : {policy_loss}')
-                # print(f'Entropy loss : {self.ent_coef * entropy_loss}')
-                # print(f'Value loss : {self.vf_coef * value_loss}')
-                # print(f'Multi loss : {0.1 * multi_loss}')
-
+                    # loss = self.ent_coef * entropy_loss + value_loss
+                    
+                if self.mirror:
+                    mirror_actions = rollout_data.mirror_actions
+                    mirror_actions[:, 1] = -mirror_actions[:, 1] # y
+                    mirror_loss = th.mean(((actions - mirror_actions)**2)[mask])
+                    mirror_losses.append(0.5 * mirror_loss.item())
+                    loss += 0.5 * mirror_loss
+                    
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
                 # and discussion in PR #419: https://github.com/DLR-RM/stable-baselines3/pull/419
@@ -426,11 +494,6 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean(((th.exp(log_ratio) - 1) - log_ratio)[mask]).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
-                    # print(f'Log prob : {log_prob}')
-                    # print(f'Old Log : {rollout_data.old_log_prob}')
-                    # print(f'Log ratio : {log_ratio}')
-                    # print(f'Mask : {mask}')
-                    # print(f'KL : {approx_kl_div}\n')
 
                 if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
                     continue_training = False
@@ -439,10 +502,15 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     break
                 # Optimization step
                 self.policy.optimizer.zero_grad()
+                #self.policy.actor_optimizer.zero_grad()
+                #self.policy.critic_optimizer.zero_grad()
+                
                 loss.backward()
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
                 self.policy.optimizer.step()
+                #self.policy.actor_optimizer.step()
+                #self.policy.critic_optimizer.step()
 
             if not continue_training:
                 break
@@ -456,6 +524,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
         self.logger.record("train/value_loss", np.mean(value_losses))
         if self.MTL:
             self.logger.record("train/multi_loss", np.mean(multi_losses))
+        if self.mirror:
+            self.logger.record("train/mirror_loss", np.mean(mirror_losses))
         self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
         self.logger.record("train/clip_fraction", np.mean(clip_fractions))
         self.logger.record("train/loss", loss.item())

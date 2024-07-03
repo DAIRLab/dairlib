@@ -73,6 +73,12 @@ def make_vec_env(
     :param wrapper_kwargs: Keyword arguments to pass to the ``Wrapper`` class constructor.
     :return: The wrapped environment
     """
+
+    #tmp_env = gym.make(env_id, sim_params=env_kwargs['sim_params'])
+    #tmp_env.close()
+    #spec = tmp_env.spec
+    spec = gym.spec(env_id)
+
     env_kwargs = env_kwargs or {}
     vec_env_kwargs = vec_env_kwargs or {}
     monitor_kwargs = monitor_kwargs or {}
@@ -91,9 +97,11 @@ def make_vec_env(
                 kwargs = {"render_mode": "rgb_array"}
                 kwargs.update(env_kwargs)
                 try:
-                    env = gym.make(env_id, **kwargs)  # type: ignore[arg-type]
+                    env = gym.make(spec, **kwargs)  # type: ignore[arg-type]
                 except TypeError:
-                    env = gym.make(env_id, **env_kwargs)
+                    #env = gym.make(spec, **env_kwargs)
+                    #print("env_kwargs")
+                    env = spec.make(**env_kwargs)
             else:
                 env = env_id(**env_kwargs)
                 # Patch to support gym 0.21/0.26 and gymnasium

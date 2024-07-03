@@ -81,19 +81,19 @@ class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        #self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.LeakyReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        #self.bn2 = nn.BatchNorm2d(out_channels)
         self.downsample = downsample
 
     def forward(self, x):
         residual = x
         out = self.conv1(x)
-        out = self.bn1(out)
+        #out = self.bn1(out)
         out = self.relu(out)
         out = self.conv2(out)
-        out = self.bn2(out)
+        #out = self.bn2(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)
@@ -104,13 +104,13 @@ class ResidualBlock(nn.Module):
 
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
+    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
         super().__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
         self.latent_dim_vf = last_layer_dim_vf
-        self.alip_state_dim = 6
-        self.heightmap_size = 80
+        self.alip_state_dim = 6+23
+        self.heightmap_size = 64
         # CNN for heightmap observations
         n_input_channels = 3
         use_encoder = True
@@ -119,27 +119,26 @@ class CustomNetwork(nn.Module):
             combined_input = 128
             self.actor_cnn = nn.Sequential(
                 nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-                nn.BatchNorm2d(16),
                 nn.LeakyReLU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
 
                 ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(32))),
+                )),
                 nn.MaxPool2d(kernel_size=2, stride=2),
 
                 ResidualBlock(32, 48, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(48))),
+                )),
 
                 ResidualBlock(48, 64, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(64))),
+                )),
 
                 nn.Flatten(),
-                nn.Linear(64*2*2, 1024),
+                nn.Linear(64, 512),
                 nn.Tanh(),
-                nn.Linear(1024, 256),
+                nn.Linear(512, 256),
                 nn.Tanh(),
                 nn.Linear(256, 96),
             )
@@ -164,9 +163,9 @@ class CustomNetwork(nn.Module):
                 nn.BatchNorm2d(64))),
 
                 nn.Flatten(),
-                nn.Linear(64*2*2, 1024),
+                nn.Linear(64, 512),
                 nn.Tanh(),
-                nn.Linear(1024, 256),
+                nn.Linear(512, 256),
                 nn.Tanh(),
                 nn.Linear(256, 96),
             )
@@ -246,7 +245,7 @@ class CustomNetwork(nn.Module):
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
         actor_cnn_output = self.actor_cnn(image_obs)
-        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
+        alip_state = observations[:, 3*self.heightmap_size*self.heightmap_size : 3*self.heightmap_size*self.heightmap_size+6+23]
         actor_alip_mlp_output = self.actor_alip_mlp(alip_state)
         actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)
         actor_actions = self.actor_combined_mlp(actor_combined_features)
@@ -256,7 +255,7 @@ class CustomNetwork(nn.Module):
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
         critic_cnn_output = self.critic_cnn(image_obs)
-        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
+        alip_state = observations[:, 3*self.heightmap_size*self.heightmap_size : 3*self.heightmap_size*self.heightmap_size+6+23]
         critic_alip_mlp_output = self.critic_alip_mlp(alip_state)
         critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)
         critic_actions = self.critic_combined_mlp(critic_combined_features)
@@ -287,7 +286,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 def split(expert_observations, expert_actions):
     expert_dataset = ExpertDataSet(expert_observations, expert_actions)
 
-    train_size = int(0.85 * len(expert_dataset))
+    train_size = int(0.9 * len(expert_dataset))
 
     test_size = len(expert_dataset) - train_size
 
@@ -311,7 +310,7 @@ def pretrain_agent(
     seed=1,
     test_batch_size=64,
     patience = 15,
-    min_delta=0.0001
+    min_delta=0.00000001
 ):
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -442,17 +441,18 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=100,
-        scheduler_gamma=0.8,
+        epochs=50,
+        scheduler_gamma=0.7,
         learning_rate=1.,
         log_interval=100,
         cuda=True,
         seed=22,
-        batch_size=128,
-        test_batch_size=128,
+        batch_size=400,
+        test_batch_size=400,
+        patience=5
     )
 
-    student.save("PPO_initialize_residual")
+    student.save("PPO_1")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

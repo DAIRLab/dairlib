@@ -252,15 +252,14 @@ class AlipFootstepLQR(LeafSystem):
         # footstep_command = np.zeros((3,))
         # footstep_command[:2] = ud - self.K @ (x - xd) ##### <--- self.K @ (x - xd)
 
-        ue = self.EvalVectorInput(
+        u = self.EvalVectorInput(
             context,
             self.input_port_indices['action_ue']
         ).value().ravel()
         # footstep_command[:2] = ud + ue[:2]
         # footstep_command[:2] = ud - ue[:2]
         # footstep.set_value(footstep_command)
-
-        footstep.set_value(ue)
+        footstep.set_value(u)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
             Tuple[np.ndarray, np.ndarray]:

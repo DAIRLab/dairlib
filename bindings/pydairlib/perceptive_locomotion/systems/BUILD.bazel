@@ -80,6 +80,7 @@ py_library(
         ":height_map_server",
         ":elevation_map_converter",
         "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/systems",

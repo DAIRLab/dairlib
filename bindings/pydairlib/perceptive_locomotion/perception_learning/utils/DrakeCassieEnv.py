@@ -81,10 +81,14 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
             cost_zoh.get_output_port(),
             cost_logger.get_input_port()
         )
-    ##
     else:
         cost_logger = 0
+    
+    # freq = np.random.uniform(low=1.0/50.0, high=1.0/20.0)
+    # print(f'Zero Order Hold : {freq}')
+    # footstep_zoh = ZeroOrderHold(freq, 3)#ZeroOrderHold(1.0 / 30.0, 3)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    
     builder.AddSystem(footstep_zoh)
     builder.Connect(
         controller.get_output_port_by_name('footstep_command'),
@@ -114,7 +118,7 @@ def reset_handler(simulator, seed):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/ic.npz'
+            'tmp/ic_new.npz'
         )
     )
     
@@ -125,8 +129,7 @@ def reset_handler(simulator, seed):
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([0.6, 0.05])
-
+    #datapoint['desired_velocity'] = np.array([0.5, 0.01]).flatten()
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -153,28 +156,49 @@ def reset_handler(simulator, seed):
     return context
 
 def simulate_init(sim_params, random_terrain = False):
-    
-    terrain = 'params/stair_curriculum.yaml'
     if random_terrain:
-        rand = np.random.randint(1,9) # 1,2,3,4 | 5,6
-        if rand in [1,2,3,4,5,6]:
-            rand = np.random.randint(0, 500)
-            terrain = f'params/stair/flat_stair_{rand}.yaml'
-        else:
-            rand = np.random.randint(0, 500)
-            terrain = f'params/flat/flat_{rand}.yaml'
-        #terrain = 'params/flat/flat_0.yaml'
+        rand = np.random.randint(1, 2)
+        if rand == 1:
+            rand = np.random.randint(1, 13)
+            if rand in [1,2,3,4]:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/easy/stair_down/dstair_{rand}.yaml'
+            elif rand in [5,6,7,8]:#,9]:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/easy/stair_up/ustair_{rand}.yaml'
+            else:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/medium/flat/flat_{rand}.yaml'
+        else:    
+            rand = np.random.randint(1, 13)
+            if rand in [1,2,3,4]:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/medium/stair_down/dstair_{rand}.yaml'
+            elif rand in [5,6,7,8]:#,9]:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
+            else:
+                rand = np.random.randint(0, 1000)
+                terrain = f'params/new/flat/flat_{rand}.yaml'
+        #terrain = 'params/stair_curriculum.yaml'
+        #terrain = 'params/easy/flat/flat_0.yaml'
+        #terrain = f'params/new/flat/flat_222.yaml'
+        #terrain = f'params/new/flat/flat_122.yaml'
+        #terrain = f'params/new/flat/flat_22.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-
-    sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
+    sim_env, controller, diagram, cost_logger = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 20
+        time_limit = 10
+
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
+        # sim_context = sim_env.GetMyMutableContextFromRoot(context)
+        # track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+
         # if center of mas is 20cm 
         left_toe_pos = plant.CalcPointsPositions(
             plant_context, plant.GetBodyByName("toe_left").body_frame(),
@@ -188,6 +212,10 @@ def simulate_init(sim_params, random_terrain = False):
         z1 = com[2] - left_toe_pos[2]
         z2 = com[2] - right_toe_pos[2]
         
+        # if track_error > 0.5 and context.get_time() > 2.:
+        #     print(context.get_time())
+        #     return EventStatus.ReachedTermination(diagram, "Tracking error Limit")
+
         if context.get_time() > time_limit:
             print("Time Limit")
             #print(context.get_time())
@@ -197,13 +225,11 @@ def simulate_init(sim_params, random_terrain = False):
         if z1 < 0.2:
             #print("Left Toe")
             print(context.get_time())
-            #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             #print("Right Toe")
             print(context.get_time())
-            #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         return EventStatus.Succeeded()
@@ -214,8 +240,8 @@ def simulate_init(sim_params, random_terrain = False):
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     
-    #sim_params.visualize = True
-    #sim_params.meshcat = Meshcat()
+    # sim_params.visualize = True
+    # sim_params.meshcat = Meshcat()
 
     random_terrain = True
     simulator = simulate_init(sim_params, random_terrain=random_terrain)
@@ -226,8 +252,10 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     action_space = spaces.Box(low=np.asarray(la, dtype="float32"),
                                   high=np.asarray(ha, dtype="float32"),
                                   dtype=np.float32)
-    
-    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*64*64 +6+23+23 +3*64*64,), dtype="float64")
+                                  
+    observation_space = spaces.Box(low=-np.inf, high=np.inf,
+                                    shape=(3*64*64 +6+16+23 +3*64*64,),
+                                    dtype=np.float32)
 
     # Time_step to match walking
     time_step = 0.05

@@ -107,6 +107,17 @@ struct cf_mpfc_params_io {
         Eigen::Matrix<double, 2, 2, Eigen::RowMajor>>(io.Qc.data());
     params_out.tracking_cost_type =
         alip_utils::alip_tracking_cost_type(io.tracking_cost_type);
+
+
+    solvers::SolverOptionsFromYaml solver_options_io;
+    if (!solver_options_yaml_path.empty()) {
+      solver_options_io =
+          drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+              solver_options_yaml_path
+          );
+    }
+    params_out.solver_options = solver_options_io.GetAsSolverOptions(
+        drake::solvers::GurobiSolver::id());
     return params_out;
   }
 };

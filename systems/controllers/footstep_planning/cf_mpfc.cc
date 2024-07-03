@@ -145,7 +145,7 @@ cf_mpfc_solution CFMPFC::Solve(
 
   mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
-  mpfc_solution.init = true;
+  mpfc_solution.init = result.is_success();
   
   return mpfc_solution;
 }

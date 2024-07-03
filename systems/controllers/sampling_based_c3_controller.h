@@ -242,20 +242,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double filtered_solve_time_ = 0;
 
   // C3 solutions for current location.
-  // TODO: to be updated in ComputePlan
   mutable std::shared_ptr<solvers::C3> c3_curr_plan_;
+  mutable Eigen::VectorXd x_pred_curr_plan_;
+  // TODO: these are currently unused but may be useful if implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
   mutable std::vector<Eigen::VectorXd> delta_curr_plan_;
   mutable std::vector<Eigen::VectorXd> w_curr_plan_;
-  mutable Eigen::VectorXd x_pred_curr_plan_;
   
   // C3 solutions for best sample location.
-  // TODO: to be updated in ComputePlan
   mutable std::shared_ptr<solvers::C3> c3_best_plan_;
+  // TODO: these are currently unused but may be useful if implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_best_plan_;
   mutable std::vector<Eigen::VectorXd> delta_best_plan_;
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
-  mutable Eigen::VectorXd x_pred_best_plan_;
 
   // LCS trajectories for C3 or repositioning modes.
   // mutable std::vector<TimestampedVector<double>> c3_traj_execute_;

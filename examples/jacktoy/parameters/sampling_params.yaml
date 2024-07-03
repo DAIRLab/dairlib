@@ -48,4 +48,4 @@ travel_cost_per_meter: 0
 c3_to_repos_hysteresis: 4000
 finished_reposition_cost: 1000000000
 repos_to_c3_hysteresis: 3000
-hysterisis_between_repos_targets: 100000000
+hysteresis_between_repos_targets: 100000000

@@ -259,7 +259,6 @@ SamplingC3Controller::SamplingC3Controller(
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
-  x_pred_best_plan_ = VectorXd::Zero(n_x_);
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
@@ -307,33 +306,42 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
 
-  // Allow the x-box controller to set the state of the system.
+  // If not tele-opping and if generating samples about a predicted lcs state, 
+  // clamp the predicted next state to be not too far away from the current 
+  // state.
   if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_curr_plan_.isZero()) {
     // Use fixed approximate loop time for acceleration capping heuristic.
     float approximate_loop_dt = 0.05;
+    float nominal_acceleration = 10;
     x_lcs_curr[0] = std::clamp(
-      x_pred_curr_plan_[0], x_lcs_curr[0] - 10 * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[0] + 10 * approximate_loop_dt * approximate_loop_dt
+      x_pred_curr_plan_[0], 
+      x_lcs_curr[0] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[0] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[1] = std::clamp(
-      x_pred_curr_plan_[1], x_lcs_curr[1] - 10 * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[1] + 10 * approximate_loop_dt * approximate_loop_dt
+      x_pred_curr_plan_[1], 
+      x_lcs_curr[1] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[1] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[2] = std::clamp(
-      x_pred_curr_plan_[2], x_lcs_curr[2] - 10 * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[2] + 10 * approximate_loop_dt * approximate_loop_dt
+      x_pred_curr_plan_[2], 
+      x_lcs_curr[2] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+      x_lcs_curr[2] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 0] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 0], x_lcs_curr[n_q_ + 0] - 10 * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 0] + 10 * approximate_loop_dt
+      x_pred_curr_plan_[n_q_ + 0], 
+      x_lcs_curr[n_q_ + 0] - nominal_acceleration * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 0] + nominal_acceleration * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 1] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 1], x_lcs_curr[n_q_ + 1] - 10 * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 1] + 10 * approximate_loop_dt
+      x_pred_curr_plan_[n_q_ + 1], 
+      x_lcs_curr[n_q_ + 1] - nominal_acceleration * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 1] + nominal_acceleration * approximate_loop_dt
     );
     x_lcs_curr[n_q_ + 2] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 2], x_lcs_curr[n_q_ + 2] - 10 * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 2] + 10 * approximate_loop_dt
+      x_pred_curr_plan_[n_q_ + 2], 
+      x_lcs_curr[n_q_ + 2] - nominal_acceleration * approximate_loop_dt,
+      x_lcs_curr[n_q_ + 2] + nominal_acceleration * approximate_loop_dt
     );
   }
 
@@ -514,6 +522,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
   c3_best_plan_ = c3_objects.at(best_sample_index_);
+  // These aren't currently used anywhere but may be required when implementing 
+  // warm start.
   delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
   delta_best_plan_ = deltas.at(best_sample_index_);
   w_curr_plan_ = ws.at(CURRENT_LOCATION_INDEX);
@@ -534,7 +544,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     if(best_sample_index_ != CURRENT_REPOSITION_INDEX){
       // This means that the best sample is not the current repositioning
       // target. If the cost of the current repositioning target is better than
-      // the current best sample by the hysterisis amount, then we continue 
+      // the current best sample by the hysteresis amount, then we continue 
       // pursuing the previous repositioning target.
       if(all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
         sampling_params_.hysteresis_between_repos_targets){
@@ -605,7 +615,7 @@ void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state) const {
 void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   const VectorXd& x_lcs, const double& t_context) const {
 
-  // Read the time from the t_context i/p for setting timestamps.
+  // Read the time from the t_context input for setting timestamps.
   double t = t_context;
 
   // Get the input from the plan.
@@ -627,30 +637,24 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
-  // Roll out the execution LCS with the planned inputs.
-  knots.col(0) = x_lcs;
-  timestamps[0] = t + filtered_solve_time_;
+  // Set up matrices for LCMTrajectory object.
   for (int i = 0; i < N_; i++) {
-    // Set up matrices for LCMTrajectory object.
-    // Manually simulate forward using the dynamics.
     knots.col(i) = x_sol[i];
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 
-  LcmTrajectory::Trajectory c3_execution_traj;
-  c3_execution_traj.traj_name = "end_effector_position_target";
-  c3_execution_traj.datatypes =
-      std::vector<std::string>(3, "double");
-  c3_execution_traj.datapoints = 
-    knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
-  c3_execution_traj.time_vector = timestamps.cast<double>();
+  // Add end effector position target to LCM Trajectory.
+  LcmTrajectory::Trajectory ee_traj;
+  ee_traj.traj_name = "end_effector_position_target";
+  ee_traj.datatypes = std::vector<std::string>(3, "double");
+  ee_traj.datapoints = knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_));
+  ee_traj.time_vector = timestamps.cast<double>();
   c3_execution_lcm_traj_.ClearTrajectories();
-  c3_execution_lcm_traj_.AddTrajectory("end_effector_position_target", 
-                                      c3_execution_traj);
+  c3_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
+  // Add end effector force target to LCM Trajectory.
   // In c3 mode, the end effector forces should match the solved c3 inputs.
-  Eigen::MatrixXd force_samples = 
-    Eigen::MatrixXd::Zero(3, N_); //u_sol;
+  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
   for (int i = 0; i < N_; i++) {
     force_samples.col(i) = u_sol[i];
   }
@@ -662,17 +666,18 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   force_traj.time_vector = timestamps.cast<double>();
   c3_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
 
+  // Add object position target to LCM Trajectory.
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(3, "double");
-  object_traj.datapoints = knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
+  object_traj.datapoints = knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_));
   object_traj.time_vector = timestamps.cast<double>();
   c3_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
 
+  // Add object orientation target to LCM Trajectory.
   LcmTrajectory::Trajectory object_orientation_traj;
-  // first 3 rows are rpy, last 3 rows are angular velocity
   MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_+1));
+  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_));
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
       std::vector<std::string>(orientation_samples.rows(), "double");
@@ -716,10 +721,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   double t = t_context;
 
   // Setting up matrices to set up LCMTrajectory object.
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_+1);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_+1);
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
-  for (int i = 0; i < N_+1; i++) {
+  for (int i = 0; i < N_; i++) {
     // This is a curve_fraction and is not in the units of time or distance. 
     // When it is 0, it is the current location. When it is 1, it is the goal.
     double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
@@ -731,7 +736,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     }
     // Don't overshoot the end of the spline.
     t_spline = std::min(1.0, t_spline);
-
 
     Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
                            std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
@@ -749,17 +753,16 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 
-  LcmTrajectory::Trajectory repos_execution_traj;
-  repos_execution_traj.traj_name = "end_effector_position_target";
-  repos_execution_traj.datatypes =
-      std::vector<std::string>(3, "double");
-  repos_execution_traj.datapoints = 
-    knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
-  repos_execution_traj.time_vector = timestamps.cast<double>();
+  // Add end effector position target to LCM Trajectory.
+  LcmTrajectory::Trajectory ee_traj;
+  ee_traj.traj_name = "end_effector_position_target";
+  ee_traj.datatypes = std::vector<std::string>(3, "double");
+  ee_traj.datapoints = knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_));
+  ee_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.ClearTrajectories();
-  repos_execution_lcm_traj_.AddTrajectory("end_effector_position_target", 
-                                          repos_execution_traj);
+  repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
   
+  // Add end effector force target to LCM Trajectory.
   // In repositioning mode, the end effector should not exert forces.
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
   LcmTrajectory::Trajectory force_traj;
@@ -770,19 +773,19 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   force_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
 
-
+  // Add object position target to LCM Trajectory.
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(3, "double");
   object_traj.datapoints = 
-    knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
+    knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_));
   object_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
 
+  // Add object orientation target to LCM Trajectory.
   LcmTrajectory::Trajectory object_orientation_traj;
-  // first 3 rows are rpy, last 3 rows are angular velocity
   MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_+1));
+  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_));
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
       std::vector<std::string>(4, "double");
@@ -808,6 +811,8 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
+  // Store the predicted next lcs state, about which we generate samples if
+  // desired as determined by c3_options_.use_predicted_x0.
   // Interpolate the z_sol according to the time it takes to perform a control 
   // loop. If control loop is longer than the plan horizon, use the last z.
   if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
@@ -858,18 +863,27 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
+  bool use_closest_ee_obj_contact;
+  // num_contacts_index 0 and 2 mean model closest ee-obj pair.
+  // num_contacts_index 2 includes ee-ground contact. This is already handled 
+  // in franka_c3_controller.cc.
   if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-    // Find closest ee-obj contact pairs
-    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.num_contacts_index], true);
+    use_closest_ee_obj_contact = true;
   }
+  // num_contacts_index 1 and 3 mean model each ee-capsule pair.
+  // num_contacts_index 3 includes ee-ground contact. This is already handled 
+  // in franka_c3_controller.cc.
   else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
-    // Use all contact pairs
-    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.num_contacts_index], false);
+    use_closest_ee_obj_contact = false;
   }
+  else{
+    throw std::runtime_error("unknown or unsupported num_contacts_index");
+  }
+  resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+    plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+    c3_options_.num_contacts[c3_options_.num_contacts_index], 
+    use_closest_ee_obj_contact);
+
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
@@ -892,17 +906,6 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
-  }
-
-  // Interpolate the z_sol according to the time it takes to perform a control 
-  // loop. If control loop is longer than the plan horizon, use the last z.
-  if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
-    int index = filtered_solve_time_ / c3_options_.planning_dt;
-    double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
-    x_pred_best_plan_ = weight * z_sol[index].segment(0, n_x_) +
-              (1 - weight) * z_sol[index + 1].segment(0, n_x_);
-  } else {
-    x_pred_best_plan_ = z_sol[N_-1].segment(0, n_x_);
   }
 }
 
@@ -948,18 +951,27 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
+  bool use_closest_ee_obj_contact;
+  // num_contacts_index 0 and 2 mean model closest ee-obj pair.
+  // num_contacts_index 2 includes ee-ground contact. This is already handled 
+  // in franka_c3_controller.cc.
   if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-    // Find closest ee-obj contact pairs
-    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.num_contacts_index], true);
+    use_closest_ee_obj_contact = true;
   }
-  else if(c3_options_.num_contacts_index == 1  || c3_options_.num_contacts_index == 3){
-    // Use all contact pairs
-    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.num_contacts_index], false);
+  // num_contacts_index 1 and 3 mean model each ee-capsule pair.
+  // num_contacts_index 3 includes ee-ground contact. This is already handled 
+  // in franka_c3_controller.cc.
+  else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
+    use_closest_ee_obj_contact = false;
   }
+  else{
+    throw std::runtime_error("unknown or unsupported num_contacts_index");
+  }
+  resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+    plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+    c3_options_.num_contacts[c3_options_.num_contacts_index], 
+    use_closest_ee_obj_contact);
+
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, 
@@ -973,16 +985,12 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 void SamplingC3Controller::OutputC3TrajExecute(
     const drake::systems::Context<double>& context,
     LcmTrajectory* output_c3_execution_lcm_traj) const {
-  // TODO: The below assignment may not work; may need to iterate over length of
-  // the vector of timestamped vectors and use SetData / set_timestamp.
   *output_c3_execution_lcm_traj = c3_execution_lcm_traj_;
 }
 
 void SamplingC3Controller::OutputReposTrajExecute(
     const drake::systems::Context<double>& context,
     LcmTrajectory* output_repos_execution_lcm_traj) const {
-  // TODO: The below assignment may not work; may need to iterate over length of
-  // the vector of timestamped vectors and use SetData / set_timestamp.
   *output_repos_execution_lcm_traj = repos_execution_lcm_traj_;
 }
 

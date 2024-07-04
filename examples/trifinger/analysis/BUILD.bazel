@@ -1,0 +1,12 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "log_plotter_trifinger",
+    srcs = ["log_plotter_trifinger.py"],
+    deps = [
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "@drake//bindings/pydrake",
+    ],
+)

@@ -5,3 +5,6 @@ directories:
 
 targets:
   //...:all
+
+additional_languages:
+  python

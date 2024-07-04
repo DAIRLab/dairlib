@@ -37,11 +37,16 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
 
   PiecewisePolynomial<double> empty_pp_traj(Eigen::Vector3d::Zero());
   Trajectory<double>& traj_inst = empty_pp_traj;
-  fingertips_target_port_ =
+  fingertips_target_traj_port_ =
       this->DeclareAbstractOutputPort(
               "fingertips_target_traj", traj_inst,
-              &FingertipDeltaPositionReceiver::CopyToOutputTraj)
+              &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj)
           .get_index();
+
+  fingertips_target_port_ = this->DeclareVectorOutputPort(
+      "fingertips_target", TimestampedVector<double>(9)),
+      &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget)
+      .get_index();
 
   // Declare update event.
   DeclareForcedDiscreteUpdateEvent(
@@ -104,7 +109,7 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void FingertipDeltaPositionReceiver::CopyToOutputTraj(
+void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
     const drake::systems::Context<double>& context,
     Trajectory<double>* target_traj) const {
   // retrieve fingertips target positions from the current discrete state.
@@ -117,6 +122,16 @@ void FingertipDeltaPositionReceiver::CopyToOutputTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           target_traj);
   *casted_target_traj = const_traj;
+}
+
+void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget(
+    const drake::systems::Context<double>& context,
+    TimestampedVector<double>* fingertips_target) const {
+  // retrieve fingertips target positions from the current discrete state.
+  auto fingertips_target_pos =
+      context.get_discrete_state(fingertips_target_idx_).get_value();
+  fingertips_target->set_value(fingertips_target_pos);
+  fingertips_target->set_timestamp(context.get_time());
 }
 
 }  // namespace dairlib::systems

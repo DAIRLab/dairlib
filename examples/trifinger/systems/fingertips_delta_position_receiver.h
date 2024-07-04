@@ -1,6 +1,7 @@
 #pragma once
 
 #include <drake/common/trajectories/trajectory.h>
+
 #include "dairlib/lcmt_fingertips_delta_position.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "multibody/multibody_utils.h"
@@ -31,15 +32,24 @@ class FingertipDeltaPositionReceiver
   get_input_port_fingertips_delta_position() const {
     return this->get_input_port(fingertips_delta_position_port_);
   }
+  const drake::systems::OutputPort<double>&
+  get_output_port_fingertips_target_traj() const {
+    return this->get_output_port(fingertips_target_traj_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_fingertips_target()
       const {
     return this->get_output_port(fingertips_target_port_);
   }
 
  private:
-  void CopyToOutputTraj(
+  void CopyToOutputFingertipsTargetTraj(
       const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double> *target_traj) const;
+      Trajectory<double>* target_traj) const;
+
+  void CopyToOutputFingertipsTarget(
+      const drake::systems::Context<double>& context,
+      systems::TimestampedVector<double>* target) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -50,6 +60,7 @@ class FingertipDeltaPositionReceiver
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fingertips_delta_position_port_;
+  drake::systems::OutputPortIndex fingertips_target_traj_port_;
   drake::systems::OutputPortIndex fingertips_target_port_;
   drake::systems::DiscreteStateIndex fingertips_target_idx_;
   drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;

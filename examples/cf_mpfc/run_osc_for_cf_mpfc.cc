@@ -487,10 +487,10 @@ int DoMain(int argc, char** argv) {
   auto stance_foot_data_for_leg_len = std::make_unique<TransTaskSpaceTrackingData>(
       "stance_foot_data_for_leg_len", gains.K_p_swing_foot,
       gains.K_d_swing_foot, gains.W_swing_foot, plant);
-  stance_foot_data_for_leg_len->AddStateAndPointToTrack(left_stance_state, "toe_left");
-  stance_foot_data_for_leg_len->AddStateAndPointToTrack(post_left_double_support_state, "toe_left");
-  stance_foot_data_for_leg_len->AddStateAndPointToTrack(right_stance_state, "toe_right");
-  stance_foot_data_for_leg_len->AddStateAndPointToTrack(post_right_double_support_state, "toe_right");
+  stance_foot_data_for_leg_len->AddStateAndPointToTrack(left_stance_state, "toe_left", left_toe_mid.first);
+  stance_foot_data_for_leg_len->AddStateAndPointToTrack(post_right_double_support_state, "toe_left", left_toe_mid.first);
+  stance_foot_data_for_leg_len->AddStateAndPointToTrack(right_stance_state, "toe_right", right_toe_mid.first);
+  stance_foot_data_for_leg_len->AddStateAndPointToTrack(post_left_double_support_state, "toe_right", right_toe_mid.first);
 
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "com_traj", gains.K_p_com, gains.K_d_com,

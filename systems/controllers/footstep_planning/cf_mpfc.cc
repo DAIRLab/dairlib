@@ -79,6 +79,7 @@ cf_mpfc_solution CFMPFC::Solve(
   UpdateFootstepCost(vdes, stance);
   UpdateTrackingCost(vdes, stance);
   UpdateComplexModelCosts(vdes, stance);
+  UpdateInputRateLimitConstraint(t);
 
   std::vector<Vector6d> xc;
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
@@ -104,6 +105,7 @@ cf_mpfc_solution CFMPFC::Solve(
 
   UpdateComplexDynamicsConstraints(xc, uu,  t);
   UpdateModelSwitchConstraint(xc.back(), p, p_post);
+  UpdateInitialInputConstraint(uu, prev_sol.t_nom, t);
 
   auto solver_start = std::chrono::steady_clock::now();
   auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
@@ -111,7 +113,15 @@ cf_mpfc_solution CFMPFC::Solve(
   if (not result.is_success()) {
     std::cout << "solve failed with code "
               << result.get_solution_result() << std::endl;
+    params_.solver_options.SetOption(drake::solvers::GurobiSolver::id(),
+                           "LogToConsole", 1);
+    result = result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+
+    throw std::logic_error("failed to solve");
+    params_.solver_options.SetOption(drake::solvers::GurobiSolver::id(),
+                                     "LogToConsole", 0);
   }
+
   auto solver_end = std::chrono::steady_clock::now();
 
   cf_mpfc_solution mpfc_solution;
@@ -146,6 +156,7 @@ cf_mpfc_solution CFMPFC::Solve(
   mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.init = result.is_success();
+  mpfc_solution.t_nom = t;
   
   return mpfc_solution;
 }
@@ -285,6 +296,18 @@ void CFMPFC::MakeComplexInputConstraints() {
         prog_->AddBoundingBoxConstraint(
             -params_.input_bounds, params_.input_bounds, u));
   }
+  for (int i = 0; i < params_.nknots - 1; ++i) {
+    Eigen::RowVector2d A(1, -1);
+    Eigen::VectorXd lb = Eigen::VectorXd::Zero(1);
+    Eigen::VectorXd ub = Eigen::VectorXd::Zero(1);
+    input_rate_constraints_.push_back(
+        prog_->AddLinearConstraint(
+            A, lb, ub, {uu_.at(i).tail<1>(), uu_.at(i+1).tail<1>()}
+        ));
+  }
+  initial_input_constraint_ = prog_->AddLinearConstraint(
+      MatrixXd::Identity(1,1), VectorXd::Zero(1), VectorXd::Zero(1),
+      uu_.at(0).tail<1>()).evaluator();
 }
 
 void CFMPFC::MakeStateConstraints() {
@@ -501,6 +524,26 @@ void CFMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
   }
 }
 
+
+void CFMPFC::UpdateInitialInputConstraint(const vector<Eigen::Vector2d>& uu,
+                                          double t_prev, double t) {
+  double delta = std::max(0.0, (t_prev - t) * params_.rddot_rate_limit);
+  double u = uu.front()(1);
+  initial_input_constraint_->UpdateCoefficients(
+      MatrixXd::Identity(1,1),
+      VectorXd::Constant(1, u - delta),
+      VectorXd::Constant(1, u + delta));
+}
+
+void CFMPFC::UpdateInputRateLimitConstraint(double t) {
+  double h = t / (params_.nknots - 1);
+  VectorXd delta = VectorXd::Constant(1, h * params_.rddot_rate_limit);
+  for (int i = 0; i < params_.nknots - 1; ++i) {
+    input_rate_constraints_.at(i).evaluator()->UpdateLowerBound(-delta);
+    input_rate_constraints_.at(i).evaluator()->UpdateUpperBound(delta);
+  }
+}
+
 void CFMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes) {
   for (int i = 1; i < params_.nmodes - 1; ++i) {
     const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
@@ -560,6 +603,8 @@ Vector3d CFMPFC::CalcS2SLQRInput(
       x, gait_params.mass, t);
   Vector3d footstep = Vector3d::Zero();
   footstep.head<2>() = ud - lqr_K_ * (x_alip - x0);
+  footstep(0) = std::clamp(footstep(0), -2*params_.com_pos_bound(0), 2*params_.com_pos_bound(0));
+  footstep(1) = std::clamp(footstep(1), -2*params_.com_pos_bound(1), 2*params_.com_pos_bound(1));
   return footstep;
 }
 

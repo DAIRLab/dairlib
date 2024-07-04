@@ -39,10 +39,10 @@ struct cf_mpfc_solution {
   std::vector<Eigen::Vector3d> pp{}; // footstep positions
   alip_utils::Stance stance{};
 
-  bool success;
-  double t_nom;
-  double total_time;
-  double optimizer_time;
+  bool success{};
+  double t_nom{};
+  double total_time{};
+  double optimizer_time{};
   Eigen::Vector2d desired_velocity;
   drake::solvers::SolutionResult solution_result;
 };
@@ -55,6 +55,7 @@ struct cf_mpfc_params {
   double foot_length{};
   double time_regularization{};
   double soft_constraint_cost{};
+  double rddot_rate_limit = 100; // limit accel change per
   Eigen::Vector2d com_pos_bound{};
   Eigen::Vector2d com_vel_bound{};
   Eigen::Vector2d input_bounds{};
@@ -91,6 +92,9 @@ class CFMPFC {
       const drake::Vector6d& x, const Eigen::Vector3d& p);
   void UpdateComplexDynamicsConstraints(
       const vector<drake::Vector6d>& xc, const vector<Eigen::Vector2d>& uu, double t);
+  void UpdateInputRateLimitConstraint(double t);
+  void UpdateInitialInputConstraint(
+      const vector<Eigen::Vector2d>& uu, double t_prev, double t);
   void UpdateModelSwitchConstraint(
       const drake::Vector6d& x, const Eigen::Vector3d& p_pre,const Eigen::Vector3d& p_post);
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
@@ -133,7 +137,7 @@ class CFMPFC {
   };
 
   // problem data:
-  const cf_mpfc_params params_;
+  cf_mpfc_params params_;
 
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram> prog_{
@@ -158,13 +162,16 @@ class CFMPFC {
   std::shared_ptr<LinearEqualityConstraint> complex_dynamics_c_ = nullptr;       // |   x   |   x
   std::shared_ptr<LinearEqualityConstraint> alip_dynamics_c_ = nullptr;      // |   x   |  N/A
 //  std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;  // |       |
+  std::shared_ptr<LinearConstraint> initial_input_constraint_ = nullptr;
 
   //                                                          | Init  | Updater
   vector<Binding<LinearConstraint>> workspace_c_{};        // |   x   |  N/A
   vector<Binding<LinearConstraint>> no_crossover_c_{};     // |   x   |   x
   vector<Binding<LinearConstraint>> reachability_c_{};     // |   x   |  N/A
   vector<Binding<LinearConstraint>> complex_input_constraints_{};  // |   x   |  N/A
+  vector<Binding<LinearConstraint>> input_rate_constraints_{};
   vector<Binding<BoundingBoxConstraint>> complex_input_bounds_{};
+
 
                                                            // | Init  | Updater
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr; // |   x   |   x

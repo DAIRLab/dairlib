@@ -24,6 +24,7 @@ struct cf_mpfc_params_io {
   double foot_length;
   double time_regularization;
   double soft_constraint_cost;
+  double rddot_rate_limit;
   std::vector<double> com_pos_bound;
   std::vector<double> com_vel_bound;
   std::vector<double> input_bounds;
@@ -52,6 +53,7 @@ struct cf_mpfc_params_io {
     a->Visit(DRAKE_NVP(com_pos_bound));
     a->Visit(DRAKE_NVP(com_vel_bound));
     a->Visit(DRAKE_NVP(input_bounds));
+    a->Visit(DRAKE_NVP(rddot_rate_limit));
     a->Visit(DRAKE_NVP(Q));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(Qf));
@@ -79,6 +81,7 @@ struct cf_mpfc_params_io {
     params_out.time_regularization = io.time_regularization;
     params_out.mu = io.mu;
     params_out.foot_length = io.foot_length;
+    params_out.rddot_rate_limit = io.rddot_rate_limit;
 
     // gait params
     params_out.gait_params.height = io.height;

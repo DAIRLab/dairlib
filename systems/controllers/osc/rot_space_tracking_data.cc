@@ -77,22 +77,15 @@ void RotTaskSpaceTrackingData::UpdateYdot(
 
 void RotTaskSpaceTrackingData::UpdateYdotError(
     const Eigen::VectorXd& v_proj, OscTrackingDataState& td_state) const {
-  // Transform qdot to w
-  Quaterniond y_quat_des(td_state.y_des_(0), td_state.y_des_(1), td_state.y_des_(2), td_state.y_des_(3));
-  Quaterniond dy_quat_des(td_state.ydot_des_(0), td_state.ydot_des_(1), td_state.ydot_des_(2),
-                          td_state.ydot_des_(3));
-  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+  DRAKE_DEMAND(td_state.ydot_des_.size() == 3);
   // Because we transform the error here rather than in the parent
   // options_tracking_data, and because J_y is already transformed in the view
   // frame, we need to undo the transformation on J_y
   td_state.error_ydot_ =
-      w_des_ - td_state.ydot_ - td_state.view_frame_rot_T_.transpose() * td_state.J_ * v_proj;
+      td_state.ydot_des_ - td_state.ydot_ - td_state.view_frame_rot_T_.transpose() * td_state.J_ * v_proj;
   if (with_view_frame_) {
     td_state.error_ydot_ = td_state.view_frame_rot_T_ * td_state.error_ydot_;
   }
-
-  td_state.ydot_des_ =
-      w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
 }
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
@@ -115,12 +108,8 @@ void RotTaskSpaceTrackingData::UpdateJdotV(
 
 void RotTaskSpaceTrackingData::UpdateYddotDes(
     double, double, OscTrackingDataState& td_state) const {
-  // Convert ddq into angular acceleration
-  // See https://physics.stackexchange.com/q/460311
-  Quaterniond y_quat_des(td_state.y_des_(0), td_state.y_des_(1), td_state.y_des_(2), td_state.y_des_(3));
-  Quaterniond yddot_quat_des(td_state.yddot_des_(0), td_state.yddot_des_(1), td_state.yddot_des_(2),
-                             td_state.yddot_des_(3));
-  td_state.yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
+  DRAKE_DEMAND(td_state.yddot_des_.size() == 3);
+  td_state.yddot_des_converted_ = td_state.yddot_des_;
   if (!idx_zero_feedforward_accel_.empty()) {
     std::cerr << "RotTaskSpaceTrackingData does not support zero feedforward "
                  "acceleration";

@@ -582,7 +582,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   if (W_lambda_h_reg_.size() > 0) {
     id_qp_.UpdateCost(
-        "lambda_h_reg",
+        "lambda_h_cost",
         (1 + alpha) * W_lambda_h_reg_,VectorXd::Zero(id_qp_.nh()));
   }
   if (!solver_->IsInitialized()) {

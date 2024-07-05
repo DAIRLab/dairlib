@@ -86,8 +86,6 @@ cf_mpfc_solution CFMPFC::Solve(
 
   bool use_prev_sol = prev_sol.success and prev_sol.init and prev_sol.stance == stance;
 
-  // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
-  //   Linearizing (or consider alternate rotation representation)
   for (int i = 0; i < params_.nknots; ++i) {
     if (use_prev_sol) {
       xc.push_back(prev_sol.xc.at(i));
@@ -115,7 +113,23 @@ cf_mpfc_solution CFMPFC::Solve(
               << result.get_solution_result() << std::endl;
     params_.solver_options.SetOption(drake::solvers::GurobiSolver::id(),
                            "LogToConsole", 1);
+
+    std::cout << "Inputs Linearized About:\n";
+    for(const auto& u : uu) {
+      std::cout << u.transpose() << std::endl;
+    }
+    std::cout << "Pendulum States and dynamics:\n";
+    for (const auto& xi : prev_sol.xc) {
+      std::cout << xi.transpose() << std::endl;
+    }
+
+    std::cout << "Reset map for nominal footstep [" << (p_post - p).transpose() << "]\n"
+              << "and pendulum state [" << xc.back().transpose() << "]:\n"
+              << model_switch_c_->GetDenseA() << std::endl
+              << "b: \n" <<  initial_alip_state_c_->lower_bound() << std::endl;
+
     result = result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+
 
     throw std::logic_error("failed to solve");
     params_.solver_options.SetOption(drake::solvers::GurobiSolver::id(),
@@ -344,7 +358,6 @@ void CFMPFC::MakeStateConstraints() {
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
-    //std::cout << workspace_c_.at(i).ToLatex() << std::endl;
   }
 }
 
@@ -405,7 +418,7 @@ void CFMPFC::MakeInitialConditionsConstraints() {
   ).evaluator();
 
   model_switch_c_ = prog_->AddLinearEqualityConstraint(
-      MatrixXd::Identity(AlipDim, ComplexDim + FootstepDim + AlipDim),
+      MatrixXd::Ones(AlipDim, ComplexDim + FootstepDim + AlipDim),
       Vector4d::Zero(),
       {xc_.back(), pp_.at(1), xi_}
   ).evaluator();
@@ -449,12 +462,10 @@ void CFMPFC::UpdateComplexDynamicsConstraints(
         h, xc.at(i), xc.at(i+1), uu.at(i), uu.at(i+1),
         params_.gait_params.mass, A, B, c);
 
-
     A_dyn.block<6,  2 * 6>(6*i, 6*i) = A;
     A_dyn.block<6, 2 * 2>(6 * i, 6 * params_.nknots + 2 * i) = B;
     b_dyn.segment<6>(6 * i) = c;
   }
-//  std::cout << A_dyn << std::endl;
   complex_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
 

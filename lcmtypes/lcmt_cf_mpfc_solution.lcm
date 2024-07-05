@@ -16,6 +16,7 @@ struct lcmt_cf_mpfc_solution {
     int32_t nmodes;
     int32_t nmodes_minus_1;
 
+    double t_remain;
     double initial_state[nxc];
     double initial_alip_state[nxa];
     double initial_stance_foot[np];

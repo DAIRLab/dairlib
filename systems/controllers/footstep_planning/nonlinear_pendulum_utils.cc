@@ -93,15 +93,18 @@ void LinearizeTrapezoidalCollocationConstraint(
   B = MatrixXd::Zero(nx, 2*nu);
   b = VectorXd::Zero(nx);
 
-  A.block<nx, nx>(0,0) =
-      Matrix<double, nx, nx>::Identity() + 0.5 * h * J0.block<nx, nx>(0,0);
-  A.block<nx, nx>(0, nx) =
-      -Matrix<double, nx, nx>::Identity() + 0.5 * h * J1.block<nx, nx>(0,0);
+  MatrixXd A0 = J0.block<nx, nx>(0,0);
+  MatrixXd A1 = J1.block<nx, nx>(0,0);
+  MatrixXd B0 = J0.rightCols<nu>();
+  MatrixXd B1 = J1.rightCols<nu>();
 
-  B.block(0, 0, nx, nu) = 0.5 * h * J0.rightCols(nu);
-  B.block(0, nu, nx, nu) = 0.5 * h * J1.rightCols(nu);
+  A.block<nx, nx>(0,0) = Matrix<double, nx, nx>::Identity() + 0.5 * h * A0;
+  A.block<nx, nx>(0, nx) = -Matrix<double, nx, nx>::Identity() + 0.5 * h * A1;
 
-  b = -0.5 * h * (ExtractValue(xdot0) + ExtractValue(xdot1));
+  B.block(0, 0, nx, nu) = 0.5 * h * B0;
+  B.block(0, nu, nx, nu) = 0.5 * h * B0;
+
+  b = 0.5 * h * (A0 * x0 + A1 * x1 + B0 * u0 + B1 * u1 - ExtractValue(xdot0) - ExtractValue(xdot1));
 }
 
 void LinearizeALIPReset(

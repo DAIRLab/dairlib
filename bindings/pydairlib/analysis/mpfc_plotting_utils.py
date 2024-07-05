@@ -69,6 +69,7 @@ def process_cf_mpfc_debug_data(data):
     initial_state = np.zeros((n, nxc))
     initial_stance_foot = np.zeros((n, 3))
     desired_velocity = np.zeros((n, 2))
+    t_remain = np.zeros((n,))
     xi = np.zeros((n, 4))
     xc = [np.zeros((nknots, nxc))] * n
     uc = [np.zeros((nknots, nuc))] * n
@@ -83,6 +84,7 @@ def process_cf_mpfc_debug_data(data):
         initial_state[i] = msg.initial_state
         initial_stance_foot[i] = msg.initial_stance_foot
         desired_velocity[i] = msg.desired_velocity
+        t_remain[i] = msg.t_remain
         xi[i] = msg.initial_alip_state
         pp[i] = np.array(msg.pp)
         xx[i] = np.array(msg.xx)
@@ -90,6 +92,9 @@ def process_cf_mpfc_debug_data(data):
         uc[i] = np.array(msg.uu)
 
     return {
+        'n': n,
+        'nknots': nknots,
+        'nmodes': nmodes,
         't_mpc': t_mpc,
         'fsm': fsm,
         'solve_time': solve_time,
@@ -102,6 +107,7 @@ def process_cf_mpfc_debug_data(data):
         'xx': xx,
         'xc': xc,
         'uc': uc,
+        't_remain': t_remain
     }
 
 
@@ -141,6 +147,17 @@ def plot_contact(contact_data, mpc_data, time_slice=None):
     )
     add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
 
+    return ps
+
+
+def plot_input_solutions(data):
+    ps = plot_styler.PlotStyler()
+    for i in range(data['n']):
+        dt = data['t_remain'][i] / (data['nknots'] - 1)
+        t = [data['t_mpc'][i] + j * dt for j in range(data['nknots'])]
+        ps.plot(t, data['uc'][i], linestyle='-.')
+
+    add_fsm_to_plot(ps, data['t_mpc'], data['fsm'], _fsm_state_names)
     return ps
 
 

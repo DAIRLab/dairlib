@@ -286,6 +286,7 @@ void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
   mpc_debug->nk = mpc_sol.xc.size();
   mpc_debug->nmodes = mpc_sol.pp.size();
   mpc_debug->nmodes_minus_1 = mpc_debug->nmodes - 1;
+  mpc_debug->t_remain = mpc_sol.t_nom;
 
   mpc_debug->initial_state.reserve(ComplexDim);
   Eigen::Map<Eigen::VectorXd>(mpc_debug->initial_state.data(), ComplexDim) = ic.head<ComplexDim>();

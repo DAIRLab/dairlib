@@ -4,16 +4,16 @@ mu: 0.8
 foot_length: 0.17
 time_regularization: 60
 soft_constraint_cost: 1000
-height: 0.83
-rddot_rate_limit: 100
-single_stance_duration: 0.3
-double_stance_duration: 0.1
+height: 0.8
+rddot_rate_limit: 50
+single_stance_duration: 0.33
+double_stance_duration: 0.07
 stance_width: 0.3
 reset_discretization_method: 'FOH'
 tracking_cost_type: 'gait'
-com_pos_bound: [0.55, 0.4]
-com_vel_bound: [2.0, 1.0]
-input_bounds: [20.0, 9.8]
+com_pos_bound: [0.4, 0.35]
+com_vel_bound: [1.0, 0.75]
+input_bounds: [20.0, 8.0]
 
 Qf:
   [  100.0, 0, 0, 0,
@@ -27,11 +27,11 @@ Q: [ 10, 0, 0, 0,
 R: [ 0.1, 0, 0,
      0, 1.0, 0,
      0, 0, 1.0 ]
-Qc: [ 0.1, 0, 0, 0, 0, 0,
-      0, 0.1, 0, 0, 0, 0,
-      0, 0, 12.0, 0, 0, 0,
+Qc: [ 0.01, 0, 0, 0, 0, 0,
+      0, 0.01, 0, 0, 0, 0,
+      0, 0, 10.0, 0, 0, 0,
       0, 0, 0, 0.01, 0, 0,
       0, 0, 0, 0, 0.01, 0,
-      0, 0, 0, 0, 0, 0.11 ]
+      0, 0, 0, 0, 0, 0.8]
 Rc: [ 0.01, 0,
-       0, 10.0 ]
+       0, 2.0 ]

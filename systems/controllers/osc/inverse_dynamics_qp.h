@@ -235,6 +235,8 @@ class InverseDynamicsQp {
     return all_costs_.count(name) > 0;
   }
 
+  bool built() const { return built_; }
+
  private:
 
   // Multibody Dynamics

@@ -3,12 +3,14 @@
 #include <dairlib/lcmt_cassie_out.hpp>
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/math/wrap_to.h"
 
 using dairlib::systems::OutputVector;
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -39,7 +41,7 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
       this->DeclareAbstractInputPort("radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
-  PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
+  PiecewiseQuaternionSlerp<double> empty_pp_traj;
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->set_name(traj_name);
   this->DeclareAbstractOutputPort(traj_name, traj_inst,
@@ -57,7 +59,7 @@ void StandingPelvisOrientationTraj::CalcTraj(
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_, q);
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      (PiecewiseQuaternionSlerp<double>*)dynamic_cast<PiecewiseQuaternionSlerp<double>*>(
           traj);
   Vector3d pt_0;
   Vector3d pt_1;
@@ -83,11 +85,12 @@ void StandingPelvisOrientationTraj::CalcTraj(
           0.5 * (atan2(l_foot(1), l_foot(0)) + atan2(r_foot(1), r_foot(0))),
           -M_PI, M_PI) +
           radio_out->channel[3];
-
+  const std::vector<double> breaks = {context.get_time(),
+                                      context.get_time() + 1.0};
   auto rot_mat =
       drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(rpy));
 
-  *casted_traj = PiecewisePolynomial<double>(rot_mat.ToQuaternionAsVector4());
+  *casted_traj = PiecewiseQuaternionSlerp<double>(breaks, {rot_mat.ToQuaternion(), rot_mat.ToQuaternion()});
 }
 
 }  // namespace dairlib::cassie::osc

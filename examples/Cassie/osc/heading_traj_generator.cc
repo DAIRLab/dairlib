@@ -1,9 +1,7 @@
 #include "examples/Cassie/osc/heading_traj_generator.h"
 
 #include <math.h>
-
-#include <string>
-
+#include "drake/common/trajectories/piecewise_quaternion.h"
 #include "multibody/multibody_utils.h"
 
 using std::string;
@@ -21,6 +19,7 @@ using drake::systems::Context;
 using drake::systems::LeafSystem;
 
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 
 namespace dairlib {
 namespace cassie {
@@ -43,7 +42,7 @@ HeadingTrajGenerator::HeadingTrajGenerator(
       this->DeclareVectorInputPort("pelvis_yaw", BasicVector<double>(1))
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp(VectorXd(0));
+  PiecewiseQuaternionSlerp<double> pp;
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("pelvis_quat", traj_inst,
                                   &HeadingTrajGenerator::CalcHeadingTraj);
@@ -100,19 +99,17 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   Quaterniond relative_quat(cos(des_delta_yaw / 2), 0, 0,
                             sin(des_delta_yaw / 2));
   Quaterniond final_quat = relative_quat * init_quat;
-  Eigen::Vector4d pelvis_rotation_f;
-  pelvis_rotation_f << final_quat.w(), final_quat.vec();
 
   const std::vector<double> breaks = {context.get_time(),
                                       context.get_time() + dt};
-  std::vector<MatrixXd> knots(breaks.size(), MatrixXd::Zero(4, 1));
-  knots[0] = pelvis_rotation_i;
-  knots[1] = pelvis_rotation_f;
-  const auto pp = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
+  std::vector<Quaterniond> knots(breaks.size(), Quaterniond());
+  knots[0] = init_quat;
+  knots[1] = final_quat;
+  const auto pp = PiecewiseQuaternionSlerp(breaks, knots);
 
   // Assign traj
   auto* pp_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      (PiecewiseQuaternionSlerp<double>*)dynamic_cast<PiecewiseQuaternionSlerp<double>*>(
           traj);
   *pp_traj = pp;
 }

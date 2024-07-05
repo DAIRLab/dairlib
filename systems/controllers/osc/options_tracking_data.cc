@@ -19,98 +19,102 @@ namespace dairlib::systems::controllers {
 OptionsTrackingData::OptionsTrackingData(
     const string& name, int n_y, int n_ydot, const MatrixXd& K_p,
     const MatrixXd& K_d, const MatrixXd& W,
-    const MultibodyPlant<double>& plant_w_spr,
-    const MultibodyPlant<double>& plant_wo_spr)
-    : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {
+    const MultibodyPlant<double>& plant)
+    : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant) {
   yddot_cmd_lb_ = std::numeric_limits<double>::lowest() * VectorXd::Ones(n_ydot_);
   yddot_cmd_ub_ = std::numeric_limits<double>::max() * VectorXd::Ones(n_ydot_);
 }
 
 void OptionsTrackingData::UpdateActual(
-    const Eigen::VectorXd& x_w_spr,
-    const drake::systems::Context<double>& context_w_spr,
-    const Eigen::VectorXd& x_wo_spr,
-    const drake::systems::Context<double>& context_wo_spr, double t) {
-  OscTrackingData::UpdateActual(x_w_spr, context_w_spr, x_wo_spr,
-                                context_wo_spr, t);
+    const Eigen::VectorXd& x,
+    const drake::systems::Context<double>& context, double t,
+    OscTrackingDataState& td_state) const {
+  OscTrackingData::UpdateActual(x, context, t, td_state);
 
   if (with_view_frame_) {
-    view_frame_rot_T_ =
-        view_frame_->CalcWorldToFrameRotation(plant_w_spr_, context_w_spr);
+    td_state.view_frame_rot_T_ =
+        view_frame_->CalcWorldToFrameRotation(plant_, context);
     if (!is_rotational_tracking_data_) {
-      y_ = view_frame_rot_T_ * y_;
-      ydot_ = view_frame_rot_T_ * ydot_;
+      td_state.y_ =td_state.view_frame_rot_T_ * td_state.y_;
+      td_state.ydot_ = td_state.view_frame_rot_T_ * td_state.ydot_;
     }
-    J_ = view_frame_rot_T_ * J_;
-    JdotV_ = view_frame_rot_T_ * JdotV_;
+    td_state.J_ = td_state.view_frame_rot_T_ * td_state.J_;
+    td_state.JdotV_ = td_state.view_frame_rot_T_ * td_state.JdotV_;
   }
 
-  UpdateFilters(t);
+  UpdateFilters(t, td_state);
 }
 
-void OptionsTrackingData::UpdateFilters(double t) {
+void OptionsTrackingData::UpdateFilters(
+    double t, OscTrackingDataState& td_state) const {
+
   if (tau_ > 0) {
-    if (last_timestamp_ < 0) {
+    if (td_state.last_timestamp_ < 0) {
       // Initialize
-      filtered_y_ = y_;
-      filtered_ydot_ = ydot_;
-    } else if (t != last_timestamp_) {
-      double dt = t - last_timestamp_;
+      td_state.filtered_y_ = td_state.y_;
+      td_state.filtered_ydot_ = td_state.ydot_;
+    } else if (t != td_state.last_timestamp_) {
+      double dt = t - td_state.last_timestamp_;
       double alpha = dt / (dt + tau_);
       if (this->is_rotational_tracking_data_) {  // quaternion
         auto slerp = drake::trajectories::PiecewiseQuaternionSlerp<double>(
-            {0, 1}, {Quaterniond(y_[0], y_[1], y_[2], y_[3]),
-                     Quaterniond(filtered_y_[0], filtered_y_[1], filtered_y_[2],
-                                 filtered_y_[3])});
-        filtered_y_ = slerp.value(1 - alpha);
+            {0, 1},
+            {Quaterniond(
+                td_state.y_[0], td_state.y_[1], td_state.y_[2], td_state.y_[3]),
+             Quaterniond(
+                 td_state.filtered_y_[0], td_state.filtered_y_[1],
+                 td_state.filtered_y_[2],td_state.filtered_y_[3])});
+        td_state.filtered_y_ = slerp.value(1 - alpha);
       } else {
-        filtered_y_ = alpha * y_ + (1 - alpha) * filtered_y_;
+        td_state.filtered_y_ = alpha * td_state.y_ + (1 - alpha) * td_state.filtered_y_;
       }
-      filtered_ydot_ = alpha * ydot_ + (1 - alpha) * filtered_ydot_;
+      td_state.filtered_ydot_ = alpha * td_state.ydot_ + (1 - alpha) * td_state.filtered_ydot_;
     }
 
     // Assign filtered values
     if (n_y_ == 4) {
-      y_ = filtered_y_;
-      ydot_ = filtered_ydot_;
+      td_state.y_ = td_state.filtered_y_;
+      td_state.ydot_ = td_state.filtered_ydot_;
     } else {
       for (auto idx : low_pass_filter_element_idx_) {
-        y_(idx) = filtered_y_(idx);
-        ydot_(idx) = filtered_ydot_(idx);
+        td_state.y_(idx) = td_state.filtered_y_(idx);
+        td_state.ydot_(idx) = td_state.filtered_ydot_(idx);
       }
     }
     // Update timestamp
-    last_timestamp_ = t;
+    td_state.last_timestamp_ = t;
   }
 }
 
-void OptionsTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
+void OptionsTrackingData::UpdateYError(OscTrackingDataState& td_state) const{
+  td_state.error_y_ = td_state.y_des_ - td_state.y_;
+}
 
-void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
-  error_ydot_ = ydot_des_ - ydot_;
+void OptionsTrackingData::UpdateYdotError(
+    const Eigen::VectorXd& v_proj, OscTrackingDataState& td_state) const {
+  td_state.error_ydot_ = td_state.ydot_des_ - td_state.ydot_;
   if (impact_invariant_projection_) {
-    error_ydot_ -= GetJ() * v_proj;
+    td_state.error_ydot_ -= td_state.J_ * v_proj;
   } else if (no_derivative_feedback_ && !v_proj.isZero()) {
-    error_ydot_ = VectorXd::Zero(n_ydot_);
+    td_state.error_ydot_ = VectorXd::Zero(n_ydot_);
   }
 }
 
-void OptionsTrackingData::UpdateYddotDes(double t,
-                                         double t_since_state_switch) {
-  yddot_des_converted_ = yddot_des_;
+void OptionsTrackingData::UpdateYddotDes(
+    double t, double t_since_state_switch, OscTrackingDataState& td_state) const {
+  td_state.yddot_des_converted_ = td_state.yddot_des_;
   for (auto idx : idx_zero_feedforward_accel_) {
-    yddot_des_converted_(idx) = 0;
+    td_state.yddot_des_converted_(idx) = 0;
   }
   if (ff_accel_multiplier_traj_ != nullptr) {
-    yddot_des_converted_ =
+    td_state.yddot_des_converted_ =
         ff_accel_multiplier_traj_->value(t_since_state_switch) *
-        yddot_des_converted_;
+        td_state.yddot_des_converted_;
   }
 }
 
-void OptionsTrackingData::UpdateYddotCmd(double t,
-                                         double t_since_state_switch) {
+void OptionsTrackingData::UpdateYddotCmd(
+    double t, double t_since_state_switch, OscTrackingDataState& td_state) const {
   // 4. Update command output (desired output with pd control)
   MatrixXd p_gain_multiplier =
       (p_gain_multiplier_traj_ != nullptr)
@@ -122,18 +126,19 @@ void OptionsTrackingData::UpdateYddotCmd(double t,
           ? d_gain_multiplier_traj_->value(t_since_state_switch)
           : MatrixXd::Identity(n_ydot_, n_ydot_);
 
-  yddot_command_ = yddot_des_converted_ + p_gain_multiplier * K_p_ * error_y_ +
-                   d_gain_multiplier * K_d_ * error_ydot_;
-  yddot_command_ = eigen_clamp(yddot_command_, yddot_cmd_lb_, yddot_cmd_ub_);
-  UpdateW(t, t_since_state_switch);
+  td_state.yddot_command_ = td_state.yddot_des_converted_ + p_gain_multiplier * K_p_ * td_state.error_y_ +
+                   d_gain_multiplier * K_d_ * td_state.error_ydot_;
+  td_state.yddot_command_ = eigen_clamp(td_state.yddot_command_, yddot_cmd_lb_, yddot_cmd_ub_);
+  UpdateW(t, t_since_state_switch, td_state);
 }
 
-void OptionsTrackingData::UpdateW(double t, double t_since_state_switch) {
+void OptionsTrackingData::UpdateW(
+    double t, double t_since_state_switch, OscTrackingDataState& td_state) const {
   if (weight_trajectory_ != nullptr) {
-    time_varying_weight_ =
-        weight_trajectory_->value(time_through_trajectory_).row(0)[0] * W_;
+    td_state.time_varying_weight_ =
+        weight_trajectory_->value(td_state.time_through_trajectory_).row(0)[0] * W_;
   } else {
-    time_varying_weight_ = W_;
+    td_state.time_varying_weight_ = W_;
   }
 }
 

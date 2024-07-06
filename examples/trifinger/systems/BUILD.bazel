@@ -54,3 +54,16 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "trifinger_impedance_control",
+    srcs = ["trifinger_impedance_controller.cc"],
+    hdrs = ["trifinger_impedance_controller.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

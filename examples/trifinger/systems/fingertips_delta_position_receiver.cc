@@ -35,7 +35,7 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
               drake::Value<dairlib::lcmt_fingertips_delta_position>{})
           .get_index();
 
-  PiecewisePolynomial<double> empty_pp_traj(Eigen::Vector3d::Zero());
+  PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd::Zero(9));
   Trajectory<double>& traj_inst = empty_pp_traj;
   fingertips_target_traj_port_ =
       this->DeclareAbstractOutputPort(
@@ -44,9 +44,8 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
           .get_index();
 
   fingertips_target_port_ = this->DeclareVectorOutputPort(
-      "fingertips_target", TimestampedVector<double>(9)),
-      &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget)
-      .get_index();
+      "fingertips_target", TimestampedVector<double>(9),
+      &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget).get_index();
 
   // Declare update event.
   DeclareForcedDiscreteUpdateEvent(
@@ -94,8 +93,9 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   if (fingertips_delta_pos_lcm_msg->utime ==
       context.get_discrete_state(prev_target_timestamp_idx_)[0]) {
     // message not yet coming, maintain fingertip targets at current state.
-    if (fingertips_delta_pos_lcm_msg->utime > 0)
+    if (fingertips_delta_pos_lcm_msg->utime > 0) {
       return drake::systems::EventStatus::Succeeded();
+    }
     fingertips_target_pos += Eigen::VectorXd::Zero(9);
   } else {
     fingertips_target_pos +=
@@ -130,7 +130,7 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget(
   // retrieve fingertips target positions from the current discrete state.
   auto fingertips_target_pos =
       context.get_discrete_state(fingertips_target_idx_).get_value();
-  fingertips_target->set_value(fingertips_target_pos);
+  fingertips_target->SetDataVector(fingertips_target_pos);
   fingertips_target->set_timestamp(context.get_time());
 }
 

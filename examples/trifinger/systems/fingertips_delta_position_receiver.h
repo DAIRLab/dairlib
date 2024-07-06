@@ -1,13 +1,12 @@
 #pragma once
 
-#include <drake/common/trajectories/trajectory.h>
-
 #include "dairlib/lcmt_fingertips_delta_position.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -45,7 +44,7 @@ class FingertipDeltaPositionReceiver
  private:
   void CopyToOutputFingertipsTargetTraj(
       const drake::systems::Context<double>& context,
-      Trajectory<double>* target_traj) const;
+      drake::trajectories::Trajectory<double>* target_traj) const;
 
   void CopyToOutputFingertipsTarget(
       const drake::systems::Context<double>& context,

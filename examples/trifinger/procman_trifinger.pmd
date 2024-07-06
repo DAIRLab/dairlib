@@ -32,18 +32,31 @@ group "4. Controllers" {
         exec = "bazel-bin/examples/trifinger/trifinger_osc_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
         host = "localhost";
     }
+
+    cmd "Impedance Controller (from simulation)" {
+        exec = "bazel-bin/examples/trifinger/run_impedance_controller";
+        host = "localhost";
+    }
+    cmd "Impedance Controller (from hardware)" {
+        exec = "bazel-bin/examples/trifinger/run_impedance_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
 }
 
 group "5. ROS-LCM Bridge" {
-    cmd "ROS-to-LCM" {
-        exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge";
+    cmd "ROS-to-LCM (from hardware)" {
+        exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge ";
         host = "localhost";
     }
-    cmd "LCM-to-ROS" {
+    cmd "ROS-to-LCM (from simulation)" {
+        exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
+        host = "localhost";
+    }
+    cmd "LCM-to-ROS (from hardware)" {
         exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge";
         host = "localhost";
     }
-    cmd "LCM-to-ROS (simulation)" {
+    cmd "LCM-to-ROS (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
         host = "localhost";
     }
@@ -57,9 +70,40 @@ group "6.lcm-tools" {
 }
 
 script "run-osc-controller-hardware" {
-    start cmd "state-visualizer-floating (from hardware)";
+    stop cmd "state-visualizer-floating (from hardware)";
+    stop cmd "ROS-to-LCM (from hardware)";
+    stop cmd "LCM-to-ROS (from hardware)";
+    stop cmd "OSC Controller (from hardware)";
     wait ms 1000;
-    start cmd "ROS-to-LCM";
-    start cmd "LCM-to-ROS";
+    start cmd "state-visualizer-floating (from hardware)";
+    start cmd "ROS-to-LCM (from hardware)";
+    start cmd "LCM-to-ROS (from hardware)";
     start cmd "OSC Controller (from hardware)";
+}
+
+script "run-impedance-controller-hardware" {
+    stop cmd "state-visualizer-floating (from hardware)";
+    stop cmd "ROS-to-LCM (from hardware)";
+    stop cmd "LCM-to-ROS (from hardware)";
+    stop cmd "Impedance Controller (from hardware)";
+    wait ms 1000;
+    start cmd "state-visualizer-floating (from hardware)";
+    start cmd "ROS-to-LCM (from hardware)";
+    start cmd "LCM-to-ROS (from hardware)";
+    start cmd "Impedance Controller (from hardware)";
+}
+
+script "run-impedance-controller-simulation" {
+    stop cmd "state-visualizer-floating (from simulation)";
+    stop cmd "ROS-to-LCM (from simulation)";
+    stop cmd "LCM-to-ROS (from hardware)";
+    stop cmd "Simulate";
+    stop cmd "Impedance Controller (from simulation)";
+    wait ms 1000;
+    start cmd "state-visualizer-floating (from simulation)";
+    start cmd "Simulate";
+    start cmd "ROS-to-LCM (from simulation)";
+    start cmd "LCM-to-ROS (from simulation)";
+    wait ms 1000;
+    start cmd "Impedance Controller (from simulation)";
 }

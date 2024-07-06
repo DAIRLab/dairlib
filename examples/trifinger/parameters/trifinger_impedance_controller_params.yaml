@@ -1,0 +1,32 @@
+trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
+fingertip_0_name: finger_tip_link_0
+fingertip_120_name: finger_tip_link_120
+fingertip_240_name: finger_tip_link_240
+
+min_fingertips_delta_position: [-0.015, -0.015, -0.015]
+max_fingertips_delta_position: [0.015, 0.015, 0.015]
+
+KpFingertip0:
+  [ 1000, 0, 0,
+    0, 1000, 0,
+    0, 0, 1000 ]
+KdFingertip0:
+  [ 63, 0, 0,
+    0, 63, 0,
+    0, 0, 63 ]
+KpFingertip120:
+    [ 1000, 0, 0,
+      0, 1000, 0,
+      0, 0, 1000 ]
+KdFingertip120:
+    [ 63, 0, 0,
+      0, 63, 0,
+      0, 0, 63 ]
+KpFingertip240:
+    [ 1000, 0, 0,
+      0, 1000, 0,
+      0, 0, 1000 ]
+KdFingertip240:
+    [ 63, 0, 0,
+       0, 63, 0,
+       0, 0, 63 ]

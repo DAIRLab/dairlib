@@ -40,3 +40,10 @@ cc_library(
     data = ["trifinger_ros2_channels.yaml"],
     deps = ["@drake//:drake_shared_library"],
 )
+
+cc_library(
+    name = "trifinger_impedance_controller_params",
+    hdrs = ["trifinger_impedance_controller_params.h"],
+    data = ["trifinger_impedance_controller_params.yaml"],
+    deps = ["@drake//:drake_shared_library"],
+)

@@ -91,8 +91,8 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  auto trifinger_index = parser.AddModels(
-      FindResourceOrThrow(sim_params.trifinger_model))[0];
+  auto trifinger_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.trifinger_model))[0];
   auto cube_index =
       parser.AddModels(FindResourceOrThrow(sim_params.cube_model))[0];
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -104,22 +104,47 @@ int DoMain(int argc, char* argv[]) {
   rclcpp::QoS qos{10};
   auto sys_ros_interface = builder.AddSystem<RosInterfaceSystem>(
       std::make_unique<DrakeRos>("run_ros_lcm_node"));
-  auto trifinger_joint_state_ros_subscriber = builder.AddSystem(
-      RosSubscriberSystem::Make<trifinger_msgs::msg::TrifingerState>(
-          ros_channel_params.trifinger_state_channel, qos,
-          sys_ros_interface->get_ros_interface()));
-  auto ros_to_lcm_robot_state = builder.AddSystem(
-      RosToLcmRobotState::Make(plant.num_positions(trifinger_index),
-                               plant.num_velocities(trifinger_index),
-                               plant.num_actuators(trifinger_index)));
-  auto robot_output_lcm_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.trifinger_state_channel, &drake_lcm,
-          {drake::systems::TriggerType::kForced}));
-  builder.Connect(trifinger_joint_state_ros_subscriber->get_output_port(),
-                  ros_to_lcm_robot_state->get_input_port());
-  builder.Connect(ros_to_lcm_robot_state->get_output_port(),
-                  robot_output_lcm_publisher->get_input_port());
+
+  drake_ros::RosSubscriberSystem* trifinger_joint_state_ros_subscriber =
+      nullptr;
+  drake_ros::RosSubscriberSystem* cube_object_state_ros_subscriber = nullptr;
+
+  if (lcm_channel_params.is_real_robot) {
+    trifinger_joint_state_ros_subscriber = builder.AddSystem(
+        RosSubscriberSystem::Make<trifinger_msgs::msg::TrifingerState>(
+            ros_channel_params.trifinger_state_channel, qos,
+            sys_ros_interface->get_ros_interface()));
+    auto ros_to_lcm_robot_state = builder.AddSystem(
+        RosToLcmRobotState::Make(plant.num_positions(trifinger_index),
+                                 plant.num_velocities(trifinger_index),
+                                 plant.num_actuators(trifinger_index)));
+    auto robot_output_lcm_publisher =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            lcm_channel_params.trifinger_state_channel, &drake_lcm,
+            {drake::systems::TriggerType::kForced}));
+    builder.Connect(trifinger_joint_state_ros_subscriber->get_output_port(),
+                    ros_to_lcm_robot_state->get_input_port());
+    builder.Connect(ros_to_lcm_robot_state->get_output_port(),
+                    robot_output_lcm_publisher->get_input_port());
+
+    /// convert cube state ros msgs to lcm
+    cube_object_state_ros_subscriber =
+        builder.AddSystem(RosSubscriberSystem::Make<geometry_msgs::msg::Pose>(
+            ros_channel_params.cube_state_channel, qos,
+            sys_ros_interface->get_ros_interface()));
+    auto ros_to_lcm_object_state =
+        builder.AddSystem(RosToLcmObjectState::Make(plant, cube_index, "cube"));
+
+    auto cube_state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+            lcm_channel_params.cube_state_channel, &drake_lcm,
+            {drake::systems::TriggerType::kForced}));
+    /// connections
+    builder.Connect(cube_object_state_ros_subscriber->get_output_port(),
+                    ros_to_lcm_object_state->get_input_port());
+    builder.Connect(ros_to_lcm_object_state->get_output_port(),
+                    cube_state_pub->get_input_port());
+  }
 
   /// convert fingertips delta position ros msg to lcm
   auto fingertips_delta_position_ros_subscriber = builder.AddSystem(
@@ -137,26 +162,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(ros_to_lcm_delta_pos->get_output_port(),
                   delta_pos_lcm_publisher->get_input_port());
 
-  /// convert cube state ros msgs to lcm
-  auto cube_object_state_ros_subscriber =
-      builder.AddSystem(RosSubscriberSystem::Make<geometry_msgs::msg::Pose>(
-          ros_channel_params.cube_state_channel, qos,
-          sys_ros_interface->get_ros_interface()));
-  auto ros_to_lcm_object_state =
-      builder.AddSystem(RosToLcmObjectState::Make(plant, cube_index, "cube"));
-
-  auto cube_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.cube_state_channel, &drake_lcm,
-          {drake::systems::TriggerType::kForced}));
-  /// connections
-  builder.Connect(cube_object_state_ros_subscriber->get_output_port(),
-                  ros_to_lcm_object_state->get_input_port());
-  builder.Connect(ros_to_lcm_object_state->get_output_port(),
-                  cube_state_pub->get_input_port());
-
   /* -------------------------------------------------------------------------------------------*/
-
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("trifinger_ros_lcm_bridge"));
   const auto& diagram = *owned_diagram;
@@ -166,20 +172,27 @@ int DoMain(int argc, char* argv[]) {
   int cur_trifinger_state_msg_count = 0;
   int cur_cube_state_msg_count = 0;
   int cur_delta_pos_msg_count = 0;
+  int actual_trifinger_state_msg_count = cur_trifinger_state_msg_count;
+  int actual_cube_state_msg_count = cur_cube_state_msg_count;
+  int actual_delta_pos_msg_count = cur_delta_pos_msg_count;
+
   simulator.Initialize();
 
-  constexpr double kStep{0.1};
+  constexpr double kStep{0.0001};
   while (simulator_context.get_time() < FLAGS_simulation_sec) {
     const double next_time =
         std::min(FLAGS_simulation_sec, simulator_context.get_time() + kStep);
     simulator.AdvanceTo(next_time);
 
     // ros-driven loop
-    int actual_trifinger_state_msg_count =
-        trifinger_joint_state_ros_subscriber->GetReceivedMessageCount();
-    int actual_cube_state_msg_count =
-        cube_object_state_ros_subscriber->GetReceivedMessageCount();
-    int actual_delta_pos_msg_count =
+    if (trifinger_joint_state_ros_subscriber != nullptr &&
+        cube_object_state_ros_subscriber != nullptr) {
+      actual_trifinger_state_msg_count =
+          trifinger_joint_state_ros_subscriber->GetReceivedMessageCount();
+      actual_cube_state_msg_count =
+          cube_object_state_ros_subscriber->GetReceivedMessageCount();
+    }
+    actual_delta_pos_msg_count =
         fingertips_delta_position_ros_subscriber->GetReceivedMessageCount();
     if ((actual_trifinger_state_msg_count > cur_trifinger_state_msg_count) ||
         (actual_cube_state_msg_count > cur_cube_state_msg_count) ||

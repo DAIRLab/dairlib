@@ -4,6 +4,7 @@
 
 
 struct TrifingerLcmChannels {
+  bool is_real_robot;
   std::string trifinger_state_channel;
   std::string cube_state_channel;
   std::string trifinger_input_channel;
@@ -14,6 +15,7 @@ struct TrifingerLcmChannels {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(is_real_robot));
     a->Visit(DRAKE_NVP(trifinger_state_channel));
     a->Visit(DRAKE_NVP(cube_state_channel));
     a->Visit(DRAKE_NVP(trifinger_input_channel));

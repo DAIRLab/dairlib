@@ -5,8 +5,13 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
+#include "geometry/convex_polygon_set.h"
+#include "geometry/convex_polygon_lcm_systems.h"
+#include "multibody/stepping_stone_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/cf_mpfc_system.h"
 #include "systems/system_utils.h"
 
@@ -29,9 +34,14 @@ using Eigen::Vector3d;
 using Eigen::Vector2d;
 using Eigen::VectorXd;
 
+using geometry::ConvexPolygon;
+using geometry::ConvexPolygonSet;
+using perception::GridMapReceiver;
+
 using systems::controllers::CFMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::cf_mpfc_params_io;
+using systems::FlatTerrainFootholdSource;
 
 using drake::multibody::SpatialInertia;
 using drake::multibody::RotationalInertia;
@@ -63,7 +73,18 @@ DEFINE_string(solver_options_yaml,
               "examples/cf_mpfc/gains/gurobi_options_planner.yaml",
               "solver options yaml");
 
+DEFINE_string(foothold_yaml, "", "yaml file with footholds for simulation");
+
+DEFINE_bool(use_perception, false, "get footholds from perception system");
+
+DEFINE_string(channel_terrain, "FOOTHOLDS_PROCESSED",
+              "lcm channel containing the footholds");
+
+DEFINE_string(channel_elevation, "CASSIE_ELEVATION_MAP",
+              "elevation map lcm channel");
+
 int DoMain(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -109,6 +130,15 @@ int DoMain(int argc, char** argv) {
   auto params = cf_mpfc_params_io::get_params_from_yaml(
       FLAGS_gains_yaml, FLAGS_solver_options_yaml, plant, *plant_context);
 
+  std::vector<ConvexPolygon> footholds;
+  if ( !FLAGS_foothold_yaml.empty() ) {
+    footholds =
+        multibody::LoadSteppingStonesFromYaml(FLAGS_foothold_yaml).footholds;
+  }
+  auto foothold_source =
+      std::make_unique<ConstantValueSource<double>>(
+          drake::Value<ConvexPolygonSet>(footholds));
+
   auto foot_placement_controller = builder.AddSystem<CFMPFCSystem>(
       plant,
       plant_context.get(),
@@ -147,6 +177,41 @@ int DoMain(int argc, char** argv) {
       LcmPublisherSystem::Make<lcmt_cf_mpfc_solution>(
           FLAGS_channel_mpc_debug, &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
+
+
+  // --- Add and connect the source of the foothold information --- //
+  if ( !FLAGS_foothold_yaml.empty() ) {
+    DRAKE_ASSERT(FLAGS_channel_x == "CASSIE_STATE_SIMULATION");
+    auto foothold_oracle = builder.AddSystem(std::move(foothold_source));
+    builder.Connect(foothold_oracle->get_output_port(),
+                    foot_placement_controller->get_input_port_footholds());
+  } else {
+    if (FLAGS_use_perception) {
+      auto plane_subscriber = builder.AddSystem(
+          LcmSubscriberSystem::Make<lcmt_foothold_set>(
+              FLAGS_channel_terrain, &lcm_local));
+      auto plane_receiver =
+          builder.AddSystem<geometry::ConvexPolygonReceiver>();
+      auto map_subscriber = builder.AddSystem(
+          LcmSubscriberSystem::Make<lcmt_grid_map>(
+              FLAGS_channel_elevation, &lcm_local));
+      auto map_receiver = builder.AddSystem<GridMapReceiver>();
+      builder.Connect(*plane_subscriber, *plane_receiver);
+      builder.Connect(plane_receiver->get_output_port(),
+                      foot_placement_controller->get_input_port_footholds());
+      builder.Connect(*map_subscriber, *map_receiver);
+      builder.Connect(map_receiver->get_output_port(),
+                      foot_placement_controller->get_input_port_elevation());
+    } else {
+      auto foothold_oracle =
+          builder.AddSystem<FlatTerrainFootholdSource>(
+              plant, plant_context.get(), left_right_toe);
+      builder.Connect(*state_receiver, *foothold_oracle);
+      builder.Connect(foothold_oracle->get_output_port(),
+                      foot_placement_controller->get_input_port_footholds());
+    }
+  }
+
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections

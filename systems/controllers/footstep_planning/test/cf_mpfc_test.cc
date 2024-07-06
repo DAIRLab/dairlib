@@ -93,9 +93,11 @@ void TestMPFC() {
   cf_mpfc_solution prev_sol{};
 
   auto sol_1 = mpfc.Solve(x, Vector3d::Zero(), 0.25, Vector2d::Zero(),
-             alip_utils::Stance::kRight, prev_sol);
+             alip_utils::Stance::kRight,
+             geometry::ConvexPolygonSet::MakeFlatGround(), prev_sol);
   auto sol = mpfc.Solve(x, Vector3d::Zero(), 0.24, Vector2d::Zero(),
-                        alip_utils::Stance::kRight, sol_1);
+                        alip_utils::Stance::kRight,
+                        geometry::ConvexPolygonSet::MakeFlatGround(), sol_1);
 
   std::cout << "Solve took " << sol.total_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";

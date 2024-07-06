@@ -6,6 +6,7 @@
 #include "solvers/solver_options_io.h"
 #include "cf_mpfc.h"
 #include "nonlinear_pendulum_utils.h"
+#include "geometry/convex_polygon_set.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -150,6 +151,12 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_vdes() const {
     return this->get_input_port(vdes_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_footholds() const {
+    return this->get_input_port(foothold_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_elevation() const {
+    return this->get_input_port(elevation_map_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_mpc_output() const {
     return this->get_output_port(mpc_output_port_);

@@ -28,6 +28,8 @@ using drake::solvers::BoundingBoxConstraint;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearEqualityConstraint;
 
+using solvers::LinearBigMConstraint;
+using solvers::LinearBigMEqualityConstraint;
 
 struct cf_mpfc_solution {
   bool init = false;
@@ -76,6 +78,7 @@ class CFMPFC {
   cf_mpfc_solution Solve(
       const drake::Vector6d& x, const Eigen::Vector3d& p, double t,
       const Eigen::Vector2d& vdes, alip_utils::Stance stance,
+      const geometry::ConvexPolygonSet& footholds,
       const cf_mpfc_solution& prev_sol);
 
   const cf_mpfc_params& params() { return params_; }
@@ -100,6 +103,7 @@ class CFMPFC {
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
   void UpdateComplexModelCosts(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateFootstepCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
+  void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes);
   void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
@@ -141,7 +145,7 @@ class CFMPFC {
 
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram> prog_{
-      std::make_unique<MathematicalProgram>()
+    std::make_unique<MathematicalProgram>()
   };
 
   drake::solvers::GurobiSolver solver_;
@@ -152,6 +156,7 @@ class CFMPFC {
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
   vector<VectorXDecisionVariable> uu_{}; // Centroidal (SRBD) input
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
+  vector<VectorXDecisionVariable> mu_{}; // binary variables
   VectorXDecisionVariable xi_;           // initial ALIP State
 
   // Equality Constraints                                                       | Init  | Updater
@@ -161,9 +166,8 @@ class CFMPFC {
   std::shared_ptr<LinearEqualityConstraint> model_switch_c_ = nullptr;       // |   x   |   x
   std::shared_ptr<LinearEqualityConstraint> complex_dynamics_c_ = nullptr;       // |   x   |   x
   std::shared_ptr<LinearEqualityConstraint> alip_dynamics_c_ = nullptr;      // |   x   |  N/A
-//  std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;  // |       |
   std::shared_ptr<LinearConstraint> initial_input_constraint_ = nullptr;
-
+  std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;
   //                                                          | Init  | Updater
   vector<Binding<LinearConstraint>> workspace_c_{};        // |   x   |  N/A
   vector<Binding<LinearConstraint>> no_crossover_c_{};     // |   x   |   x
@@ -171,6 +175,8 @@ class CFMPFC {
   vector<Binding<LinearConstraint>> complex_input_constraints_{};  // |   x   |  N/A
   vector<Binding<LinearConstraint>> input_rate_constraints_{};
   vector<Binding<BoundingBoxConstraint>> complex_input_bounds_{};
+  vector<vector<LinearBigMConstraint>> footstep_c_{};
+  vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 
 
                                                            // | Init  | Updater

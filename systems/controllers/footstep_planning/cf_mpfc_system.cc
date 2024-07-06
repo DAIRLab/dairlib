@@ -5,6 +5,8 @@
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
+#include "grid_map_core/grid_map_core.hpp"
+
 #include <iostream>
 
 namespace dairlib::systems::controllers {
@@ -13,7 +15,8 @@ using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::ReExpressBodyYawVector3InWorldFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
-
+using geometry::ConvexPolygonSet;
+using geometry::ConvexPolygon;
 using alip_utils::Stance;
 
 using Eigen::Vector2d;
@@ -28,6 +31,8 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
+
+using grid_map::GridMap;
 
 constexpr int ComplexDim = 6;
 
@@ -70,6 +75,9 @@ CFMPFCSystem::CFMPFCSystem(
   mpc_solution_idx_ = DeclareAbstractState(
       drake::Value<cf_mpfc_solution>()
   );
+  footholds_idx_ = DeclareAbstractState(
+      drake::Value<ConvexPolygonSet>(ConvexPolygonSet::MakeFlatGround())
+  );
 
   // State Update
   this->DeclareForcedUnrestrictedUpdateEvent(
@@ -79,6 +87,11 @@ CFMPFCSystem::CFMPFCSystem(
   state_input_port_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(nq_, nv_, nu_)).get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
+
+  foothold_input_port_ = DeclareAbstractInputPort(
+      "footholds", drake::Value<ConvexPolygonSet>()).get_index();
+  elevation_map_port_ = DeclareAbstractInputPort(
+      "elevation", drake::Value<GridMap>()).get_index();
 
   // output ports
   mpc_output_port_ = DeclareAbstractOutputPort(
@@ -101,11 +114,17 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
+      get_value<ConvexPolygonSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
   double t = robot_output->get_timestamp();
   SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
+
+  // re-express footholds in robot yaw frame from world frame
+  foothold_set.ReExpressInNewFrame(
+      GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
 
   // initialize local variables
   int fsm_idx =
@@ -159,10 +178,25 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   init_state_and_stance_pos.head<ComplexDim>() = x;
   init_state_and_stance_pos.tail<3>() = p_b;
 
+  ConvexPolygonSet footholds_filt;
+  const auto& prev_footholds = state->get_abstract_state<ConvexPolygonSet>(
+      footholds_idx_
+  );
+
+  if (!foothold_set.empty()) {
+    footholds_filt = foothold_set.GetSubsetCloseToPoint(p_b, 1.8);
+  } else {
+    std::cerr << "WARNING: No new footholds specified!\n";
+  }
+
+  if (footholds_filt.empty()) {
+    footholds_filt = prev_footholds;
+  }
+
   auto prev_sol = state->get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
 
   const auto mpc_solution = trajopt_.Solve(
-      x, p_b, tnom_remaining, vdes, stance, prev_sol);
+      x, p_b, tnom_remaining, vdes, stance, footholds_filt, prev_sol);
 
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
@@ -174,12 +208,12 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
       t_prev_impact * VectorXd::Ones(1));
   state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(
       init_state_and_stance_pos);
+  state->get_mutable_abstract_state<ConvexPolygonSet>(footholds_idx_) = footholds_filt;
 
   if (mpc_solution.success) {
     state->get_mutable_abstract_state<cf_mpfc_solution>(
         mpc_solution_idx_) = mpc_solution;
   }
-
   return drake::systems::EventStatus::Succeeded();
 }
 

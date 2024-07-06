@@ -33,12 +33,17 @@ using Eigen::VectorXd;
 using Eigen::Vector4d;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
+using Eigen::RowVector3d;
+using Eigen::RowVectorXd;
+
+using geometry::ConvexPolygonSet;
 
 namespace {
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
 constexpr int AlipDim = 4;
 constexpr int FootstepDim = 3;
 constexpr int ComplexDim = 6;
+constexpr size_t kMaxFootholds = 20;
 }
 
 CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
@@ -71,6 +76,7 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
 cf_mpfc_solution CFMPFC::Solve(
     const Vector6d &x, const Eigen::Vector3d &p, double t,
     const Eigen::Vector2d &vdes, alip_utils::Stance stance,
+    const ConvexPolygonSet& footholds,
     const cf_mpfc_solution &prev_sol) {
   auto start = std::chrono::steady_clock::now();
 
@@ -80,6 +86,7 @@ cf_mpfc_solution CFMPFC::Solve(
   UpdateTrackingCost(vdes, stance);
   UpdateComplexModelCosts(vdes, stance);
   UpdateInputRateLimitConstraint(t);
+  UpdateFootholdConstraints(footholds);
 
   std::vector<Vector6d> xc;
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
@@ -189,12 +196,13 @@ void CFMPFC::MakeMPCVariables() {
   }
   xi_ = prog_->NewContinuousVariables(4, "xi");
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    xx_.push_back(prog_->NewContinuousVariables(4,
-                                                "xx" + std::to_string(i + 1)));
+    std::string mode = std::to_string(i+1);
+    xx_.push_back(prog_->NewContinuousVariables(4, "xx" + mode));
+    mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
   }
   for (int i = 0; i < params_.nmodes - 2; ++i) {
-    ee_.push_back(prog_->NewContinuousVariables(1,
-                                                "ee" + std::to_string(i + 1)));
+    ee_.push_back(
+        prog_->NewContinuousVariables(1, "ee" + std::to_string(i + 1)));
   }
 }
 
@@ -287,9 +295,49 @@ void CFMPFC::MakeFootstepConstraints() {
             VectorXd::Constant(1, kInfinity),
             {pp_.at(i).segment(1, 1), pp_.at(i + 1).segment(1, 1)}
         ));
-    prog_->AddLinearEqualityConstraint(pp_.at(i+1)(2) == 0);
+
+    constexpr double bigM = 50.0;
+    vector<LinearBigMConstraint> tmp;
+    vector<LinearBigMEqualityConstraint> tmp_eq;
+    for (int j = 0; j < kMaxFootholds; ++j) {
+      tmp.push_back(
+          LinearBigMConstraint(
+              *prog_,
+              RowVector3d::UnitX(),
+              VectorXd::Zero(1),
+              bigM,
+              pp_.at(i+1),
+              mu_.at(i)(j)
+          ));
+      tmp_eq.push_back(
+          LinearBigMEqualityConstraint(
+              *prog_,
+              RowVector3d::UnitZ(),
+              VectorXd::Zero(1),
+              bigM,
+              pp_.at(i+1),
+              mu_.at(i)(j)
+          ));
+    }
+    footstep_c_.push_back(tmp);
+    footstep_c_eq_.push_back(tmp_eq);
+    for (auto& clist: footstep_c_) {
+      for (auto& c: clist) {
+        c.deactivate();
+      }
+    }
+    for (auto& clist: footstep_c_eq_) {
+      for (auto& c: clist) {
+        c.deactivate();
+      }
+    }
   }
-  // TODO (@Brian-Acosta) MIQP foothold constraints
+
+  footstep_choice_c_ = prog_->AddLinearEqualityConstraint(
+      BlockDiagonalRepeat<double>(RowVectorXd::Ones(kMaxFootholds), mu_.size()),
+      VectorXd::Ones(mu_.size()),
+      stack(mu_)
+  ).evaluator();
 }
 
 void CFMPFC::MakeComplexInputConstraints() {
@@ -521,6 +569,38 @@ void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     Vector4d b = - 2 * r.transpose() * R * ud[i % 2];
     footstep_cost_.at(i).evaluator()->UpdateCoefficients(Q, b, 0, true);
+  }
+}
+
+void CFMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
+  const auto& polys = footholds.polygons();
+  int n = std::min(kMaxFootholds, footholds.size());
+
+  RowVectorXd choice_constraint = RowVectorXd::Zero(kMaxFootholds);
+  choice_constraint.leftCols(n) = RowVectorXd::Ones(n);
+
+  footstep_choice_c_->UpdateCoefficients(
+      BlockDiagonalRepeat<double>(choice_constraint, mu_.size()),
+      VectorXd::Ones(mu_.size())
+  );
+
+  for (auto& c : footstep_c_) {
+    for (int i = 0; i < n; ++i) {
+      const auto& [A, b] = polys.at(i).GetConstraintMatrices();
+      c.at(i).UpdateCoefficients(A, b);
+    }
+    for (int i = n; i < kMaxFootholds; ++i) {
+      c.at(i).deactivate();
+    }
+  }
+  for (auto& c : footstep_c_eq_) {
+    for (int i = 0; i < n; ++i) {
+      const auto& [A, b] = polys.at(i).GetEqualityConstraintMatrices();
+      c.at(i).UpdateCoefficients(A, b);
+    }
+    for (int i = n; i < kMaxFootholds; ++i) {
+      c.at(i).deactivate();
+    }
   }
 }
 

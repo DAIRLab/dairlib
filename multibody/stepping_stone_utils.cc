@@ -1,5 +1,6 @@
 #include "stepping_stone_utils.h"
 #include "drake/common/yaml/yaml_io.h"
+#include <iostream>
 
 using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
@@ -14,7 +15,7 @@ void AddSteppingStonesToSim(MultibodyPlant<double>* plant,
                             const SquareSteppingStoneList& stones,
                             double mu) {
   for (const auto& cube: stones.cubes) {
-    AddBox(plant, scene_graph, cube.first, cube.second,mu);
+    AddBox(plant, scene_graph, cube.first, cube.second, mu);
   }
 }
 
@@ -43,6 +44,7 @@ void AddSteppingStonesToSimFromYaml(MultibodyPlant<double>* plant,
 
 SquareSteppingStoneList
 LoadSteppingStonesFromYaml(const std::string& filename) {
+  std::cout << "Loading " << filename << std::endl;
   return drake::yaml::LoadYamlFile<SquareSteppingStoneList>(filename);
 }
 

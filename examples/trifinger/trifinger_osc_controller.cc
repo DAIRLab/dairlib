@@ -159,7 +159,7 @@ int DoMain(int argc, char* argv[]) {
                   fingertips_delta_position_receiver->get_input_port_state());
 
   builder.Connect(
-      fingertips_delta_position_receiver->get_output_port_fingertips_target(),
+      fingertips_delta_position_receiver->get_output_port_fingertips_target_traj(),
       target_traj_demultiplexer->get_input_port_traj());
   builder.Connect(
       target_traj_demultiplexer->get_output_port_fingertip_0_target_traj(),

@@ -1,9 +1,9 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
-package(default_visibility = ["//visibility:public"])
-
 load("@ros2//:ros_cc.bzl", "ros_cc_binary")
+
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "trifinger_urdf",
@@ -157,5 +157,33 @@ ros_cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
         "@ros2//:rclcpp_cc",
+    ],
+)
+
+py_binary(
+    name = "start_logging",
+    srcs = ["start_logging.py"],
+)
+
+cc_binary(
+    name = "run_impedance_controller",
+    srcs = ["run_impedance_controller.cc"],
+    data = [
+        ":trifinger_urdf",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_impedance_controller_params",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/systems:fingertips_delta_position_receiver",
+        "//examples/trifinger/systems:trifinger_impedance_control",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

@@ -34,7 +34,6 @@ void LcmToRosTimestampedVector::ConvertToROS(
       output->data.push_back(input->GetAtIndex(i));
     }
   }
-  output->data.push_back(input->get_timestamp());
 }
 
 /***************************************************************************************/
@@ -71,20 +70,9 @@ void RosToLcmRobotState::ConvertToLCM(
   output->velocity.resize(num_velocities_);
   output->effort.resize(num_efforts_);
 
-  // yet to receive message from rostopic
+  // yet to receive message from ROS topic
   if (msg.position.empty()) {
-    for (int i = 0; i < num_positions_; i++) {
-      output->position[i] = nan("");
-    }
-    for (int i = 0; i < num_velocities_; i++) {
-      output->velocity[i] = nan("");
-    }
-    for (int i = 0; i < num_efforts_; i++) {
-      output->effort[i] = nan("");
-    }
-    for (int i = 0; i < 3; i++) {
-      output->imu_accel[i] = nan("");
-    }
+    // do nothing when there is no message, just keep the most recent message
   } else {
     for (int i = 0; i < num_positions_; i++) {
       output->position[i] = msg.position[i];
@@ -99,7 +87,7 @@ void RosToLcmRobotState::ConvertToLCM(
       output->imu_accel[i] = 0;
     }
   }
-  output->utime = context.get_time() * 1e6;
+  output->utime = msg.header.stamp.sec * 1e6 + msg.header.stamp.nanosec * 1e-3;
 }
 
 /***************************************************************************************/

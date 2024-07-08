@@ -73,6 +73,25 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
   Check();
 }
 
+namespace {
+
+void CheckSol(const cf_mpfc_solution& sol) {
+  bool dump = false;
+  for (const auto& xc: sol.xc) {
+    dump = dump or (-1.5 > xc(0) or xc(0) > 1.5);
+    dump = dump or (-1.5 > xc(1) or xc(1) > 1.5);
+    dump = dump or (xc(2) < 0.4);
+  }
+  if (dump) {
+    std::cout << "Bad Sol: \n";
+    for (int i = 0; i < sol.xc.size(); ++i) {
+      std::cout << "xc(" << i << "):" << sol.xc.at(i).transpose() << std::endl;
+    }
+  }
+}
+
+}
+
 cf_mpfc_solution CFMPFC::Solve(
     const Vector6d &x, const Eigen::Vector3d &p, double t,
     const Eigen::Vector2d &vdes, alip_utils::Stance stance,
@@ -167,6 +186,8 @@ cf_mpfc_solution CFMPFC::Solve(
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
 
+  CheckSol(mpfc_solution);
+
   auto solution_details =
       result.get_solver_details<drake::solvers::GurobiSolver>();
 
@@ -189,8 +210,8 @@ void CFMPFC::MakeMPCVariables() {
   for (int i = 0; i < params_.nknots; ++i) {
     xc_.push_back(prog_->NewContinuousVariables(ComplexDim,
                                                 "xc" + std::to_string(i)));
-    uu_.push_back(prog_->NewContinuousVariables(2,
-                                                "ff" + std::to_string(i)));
+    uu_.push_back(prog_->NewContinuousVariables(2, "ff" + std::to_string(i)));
+    eec_.push_back(prog_->NewContinuousVariables(1, "eec" + std::to_string(i)));
   }
   for (int i = 0; i < params_.nmodes; ++i) {
     pp_.push_back(prog_->NewContinuousVariables(3, "pp" + std::to_string(i)));
@@ -235,6 +256,12 @@ void CFMPFC::MakeMPCCosts() {
             MatrixXd::Identity(12,12),
             VectorXd::Zero(12),
             {xc_.at(i), pp_.at(0), pp_.at(1)}
+        ));
+    complex_soft_constraint_cost_.push_back(
+        prog_->AddQuadraticCost(
+            params_.soft_constraint_cost * MatrixXd::Identity(1,1),
+            VectorXd::Zero(1),
+            eec_.at(i)
         ));
   }
   for (int i = 0; i < params_.nmodes - 2; ++i) {
@@ -413,6 +440,27 @@ void CFMPFC::MakeStateConstraints() {
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
+  }
+
+  MatrixXd A_wc = MatrixXd::Zero(2 * ComplexDim, ComplexDim + 1);
+  A_wc.topLeftCorner<ComplexDim, ComplexDim>().setIdentity();
+  A_wc.bottomLeftCorner<ComplexDim, ComplexDim>().setIdentity();
+  A_wc.topRightCorner<ComplexDim, 1>().setOnes();
+  A_wc.bottomRightCorner<ComplexDim, 1>() = -A_wc.topRightCorner<ComplexDim, 1>();
+
+  Vector6d ubc;
+  Vector6d lbc;
+  lbc << -1.0, -1.0, 0.5, -kInfinity, -kInfinity, -kInfinity;
+  ubc << 1.0, 1.0, 1.0, kInfinity, kInfinity, kInfinity;
+  VectorXd big_ub = VectorXd::Constant(2*ComplexDim, kInfinity);
+  VectorXd big_lb = VectorXd::Constant(2*ComplexDim, -kInfinity);
+  big_lb.head<ComplexDim>() = lbc;
+  big_ub.tail<ComplexDim>() = ubc;
+
+  for (int i = 0; i < params_.nknots; ++i) {
+    complex_state_bounds_.push_back(
+        prog_->AddLinearConstraint(
+            A_wc, big_lb, big_ub, {xc_.at(i), eec_.at(i)}));
   }
 }
 

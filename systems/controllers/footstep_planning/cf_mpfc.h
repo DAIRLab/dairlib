@@ -160,6 +160,7 @@ class CFMPFC {
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
   vector<VectorXDecisionVariable> uu_{}; // Centroidal (SRBD) input
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
+  vector<VectorXDecisionVariable> eec_{}; // complex state bound constraint slack var
   vector<VectorXDecisionVariable> mu_{}; // binary variables
   VectorXDecisionVariable xi_;           // initial ALIP State
 
@@ -179,8 +180,10 @@ class CFMPFC {
   vector<Binding<LinearConstraint>> complex_input_constraints_{};  // |   x   |  N/A
   vector<Binding<LinearConstraint>> input_rate_constraints_{};
   vector<Binding<BoundingBoxConstraint>> complex_input_bounds_{};
+  vector<Binding<LinearConstraint>> complex_state_bounds_{};
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
+
 
 
                                                            // | Init  | Updater
@@ -188,6 +191,7 @@ class CFMPFC {
   std::shared_ptr<QuadraticCost> complex_state_final_cost_ = nullptr;
   vector<Binding<QuadraticCost>> complex_state_cost_{}; // |   x   |   x
   vector<Binding<QuadraticCost>> complex_input_cost_{}; // |   x   |   x
+  vector<Binding<QuadraticCost>> complex_soft_constraint_cost_{};
   vector<Binding<QuadraticCost>> tracking_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> footstep_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};  // |   x   |  N/A

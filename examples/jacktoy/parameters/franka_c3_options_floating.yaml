@@ -36,7 +36,7 @@ num_contacts_index: 0
 num_contacts: [4,6,5,7]
 N: 5
 # This param has to do with the xbox input?
-use_predicted_x0: false
+use_predicted_x0: true
 solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0, 0.75]

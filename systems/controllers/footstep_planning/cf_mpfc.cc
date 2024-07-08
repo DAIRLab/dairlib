@@ -75,19 +75,14 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
 
 namespace {
 
-void CheckSol(const cf_mpfc_solution& sol) {
-  bool dump = false;
+bool CheckSol(const cf_mpfc_solution& sol) {
+  bool valid = true;
   for (const auto& xc: sol.xc) {
-    dump = dump or (-1.5 > xc(0) or xc(0) > 1.5);
-    dump = dump or (-1.5 > xc(1) or xc(1) > 1.5);
-    dump = dump or (xc(2) < 0.4);
+    valid = valid and not (-1.5 > xc(0) or xc(0) > 1.5);
+    valid = valid and not (-1.5 > xc(1) or xc(1) > 1.5);
+    valid = valid and not (xc(2) < 0.4);
   }
-  if (dump) {
-    std::cout << "Bad Sol: \n";
-    for (int i = 0; i < sol.xc.size(); ++i) {
-      std::cout << "xc(" << i << "):" << sol.xc.at(i).transpose() << std::endl;
-    }
-  }
+  return valid;
 }
 
 }
@@ -111,6 +106,8 @@ cf_mpfc_solution CFMPFC::Solve(
   std::vector<Vector2d> uu(params_.nknots, Vector2d::Zero());
 
   bool use_prev_sol = prev_sol.success and prev_sol.init and prev_sol.stance == stance;
+
+  use_prev_sol = use_prev_sol and CheckSol(prev_sol);
 
   for (int i = 0; i < params_.nknots; ++i) {
     if (use_prev_sol) {
@@ -146,7 +143,7 @@ cf_mpfc_solution CFMPFC::Solve(
       std::cout << u.transpose() << std::endl;
     }
     std::cout << "Pendulum States and dynamics:\n";
-    for (const auto& xi : prev_sol.xc) {
+    for (const auto& xi : xc) {
       std::cout << xi.transpose() << std::endl;
     }
 
@@ -451,7 +448,7 @@ void CFMPFC::MakeStateConstraints() {
   Vector6d ubc;
   Vector6d lbc;
   lbc << -1.0, -1.0, 0.5, -kInfinity, -kInfinity, -kInfinity;
-  ubc << 1.0, 1.0, 1.0, kInfinity, kInfinity, kInfinity;
+  ubc << 1.0, 1.0, 0.95, kInfinity, kInfinity, kInfinity;
   VectorXd big_ub = VectorXd::Constant(2*ComplexDim, kInfinity);
   VectorXd big_lb = VectorXd::Constant(2*ComplexDim, -kInfinity);
   big_lb.head<ComplexDim>() = lbc;

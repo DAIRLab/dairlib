@@ -27,6 +27,19 @@ void LinearizeTrapezoidalCollocationConstraint(
     const Vector2d& u1, double m,
     Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& b);
 
+
+/*
+ * Linearize the expression
+ *
+ * kx(p_pre, p_post) * com_x + ky(p_pre, p_post) * com_y - com_z + H
+ *
+ * to Jx * (x - x*) + Jp * (p - p_post*) + b
+ */
+void LinearizePlanarCoMEquation(
+    const Vector6d& x, const Eigen::Vector3d& p_pre,
+    const Eigen::Vector3d& p_post, double com_z,
+    Eigen::MatrixXd& JxJp, Eigen::VectorXd& b);
+
 /*!
  *
  * x+ = g(x) --> x+ = A(x - x*) + B(p - p*) + b

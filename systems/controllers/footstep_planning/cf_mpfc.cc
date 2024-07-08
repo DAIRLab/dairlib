@@ -109,6 +109,7 @@ cf_mpfc_solution CFMPFC::Solve(
                                    p + CalcS2SLQRInput(x, vdes, t, stance);
 
   UpdateComplexDynamicsConstraints(xc, uu,  t);
+  UpdatePlanarCoMCosts(xc, p, p_post);
   UpdateModelSwitchConstraint(xc.back(), p, p_post);
   UpdateInitialInputConstraint(uu, prev_sol.t_nom, t);
 
@@ -228,6 +229,12 @@ void CFMPFC::MakeMPCCosts() {
             MatrixXd::Identity(2,2),
             VectorXd::Zero(2),
             uu_.at(i)
+        ));
+    planar_com_cost_.push_back(
+        prog_->AddQuadraticCost(
+            MatrixXd::Identity(12,12),
+            VectorXd::Zero(12),
+            {xc_.at(i), pp_.at(0), pp_.at(1)}
         ));
   }
   for (int i = 0; i < params_.nmodes - 2; ++i) {
@@ -551,6 +558,23 @@ void CFMPFC::UpdateComplexModelCosts(const Eigen::Vector2d &vdes, alip_utils::St
   }
   complex_state_final_cost_->UpdateCoefficients(
        Qx, -Qx * xd, 0.5 * xd.transpose() * Qx * xd, true);
+}
+
+void CFMPFC::UpdatePlanarCoMCosts(const vector<drake::Vector6d> &xc,
+                                  const Vector3d &p_pre,
+                                  const Vector3d &p_post) {
+  for (int i = 0; i < params_.nknots; ++i) {
+    MatrixXd JxJp;
+    VectorXd b;
+    nonlinear_pendulum::LinearizePlanarCoMEquation(
+        xc.at(i), p_pre, p_post, params_.gait_params.height, JxJp, b);
+
+    b = b - JxJp * stack<double>({xc.at(i), p_pre, p_post});
+    planar_com_cost_.at(i).evaluator()->UpdateCoefficients(
+        2 * params_.planar_com_cost * JxJp.transpose() * JxJp + 1e-12 * MatrixXd::Identity(12,12),
+        -2 * params_.planar_com_cost * JxJp.transpose() * b,
+        params_.planar_com_cost * b.transpose() * b, true);
+  }
 }
 
 void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {

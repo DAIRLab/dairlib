@@ -2,6 +2,7 @@
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
 #include "drake/math/autodiff_gradient.h"
+#include "drake/math/differentiable_norm.h"
 
 #include <iostream>
 namespace dairlib::systems::controllers::nonlinear_pendulum {
@@ -22,6 +23,7 @@ using drake::Vector6;
 using drake::Vector4;
 using drake::Vector3;
 using drake::Vector2;
+using drake::Vector1;
 
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
@@ -165,6 +167,47 @@ Vector4<T> CalcALIPReset(
   Vector3<T> L_post = L_pre + m * (u).cross(v);
   Vector4<T> x_post(x + u(0), y + u(1), L_post(0), L_post(1));
   return x_post;
+}
+
+namespace {
+
+// TODO (@Brian-Acosta) leaving the plane equation un-normalized might cause
+//  weird scaling issues
+template<typename T>
+Vector1<T> CalcDistanceToVirtualCoMPlane(
+    const Vector6<T> &xp, const Vector3<T> &p_pre, const Vector3<T> &p_post) {
+  Vector3<T> p = p_post - p_pre;
+  T kx = p.x() * p.z() / (p.x() * p.x() + p.y() * p.y());
+  T ky = p.y() * p.z() / (p.x() * p.x() + p.y() * p.y());
+  T r = xp(r_idx);
+  T theta_y = xp(theta_y_idx);
+  T theta_x = xp(theta_x_idx);
+  T x = r * cos(theta_x) * sin(theta_y);
+  T y = -r * cos(theta_y) * sin(theta_x);
+  T z = sqrt(r * r - x * x - y * y);
+
+  Vector3<T> plane_eqn(kx, ky, -1);
+  Vector3<T> com(x, y, z);
+
+  return plane_eqn.transpose() * com / drake::math::DifferentiableNorm(plane_eqn);
+
+//  return Vector1<T>(kx * x + ky * y - z);
+}
+template Vector1<AutoDiffXd> CalcDistanceToVirtualCoMPlane(const Vector6<AutoDiffXd>&, const Vector3<AutoDiffXd>&, const Vector3<AutoDiffXd>&);
+}
+
+void LinearizePlanarCoMEquation(
+    const Vector6d& x, const Vector3d& p_pre,
+    const Vector3d& p_post, double com_z, MatrixXd& JxJp, VectorXd& b) {
+
+  VectorX<AutoDiffXd> vars = InitializeAutoDiff(stack<double>({x, p_pre, p_post}));
+  Vector6<AutoDiffXd> x_ad = vars.head<6>();
+  Vector3<AutoDiffXd> p_ad0 = vars.segment<3>(6);
+  Vector3<AutoDiffXd> p_ad1 = vars.tail<3>();
+
+  Vector1<AutoDiffXd> res = CalcDistanceToVirtualCoMPlane(x_ad, p_ad0, p_ad1);
+  JxJp = ExtractGradient(res);
+  b = ExtractValue(res) - Vector1<double>(com_z);
 }
 
 Vector4d CalcAlipStateAtTouchdown(const Vector6d& xp, double m, double t) {

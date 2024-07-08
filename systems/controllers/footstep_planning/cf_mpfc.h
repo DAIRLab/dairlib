@@ -57,6 +57,7 @@ struct cf_mpfc_params {
   double foot_length{};
   double time_regularization{};
   double soft_constraint_cost{};
+  double planar_com_cost{};
   double rddot_rate_limit = 100; // limit accel change per
   Eigen::Vector2d com_pos_bound{};
   Eigen::Vector2d com_vel_bound{};
@@ -109,6 +110,9 @@ class CFMPFC {
   void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
   void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
+  void UpdatePlanarCoMCosts(
+      const vector<drake::Vector6d>& xc, const Eigen::Vector3d& p_pre,
+      const Eigen::Vector3d& p_post);
   Eigen::Vector3d CalcS2SLQRInput(
       const drake::Vector6d& x, const Eigen::Vector2d& vdes,
       double t, alip_utils::Stance stance) const;
@@ -187,6 +191,7 @@ class CFMPFC {
   vector<Binding<QuadraticCost>> tracking_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> footstep_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};  // |   x   |  N/A
+  vector<Binding<QuadraticCost>> planar_com_cost_{};
 
   // some useful matrices and dynamics quantities for ALIP step to step portion
   Eigen::Matrix4d A_;

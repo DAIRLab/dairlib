@@ -169,7 +169,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- TODO: these are the interial values from the Solo lower leg
+    <!-- TODO: these are the inertial values from the Solo lower leg
                  link which is similar but not exactly the same to the FingerEdu
                  lower link. -->
     <inertial>
@@ -342,7 +342,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- TODO: these are the interial values from the Solo lower leg
+    <!-- TODO: these are the inertial values from the Solo lower leg
                  link which is similar but not exactly the same to the FingerEdu
                  lower link. -->
     <inertial>
@@ -515,7 +515,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- TODO: these are the interial values from the Solo lower leg
+    <!-- TODO: these are the inertial values from the Solo lower leg
                  link which is similar but not exactly the same to the FingerEdu
                  lower link. -->
     <inertial>

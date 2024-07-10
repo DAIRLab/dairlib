@@ -41,7 +41,6 @@ cc_library(
         ":lcs",
         "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
-        "@gurobi//:gurobi_cxx",
     ],
 )
 

@@ -4,7 +4,6 @@
 
 #include <Eigen/Dense>
 
-#include "gurobi_c++.h"
 #include "solvers/c3.h"
 #include "solvers/lcs.h"
 
@@ -14,8 +13,6 @@
 #include "drake/solvers/solve.h"
 
 #include "solvers/c3_options.h"
-#include "solvers/fast_osqp_solver.h"
-
 
 namespace dairlib {
 namespace solvers {

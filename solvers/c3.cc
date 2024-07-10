@@ -393,37 +393,17 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
-    if (options_.use_robust_formulation &&
-        admm_iteration ==
-            (options_.admm_iter - 1)) {  // only on the last iteration
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveRobustSingleProjection(
-              G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveRobustSingleProjection(
-              G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, i + 1);
-        }
-      } else {
-        deltaProj[i] = SolveRobustSingleProjection(
-            G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-            admm_iteration, -1);
-      }
-    } else {
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, i + 1);
-        }
-      } else {
+    if (warm_start_) {
+      if (i == N_ - 1) {
         deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
                                              c_[i], admm_iteration, -1);
+      } else {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, i + 1);
       }
+    } else {
+      deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                           c_[i], admm_iteration, -1);
     }
   }
 

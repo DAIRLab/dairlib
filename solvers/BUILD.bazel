@@ -23,12 +23,10 @@ cc_library(
     name = "c3",
     srcs = [
         "c3.cc",
-        "c3_miqp.cc",
         "c3_qp.cc",
     ],
     hdrs = [
         "c3.h",
-        "c3_miqp.h",
         "c3_options.h",
         "c3_qp.h",
     ],
@@ -39,11 +37,41 @@ cc_library(
         "-fopenmp",
     ],
     deps = [
+        ":c3_miqp",
         ":lcs",
         "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
-        "@gurobi//:gurobi_cxx",
     ],
+)
+
+cc_library(
+    name = "c3_miqp",
+    srcs =
+        select({
+            "//tools:with_gurobi": [
+                ":c3_miqp.cc",
+            ],
+            "//conditions:default": [
+                ":c3_miqp_no_gurobi.cc",
+            ],
+        }),
+    hdrs = [
+        "c3.h",
+        "c3_miqp.h",
+        "c3_options.h",
+    ],
+    deps =
+        select({
+            "//tools:with_gurobi": [
+                ":lcs",
+                "@drake//:drake_shared_library",
+                "@gurobi//:gurobi_cxx",
+            ],
+            "//conditions:default": [
+                ":lcs",
+                "@drake//:drake_shared_library",
+            ],
+        }),
 )
 
 cc_library(

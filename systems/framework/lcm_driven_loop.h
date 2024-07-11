@@ -70,7 +70,7 @@ class LcmDrivenLoop {
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const drake::systems::LeafSystem<double>* lcm_parser,
+                const drake::systems::System<double>* lcm_parser,
                 const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
@@ -87,7 +87,7 @@ class LcmDrivenLoop {
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const drake::systems::LeafSystem<double>* lcm_parser,
+                const drake::systems::System<double>* lcm_parser,
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
                 const std::string& switch_channel, bool is_forced_publish,
@@ -318,7 +318,7 @@ class LcmDrivenLoop {
  private:
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;
-  const drake::systems::LeafSystem<double>* lcm_parser_;
+  const drake::systems::System<double>* lcm_parser_;
   std::unique_ptr<drake::systems::Simulator<double>> simulator_;
 
   std::string diagram_name_ = "diagram";

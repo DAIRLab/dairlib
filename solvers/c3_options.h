@@ -12,6 +12,7 @@ struct C3Options {
   int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
+  double M = 1000;  // big M value for MIQP
   bool warm_start;
   bool use_predicted_x0;
   bool end_on_qp_step;
@@ -19,9 +20,6 @@ struct C3Options {
   double solve_time_filter_alpha;
   double publish_frequency;
 
-//  std::vector<double> world_x_limits;
-//  std::vector<double> world_y_limits;
-//  std::vector<double> world_z_limits;
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
   std::vector<Eigen::VectorXd> workspace_limits;
@@ -29,12 +27,34 @@ struct C3Options {
 
   int N;
   double gamma;
+  std::vector<double> mu;
+  double dt;
+  double solve_dt;
+  int num_friction_directions;
+  int num_contacts;
 
+  // See comments below for how we parse the .yaml into the cost matrices
+  Eigen::MatrixXd Q;
+  Eigen::MatrixXd R;
+  Eigen::MatrixXd G;
+  Eigen::MatrixXd U;
+
+  // Quick scaling of the cost matrices.
+  // Q = w_Q * diag(q_vector)
+  // R = w_R * diag(r_vector)
+  // G = w_G * diag(g_vector)
+  // U = w_U * diag(u_vector)
   double w_Q;
   double w_R;
   double w_G;
   double w_U;
 
+  // Unused except when parsing the costs from a yaml
+  // We assume a diagonal Q, R, G, U matrix, so we can just specify the diagonal
+  // terms as *_vector. To make indexing even easier, we split the parsing of
+  // the g_vector and u_vector into the x, lambda, and u terms. The Stewart and
+  // Trinkle contact model uses *_gamma, *_lambda_n, *_lambda_t while the
+  // Anitescu model uses *_lambda.
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
@@ -54,15 +74,6 @@ struct C3Options {
   std::vector<double> u_lambda;
   std::vector<double> u_u;
 
-  std::vector<double> mu;
-  double dt;
-  double solve_dt;
-  int num_friction_directions;
-  int num_contacts;
-  Eigen::MatrixXd Q;
-  Eigen::MatrixXd R;
-  Eigen::MatrixXd G;
-  Eigen::MatrixXd U;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -146,8 +157,8 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions*2);
-    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions*2);
+    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions * 2);
     DRAKE_DEMAND(mu.size() == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 

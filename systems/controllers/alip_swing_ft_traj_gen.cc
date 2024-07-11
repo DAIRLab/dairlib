@@ -38,7 +38,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
-        left_right_foot,
+    left_right_foot,
     std::string floating_base_body_name, double double_support_duration,
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
@@ -65,10 +65,10 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant.num_positions(),
+                                          plant.num_velocities(),
+                                          plant.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   liftoff_time_port_ =
@@ -83,7 +83,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
           .get_index();
   vdes_port_ = this->DeclareVectorInputPort("desired horizontal walking speed",
                                             BasicVector<double>(2))
-                   .get_index();
+      .get_index();
   // Provide an instance to allocate the memory first (for the output)
   drake::trajectories::Trajectory<double>& traj_instance = pp;
   this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
@@ -124,7 +124,7 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
+      .get_mutable_value();
 
   // Find fsm_state in left_right_support_fsm_states
   bool is_single_support_phase =
@@ -194,7 +194,7 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   double omega = sqrt(9.81 / H);
   double T = duration_map_.at(fsm_state) + double_support_duration_;
   double L_x_n = m_ * H * footstep_offset_ *
-                 (omega * sinh(omega * T) / (1 + cosh(omega * T)));
+      (omega * sinh(omega * T) / (1 + cosh(omega * T)));
 
   Vector2d L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
       plant_, *context_, "pelvis", alip_pred.tail<2>());

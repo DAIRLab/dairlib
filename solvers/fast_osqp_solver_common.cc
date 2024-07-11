@@ -61,15 +61,15 @@ bool CheckAttributes(const MathematicalProgram& prog,
   }
   const drake::solvers::Binding<drake::solvers::QuadraticCost>*
       nonconvex_quadratic_cost =
-          drake::solvers::internal::FindNonconvexQuadraticCost(
-              prog.quadratic_costs());
+      drake::solvers::internal::FindNonconvexQuadraticCost(
+          prog.quadratic_costs());
   if (nonconvex_quadratic_cost != nullptr) {
     if (explanation) {
       *explanation =
           "OsqpSolver is unable to solve because the quadratic cost " +
-          nonconvex_quadratic_cost->to_string() +
-          " is non-convex. Either change this cost to a convex one, or switch "
-          "to a different solver like SNOPT/IPOPT/NLOPT.";
+              nonconvex_quadratic_cost->to_string() +
+              " is non-convex. Either change this cost to a convex one, or switch "
+              "to a different solver like SNOPT/IPOPT/NLOPT.";
     }
     return false;
   }

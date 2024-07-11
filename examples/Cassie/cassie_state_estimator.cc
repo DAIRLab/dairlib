@@ -78,8 +78,8 @@ CassieStateEstimator::CassieStateEstimator(
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort(
-                                   "cassie_out_t", drake::Value<cassie_out_t>{})
-                               .get_index();
+          "cassie_out_t", drake::Value<cassie_out_t>{})
+      .get_index();
   estimated_state_output_port_ =
       this->DeclareVectorOutputPort("x, u, t",
                                     OutputVector<double>(n_q_, n_v_, n_u_),
@@ -248,12 +248,12 @@ void CassieStateEstimator::solveFourbarLinkage(
         r_ball_joint - r_heel_spring_base;
     Vector3d r_thigh_ball_joint_wrt_heel_spring_base =
         heel_spring_rot_mat.transpose() *
-        r_heel_spring_base_to_thigh_ball_joint;
+            r_heel_spring_base_to_thigh_ball_joint;
 
     // Get the projected rod length in the xy plane of heel spring base
     double projected_rod_length =
         sqrt(pow(rod_length_, 2) -
-             pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
+            pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
 
     // Get the vector of the deflected spring direction
     // Below solves for the intersections of two circles on a plane
@@ -262,17 +262,17 @@ void CassieStateEstimator::solveFourbarLinkage(
 
     double k = -y_tbj_wrt_hb / x_tbj_wrt_hb;
     double c = (pow(spring_length, 2) - pow(projected_rod_length, 2) +
-                pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) /
-               (2 * x_tbj_wrt_hb);
+        pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) /
+        (2 * x_tbj_wrt_hb);
 
     double y_sol_1 =
         (-k * c + sqrt(pow(k * c, 2) -
-                       (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
-        (pow(k, 2) + 1);
+            (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
+            (pow(k, 2) + 1);
     double y_sol_2 =
         (-k * c - sqrt(pow(k * c, 2) -
-                       (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
-        (pow(k, 2) + 1);
+            (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
+            (pow(k, 2) + 1);
     double x_sol_1 = k * y_sol_1 + c;
     double x_sol_2 = k * y_sol_2 + c;
 
@@ -285,13 +285,13 @@ void CassieStateEstimator::solveFourbarLinkage(
     // could be closer to 1 (the rest spring is (1,0,0) in local frame)
     Vector3d r_sol_wrt_heel_base =
         (sol_2_wrt_heel_base(0) >= sol_1_wrt_heel_base(0))
-            ? sol_2_wrt_heel_base
-            : sol_1_wrt_heel_base;
+        ? sol_2_wrt_heel_base
+        : sol_1_wrt_heel_base;
     // Get the heel spring deflection direction and magnitude
     const Vector3d spring_rest_dir_wrt_spring_base(1, 0, 0);
     double heel_spring_angle = acos(
         r_sol_wrt_heel_base.dot(spring_rest_dir_wrt_spring_base) /
-        (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
+            (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol =
         spring_rest_dir_wrt_spring_base.cross(r_sol_wrt_heel_base);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
@@ -521,9 +521,9 @@ void CassieStateEstimator::EstimateContactForEkf(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-                              left_heel_spring < ankle_spring_threshold_ekf_);
+      left_heel_spring < ankle_spring_threshold_ekf_);
   bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-                               right_heel_spring < ankle_spring_threshold_ekf_);
+      right_heel_spring < ankle_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -584,10 +584,10 @@ void CassieStateEstimator::EstimateContactForController(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ctrl_ ||
-                              left_heel_spring < ankle_spring_threshold_ctrl_);
+      left_heel_spring < ankle_spring_threshold_ctrl_);
   bool right_contact_spring =
       (right_knee_spring < knee_spring_threshold_ctrl_ ||
-       right_heel_spring < ankle_spring_threshold_ctrl_);
+          right_heel_spring < ankle_spring_threshold_ctrl_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -654,7 +654,7 @@ EventStatus CassieStateEstimator::Update(
     // rotational velocity
     imu_vel_wrt_world_gt.head(3) =
         Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix() *
-        output_gt.GetVelocities().head(3);
+            output_gt.GetVelocities().head(3);
     // translational velocity
     MatrixXd J(3, n_v_);
     plant_.CalcJacobianTranslationalVelocity(
@@ -781,8 +781,8 @@ EventStatus CassieStateEstimator::Update(
 
   // Assign contacts
   state->get_mutable_discrete_state()
-          .get_mutable_vector(contact_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(contact_idx_)
+      .get_mutable_value()
       << left_contact,
       right_contact;
 
@@ -912,19 +912,19 @@ EventStatus CassieStateEstimator::Update(
   estimated_fb_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
   state->get_mutable_discrete_state()
-          .get_mutable_vector(fb_state_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(fb_state_idx_)
+      .get_mutable_value()
       << estimated_fb_state;
 
   // Store imu measurement
   state->get_mutable_discrete_state()
-          .get_mutable_vector(prev_imu_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(prev_imu_idx_)
+      .get_mutable_value()
       << imu_measurement;
   // Store current time
   state->get_mutable_discrete_state()
-          .get_mutable_vector(time_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(time_idx_)
+      .get_mutable_value()
       << current_time;
   return EventStatus::Succeeded();
 }
@@ -1047,8 +1047,8 @@ void CassieStateEstimator::EstimateContactForces(
   VectorXd v = output.GetVelocities();
   VectorXd g = plant_.CalcGravityGeneralizedForces(*context_);
   VectorXd tau_d = gamma * beta * M * v_prev -
-                   (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C -
-                                  g + f_app.generalized_forces());
+      (1 - gamma) * (beta * M * v + B * output.GetEfforts() + C -
+          g + f_app.generalized_forces());
 
   // Simplifying to 2 feet contacts, might need to change it to two contacts per
   // foot and sum them up
@@ -1102,6 +1102,9 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
         const auto& self = dynamic_cast<const CassieStateEstimator&>(system);
         return self.Update(c, s);
       };
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
+          drake::systems::TriggerType::kTimed, callback));
     } else {
       *time = INFINITY;
     }

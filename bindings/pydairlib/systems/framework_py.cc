@@ -21,7 +21,7 @@ PYBIND11_MODULE(framework, m) {
 py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
     .def(py::init<drake::lcm::DrakeLcm*,
                   std::unique_ptr<drake::systems::Diagram<double>>,
-                  const drake::systems::LeafSystem<double>*,
+                  const drake::systems::System<double>*,
                   const std::string&, bool>(), py::arg("drake_lcm"),
                   py::arg("diagram"), py::arg("lcm_parser"),
                   py::arg("input_channel"),  py::arg("is_forced_publish"))

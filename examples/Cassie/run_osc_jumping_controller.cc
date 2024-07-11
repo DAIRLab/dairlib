@@ -36,6 +36,7 @@ using std::map;
 using std::pair;
 using std::string;
 using std::vector;
+using std::unique_ptr;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -266,7 +267,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -325,14 +326,29 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::JUMPING_FSM_STATE> stance_modes = {
+  vector<int> stance_modes = {
       osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
-  for (auto mode : stance_modes) {
-    osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
-    osc->AddStateAndContactPoint(mode, &left_heel_evaluator);
-    osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
-    osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
-  }
+
+  osc->AddContactPoint(
+      "left_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "left_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "right_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "right_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      stance_modes
+  );
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
 
@@ -361,7 +377,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   /**** Tracking Data for OSC *****/
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(

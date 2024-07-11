@@ -2,8 +2,7 @@ FROM ubuntu:jammy
 WORKDIR ./dairlib
 ENV DAIRLIB_DOCKER_VERSION_25=25
 COPY . .
-RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip clang-12 clang-format-12 ca-certificates gnupg
-
+RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip clang-15 clang-format-15 ca-certificates gnupg
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
   && locale-gen en_US.UTF-8

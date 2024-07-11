@@ -106,11 +106,11 @@ class Controller(LeafSystem):
             else:
                 self.x_des = np.array([0.0, 0.5, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
 
-            # print("time: ", context.get_time())
-            # print("u: ", u0)
-            # print("planned x1: ", self.predicted_x1)
-            # print("lcs pred x1: ", self.lcs_pred)
-            # print("actual x1: ", x.value())
+            print("time: ", context.get_time())
+            print("u: ", u0)
+            print("planned x1: ", self.predicted_x1)
+            print("lcs pred x1: ", self.lcs_pred)
+            print("actual x1: ", x.value())
             self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs,
                                                          x0)
             self.plant_for_lcs.get_actuation_input_port().FixValue(

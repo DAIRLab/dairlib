@@ -8,6 +8,7 @@ namespace controllers {
 using std::string;
 using std::vector;
 using std::unique_ptr;
+using std::shared_ptr;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -60,12 +61,12 @@ void InverseDynamicsQp::AddContactConstraint(
 }
 
 void InverseDynamicsQp::AddExternalForce(
-    const string &name, unique_ptr<const KinematicEvaluator<double>> eval) {
+    const string &name, shared_ptr<const WorldPointEvaluator<double>> eval) {
   DRAKE_DEMAND(not built_);
   DRAKE_DEMAND(&eval->plant() == &plant_);
   DRAKE_DEMAND(external_force_evaluators_.count(name) == 0);
 
-  external_force_evaluators_.insert({name, std::move(eval)});
+  external_force_evaluators_.insert({name, eval});
   lambda_e_start_and_size_.insert(
       {name, {ne_, external_force_evaluators_.at(name)->num_full()}});
   ne_ += external_force_evaluators_.at(name)->num_full();

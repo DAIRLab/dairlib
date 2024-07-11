@@ -90,6 +90,24 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
+  /// Solve a robust (friction cone) projection step for a single knot point k
+  /// @param U Matrix for consensus cost
+  /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param E, F, H, c LCS contact parameters
+  /// @param W_x, W_l, W_u, w Linearization of J_t v_{k+1} wrt x_k, lambda_k,
+  /// u_k
+  /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param warm_start_index knot point index for warm starting
+  /// @return delta_k
+  virtual Eigen::VectorXd SolveRobustSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
+      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
+      const int admm_iteration, const int& warm_start_index) = 0;
+
+  /// Solve a robust (friction cone) projection step for a single knot point
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }

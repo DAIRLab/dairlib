@@ -1,7 +1,6 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 
 #include "solvers/constraint_factory.h"
-
 using drake::MatrixX;
 using drake::VectorX;
 using drake::math::RotationMatrix;
@@ -85,7 +84,6 @@ void WorldPointEvaluator<T>::EvalFullJacobian(
   plant().CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world, J);
-
   if (view_frame_ == nullptr) {
     *J = R_WB_ * (*J);
   } else {

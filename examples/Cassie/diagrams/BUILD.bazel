@@ -1,99 +1,99 @@
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
-package(default_visibility = ["//visibility:public"])
-
-load(
-    "@drake//tools/skylark:drake_lcm.bzl",
-    "drake_lcm_cc_library",
-    "drake_lcm_java_library",
-    "drake_lcm_py_library",
-)
-load(
-    "@drake//tools/skylark:drake_py.bzl",
-    "drake_py_binary",
-    "drake_py_library",
-    "drake_py_unittest",
-)
-load(
-    "@drake//tools/skylark:pybind.bzl",
-    "drake_pybind_library",
-    "get_drake_py_installs",
-    "get_pybind_package_info",
-    "pybind_py_library",
-)
-
-cc_library(
-    name = "diagrams",
-    deps = [
-        ":cassie_sim_diagram",
-        ":osc_running_controller_diagram",
-        ":osc_walking_controller_diagram",
-    ],
-)
-
-cc_library(
-    name = "osc_running_controller_diagram",
-    srcs = ["osc_running_controller_diagram.cc"],
-    hdrs = ["osc_running_controller_diagram.h"],
-    deps = [
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/contact_scheduler:all",
-        "//examples/Cassie/osc",
-        "//examples/Cassie/osc_run",
-        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
-        "//lcm:trajectory_saver",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers/osc:osc_tracking_datas",
-        "//systems/filters:floating_base_velocity_filter",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//systems/primitives:radio_parser",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_walking_controller_diagram",
-    srcs = ["osc_walking_controller_diagram.cc"],
-    hdrs = ["osc_walking_controller_diagram.h"],
-    deps = [
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/osc",
-        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
-        "//lcm:trajectory_saver",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:fsm_event_time",
-        "//systems/controllers/osc:osc_gains",
-        "//systems/controllers/osc:osc_tracking_datas",
-        "//systems/filters:floating_base_velocity_filter",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//systems/primitives:radio_parser",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cassie_sim_diagram",
-    srcs = ["cassie_sim_diagram.cc"],
-    hdrs = ["cassie_sim_diagram.h"],
-    deps = [
-        "//examples/Cassie:cassie_fixed_point_solver",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/systems:cassie_encoder",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:geared_motor",
-        "//systems/primitives",
-        "//systems/primitives:radio_parser",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
+#load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+#
+#package(default_visibility = ["//visibility:public"])
+#
+#load(
+#    "@drake//tools/skylark:drake_lcm.bzl",
+#    "drake_lcm_cc_library",
+#    "drake_lcm_java_library",
+#    "drake_lcm_py_library",
+#)
+#load(
+#    "@drake//tools/skylark:drake_py.bzl",
+#    "drake_py_binary",
+#    "drake_py_library",
+#    "drake_py_unittest",
+#)
+#load(
+#    "@drake//tools/skylark:pybind.bzl",
+#    "drake_pybind_library",
+#    "get_drake_py_installs",
+#    "get_pybind_package_info",
+#    "pybind_py_library",
+#)
+#
+#cc_library(
+#    name = "diagrams",
+#    deps = [
+#        ":cassie_sim_diagram",
+#        ":osc_running_controller_diagram",
+#        ":osc_walking_controller_diagram",
+#    ],
+#)
+#
+#cc_library(
+#    name = "osc_running_controller_diagram",
+#    srcs = ["osc_running_controller_diagram.cc"],
+#    hdrs = ["osc_running_controller_diagram.h"],
+#    deps = [
+#        "//examples/Cassie:cassie_urdf",
+#        "//examples/Cassie:cassie_utils",
+#        "//examples/Cassie/contact_scheduler:all",
+#        "//examples/Cassie/osc",
+#        "//examples/Cassie/osc_run",
+#        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+#        "//lcm:trajectory_saver",
+#        "//multibody:utils",
+#        "//systems:robot_lcm_systems",
+#        "//systems:system_utils",
+#        "//systems/controllers/osc:osc_tracking_datas",
+#        "//systems/filters:floating_base_velocity_filter",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/primitives",
+#        "//systems/primitives:radio_parser",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+#
+#cc_library(
+#    name = "osc_walking_controller_diagram",
+#    srcs = ["osc_walking_controller_diagram.cc"],
+#    hdrs = ["osc_walking_controller_diagram.h"],
+#    deps = [
+#        "//examples/Cassie:cassie_urdf",
+#        "//examples/Cassie:cassie_utils",
+#        "//examples/Cassie/osc",
+#        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+#        "//lcm:trajectory_saver",
+#        "//multibody:utils",
+#        "//systems:robot_lcm_systems",
+#        "//systems:system_utils",
+#        "//systems/controllers:fsm_event_time",
+#        "//systems/controllers/osc:osc_gains",
+#        "//systems/controllers/osc:osc_tracking_datas",
+#        "//systems/filters:floating_base_velocity_filter",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/primitives",
+#        "//systems/primitives:radio_parser",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+#
+#cc_library(
+#    name = "cassie_sim_diagram",
+#    srcs = ["cassie_sim_diagram.cc"],
+#    hdrs = ["cassie_sim_diagram.h"],
+#    deps = [
+#        "//examples/Cassie:cassie_fixed_point_solver",
+#        "//examples/Cassie:cassie_urdf",
+#        "//examples/Cassie:cassie_utils",
+#        "//examples/Cassie/systems:cassie_encoder",
+#        "//systems:robot_lcm_systems",
+#        "//systems:system_utils",
+#        "//systems/framework:geared_motor",
+#        "//systems/primitives",
+#        "//systems/primitives:radio_parser",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)

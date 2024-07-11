@@ -153,7 +153,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
   auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), false);
+      plant, plant_context.get(), false);
   if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -184,7 +184,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_params.W_ee_lambda, plant, plant,
+          "end_effector_force", controller_params.W_ee_lambda, plant,
           controller_params.end_effector_name, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
@@ -205,8 +205,8 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(
-      controller_params.enforce_acceleration_constraints);
+//  osc->SetAccelerationConstraints(
+//      controller_params.enforce_acceleration_constraints);
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);

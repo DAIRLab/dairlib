@@ -41,6 +41,7 @@ def main():
 
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.001)
     parser = Parser(plant)
+    parser.SetStrictParsing()
     passive_block_index = \
         parser.AddModels("bindings/pydairlib/franka/urdf/passive_block.sdf")[0]
     active_block_index = \

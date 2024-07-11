@@ -122,8 +122,7 @@ void SetInputsIfNew(const MultibodyPlant<T>& plant,
 template <typename T>
 void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    Eigen::Vector3d normal_W, double stiffness,
-                    double dissipation_rate, bool show_ground) {
+                    Eigen::Vector3d normal_W, bool show_ground) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -135,19 +134,8 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   const drake::math::RigidTransformd X_WG(
       HalfSpace::MakePose(normal_W, point_W));
 
-  if (stiffness != 0) {
-    drake::geometry::ProximityProperties props;
-    props.AddProperty("material", "point_contact_stiffness", stiffness);
-    props.AddProperty("material", "hunt_crossley_dissipation",
-                      dissipation_rate);
-    props.AddProperty(drake::geometry::internal::kMaterialGroup,
-                      drake::geometry::internal::kFriction, friction);
-    plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                     "collision", props);
-  } else {
-    plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
-                                     "collision", friction);
-  }
+  plant->RegisterCollisionGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                   "collision", friction);
 
   // Add visual for the ground.
   if (show_ground) {
@@ -629,44 +617,109 @@ Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
   return ret;
 }
 
-template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
-template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
-template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template bool HasQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
+template int QuaternionStartIndex(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template int QuaternionStartIndex(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(
+    const MultibodyPlant<AutoDiffXd>& plant);                          // NOLINT
+template bool HasQuaternion(const MultibodyPlant<double>& plant);      // NOLINT
 template bool HasQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
-template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec); //NOLINT
-template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd> &plant);  // NOLINT
-template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
-template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
-template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
-template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
-template map<string, int> MakeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
-template vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
-template vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
-template vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
-template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
-template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
-template void AddFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, double stiffness, double dissipation_rate, bool show_ground);  // NOLINT
-template VectorX<double> GetInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
-template VectorX<AutoDiffXd> GetInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
-template std::unique_ptr<Context<double>> CreateContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT
-template std::unique_ptr<Context<AutoDiffXd>> CreateContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>& input);  // NOLINT
-template void SetContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>&, Context<double>* context);  // NOLINT
-template void SetContext(const MultibodyPlant<AutoDiffXd>& plant, const Eigen::Ref<const AutoDiffVecXd>& state, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>* context);  // NOLINT
-template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
-template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
-template void SetPositionsIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
-template void SetPositionsIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
-template void SetVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
-template void SetVelocitiesIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
-template void SetInputsIfNew(const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&, Context<AutoDiffXd>*);  // NOLINT
-template void SetInputsIfNew(const MultibodyPlant<double>&, const Eigen::Ref<const VectorXd>&, Context<double>*);  // NOLINT
+template Vector3d ReExpressWorldVector3InBodyYawFrame(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const std::string& body_name, const Vector3d& vec);  // NOLINT
+template Vector2d ReExpressWorldVector2InBodyYawFrame(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const std::string& body_name, const Vector2d& vec);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<double>(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<double>(
+    const MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(
+    const MultibodyPlant<AutoDiffXd>& plant,
+    drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<double>(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<double>(
+    const MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(
+    const MultibodyPlant<AutoDiffXd>& plant,
+    drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToActuatorsMap<double>(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> MakeNameToActuatorsMap<AutoDiffXd>(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> CreateStateNameVectorFromMap(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> CreateStateNameVectorFromMap(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> CreateActuatorNameVectorFromMap(
+    const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> CreateActuatorNameVectorFromMap(
+    const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(
+    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<double>& plant_wo_spr);  // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(
+    const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+    const drake::multibody::MultibodyPlant<double>& plant_wo_spr);  // NOLINT
+template void AddFlatTerrain<double>(MultibodyPlant<double>* plant,
+                                     SceneGraph<double>* scene_graph,
+                                     double mu_static, double mu_kinetic,
+                                     Eigen::Vector3d normal_W,
+                                     bool show_ground);  // NOLINT
+template VectorX<double> GetInput(const MultibodyPlant<double>& plant,
+                                  const Context<double>& context);  // NOLINT
+template VectorX<AutoDiffXd> GetInput(
+    const MultibodyPlant<AutoDiffXd>& plant,
+    const Context<AutoDiffXd>& context);  // NOLINT
+template std::unique_ptr<Context<double>> CreateContext(
+    const MultibodyPlant<double>& plant,
+    const Eigen::Ref<const VectorXd>& state,
+    const Eigen::Ref<const VectorXd>& input);  // NOLINT
+template std::unique_ptr<Context<AutoDiffXd>> CreateContext(
+    const MultibodyPlant<AutoDiffXd>& plant,
+    const Eigen::Ref<const AutoDiffVecXd>& state,
+    const Eigen::Ref<const AutoDiffVecXd>& input);  // NOLINT
+template void SetContext(const MultibodyPlant<double>& plant,
+                         const Eigen::Ref<const VectorXd>& state,
+                         const Eigen::Ref<const VectorXd>&,
+                         Context<double>* context);  // NOLINT
+template void SetContext(const MultibodyPlant<AutoDiffXd>& plant,
+                         const Eigen::Ref<const AutoDiffVecXd>& state,
+                         const Eigen::Ref<const AutoDiffVecXd>&,
+                         Context<AutoDiffXd>* context);  // NOLINT
+template void SetPositionsAndVelocitiesIfNew(
+    const MultibodyPlant<AutoDiffXd>&, const Eigen::Ref<const AutoDiffVecXd>&,
+    Context<AutoDiffXd>*);  // NOLINT
+template void SetPositionsAndVelocitiesIfNew(const MultibodyPlant<double>&,
+                                             const Eigen::Ref<const VectorXd>&,
+                                             Context<double>*);  // NOLINT
+template void SetPositionsIfNew(const MultibodyPlant<AutoDiffXd>&,
+                                const Eigen::Ref<const AutoDiffVecXd>&,
+                                Context<AutoDiffXd>*);  // NOLINT
+template void SetPositionsIfNew(const MultibodyPlant<double>&,
+                                const Eigen::Ref<const VectorXd>&,
+                                Context<double>*);  // NOLINT
+template void SetVelocitiesIfNew(const MultibodyPlant<AutoDiffXd>&,
+                                 const Eigen::Ref<const AutoDiffVecXd>&,
+                                 Context<AutoDiffXd>*);  // NOLINT
+template void SetVelocitiesIfNew(const MultibodyPlant<double>&,
+                                 const Eigen::Ref<const VectorXd>&,
+                                 Context<double>*);  // NOLINT
+template void SetInputsIfNew(const MultibodyPlant<AutoDiffXd>&,
+                             const Eigen::Ref<const AutoDiffVecXd>&,
+                             Context<AutoDiffXd>*);  // NOLINT
+template void SetInputsIfNew(const MultibodyPlant<double>&,
+                             const Eigen::Ref<const VectorXd>&,
+                             Context<double>*);  // NOLINT
 }  // namespace multibody
 }  // namespace dairlib

@@ -129,7 +129,7 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
   auto end_effector_force_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      *plant_, *plant_, plant_context_.get(), plant_context_.get(), false);
+      *plant_, plant_context_.get(), false);
   if (controller_params.publish_debug_info) {
     auto franka_command_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -172,7 +172,7 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_params.W_ee_lambda, *plant_, *plant_,
+          "end_effector_force", controller_params.W_ee_lambda, *plant_,
           controller_params.end_effector_name, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
@@ -193,8 +193,8 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(
-      controller_params.enforce_acceleration_constraints);
+//  osc->SetAccelerationConstraints(
+//      controller_params.enforce_acceleration_constraints);
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);

@@ -393,25 +393,42 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(1);
+    omp_set_max_active_levels(1);
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
-    if (warm_start_) {
-      if (i == N_ - 1) {
-        deltaProj[i] =
-            SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i],
-                                  lcs_.H_[i], lcs_.c_[i], admm_iteration, -1);
+    if (options_.use_robust_formulation &&
+        admm_iteration ==
+            (options_.admm_iter - 1)) {  // only on the last iteration
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveRobustSingleProjection(
+              cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i], lcs_.c_[i], lcs_.W_x_, lcs_.W_l_, lcs_.W_u_, lcs_.w_,
+              admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveRobustSingleProjection(
+              cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i], lcs_.c_[i], lcs_.W_x_, lcs_.W_l_, lcs_.W_u_, lcs_.w_,
+              admm_iteration, i);
+        }
       } else {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i],
-                                             lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
-                                             admm_iteration, i + 1);
+        deltaProj[i] = SolveRobustSingleProjection(
+            cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i], lcs_.c_[i], lcs_.W_x_, lcs_.W_l_, lcs_.W_u_, lcs_.w_,
+            admm_iteration, -1);
       }
     } else {
-      deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
-                                lcs_.c_[i], admm_iteration, -1);
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveSingleProjection(cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveSingleProjection(cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], admm_iteration, i);
+        }
+      } else {
+        deltaProj[i] = SolveSingleProjection(cost_matrices_.U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                             lcs_.c_[i], admm_iteration, -1);
+      }
     }
   }
 

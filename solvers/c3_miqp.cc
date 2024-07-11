@@ -115,6 +115,16 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   return delta_kc;
 }
 
+Eigen::VectorXd C3MIQP::SolveRobustSingleProjection(
+    const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+    const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+    const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+    const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
+    const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
+    const int admm_iteration, const int& warm_start_index) {
+  return delta_c;
+}
+
 std::vector<Eigen::VectorXd> C3MIQP::GetWarmStartDelta() const {
   return warm_start_delta_[0];
 }

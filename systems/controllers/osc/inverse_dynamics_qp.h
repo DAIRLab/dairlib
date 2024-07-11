@@ -88,7 +88,7 @@ class InverseDynamicsQp {
   // TODO (@Brian-Acosta) should this be explicitly point force for now?
   void AddExternalForce(
       const std::string &name,
-      std::unique_ptr<const multibody::KinematicEvaluator<double>> eval);
+      std::shared_ptr<const multibody::WorldPointEvaluator<double>> eval);
 
   /*!
    * Adds the quadratic cost 1/2 xᵀQx + bᵀx to the underlying QP
@@ -136,6 +136,12 @@ class InverseDynamicsQp {
    * contacts. Potentially less than nc() to avoid redundant constraints.
    */
   [[nodiscard]] int nc_active() const {return nc_active_;}
+
+  /*!
+   * @return the total number of active rows in the contact constraint for all
+   * contacts. Potentially less than nc() to avoid redundant constraints.
+   */
+  [[nodiscard]] int ne() const {return ne_;}
 
   /*
    * N.B. To avoid overhead in the OSC loop, we don't check the if the QP is
@@ -255,7 +261,7 @@ class InverseDynamicsQp {
   // External forces are reaction forces we want to "track," but which do not
   // constrain the robot's motion
   std::unordered_map<
-      std::string, std::unique_ptr<const multibody::KinematicEvaluator<double>>>
+      std::string, std::shared_ptr<const multibody::WorldPointEvaluator<double>>>
       external_force_evaluators_{};
 
   std::unordered_map<std::string, std::pair<int, int>> lambda_e_start_and_size_;

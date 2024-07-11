@@ -308,15 +308,18 @@ int do_main(int argc, char* argv[]) {
   simulator->Initialize();
 
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
-  //  meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
-  //  meshcat->StartRecording();
-
-  //  simulator->AdvanceTo(18.0);
-  //  meshcat->StopRecording();
-  //  meshcat->PublishRecording();
-  //  std::ofstream outfile("visualization.html");
-  //  outfile << meshcat->StaticHtml() <<std::endl;
-  //  outfile.close();
+//    meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
+//    meshcat->StartRecording();
+//
+//    simulator->AdvanceTo(18.0);
+//    meshcat->StopRecording();
+//    meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
+//    meshcat->PublishRecording();
+//    meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
+//    meshcat->SetAnimation(meshcat->get_mutable_recording());
+//    std::ofstream outfile("visualization.html");
+//    outfile << meshcat->StaticHtml() <<std::endl;
+//    outfile.close();
 
   return 0;
 }

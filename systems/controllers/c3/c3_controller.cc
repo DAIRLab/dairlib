@@ -1,4 +1,5 @@
 #include "c3_controller.h"
+
 #include <Eigen/Dense>
 
 #include "solvers/c3_miqp.h"
@@ -72,7 +73,6 @@ C3Controller::C3Controller(
     c3_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                    C3::CostMatrices(Q_, R_, G_, U_),
                                    x_desired_placeholder, c3_options_);
-
   } else if (c3_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder,
                                  C3::CostMatrices(Q_, R_, G_, U_),
@@ -87,23 +87,32 @@ C3Controller::C3Controller(
 
   // Set actor bounds,
   // TODO(yangwill): move this out of here because it is task specific
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A.segment(0, 3) = c3_options_.workspace_limits[i].segment(0, 3);
-    c3_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
-                             c3_options_.workspace_limits[i][4], 1);
+  if (c3_options_.workspace_limits.size() > 0) {
+    Eigen::MatrixXd A =
+        MatrixXd::Zero(c3_options_.workspace_limits.size(), n_x_);
+    Eigen::VectorXd lb = VectorXd::Zero(c3_options_.workspace_limits.size());
+    Eigen::VectorXd ub = VectorXd::Zero(c3_options_.workspace_limits.size());
+    for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+      A.block(i, 0, 1, 3) = c3_options_.workspace_limits[i].segment(0, 3).transpose();
+      lb[i] = c3_options_.workspace_limits[i][3];
+      ub[i] = c3_options_.workspace_limits[i][4];
+    }
+    std::cout << A << std::endl;
+    c3_->AddLinearConstraint(A, lb, ub, 1);
   }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
-                             c3_options_.u_horizontal_limits[1], 2);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
-                             c3_options_.u_vertical_limits[1], 2);
+  if (c3_options_.workspace_limits.size() > 0) {
+    Eigen::MatrixXd A = MatrixXd::Zero(3, n_u_);
+    Eigen::VectorXd lb = VectorXd::Zero(3);
+    Eigen::VectorXd ub = VectorXd::Zero(3);
+    for (int i = 0; i < 2; ++i) {
+      A(i, i) = 1.0;
+      lb[i] = c3_options_.u_horizontal_limits[0];
+      ub[i] = c3_options_.u_horizontal_limits[1];
+    }
+    A(2, 2) = 1.0;
+    lb[2] = c3_options_.u_vertical_limits[0];
+    ub[2] = c3_options_.u_vertical_limits[1];
+    c3_->AddLinearConstraint(A, lb, ub, 2);
   }
 
   lcs_state_input_port_ =

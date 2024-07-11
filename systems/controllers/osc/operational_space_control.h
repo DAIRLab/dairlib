@@ -17,6 +17,7 @@
 #include "solvers/fast_osqp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
@@ -240,6 +241,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data,
                        double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
+  void AddForceTrackingData(
+      std::unique_ptr<ExternalForceTrackingData> tracking_data);
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
@@ -374,6 +377,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> u_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_ee_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_{};
@@ -406,6 +410,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
       tracking_data_vec_ =
           std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
+
+  std::unique_ptr<std::vector<std::unique_ptr<ExternalForceTrackingData>>>
+      force_tracking_data_vec_ = std::make_unique<
+          std::vector<std::unique_ptr<ExternalForceTrackingData>>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

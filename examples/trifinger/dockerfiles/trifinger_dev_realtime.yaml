@@ -13,6 +13,7 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/git/Trifinger/workspace:/home
+      - ~/git/dairlib:/dairlib
     environment:
       - DISPLAY=${DISPLAY}
       - ROS_LOCALHOST_ONLY=0

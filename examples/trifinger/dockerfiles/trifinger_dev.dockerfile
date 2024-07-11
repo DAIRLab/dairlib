@@ -1,12 +1,12 @@
 ARG ROS_DISTRO=humble
-FROM osrf/ros:${ROS_DISTRO}-desktop AS base
+FROM osrf/ros:${ROS_DISTRO}-desktop-jammy AS base
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Core Linux tools
+###### Core Linux tools #####
 RUN apt-get update && apt-get install -y --no-install-recommends\
     apt-utils net-tools lsb-release sudo unzip wget less ssh vim curl\
-    software-properties-common python3-dev python3-pip clang-12 rsync\
+    software-properties-common python3-dev python3-pip clang-12 rsync \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 12 \
@@ -14,9 +14,18 @@ RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 12 \
     && python3 -m pip install --upgrade pip \
     && python3 -m pip --version
 
+# Install Bazel
+RUN apt-get install apt-transport-https curl gnupg -y \
+  && curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor >bazel-archive-keyring.gpg \
+  && mv bazel-archive-keyring.gpg /usr/share/keyrings \
+  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list \
+  && apt-get update && apt-get install bazel -y
+
 RUN apt-get update && apt-get install -y \
+    bazel \
     freeglut3-dev \
     graphviz \
+    libgflags-dev \
     libarmadillo-dev \
     libboost-iostreams-dev \
     libboost-filesystem-dev \
@@ -99,7 +108,15 @@ RUN echo ". /opt/ros/${ROS_DISTRO}/setup.bash \
 
 # Install Clion
 RUN wget https://download.jetbrains.com/cpp/CLion-2024.1.tar.gz
-RUN sudo tar xvzf CLion-2024.1.tar.gz -C /opt/
-RUN sudo rm CLion-2024.1.tar.gz
+RUN tar xvzf CLion-2024.1.tar.gz -C /opt/
+RUN rm CLion-2024.1.tar.gz
 
+
+# Install dependencies for drake.
+COPY install_prereqs_jammy.sh /tmp/install_prereqs_jammy.sh
+RUN chmod +x /tmp/install_prereqs_jammy.sh \
+    && yes | /tmp/install_prereqs_jammy.sh \
+RUN ldconfig /usr/local/lib
+
+# Bash script to build ROS workspace using colcon.
 COPY ros_entrypoint.sh /usr/local/bin/ros_build

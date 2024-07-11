@@ -106,11 +106,11 @@ class Controller(LeafSystem):
             else:
                 self.x_des = np.array([0.0, 0.5, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
 
-            print("time: ", context.get_time())
-            print("u: ", u0)
-            print("planned x1: ", self.predicted_x1)
-            print("lcs pred x1: ", self.lcs_pred)
-            print("actual x1: ", x.value())
+            # print("time: ", context.get_time())
+            # print("u: ", u0)
+            # print("planned x1: ", self.predicted_x1)
+            # print("lcs pred x1: ", self.lcs_pred)
+            # print("actual x1: ", x.value())
             self.plant_for_lcs.SetPositionsAndVelocities(self.context_for_lcs,
                                                          x0)
             self.plant_for_lcs.get_actuation_input_port().FixValue(
@@ -129,8 +129,8 @@ class Controller(LeafSystem):
                                         (self.N + 1) * [self.x_des],
                                         self.c3_options)
                 self.c3_solver.UpdateLCS(lcs)
-                self.c3_solver.AddLinearConstraint(np.array([1]), self.c3_options.u_horizontal_limits[0], self.c3_options.u_horizontal_limits[1], 2)
-                self.c3_solver.AddLinearConstraint(np.array([1, 0, 0, 0, 0, 0, 0, 0]), -1.0, 1.0, 1)
+                self.c3_solver.AddLinearConstraint(np.array([[1]]), np.array([self.c3_options.u_horizontal_limits[0]]), np.array([self.c3_options.u_horizontal_limits[1]]), 2)
+                self.c3_solver.AddLinearConstraint(np.array([[1, 0, 0, 0, 0, 0, 0, 0]]), np.array([-1.0]), np.array([1.0]), 1)
             else:
                 self.c3_solver.UpdateLCS(lcs)
                 self.c3_solver.UpdateTarget((self.N + 1) * [self.x_des])

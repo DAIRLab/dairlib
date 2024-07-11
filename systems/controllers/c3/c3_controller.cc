@@ -97,7 +97,6 @@ C3Controller::C3Controller(
       lb[i] = c3_options_.workspace_limits[i][3];
       ub[i] = c3_options_.workspace_limits[i][4];
     }
-    std::cout << A << std::endl;
     c3_->AddLinearConstraint(A, lb, ub, 1);
   }
   if (c3_options_.workspace_limits.size() > 0) {

@@ -6,6 +6,7 @@
 
 #include "solvers/c3.h"
 #include "solvers/lcs.h"
+#include "gurobi_c++.h"
 
 namespace dairlib {
 namespace solvers {
@@ -38,6 +39,8 @@ class C3MIQP final : public C3 {
 
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
+
+  GRBEnv env;
 };
 
 }  // namespace solvers

@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_single_finger_impedance_debug
+{
+  int32_t y_dim;
+
+  double fingertip_y [y_dim];
+  double fingertip_y_des [y_dim];
+  double fingertip_error_y [y_dim];
+  double fingertip_error_ydot [y_dim];
+}

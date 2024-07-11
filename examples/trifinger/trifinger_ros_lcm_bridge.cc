@@ -1,5 +1,3 @@
-#include <signal.h>
-
 #include <string>
 
 #include <dairlib/lcmt_robot_input.hpp>
@@ -65,12 +63,6 @@ using drake_ros::DrakeRos;
 using drake_ros::RosInterfaceSystem;
 using drake_ros::RosPublisherSystem;
 using drake_ros::RosSubscriberSystem;
-
-// Shutdown ROS gracefully and then exit
-void SigintHandler(int sig) {
-  drake_ros::shutdown();
-  exit(sig);
-}
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -148,7 +140,7 @@ int DoMain(int argc, char* argv[]) {
 
   /// convert fingertips delta position ros msg to lcm
   auto fingertips_delta_position_ros_subscriber = builder.AddSystem(
-      RosSubscriberSystem::Make<std_msgs::msg::Float64MultiArray>(
+      RosSubscriberSystem::Make<trifinger_msgs::msg::FingertipDeltaPosition>(
           ros_channel_params.fingertips_delta_position, qos,
           sys_ros_interface->get_ros_interface()));
   auto ros_to_lcm_delta_pos =

@@ -1,4 +1,5 @@
 #include "trifinger_impedance_controller.h"
+
 #include <iostream>
 
 namespace dairlib::systems {
@@ -38,7 +39,13 @@ TrifingerImpedanceControl::TrifingerImpedanceControl(
       this->DeclareVectorOutputPort(
               "commanded_torque",
               TimestampedVector<double>(plant_.num_actuators()),
-              &TrifingerImpedanceControl::CopyCommandedTorqueToOutput)
+              &TrifingerImpedanceControl::UpdateCommandedTorques)
+          .get_index();
+
+  impedance_debug_output_port_ =
+      this->DeclareAbstractOutputPort(
+              "impedance_debug_output",
+              &TrifingerImpedanceControl::CopyTrifingerImpedanceDebugOutput)
           .get_index();
 
   // retrieve bodies and body frames of 3 fingertips and world frame.
@@ -49,18 +56,11 @@ TrifingerImpedanceControl::TrifingerImpedanceControl(
   fingertip_120_frame_ = &fingertip_120_body_->body_frame();
   fingertip_240_frame_ = &fingertip_240_body_->body_frame();
   world_frame_ = &plant_.world_frame();
-
-  // Declare update event.
-  DeclareForcedDiscreteUpdateEvent(
-      &TrifingerImpedanceControl::UpdateCommandedTorque);
-  commanded_torque_idx_ =
-      DeclareDiscreteState(Eigen::VectorXd::Zero(plant_.num_actuators()));
-  prev_timestamp_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(1));
 }
 
-drake::systems::EventStatus TrifingerImpedanceControl::UpdateCommandedTorque(
+void TrifingerImpedanceControl::UpdateCommandedTorques(
     const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const {
+    TimestampedVector<double>* output) const {
   const OutputVector<double>* trifinger_state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   const TimestampedVector<double>* all_fingertips_target =
@@ -78,51 +78,39 @@ drake::systems::EventStatus TrifingerImpedanceControl::UpdateCommandedTorque(
                                         plant_.num_velocities());
   plant_.CalcMassMatrix(*context_, &trifinger_mass_matrix);
 
-  auto cur_commanded_torque_finger_0 = this->CalcCommandedTorqueForFinger(
-      trifinger_velocities, all_fingertips_target, fingertip_0_body_,
-      fingertip_0_frame_, trifinger_mass_matrix, Kp_fingertip_0_,
-      Kd_fingertip_0_, 0);
+  Eigen::VectorXd bias(plant_.num_velocities());
+  Eigen::VectorXd grav = plant_.CalcGravityGeneralizedForces(*context_);
+  plant_.CalcBiasTerm(*context_, &bias);
 
-  auto cur_commanded_torque_finger_120 = this->CalcCommandedTorqueForFinger(
-      trifinger_velocities, all_fingertips_target, fingertip_120_body_,
-      fingertip_120_frame_, trifinger_mass_matrix, Kp_fingertip_120_,
-      Kd_fingertip_120_, 3);
+  this->CalcCommandedTorqueForFinger(finger_0_outputs_, trifinger_velocities,
+                                     all_fingertips_target, fingertip_0_body_,
+                                     fingertip_0_frame_, trifinger_mass_matrix,
+                                     Kp_fingertip_0_, Kd_fingertip_0_, 0);
 
-  auto cur_commanded_torque_finger_240 = this->CalcCommandedTorqueForFinger(
-      trifinger_velocities, all_fingertips_target, fingertip_240_body_,
-      fingertip_240_frame_, trifinger_mass_matrix, Kp_fingertip_240_,
-      Kd_fingertip_240_, 6);
+  this->CalcCommandedTorqueForFinger(
+      finger_120_outputs_, trifinger_velocities, all_fingertips_target,
+      fingertip_120_body_, fingertip_120_frame_, trifinger_mass_matrix,
+      Kp_fingertip_120_, Kd_fingertip_120_, 3);
+
+  this->CalcCommandedTorqueForFinger(
+      finger_240_outputs_, trifinger_velocities, all_fingertips_target,
+      fingertip_240_body_, fingertip_240_frame_, trifinger_mass_matrix,
+      Kp_fingertip_240_, Kd_fingertip_240_, 6);
 
   Eigen::VectorXd cur_commanded_torque(9);
-  cur_commanded_torque << cur_commanded_torque_finger_0,
-      cur_commanded_torque_finger_120, cur_commanded_torque_finger_240;
+  cur_commanded_torque << finger_0_outputs_.commanded_torque,
+      finger_120_outputs_.commanded_torque,
+      finger_240_outputs_.commanded_torque;
 
-  // Compensate for Coriolis and gravity
-  Eigen::VectorXd coriolis_torque(plant_.num_velocities());
-  plant_.CalcBiasTerm(*context_, &coriolis_torque);
-  Eigen::VectorXd gravity_torque =
-      plant_.CalcGravityGeneralizedForces(*context_);
-  cur_commanded_torque =
-      cur_commanded_torque + coriolis_torque - gravity_torque;
+  // compensate for gravity
+  cur_commanded_torque += -grav;
 
-  discrete_state->get_mutable_vector(commanded_torque_idx_)
-      .set_value(cur_commanded_torque);
-  discrete_state->get_mutable_vector(prev_timestamp_idx_)
-      .set_value((Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp()));
-  return drake::systems::EventStatus::Succeeded();
+  output->SetDataVector(cur_commanded_torque);
+  output->set_timestamp(trifinger_state->get_timestamp());
 }
 
-void TrifingerImpedanceControl::CopyCommandedTorqueToOutput(
-    const drake::systems::Context<double>& context,
-    TimestampedVector<double>* output) const {
-  auto commanded_torque =
-      context.get_discrete_state(commanded_torque_idx_).get_value();
-  auto timestamp = context.get_discrete_state(prev_timestamp_idx_).value()(0);
-  output->SetDataVector(commanded_torque);
-  output->set_timestamp(timestamp);
-}
-
-Eigen::Vector3d TrifingerImpedanceControl::CalcCommandedTorqueForFinger(
+void TrifingerImpedanceControl::CalcCommandedTorqueForFinger(
+    SingleFingerImpedanceControllerOutputs& outputs,
     const Eigen::VectorXd& cur_trifinger_velocities,
     const TimestampedVector<double>* all_fingertips_target,
     const drake::multibody::RigidBody<double>* fingertip_body,
@@ -155,6 +143,36 @@ Eigen::Vector3d TrifingerImpedanceControl::CalcCommandedTorqueForFinger(
   Eigen::Vector3d commanded_torque =
       J_fingertip.transpose() * M_task_space_fingertip *
       (Kp * fingertip_delta_pos + Kd * fingertip_delta_vel);
-  return commanded_torque;
+
+  // TODO: can we use std::move to avoid copying?
+  outputs.commanded_torque = commanded_torque;
+  outputs.cur_fingertip_pos = cur_fingertip_pos;
+  outputs.fingertip_target_pos = fingertip_target_pos;
+  outputs.fingertip_delta_pos = fingertip_delta_pos;
+  outputs.fingertip_delta_vel = fingertip_delta_vel;
+}
+
+void TrifingerImpedanceControl::CopyTrifingerImpedanceDebugOutput(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_trifinger_impedance_debug* output) const {
+  this->CopySingleFingerImpedanceDebugOutput(finger_0_outputs_,
+                                            output->finger_0);
+  this->CopySingleFingerImpedanceDebugOutput(finger_120_outputs_,
+                                        output->finger_120);
+  this->CopySingleFingerImpedanceDebugOutput(finger_240_outputs_,
+                                        output->finger_240);
+}
+
+void TrifingerImpedanceControl::CopySingleFingerImpedanceDebugOutput(
+    const SingleFingerImpedanceControllerOutputs& outputs,
+    dairlib::lcmt_single_finger_impedance_debug& output) const {
+  output.y_dim = 3;
+  output.fingertip_y = CopyVectorXdToStdVector(outputs.cur_fingertip_pos);
+  output.fingertip_y_des =
+      CopyVectorXdToStdVector(outputs.fingertip_target_pos);
+  output.fingertip_error_y =
+      CopyVectorXdToStdVector(outputs.fingertip_delta_pos);
+  output.fingertip_error_ydot =
+      CopyVectorXdToStdVector(outputs.fingertip_delta_vel);
 }
 }  // namespace dairlib::systems

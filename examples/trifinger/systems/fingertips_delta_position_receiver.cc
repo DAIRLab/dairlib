@@ -43,9 +43,11 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
               &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj)
           .get_index();
 
-  fingertips_target_port_ = this->DeclareVectorOutputPort(
-      "fingertips_target", TimestampedVector<double>(9),
-      &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget).get_index();
+  fingertips_target_port_ =
+      this->DeclareVectorOutputPort(
+              "fingertips_target", TimestampedVector<double>(9),
+              &FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget)
+          .get_index();
 
   // Declare update event.
   DeclareForcedDiscreteUpdateEvent(

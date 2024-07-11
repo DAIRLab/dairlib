@@ -60,6 +60,7 @@ cc_library(
     srcs = ["trifinger_impedance_controller.cc"],
     hdrs = ["trifinger_impedance_controller.h"],
     deps = [
+        "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",

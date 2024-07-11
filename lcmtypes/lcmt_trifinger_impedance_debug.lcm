@@ -1,0 +1,8 @@
+package dairlib;
+
+struct lcmt_trifinger_impedance_debug
+{
+  lcmt_single_finger_impedance_debug finger_0;
+  lcmt_single_finger_impedance_debug finger_120;
+  lcmt_single_finger_impedance_debug finger_240;
+}

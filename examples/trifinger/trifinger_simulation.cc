@@ -1,4 +1,3 @@
-#include <iostream>
 #include <memory>
 
 #include <gflags/gflags.h>
@@ -75,11 +74,11 @@ int SimulateTrifinger(int argc, char* argv[]) {
 
   // Sets up contact solver.
   if (sim_params.contact_solver == "SAP") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kSap);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kSap);
   } else if (sim_params.contact_solver == "TAMSI") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kTamsi);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kTamsi);
   } else {
     std::cerr << "Unknown contact solver setting." << std::endl;
   }

@@ -83,6 +83,12 @@ int DoMain(int argc, char* argv[]) {
   auto trifinger_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
 
+  auto impedance_debug_output_pub =
+      builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
+                        dairlib::lcmt_trifinger_impedance_debug>(
+          lcm_channel_params.impedance_debug_channel, &lcm,
+          drake::systems::TriggerTypeSet(
+              {drake::systems::TriggerType::kForced})));
   auto impedance_controller =
       builder.AddSystem<systems::TrifingerImpedanceControl>(
           plant, plant_context.get(), controller_params.fingertip_0_name,
@@ -108,6 +114,8 @@ int DoMain(int argc, char* argv[]) {
                   trifinger_command_sender->get_input_port(0));
   builder.Connect(trifinger_command_sender->get_output_port(0),
                   trifinger_command_pub->get_input_port());
+  builder.Connect(impedance_controller->get_impedance_debug_output_port(),
+                  impedance_debug_output_pub->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("trifinger_impedance_controller"));

@@ -1,11 +1,9 @@
 #include "trifinger_ros_lcm_msgs_conversions.h"
-
-#include <sstream>
-
 #include "multibody/multibody_utils.h"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "trifinger_msgs/msg/trifinger_state.hpp"
+#include "trifinger_msgs/msg/fingertip_delta_position.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -86,8 +84,8 @@ void RosToLcmRobotState::ConvertToLCM(
     for (int i = 0; i < 3; i++) {
       output->imu_accel[i] = 0;
     }
+    output->utime = msg.header.stamp.sec * 1e6 + msg.header.stamp.nanosec * 1e-3;
   }
-  output->utime = msg.header.stamp.sec * 1e6 + msg.header.stamp.nanosec * 1e-3;
 }
 
 /***************************************************************************************/
@@ -137,8 +135,8 @@ void RosToLcmObjectState::ConvertToLCM(
     object_state->position[4] = msg.position.x;
     object_state->position[5] = msg.position.y;
     object_state->position[6] = msg.position.z;
+    object_state->utime = context.get_time() * 1e6;
   }
-  object_state->utime = context.get_time() * 1e6;
 }
 
 /***************************************************************************************/
@@ -153,22 +151,25 @@ RosToLcmFingertipsDeltaPosition::RosToLcmFingertipsDeltaPosition() {
       &RosToLcmFingertipsDeltaPosition::ConvertToLCM);
   this->DeclareAbstractInputPort(
       "fingertips delta position ros",
-      *drake::AbstractValue::Make<std_msgs::msg::Float64MultiArray>());
+      *drake::AbstractValue::Make<trifinger_msgs::msg::FingertipDeltaPosition>());
 }
 
 void RosToLcmFingertipsDeltaPosition::ConvertToLCM(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_fingertips_delta_position* output) const {
   const auto& msg = this->get_input_port(0)
-      .Eval<std_msgs::msg::Float64MultiArray>(context);
+      .Eval<trifinger_msgs::msg::FingertipDeltaPosition>(context);
   if (msg.data.size() == 0) {
     // do nothing when there is no message, just keep the most recent message
   } else {
-    for (int i = 0; i < n_delta_pos_; i++) {
-      output->deltaPos[i] = msg.data[i];
+    if (msg.utime > prev_msg_utime_) {
+      for (int i = 0; i < n_delta_pos_; i++) {
+        output->deltaPos[i] = msg.data[i];
+      }
+      output->utime = context.get_time() * 1e6;
+      prev_msg_utime_ = msg.utime;
     }
   }
-  output->utime = context.get_time() * 1e6;
 }
 }  // namespace systems
 }  // namespace dairlib

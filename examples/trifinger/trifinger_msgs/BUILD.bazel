@@ -8,6 +8,7 @@ rosidl_interfaces_group(
     interfaces = [
         "msg/TrifingerState.msg",
         "msg/TrifingerAction.msg",
+        "msg/FingertipDeltaPosition.msg",
     ],
     visibility = ["//visibility:public"],
     deps = [

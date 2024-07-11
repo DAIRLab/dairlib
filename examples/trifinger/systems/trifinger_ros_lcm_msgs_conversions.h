@@ -12,6 +12,7 @@
 #include "systems/framework/timestamped_vector.h"
 #include "trifinger_msgs/msg/trifinger_action.hpp"
 #include "trifinger_msgs/msg/trifinger_state.hpp"
+#include "trifinger_msgs/msg/fingertip_delta_position.hpp"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -119,6 +120,7 @@ class RosToLcmFingertipsDeltaPosition : public
                     const;
 
   const int n_delta_pos_ = 9;
+  mutable int prev_msg_utime_ = -1;
 };
 }  // namespace systems
 }  // namespace dairlib

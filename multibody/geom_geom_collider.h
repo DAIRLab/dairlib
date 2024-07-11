@@ -63,6 +63,12 @@ class GeomGeomCollider {
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
 
+  /// Returns the position expressed in the World frame of the closest points on
+  /// each Geometry. The distance between the two points should match the
+  /// distance returned by Eval. Note the order of the points return depend on the
+  /// order that the geometries were added to the MultibodyPlant
+  /// @param context The context for the MultibodyPlant
+  /// @return A pair of positions in sorted order as determined by SortedPair
   std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
       const drake::systems::Context<double>& context);
 

@@ -157,11 +157,6 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd H = MatrixXd::Zero(n_lambda, n_u);
   VectorXd c = VectorXd::Zero(n_lambda);
 
-  MatrixXd W_x = MatrixXd::Zero(n_lambda, n_x);
-  MatrixXd W_l = MatrixXd::Zero(n_lambda, n_lambda);
-  MatrixXd W_u = MatrixXd::Zero(n_lambda, n_u);
-  MatrixXd w = VectorXd::Zero(n_lambda);
-
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     D.block(0, 2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions) =
         dt * dt * qdotNv * MinvJ_t_T;
@@ -253,19 +248,9 @@ LCS LCSFactory::LinearizePlantToLCS(
     // constant component of complementarity constraint
     c = E_t.transpose() * phi / dt + dt * J_c * d_v -
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
-
-    // Anitescu model needs an explicit formulation for the tangential
-    // components in order to appropriately activate the robust constraint
-    // (TODO): yangwill do another pass to verify this formulation
-    W_x.block(0, 0, n_lambda, n_q) = J_t * AB_v_q;
-    W_x.block(0, n_q, n_lambda, n_v) = J_t + J_t * AB_v_v;
-    W_l = J_t * (MinvJ_c_T);
-    W_u = J_t * (AB_v_u);
-    w = J_t * (d_v);
   }
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
-  system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
 

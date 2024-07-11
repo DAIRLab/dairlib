@@ -17,7 +17,6 @@ namespace solvers {
 class C3 {
  public:
   struct CostMatrices {
-    CostMatrices() = default;
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
@@ -40,6 +39,20 @@ class C3 {
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
   void Solve(const Eigen::VectorXd& x0);
+
+  /// Update the LCS without needing to reconstruct the C3 object
+  void UpdateLCS(const LCS& lcs);
+  /// Update the target without needing to reconstruct the C3 object
+  void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+
+  /// allow users to add constraints (adds for all timesteps)
+  /// @param A, lower_bound, upper_bound lower_bound <= A x <= upper_bound
+  /// @param constraint inputconstraint, stateconstraint, forceconstraint
+  void AddLinearConstraint(Eigen::MatrixXd& A, Eigen::VectorXd& lower_bound,
+                           Eigen::VectorXd& upper_bound, int constraint);
+
+  /// allow user to remove all constraints added by AddLinearConstraint
+  void RemoveConstraints();
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -67,15 +80,6 @@ class C3 {
       const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,
       int admm_iteration);
 
-  /// allow users to add constraints (adds for all timesteps)
-  /// @param A, lower_bound, upper_bound lower_bound <= A^T x <= upper_bound
-  /// @param constraint inputconstraint, stateconstraint, forceconstraint
-  void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
-                           double upper_bound, int constraint);
-
-  /// allow user to remove all constraints
-  void RemoveConstraints();
-
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
   /// @param U A pointer to the U variables
@@ -97,10 +101,6 @@ class C3 {
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
- public:
-  void UpdateLCS(const LCS& lcs);
-  void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
-
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;
@@ -109,31 +109,16 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_;  // n_x
-  const int m_;  // n_lambda
-  const int k_;  // n_u
+  const int n_x_;  // n
+  const int n_lambda_;  // m
+  const int n_u_;  // k
 
  private:
-  std::vector<Eigen::MatrixXd> A_;
-  std::vector<Eigen::MatrixXd> B_;
-  std::vector<Eigen::MatrixXd> D_;
-  std::vector<Eigen::VectorXd> d_;
-  std::vector<Eigen::MatrixXd> E_;
-  std::vector<Eigen::MatrixXd> F_;
-  std::vector<Eigen::MatrixXd> H_;
-  std::vector<Eigen::VectorXd> c_;
-  Eigen::MatrixXd W_x_;
-  Eigen::MatrixXd W_l_;
-  Eigen::MatrixXd W_u_;
-  Eigen::VectorXd w_;
-  double AnDn_ = 1.0;
-  const std::vector<Eigen::MatrixXd> Q_;
-  const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> U_;
-  const std::vector<Eigen::MatrixXd> G_;
+  LCS lcs_;
+  double AnDn_ = 1.0; // Scaling factor for lambda
+  const CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;
-  double dt_ = 0;
   double solve_time_ = 0;
   bool h_is_zero_;
 
@@ -144,6 +129,7 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
   // QP step constraints
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;

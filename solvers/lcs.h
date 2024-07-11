@@ -37,17 +37,6 @@ class LCS {
   LCS(LCS&&) = default;
   LCS& operator=(LCS&&) = default;
 
-  void SetTangentGapLinearization(const Eigen::MatrixXd& W_x,
-                                  const Eigen::MatrixXd& W_l,
-                                  const Eigen::MatrixXd& W_u,
-                                  const Eigen::VectorXd& w) {
-    W_x_ = W_x;
-    W_l_ = W_l;
-    W_u_ = W_u;
-    w_ = w;
-    has_tangent_linearization_ = true;
-  }
-
   /// Simulate the system for one-step
   /// @param x_init Initial x value
   /// @param input Input value

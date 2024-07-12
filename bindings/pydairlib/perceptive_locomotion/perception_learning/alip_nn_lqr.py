@@ -173,4 +173,5 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
+        # footstep_command = np.append(footstep_command, 0.1) #
         footstep.set_value(footstep_command)

@@ -6,6 +6,7 @@ from pprint import pprint
 
 import numpy as np
 import math
+from scipy.spatial.transform import Rotation
 
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
@@ -27,7 +28,7 @@ from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions, HeightMapQueryObject
 from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
     import ElevationMappingConverter, ElevationMapOptions, ElevationMapQueryObject
-from pydairlib.multibody import SquareSteppingStoneList
+from pydairlib.multibody import SquareSteppingStoneList, ReExpressWorldVector3InBodyYawFrame
 
 from pydrake.systems.analysis import SimulatorStatus
 from pydrake.geometry import Rgba
@@ -61,7 +62,10 @@ class ObservationPublisher(LeafSystem):
         self.ns = 4
         self.noise = noise
         self.simulate_perception = simulate_perception
-
+        
+        self.init_ = 0
+        self.episode_noise = None
+        
         if self.simulate_perception:
             self.height = 64
         else:
@@ -141,9 +145,10 @@ class ObservationPublisher(LeafSystem):
         hmap_grid_world = hmap_query.calc_height_map_world_frame(
             np.array([ud[0], ud[1], 0])
         )
-        hmap_query.plot_surface(
-            "hmap", hmap_grid_world[0], hmap_grid_world[1],
-            hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+        
+        # hmap_query.plot_surface(
+        #     "hmap", hmap_grid_world[0], hmap_grid_world[1],
+        #     hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
         # alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         alip = self.EvalVectorInput(context, self.input_port_indices['x']).get_value()
@@ -152,20 +157,29 @@ class ObservationPublisher(LeafSystem):
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
         
         if self.noise:
-            uniformj = np.random.uniform(low=-0.003, high=0.003, size=joint_angle.shape(0))
-            joint_angle += uniformj
+            if self.init_ == 0:
+                # Offset for hmap per episode
+                self.episode_noise = np.random.uniform(low=-0.1, high=0.1)
+                print(self.episode_noise)
+                self.init_ += 1
             
-            # Offset for hmap
-            uniformh = np.random.uniform(low=-0.02, high=0.02)
-            hmap += uniformh
-            hmap = hmap.reshape(-1)
 
-        else:
-            hmap = hmap.reshape(-1)
-            gt_hmap = gt_hmap.reshape(-1)
-            joint_angle = states[7:23] # Only joint angles (reject pelvis)
-            joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
-            gt_joint_angle = gt_states[:23]
+            # Offset for hmap per step
+            uniformh = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
+            step_noise = np.random.uniform(low=-0.02, high=0.02)
+            hmap[-1] += uniformh + self.episode_noise + step_noise
+        
+        hmap_grid_world[-1] += uniformh + step_noise + self.episode_noise
+        hmap_query.plot_surface(
+            "hmap", hmap_grid_world[0], hmap_grid_world[1],
+            hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+
+        hmap = hmap.reshape(-1)
+        gt_hmap = gt_hmap.reshape(-1)
+
+        joint_angle = states[7:23] # Only joint angles (reject pelvis)
+        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
+        gt_joint_angle = gt_states[:23]
 
         out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # 24621
         output.set_value(out)
@@ -177,6 +191,8 @@ class RewardSystem(LeafSystem):
         self.params = alip_params
         self.cassie_sim = sim_env
         self.prev_fsm = None
+        #self.x_axis = np.array([1, 0, 0])
+        self.no = 0
 
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
@@ -220,8 +236,12 @@ class RewardSystem(LeafSystem):
         return self.get_output_port(self.output_port_indices[name])
 
     def calc_reward(self, context: Context, output) -> None:
+        #print(self.no)
+        #self.no += 1
+
         x = self.EvalVectorInput(context, self.input_port_indices['x']).value()
-        u = self.EvalVectorInput(context, self.input_port_indices['footstep_command']).value()[:2]
+        footstep_command = self.EvalVectorInput(context, self.input_port_indices['footstep_command']).value()
+        u = footstep_command[:2]
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         xd = xd_ud.value()[:4]
         ud = xd_ud.value()[4:]
@@ -235,16 +255,22 @@ class RewardSystem(LeafSystem):
         plant.SetPositionsAndVelocities(plant_context, pos_vel)
         
         # Body Frame Velocity
-        fb_frame = plant.GetBodyByName("pelvis").body_frame()
-        bf_velocity = fb_frame.CalcSpatialVelocity(
-            plant_context, plant.world_frame(), fb_frame)
+        bf_frame = plant.GetBodyByName("pelvis").body_frame()
+        bf_velocity = bf_frame.CalcSpatialVelocityInWorld(plant_context)
         bf_vel = bf_velocity.translational()
         bf_ang = bf_velocity.rotational()
+        bf_vel = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_vel)
+        bf_ang = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_ang)
 
         vdes = self.EvalVectorInput(
             context,
             self.input_port_indices['vdes']
         ).value().ravel()
+
+        # bf_matrix = bf_frame.CalcPoseInWorld(plant_context).rotation().matrix()
+        # bf_dir = np.dot(bf_matrix[:, 0] ,self.x_axis)
+        # rotation = Rotation.from_matrix(bf_matrix)
+        # yaw_rad = np.linalg.norm(rotation.as_euler('xyz', degrees=False)[2])
 
         left_penalty = 0
         right_penalty = 0
@@ -253,12 +279,12 @@ class RewardSystem(LeafSystem):
         front_contact_pt = np.array((-0.0457, 0.112, 0))
         rear_contact_pt = np.array((0.088, 0, 0))
 
-        toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+        left_toe_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        left_toe_direction = left_toe_rotation @ (front_contact_pt - rear_contact_pt)
         left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
         
-        toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+        right_toe_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        right_toe_direction = right_toe_rotation @ (front_contact_pt - rear_contact_pt)
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
@@ -295,8 +321,8 @@ class RewardSystem(LeafSystem):
 
         self.prev_fsm = fsm.copy()
     
-        reward = 0.2 * LQRreward + 0.4 * vx_reward + 0.2 * vy_reward + 0.2 * angular_reward \
-                - (left_penalty + right_penalty) - track_penalty - 0.2 * ud_penalty
+        reward = 0.25 * LQRreward + 0.75 * vx_reward + 0.25 * vy_reward + 0.25 * angular_reward \
+                - (left_penalty + right_penalty) - track_penalty - 0.5 * ud_penalty# - 0.25 * np.linalg.norm(footstep_command[3]) - 0.5 * yaw_rad
 
         # reward normalize to 0 ~ 1
         #reward = 0.3*(LQRreward + track_reward + velocity_reward) + 0.1*angular_reward
@@ -680,7 +706,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(self.controller_plant, noise=False, simulate_perception=self.params.simulate_perception)
+        obs_pub = ObservationPublisher(self.controller_plant, noise=True, simulate_perception=self.params.simulate_perception)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd

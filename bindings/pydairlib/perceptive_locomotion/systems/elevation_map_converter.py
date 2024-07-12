@@ -292,7 +292,8 @@ class ElevationMappingConverter(LeafSystem):
     def get_heightmap(self, robot_state: np.ndarray,
                       stance: Stance,
                       grid_map: GridMap,
-                      center: np.ndarray = np.zeros((3,))) -> np.ndarray:
+                      center: np.ndarray = np.zeros((3,)), 
+                      adverserial_offset: np.ndarray = np.zeros((2,))) -> np.ndarray:
         stance_pos = self.stance_pos_in_world(robot_state, stance)
 
         heightmap = CalcHeightMapInStanceFrame(
@@ -304,7 +305,8 @@ class ElevationMappingConverter(LeafSystem):
             stance_pos=stance_pos,
             center=center,
             xgrid_stance_frame=self.xgrid,
-            ygrid_stance_frame=self.ygrid
+            ygrid_stance_frame=self.ygrid, 
+            adverserial_offset=adverserial_offset
         )
 
         coordinates = np.argwhere(~np.isnan(heightmap)) # Coordinates of known values

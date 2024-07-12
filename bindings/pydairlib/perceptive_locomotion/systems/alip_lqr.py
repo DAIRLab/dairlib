@@ -134,7 +134,7 @@ class AlipFootstepLQR(LeafSystem):
 
         self.output_port_indices = {
             'footstep_command': self.DeclareVectorOutputPort(
-                "footstep_command", 3, self.calculate_optimal_footstep
+                "footstep_command", 3, self.calculate_optimal_footstep #
             ).get_index(),
             'lqr_reference': self.DeclareVectorOutputPort(
                 "xd_ud[x,y]", 6, self.calc_lqr_reference

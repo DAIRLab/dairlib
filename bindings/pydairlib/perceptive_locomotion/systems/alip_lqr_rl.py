@@ -245,10 +245,10 @@ class AlipFootstepLQR(LeafSystem):
             some book-keeping to get the appropriate states and deal with
             left/right stance.
         """
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        ud = xd_ud[4:]
-        x = self.get_output_port_by_name('x').Eval(context)
+        # xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        # xd = xd_ud[:4]
+        # ud = xd_ud[4:]
+        # x = self.get_output_port_by_name('x').Eval(context)
         # footstep_command = np.zeros((3,))
         # footstep_command[:2] = ud - self.K @ (x - xd) ##### <--- self.K @ (x - xd)
 

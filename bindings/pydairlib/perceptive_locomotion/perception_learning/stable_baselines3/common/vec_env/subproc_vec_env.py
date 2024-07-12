@@ -23,7 +23,7 @@ def _worker(
     env_fn_wrapper: CloudpickleWrapper,
 ) -> None:
     # Import here to avoid a circular import
-    from stable_baselines3.common.env_util import is_wrapped
+    from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_util import is_wrapped
 
     parent_remote.close()
     env = _patch_env(env_fn_wrapper.var())
@@ -103,6 +103,7 @@ class SubprocVecEnv(VecEnv):
             # a `if __name__ == "__main__":`)
             forkserver_available = "forkserver" in mp.get_all_start_methods()
             start_method = "forkserver" if forkserver_available else "spawn"
+        # print(start_method)
         ctx = mp.get_context(start_method)
 
         self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(n_envs)])
@@ -126,18 +127,10 @@ class SubprocVecEnv(VecEnv):
         self.waiting = True
 
     def step_wait(self) -> VecEnvStepReturn:
-        try:
-            results = [remote.recv() for remote in self.remotes]
-        except EOFError:
-            print("EOFError!!")
-            print(self.remotes)
-            results = []
+        results = [remote.recv() for remote in self.remotes]
         self.waiting = False
-        if results:
-            obs, rews, dones, infos, self.reset_infos = zip(*results)  # type: ignore[assignment]
-            return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos  # type: ignore[return-value]
-        else:
-            return None, None, None, None
+        obs, rews, dones, infos, self.reset_infos = zip(*results)  # type: ignore[assignment]
+        return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos  # type: ignore[return-value]
         
     def reset(self) -> VecEnvObs:
         for env_idx, remote in enumerate(self.remotes):

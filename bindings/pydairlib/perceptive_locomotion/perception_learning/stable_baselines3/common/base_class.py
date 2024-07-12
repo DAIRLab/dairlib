@@ -735,7 +735,7 @@ class BaseAlgorithm(ABC):
         )
 
         # load parameters
-        #data["_n_updates"] = 0 # Start updates at 0
+        data["_n_updates"] = 0 # Start updates at 0
         model.__dict__.update(data)
         model.__dict__.update(kwargs)
         model._setup_model()

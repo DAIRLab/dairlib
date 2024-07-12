@@ -304,6 +304,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_swing_ft_tracking_error(),
                 'swing_ft_tracking_error'
             ),
+            'pelvis_yaw': builder.ExportOutput(
+                self.controller.get_output_port_pelvis_yaw(),
+                'pelvis_yaw'
+            ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'

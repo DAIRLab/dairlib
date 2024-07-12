@@ -324,7 +324,15 @@ def plot_terrain(file_path: str = './flat_stair_flat.yaml'):
     plt.show()
 
 if __name__ == '__main__':
-    file_path = './terrain/ustair_0.yaml'
+    #file_path = './terrain/easy/flat_0.yaml'
+    #file_path = './terrain/easy/dstair_0.yaml'
+    #file_path = './terrain/easy/ustair_0.yaml'
+    #file_path = './terrain/medium/flat_0.yaml'
+    #file_path = './terrain/medium/dstair_0.yaml'
+    #file_path = './terrain/medium/ustair_0.yaml'
+    #file_path = './terrain/hard/flat_0.yaml'
+    #file_path = './terrain/hard/dstair_0.yaml'
+    file_path = './terrain/hard/ustair_0.yaml'
     plot_terrain(file_path=file_path)
     
     #flat_terrain(init_y = 15, init_x = -2.5, end_x = 21)

@@ -106,7 +106,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
             optimizer_class,
             optimizer_kwargs,
         )
-        self.MTL = True ##
+        self.MTL = False ##
         self.lstm_kwargs = lstm_kwargs or {}
         self.shared_lstm = shared_lstm # Do not share LSTM
         self.enable_critic_lstm = enable_critic_lstm # True

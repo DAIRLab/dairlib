@@ -72,20 +72,18 @@ def sample(sim_params):
 def run_play(sim_params, model_path=None):
     sim_params.visualize = True
     sim_params.meshcat = Meshcat()
-    #terrain = 'params/stair_curriculum.yaml'
-    #sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     env = gym.make("DrakeCassie-v0",
                     sim_params = sim_params,
                     )
-    rate = 1.0
-    env.simulator.set_target_realtime_rate(rate)
+    # rate = 1.0
+    # env.simulator.set_target_realtime_rate(rate)
     max_steps = 3e4
     
     lstm=True
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
-    
-    model_path = 'RPPO_multitask.zip'
+
+    model_path = 'RPPO_mirror1281.zip'
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()

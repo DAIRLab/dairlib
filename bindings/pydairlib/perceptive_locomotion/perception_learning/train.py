@@ -374,7 +374,7 @@ def _run_training(config, args):
         env = make_vec_env(
                            env_name,
                            n_envs=num_env,
-                           #seed=0,
+                           seed=42,
                            vec_env_cls=SubprocVecEnv,
                            env_kwargs={
                             'sim_params': sim_params_train,
@@ -382,7 +382,7 @@ def _run_training(config, args):
                            #vec_env_kwargs=dict(start_method="spawn")
                            )
         env = VecNormalize(venv=env, norm_obs=False)
-        #check_env(env)
+        # check_env(env)
     else:
         input("Testing...")
         sim_params_train.visualize = False
@@ -395,11 +395,11 @@ def _run_training(config, args):
     if args.test:
         model = RecurrentPPO(
             policy_type, env, learning_rate = linear_schedule(3e-4), n_steps=int(512/num_env), n_epochs=10,
-            batch_size=16*num_env, ent_coef=0.01, use_sde=True, verbose=1,
+            batch_size=16*num_env, ent_coef=0.01, use_sde=False, verbose=1,
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'RPPO_multitask1.zip'
+        model_path = 'RPPO_mirror128.zip'
 
         # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
@@ -408,18 +408,18 @@ def _run_training(config, args):
         #                 tensorboard_log=tensorboard_log)
 
         model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-5), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.1, ent_coef=0.0, target_kl = .02, vf_coef=0.15, clip_range_vf=None,
-                        n_steps=int(512), n_epochs=10,
-                        batch_size=64*num_env, seed=42, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+                        clip_range = 0.1, ent_coef=0.0, target_kl = .1, vf_coef=0.2, clip_range_vf=None,
+                        n_steps=int(64), n_epochs=5,
+                        batch_size=64, seed=42, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    #sim_params_eval.visualize = True
-    #sim_params_eval.meshcat = Meshcat()
-    sim_params_train.visualize = False
-    sim_params_train.meshcat = None
-    eval_env = gym.make(env_name, sim_params = sim_params_eval,)
+    sim_params_eval.visualize = True
+    sim_params_eval.meshcat = Meshcat()
+    # sim_params_eval.visualize = False
+    # sim_params_eval.meshcat = None
+    eval_env = gym.make(env_name, sim_params = sim_params_eval, random_terrain=False)
 
     eval_env = DummyVecEnv([lambda: eval_env])
     eval_env = VecNormalize(venv=eval_env, norm_obs=False)
@@ -438,7 +438,7 @@ def _run_training(config, args):
         name_prefix="rl_model",
     )
 
-    callback = CallbackList([checkpoint_callback])
+    callback = CallbackList([checkpoint_callback, eval_callback])
 
     input("Start learning...")
 
@@ -448,14 +448,13 @@ def _run_training(config, args):
     )
 
     model.save("latest_model")
-    eval_env.close()
+    #eval_env.close()
 
 def _main():
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--debug', action='store_true')
     parser.add_argument('--log_path', help="path to the logs directory.",
                         default="./rl/tmp/DrakeCassie/")
     args = parser.parse_args()
@@ -463,7 +462,7 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 20
+        num_env = 1
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
@@ -475,6 +474,9 @@ def _main():
         "model_save_freq": 3000,
         "sim_params" : sim_params
     }
+
+    #th.set_num_threads(32)
+    #print(th.get_num_threads())
     _run_training(config, args)
 
 if __name__ == '__main__':

@@ -27,7 +27,8 @@ PYBIND11_MODULE(utils, m) {
       const Eigen::Ref<Eigen::Vector3d>& stance_pos,
       const Eigen::Ref<Eigen::Vector3d>& center,
       const Eigen::Ref<Eigen::VectorXd>& xgrid_stance_frame,
-      const Eigen::Ref<Eigen::VectorXd>& ygrid_stance_frame) {
+      const Eigen::Ref<Eigen::VectorXd>& ygrid_stance_frame, 
+      const Eigen::Ref<Eigen::Vector2d>& adverserial_offset) {
 
     Eigen::Vector3d body_x =
       plant->GetBodyByName(body_name).EvalPoseInWorld(*context).rotation().col(0);
@@ -48,7 +49,7 @@ PYBIND11_MODULE(utils, m) {
             cyaw * (xgrid_stance_frame(row) + center(0)) - syaw * (ygrid_stance_frame(col) + center(1)),
             syaw * (xgrid_stance_frame(row) + center(0)) + cyaw * (ygrid_stance_frame(col) + center(1))
         ) + stance_pos.head<2>();
-
+        q = q + adverserial_offset;
         if (grid_map->isInside(q)) {
           hmap(row, col) = grid_map->atPosition(layer, q, InterpolationMethods::INTER_NEAREST) - stance_pos(2);
         }
@@ -59,7 +60,7 @@ PYBIND11_MODULE(utils, m) {
   }, py::arg("grid_map"), py::arg("layer"),
      py::arg("plant"), py::arg("plant_context"), py::arg("floating_base_body_name"),
      py::arg("stance_pos"), py::arg("center"), py::arg("xgrid_stance_frame"),
-     py::arg("ygrid_stance_frame"));
+     py::arg("ygrid_stance_frame"), py::arg("adverserial_offset"));
 
 }
 

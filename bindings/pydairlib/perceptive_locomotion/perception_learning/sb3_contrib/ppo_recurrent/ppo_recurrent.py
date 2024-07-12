@@ -138,7 +138,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
             self._setup_model()
 
     def _setup_model(self) -> None:
-        self.MTL = True # Multi-task Learning
+        self.MTL = False # Multi-task Learning
         self.mirror = True # Mirror Loss
         self._setup_lr_schedule()
         self.set_random_seed(self.seed)
@@ -283,9 +283,9 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     
                     mirror_obs_tensor = th.cat((obs_tensor[:, :64*64].clone(), y_pos, image, ALIP, vdes, joint, obs_tensor[:, 3*64*64+6+16:].clone()), dim=1)
                     if self.MTL:
-                        mirror_actions, mirror_values, _, mirror_lstm_states, _ = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts)
+                        mirror_actions, _, _, mirror_lstm_states, _ = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts)
                     else:
-                        mirror_actions, mirror_values, _, mirror_lstm_states = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts) 
+                        mirror_actions, _, _, mirror_lstm_states = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts) 
                     mirror_actions = mirror_actions.cpu().numpy()
 
             actions = actions.cpu().numpy()
@@ -473,8 +473,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 entropy_losses.append(entropy_loss.item())
                 if self.MTL:
                     multi_loss = th.mean(((rollout_data.observations[:, 3*64*64+6+16+7:3*64*64+6+16+23] - multi_task)**2)[mask])
+                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + multi_loss
                     multi_losses.append(multi_loss.item())
-                    loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + 0.5 * multi_loss
                 else:
                     loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
                     # loss = self.ent_coef * entropy_loss + value_loss
@@ -483,8 +483,9 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     mirror_actions = rollout_data.mirror_actions
                     mirror_actions[:, 1] = -mirror_actions[:, 1] # y
                     mirror_loss = th.mean(((actions - mirror_actions)**2)[mask])
-                    mirror_losses.append(0.5 * mirror_loss.item())
-                    loss += 0.5 * mirror_loss
+
+                    mirror_losses.append(mirror_loss.item())
+                    loss += mirror_loss
                     
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417

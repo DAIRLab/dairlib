@@ -47,7 +47,7 @@ class CumulativeCost(LeafSystem):
                 "time_until_switch", 1
             ).get_index(),
             'footstep_command': self.DeclareVectorInputPort(
-                'footstep_command', 3
+                'footstep_command', 3 #
             ).get_index()
         }
 

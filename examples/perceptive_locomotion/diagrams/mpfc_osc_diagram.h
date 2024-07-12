@@ -126,6 +126,9 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   [[nodiscard]] const OutputPort<double>& get_output_port_swing_ft_tracking_error() const {
     return get_output_port(output_port_swing_ft_traj_tracking_error_);
   }
+  [[nodiscard]] const OutputPort<double>& get_output_port_pelvis_yaw() const {
+    return get_output_port(output_port_pelvis_yaw_); // pelvis yaw
+  }
   const drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
@@ -219,6 +222,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_switching_time_;
   drake::systems::OutputPortIndex output_port_alip_;
   drake::systems::OutputPortIndex output_port_swing_ft_traj_tracking_error_;
+  drake::systems::OutputPortIndex output_port_pelvis_yaw_;
 };
 
 }

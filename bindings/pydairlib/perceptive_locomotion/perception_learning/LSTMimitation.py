@@ -152,7 +152,7 @@ class InitialBatchNorm(nn.Module):
         return x
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 96, last_layer_dim_vf: int = 96):
+    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
         super(CustomNetwork, self).__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
@@ -169,27 +169,22 @@ class CustomNetwork(nn.Module):
         n_input_channels = 3
 
         self.actor_cnn = nn.Sequential(
-            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
@@ -199,61 +194,24 @@ class CustomNetwork(nn.Module):
             nn.Tanh(),
             nn.Linear(256, 64),
         )
-
-        # self.critic_cnn = nn.Sequential(
-        #     #InitialBatchNorm(),
-        #     nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-        #     #nn.BatchNorm2d(16),
-        #     nn.LeakyReLU(),
-        #     nn.MaxPool2d(kernel_size=2, stride=2),
-
-        #     ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
-        #         nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-        #         #nn.BatchNorm2d(32)
-        #         )),
-        #     nn.MaxPool2d(kernel_size=2, stride=2),
-
-        #     ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
-        #         nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-        #         #nn.BatchNorm2d(48)
-        #         )),
-        #     nn.MaxPool2d(kernel_size=2, stride=2),
-
-        #     ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
-        #         nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-        #         #nn.BatchNorm2d(64)
-        #         )),
-
-        #     nn.Flatten(),
-        #     nn.Linear(64*2*2, 512),
-        #     nn.Tanh(),
-        #     nn.Linear(512, 256),
-        #     nn.Tanh(),
-        #     nn.Linear(256, 64),
-        # )
 
         self.critic_cnn_gt = nn.Sequential(
-            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
@@ -264,10 +222,10 @@ class CustomNetwork(nn.Module):
             nn.Linear(256, 64),
         )
 
-        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=96, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=96, num_layers=2, batch_first=False)
+        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=128, num_layers=2, batch_first=False)
+        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=128, num_layers=2, batch_first=False)
 
-        self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
+        #self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
 
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
@@ -289,22 +247,17 @@ class CustomNetwork(nn.Module):
 
     def multihead_critic(self, observations: th.Tensor):
         batch_size = observations.size(0)
-        #image_obs = observations[:, :3*self.h_size*self.h_size].reshape(batch_size, 3, self.h_size, self.h_size)
         image_obs_gt = observations[:, -3*self.h_size*self.h_size:].reshape(batch_size, 3, self.h_size, self.h_size)
-
         state = th.cat((observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6], \
         observations[:, 3*self.h_size*self.h_size+6+16:3*self.h_size*self.h_size+6+16+23]), dim=1)
-
-        #critic_cnn_output = self.critic_cnn(image_obs)
         critic_cnn_output_gt = self.critic_cnn_gt(image_obs_gt)
-        
-        #critic_combined_features = th.cat((critic_cnn_output, critic_cnn_output_gt, state), dim=1).unsqueeze(1)
         critic_combined_features = th.cat((critic_cnn_output_gt, state), dim=1).unsqueeze(1)
+
         return critic_combined_features
     
-    def multitask_actor(self, features: th.Tensor) -> th.Tensor:
-        multitask_outputs = self.actor_multitask(features)
-        return multitask_outputs
+    # def multitask_actor(self, features: th.Tensor) -> th.Tensor:
+    #     multitask_outputs = self.actor_multitask(features)
+    #     return multitask_outputs
 
 # LSTM forward is done in RecurrentActorCriticPolicy
 class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
@@ -313,7 +266,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_hidden_size: int = 96,
+        lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         optimizer_class= th.optim.RAdam,#th.optim.Adam,
         optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
@@ -325,7 +278,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
             observation_space,
             action_space,
             lr_schedule,
-            lstm_hidden_size = 96,
+            lstm_hidden_size = 128,
             n_lstm_layers = 2,
             *args,
             **kwargs,
@@ -376,7 +329,7 @@ def pretrain_agent(
     patience = 5,
     min_delta=0.0000000001
 ):
-    MTL = True # Multi-task Learning
+    MTL = False # Multi-task Learning
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
     device = th.device("cuda" if use_cuda else "cpu")
@@ -396,7 +349,7 @@ def pretrain_agent(
     #     print(f"{name}: {num_params} parameters")
 
     # print(f"Total number of parameters: {total_params}")
-    # print(model)
+    print(model)
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
@@ -492,7 +445,7 @@ def pretrain_agent(
                     action, _, _, states = model.forward(sequence_data, states, episode_starts, deterministic=True)
                 
                 ### Mirror ###
-                mirror_action, _, _, mirror_states, _ = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
+                mirror_action, _, _, mirror_states = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
                 mirror_action[:, 1] = -mirror_action[:, 1]
 
                 if (i+1 == sequences.size(1)):
@@ -512,8 +465,8 @@ def pretrain_agent(
                     batch_multi_loss += 0.3 * multi_loss
                     batch_mirror_loss += 0.3 * mirror_loss
                 else:
-                    batch_loss += loss + 0.3 * mirror_loss
-                    batch_mirror_loss += 0.3 * mirror_loss
+                    batch_loss += loss + mirror_loss
+                    batch_mirror_loss += mirror_loss
             
             batch_loss.backward()
             optimizer.step()
@@ -533,7 +486,7 @@ def pretrain_agent(
                     f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tLoss: {current_multi_loss*0.1:.6f}")
                 else:
                     print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
-                    f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tLoss: {current_mirror_loss:.6f}")
+                    f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tMirror Loss: {current_mirror_loss:.6f}")
 
         return np.mean(total_loss)
 
@@ -650,12 +603,14 @@ def _main():
 
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
     student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
-    #student = RecurrentPPO.load('RPPO_multitask1.zip', env)
+    student = RecurrentPPO.load('RPPO_mirror1282.zip', env)
     obs_data = path.join(perception_learning_base_folder, 'tmp/observations_new1.npy')
     action_data = path.join(perception_learning_base_folder, 'tmp/actions_new1.npy')
 
     expert_observations = np.load(obs_data)
     expert_actions = np.load(action_data)
+    #expert_actions = np.hstack((expert_actions, -np.zeros((expert_actions.shape[0], 1))))
+
     train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=.8)
     print(f"Total Dataset: {len(expert_observations)}, Train Dataset: {len(train_expert_dataset)}, Test Dataset: {len(test_expert_dataset)}")
 
@@ -672,10 +627,10 @@ def _main():
         seed=77,
         train_batch_size=400,
         test_batch_size=400,
-        patience=5,
+        patience=15,
     )
 
-    student.save("RPPO_multitask2")
+    student.save("RPPO_mirror1283")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

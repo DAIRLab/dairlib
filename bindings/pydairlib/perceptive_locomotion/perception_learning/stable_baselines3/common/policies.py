@@ -693,14 +693,20 @@ class ActorCriticPolicy(BasePolicy):
         :return: Action distribution
         """
         mean_actions = self.action_net(latent_pi)
-        self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6], device='cuda:0')) # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m]
+        self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6,], device='cuda:0'))
+        
+        # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m, 0.1rad] Initialize with log_std
+        #self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6, -2.3], device='cuda:0'))
+        
+        # 2sigma(95.4%) -> [0.1m, 0.1m, 0.05m, 0.5rad] Initialize with log_std
+        # sigma -> [0.05m, 0.05m, 0.025m, 0.25rad]
+        #self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6, -1.38], device='cuda:0'))
 
         if rpo:
             z = th.FloatTensor(mean_actions.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)#.to(device)
             mean_actions = mean_actions + z.to(mean_actions.device)
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
-            #self.log_std = nn.Parameter(th.tensor([-1.6860, -1.8651, -1.7630], device='cuda:0'))
             #print(self.log_std)
             #print(self.action_dist.proba_distribution(mean_actions, self.log_std).entropy()[0])
             return self.action_dist.proba_distribution(mean_actions, self.log_std)

@@ -61,7 +61,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     controller = sim_env.AddToBuilderWithFootstepController(
         builder, AlipFootstepNNLQR, model_path=checkpoint_path, elevation_map=simulate_perception
     )
-    cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
+    #cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
 
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
 
@@ -128,18 +128,13 @@ def check_termination(sim_env, diagram_context, time) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    if right_angle > 0.3 or left_angle > 0.3:
-        print(right_angle)
-        print(left_angle)
-        input("==")
-    return z1 < 0.2 or z2 < 0.2 #or left_angle > 0.4 or right_angle > 0.4# or (track_error > 0.7 and time > 2)
+    return z1 < 0.2 or z2 < 0.2
 
 def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            #'tmp/index/initial_conditions_2.npz'
             'tmp/ic_new.npz'
         )
     )
@@ -218,6 +213,9 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     # print(xnew)
     # input("=====")
 
+    plant = sim_env.cassie_sim.get_plant()
+    plant_context = plant.GetMyContextFromRoot(context)
+
     simulator.reset_context(context)
     ALIPtmp = []
     FOOTSTEPtmp = []
@@ -228,6 +226,9 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     ACTtmp = []
     terminate = False
     time = 0.0
+
+    from scipy.spatial.transform import Rotation as R
+
     for i in range(1, 401): # 20 seconds
         if check_termination(sim_env, context, time):
             terminate = True
@@ -247,7 +248,16 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             
             #sim_context = sim_env.GetMyMutableContextFromRoot(diagram_context)
             track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
-
+            # yaw = sim_env.get_output_port_by_name('pelvis_yaw').Eval(sim_context)
+            
+            # fb_frame = plant.GetBodyByName("pelvis").body_frame()
+            # fb_matrix = fb_frame.CalcPoseInWorld(plant_context).rotation().matrix()
+            # fb_dir = np.dot(fb_matrix[:, 0] ,np.array([1, 0, 0]))
+            # rotation = R.from_matrix(fb_matrix)
+            # euler_angles = rotation.as_euler('xyz', degrees=False)
+            # print(np.linalg.norm(euler_angles[2]))
+            # print(fb_dir)
+            
             # Depth map
             dmap_query = controller.EvalAbstractInput(
                 controller_context, controller.input_port_indices['height_map']
@@ -350,7 +360,7 @@ def main():
 
     random_terrain = True
 
-    print("Starting...")
+    input("Starting...")
 
     for i in range(100):
         if random_terrain:
@@ -379,7 +389,9 @@ def main():
                     terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
         else:
             terrain = 'params/stair_curriculum.yaml'
-        
+        #terrain = 'params/hard/stair_up/ustair_1.yaml'
+        #terrain = 'params/new/flat/flat_11.yaml'
+        terrain = 'params/flat.yaml'
         #os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)

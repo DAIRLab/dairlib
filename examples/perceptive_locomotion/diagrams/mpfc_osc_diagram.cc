@@ -20,7 +20,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/framework/diagram_builder.h"
-
+#include "drake/systems/primitives/demultiplexer.h"
 
 namespace dairlib::perceptive_locomotion {
 
@@ -122,7 +122,9 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
   auto fsm = builder.AddSystem<FsmReceiver>(plant);
-
+//   std::vector<int> output_size = {3, 1};
+//   auto demux = builder.AddSystem<drake::systems::Demultiplexer<double>>(output_size);
+  
   if (input_type_ == MpfcOscDiagramInputType::kFootstepCommand) {
     auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
     auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
@@ -150,7 +152,13 @@ MpfcOscDiagram::MpfcOscDiagram(
 
     input_port_footstep_command_ = builder.ExportInput(
         footstep_passthrough->get_input_port_footstep(), "footstep"
-    );
+    ); // Yaw command
+
+    // input_port_footstep_command_ = builder.ExportInput(
+    //        demux->get_input_port(), "footstep"
+    // );
+    // builder.Connect(demux->get_output_port(0),
+    //     footstep_passthrough->get_input_port_footstep());
 
   } else {
     builder.Connect(mpc_receiver->get_output_port_fsm(),
@@ -171,7 +179,9 @@ MpfcOscDiagram::MpfcOscDiagram(
   builder.Connect(state_receiver->get_output_port(),
                   head_traj_gen->get_input_port_state());
   builder.Connect(high_level_command->get_output_port_yaw(),
-                  head_traj_gen->get_input_port_yaw());
+                  head_traj_gen->get_input_port_yaw()); // yaw command
+//   builder.Connect(demux->get_output_port(1),
+//                   head_traj_gen->get_input_port_yaw());
   builder.Connect(state_receiver->get_output_port(),
                   pitch_traj_gen->get_state_input_port());
   builder.Connect(mpc_receiver->get_output_port_pitch(),
@@ -515,6 +525,10 @@ MpfcOscDiagram::MpfcOscDiagram(
   );
   output_port_switching_time_ = builder.ExportOutput(
       fsm->get_output_port_time_until_switch(), "time_until_switch"
+  );
+  // pelvis yaw
+  output_port_pelvis_yaw_ = builder.ExportOutput(
+      high_level_command->get_output_port_yaw(), "pelvis_yaw"
   );
   output_port_swing_ft_traj_tracking_error_ = builder.ExportOutput(
       osc->get_output_port_tracking_error("swing_ft_traj"), "swing_ft_traj_tracking_error"

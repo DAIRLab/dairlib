@@ -98,10 +98,12 @@ def make_vec_env(
                 kwargs.update(env_kwargs)
                 try:
                     env = gym.make(spec, **kwargs)  # type: ignore[arg-type]
+                    #env = gym.make(env_id, **kwargs)
                 except TypeError:
-                    #env = gym.make(spec, **env_kwargs)
+                    env = gym.make(spec, **env_kwargs)
+                    #env = gym.make(env_id, **env_kwargs)
                     #print("env_kwargs")
-                    env = spec.make(**env_kwargs)
+                    #env = spec.make(**env_kwargs)
             else:
                 env = env_id(**env_kwargs)
                 # Patch to support gym 0.21/0.26 and gymnasium

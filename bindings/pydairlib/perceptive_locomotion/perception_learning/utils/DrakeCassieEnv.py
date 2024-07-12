@@ -66,25 +66,25 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
 
-    cost = False
-    if cost:
-        cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
-        cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
-        cost_logger = VectorLogSink(1)
-        builder.AddSystem(cost_zoh)
-        builder.AddSystem(cost_logger)
-        builder.Connect(
-            cost_system.get_output_port(),
-            cost_zoh.get_input_port()
-        )
-        builder.Connect(
-            cost_zoh.get_output_port(),
-            cost_logger.get_input_port()
-        )
-    else:
-        cost_logger = 0
+    # cost = False
+    # if cost:
+    #     cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
+    #     cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
+    #     cost_logger = VectorLogSink(1)
+    #     builder.AddSystem(cost_zoh)
+    #     builder.AddSystem(cost_logger)
+    #     builder.Connect(
+    #         cost_system.get_output_port(),
+    #         cost_zoh.get_input_port()
+    #     )
+    #     builder.Connect(
+    #         cost_zoh.get_output_port(),
+    #         cost_logger.get_input_port()
+    #     )
+    # else:
+    #     cost_logger = 0
     
-    # freq = np.random.uniform(low=1.0/50.0, high=1.0/20.0)
+    # freq = np.random.uniform(low=0.01, high=0.05)
     # print(f'Zero Order Hold : {freq}')
     # footstep_zoh = ZeroOrderHold(freq, 3)#ZeroOrderHold(1.0 / 30.0, 3)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
@@ -102,7 +102,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     diagram = builder.Build()
 
     #DrawAndSaveDiagramGraph(diagram, '../CassieEnv')
-    return sim_env, controller, diagram, cost_logger
+    return sim_env, controller, diagram#, cost_logger
 
 def reset_handler(simulator, seed):
     np.random.seed(seed)
@@ -129,7 +129,7 @@ def reset_handler(simulator, seed):
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([0.5, 0.01]).flatten()
+
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -155,43 +155,55 @@ def reset_handler(simulator, seed):
     simulator.Initialize()
     return context
 
-def simulate_init(sim_params, random_terrain = False):
+def simulate_init(sim_params, random_terrain = True):
     if random_terrain:
-        rand = np.random.randint(1, 2)
-        if rand == 1:
+        rand = np.random.randint(1, 5)
+        if rand in [1,2,3]:
             rand = np.random.randint(1, 13)
-            if rand in [1,2,3,4]:
-                rand = np.random.randint(0, 1000)
+            if rand in [1,2,3]:
+                rand = np.random.randint(0, 300)
                 terrain = f'params/easy/stair_down/dstair_{rand}.yaml'
-            elif rand in [5,6,7,8]:#,9]:
-                rand = np.random.randint(0, 1000)
+            elif rand in [4,5,6]:
+                rand = np.random.randint(0, 300)
                 terrain = f'params/easy/stair_up/ustair_{rand}.yaml'
-            else:
-                rand = np.random.randint(0, 1000)
+            else: # 9,10,11,12
+                rand = np.random.randint(0, 300)
                 terrain = f'params/medium/flat/flat_{rand}.yaml'
         else:    
             rand = np.random.randint(1, 13)
-            if rand in [1,2,3,4]:
-                rand = np.random.randint(0, 1000)
+            if rand in [1,2,3]:
+                rand = np.random.randint(0, 300)
                 terrain = f'params/medium/stair_down/dstair_{rand}.yaml'
-            elif rand in [5,6,7,8]:#,9]:
-                rand = np.random.randint(0, 1000)
+            elif rand in [4,5,6]:
+                rand = np.random.randint(0, 300)
                 terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
             else:
-                rand = np.random.randint(0, 1000)
+                rand = np.random.randint(0, 300)
                 terrain = f'params/new/flat/flat_{rand}.yaml'
         #terrain = 'params/stair_curriculum.yaml'
         #terrain = 'params/easy/flat/flat_0.yaml'
         #terrain = f'params/new/flat/flat_222.yaml'
         #terrain = f'params/new/flat/flat_122.yaml'
         #terrain = f'params/new/flat/flat_22.yaml'
+    else:
+        print('eval...')
+        terrain = 'params/new/flat/flat_11.yaml'
+    print(terrain)
+    #terrain = 'params/new/stair_up/ustair_1.yaml'
+    #terrain = 'params/hard/flat/flat_3.yaml'
+    #terrain = 'params/flat.yaml'
+    #terrain = 'params/medium/flat/flat_333.yaml'
+    #terrain = 'params/stair_curriculum.yaml'
+    #terrain = 'params/new/flat/flat_11.yaml'
+    #terrain = 'params/medium/stair_up/ustair_0.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-    sim_env, controller, diagram, cost_logger = build_diagram(sim_params)
+    #sim_env, controller, diagram, cost_logger = build_diagram(sim_params)
+    sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 10
+        time_limit = 15
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
@@ -217,19 +229,19 @@ def simulate_init(sim_params, random_terrain = False):
         #     return EventStatus.ReachedTermination(diagram, "Tracking error Limit")
 
         if context.get_time() > time_limit:
-            print("Time Limit")
+            #print("Time Limit")
             #print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
             #print("Left Toe")
-            print(context.get_time())
+            #print(context.get_time())
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             #print("Right Toe")
-            print(context.get_time())
+            #print(context.get_time())
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         return EventStatus.Succeeded()
@@ -238,13 +250,13 @@ def simulate_init(sim_params, random_terrain = False):
 
     return simulator
 
-def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
+def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions, random_terrain=True):
     
     # sim_params.visualize = True
     # sim_params.meshcat = Meshcat()
 
-    random_terrain = True
-    simulator = simulate_init(sim_params, random_terrain=random_terrain)
+    # random_terrain = True
+    # simulator = simulate_init(sim_params, random_terrain=random_terrain)
     
     # Define Action and Observation space.
     la = np.array([-1., -1., -1.])
@@ -261,7 +273,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     time_step = 0.05
     
     env = DrakeGymEnv(
-        simulator=simulator,
+        simulator=simulate_init,
         time_step=time_step,
         action_space=action_space,
         observation_space=observation_space,

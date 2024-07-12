@@ -58,7 +58,7 @@ PYBIND11_MODULE(utils, m) {
   }, py::arg("grid_map"), py::arg("layer"),
      py::arg("plant"), py::arg("plant_context"), py::arg("floating_base_body_name"),
      py::arg("stance_pos"), py::arg("center"), py::arg("xgrid_stance_frame"),
-     py::arg("ygrid_stance_frame"), py::arg("adverserial_offset"));
+     py::arg("ygrid_stance_frame"));
 
 }
 

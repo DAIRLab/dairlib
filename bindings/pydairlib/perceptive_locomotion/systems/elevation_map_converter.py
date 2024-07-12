@@ -303,10 +303,9 @@ class ElevationMappingConverter(LeafSystem):
             plant_context=self.plant_context,
             floating_base_body_name="pelvis",
             stance_pos=stance_pos,
-            center=center,
+            center=center + adverserial_offset,
             xgrid_stance_frame=self.xgrid,
             ygrid_stance_frame=self.ygrid, 
-            adverserial_offset=adverserial_offset
         )
 
         coordinates = np.argwhere(~np.isnan(heightmap)) # Coordinates of known values

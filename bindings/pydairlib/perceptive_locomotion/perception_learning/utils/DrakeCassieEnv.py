@@ -123,13 +123,13 @@ def reset_handler(simulator, seed):
     )
     
     datapoint = ic_generator.random()
-    #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
+    datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
     v_des_theta = 0.1
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
+    datapoint['desired_velocity'] = np.array([0.5, 0.01]).flatten()
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -161,32 +161,31 @@ def simulate_init(sim_params, random_terrain = True):
         if rand in [1,2,3]:
             rand = np.random.randint(1, 13)
             if rand in [1,2,3]:
-                rand = np.random.randint(0, 300)
+                rand = np.random.randint(0, 500)
                 terrain = f'params/easy/stair_down/dstair_{rand}.yaml'
             elif rand in [4,5,6]:
-                rand = np.random.randint(0, 300)
+                rand = np.random.randint(0, 500)
                 terrain = f'params/easy/stair_up/ustair_{rand}.yaml'
             else: # 9,10,11,12
-                rand = np.random.randint(0, 300)
-                terrain = f'params/medium/flat/flat_{rand}.yaml'
+                rand = np.random.randint(0, 500)
+                terrain = f'params/easy/flat/flat_{rand}.yaml'
         else:    
             rand = np.random.randint(1, 13)
             if rand in [1,2,3]:
-                rand = np.random.randint(0, 300)
+                rand = np.random.randint(0, 500)
                 terrain = f'params/medium/stair_down/dstair_{rand}.yaml'
             elif rand in [4,5,6]:
-                rand = np.random.randint(0, 300)
+                rand = np.random.randint(0, 500)
                 terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
             else:
-                rand = np.random.randint(0, 300)
-                terrain = f'params/new/flat/flat_{rand}.yaml'
+                rand = np.random.randint(0, 500)
+                terrain = f'params/medium/flat/flat_{rand}.yaml'
         #terrain = 'params/stair_curriculum.yaml'
         #terrain = 'params/easy/flat/flat_0.yaml'
         #terrain = f'params/new/flat/flat_222.yaml'
         #terrain = f'params/new/flat/flat_122.yaml'
         #terrain = f'params/new/flat/flat_22.yaml'
     else:
-        print('eval...')
         terrain = 'params/new/flat/flat_11.yaml'
     print(terrain)
     #terrain = 'params/new/stair_up/ustair_1.yaml'
@@ -203,7 +202,7 @@ def simulate_init(sim_params, random_terrain = True):
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 15
+        time_limit = 10
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)

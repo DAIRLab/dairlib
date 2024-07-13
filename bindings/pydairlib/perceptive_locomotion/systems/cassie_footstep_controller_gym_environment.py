@@ -134,21 +134,32 @@ class ObservationPublisher(LeafSystem):
                 np.array([ud[0], ud[1], 0])
             )
 
+            # Plot ground truth height map
+            # gt_hmap_query.plot_surface(
+            #     "hmap", gt_hmap_grid_world[0], gt_hmap_grid_world[1],
+            #     gt_hmap_grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
+
         hmap_query = self.EvalAbstractInput(
             context, self.input_port_indices['height_map']
         ).get_value()
+        
+        if self.noise:
+            if self.init_ == 0:
+                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+            # X, Y offset : Shifts the camera 
+            camera_step_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
+            adverserial_offset = self.camera_episode_noise + camera_step_noise
+        else:
+            adverserial_offset = np.zeros(2,)
+        
         hmap = hmap_query.calc_height_map_stance_frame(
-            np.array([ud[0], ud[1], 0])
+            np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
         )
         
         # Visualize grid map @ stance frame
         hmap_grid_world = hmap_query.calc_height_map_world_frame(
-            np.array([ud[0], ud[1], 0])
+            np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
         )
-        
-        # hmap_query.plot_surface(
-        #     "hmap", hmap_grid_world[0], hmap_grid_world[1],
-        #     hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
         # alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         alip = self.EvalVectorInput(context, self.input_port_indices['x']).get_value()
@@ -156,30 +167,38 @@ class ObservationPublisher(LeafSystem):
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
         
+        joint_angle = states[7:23] # Only joint angles (reject pelvis)
+        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
+        gt_joint_angle = gt_states[:23]
+
         if self.noise:
             if self.init_ == 0:
                 # Offset for hmap per episode
-                self.episode_noise = np.random.uniform(low=-0.1, high=0.1)
-                print(self.episode_noise)
+                self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
                 self.init_ += 1
             
-
             # Offset for hmap per step
-            uniformh = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
+            height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
             step_noise = np.random.uniform(low=-0.02, high=0.02)
-            hmap[-1] += uniformh + self.episode_noise + step_noise
-        
-        hmap_grid_world[-1] += uniformh + step_noise + self.episode_noise
+            hmap[-1] += height_noise + self.episode_noise + step_noise
+            hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
+
+            alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
+            aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) # 20%
+            vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,))
+            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
+            vdes = vdes + vdes_noise
+            joint_angle = joint_angle + angle_noise
+
+
+        # Plot depth map with noise
         hmap_query.plot_surface(
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
         hmap = hmap.reshape(-1)
         gt_hmap = gt_hmap.reshape(-1)
-
-        joint_angle = states[7:23] # Only joint angles (reject pelvis)
-        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
-        gt_joint_angle = gt_states[:23]
 
         out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # 24621
         output.set_value(out)

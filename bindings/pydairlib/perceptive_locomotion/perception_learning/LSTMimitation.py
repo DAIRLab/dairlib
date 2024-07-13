@@ -225,7 +225,7 @@ class CustomNetwork(nn.Module):
         self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=128, num_layers=2, batch_first=False)
         self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=128, num_layers=2, batch_first=False)
 
-        #self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
+        # self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
 
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
@@ -329,6 +329,7 @@ def pretrain_agent(
     patience = 5,
     min_delta=0.0000000001
 ):
+    noise = True
     MTL = False # Multi-task Learning
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -365,6 +366,20 @@ def pretrain_agent(
         lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2]) # 2,1,64
         
         for batch_idx, (data, target) in enumerate(train_loader):
+            # Inject noise
+            if noise:
+                camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(data.size(0), 64*64))
+                data[:, 2*64*64:3*64*64] = data[:, 2*64*64:3*64*64] + camera_episode_noise + camera_step_noise
+
+                alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) 
+                aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) # 20%
+                vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2))
+                angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 16))
+                data[:, 3*64*64:3*64*64+4] = data[:, 3*64*64:3*64*64+4] + np.hstack((alipxy_noise, aliplxly_noise))
+                data[:, 3*64*64+4:3*64*64+4+2] = data[:, 3*64*64+4:3*64*64+4+2] + vdes_noise
+                data[:, 3*64*64+6:3*64*64+6+16] = data[:, 3*64*64+6:3*64*64+6+16] + angle_noise
+            
             data, target = data.to(device), target.to(device)
             
             ### Mirror ###
@@ -445,7 +460,7 @@ def pretrain_agent(
                     action, _, _, states = model.forward(sequence_data, states, episode_starts, deterministic=True)
                 
                 ### Mirror ###
-                mirror_action, _, _, mirror_states = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
+                mirror_action, _, _, mirror_states, _ = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
                 mirror_action[:, 1] = -mirror_action[:, 1]
 
                 if (i+1 == sequences.size(1)):
@@ -602,8 +617,8 @@ def _main():
                 )
 
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
-    student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
-    student = RecurrentPPO.load('RPPO_mirror1282.zip', env)
+    #student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
+    student = RecurrentPPO.load('RPPO_multi_noise2.zip', env)
     obs_data = path.join(perception_learning_base_folder, 'tmp/observations_new1.npy')
     action_data = path.join(perception_learning_base_folder, 'tmp/actions_new1.npy')
 
@@ -619,7 +634,7 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=50,
+        epochs=10,
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,
@@ -627,10 +642,10 @@ def _main():
         seed=77,
         train_batch_size=400,
         test_batch_size=400,
-        patience=15,
+        patience=10,
     )
 
-    student.save("RPPO_mirror1283")
+    student.save("RPPO_multi_noise3")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

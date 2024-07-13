@@ -67,7 +67,7 @@ class ElevationMapQueryObject:
         self.context = None
         self.height_map_server = None
 
-    def calc_height_map_stance_frame(self, query_point):
+    def calc_height_map_stance_frame(self, query_point, adverserial_offset = np.zeros((3,))):
         if self.context is None:
             raise RuntimeError( 
                 'Heightmap Queries are one-time use objects'
@@ -75,7 +75,7 @@ class ElevationMapQueryObject:
                 'Context has not been set or is out-of-date')
         hmap = \
             self.height_map_server.get_height_map_in_stance_frame_from_inputs(
-                self.context, query_point
+                self.context, query_point, adverserial_offset
             )
         return hmap
 
@@ -91,7 +91,7 @@ class ElevationMapQueryObject:
             )
         return hmap
     
-    def calc_height_map_world_frame(self, query_point):
+    def calc_height_map_world_frame(self, query_point, adverserial_offset = np.zeros((3,))):
         # get height map in world frame
         if self.context is None:
             raise RuntimeError(
@@ -101,7 +101,7 @@ class ElevationMapQueryObject:
         # grab original hmap in world frame
         hmap = \
             self.height_map_server .get_height_map_in_world_frame_from_inputs(
-                self.context, query_point
+                self.context, query_point, adverserial_offset
             )
         return hmap
 
@@ -192,7 +192,7 @@ class ElevationMappingConverter(LeafSystem):
         out.get_mutable_value().set(context, self)
 
     def get_height_map_in_stance_frame_from_inputs(
-        self, context: Context, center: np.ndarray
+        self, context: Context, center: np.ndarray, adverserial_offset: np.ndarray = np.zeros((3,))
     ) -> np.ndarray:
 
         fsm = self.EvalVectorInput(
@@ -209,10 +209,10 @@ class ElevationMappingConverter(LeafSystem):
             context, self.input_port_indices['elevation']).get_value()
         InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
-        return self.get_heightmap_3d(x, stance, grid_map, center)
+        return self.get_heightmap_3d(x, stance, grid_map, center, adverserial_offset)
 
     def get_height_map_in_world_frame_from_inputs(
-        self, context: Context, center: np.ndarray
+        self, context: Context, center: np.ndarray, adverserial_offset = np.zeros((3,))
     ) -> np.ndarray:
 
         fsm = self.EvalVectorInput(
@@ -229,7 +229,7 @@ class ElevationMappingConverter(LeafSystem):
             context, self.input_port_indices['elevation']).get_value()
         InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
-        hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, grid_map, center)
+        hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, grid_map, center, adverserial_offset)
 
         return hmap_xyz
 
@@ -263,9 +263,10 @@ class ElevationMappingConverter(LeafSystem):
     def get_heightmap_3d_world_frame(self, robot_state: np.ndarray,
                                      stance: Stance,
                                      grid_map: GridMap,
-                                     center: np.ndarray = None):
+                                     center: np.ndarray = None,
+                                     adverserial_offset: np.ndarray = np.zeros((3,))):
         stance_pos = self.stance_pos_in_world(robot_state, stance)
-        xyz = self.get_heightmap_3d(robot_state, stance, grid_map, center)
+        xyz = self.get_heightmap_3d(robot_state, stance, grid_map, center, adverserial_offset)
         for i in range(xyz.shape[1]):
             for j in range(xyz.shape[2]):
                 xyz[:, i, j] = stance_pos + ReExpressBodyYawVector3InWorldFrame(
@@ -279,13 +280,14 @@ class ElevationMappingConverter(LeafSystem):
     def get_heightmap_3d(self, robot_state: np.ndarray,
                          stance: Stance,
                          grid_map: GridMap,
-                         center: np.ndarray = None) -> np.ndarray:
+                         center: np.ndarray = None,
+                         adverserial_offset: np.ndarray = np.zeros((3,))) -> np.ndarray:
         center = np.zeros((3,)) if center is None else center
         X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1])
 
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
-        Z = self.get_heightmap(robot_state, stance, grid_map, center).transpose()
+        Z = self.get_heightmap(robot_state, stance, grid_map, center, adverserial_offset).transpose()
 
         return np.stack([X, Y, Z])
 
@@ -293,7 +295,7 @@ class ElevationMappingConverter(LeafSystem):
                       stance: Stance,
                       grid_map: GridMap,
                       center: np.ndarray = np.zeros((3,)), 
-                      adverserial_offset: np.ndarray = np.zeros((2,))) -> np.ndarray:
+                      adverserial_offset: np.ndarray = np.zeros((3,))) -> np.ndarray:
         stance_pos = self.stance_pos_in_world(robot_state, stance)
 
         heightmap = CalcHeightMapInStanceFrame(

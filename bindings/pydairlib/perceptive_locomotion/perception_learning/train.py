@@ -462,7 +462,7 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 64
+        num_env = 5
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {

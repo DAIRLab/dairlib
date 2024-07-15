@@ -15,6 +15,7 @@ using convex_plane_decomposition::GridMapPreprocessing;
 using convex_plane_decomposition::sliding_window_plane_extractor::SlidingWindowPlaneExtractor;
 
 PlaneSegmentationSystem::PlaneSegmentationSystem(std::string params_yaml) {
+  this->set_name("Plane Segmentation System");
   DeclareAbstractInputPort("elevation_map", drake::Value<GridMap>());
   DeclareAbstractOutputPort("segmented_map", &PlaneSegmentationSystem::CalcOutput);
 
@@ -32,6 +33,11 @@ void PlaneSegmentationSystem::CalcOutput(
     const drake::systems::Context<double>& context, GridMap *map_out) const {
 
   auto grid_map = this->EvalAbstractInput(context, 0)->get_value<GridMap>();
+
+  grid_map.convertToDefaultStartIndex();
+
+  InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted");
+
   preprocessor_->preprocess(grid_map, "elevation");
   plane_extractor_->runExtraction(grid_map, "elevation");
 
@@ -54,8 +60,6 @@ void PlaneSegmentationSystem::CalcOutput(
     }
   }
 
-
-  InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted");
 
   grid_map.add("segmented", segmentation);
   grid_map.add("segmented_elevation", segmented_elevation);

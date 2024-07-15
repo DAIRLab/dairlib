@@ -1,9 +1,13 @@
 import time
 import timeit
 from time import sleep
+from typing import List
+from copy import deepcopy
 
 import lcm
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from dairlib import lcmt_grid_map, lcmt_foothold_set, lcmt_robot_output
 
 from pydrake.systems.all import (
@@ -129,15 +133,121 @@ def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
     return diagram
 
 
-def main():
-    parser = ArgumentParser()
-    parser.add_argument('--logfile', type=str)
-    args = parser.parse_args()
+def safe_terrain_iou(frame0: GridMap, frame1: GridMap):
+    # move frame0 to remove any pixels which the maps do not have in common
+    frame0.move(frame1.getPosition())
 
+    frame0_safe = np.nan_to_num(frame0['segmentation']).astype(bool)
+    frame1_safe = np.nan_to_num(frame1['segmentation']).astype(bool)
+
+    intersection = np.logical_and(frame0_safe,  frame1_safe)
+    union = np.logical_or(frame0_safe, frame1_safe)
+
+    int_sum = intersection.sum()
+    union_sum = union.sum()
+
+    print(int_sum)
+
+    return float(intersection.sum()) / float(union.sum())
+
+
+def profile_segmentation(system, grid_maps):
+    runtime = []
+    iou = []
+
+    context = system.CreateDefaultContext()
+    process_grid_maps = []
+    segmentations = []
+    for map in grid_maps:
+        system.get_input_port().FixValue(context, map)
+        start = time.time()
+        system.CalcForcedUnrestrictedUpdate(
+            context,
+            context.get_mutable_state()
+        )
+        process_grid_maps.append(deepcopy(system.get_output_port().Eval(context)))
+        segmentations.append(process_grid_maps[-1]['segmentation'])
+        end = time.time()
+        runtime.append(end - start)
+
+    for i in range(len(process_grid_maps) - 1):
+        iou.append(safe_terrain_iou(process_grid_maps[i], process_grid_maps[i+1]))
+
+    return {
+        'name': system.get_name(),
+        'iou': iou,
+        'runtime': runtime,
+        'segmentations': segmentations
+    }
+
+
+def animate_segmentations(results):
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    ax1.set_title(results[0]['name'])
+    ax2.set_title(results[1]['name'])
+    imdata = np.zeros_like(results[0]['segmentations'][0])
+
+    # Display the initial frame using imshow
+    img1 = ax1.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
+    img2 = ax2.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
+
+    def anim_callback(i):
+        img1.set_array(results[0]['segmentations'][i])
+        img2.set_array(results[1]['segmentations'][i])
+        return [img1, img2]
+
+    animation = FuncAnimation(
+        fig, anim_callback, frames=range(len(results[0]['segmentations'])), blit=True, interval=20
+    )
+
+    plt.show()
+
+
+def run_profiling(logfile):
+    log = lcm.EventLog(logfile, "r")
+    grid_maps, _ = get_log_data(
+        lcm_log=log,
+        lcm_channels={
+            'CASSIE_ELEVATION_MAP': lcmt_grid_map,
+            state_channel: lcmt_robot_output
+        },
+        start_time=3,
+        duration=-1,
+        data_processing_callback=process_grid_maps
+    )
+    plane_segmentation = PlaneSegmentationSystem(
+        'systems/perception/ethz_plane_segmentation/params.yaml'
+    )
+    s3 = TerrainSegmentationSystem()
+
+    results = [
+        profile_segmentation(plane_segmentation, deepcopy(grid_maps)),
+        profile_segmentation(s3, deepcopy(grid_maps))
+    ]
+
+    plt.figure()
+    plt.title(f'Run Time')
+    for r in results:
+        plt.plot(r['runtime'])
+    plt.legend([r['name'] for r in results])
+
+    plt.figure()
+    plt.title(f'IOU')
+    for r in results:
+        plt.hist(r['iou'], bins=20)
+    plt.legend([r['name'] for r in results])
+
+    animate_segmentations(results)
+
+    plt.show()
+
+
+def visualize(logfile):
     lcm_interface = DrakeLcm()
     diagram = build_diagram('curvature', lcm_interface)
 
-    log = lcm.EventLog(args.logfile, "r")
+    log = lcm.EventLog(logfile, "r")
     grid_maps, robot_output = get_log_data(
         lcm_log=log,
         lcm_channels={
@@ -170,6 +280,13 @@ def main():
             )
             s += 1
         sleep(0.1)
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument('--logfile', type=str)
+    args = parser.parse_args()
+    run_profiling(args.logfile)
 
 
 if __name__ == '__main__':

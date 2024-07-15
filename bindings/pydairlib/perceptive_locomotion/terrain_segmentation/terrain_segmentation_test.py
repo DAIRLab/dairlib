@@ -63,7 +63,7 @@ def main():
         return [img1, img2]
 
     animation = FuncAnimation(
-        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=20
+        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=30
     )
 
     # animation.save('../test_anim.gif', fps=30)

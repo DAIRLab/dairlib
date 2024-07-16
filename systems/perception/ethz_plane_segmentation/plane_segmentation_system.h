@@ -27,6 +27,8 @@ class PlaneSegmentationSystem : public drake::systems::LeafSystem<double> {
 
   PlaneDecompositionParams params_;
 
+  cv::Mat margin_kernel_;
+
 };
 
 }

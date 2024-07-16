@@ -27,6 +27,10 @@ class SlidingWindowPlaneExtractor {
   /** Can be run after extraction for debugging purpose */
   void addSurfaceNormalToMap(grid_map::GridMap& map, const std::string& layerPrefix) const;
 
+  bool has_plane_extraction() const {
+    return not parameters_.skip_plane_extraction;
+  }
+
  private:
   bool isGloballyPlanar(const Eigen::Vector3d& normalVectorPlane, const Eigen::Vector3d& supportVectorPlane,
                         const std::vector<ransac_plane_extractor::PointWithNormal>& pointsWithNormal) const;

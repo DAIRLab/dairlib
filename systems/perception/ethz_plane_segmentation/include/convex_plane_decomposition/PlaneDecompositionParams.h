@@ -31,6 +31,7 @@ struct PlaneDecompositionParams {
   bool include_ransac_refinement;
   double global_plane_fit_distance_error_threshold;
   double global_plane_fit_angle_error_threshold_degrees;
+  bool skip_plane_extraction;
 
   // ransac
   double probability;
@@ -68,6 +69,7 @@ struct PlaneDecompositionParams {
     a->Visit(DRAKE_NVP(cluster_epsilon));
     a->Visit(DRAKE_NVP(normal_threshold));
     a->Visit(DRAKE_NVP(marginSize));
+    a->Visit(DRAKE_NVP(skip_plane_extraction));
 
     preprocessing_params.resolution = resolution;
     preprocessing_params.kernelSize = kernelSize;
@@ -84,6 +86,7 @@ struct PlaneDecompositionParams {
     sliding_window_params.include_ransac_refinement = include_ransac_refinement;
     sliding_window_params.global_plane_fit_distance_error_threshold = global_plane_fit_distance_error_threshold;
     sliding_window_params.global_plane_fit_angle_error_threshold_degrees = global_plane_fit_angle_error_threshold_degrees;
+    sliding_window_params.skip_plane_extraction = skip_plane_extraction;
 
     ransac_params.probability = probability;
     ransac_params.min_points = min_points;

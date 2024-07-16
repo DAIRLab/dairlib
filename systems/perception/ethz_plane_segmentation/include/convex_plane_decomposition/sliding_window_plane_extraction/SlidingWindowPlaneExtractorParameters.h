@@ -38,6 +38,9 @@ struct SlidingWindowPlaneExtractorParameters {
 
   /// [deg] Allowed normal vector deviation for a point w.r.t. the plane normal. If any point violates this, RANSAC is triggered
   double global_plane_fit_angle_error_threshold_degrees = 25.0;
+
+  /// skip plane extraction to only do local feature analysis in plane segmentation
+  bool skip_plane_extraction = false;
 };
 
 }  // namespace sliding_window_plane_extractor

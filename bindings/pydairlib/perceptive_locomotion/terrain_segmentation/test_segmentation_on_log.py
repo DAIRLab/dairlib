@@ -23,6 +23,8 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 from grid_map import GridMap
 
+from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
+
 from pydairlib.analysis.process_lcm_log import get_log_data
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
@@ -33,7 +35,6 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
     ConvexTerrainDecompositionSystem
 
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
-from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
 
 
 from argparse import ArgumentParser
@@ -165,7 +166,11 @@ def profile_segmentation(system, grid_maps):
             context,
             context.get_mutable_state()
         )
-        process_grid_maps.append(deepcopy(system.get_output_port().Eval(context)))
+        try:
+            process_grid_maps.append(deepcopy(system.get_output_port().Eval(context)))
+        except RuntimeError:
+            import pdb; pdb.set_trace()
+
         segmentations.append(process_grid_maps[-1]['segmentation'])
         end = time.time()
         runtime.append(end - start)
@@ -198,7 +203,7 @@ def animate_segmentations(results):
         return [img1, img2]
 
     animation = FuncAnimation(
-        fig, anim_callback, frames=range(len(results[0]['segmentations'])), blit=True, interval=20
+        fig, anim_callback, frames=range(len(results[0]['segmentations'])), blit=False, interval=50
     )
 
     plt.show()
@@ -235,7 +240,7 @@ def run_profiling(logfile):
     plt.figure()
     plt.title(f'IOU')
     for r in results:
-        plt.hist(r['iou'], bins=20)
+        plt.plot(r['iou'])
     plt.legend([r['name'] for r in results])
 
     animate_segmentations(results)

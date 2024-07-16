@@ -83,7 +83,7 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'RPPO_mirror1282.zip'
+    model_path = 'logs/rl_model_8016000_steps.zip'
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()

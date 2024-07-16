@@ -36,6 +36,7 @@ class DrakeGymEnv(gym.Env):
                  reward: Union[Callable[[System, Context], float],
                                OutputPortIndex, str],
                  sim_params: CassieFootstepControllerEnvironmentOptions,
+                 terrain: str,
                  action_port_id: Union[InputPort, InputPortIndex, str] = None,
                  observation_port_id: Union[OutputPortIndex, str] = None,
                  render_rgb_port_id: Union[OutputPortIndex, str] = None,
@@ -165,6 +166,7 @@ class DrakeGymEnv(gym.Env):
         else:
             raise ValueError("reset_handler is not callable.")
         self.sim_params = sim_params
+        self.terrain = terrain
         self.hardware = hardware
 
         if self.simulator:
@@ -286,7 +288,7 @@ class DrakeGymEnv(gym.Env):
             self.simulator = self.make_simulator(self.sim_params)
             self._setup()
 
-        context = self.reset_handler(self.simulator, seed)
+        context = self.reset_handler(self.simulator, self.terrain, seed)
 
         observation = self.observation_port.Eval(context).astype(np.float32)
         #print(f'reset observation: {observation.dtype}')

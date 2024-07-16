@@ -153,21 +153,21 @@ def reset_handler(simulator, terrain, seed):
         else:
             yaw = 0.0 # Upstair
         
-        rand = np.random.randint(1, 5)
+        rand = np.random.randint(1, 4)
+        # if rand == 1:
+        #     rand = np.random.uniform(low=-9.0, high=9.0)
+        #     datapoint['q'][4:6] = np.array([-30., rand])
         if rand == 1:
-            rand = np.random.uniform(low=-9.0, high=9.0)
-            datapoint['q'][4:6] = np.array([-30., rand])
-        elif rand == 2:
-            rand = np.random.uniform(low=-9.0, high=9.0)
+            rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([-15., rand])
-        elif rand == 3:
-            rand = np.random.uniform(low=-9.0, high=9.0)
+        elif rand == 2:
+            rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([15., rand])
         # elif rand == 4:
         #     rand = np.random.uniform(low=-9.0, high=9.0)
         #     datapoint['q'][4:6] = np.array([30., rand])
         else:
-            rand = np.random.uniform(low=-9.0, high=9.0)
+            rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([0., rand])
 
     else: # Flat
@@ -177,19 +177,19 @@ def reset_handler(simulator, terrain, seed):
         else:
             rand = np.random.randint(1, 5)
             if rand == 1: # 90 degrees
-                rand = np.random.uniform(low=-9.0, high=9.0)
+                rand = np.random.uniform(low=-8.0, high=8.0)
                 yaw = math.pi/2
                 datapoint['q'][4:6] = np.array([rand, -10.0])
             elif rand == 2: # 180 degrees
-                rand = np.random.uniform(low=-9.0, high=9.0)
+                rand = np.random.uniform(low=-8.0, high=8.0)
                 yaw = math.pi
                 datapoint['q'][4:6] = np.array([10.0, rand])
             elif rand == 3: # -90 degrees
-                rand = np.random.uniform(low=-9.0, high=9.0)
+                rand = np.random.uniform(low=-8.0, high=8.0)
                 yaw = -math.pi/2
                 datapoint['q'][4:6] = np.array([rand, 10.0])
             else:
-                rand = np.random.uniform(low=-9.0, high=9.0)
+                rand = np.random.uniform(low=-8.0, high=8.0)
                 yaw = 0
                 datapoint['q'][4:6] = np.array([-10.0, rand])
 
@@ -222,11 +222,11 @@ def reset_handler(simulator, terrain, seed):
 def simulate_init(sim_params):
     rand = np.random.randint(1, 3)
     if rand == 1:
-        rand = np.random.randint(0, 300)
+        rand = np.random.randint(0, 500)
         terrain_yaml = f'params/easy/du_stair/dustair_{rand}.yaml'
         terrain = 'stair'
     else:
-        rand = np.random.randint(0, 300)
+        rand = np.random.randint(0, 500)
         terrain_yaml = f'params/easy/flat/flat_{rand}.yaml'
         terrain = 'flat'
     print(terrain_yaml)

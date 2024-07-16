@@ -407,9 +407,9 @@ def _run_training(config, args):
         #                 batch_size=64*num_env, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.1, ent_coef=0.02, target_kl = None, vf_coef=0.2, clip_range_vf=None,
-                        n_steps=int(512), n_epochs=10,
+        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.3, # linear_schedule(3e-6)
+                        clip_range = 0.05, ent_coef=0.03, target_kl = 0.2, vf_coef=0.2, clip_range_vf=None,
+                        n_steps=int(256), n_epochs=10,
                         batch_size=64, seed=42, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
@@ -462,15 +462,7 @@ def _main():
     if args.test:
         num_env = 1
     else:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        num_env = 5
-=======
-        num_env = 48
->>>>>>> Stashed changes
-=======
-        num_env = 48
->>>>>>> Stashed changes
+        num_env = 50
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {

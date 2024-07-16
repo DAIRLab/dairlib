@@ -145,9 +145,9 @@ class ObservationPublisher(LeafSystem):
         
         if self.noise:
             if self.init_ == 0:
-                self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
+                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
             # X, Y offset : Shifts the camera 
-            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -174,17 +174,17 @@ class ObservationPublisher(LeafSystem):
         if self.noise:
             if self.init_ == 0:
                 # Offset for hmap per episode
-                self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                self.episode_noise = np.random.uniform(low=-0.06, high=0.06)
                 self.init_ += 1
             
             # Offset for hmap per step
             height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.02, high=0.02)
+            step_noise = np.random.uniform(low=-0.03, high=0.03)
             hmap[-1] += height_noise + self.episode_noise + step_noise
             hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
 
             alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
-            aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) # 20%
+            aliplxly_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,)) # 20%
             vdes_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
             angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
             alip = alip + np.hstack((alipxy_noise, aliplxly_noise))

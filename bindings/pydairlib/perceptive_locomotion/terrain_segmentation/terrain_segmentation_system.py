@@ -21,7 +21,7 @@ class TerrainSegmentationSystem(LeafSystem):
 
     def __init__(self):
         super().__init__()
-        self.set_name("Stable Steppable Segmentation System")
+        self.set_name("S3")
 
         self.input_port_grid_map = self.DeclareAbstractInputPort(
             "elevation_map", Value(GridMap())

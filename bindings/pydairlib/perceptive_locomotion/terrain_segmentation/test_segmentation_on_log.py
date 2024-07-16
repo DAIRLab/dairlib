@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import lcm
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from dairlib import lcmt_grid_map, lcmt_foothold_set, lcmt_robot_output
@@ -144,10 +145,8 @@ def safe_terrain_iou(frame0: GridMap, frame1: GridMap):
     intersection = np.logical_and(frame0_safe,  frame1_safe)
     union = np.logical_or(frame0_safe, frame1_safe)
 
-    int_sum = intersection.sum()
-    union_sum = union.sum()
-
-    print(int_sum)
+    if union.sum() == 0:
+        return 0
 
     return float(intersection.sum()) / float(union.sum())
 
@@ -231,26 +230,45 @@ def run_profiling(logfile):
         profile_segmentation(s3, deepcopy(grid_maps))
     ]
 
-    plt.figure()
+    matplotlib.rcParams.update(matplotlib.rcParamsDefault)
+    # matplotlib.rcParams['figure.autolayout'] = True
+    font = {'size': 15, 'family': 'serif'}
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
+    matplotlib.rc('text', usetex=True)
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 1
+    matplotlib.rcParams['axes.titlesize'] = 20
+    matplotlib.rcParams['xtick.major.size'] = 15
+    matplotlib.rcParams['xtick.major.width'] = 1
+    matplotlib.rcParams['xtick.minor.size'] = 7
+    matplotlib.rcParams['xtick.minor.width'] = 1
+
+    fig = plt.figure()
     plt.title(f'Run Time')
     for r in results:
         plt.plot(r['runtime'])
+    plt.xlabel('Frame Number')
+    plt.ylabel('Segmentation Run Time (s)')
     plt.legend([r['name'] for r in results])
+    fig.tight_layout()
 
-    plt.figure()
-    plt.title(f'IOU')
+    fig = plt.figure()
+    plt.title(f'Frame-to-Frame IOU')
     for r in results:
         plt.plot(r['iou'])
     plt.legend([r['name'] for r in results])
+    plt.xlabel('Frame Number')
+    plt.ylabel('IOU  with Next Frame')
+    fig.tight_layout()
 
-    animate_segmentations(results)
-
+# animate_segmentations(results)
     plt.show()
 
 
 def visualize(logfile):
     lcm_interface = DrakeLcm()
-    diagram = build_diagram('curvature', lcm_interface)
+    diagram = build_diagram('planar', lcm_interface)
 
     log = lcm.EventLog(logfile, "r")
     grid_maps, robot_output = get_log_data(
@@ -291,6 +309,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
+    # visualize(args.logfile)
     run_profiling(args.logfile)
 
 

@@ -4,6 +4,7 @@
 #include "opencv2/core/eigen.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <limits>
 
 namespace dairlib {
 namespace perception {
@@ -16,7 +17,7 @@ using convex_plane_decomposition::GridMapPreprocessing;
 using convex_plane_decomposition::sliding_window_plane_extractor::SlidingWindowPlaneExtractor;
 
 PlaneSegmentationSystem::PlaneSegmentationSystem(std::string params_yaml) {
-  this->set_name("Plane Segmentation System");
+  this->set_name("Plane Segmentation");
   DeclareAbstractInputPort("elevation_map", drake::Value<GridMap>());
   DeclareAbstractOutputPort("segmented_map", &PlaneSegmentationSystem::CalcOutput);
 
@@ -39,7 +40,7 @@ PlaneSegmentationSystem::PlaneSegmentationSystem(std::string params_yaml) {
 void PlaneSegmentationSystem::CalcOutput(
     const drake::systems::Context<double>& context, GridMap *map_out) const {
 
-  auto grid_map = this->EvalAbstractInput(context, 0)->get_value<GridMap>();
+  GridMap grid_map = this->EvalAbstractInput(context, 0)->get_value<GridMap>();
 
   grid_map.convertToDefaultStartIndex();
 
@@ -73,16 +74,16 @@ void PlaneSegmentationSystem::CalcOutput(
   MatrixXf segmented_elevation = grid_map.get("elevation");
   for (int r = 0; r < segmented_elevation.rows(); ++r) {
     for (int c = 0; c < segmented_elevation.cols(); ++c) {
-      if (segmentation(r, c) < 1) {
-        segmented_elevation(r, c) = std::nan("");
+      if (segmentation(r, c) == 0) {
+        segmented_elevation(r, c) = std::numeric_limits<float>::quiet_NaN();
       }
     }
   }
 
   InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted");
 
-  grid_map.add("segmented", segmentation);
-  grid_map.add("segmented_elevation", segmented_elevation);
+  grid_map["segmentation"] = segmentation;
+  grid_map["segmented_elevation"] = segmented_elevation;
   *map_out = grid_map;
 }
 

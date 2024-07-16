@@ -6,21 +6,21 @@ gaussBlur: 2.0
 
 # plane segmentation parameters
 kernel_size: 5                                        # Size of the sliding window patch used for normal vector calculation and planarity detection. Should be an odd number and at least 3.
-planarity_opening_filter: 1                           # [#] Apply opening filter (erosion -> dilation) to planarity detection by this amount of pixels
+planarity_opening_filter: 3                           # [#] Apply opening filter (erosion -> dilation) to planarity detection by this amount of pixels
 plane_inclination_threshold_degrees: 30.0             # [deg] Maximum allowed angle between the surface normal and the world-z direction for a patch
 local_plane_inclination_threshold_degrees: 35.0       # [deg] Maximum allowed angle between the surface normal and the world-z direction for a cell
-plane_patch_error_threshold: 0.04                     # [m] The allowed root-mean-squared deviation from the plane fitted to the sliding window.
+plane_patch_error_threshold: 0.05                     # [m] The allowed root-mean-squared deviation from the plane fitted to the sliding window.
 min_number_points_per_label: 8                        # [#] Labels with less points assigned to them are discarded
 connectivity: 8                                       # Label kernel connectivity. 4 or 8 (cross or box)
 include_ransac_refinement: true                       # Enable RANSAC refinement if the plane is not globally fitting to the assigned points.
-global_plane_fit_distance_error_threshold: 0.025      # [m] Allowed maximum distance from a point to the plane. If any point violates this, RANSAC is triggered
+global_plane_fit_distance_error_threshold: 0.05      # [m] Allowed maximum distance from a point to the plane. If any point violates this, RANSAC is triggered
 global_plane_fit_angle_error_threshold_degrees: 25.0  # [deg] Allowed normal vector deviation for a point w.r.t. the plane normal. If any point violates this, RANSAC is triggered
 skip_plane_extraction: false
 
-probability: 0.0025       # Probability to miss the largest candidate shape. A lower probability provides a higher reliability and determinism at the cost of longer running times
-min_points: 10          # This minimum number of points per plane. Controls the termination of the algorithm.
+probability: 0.05       # Probability to miss the largest candidate shape. A lower probability provides a higher reliability and determinism at the cost of longer running times
+min_points: 8          # This minimum number of points per plane. Controls the termination of the algorithm.
 epsilon: 0.05           # Maximum distance to plane
 cluster_epsilon: 0.1   # [m] Set maximum Euclidean distance between points to be clustered. Two points are connected if separated by a distance of at most 2*sqrt(2)*cluster_epsilon = 2.828 * cluster_epsilon. Set this higher than resolution
 normal_threshold: 35.0  # [deg] Set maximum normal deviation between cluster surface_normal and point normal.
 
-marginSize: 4  # Size of the kernel creating the boundary offset. In number of (sub) pixels.
+marginSize: 2 # Size of the kernel creating the boundary offset. In number of (sub) pixels.

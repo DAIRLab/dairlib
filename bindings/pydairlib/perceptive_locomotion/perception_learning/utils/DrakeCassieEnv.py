@@ -153,7 +153,7 @@ def reset_handler(simulator, terrain, seed):
         else:
             yaw = 0.0 # Upstair
         
-        rand = np.random.randint(1, 6)
+        rand = np.random.randint(1, 5)
         if rand == 1:
             rand = np.random.uniform(low=-9.0, high=9.0)
             datapoint['q'][4:6] = np.array([-30., rand])
@@ -163,9 +163,9 @@ def reset_handler(simulator, terrain, seed):
         elif rand == 3:
             rand = np.random.uniform(low=-9.0, high=9.0)
             datapoint['q'][4:6] = np.array([15., rand])
-        elif rand == 4:
-            rand = np.random.uniform(low=-9.0, high=9.0)
-            datapoint['q'][4:6] = np.array([30., rand])
+        # elif rand == 4:
+        #     rand = np.random.uniform(low=-9.0, high=9.0)
+        #     datapoint['q'][4:6] = np.array([30., rand])
         else:
             rand = np.random.uniform(low=-9.0, high=9.0)
             datapoint['q'][4:6] = np.array([0., rand])

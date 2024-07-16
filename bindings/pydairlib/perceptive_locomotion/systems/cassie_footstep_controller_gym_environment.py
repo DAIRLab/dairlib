@@ -145,9 +145,9 @@ class ObservationPublisher(LeafSystem):
         
         if self.noise:
             if self.init_ == 0:
-                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
             # X, Y offset : Shifts the camera 
-            camera_step_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -185,8 +185,8 @@ class ObservationPublisher(LeafSystem):
 
             alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
             aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) # 20%
-            vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,))
-            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            vdes_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
+            angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
             alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
             vdes = vdes + vdes_noise
             joint_angle = joint_angle + angle_noise

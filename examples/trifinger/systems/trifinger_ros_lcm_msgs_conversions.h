@@ -120,7 +120,7 @@ class RosToLcmFingertipsDeltaPosition : public
                     const;
 
   const int n_delta_pos_ = 9;
-  mutable int prev_msg_utime_ = -1;
+  mutable int prev_msg_utime_ = -1; // TODO: Turn it into system's state.
 };
 }  // namespace systems
 }  // namespace dairlib

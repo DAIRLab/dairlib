@@ -96,7 +96,7 @@ script "run-impedance-controller-hardware" {
 script "run-impedance-controller-simulation" {
     stop cmd "state-visualizer-floating (from simulation)";
     stop cmd "ROS-to-LCM (from simulation)";
-    stop cmd "LCM-to-ROS (from hardware)";
+    stop cmd "LCM-to-ROS (from simulation)";
     stop cmd "Simulate";
     stop cmd "Impedance Controller (from simulation)";
     wait ms 1000;
@@ -106,4 +106,12 @@ script "run-impedance-controller-simulation" {
     start cmd "LCM-to-ROS (from simulation)";
     wait ms 1000;
     start cmd "Impedance Controller (from simulation)";
+}
+
+script "stop-impedance-controller-simulation" {
+    stop cmd "state-visualizer-floating (from simulation)";
+    stop cmd "ROS-to-LCM (from simulation)";
+    stop cmd "LCM-to-ROS (from simulation)";
+    stop cmd "Simulate";
+    stop cmd "Impedance Controller (from simulation)";
 }

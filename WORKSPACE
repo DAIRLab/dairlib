@@ -14,46 +14,17 @@ workspace(name = "dairlib")
 DRAKE_COMMIT = "v1.28.0"
 
 DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2fe"
-# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
-# displays the suggested new value for the CHECKSUM.
-#DRAKE_CHECKSUM = "0" * 64
-
-# Load an environment variable.
-load("//:environ.bzl", "environ_repository")
-
-environ_repository(
-    name = "environ",
-    vars = ["DAIRLIB_LOCAL_DRAKE_PATH"],
-)
-
-load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
-
-# The WORKSPACE file does not permit `if` statements, so we handle the local
-# option by toying with the repository names.  The selected repository is named
-# "@drake", the other is named "@drake_ignored".
-(_http_drake_repo_name, _local_drake_repo_name) = (
-    "drake_ignored" if DAIRLIB_LOCAL_DRAKE_PATH else "drake",
-    "drake" if DAIRLIB_LOCAL_DRAKE_PATH else "drake_ignored",
-)
 
 # Maybe download Drake.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = _http_drake_repo_name,
+    name = "drake",
     sha256 = DRAKE_CHECKSUM,
     strip_prefix = "drake-{}".format(DRAKE_COMMIT.strip("v")),
     urls = [x.format(DRAKE_COMMIT) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
-)
-
-# Maybe use a local checkout of Drake.
-print("Using DAIRLIB_LOCAL_DRAKE_PATH={}".format(DAIRLIB_LOCAL_DRAKE_PATH)) if DAIRLIB_LOCAL_DRAKE_PATH else None  # noqa
-
-local_repository(
-    name = _local_drake_repo_name,
-    path = DAIRLIB_LOCAL_DRAKE_PATH,
 )
 
 # Reference external software libraries and tools per Drake's defaults.  Some
@@ -125,20 +96,6 @@ new_local_repository(
     path = "tools/workspace/ros/bundle_ws/install",
 )
 
-# Locally developed and installed ROS packages
-environ_repository(
-    name = "environ_local_ros",
-    vars = ["LOCAL_ROS_INSTALL_PATH"],
-)
-
-load("@environ_local_ros//:environ.bzl", "LOCAL_ROS_INSTALL_PATH")
-
-new_local_repository(
-    name = "ros-local",
-    build_file = "tools/workspace/ros/ros-local.bazel",
-    path = LOCAL_ROS_INSTALL_PATH,
-)
-
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",
@@ -178,29 +135,10 @@ INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
 
-# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
-# displays the suggested new value for the CHECKSUM.
-# INEKF_CHECKSUM = "0" * 64
-
-# Load an environment variable.
-environ_repository(
-    name = "environ_inekf",
-    vars = ["DAIRLIB_LOCAL_INEKF_PATH"],
-)
-
-load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
-
-# The WORKSPACE file does not permit `if` statements, so we handle the local
-# option by toying with the repository names.  The selected repository is named
-# "@inekf", the other is named "@inekf_ignored".
-(_http_inekf_repo_name, _local_inekf_repo_name) = (
-    "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
-    "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
-)
 
 # Maybe download InEKF
 http_archive(
-    name = _http_inekf_repo_name,
+    name = "inekf",
     sha256 = INEKF_CHECKSUM,
     strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
     urls = [x.format(INEKF_COMMIT) for x in [
@@ -208,13 +146,6 @@ http_archive(
     ]],
 )
 
-# Maybe use a local checkout of InEKF.
-print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
-
-local_repository(
-    name = _local_inekf_repo_name,
-    path = DAIRLIB_LOCAL_INEKF_PATH,
-)
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.

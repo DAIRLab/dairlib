@@ -105,7 +105,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    #DrawAndSaveDiagramGraph(diagram, '../CassieEnv')
+    #DrawAndSaveDiagramGraph(diagram, '../CassieEnv_dist')
     return sim_env, controller, diagram#, cost_logger
 
 def reset_handler(simulator, terrain, seed):
@@ -133,7 +133,7 @@ def reset_handler(simulator, terrain, seed):
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([0.5, 0.01]).flatten()
+
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -147,25 +147,19 @@ def reset_handler(simulator, terrain, seed):
 
     # Change initial settings
     if terrain == 'stair':
-        rand = np.random.randint(1, 3)
+        rand = np.random.randint(1, 5)
         if rand == 1:
             yaw = math.pi # Downstair
         else:
             yaw = 0.0 # Upstair
         
         rand = np.random.randint(1, 4)
-        # if rand == 1:
-        #     rand = np.random.uniform(low=-9.0, high=9.0)
-        #     datapoint['q'][4:6] = np.array([-30., rand])
         if rand == 1:
             rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([-15., rand])
         elif rand == 2:
             rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([15., rand])
-        # elif rand == 4:
-        #     rand = np.random.uniform(low=-9.0, high=9.0)
-        #     datapoint['q'][4:6] = np.array([30., rand])
         else:
             rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([0., rand])
@@ -220,29 +214,32 @@ def reset_handler(simulator, terrain, seed):
     return context
 
 def simulate_init(sim_params):
-    rand = np.random.randint(1, 3)
+    rand = np.random.randint(1, 4)
     if rand == 1:
         rand = np.random.randint(0, 500)
-        terrain_yaml = f'params/easy/du_stair/dustair_{rand}.yaml'
-        terrain = 'stair'
+        terrain_yaml = f'params/medium/flat/flat_{rand}.yaml'
+        terrain = 'flat'
     else:
         rand = np.random.randint(0, 500)
-        terrain_yaml = f'params/easy/flat/flat_{rand}.yaml'
-        terrain = 'flat'
+        terrain_yaml = f'params/medium/du_stair/dustair_{rand}.yaml'
+        terrain = 'stair'
     print(terrain_yaml)
-    #sim_params.terrain = 'terrain/flat_0.yaml'
-    #sim_params.terrain = 'terrain/dustair_0.yaml'
+    # terrain_yaml = 'params/easy/du_stair/dustair_11.yaml'
+    # print(terrain_yaml)
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 10
+        time_limit = 15
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
-
+        
+        # sim_context = sim_env.GetMyMutableContextFromRoot(context)
+        # track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+        
         # if center of mas is 20cm 
         left_toe_pos = plant.CalcPointsPositions(
             plant_context, plant.GetBodyByName("toe_left").body_frame(),
@@ -258,6 +255,12 @@ def simulate_init(sim_params):
 
         if context.get_time() > time_limit:
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
+
+        # if track_error > 0.5 and context.get_time() > 2.0:
+        #     print(context.get_time())
+        #     print(f'Tracking Error: {track_error}')
+        #     input("==")
+        #    return EventStatus.ReachedTermination(diagram, "Tracking error Exceeded")
 
         if z1 < 0.2:
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")

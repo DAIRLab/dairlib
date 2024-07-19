@@ -85,6 +85,9 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_input_port_radio",
            &HikingSimDiagram::get_input_port_radio,
            py_rvp::reference_internal)
+      .def("get_input_port_spatial_force",
+           &HikingSimDiagram::get_input_port_spatial_force,
+           py_rvp::reference_internal)     
       .def("get_output_port_state_lcm",
            &HikingSimDiagram::get_output_port_state_lcm,
            py_rvp::reference_internal)

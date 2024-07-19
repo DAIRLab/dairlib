@@ -83,7 +83,9 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'logs/rl_model_8016000_steps.zip'
+    model_path = 'RPPO_mirror_noise4.zip'
+    #model_path = 'logs/rl_model_6682500_steps.zip'
+    
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
@@ -102,6 +104,7 @@ def run_play(sim_params, model_path=None):
             
         total_reward += reward
         if terminated or truncated:
+            print(total_reward)
             if lstm:
                 lstm_states = None
                 episode_starts = np.ones((1,), dtype=bool)

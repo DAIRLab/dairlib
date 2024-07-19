@@ -153,6 +153,9 @@ HikingSimDiagram::HikingSimDiagram(
   input_port_radio_ = builder.ExportInput(
       radio_parser->get_input_port(), "radio channels"
   );
+  input_port_spatial_force_ = builder.ExportInput(
+      plant_->get_applied_spatial_force_input_port(), "spatial force"
+  );
   output_port_state_ = builder.ExportOutput(
       state_receiver->get_output_port(), "x, u, t"
   );

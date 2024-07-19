@@ -484,8 +484,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     mirror_actions[:, 1] = -mirror_actions[:, 1] # y
                     mirror_loss = th.mean(((actions - mirror_actions)**2)[mask])
 
-                    mirror_losses.append(mirror_loss.item())
-                    loss += mirror_loss
+                    mirror_losses.append(2 * mirror_loss.item())
+                    loss += 2 * mirror_loss
                     
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -495,7 +495,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean(((th.exp(log_ratio) - 1) - log_ratio)[mask]).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
-
+                #print(f'KL divergence : {approx_kl_div}')
                 if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
                     continue_training = False
                     if self.verbose >= 1:

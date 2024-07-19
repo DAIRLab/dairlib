@@ -268,7 +268,7 @@ def run_profiling(logfile):
 
 def visualize(logfile):
     lcm_interface = DrakeLcm()
-    diagram = build_diagram('planar', lcm_interface)
+    diagram = build_diagram('convex', lcm_interface)
 
     log = lcm.EventLog(logfile, "r")
     grid_maps, robot_output = get_log_data(
@@ -309,8 +309,8 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    # visualize(args.logfile)
-    run_profiling(args.logfile)
+    visualize(args.logfile)
+    # run_profiling(args.logfile)
 
 
 if __name__ == '__main__':

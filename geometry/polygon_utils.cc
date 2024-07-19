@@ -119,6 +119,23 @@ namespace {
     return min_distance;
   }
 
+   Vector2d normal_of_closest_face(
+      const std::vector<facet>& facets, const Vector2d& v) {
+    DRAKE_DEMAND(contained(facets, v));
+    double min_distance = std::numeric_limits<double>::max();
+    Vector2d normal = Vector2d::Zero();
+     for (const auto& f : facets) {
+       double d = f.b_ - f.a_.dot(v);
+       if (d <= min_distance) {
+         min_distance = d;
+         normal = f.a_;
+       }
+     }
+
+     DRAKE_DEMAND(not normal.cwiseEqual(Vector2d::Zero()).all());
+     return normal;
+  }
+
   std::vector<Vector2d> get_sorted_interior_points(
       const std::vector<facet>& facets, const MatrixXd& verts) {
     std::vector<std::pair<int, double>> vert_distances;
@@ -137,8 +154,7 @@ namespace {
     // Create a new matrix with the sorted columns
     std::vector<Vector2d> verts_sorted;
     verts_sorted.reserve(i);
-    for (int j = 0; j < i; j++)
-    {
+    for (int j = 0; j < i; j++) {
       verts_sorted.push_back(verts.col(vert_distances[j].first));
     }
     return verts_sorted;
@@ -157,6 +173,9 @@ namespace {
     if (idx_redundant.empty()) {
       int delta = idx_intersect.back() - idx_intersect.front();
       DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
+    } else if (idx_intersect.empty()) {
+      DRAKE_DEMAND(idx_redundant.size() == 0);
+      return;
     }
     DRAKE_DEMAND(idx_intersect.size() == 2);
 
@@ -172,6 +191,9 @@ namespace {
 
     auto new_facet = facet::intersect(
         facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
+
+    DRAKE_DEMAND(not new_facet.v0_.hasNaN());
+    DRAKE_DEMAND(not new_facet.v1_.hasNaN());
 
     facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
     facets.at(cw_facet_idx).v0_ = new_facet.v1_;
@@ -196,6 +218,13 @@ namespace {
     for (const auto &i : idx_redundant) {
       facets.erase(facets.begin() + i);
     }
+  }
+
+  std::pair<Vector2d, double> GetBestSupportAsRayToBoundary(
+      Vector2d p, const std::vector<facet>& facets ) {
+    Vector2d a =  normal_of_closest_face(facets, p);
+    double b = a.dot(p);
+    return {a, b};
   }
 
   std::pair<Vector2d, double> SolveForBestApproximateSupport(
@@ -265,9 +294,15 @@ ConvexPolygon MakeInscribedConvexPolygon(
   // halfspace, H which contains as many vertices of P as possible
   // (approximated with a squared hinge loss). Then update P <- intersect(P, H)
   while (not verts_sorted.empty()) {
-    auto [a, b] = SolveForBestApproximateSupport(
-        verts_sorted.front(), facet_list, verts);
-      insert(facet_list, a, b);
+    // To avoid numerical issues, ignore violations of less than 1mm
+    if (distance_to_boundary(facet_list, verts_sorted.front()) < 0.001) {
+      break;
+    }
+    auto [a, b] = GetBestSupportAsRayToBoundary(
+        verts_sorted.front(), facet_list);
+//    auto [a, b] = SolveForBestApproximateSupport(
+//        verts_sorted.front(), facet_list, verts);
+    insert(facet_list, a, b);
     verts_sorted = get_sorted_interior_points(facet_list, verts);
   }
   return MakeFootholdFromFacetList(facet_list, X_WP);

@@ -64,7 +64,12 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         )
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
-        verts3d = polygon.GetVertices().squeeze().transpose()
+        verts3d = None
+        try:
+            verts3d = polygon.GetVertices().squeeze().transpose()
+        except RuntimeError:
+            import pdb; pdb.set_trace()
+
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
                 "elevation_inpainted", v[:2], InterpolationMethods.INTER_CUBIC

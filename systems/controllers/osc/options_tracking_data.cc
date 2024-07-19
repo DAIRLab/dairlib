@@ -126,8 +126,11 @@ void OptionsTrackingData::UpdateYddotCmd(
           ? d_gain_multiplier_traj_->value(t_since_state_switch)
           : MatrixXd::Identity(n_ydot_, n_ydot_);
 
-  td_state.yddot_command_ = td_state.yddot_des_converted_ + p_gain_multiplier * K_p_ * td_state.error_y_ +
-                   d_gain_multiplier * K_d_ * td_state.error_ydot_;
+  td_state.yddot_command_ =
+      td_state.yddot_des_converted_ +
+      p_gain_multiplier * td_state.K_p_ * td_state.error_y_ +
+      d_gain_multiplier * td_state.K_d_ * td_state.error_ydot_;
+
   td_state.yddot_command_ = eigen_clamp(td_state.yddot_command_, yddot_cmd_lb_, yddot_cmd_ub_);
   UpdateW(t, t_since_state_switch, td_state);
 }

@@ -31,6 +31,7 @@ from pydrake.systems.all import (
 )
 
 from pydrake.common.eigen_geometry import Quaternion
+from pydrake.common import RandomGenerator
 from pydrake.math import RotationMatrix
 
 from pydairlib.perceptive_locomotion.perception_learning.utils.DrakeGymEnv import (
@@ -108,8 +109,10 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     #DrawAndSaveDiagramGraph(diagram, '../CassieEnv_dist')
     return sim_env, controller, diagram#, cost_logger
 
+
 def reset_handler(simulator, terrain, seed):
     np.random.seed(seed)
+    drake_rng = RandomGenerator(seed)
 
     # Get controller from context or simulator
     diagram = simulator.get_system()
@@ -198,6 +201,8 @@ def reset_handler(simulator, terrain, seed):
     datapoint['q'][:4] = q_pelvis
     datapoint['v'][:3] = w_pelvis
     datapoint['v'][3:6] = v_pelvis
+
+    diagram.SetRandomContext(context, drake_rng)
 
     # set the context state with the initial conditions from the datapoint
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])

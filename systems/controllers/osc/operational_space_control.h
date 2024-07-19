@@ -303,6 +303,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC LeafSystem builder
   void Build();
 
+  // For domain randomization of PD gains
+  void SetRandomParameters(const drake::systems::Context<double>& context,
+                           drake::systems::Parameters<double>* 	parameters,
+                           drake::RandomGenerator* generator) const final;
+
  private:
 
   struct id_qp_solution {
@@ -318,6 +323,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
+  void DeclarePDGainsParameters();
 
   // Get solution of OSC
   Eigen::VectorXd SolveQp(const Eigen::VectorXd& x,
@@ -399,6 +405,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   std::map<std::string, 
            drake::systems::OutputPortIndex> traj_name_to_tracking_error_port_map_;
+
+  std::map<std::string, int> traj_name_to_pd_gains_map_;
 
   // MBP's.
   const drake::multibody::MultibodyPlant<double>& plant_;

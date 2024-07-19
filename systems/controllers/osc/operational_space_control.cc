@@ -256,10 +256,20 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
+void OperationalSpaceControl::DeclarePDGainsParameters() {
+  for (const auto& tracking_data : tracking_data_vec_) {
+    traj_name_to_pd_gains_map_[tracking_data->GetName()] =
+        DeclareAbstractParameter(drake::Value<OscTrackingData::PDGains>(
+            tracking_data->GetDefaultPDGains()));
+  }
+}
+
 void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
+  DeclarePDGainsParameters();
+
   for (auto& tracking_data : tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
     DRAKE_DEMAND(&tracking_data->plant() == &plant_);
@@ -421,6 +431,13 @@ void OperationalSpaceControl::UpdateTrackingData(
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
     const auto tracking_data = tracking_data_vec_.at(i).get();
     auto &tracking_data_state = states->at(i);
+    const auto& pd_gains = context.get_parameters()
+        .get_abstract_parameter<OscTrackingData::PDGains>(
+            traj_name_to_pd_gains_map_.at(tracking_data->GetName())
+         );
+
+    tracking_data_state.K_p_ = pd_gains.K_p_;
+    tracking_data_state.K_d_ = pd_gains.K_d_;
 
     if (tracking_data->IsActive(fsm_state)) {
       if (fixed_position_vec_.at(i).size() != 0) {
@@ -943,6 +960,30 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(osc_solution.u_sol_);
   control->set_timestamp(robot_output->get_timestamp());
+}
+
+void OperationalSpaceControl::SetRandomParameters(
+    const Context<double>& context,
+    drake::systems::Parameters<double>* parameters,
+    drake::RandomGenerator* generator) const {
+
+  std::uniform_real_distribution<double> uniform(-1.0, 1.0);
+
+  for (const auto& tracking_data: tracking_data_vec_) {
+    auto& gains =
+        parameters->get_mutable_abstract_parameter<OscTrackingData::PDGains>(
+            traj_name_to_pd_gains_map_.at(tracking_data->GetName()));
+
+    OscTrackingData::PDGains default_gains = tracking_data->GetDefaultPDGains();
+    for (int r = 0; r < gains.rows(); ++r) {
+      for (int c = 0; c < gains.cols(); ++c) {
+        double kp = default_gains.K_p_(r, c);
+        double kd = default_gains.K_d_(r, c);
+        gains.K_p_(r, c) = kp + 0.5 * kp * uniform(*generator);
+        gains.K_d_(r, c) = kd + 0.5 * kd * uniform(*generator);
+      }
+    }
+  }
 }
 
 void OperationalSpaceControl::CheckTracking(

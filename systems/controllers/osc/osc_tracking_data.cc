@@ -66,6 +66,9 @@ OscTrackingDataState OscTrackingData::AllocateState() const {
   state.filtered_ydot_ = VectorXd::Zero(n_ydot_);
   state.time_varying_weight_ = W_;
 
+  state.K_p_ = K_p_;
+  state.K_d_ = K_d_;
+
   return state;
 }
 

@@ -49,6 +49,13 @@ struct OscTrackingDataState {
   Eigen::VectorXd CalcYddotCommandSol(const Eigen::VectorXd& dv) const {
       return J_ * dv + JdotV_;
   }
+
+
+  /// TODO (@Brian-Acosta)
+  /// Fix this hack for doing domain randomization in footstep learning project
+  /// by doing it correctly
+  Eigen::MatrixXd K_p_;
+  Eigen::MatrixXd K_d_;
 };
 
 class OscTrackingData {
@@ -128,6 +135,17 @@ class OscTrackingData {
   const drake::multibody::MultibodyPlant<double>& plant() const {
     return plant_;
   };
+
+  struct PDGains {
+    Eigen::MatrixXd K_p_;
+    Eigen::MatrixXd K_d_;
+    int rows() const {return K_p_.rows();}
+    int cols() const {return K_d_.rows();}
+  };
+
+  PDGains GetDefaultPDGains() const {
+    return {K_p_, K_d_};
+  }
 
  protected:
   virtual void UpdateActual(

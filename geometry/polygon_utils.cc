@@ -298,10 +298,10 @@ ConvexPolygon MakeInscribedConvexPolygon(
     if (distance_to_boundary(facet_list, verts_sorted.front()) < 0.001) {
       break;
     }
-    auto [a, b] = GetBestSupportAsRayToBoundary(
-        verts_sorted.front(), facet_list);
-//    auto [a, b] = SolveForBestApproximateSupport(
-//        verts_sorted.front(), facet_list, verts);
+//    auto [a, b] = GetBestSupportAsRayToBoundary(
+//        verts_sorted.front(), facet_list);
+    auto [a, b] = SolveForBestApproximateSupport(
+        verts_sorted.front(), facet_list, verts);
     insert(facet_list, a, b);
     verts_sorted = get_sorted_interior_points(facet_list, verts);
   }

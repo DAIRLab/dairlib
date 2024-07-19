@@ -287,7 +287,9 @@ class DrakeGymEnv(gym.Env):
             #print("make simulator")
             self.simulator = self.make_simulator(self.sim_params)
             self._setup()
-
+        
+        if seed is None:
+            seed = 0
         context = self.reset_handler(self.simulator, self.terrain, seed)
 
         observation = self.observation_port.Eval(context).astype(np.float32)

@@ -151,7 +151,7 @@ class ObservationPublisher(LeafSystem):
             if self.init_ == 0:
                 self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
             # X, Y offset : Shifts the camera 
-            camera_step_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -183,14 +183,14 @@ class ObservationPublisher(LeafSystem):
             
             # Offset for hmap per step
             height_noise = np.random.uniform(low=-0.02, high=0.02, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.03, high=0.03)
+            step_noise = np.random.uniform(low=-0.02, high=0.02)
             hmap[-1] += height_noise + self.episode_noise + step_noise
             hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
 
-            alipxy_noise = np.random.uniform(low=-0.075, high=0.075, size=(2,)) 
+            alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
             aliplxly_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,)) # 20%
             vdes_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
-            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
             alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
             vdes = vdes + vdes_noise
             joint_angle = joint_angle + angle_noise
@@ -214,8 +214,6 @@ class RewardSystem(LeafSystem):
         self.params = alip_params
         self.cassie_sim = sim_env
         self.prev_fsm = None
-        #self.x_axis = np.array([1, 0, 0])
-        self.no = 0
 
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
@@ -259,8 +257,6 @@ class RewardSystem(LeafSystem):
         return self.get_output_port(self.output_port_indices[name])
 
     def calc_reward(self, context: Context, output) -> None:
-        #print(self.no)
-        #self.no += 1
 
         x = self.EvalVectorInput(context, self.input_port_indices['x']).value()
         footstep_command = self.EvalVectorInput(context, self.input_port_indices['footstep_command']).value()
@@ -313,54 +309,43 @@ class RewardSystem(LeafSystem):
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
         # velocity_reward = np.exp(-3*np.linalg.norm(vdes[:2] - bf_vel[:2]))
-        vx_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0]))
-        vy_reward = np.exp(-5*np.linalg.norm(vdes[1] - bf_vel[1]))
+        vx_reward = np.exp(-np.linalg.norm(vdes[0] - bf_vel[0]))
+        vy_reward = np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
         
         # penalize angular velocity about the z axis
-        angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
+        angular_reward = np.exp(-np.linalg.norm(bf_ang))
         track_penalty = 0.0
 
         if track_error > 0.05:
-            # print(track_error)
-            track_penalty = min(np.exp(2.5*(track_error-0.05)) - 1, 3)
+            track_penalty = min(np.exp(2.5*(track_error-0.05)) - 1, 2)
 
         fsm = self.EvalVectorInput(context, self.input_port_indices['fsm']).value()
 
         if left_angle > 0.35:# and (fsm == 0. or fsm == 4.):
-            left_penalty = 1.5
+            left_penalty = 1.
         if right_angle > 0.35:# and (fsm == 1. or fsm == 3.):
-            right_penalty = 1.5
+            right_penalty = 1.
         
         if self.prev_fsm == 3. and fsm == 1.:
             ud_penalty = 0.
             LQRreward = 0.
-            # print(f'prev_fsm3 : {track_error}')
-            # print(track_error)
         elif self.prev_fsm == 4. and fsm == 0.:
             ud_penalty = 0.
             LQRreward = 0.
-            # print(f'prev_fsm4 : {track_error}')
         else:
             LQRreward = np.exp(-3*LQRcost)
             track_penalty = 0.
-            # print(f'Else : {track_error}')
-            # Footstep regularization
             ud_penalty = np.linalg.norm(u - ud)
 
         self.prev_fsm = fsm.copy()
-        # if track_error > 0.4:
-        #     input("====")
-        # 0.25 * LQRreward +
-        reward = 0.75 * vx_reward + 0.25 * vy_reward + 0.5 * angular_reward \
-                - (left_penalty + right_penalty) - track_penalty - 0.5 * ud_penalty# - 0.25 * np.linalg.norm(footstep_command[3]) - 0.5 * yaw_rad
 
-        # reward normalize to 0 ~ 1
-        #reward = 0.3*(LQRreward + track_reward + velocity_reward) + 0.1*angular_reward
+        reward = 0.25 * LQRreward + 0.5 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward \
+                - (left_penalty + right_penalty) - track_penalty - 0.25 * ud_penalty
 
         output[0] = reward
 
 class DisturbanceSystem(LeafSystem):
-    def __init__(self, plant, force_x, force_y, period, duration):
+    def __init__(self, plant, force_x, force_y, force_z, period, duration):
         LeafSystem.__init__(self)
         forces_cls = Value[List[ExternallyAppliedSpatialForce_[float]]]
         self.DeclareAbstractOutputPort("spatial_forces",
@@ -370,6 +355,7 @@ class DisturbanceSystem(LeafSystem):
         self.pelvis = self.plant.GetBodyByName("pelvis")
         self.force_x = force_x
         self.force_y = force_y
+        self.force_z = force_z
         self.period = period
         self.duration = duration
 
@@ -382,9 +368,10 @@ class DisturbanceSystem(LeafSystem):
         if not ((y >= 0) and (y <= (self.period - self.duration))):
             rand_force_x = np.random.uniform(low=-self.force_x, high=self.force_x)
             rand_force_y = np.random.uniform(low=-self.force_y, high=self.force_y)
+            rand_force_z = np.random.uniform(low=-self.force_z, high=self.force_z)
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
-                f=[rand_force_x, rand_force_y, 0])
+                f=[rand_force_x, rand_force_y, rand_force_z])
         else:
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
@@ -492,7 +479,8 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.disturbance = True
         if self.disturbance:
-            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=15.0, force_y=15.0, period=1, duration=0.5))
+            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=30.0, \
+            force_y=30.0, force_z=10.0, period=1, duration=0.3))
             builder.Connect(
                     self.disturbance.get_output_port(),
                     self.cassie_sim.get_input_port_spatial_force()

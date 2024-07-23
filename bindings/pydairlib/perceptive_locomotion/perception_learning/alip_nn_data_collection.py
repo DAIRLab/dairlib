@@ -392,8 +392,9 @@ def main():
         #terrain = 'params/hard/stair_up/ustair_1.yaml'
         #terrain = 'params/new/flat/flat_11.yaml'
         terrain = 'params/flat.yaml'
-        #os.path.join(perception_learning_base_folder, terrain)
-        #sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+        
+        os.path.join(perception_learning_base_folder, terrain)
+        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = 'terrain/stair_0.yaml'
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=True)

@@ -276,12 +276,14 @@ class DrakeGymEnv(gym.Env):
         super().reset(seed=seed)
         assert options is None or options == dict(), (
             "Options are not supported in env.reset() method.")
+        #if seed is None:
+        #    seed = 0
 
-        if (seed is not None):
+        #if (seed is not None):
             # TODO(ggould) This should not reset the generator if it was
             # already explicitly seeded (see API spec), but we have no way to
             # check that at the moment.
-            self.generator = RandomGenerator(seed)
+        #    self.generator = RandomGenerator(seed)
 
         if self.make_simulator:
             #print("make simulator")
@@ -290,7 +292,7 @@ class DrakeGymEnv(gym.Env):
         
         if seed is None:
             seed = 0
-        context = self.reset_handler(self.simulator, self.terrain, seed)
+        context = self.reset_handler(self.simulator, self.terrain, seed, self.generator)
 
         observation = self.observation_port.Eval(context).astype(np.float32)
         #print(f'reset observation: {observation.dtype}')

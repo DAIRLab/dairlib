@@ -110,9 +110,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram#, cost_logger
 
 
-def reset_handler(simulator, terrain, seed):
-    np.random.seed(seed)
-    drake_rng = RandomGenerator(seed)
+def reset_handler(simulator, terrain, seed, drake_rng):
 
     # Get controller from context or simulator
     diagram = simulator.get_system()
@@ -150,7 +148,7 @@ def reset_handler(simulator, terrain, seed):
 
     # Change initial settings
     if terrain == 'stair':
-        rand = np.random.randint(1, 5)
+        rand = np.random.randint(1, 4)
         if rand == 1:
             yaw = math.pi # Downstair
         else:
@@ -219,25 +217,27 @@ def reset_handler(simulator, terrain, seed):
     return context
 
 def simulate_init(sim_params):
-    rand = np.random.randint(1, 4)
+    rand = np.random.randint(1, 5)
     if rand == 1:
-        rand = np.random.randint(0, 500)
-        terrain_yaml = f'params/medium/flat/flat_{rand}.yaml'
+        rand = np.random.randint(0, 1000)
+        terrain_yaml = f'params/flat/flat_{rand}.yaml'
         terrain = 'flat'
+    elif rand == 2:
+        rand = np.random.randint(0, 1000)
+        terrain_yaml = f'params/slope/stair_{rand}.yaml'
+        terrain = 'stair'
     else:
-        rand = np.random.randint(0, 500)
-        terrain_yaml = f'params/medium/du_stair/dustair_{rand}.yaml'
+        rand = np.random.randint(0, 1000)
+        terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
         terrain = 'stair'
     print(terrain_yaml)
-    # terrain_yaml = 'params/easy/du_stair/dustair_11.yaml'
-    # print(terrain_yaml)
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 15
+        time_limit = 10
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)

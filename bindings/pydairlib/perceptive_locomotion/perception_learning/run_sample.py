@@ -83,8 +83,8 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'RPPO_mirror_noise4.zip'
-    #model_path = 'logs/rl_model_6682500_steps.zip'
+    model_path = 'RPPO_mirror_noise.zip'
+    #model_path = 'logs/rl_model_1500000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
@@ -96,7 +96,7 @@ def run_play(sim_params, model_path=None):
         if lstm:
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
-            action, _states = model.predict(obs, deterministic=True)
+            action, states = model.predict(obs, deterministic=True)
         
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:

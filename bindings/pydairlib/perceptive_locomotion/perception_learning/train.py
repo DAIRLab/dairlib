@@ -369,8 +369,8 @@ def _run_training(config, args):
     if not args.test:
         input("Starting...")
         # if visualize is True -> TypeError: cannot pickle 'pydrake.geometry.Meshcat' object
-        sim_params_train.visualize = False 
-        sim_params_train.meshcat = None
+        # sim_params_train.visualize = False 
+        # sim_params_train.meshcat = None
         env = make_vec_env(
                            env_name,
                            n_envs=num_env,
@@ -399,7 +399,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'RPPO_mirror_noise4.zip'
+        model_path = 'RPPO_mirror_noise.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
@@ -407,30 +407,30 @@ def _run_training(config, args):
         #                 batch_size=64*num_env, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.05, ent_coef=0.003, target_kl = 0.1, vf_coef=0.2, clip_range_vf=None,
+        model = RecurrentPPO.load(model_path, env, learning_rate = 1e-5, max_grad_norm = 0.5, # linear_schedule(3e-6)
+                        clip_range = 0.05, ent_coef=0.0, target_kl = 0.02, vf_coef=0.2, clip_range_vf=None,
                         n_steps=int(512), n_epochs=5,
-                        batch_size=64, seed=42, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+                        batch_size=64, seed=27, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    # sim_params_eval.visualize = True
-    # sim_params_eval.meshcat = Meshcat()
+    sim_params_eval.visualize = True
+    sim_params_eval.meshcat = Meshcat()
     # sim_params_eval.visualize = False
     # sim_params_eval.meshcat = None
-    # eval_env = gym.make(env_name, sim_params = sim_params_eval,)
+    eval_env = gym.make(env_name, sim_params = sim_params_eval,)
 
-    # eval_env = DummyVecEnv([lambda: eval_env])
-    # eval_env = VecNormalize(venv=eval_env, norm_obs=False)
-    # eval_callback = EvalCallback(
-    #     eval_env,
-    #     best_model_save_path=log_dir+f'eval_logs/test',
-    #     log_path=log_dir+f'eval_logs/test',
-    #     eval_freq=eval_freq,
-    #     n_eval_episodes=3,
-    #     deterministic=True,
-    #     render=False)
+    eval_env = DummyVecEnv([lambda: eval_env])
+    eval_env = VecNormalize(venv=eval_env, norm_obs=False)
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=log_dir+f'eval_logs/test',
+        log_path=log_dir+f'eval_logs/test',
+        eval_freq=eval_freq,
+        n_eval_episodes=3,
+        deterministic=True,
+        render=False)
 
     checkpoint_callback = CheckpointCallback(
         save_freq=eval_freq*0.5,
@@ -438,7 +438,7 @@ def _run_training(config, args):
         name_prefix="rl_model",
     )
 
-    callback = CallbackList([checkpoint_callback,])
+    callback = CallbackList([checkpoint_callback, eval_callback])
 
     input("Start learning...")
 
@@ -467,7 +467,7 @@ def _main():
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 10e6 if not args.test else 5,
+        "total_timesteps": 10e6 if not args.test else 5000,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,

@@ -6,6 +6,7 @@ import os
 import lcm
 import sys
 import glob
+import time
 import pygame
 import argparse
 
@@ -102,7 +103,9 @@ def main():
         args.channels
     )
     while running:
+        events = 0
         for event in pygame.event.get():
+            events += 1
             if event.type == pygame.QUIT:
                 running = False
 
@@ -134,14 +137,18 @@ def main():
         fill_color = (0, 255, 0) if playing else (255, 0, 0)
         screen.fill(fill_color)
 
-        # Render the current stream name
-        path_stub = '/'.join(logpaths[active_log_idx].split('/')[-3:])
-        text_surface = font.render(path_stub, True, (0, 0, 0))
-        text_rect = text_surface.get_rect(center=(screen_width // 2, screen_height // 2))
-        screen.blit(text_surface, text_rect)
+        if events > 0:
 
-        # Update the display
-        pygame.display.flip()
+            # Render the current stream name
+            path_stub = '/'.join(logpaths[active_log_idx].split('/')[-3:])
+            text_surface = font.render(path_stub, True, (0, 0, 0))
+            text_rect = text_surface.get_rect(center=(screen_width // 2, screen_height // 2))
+            screen.blit(text_surface, text_rect)
+
+            # Update the display
+            pygame.display.flip()
+        else:
+            time.sleep(0.00005)
 
     # Quit Pygame
     pygame.quit()

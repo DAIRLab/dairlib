@@ -7,6 +7,7 @@
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/non_render_perception_module_diagram.h"
 
 namespace py = pybind11;
 
@@ -16,6 +17,7 @@ namespace pydairlib{
 using perceptive_locomotion::MpfcOscDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
+using perceptive_locomotion::NonRenderPerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
 using perceptive_locomotion::AlipMPFCDiagram;
 using multibody::SquareSteppingStoneList;
@@ -146,6 +148,38 @@ PYBIND11_MODULE(diagrams, m) {
                   &PerceptionModuleDiagram::InitializeEkf, py::const_))
       .def("InitializeElevationMap", &PerceptionModuleDiagram::InitializeElevationMap)
       .def("Make", &PerceptionModuleDiagram::Make);
+
+  py::class_<NonRenderPerceptionModuleDiagram, drake::systems::Diagram<double>>(
+      m, "NonRenderPerceptionModuleDiagram")
+      .def(py::init<std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
+           std::string,
+           std::map<std::string, drake::systems::sensors::CameraInfo>,
+           geometry::ConvexPolygonSet,
+           std::string>(),
+           py::arg("plant"), py::arg("elevation_mapping_params_yaml_path"),
+           py::arg("depth_sensor_info"), py::arg("polygon_terain"),
+           py::arg("joint_offsets_yaml"))
+      .def("get_input_port_cassie_out",
+           &NonRenderPerceptionModuleDiagram::get_input_port_cassie_out,
+           py_rvp::reference_internal)
+      .def("get_input_port_gt_state",
+           &NonRenderPerceptionModuleDiagram::get_input_port_gt_state,
+           py_rvp::reference_internal)
+      .def("get_output_port_state",
+           &NonRenderPerceptionModuleDiagram::get_output_port_state,
+           py_rvp::reference_internal)
+      .def("get_output_port_robot_output",
+           &NonRenderPerceptionModuleDiagram::get_output_port_robot_output,
+           py_rvp::reference_internal)
+      .def("get_output_port_elevation_map",
+           &NonRenderPerceptionModuleDiagram::get_output_port_elevation_map,
+           py_rvp::reference_internal)
+      .def("InitializeEkf",
+           py::overload_cast<drake::systems::Context<double>*,
+              const Eigen::VectorXd&, const Eigen::VectorXd&>(
+                  &NonRenderPerceptionModuleDiagram::InitializeEkf, py::const_))
+      .def("InitializeElevationMap", &NonRenderPerceptionModuleDiagram::InitializeElevationMap)
+      .def("Make", &NonRenderPerceptionModuleDiagram::Make);
 
   py::class_<AlipMPFCDiagram, drake::systems::Diagram<double>>(
       m, "AlipMPFCDiagram")

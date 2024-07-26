@@ -101,6 +101,28 @@ class ConvexPolygon {
     return foothold;
   }
 
+  static ConvexPolygon MakeBoxFaceForTerrain(
+      const Eigen::Vector3d& normal, const Eigen::Vector3d& center,
+      const Eigen::Vector3d& x_extent, const Eigen::Vector3d& y_extent) {
+    ConvexPolygon foothold;
+    foothold.SetPlane(normal, center);
+
+    double rx = -x_extent(2) / normal(2);
+    double ry = -y_extent(2) / normal(2);
+    Eigen::Vector3d nx = x_extent + rx * normal;
+    Eigen::Vector3d ny = y_extent + ry * normal;
+    nx.normalize();
+    ny.normalize();
+
+    foothold.AddFace(nx, center + x_extent);
+    foothold.AddFace(ny, center + y_extent);
+    foothold.AddFace(-nx, center - x_extent);
+    foothold.AddFace(-ny, center - y_extent);
+
+    foothold.CalcBoundingBox();
+    return foothold;
+  }
+
   void CalcBoundingBox();
 
   Eigen::Matrix3d R_WF() const;

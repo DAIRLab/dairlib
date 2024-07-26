@@ -35,6 +35,7 @@ PYBIND11_MODULE(multibody, m) {
                     std::vector<std::pair<RigidTransformd, Eigen::Vector3d>>,
                     std::vector<ConvexPolygon>>())
       .def("GetFootholdsWithMargin", &SquareSteppingStoneList::GetFootholdsWithMargin)
+      .def("GetConvexPolygonsForHeightmapSimulation", &SquareSteppingStoneList::GetConvexPolygonsForHeightmapSimulation)
       .def_readwrite("stones", &SquareSteppingStoneList::stones)
       .def_readwrite("cubes", &SquareSteppingStoneList::cubes)
       .def_readwrite("footholds", &SquareSteppingStoneList::footholds);

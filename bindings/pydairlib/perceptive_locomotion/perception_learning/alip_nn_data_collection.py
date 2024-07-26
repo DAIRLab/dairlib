@@ -285,12 +285,12 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
                     "dmap", grid_world[0], grid_world[1],
                     grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
                 
-                # grid_world = hmap_query.calc_height_map_world_frame(
-                #     np.array([ud[0], ud[1], 0])
-                # )
-                # hmap_query.plot_surface(
-                #     "hmap", grid_world[0], grid_world[1],
-                #     grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
+                grid_world = hmap_query.calc_height_map_world_frame(
+                    np.array([ud[0], ud[1], 0])
+                )
+                hmap_query.plot_surface(
+                    "hmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -391,11 +391,11 @@ def main():
             terrain = 'params/stair_curriculum.yaml'
         #terrain = 'params/hard/stair_up/ustair_1.yaml'
         #terrain = 'params/new/flat/flat_11.yaml'
-        terrain = 'params/flat.yaml'
+        terrain = 'params/flat_0.yaml'
         
         os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-        sim_params.terrain = 'terrain/stair_0.yaml'
+        # sim_params.terrain = 'terrain/stair_0.yaml'
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=True)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")

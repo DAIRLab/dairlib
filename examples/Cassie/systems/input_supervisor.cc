@@ -276,7 +276,7 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
   // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       blend_duration_) {
-    discrete_state->get_mutable_value(prev_efforts_index_) = command->value();
+    discrete_state->get_mutable_value(prev_efforts_index_) = command->get_data();
   }
   return drake::systems::EventStatus::Succeeded();
 }

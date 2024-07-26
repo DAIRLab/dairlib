@@ -64,6 +64,7 @@ py_library(
         ":alip_lqr",
         ":height_map_server",
         ":elevation_map_converter",
+        "//bindings/pydairlib/systems:system_utils_py",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",

@@ -146,9 +146,8 @@ class HeightMapServer(LeafSystem):
         ) else terrain
 
         self.convex_terrain_segments = \
-            SquareSteppingStoneList.GetFootholdsWithMargin(
-                stepping_stones.stones, 0.0
-            )[0]
+            SquareSteppingStoneList.GetConvexPolygonsForHeightmapSimulation(
+                stepping_stones.stones)
         self.terrain = ConvexPolygonSet(self.convex_terrain_segments)
 
         # preallocate grids in local frame for faster lookup times

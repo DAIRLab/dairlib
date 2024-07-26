@@ -241,8 +241,6 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     map.shift_map_z(map_offset);
   }
 
-
-
   // 5. add the point clouds to the map
   for (const auto& [name, cloud] : new_pointclouds) {
     // allocate data for processing

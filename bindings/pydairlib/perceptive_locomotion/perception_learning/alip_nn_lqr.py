@@ -51,7 +51,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         self.residual_unet = UNet(7, 1)
         self.residual_unet.to(self.device)
         self.residual_unet.load_state_dict(
-            torch.load(model_path)
+            torch.load(model_path, map_location=torch.device('cpu'))
         )
         self.residual_unet.eval()
         self.elevation_map = elevation_map

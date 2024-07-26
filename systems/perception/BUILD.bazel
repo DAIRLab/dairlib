@@ -49,6 +49,17 @@ cc_library(
 )
 
 cc_library(
+    name = "simulated_hmap_point_server",
+    srcs = ["simulated_hmap_point_server.cc"],
+    hdrs = ["simulated_hmap_point_server.h"],
+    deps = [
+        ":elevation_mapping_system",
+        "//geometry:convex_polygon_set",
+        "//multibody:utils",
+    ]
+)
+
+cc_library(
     name = "perceptive_locomotion_preprocessor",
     srcs = ["perceptive_locomotion_preprocessor.cc"],
     hdrs = ["perceptive_locomotion_preprocessor.h"],

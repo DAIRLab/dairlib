@@ -116,6 +116,28 @@ cc_library(
 )
 
 cc_library(
+    name = "non_render_perception_module_diagram",
+    srcs = ["non_render_perception_module_diagram.cc"],
+    hdrs = ["non_render_perception_module_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_state_estimator",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception:simulated_hmap_point_server",
+        "//systems/perception/pointcloud:drake_to_pcl_point_cloud",
+        "//systems/perception/pointcloud:voxel_grid_filter",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "mpfc_output_from_footstep",
     srcs = ["mpfc_output_from_footstep.cc"],
     hdrs = ["mpfc_output_from_footstep.h"],
@@ -133,6 +155,7 @@ cc_library(
         ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
+        ":non_render_perception_module_diagram",
         ":perception_module_diagram",
     ],
 )

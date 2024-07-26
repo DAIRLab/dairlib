@@ -115,7 +115,13 @@ bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
 }
 
 void ConvexPolygon::SortFacesByYawAngle() {
-  const Matrix3d R_FW = R_WF().transpose();
+  Matrix3d R_FW = R_WF().transpose();
+
+  VectorXd faces_cos_sim = A_ * A_eq_.transpose().normalized();
+  if (faces_cos_sim.cwiseAbs().maxCoeff() > 0.01) {
+    R_FW = Matrix3d::Identity();
+  }
+
   // Cheeky little insertion sort since these are small matrices
   for (int i = 1; i < A_.rows(); i++) {
     int j = i;

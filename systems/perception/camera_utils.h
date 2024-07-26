@@ -5,8 +5,6 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
 
-// Original code by Hersh Sanghvi, Extended by Brian Acosta
-
 namespace dairlib {
 namespace camera {
 

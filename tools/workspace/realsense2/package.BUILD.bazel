@@ -1,0 +1,21 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "realsense2",
+    srcs = glob(["usr/lib/x86_64-linux-gnu/*.so.2*"]),
+    hdrs = glob(["usr/include/librealsense2/**"]),
+    includes = ["usr/include"],
+)
+
+filegroup(
+    name = "install_libs",
+    srcs = glob(["usr/lib/x86_64-linux-gnu/*.so.2*"]),
+)
+
+filegroup(
+    name = "install_udev",
+    srcs = glob(["lib/udev/rules.d/**"]),
+)

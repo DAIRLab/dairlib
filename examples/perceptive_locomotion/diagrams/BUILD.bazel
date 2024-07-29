@@ -6,8 +6,7 @@ cc_library(
     name = "cassie_elevation_mapping_ros_diagram",
     srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
     hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
-    local_defines = ["DAIR_ROS_ON"],
-    tags = ["ros"],
+    tags = ["manual"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/perceptive_locomotion:cassie_perception_utils",
@@ -18,9 +17,7 @@ cc_library(
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:perceptive_locomotion_preprocessor",
         "//systems/perception/pointcloud:ros_point_cloud2_receiver",
-        "//systems/ros:dairlib_ros",
         "@drake//:drake_shared_library",
-        "@ros",
     ],
 )
 

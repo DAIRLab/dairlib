@@ -8,8 +8,8 @@ while [[ "${WORKSPACE_DIR}" != / ]]; do
 done
 readonly WORKSPACE_DIR
 
-if [ "${DAIRLIB_WITH_ROS}" == "ON" ] ; then
-  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/roson.bazelrc" "$@"
+if [ "${DAIRLIB_BUILD_PERCEPTIVE_LOCOMOTION_HARDWARE_DEPS}" == "ON" ] ; then
+  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/perception_hardware.bazelrc" "$@"
 else
-  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/rosoff.bazelrc" "$@"
+  exec -a "$0" "${BAZEL_REAL}" "--bazelrc=${WORKSPACE_DIR}/standard.bazelrc" "$@"
 fi

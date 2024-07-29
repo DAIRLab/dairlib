@@ -121,38 +121,12 @@ load("//tools/workspace/opencv:repository.bzl", "opencv_repository")
 
 opencv_repository("opencv")
 
-# Prebuilt ROS workspace
-new_local_repository(
-    name = "ros",
-    build_file = "tools/workspace/ros/ros.bazel",
-    path = "tools/workspace/ros/bundle_ws/install",
-)
-
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",
     sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
     strip_prefix = "acd2d-master",
     urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
-)
-
-# Other catkin packages from source
-# TODO: generate this automatically from rosinstall_generator
-
-http_archive(
-    name = "genmsg_repo",
-    build_file = "@//tools/workspace/ros/bazel:genmsg.BUILD",
-    sha256 = "d7627a2df169e4e8208347d9215e47c723a015b67ef3ed8cda8b61b6cfbf94d2",
-    strip_prefix = "genmsg-0.5.8",
-    urls = ["https://github.com/ros/genmsg/archive/0.5.8.tar.gz"],
-)
-
-http_archive(
-    name = "genpy_repo",
-    build_file = "@//tools/workspace/ros/bazel:genpy.BUILD",
-    sha256 = "35e5cd2032f52a1f77190df5c31c02134dc460bfeda3f28b5a860a95309342b9",
-    strip_prefix = "genpy-0.6.5",
-    urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
 )
 
 # dairlib can use either a local version of invariant-ekf or a pegged revision

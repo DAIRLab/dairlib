@@ -1,2 +1,0 @@
-# build without ros
-build --//tools/workspace/ros:dair_ros=on

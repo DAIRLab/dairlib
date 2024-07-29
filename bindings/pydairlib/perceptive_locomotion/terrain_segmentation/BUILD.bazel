@@ -38,7 +38,7 @@ py_binary(
     name = "elevation_mapping_and_terrain_decomposition",
     srcs = ["elevation_mapping_and_terrain_decomposition.py"],
     data = ["@lcm//:lcm-python"],
-    tags = ["ros"],
+    tags = ["manual"],
     deps = [
         ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",

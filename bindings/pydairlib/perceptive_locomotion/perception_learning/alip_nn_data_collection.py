@@ -1,5 +1,6 @@
 import pdb
 import os
+import time as pytime
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -233,7 +234,10 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         if check_termination(sim_env, context, time):
             terminate = True
             break
+        t0 = pytime.time()
         simulator.AdvanceTo(t_init + 0.05*i)
+        t1 = pytime.time()
+        print(t1 - t0)
         if simulate_perception:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
@@ -397,7 +401,7 @@ def main():
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         # sim_params.terrain = 'terrain/stair_0.yaml'
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=True)
+        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")
 
         if not terminate:

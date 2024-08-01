@@ -83,6 +83,9 @@ void SimulatedHmapPointServer<PointT>::AssignFields(
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, input_port_state_)
   );
+
+  ptr->header.stamp = 1e6 * robot_output->get_timestamp();
+
   VectorXd q_v = robot_output->GetState();
 
   multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v, context_.get());
@@ -95,6 +98,11 @@ void SimulatedHmapPointServer<PointT>::AssignFields(
   ptr->points.resize(n_points * n_points);
 
 
+  const auto X_WP = plant_.GetBodyByName(
+      sensor_pose_.sensor_parent_body_).EvalPoseInWorld(*context_);
+
+  RigidTransformd X_WS = X_WP * sensor_pose_.sensor_pose_in_parent_body_;
+
   // fill in the pointcloud
   int nfinite = 0;
   for (int i = 0; i < n_points; ++i) {
@@ -104,7 +112,7 @@ void SimulatedHmapPointServer<PointT>::AssignFields(
       world_point.y() += j * params_.resolution - half_length;
       world_point.z() = polygons_.CalcHeightOfPoint(world_point);
       if (world_point.array().isFinite().all()) {
-        ptr->points[i].getVector3fMap() = world_point.cast<float>();
+        ptr->points[n_points * i + j].getVector3fMap() = (X_WS.inverse() * world_point).cast<float>();
         ++nfinite;
       }
     }
@@ -113,13 +121,6 @@ void SimulatedHmapPointServer<PointT>::AssignFields(
   pcl::Indices indices;
   pcl::removeNaNFromPointCloud(*ptr, *ptr, indices);
 
-  // put the pointcloud in the sensor frame
-  const auto X_WP = plant_.GetBodyByName(
-      sensor_pose_.sensor_parent_body_).EvalPoseInWorld(*context_);
-
-  RigidTransformd X_WS = X_WP * sensor_pose_.sensor_pose_in_parent_body_;
-
-  pcl::transformPointCloud(*ptr, *ptr, X_WS.inverse().GetAsMatrix4().cast<float>());
   fov_filter_.setInputCloud(ptr);
   fov_filter_.filter(*ptr);
 }

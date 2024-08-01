@@ -10,6 +10,7 @@ from pydairlib.perceptive_locomotion.diagrams import (
     HikingSimDiagram,
     MpfcOscDiagram,
     MpfcOscDiagramInputType,
+    PerceptionModuleDiagram,
     NonRenderPerceptionModuleDiagram,
 )
 
@@ -150,6 +151,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.height_map_server = None
         self.perception_module = None
+        self.render = False
         self.plant_visualizer = PlantVisualizer(params.urdf, params.meshcat) if params.visualize else None
 
         if params.simulate_perception:
@@ -157,20 +159,29 @@ class CassieFootstepControllerEnvironment(Diagram):
                 "pelvis_depth":
                     self.cassie_sim.get_depth_camera_info("pelvis_depth"),
             }
+            if self.render:
+                self.perception_module = PerceptionModuleDiagram.Make(
+                    params.elevation_mapping_params_yaml, self.sensor_info, ""
+                )
+                builder.AddSystem(self.perception_module)
+                builder.Connect(
+                    self.cassie_sim.get_output_port_depth_image(),
+                    self.perception_module.get_input_port_depth_image("pelvis_depth")
+                )
+            else:
+                stepping_stones = LoadSteppingStonesFromYaml(params.terrain)
+                convex_poly_terrain = \
+                    SquareSteppingStoneList.GetConvexPolygonsForHeightmapSimulation(
+                    stepping_stones.stones)
+                convex_poly_terrain = ConvexPolygonSet(convex_poly_terrain)
 
-            stepping_stones = LoadSteppingStonesFromYaml(params.terrain)
-            convex_poly_terrain = \
-                SquareSteppingStoneList.GetConvexPolygonsForHeightmapSimulation(
-                stepping_stones.stones)
-            convex_poly_terrain = ConvexPolygonSet(convex_poly_terrain)
-
-            self.perception_module = NonRenderPerceptionModuleDiagram.Make(
-                params.elevation_mapping_params_yaml, self.sensor_info,
-                convex_poly_terrain, ""
-            )
-            builder.AddSystem(self.perception_module)
-            builder.Connect(self.cassie_sim.get_output_port_state(),
-                            self.perception_module.get_input_port_gt_state())
+                self.perception_module = NonRenderPerceptionModuleDiagram.Make(
+                    params.elevation_mapping_params_yaml, self.sensor_info,
+                    convex_poly_terrain, ""
+                )
+                builder.AddSystem(self.perception_module)
+                builder.Connect(self.cassie_sim.get_output_port_state(),
+                                self.perception_module.get_input_port_gt_state())
             builder.Connect(
                 self.cassie_sim.get_output_port_cassie_out(),
                 self.perception_module.get_input_port_cassie_out()
@@ -179,10 +190,6 @@ class CassieFootstepControllerEnvironment(Diagram):
             #    self.perception_module.get_output_port_robot_output(),
             #    self.controller.get_input_port_state()
             #)
-            # builder.Connect(
-            #     self.cassie_sim.get_output_port_depth_image(),
-            #     self.perception_module.get_input_port_depth_image("pelvis_depth")
-            # )
 
             elevation_options = ElevationMapOptions()
             elevation_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None

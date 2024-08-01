@@ -68,7 +68,7 @@ drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(plant_context_.get(), q);
   Vector3d body_pos_in_world = camera_track_frame_.CalcPoseInWorld(
-      *plant_context_).translation();
+      *plant_context_).translation() - 0.4 * Vector3d::UnitZ();
 
   meshcat_->SetCameraPose(body_pos_in_world + cam_pos_local, body_pos_in_world);
 
@@ -132,7 +132,7 @@ PlantVisualizer::PlantVisualizer(
   if (not body_to_track.empty()) {
     auto cam_manager = builder.AddSystem<MeshcatCameraManager>(plant_, frame, meshcat_);
     auto cam_position = builder.AddSystem<ConstantVectorSource<double>>(
-        Vector3d(1.5, -2.5, 0.1)
+        Vector3d(0, -2.5, 0.1)
     );
 
 

@@ -277,7 +277,7 @@ def visualize(logfile):
             'CASSIE_ELEVATION_MAP': lcmt_grid_map,
             state_channel: lcmt_robot_output
         },
-        start_time=3,
+        start_time=0,
         duration=-1,
         data_processing_callback=process_grid_maps
     )

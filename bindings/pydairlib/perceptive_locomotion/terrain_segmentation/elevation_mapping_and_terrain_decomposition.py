@@ -21,8 +21,8 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
 
-from pydairlib.perceptive_locomotion.ros_diagrams import (
-    CassieElevationMappingRosDiagram
+from pydairlib.perceptive_locomotion.diagrams import (
+    CassieElevationMappingLcmDiagram
 )
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
@@ -40,8 +40,8 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 import numpy as np
 
 
-points_topic = "/camera/depth/color/points"
-cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+points_topic = "DRAKE_POINT_CLOUD"
+cassie_state_channel = "CASSIE_STATE_SIMULATION"
 
 elevation_mapping_params = (
     "bindings/pydairlib/perceptive_locomotion/params"
@@ -68,7 +68,7 @@ def main():
         if len(sys.argv) > 1 and sys.argv[1] == 'sim' else \
         elevation_mapping_params
 
-    elevation_mapping = CassieElevationMappingRosDiagram(
+    elevation_mapping = CassieElevationMappingLcmDiagram(
         params_to_use,
         points_topic
     )

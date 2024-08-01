@@ -16,6 +16,8 @@ import numpy as np
 import cv2
 import time
 
+import matplotlib.pyplot as plt
+
 
 class TerrainSegmentationSystem(LeafSystem):
 
@@ -59,6 +61,7 @@ class TerrainSegmentationSystem(LeafSystem):
 
         self.below_edge_factor = 5.0
         self.safety_threshold = 0.7
+        self.debug_mode = False
 
     def get_raw_safety_score(self, elevation: np.ndarray,
                              elevation_inpainted,
@@ -104,6 +107,27 @@ class TerrainSegmentationSystem(LeafSystem):
         # treat safety scores like independent probabilities
         raw_safety = np.sqrt(var_safety_score * second_order_safety_score)
         raw_safety[np.isnan(elevation)] = 0
+
+        if self.debug_mode:
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(17, 17))
+
+            im = ax1.imshow(elevation, cmap='inferno')
+            plt.colorbar(im, ax=ax1)
+            ax1.set_title('Elevation')
+
+            im = ax2.imshow(var_safety_score, cmap='inferno')
+            plt.colorbar(im, ax=ax2)
+            ax2.set_title('Variance Safety Score')
+
+            ax3.set_title('Curvature Safety Score')
+            ax3.imshow(second_order_safety_score, cmap='inferno')
+            plt.colorbar(im, ax=ax3)
+
+            ax4.set_title('Combined Safety Score')
+            ax4.imshow(raw_safety, cmap='inferno')
+            plt.colorbar(im, ax=ax4)
+
+            plt.show()
 
         return raw_safety, lowpass
 
@@ -160,7 +184,7 @@ class TerrainSegmentationSystem(LeafSystem):
         erosion_ksize_int = int(
             self.var_safety_margin /
             elevation_map.getResolution() + 0.5
-        ) + 2
+        ) + 1
         erosion_kernel = cv2.getStructuringElement(
             cv2.MORPH_ELLIPSE, (erosion_ksize_int, erosion_ksize_int)
         )

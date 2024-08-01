@@ -38,13 +38,12 @@ py_binary(
     name = "elevation_mapping_and_terrain_decomposition",
     srcs = ["elevation_mapping_and_terrain_decomposition.py"],
     data = ["@lcm//:lcm-python"],
-    tags = ["manual"],
     deps = [
         ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
-        "//bindings/pydairlib/perceptive_locomotion:ros_diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/systems",
     ],
 )

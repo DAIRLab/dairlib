@@ -7,18 +7,21 @@
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_elevation_mapping_lcm_diagram.h"
 
 namespace py = pybind11;
 
 namespace dairlib{
 namespace pydairlib{
 
+using multibody::SquareSteppingStoneList;
+
 using perceptive_locomotion::MpfcOscDiagram;
+using perceptive_locomotion::AlipMPFCDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
-using perceptive_locomotion::AlipMPFCDiagram;
-using multibody::SquareSteppingStoneList;
+using perceptive_locomotion::CassieElevationMappingLcmDiagram;
 
 PYBIND11_MODULE(diagrams, m) {
   m.doc() = "Binding perceptive locomotion diagrams for "
@@ -157,8 +160,16 @@ PYBIND11_MODULE(diagrams, m) {
            &AlipMPFCDiagram::get_output_port_mpc_output,
            py_rvp::reference_internal);
 
-
-}
+  py::class_<CassieElevationMappingLcmDiagram, drake::systems::Diagram<double>>(
+        m, "CassieElevationMappingLcmDiagram")
+        .def(py::init<const std::string&, const std::string&>(),
+            py::arg("params_yaml"), py::arg("points_channel"))
+        .def("InitializeElevationMap", &CassieElevationMappingLcmDiagram::InitializeElevationMap)
+        .def("lcm", &CassieElevationMappingLcmDiagram::lcm, py_rvp::reference_internal)
+        .def("plant", &CassieElevationMappingLcmDiagram::plant, py_rvp::reference_internal)
+        .def("get_input_port_state", &CassieElevationMappingLcmDiagram::get_input_port_state, py_rvp::reference_internal)
+        .def("get_input_port_contact", &CassieElevationMappingLcmDiagram::get_input_port_contact, py_rvp::reference_internal);
+  }
 
 
 }

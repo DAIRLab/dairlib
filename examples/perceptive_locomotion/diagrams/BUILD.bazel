@@ -3,6 +3,24 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "cassie_elevation_mapping_lcm_diagram",
+    srcs = ["cassie_elevation_mapping_lcm_diagram.cc"],
+    hdrs = ["cassie_elevation_mapping_lcm_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/perception:camera_utils",
+        "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception:perceptive_locomotion_preprocessor",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "cassie_elevation_mapping_ros_diagram",
     srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
     hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
@@ -131,6 +149,7 @@ cc_library(
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
+        ":cassie_elevation_mapping_lcm_diagram"
     ],
 )
 

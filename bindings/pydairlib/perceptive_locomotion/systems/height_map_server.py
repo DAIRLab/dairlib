@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from typing import Union
 from dataclasses import dataclass
@@ -34,6 +35,7 @@ from pydairlib.multibody import (
 )
 
 from pydairlib.systems.footstep_planning import Stance
+from pydairlib.perceptive_locomotion.utils import CalcHeightMapInStanceFrameFromSteppingStones
 
 
 @dataclass
@@ -330,19 +332,21 @@ class HeightMapServer(LeafSystem):
         """
         Get height values of 64x64 map and save to heightmap -> (64, 64)
         """
-        stance_pos = self.stance_pos_in_world(robot_state, stance)
-        heightmap = np.zeros((self.map_opts.nx, self.map_opts.ny))
-        for i, x in enumerate(self.xgrid):
-            for j, y in enumerate(self.ygrid):
-                offset = ReExpressBodyYawVector3InWorldFrame(
-                    plant=self.plant,
-                    context=self.plant_context,
-                    body_name="pelvis",
-                    vec=np.array([x, y, 0.0]) + center
-                )
-                query_point = stance_pos + offset
-                heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
 
+        stance_pos = self.stance_pos_in_world(robot_state, stance)
+        t0 = time.time()
+        heightmap = CalcHeightMapInStanceFrameFromSteppingStones(
+            polygons=self.terrain,
+            plant=self.plant,
+            plant_context=self.plant_context,
+            floating_base_body_name="pelvis",
+            stance_pos=stance_pos,
+            center=center,
+            xgrid_stance_frame=self.xgrid,
+            ygrid_stance_frame=self.ygrid,
+        )
+        t1 = time.time()
+        # print(t1 - t0)
         if np.isinf(heightmap).any():
             heightmap = self.replace_inf(heightmap)
 

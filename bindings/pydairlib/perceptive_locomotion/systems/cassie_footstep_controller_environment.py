@@ -151,7 +151,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.height_map_server = None
         self.perception_module = None
-        self.render = False
+        self.render = True
         self.plant_visualizer = PlantVisualizer(params.urdf, params.meshcat) if params.visualize else None
 
         if params.simulate_perception:

@@ -89,6 +89,7 @@ pybind_py_library(
     name = "utils_py",
     cc_deps = [
         "//multibody:utils",
+        "//geometry:convex_polygon_set",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],

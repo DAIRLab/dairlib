@@ -131,6 +131,11 @@ class ConvexPolygon {
   // only public for unit_testing
   void SortFacesByYawAngle();
 
+  double xmin() const { return boundin_box_.xmin_;}
+  double xmax() const { return boundin_box_.xmax_;}
+  double ymin() const { return boundin_box_.ymin_;}
+  double ymax() const { return boundin_box_.ymax_;}
+
  private:
 
   struct bounding_box {

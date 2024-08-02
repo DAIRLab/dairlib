@@ -24,3 +24,17 @@ Tanh_trained/
 /params/flat/
 /params/stair/
 /venv/
+MODULE.bazel
+MODULE.bazel.lock
+bindings/pydairlib/perceptive_locomotion/perception_learning/params/du_stair/
+bindings/pydairlib/perceptive_locomotion/perception_learning/params/flat/
+bindings/pydairlib/perceptive_locomotion/perception_learning/params/slope/
+bindings/pydairlib/perceptive_locomotion/perception_learning/utils/flat_0.yaml
+bindings/pydairlib/perceptive_locomotion/perception_learning/utils/flat_stair_0.yaml
+flat.yaml
+flat_new.yaml
+flat_stair_flat.yaml
+hs_err_pid44507.log
+replay_pid44507.log
+stair.yaml
+wavy_terrain.yaml

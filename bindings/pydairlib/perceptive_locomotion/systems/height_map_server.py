@@ -18,6 +18,7 @@ from pydrake.systems.all import (
 from pydrake.geometry import Rgba
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 from pydairlib.geometry.meshcat_utils import PlotColoredSurface
+from pydairlib.geometry.polygon_utils import PolygonHeightMap
 
 from pydairlib.cassie.cassie_utils import (
     AddCassieMultibody,
@@ -35,7 +36,7 @@ from pydairlib.multibody import (
 )
 
 from pydairlib.systems.footstep_planning import Stance
-from pydairlib.perceptive_locomotion.utils import CalcHeightMapInStanceFrameFromSteppingStones
+from pydairlib.perceptive_locomotion.utils import CalcGTHeightMapInStanceFrame
 
 
 @dataclass
@@ -151,6 +152,7 @@ class HeightMapServer(LeafSystem):
             SquareSteppingStoneList.GetConvexPolygonsForHeightmapSimulation(
                 stepping_stones.stones)
         self.terrain = ConvexPolygonSet(self.convex_terrain_segments)
+        self.terrain_as_map = PolygonHeightMap(self.terrain, 0.01)
 
         # preallocate grids in local frame for faster lookup times
         self.xgrid = np.linspace(
@@ -335,8 +337,8 @@ class HeightMapServer(LeafSystem):
 
         stance_pos = self.stance_pos_in_world(robot_state, stance)
         t0 = time.time()
-        heightmap = CalcHeightMapInStanceFrameFromSteppingStones(
-            polygons=self.terrain,
+        heightmap = CalcGTHeightMapInStanceFrame(
+            polygons=self.terrain_as_map,
             plant=self.plant,
             plant_context=self.plant_context,
             floating_base_body_name="pelvis",

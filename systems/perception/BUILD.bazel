@@ -18,7 +18,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
-    ]
+    ],
 )
 
 cc_library(
@@ -54,9 +54,9 @@ cc_library(
     hdrs = ["simulated_hmap_point_server.h"],
     deps = [
         ":elevation_mapping_system",
-        "//geometry:convex_polygon_set",
+        "//geometry:polygon_height_map",
         "//multibody:utils",
-    ]
+    ],
 )
 
 cc_library(
@@ -78,7 +78,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 

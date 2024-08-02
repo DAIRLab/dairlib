@@ -14,6 +14,7 @@ load(
 pybind_py_library(
     name = "polygon_utils_py",
     cc_deps = [
+        "//geometry:polygon_height_map",
         "//geometry:polygon_utils",
         "@acd2d",
         "@drake//:drake_shared_library",

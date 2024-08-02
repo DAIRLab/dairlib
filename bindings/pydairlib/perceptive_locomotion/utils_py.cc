@@ -5,6 +5,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "geometry/convex_polygon_set.h"
+#include "geometry/polygon_height_map.h"
 #include <grid_map_core/GridMap.hpp>
 
 namespace py = pybind11;
@@ -17,8 +18,7 @@ using grid_map::Position;
 using grid_map::Index;
 using grid_map::InterpolationMethods;
 
-using geometry::ConvexPolygonSet;
-
+using geometry::PolygonHeightMap;
 
 PYBIND11_MODULE(utils, m) {
 
@@ -62,8 +62,8 @@ PYBIND11_MODULE(utils, m) {
      py::arg("plant"), py::arg("plant_context"), py::arg("floating_base_body_name"),
      py::arg("stance_pos"), py::arg("center"), py::arg("xgrid_stance_frame"),
      py::arg("ygrid_stance_frame"))
-  .def("CalcHeightMapInStanceFrameFromSteppingStones", [](
-      const ConvexPolygonSet polygons,
+  .def("CalcGTHeightMapInStanceFrame", [](
+      const PolygonHeightMap* poly_hmap,
       const drake::multibody::MultibodyPlant<double>* plant,
       const drake::systems::Context<double>* context,
       const std::string& body_name,
@@ -87,12 +87,11 @@ PYBIND11_MODULE(utils, m) {
 
     for (int col = 0; col < hmap.cols(); ++col) {
       for (int row = 0; row < hmap.rows(); ++row) {
-        Eigen::Vector3d q = Eigen::Vector3d(
-            cyaw * (xgrid_stance_frame(row) + center(0)) - syaw * (ygrid_stance_frame(col) + center(1)),
-            syaw * (xgrid_stance_frame(row) + center(0)) + cyaw * (ygrid_stance_frame(col) + center(1)),
-            0
-        ) + stance_pos;
-        hmap(row, col) = polygons.CalcHeightOfPoint(q) - stance_pos(2);
+        double x = cyaw * (xgrid_stance_frame(row) + center(0)) - syaw *
+            (ygrid_stance_frame(col) + center(1));
+        double y = syaw * (xgrid_stance_frame(row) + center(0)) + cyaw *
+        (ygrid_stance_frame(col) + center(1));
+        hmap(row, col) = poly_hmap->CalcHeight(x, y) - stance_pos(2);
       }
     }
 

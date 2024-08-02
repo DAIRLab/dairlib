@@ -8,6 +8,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "geometry/convex_polygon_set.h"
+#include "geometry/polygon_height_map.h"
 
 
 
@@ -44,6 +45,7 @@ class SimulatedHmapPointServer : public drake::systems::LeafSystem<double> {
   elevation_mapping_params params_;
 
   geometry::ConvexPolygonSet polygons_;
+  geometry::PolygonHeightMap hmap_;
 
 
   drake::systems::InputPortIndex input_port_state_;

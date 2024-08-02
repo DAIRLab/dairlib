@@ -15,10 +15,10 @@ py_library(
     name = "alip_lqr",
     srcs = ["alip_lqr.py"],
     deps = [
+        ":elevation_map_converter",
+        "//bindings/grid_map",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
-        "//bindings/grid_map",
-        ":elevation_map_converter",
     ],
 )
 
@@ -35,13 +35,13 @@ py_library(
     name = "elevation_map_converter",
     srcs = ["elevation_map_converter.py"],
     deps = [
+        "//bindings/grid_map",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/geometry:meshcat_utils_py",
         "//bindings/pydairlib/multibody",
         "//bindings/pydairlib/perceptive_locomotion:utils_py",
         "@drake//bindings/pydrake",
-        "//bindings/grid_map",
     ],
 )
 
@@ -52,6 +52,7 @@ py_library(
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/geometry:meshcat_utils_py",
+        "//bindings/pydairlib/geometry:polygon_utils_py",
         "//bindings/pydairlib/multibody",
         "//bindings/pydairlib/perceptive_locomotion:utils_py",
         "@drake//bindings/pydrake",
@@ -63,13 +64,13 @@ py_library(
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
         ":alip_lqr",
-        ":height_map_server",
         ":elevation_map_converter",
-        "//bindings/pydairlib/systems:system_utils_py",
+        ":height_map_server",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/systems",
+        "//bindings/pydairlib/systems:system_utils_py",
         "@drake//bindings/pydrake",
     ],
 )
@@ -79,10 +80,10 @@ py_library(
     srcs = ["cassie_footstep_controller_gym_environment.py"],
     deps = [
         ":alip_lqr_rl",
-        ":height_map_server",
         ":elevation_map_converter",
-        "//bindings/pydairlib/cassie:cassie_utils_py",
+        ":height_map_server",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/systems",
@@ -107,9 +108,9 @@ py_binary(
     deps = [
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/perceptive_locomotion:vision_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
     ],
 )
 

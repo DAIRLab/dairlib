@@ -18,8 +18,6 @@ using Eigen::VectorXd;
 
 using drake::math::RigidTransformd;
 
-
-
 template<typename PointT>
 SimulatedHmapPointServer<PointT>::SimulatedHmapPointServer(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -33,7 +31,8 @@ SimulatedHmapPointServer<PointT>::SimulatedHmapPointServer(
     camera_info_(camera_info),
     track_point_(params.track_point),
     params_(params),
-    polygons_(polygons){
+    polygons_(polygons),
+    hmap_(geometry::PolygonHeightMap(polygons, 0.01)){
 
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(
@@ -110,7 +109,7 @@ void SimulatedHmapPointServer<PointT>::AssignFields(
       Vector3d world_point = track_point_in_world;
       world_point.x() += i * params_.resolution - half_length;
       world_point.y() += j * params_.resolution - half_length;
-      world_point.z() = polygons_.CalcHeightOfPoint(world_point);
+      world_point.z() = hmap_.CalcHeight(world_point.x(), world_point.y());
       if (world_point.array().isFinite().all()) {
         ptr->points[n_points * i + j].getVector3fMap() = (X_WS.inverse() * world_point).cast<float>();
         ++nfinite;

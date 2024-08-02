@@ -13,6 +13,8 @@ from pydrake.systems.all import (
     ZeroOrderHold,
 )
 
+from pydrake.geometry.all import Meshcat, Rgba
+
 from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepLQR
@@ -26,6 +28,7 @@ from pydairlib.perceptive_locomotion.systems. \
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
+import time
 import numpy as np
 from grid_map import GridMap
 from pydairlib.perceptive_locomotion import vision_utils
@@ -36,6 +39,7 @@ def main():
     sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
     sim_params.simulate_perception = True
     sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -95,13 +99,22 @@ def main():
 
     simulator.reset_context(context)
     simulator.Initialize()
-    simulator.set_target_realtime_rate(1.0)
+    # simulator.set_target_realtime_rate(1.0)
     t_next = 0.05
     while t_next < np.inf:
+        start = time.time()
         simulator.AdvanceTo(t_next)
+        end = time.time()
+        print(f'rtr: {(end - start)/0.05:.2f}')
         elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
-        elevation_map.convertToDefaultStartIndex()
-        vision_utils.get_safe_terrain(elevation_map['elevation'], elevation_map.getResolution())
+        grid_world = elevation_map.calc_height_map_world_frame(
+            np.zeros((3,))
+        )
+        elevation_map.plot_surface(
+                    "dmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+        # elevation_map.convertToDefaultStartIndex()
+        # vision_utils.get_safe_terrain(elevation_map['elevation'], elevation_map.getResolution())
         t_next += 0.05
 
 

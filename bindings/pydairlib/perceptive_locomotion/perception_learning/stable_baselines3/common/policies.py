@@ -693,7 +693,8 @@ class ActorCriticPolicy(BasePolicy):
         :return: Action distribution
         """
         mean_actions = self.action_net(latent_pi)
-        self.log_std = nn.Parameter(th.tensor([-3.2, -3.2, -3.2,], device='cuda:0'))
+        #self.log_std = nn.Parameter(th.tensor([-3.2, -3.2, -3.6,], device='cuda:0'))
+        #self.log_std = nn.Parameter(th.tensor([-3.6, -3.6, -3.9,], device='cuda:0'))
         
         # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m, 0.1rad] Initialize with log_std
         #self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6, -2.3], device='cuda:0'))

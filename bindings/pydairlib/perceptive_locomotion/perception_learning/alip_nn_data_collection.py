@@ -399,7 +399,7 @@ def main():
         
         os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-        # sim_params.terrain = 'terrain/stair_0.yaml'
+        sim_params.terrain = 'terrain/stair_500.yaml'
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")

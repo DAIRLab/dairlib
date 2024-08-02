@@ -276,8 +276,6 @@ class DrakeGymEnv(gym.Env):
         super().reset(seed=seed)
         assert options is None or options == dict(), (
             "Options are not supported in env.reset() method.")
-        #if seed is None:
-        #    seed = 0
 
         #if (seed is not None):
             # TODO(ggould) This should not reset the generator if it was

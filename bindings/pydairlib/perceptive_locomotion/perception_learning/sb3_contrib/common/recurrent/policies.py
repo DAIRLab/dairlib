@@ -78,8 +78,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
         share_features_extractor: bool = True,
         normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        optimizer_class: Type[th.optim.Optimizer] = th.optim.RAdam, #th.optim.Adam
+        optimizer_kwargs: Optional[Dict[str, Any]] = {'weight_decay': 1e-4, 'eps': 1e-5},#None
         lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         shared_lstm: bool = False,
@@ -142,6 +142,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # self.actor_optimizer = self.optimizer_class(actor_params, lr=lr_schedule(1), **self.optimizer_kwargs)
         # self.critic_optimizer = self.optimizer_class(critic_params, lr=3e-4, **self.optimizer_kwargs)
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+        print(self.optimizer)
 
     def _build_mlp_extractor(self) -> None:
         """

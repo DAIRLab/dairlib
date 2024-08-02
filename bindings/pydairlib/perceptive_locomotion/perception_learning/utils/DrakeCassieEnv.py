@@ -111,7 +111,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
 
 def reset_handler(simulator, terrain, seed, drake_rng):
-
+    #np.random.seed(seed)
     # Get controller from context or simulator
     diagram = simulator.get_system()
     context = diagram.CreateDefaultContext()
@@ -129,12 +129,16 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     
     datapoint = ic_generator.random()
     #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
-    v_des_theta = 0.1
+    v_des_theta = 0.35
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
+    if terrain == 'no_obs':
+        v_norm = np.random.uniform(-v_des_norm, v_des_norm)
+    else:
+        v_norm = np.random.uniform(0.0, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
+    #datapoint['desired_velocity'] = np.array([-0.5, 0.01]).flatten()
+    #print(datapoint['desired_velocity'])
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -149,10 +153,10 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     # Change initial settings
     if terrain == 'stair':
         rand = np.random.randint(1, 4)
-        if rand == 1:
-            yaw = math.pi # Downstair
-        else:
+        if rand in [1,2]:
             yaw = 0.0 # Upstair
+        else:
+            yaw = math.pi # Downstair
         
         rand = np.random.randint(1, 4)
         if rand == 1:
@@ -164,7 +168,8 @@ def reset_handler(simulator, terrain, seed, drake_rng):
         else:
             rand = np.random.uniform(low=-8.0, high=8.0)
             datapoint['q'][4:6] = np.array([0., rand])
-
+    elif terrain == 'no_obs':
+        yaw = np.random.uniform(low=-math.pi, high=math.pi)
     else: # Flat
         rand = np.random.randint(1, 3)
         if rand == 1:
@@ -217,20 +222,27 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     return context
 
 def simulate_init(sim_params):
-    rand = np.random.randint(1, 5)
-    if rand == 1:
-        rand = np.random.randint(0, 1000)
-        terrain_yaml = f'params/flat/flat_{rand}.yaml'
-        terrain = 'flat'
-    elif rand == 2:
+    rand = np.random.randint(1, 16)
+    if rand in [1,2,3,4,5]:
+        rand = np.random.randint(700, 1500)
+        terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
+        terrain = 'stair'
+    elif rand in [6,7,8,9,10]:
         rand = np.random.randint(0, 1000)
         terrain_yaml = f'params/slope/stair_{rand}.yaml'
         terrain = 'stair'
+    elif rand in [11]:
+        terrain_yaml = 'params/flat.yaml'
+        terrain = 'no_obs'
     else:
-        rand = np.random.randint(0, 1000)
-        terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
-        terrain = 'stair'
+        rand = np.random.randint(700, 1500)
+        terrain_yaml = f'params/flat/flat_{rand}.yaml'
+        terrain = 'flat'
+    # terrain_yaml = 'params/flat.yaml'
+    # terrain = 'no_obs'
     print(terrain_yaml)
+    # sim_params.terrain = 'flat_new.yaml'
+    # terrain = 'flat'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)

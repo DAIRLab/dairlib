@@ -484,8 +484,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     mirror_actions[:, 1] = -mirror_actions[:, 1] # y
                     mirror_loss = th.mean(((actions - mirror_actions)**2)[mask])
 
-                    mirror_losses.append(2 * mirror_loss.item())
-                    loss += 2 * mirror_loss
+                    mirror_losses.append(4 * mirror_loss.item())
+                    loss += 4 * mirror_loss
                     
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417

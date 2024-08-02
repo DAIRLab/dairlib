@@ -181,6 +181,54 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_bridge_driver_out",
+    srcs = ["franka_bridge_driver_out.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":parameters",
+        ":franka_drake_lcm_driver_channels",
+        ":franka_lcm_channels",
+        ":franka_sim_params",
+        "//common",
+        "//examples/jacktoy/systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_in",
+    srcs = ["franka_bridge_driver_in.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":parameters",
+        ":franka_drake_lcm_driver_channels",
+        ":franka_lcm_channels",
+        ":franka_sim_params",
+        "//common",
+        "//examples/jacktoy/systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_ros_lcm_bridge",
     srcs = ["franka_ros_lcm_bridge.cc"],
     data = [
@@ -282,6 +330,18 @@ cc_library(
     hdrs = ["parameters/trajectory_params.h"],
     data = [
         "parameters/trajectory_params.yaml",
+    ],
+    deps = [
+        "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_drake_lcm_driver_channels",
+    hdrs = ["parameters/franka_drake_lcm_driver_channels.h"],
+    data = [
+        "parameters/franka_drake_lcm_driver_channels.yaml",
     ],
     deps = [
         "//solvers:c3",

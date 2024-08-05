@@ -424,7 +424,7 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   }
   if (floating_bodies.size() == 1){
     const auto& body = plant.get_body(*floating_bodies.begin());
-    int start = body.floating_positions_start();
+    int start = body.floating_velocities_start_in_v();
     std::string name = "base";
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;

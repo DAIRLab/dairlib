@@ -63,4 +63,5 @@ drake::Vector4<T> CalcALIPReset(
 
 Eigen::Vector4d CalcAlipStateAtTouchdown(const Vector6d& x, double m, double t);
 
+Vector6d PropogatePendulumState(const Vector6d& x, double m, double t);
 }

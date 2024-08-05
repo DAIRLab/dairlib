@@ -31,7 +31,7 @@ def main():
     log_mpc = lcm.EventLog(filename_mpc, "r")
 
     mpfc_debug_data = get_log_data(
-        log_mpc, mpfc_channels, 1.0, 0.4, mpfc_plots.cf_mpfc_debug_callback,
+        log_mpc, mpfc_channels, 1.0, -1, mpfc_plots.cf_mpfc_debug_callback,
         "CF_MPFC_DEBUG"
     )
 
@@ -39,10 +39,9 @@ def main():
     _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
     _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
     _ = mpfc_plots.plot_initial_alip_state(mpfc_debug_data)
-    _ = mpfc_plots.plot_input_solutions(mpfc_debug_data)
+    # _ = mpfc_plots.plot_input_solutions(mpfc_debug_data)
     # _ = mpfc_plots.plot_timing_solution(mpfc_debug_data)
     # _ = mpfc_plots.plot_contact(contact_data, mpfc_debug_data)
-    init_ps()
     plt.show()
 
 

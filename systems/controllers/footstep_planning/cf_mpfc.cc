@@ -114,12 +114,13 @@ cf_mpfc_solution CFMPFC::Solve(
       xc.push_back(prev_sol.xc.at(i));
       uu.at(i) = prev_sol.uu.at(i);
     } else {
-      xc.push_back(x);
+      double tprop = i * t / (params_.nknots - 1);
+      Vector6d xprop = nonlinear_pendulum::PropogatePendulumState(
+          x, params_.gait_params.mass, tprop);
+      xc.push_back(xprop);
     }
   }
-  if (use_prev_sol) {
-    xc.front() = x;
-  }
+  xc.front() = x;
 
   Vector3d p_post = use_prev_sol ? prev_sol.pp.at(1) :
                                    p + CalcS2SLQRInput(x, vdes, t, stance);

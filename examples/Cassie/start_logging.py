@@ -81,7 +81,7 @@ def log_everything_main():
     with open('commit_tag-%s' % log_num, 'w') as f:
         f.write(str(commit_tag))
         f.write("\n\ngit diff:\n\n")
-        f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
+        # f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
     subprocess.run(['cp', standing_gains, 'standing_gains_%s.yaml' % log_num])
     subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])

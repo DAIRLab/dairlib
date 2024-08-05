@@ -158,7 +158,7 @@ Vector4<T> CalcALIPReset(
   const T y = -r * cos(theta_y) * sin(theta_x);
   const T xdot = rdot * sin(theta_y) * cos(theta_x) + r * theta_y_dot * cos(theta_y) * cos(theta_x) - r * theta_x_dot * sin(theta_y) * sin(theta_x);
   const T ydot = -rdot * sin(theta_x) * cos(theta_y) - r * theta_x_dot * cos(theta_x) * cos(theta_y) + r * theta_y_dot * sin(theta_x) * sin(theta_y);
-  const T zdot = (-rdot * r + xdot*x + ydot * y) / sqrt(r*r - x*x - y*y);
+  const T zdot = (rdot * r - xdot*x - ydot * y) / sqrt(r*r - x*x - y*y);
 
   Vector3<T> v(xdot, ydot, zdot);
 
@@ -216,12 +216,43 @@ Vector4d CalcAlipStateAtTouchdown(const Vector6d& xp, double m, double t) {
   double theta_x = xp(theta_x_idx);
   double x = r * cos(theta_x) * sin(theta_y);
   double y = -r * cos(theta_y) * sin(theta_x);
-  double z = sqrt(r*r - x*x + y*y);
+  double z = sqrt(r*r - x*x - y*y);
   double ly = xp(l_y_idx);
   double lx = xp(l_x_idx);
 
-  Vector4d alip_state(x, y, ly, lx);
+  Vector4d alip_state(x, y, lx, ly);
   return alip_utils::CalcAd(z, m, t) * alip_state;
+}
+
+Vector6d PropogatePendulumState(const Vector6d& xp, double m, double t) {
+  double r = xp(r_idx);
+  double theta_y = xp(theta_y_idx);
+  double theta_x = xp(theta_x_idx);
+  double x = r * cos(theta_x) * sin(theta_y);
+  double y = -r * cos(theta_y) * sin(theta_x);
+  double z = sqrt(r*r - x*x - y*y);
+  double ly = xp(l_y_idx);
+  double lx = xp(l_x_idx);
+
+  Vector4d alip_state(x, y, lx, ly);
+  Vector4d xa = alip_utils::CalcAd(z, m, t) * alip_state;
+  Vector3d com_s(xa(0), xa(1), z);
+
+  r = com_s.norm();
+  theta_y = atan2(com_s.x(), com_s.z());
+  theta_x = atan2(-com_s.y(), com_s.z());
+
+  double Lx = xa(2);
+  double Ly = xa(3);
+  Vector6d ret;
+  ret(theta_x_idx) = theta_x;
+  ret(theta_y_idx) = theta_y;
+  ret(r_idx) = r;
+  ret(l_x_idx) = Lx;
+  ret(l_y_idx) = Ly;
+  ret(rdot_idx) = 0;
+
+  return ret;
 }
 
 

@@ -99,18 +99,20 @@ void CFMPFCOutputReceiver::CopyAnkleTorque(
 
 void CFMPFCOutputReceiver::CopyRTraj(
     const Context<double> &context, Trajectory<double> *out) const {
+
   double t = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, input_port_state_))->get_timestamp();
+  const auto &mpfc_output = get_mpfc_output(context);
 
-  const auto& input_traj =
-      get_cache_entry(traj_cache_).Eval<PiecewisePolynomial<double>>(context);
-
-  VectorXd yddot = VectorXd::Constant(1, input_traj.value(t)(1));
-  VectorXd y = VectorXd::Constant(yddot.rows(), 0.85);
-  VectorXd ydot = VectorXd::Zero(yddot.rows());
+  LcmTrajectory lcm_traj(mpfc_output.trajs);
+  LcmTrajectory::Trajectory traj = lcm_traj.GetTrajectory("state_traj");
 
   *dynamic_cast<PiecewisePolynomial<double>*>(out) =
-      polynomials::ConstantAccelerationTrajectory(y, ydot, yddot, t);
+      PiecewisePolynomial<double>::CubicHermite(
+          traj.time_vector,
+          traj.datapoints.block(2, 0, 1, traj.datapoints.cols()),
+          traj.datapoints.block(5, 0, 1, traj.datapoints.cols())
+      );
 }
 
 }

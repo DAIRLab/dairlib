@@ -163,9 +163,9 @@ int DoMain(int argc, char** argv) {
       plant,
       plant_context.get(),
       2.0,  // rotational velocity command scaling
-      1.0,  // sagittal velocity command scaling
+      0.8,  // sagittal velocity command scaling
       -0.5, // lateral vel scaling
-      0.5   // stick filter time constant
+      0.1   // stick filter time constant
   );
 
   auto mpc_output_pub = builder.AddSystem(

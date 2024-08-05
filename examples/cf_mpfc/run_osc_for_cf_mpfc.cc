@@ -500,8 +500,8 @@ int DoMain(int argc, char** argv) {
   center_of_mass_traj->AddFiniteStateToTrack(right_stance_state);
   center_of_mass_traj->AddFiniteStateToTrack(post_right_double_support_state);
 
-  MatrixXd kpll = MatrixXd::Zero(1,1);
-  MatrixXd kdll = MatrixXd::Zero(1,1);
+  MatrixXd kpll = gains.K_p_com.bottomRightCorner<1,1>();
+  MatrixXd kdll = gains.K_d_com.bottomRightCorner<1,1>();
   MatrixXd wll = gains.W_com.bottomRightCorner<1,1>();
   auto leg_length_traj = std::make_unique<DistanceTrackingData>(
       "leg_length", kpll, kdll, wll, plant, stance_foot_data_for_leg_len.get(),

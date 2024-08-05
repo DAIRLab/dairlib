@@ -216,12 +216,11 @@ Vector4d CalcAlipStateAtTouchdown(const Vector6d& xp, double m, double t) {
   double theta_x = xp(theta_x_idx);
   double x = r * cos(theta_x) * sin(theta_y);
   double y = -r * cos(theta_y) * sin(theta_x);
-  double z = sqrt(r*r - x*x - y*y);
   double ly = xp(l_y_idx);
   double lx = xp(l_x_idx);
 
   Vector4d alip_state(x, y, lx, ly);
-  return alip_utils::CalcAd(z, m, t) * alip_state;
+  return alip_utils::CalcAd(r, m, t) * alip_state;
 }
 
 Vector6d PropogatePendulumState(const Vector6d& xp, double m, double t) {
@@ -235,9 +234,9 @@ Vector6d PropogatePendulumState(const Vector6d& xp, double m, double t) {
   double lx = xp(l_x_idx);
 
   Vector4d alip_state(x, y, lx, ly);
-  Vector4d xa = alip_utils::CalcAd(z, m, t) * alip_state;
-  Vector3d com_s(xa(0), xa(1), z);
+  Vector4d xa = alip_utils::CalcAd(r, m, t) * alip_state;
 
+  Vector3d com_s(xa(0), xa(1), z);
   r = com_s.norm();
   theta_y = atan2(com_s.x(), com_s.z());
   theta_x = atan2(-com_s.y(), com_s.z());

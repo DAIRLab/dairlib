@@ -380,7 +380,7 @@ int do_main(int argc, char* argv[]) {
         meshcat, "samples_", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
         "sample_locations", "end_effector_orientation_target", 
         std::max(sampling_params.num_additional_samples_c3, 
-            sampling_params.num_additional_samples_repos), false);
+            sampling_params.num_additional_samples_repos) + 1, false);
 
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());

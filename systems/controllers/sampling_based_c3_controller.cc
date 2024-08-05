@@ -184,7 +184,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
-  // Since the num_additional_samples_repos means the additional samples to 
+  // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
   int num_samples = std::max(sampling_params_.num_additional_samples_repos + 1,
                              sampling_params_.num_additional_samples_c3);
@@ -243,11 +243,8 @@ SamplingC3Controller::SamplingC3Controller(
   // This port will output all samples except the current location.
   // all_sample_locations_port_ does not include the current location. So 
   // index 0 is the first sample.
-  // TODO: @Sharanya Look into LcmPoseDrawer and see if there is a way to skip 
-  // the 0th 0th index while visualizing. If yes, then make this port bigger by 
-  // 1 and include current location.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), 
+    "all_sample_locations", vector<Vector3d>(num_samples + 1, Vector3d::Zero()), 
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   // all_sample_costs_port_ does include the current location. So index 0 is
@@ -1015,10 +1012,9 @@ void SamplingC3Controller::OutputIsC3Mode(
 void SamplingC3Controller::OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
     std::vector<Eigen::Vector3d>* all_sample_locations) const {
-  // Only output the samples after the first one since the first one is the
-  // current location.
+  // Output all sample locations including current location.
   std::vector<Eigen::Vector3d> sample_locations = std::vector<Eigen::Vector3d>(
-    all_sample_locations_.begin() + 1, all_sample_locations_.end());
+    all_sample_locations_.begin(), all_sample_locations_.end());
 
   *all_sample_locations = sample_locations;
 }

@@ -156,9 +156,11 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
 
 
   const alip_utils::PointOnFramed& stance_foot = stance_foot_map_.at(fsm_state);
+
   // Get the state
   plant_.CalcPointsPositions(
-      *context_, stance_foot.second,
+      *context_,
+      stance_foot.second,
       stance_foot.first,
       plant_.world_frame(),
       &p_w

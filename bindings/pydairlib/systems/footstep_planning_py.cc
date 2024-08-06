@@ -5,6 +5,7 @@
 
 #include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
 #include "systems/controllers/footstep_planning/alip_s2s_mpfc.h"
+#include "multibody/multibody_utils.h"
 
 namespace py = pybind11;
 
@@ -16,11 +17,14 @@ using systems::controllers::alip_utils::AlipGaitParams;
 using systems::controllers::alip_utils::ResetDiscretization;
 using systems::controllers::alip_utils::CalcA;
 using systems::controllers::alip_utils::CalcAd;
+using systems::controllers::alip_utils::PointOnFramed;
+using systems::controllers::alip_utils::CalcAlipState;
 using systems::controllers::alip_utils::CalcMassNormalizedA;
 using systems::controllers::alip_utils::CalcMassNormalizedAd;
 using systems::controllers::alip_utils::MakePeriodicAlipGait;
 using systems::controllers::alip_utils::AlipStepToStepDynamics;
 using systems::controllers::alip_utils::MassNormalizedAlipStepToStepDynamics;
+using multibody::ReExpressWorldVector3InBodyYawFrame;
 
 
 PYBIND11_MODULE(footstep_planning, m) {
@@ -76,7 +80,33 @@ PYBIND11_MODULE(footstep_planning, m) {
         py::arg("discretization"))
     .def("CalcMassNormalizedAd", &CalcMassNormalizedAd,
          py::arg("com_z"), py::arg("t"))
-    .def("CalcMassNormalizedA", &CalcMassNormalizedA, py::arg("com_z"));
+    .def("CalcMassNormalizedA", &CalcMassNormalizedA, py::arg("com_z"))
+    .def("CalcAlipStateInBodyYawFrame",
+         [](const drake::multibody::MultibodyPlant<double>& plant,
+            drake::systems::Context<double>* plant_context,
+            const Eigen::Ref<Eigen::VectorXd>& state,
+            std::string body_name,
+            PointOnFramed stance_foot) {
+        Eigen::Vector3d CoM;
+        Eigen::Vector3d L;
+        Eigen::Vector3d stance;
+
+        CalcAlipState(plant, plant_context, state, {stance_foot},
+          {1.0}, &CoM, &L, &stance);
+
+        CoM = CoM - stance;
+
+        CoM = ReExpressWorldVector3InBodyYawFrame<double>(
+            plant, *plant_context, body_name, CoM);
+        L = ReExpressWorldVector3InBodyYawFrame<double>(
+            plant, *plant_context, body_name, L);
+
+        Eigen::Vector4d ret;
+        ret.head<2>() = CoM.head<2>();
+        ret.tail<2>() = L.head<2>();
+        return ret;
+    }, py::arg("plant"), py::arg("plant_context"), py::arg("state"),
+       py::arg("body_name"), py::arg("stance_foot"));
 }
 
 

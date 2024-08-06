@@ -8,6 +8,7 @@
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/non_render_perception_module_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 
 namespace py = pybind11;
 
@@ -20,6 +21,8 @@ using perceptive_locomotion::PerceptionModuleDiagram;
 using perceptive_locomotion::NonRenderPerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
 using perceptive_locomotion::AlipMPFCDiagram;
+using perceptive_locomotion::MpfcOutputFromFootstep;
+
 using multibody::SquareSteppingStoneList;
 
 PYBIND11_MODULE(diagrams, m) {
@@ -198,6 +201,15 @@ PYBIND11_MODULE(diagrams, m) {
            py_rvp::reference_internal)
       .def("get_output_port_mpc_output",
            &AlipMPFCDiagram::get_output_port_mpc_output,
+           py_rvp::reference_internal);
+
+  py::class_<MpfcOutputFromFootstep, drake::systems::LeafSystem<double>>(
+      m, "MpfcOutputFromFootstep")
+      .def(py::init<double, double, const drake::multibody::MultibodyPlant<double>&>(),
+          py::arg("T_ss"), py::arg("T_ds"), py::arg("plant"))
+      .def("get_input_port_state", &MpfcOutputFromFootstep::get_input_port_state,
+           py_rvp::reference_internal)
+      .def("get_input_port_footstep", &MpfcOutputFromFootstep::get_input_port_footstep,
            py_rvp::reference_internal);
 
 

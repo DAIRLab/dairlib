@@ -59,10 +59,17 @@ py_library(
 )
 
 py_library(
+    name = "whittling_solver",
+    srcs = ["whittling_solver.py"],
+    deps = [],
+)
+
+py_library(
     name = "convex_terrain_decomposition_system",
     srcs = ["convex_terrain_decomposition_system.py"],
     deps = [
         ":vision_utils",
+        ":whittling_solver",
         "//bindings/grid_map",
         "//bindings/pydairlib/geometry",
         "@drake//bindings/pydrake",
@@ -89,6 +96,7 @@ py_library(
 )
 
 PY_LIBRARIES = [
+    ":whittling_solver",
     ":terrain_segmentation_system",
     ":convex_terrain_decomposition_system",
     ":vision_utils",

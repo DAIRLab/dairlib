@@ -24,6 +24,7 @@ except ImportError:
     exit(0)
 
 import matplotlib.pyplot as plt
+import pydairlib.perceptive_locomotion.terrain_segmentation.whittling_solver as whittling_solver
 
 
 def plot_polygon(verts, linestyle='solid', color='color'):

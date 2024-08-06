@@ -24,6 +24,18 @@ py_library(
     ],
 )
 
+py_library(
+    name = "RLsystem",
+    srcs = ["RLsystem.py"],
+    deps = [
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib/perceptive_locomotion/systems:elevation_map_converter",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+    ],
+)
+
 py_binary(
     name = "alip_nn_lqr_test",
     srcs = ["alip_nn_lqr_test.py"],

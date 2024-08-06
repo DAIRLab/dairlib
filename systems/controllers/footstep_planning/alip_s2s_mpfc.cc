@@ -238,9 +238,14 @@ void AlipS2SMPFC::MakeInputConstraints() {
 
 void AlipS2SMPFC::MakeStateConstraints() {
   Vector4d state_bound;
+
+  Eigen::Matrix2d flipper = Eigen::Matrix2d::Zero();
+  flipper(0, 1) = 1;
+  flipper(1, 0) = 1;
+
   state_bound.head<2>() = params_.com_pos_bound;
   state_bound.tail<2>() = params_.gait_params.mass *
-      params_.gait_params.height * params_.com_vel_bound;
+      params_.gait_params.height * flipper * params_.com_vel_bound;
 
   Matrix4d Ad_inv = CalcAd(
       params_.gait_params.height,

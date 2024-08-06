@@ -83,10 +83,10 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'RPPO_mirror_noise10.zip'
-    #model_path = 'RPPO_multi_noise.zip'
-    #model_path = 'rl_model_8400000_steps.zip'
-    #model_path = 'logs/rl_model_5120000_steps.zip'
+    #model_path = 'RPPO_mirror_noise.zip'
+    #model_path = 'RPPO_003_1.zip'
+    model_path = 'rl_model_9120000_steps.zip'
+    #model_path = 'logs/rl_model_6720000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
     

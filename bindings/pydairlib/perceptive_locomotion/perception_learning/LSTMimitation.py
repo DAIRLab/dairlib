@@ -152,7 +152,7 @@ class InitialBatchNorm(nn.Module):
         return x
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
+    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
         super(CustomNetwork, self).__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
@@ -222,8 +222,8 @@ class CustomNetwork(nn.Module):
             nn.Linear(256, 64),
         )
 
-        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=128, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=128, num_layers=2, batch_first=False)
+        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=64, num_layers=2, batch_first=False)
+        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=64, num_layers=2, batch_first=False)
 
         # self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
 
@@ -266,10 +266,10 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_hidden_size: int = 128,
+        lstm_hidden_size: int = 64,
         n_lstm_layers: int = 2,
         optimizer_class= th.optim.RAdam,#th.optim.Adam,
-        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
+        optimizer_kwargs = {'weight_decay': 1e-4, 'epsilon': 1e-5},
         *args,
         **kwargs,
     ):
@@ -278,7 +278,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
             observation_space,
             action_space,
             lr_schedule,
-            lstm_hidden_size = 128,
+            lstm_hidden_size = 64,
             n_lstm_layers = 2,
             *args,
             **kwargs,
@@ -329,7 +329,7 @@ def pretrain_agent(
     patience = 5,
     min_delta=0.0000000001
 ):
-    noise = True
+    noise = False
     MTL = False # Multi-task Learning
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -460,7 +460,7 @@ def pretrain_agent(
                     action, _, _, states = model.forward(sequence_data, states, episode_starts, deterministic=True)
                 
                 ### Mirror ###
-                mirror_action, _, _, mirror_states, _ = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
+                mirror_action, _, _, mirror_states = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
                 mirror_action[:, 1] = -mirror_action[:, 1]
 
                 if (i+1 == sequences.size(1)):
@@ -618,7 +618,7 @@ def _main():
 
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
     #student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
-    student = RecurrentPPO.load('RPPO_multi_noise2.zip', env)
+    student = RecurrentPPO.load('RPPO_003.zip', env)
     obs_data = path.join(perception_learning_base_folder, 'tmp/observations_new1.npy')
     action_data = path.join(perception_learning_base_folder, 'tmp/actions_new1.npy')
 
@@ -634,7 +634,7 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=10,
+        epochs=100,
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,
@@ -645,7 +645,7 @@ def _main():
         patience=10,
     )
 
-    student.save("RPPO_multi_noise3")
+    student.save("RPPO_003_1")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

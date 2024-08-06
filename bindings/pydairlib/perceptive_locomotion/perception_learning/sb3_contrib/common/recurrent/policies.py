@@ -78,7 +78,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
         share_features_extractor: bool = True,
         normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.RAdam, #th.optim.Adam
+        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,#th.optim.RAdam, #th.optim.Adam
         optimizer_kwargs: Optional[Dict[str, Any]] = {'weight_decay': 1e-4, 'eps': 1e-5},#None
         lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,

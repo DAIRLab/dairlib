@@ -137,8 +137,8 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     else:
         v_norm = np.random.uniform(0.0, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([-0.5, 0.01]).flatten()
-    #print(datapoint['desired_velocity'])
+    #datapoint['desired_velocity'] = np.array([.4, 0.]).flatten()
+    print(datapoint['desired_velocity'])
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -223,11 +223,11 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
 def simulate_init(sim_params):
     rand = np.random.randint(1, 16)
-    if rand in [1,2,3,4,5]:
-        rand = np.random.randint(700, 1500)
+    if rand in [1,2,3,4,5,6]:
+        rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
         terrain = 'stair'
-    elif rand in [6,7,8,9,10]:
+    elif rand in [7,8,9,10]:
         rand = np.random.randint(0, 1000)
         terrain_yaml = f'params/slope/stair_{rand}.yaml'
         terrain = 'stair'
@@ -235,21 +235,21 @@ def simulate_init(sim_params):
         terrain_yaml = 'params/flat.yaml'
         terrain = 'no_obs'
     else:
-        rand = np.random.randint(700, 1500)
+        rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/flat/flat_{rand}.yaml'
         terrain = 'flat'
     # terrain_yaml = 'params/flat.yaml'
     # terrain = 'no_obs'
     print(terrain_yaml)
-    # sim_params.terrain = 'flat_new.yaml'
-    # terrain = 'flat'
+    # sim_params.terrain = 'terrain/params/easy_stair/dustair_0.yaml'
+    # terrain = 'stair'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 10
+        time_limit = 12
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
@@ -311,7 +311,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                     dtype=np.float32)
 
     # Time_step to match walking
-    time_step = 0.05
+    time_step = 0.03
     
     env = DrakeGymEnv(
         simulator=simulator,

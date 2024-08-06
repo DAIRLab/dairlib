@@ -399,7 +399,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'RPPO_mirror_noise9.zip' # x/logs2/rl_model_1728000_steps
+        model_path = 'RPPO_mirror_noise12.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
@@ -407,8 +407,8 @@ def _run_training(config, args):
         #                 batch_size=64*num_env, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = 1e-6, max_grad_norm = 0.3, # linear_schedule(3e-6)
-                        clip_range = 0.05, ent_coef=0.01, target_kl = 0.01, vf_coef=0.05, clip_range_vf=None,
+        model = RecurrentPPO.load(model_path, env, learning_rate = 3e-7, max_grad_norm = 0.3, # linear_schedule(3e-6)
+                        clip_range = 0.05, ent_coef=0.003, target_kl = 0.005, vf_coef=0.05, clip_range_vf=None,
                         n_steps=int(512), n_epochs=5,
                         batch_size=64, seed=55, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
@@ -467,7 +467,7 @@ def _main():
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 10e6 if not args.test else 5000,
+        "total_timesteps": 20e6 if not args.test else 5000,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,

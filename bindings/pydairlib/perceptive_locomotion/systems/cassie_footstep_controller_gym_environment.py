@@ -152,11 +152,11 @@ class ObservationPublisher(LeafSystem):
         
         if self.noise:
             if self.init_ == 0:
+                self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
                 #self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
-                self.camera_episode_noise = np.random.uniform(low=-0.07, high=0.07)
-            # X, Y offset : Shifts the camera 
+            # X, Y offset : Shifts the camera
+            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
             #camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
-            camera_step_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -183,32 +183,35 @@ class ObservationPublisher(LeafSystem):
         if self.noise:
             if self.init_ == 0:
                 # Offset for hmap per episode
+                self.episode_noise = np.random.uniform(low=-0.03, high=0.03)
                 #self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
-                self.episode_noise = np.random.uniform(low=-0.07, high=0.07)
                 self.init_ += 1
             
             # Offset for hmap per step
+            height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
+            step_noise = np.random.uniform(low=-0.01, high=0.01)
             # height_noise = np.random.uniform(low=-0.03, high=0.03, size=(self.height,self.height))
             # step_noise = np.random.uniform(low=-0.02, high=0.02)
-            height_noise = np.random.uniform(low=-0.03, high=0.03, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.02, high=0.02)
             hmap[-1] += height_noise + self.episode_noise + step_noise
             hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
 
-            # alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
-            # aliplxly_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,)) # 20%
-            # vdes_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
-            # angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
-            
-            # alipxy_noise = np.random.uniform(low=-0.075, high=0.075, size=(2,)) 
-            # aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) # 20%
-            # vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,))
-            # angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            alip_noise_com = max(abs(alip[:2]))*0.1
+            alip_noise_ang = max(abs(alip[:-2]))*0.1
 
-            alipxy_noise = np.random.uniform(low=-0.1, high=0.1, size=(2,))
-            aliplxly_noise = np.random.uniform(low=-0.075, high=0.075, size=(2,)) # 20%
-            vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
-            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            # alip_noise_com = max(abs(alip[:2]))*0.15
+            # alip_noise_ang = max(abs(alip[:-2]))*0.15
+
+            # alip_noise_com = max(abs(alip[:2]))*0.2
+            # alip_noise_ang = max(abs(alip[:-2]))*0.2
+
+            alipxy_noise = np.random.uniform(low=-alip_noise_com, high=alip_noise_com, size=(2,))
+            aliplxly_noise = np.random.uniform(low=-alip_noise_ang, high=alip_noise_ang, size=(2,)) # 20%
+            
+            vdes_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
+
+            # vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            # angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
 
             alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
             vdes = vdes + vdes_noise
@@ -391,13 +394,14 @@ class DisturbanceSystem(LeafSystem):
         y = context.get_time() % self.period
         #if not ((y >= 0) and (y <= (self.period - self.duration))):
         rand = np.random.random_sample()
-        if rand < 0.2: # Randomize disturbance
+        if rand < 0.1: # Randomize disturbance
             rand_force_x = np.random.uniform(low=-self.force_x, high=self.force_x)
             rand_force_y = np.random.uniform(low=-self.force_y, high=self.force_y)
             rand_force_z = np.random.uniform(low=-self.force_z, high=self.force_z)
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
                 f=[rand_force_x, rand_force_y, rand_force_z])
+            #print(spatial_force)
         else:
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
@@ -410,6 +414,89 @@ class DisturbanceSystem(LeafSystem):
         force.body_index = self.pelvis.index()
         force.p_BoBq_B = self.pelvis.default_com()
         return force
+
+class RLSystem(LeafSystem):
+    def __init__(self, model_path, env):
+        super.__init__()
+        model = RecurrentPPO(CustomActorCriticPolicy, env)
+        self.model = model.set_parameters(model_path)
+        self.lstm_states = None
+        self.episode_starts = np.ones((1,), dtype=bool)
+        self.empty = np.empty(12310)
+
+        self.input_port_indices = {
+                'lqr_reference': self.DeclareVectorInputPort(
+                    "xd_ud", 6
+                ).get_index(),
+                'x' : self.DeclareVectorInputPort(
+                    "x", self.ns
+                ).get_index(),
+                'vdes': self.DeclareVectorInputPort(
+                    'vdes', 2
+                ).get_index(),
+                'state': self.DeclareVectorInputPort(
+                    'x_u_t', 59
+                ).get_index(),
+                'gt_state': self.DeclareVectorInputPort(
+                    'gt_state', 59
+                ).get_index(),
+                'height_map' : self.DeclareAbstractInputPort(
+                "elevation_map", model_value=Value(ElevationMapQueryObject())
+                ).get_index(),
+                'height_map_query' : self.DeclareAbstractInputPort(
+                "height_map_query", model_value=Value(HeightMapQueryObject())
+                ).get_index(),
+            }
+        self.output_port_indices = {
+            'actions': self.DeclareVectorOutputPort(
+                "actions", 3, self.calculate_actions
+            ).get_index()
+            }
+
+    def calculate_actions(self, context: Context, output):
+        xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
+        ud = xd_ud.value()[4:]
+        # gt_hmap_query = self.EvalAbstractInput(
+        #     context, self.input_port_indices['height_map_query']
+        # ).get_value()
+
+        # gt_hmap = gt_hmap_query.calc_height_map_stance_frame(
+        #     np.array([ud[0], ud[1], 0])
+        # )
+        hmap_query = self.EvalAbstractInput(
+            context, self.input_port_indices['height_map']
+        ).get_value()
+        
+        adverserial_offset = np.zeros(2,)    
+        hmap = hmap_query.calc_height_map_stance_frame(
+            np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
+        )
+        
+        alip = self.EvalVectorInput(context, self.input_port_indices['x']).get_value()
+        vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
+        states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
+        #gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
+        
+        joint_angle = states[7:23] # Only joint angles (reject pelvis)
+        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
+        #gt_joint_angle = gt_states[:23]
+
+        hmap = hmap.reshape(-1)
+        #gt_hmap = gt_hmap.reshape(-1)
+
+        obs = np.hstack((hmap, alip, vdes, joint_angle, self.empty)) # 24621
+        action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+        self.lstm_states = lstm_states
+        self.episode_starts = np.zeros((1,), dtype=bool)
+        output = action
+
+    def get_input_port_by_name(self, name: str) -> InputPort:
+        assert (name in self.input_port_indices)
+        return self.get_input_port(self.input_port_indices[name])
+
+    def get_output_port_by_name(self, name: str) -> OutputPort:
+        assert (name in self.output_port_indices)
+        return self.get_output_port(self.output_port_indices[name])
 
 class InitialConditionsServer:
     def __init__(self, fname: str):
@@ -512,8 +599,8 @@ class CassieFootstepControllerEnvironment(Diagram):
         self.dist = True
 
         if self.dist:
-            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=45.0, \
-            force_y=45.0, force_z=15.0, period=1, duration=0.3))
+            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=15.0, \
+            force_y=15.0, force_z=5.0, period=1, duration=0.3))
             zoh_ = ZeroOrderHold(1.0/30.0, Value([self.disturbance.get_model_value()]))
             builder.AddSystem(zoh_)
             builder.Connect(

@@ -136,7 +136,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   const drake::systems::OutputPort<double>& get_output_port_tracking_error(
     const std::string& traj_name) const {
-    DRAKE_DEMAND(traj_name_to_tracking_error_port_map_.contains(traj_name));
+    //DRAKE_DEMAND(traj_name_to_tracking_error_port_map_.contains(traj_name));
     return this->get_output_port(
       traj_name_to_tracking_error_port_map_.at(traj_name));
   }

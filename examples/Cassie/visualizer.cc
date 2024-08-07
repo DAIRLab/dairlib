@@ -42,7 +42,7 @@ using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::RigidBody;
+using drake::multibody::BodyFrame;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;

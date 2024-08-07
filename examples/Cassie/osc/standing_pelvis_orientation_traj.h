@@ -33,7 +33,7 @@ class StandingPelvisOrientationTraj
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::RigidBodyFrame<double>& world_;
+  const drake::multibody::BodyFrame<double>& world_;
 
   // A list of pairs of contact body frame and contact point
   const std::vector<

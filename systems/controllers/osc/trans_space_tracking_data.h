@@ -32,7 +32,7 @@ class TransTaskSpaceTrackingData final : public OptionsTrackingData {
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
 
  protected:
-  std::unordered_map<int, const drake::multibody::RigidBodyFrame<double>*>
+  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
       body_frames_;
 
  private:

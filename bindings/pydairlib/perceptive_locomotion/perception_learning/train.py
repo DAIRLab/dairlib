@@ -385,12 +385,22 @@ def _run_training(config, args):
         # check_env(env)
     else:
         input("Testing...")
-        sim_params_train.visualize = True
-        sim_params_train.meshcat = Meshcat()
-        env = gym.make(env_name,
-                       sim_params = sim_params_train,
-                       )
-        check_env(env)
+        sim_params_train.visualize = False
+        sim_params_train.meshcat = None
+        # env = gym.make(env_name,
+        #                sim_params = sim_params_train,
+        #                )
+        # check_env(env)
+        env = make_vec_env(
+                           env_name,
+                           n_envs=num_env,
+                           seed=42,
+                           vec_env_cls=SubprocVecEnv,
+                           env_kwargs={
+                            'sim_params': sim_params_train,
+                           },
+                           #vec_env_kwargs=dict(start_method="spawn")
+                           )
     
     if args.test:
         model = RecurrentPPO(
@@ -399,7 +409,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'RPPO_mirror_noise12.zip' # x/logs2/rl_model_1728000_steps
+        model_path = 'latest_model.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
@@ -462,12 +472,12 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 64
+        num_env = 5
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 20e6 if not args.test else 5000,
+        "total_timesteps": 10e6 if not args.test else 5,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,

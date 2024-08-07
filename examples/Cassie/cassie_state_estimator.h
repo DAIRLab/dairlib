@@ -159,7 +159,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int n_u_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::RigidBodyFrame<double>& world_;
+  const drake::multibody::BodyFrame<double>& world_;
   const bool is_floating_base_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 

@@ -14,7 +14,7 @@ using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using drake::multibody::RigidBody;
+using drake::multibody::BodyFrame;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;

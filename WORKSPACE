@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.28.0"
+DRAKE_COMMIT = "v1.24.0"
 
-DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2fe"
+DRAKE_CHECKSUM = "35874238af2c0305525a6f32c28692e3fdbed0581055b0b491669f7534cf6cae"
 
 # Maybe download Drake.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

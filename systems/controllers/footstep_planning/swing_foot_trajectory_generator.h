@@ -99,7 +99,7 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double> &plant_;
   drake::systems::Context<double> *plant_context_;
-  const drake::multibody::RigidBodyFrame<double> &world_;
+  const drake::multibody::BodyFrame<double> &world_;
 
   std::vector<int> left_right_support_fsm_states_;
 

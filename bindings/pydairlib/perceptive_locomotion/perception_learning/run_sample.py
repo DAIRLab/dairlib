@@ -14,6 +14,8 @@ from gymnasium import spaces
 from typing import Callable, Tuple
 
 import gymnasium as gym
+from gymnasium import spaces
+from typing import Callable, Tuple
 
 from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_checker import check_env
 from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.ppo_recurrent.ppo_recurrent import RecurrentPPO
@@ -238,10 +240,10 @@ def run_play(sim_params, model_path=None):
     model_path = 'rl_model_9120000_steps.zip'
     #model_path = 'logs/rl_model_6720000_steps.zip'
     
-    model = RecurrentPPO.load(model_path, env, verbose=1)
-    #th.save(model.policy.state_dict(), 'test')
-    #model.load_state_dict(th.load('test'))
-
+    #model = RecurrentPPO.load(model_path, env, verbose=1)
+    model = RecurrentPPO(CustomActorCriticPolicy, env)
+    model.set_parameters(model_path)
+    
     obs, _ = env.reset()
     input("Start..")
     total_reward = 0
@@ -271,11 +273,6 @@ def load_without_dependencies():
     lstm=True
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
-
-    #model_path = 'RPPO_mirror_noise.zip'
-    #model_path = 'RPPO_003_1.zip'
-    model_path = 'rl_model_9120000_steps.zip'
-    #model_path = 'logs/rl_model_6720000_steps.zip'
 
     action_space = spaces.Box(low=np.asarray(np.array([-1., -1., -1.]), dtype="float32"),
                                   high=np.asarray(np.array([1., 1., 1.]), dtype="float32"),

@@ -16,6 +16,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/constant_value_source.h"
+#include "drake/systems/analysis/simulator.h"
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -42,16 +43,14 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
     bool visualize) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
-  drake::multibody::MultibodyPlant<double> plant(0.0);
   [[maybe_unused]] auto instance = AddCassieMultibody(
-      &plant, nullptr, true, urdf, true, false);
-  plant.Finalize();
-  auto plant_context = plant.CreateDefaultContext();
+      &plant_, nullptr, true, urdf, true, false);
+  plant_.Finalize();
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
   auto mpfc = builder.AddSystem<CassieMPFCDiagram<MPC>>(
-      plant, mpc_gains_yaml, -1);
+      plant_, mpc_gains_yaml, -1);
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;
@@ -60,9 +59,9 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
       drake::Value<ConvexPolygonSet>(footholds));
 
   auto osc_diagram = builder.AddSystem<OSC>(
-      plant, osc_gains_yaml, mpc_gains_yaml, qp_solver_options_yaml);
+      plant_, osc_gains_yaml, mpc_gains_yaml, qp_solver_options_yaml);
 
-  auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
+  sim_diagram_ = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml);
 
   auto state_pub = builder.AddSystem(
@@ -105,15 +104,15 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
       mpfc->get_input_port_vdes()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram_->get_output_port_state_lcm(),
       osc_diagram->get_input_port_state()
   );
   builder.Connect(
-      sim_diagram->get_output_port_lcm_radio(),
+      sim_diagram_->get_output_port_lcm_radio(),
       osc_diagram->get_input_port_radio()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram_->get_output_port_state_lcm(),
       mpfc->get_input_port_state()
   );
   builder.Connect(
@@ -122,7 +121,7 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
   );
   builder.Connect(
       osc_diagram->get_output_port_actuation(),
-      sim_diagram->get_input_port_actuation()
+      sim_diagram_->get_input_port_actuation()
   );
   builder.Connect(
       foothold_source->get_output_port(),
@@ -130,14 +129,14 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
   );
   builder.Connect(
       radio_source->get_output_port(),
-      sim_diagram->get_input_port_radio()
+      sim_diagram_->get_input_port_radio()
   );
 
   builder.Connect(osc_diagram->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());
   builder.Connect(osc_diagram->get_output_port_u_lcm(),
                   input_pub->get_input_port());
-  builder.Connect(sim_diagram->get_output_port_state_lcm(),
+  builder.Connect(sim_diagram_->get_output_port_state_lcm(),
                   state_pub->get_input_port());
   builder.Connect(mpfc->get_output_port_mpfc_debug(),
                   mpc_pub->get_input_port());
@@ -147,11 +146,38 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
     multibody::AddSteppingStonesToMeshcatFromYaml(
         plant_visualizer->get_meshcat(), terrain_yaml);
     builder.Connect(
-        sim_diagram->get_output_port_state(),
+        sim_diagram_->get_output_port_state(),
         plant_visualizer->get_input_port());
   }
 
   diagram_ = builder.Build();
+}
+
+template <mpfc MPC, mpfc_osc_diagram OSC>
+void HikingControllerBench<MPC, OSC>::Simulate(
+    const Eigen::VectorXd& q, const Eigen::VectorXd& v,
+    double realtime_rate, double end_time, std::string save_file) {
+
+  lcm_log_sink_.clear();
+  auto context = diagram_->CreateDefaultContext();
+  sim_diagram_->SetPlantInitialCondition(
+      diagram_.get(),
+      context.get(),
+      q, v
+  );
+
+  drake::systems::Simulator<double> simulator(*diagram_, std::move(context));
+  simulator.set_publish_every_time_step(false);
+  simulator.set_publish_at_initialization(false);
+
+  if (realtime_rate > 0) {
+    simulator.set_target_realtime_rate(realtime_rate);
+  }
+  simulator.AdvanceTo(end_time);
+
+  if (not save_file.empty()) {
+    lcm_log_sink_.WriteLog(save_file);
+  }
 }
 
 template class HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>;

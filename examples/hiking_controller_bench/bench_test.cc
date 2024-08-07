@@ -6,11 +6,21 @@
 
 namespace dairlib::perceptive_locomotion {
 
+using Eigen::VectorXd;
+
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::CFMPFCSystem;
 
 int DoMain() {
   std::string base = "examples/hiking_controller_bench/";
+
+  VectorXd q = VectorXd::Zero(23);
+  q << 1, 0, 0, 0, 0, 0, 0.95, -0.0320918, 0, 0.539399, -1.31373,
+      -0.0410844, 1.61932, -0.0301574, -1.67739, 0.0320918, 0, 0.539399,
+      -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785;
+
+  VectorXd v = VectorXd::Zero(22);
+
   auto bench = HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>(
       base + "terrains/flat.yaml",
       base + "gains/osc_gains_alip_s2s_mpfc.yaml",
@@ -19,6 +29,7 @@ int DoMain() {
       base + "misc_params/camera_calib_sim.yaml",
       true
   );
+  bench.Simulate(q, v, 1.0, 10.0, "");
   return 0;
 }
 

@@ -2,7 +2,9 @@
 
 #include "lcm/lcm_log_sink.h"
 #include "systems/controllers/footstep_planning/mpfc_system_interface.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/primitives/constant_vector_source.h"
+#include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
+
+#include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib::perceptive_locomotion {
 
@@ -17,8 +19,16 @@ class HikingControllerBench {
       const std::string& camera_yaml,
       bool visualize = false);
 
+  void Simulate(const Eigen::VectorXd& q,
+                const Eigen::VectorXd& v,
+                double realtime_rate,
+                double end_time,
+                std::string save_file);
  private:
+
+  drake::multibody::MultibodyPlant<double> plant_{0.0};
   lcm::LcmLogSink lcm_log_sink_{};
+  HikingSimDiagram* sim_diagram_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   drake::systems::ConstantVectorSource<double>* vdes_source_;
 

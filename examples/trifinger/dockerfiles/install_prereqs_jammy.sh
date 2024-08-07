@@ -35,4 +35,4 @@ chmod +x install_prereqs.sh
 apt install lcm libbot2
 
 # toposort for building drake project
-pip install toposort
+pip install toposort lcm

@@ -96,7 +96,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
     DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kFootstepCommand);
     return get_input_port(input_port_footstep_command_);
   }
-  [[nodiscard]] const InputPort<double>& get_input_port_alip_mpc_output()
+  [[nodiscard]] const InputPort<double>& get_input_port_mpc_output()
   const {
     DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kLcmtAlipMpcOutput);
     return get_input_port(input_port_alip_mpc_output_);

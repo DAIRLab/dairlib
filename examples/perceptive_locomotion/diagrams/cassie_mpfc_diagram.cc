@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "alip_mpfc_diagram.h"
+#include "cassie_mpfc_diagram.h"
 
 #include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -8,6 +8,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
+#include "systems/controllers/footstep_planning/cf_mpfc_system.h"
+
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -29,6 +31,7 @@ using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
 
 using systems::controllers::Alips2sMPFCSystem;
+using systems::controllers::CFMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
 
 using drake::systems::TriggerType;
@@ -36,7 +39,8 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 
-AlipMPFCDiagram::AlipMPFCDiagram(
+template <mpfc MPC>
+CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& gains_filename,
     double debug_publish_period) :
@@ -54,19 +58,13 @@ AlipMPFCDiagram::AlipMPFCDiagram(
 
   plant_context_ = plant_.CreateDefaultContext();
 
-  gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
-      gains_filename,
-      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml",
-      plant_, *plant_context_
-  );
-
-
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  auto foot_placement_controller = builder.AddSystem<Alips2sMPFCSystem>(
+  auto foot_placement_controller = builder.AddSystem<MPC>(
       plant_, plant_context_.get(), left_right_fsm_states,
-      post_left_right_fsm_states, left_right_toe, gains_mpc);
+      post_left_right_fsm_states, left_right_toe, gains_filename,
+      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml");
 
   foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
 
@@ -113,6 +111,8 @@ AlipMPFCDiagram::AlipMPFCDiagram(
 
 }
 
+template class CassieMPFCDiagram<Alips2sMPFCSystem>;
+template class CassieMPFCDiagram<CFMPFCSystem>;
 
 } // dairlib
 } // perceptive_locomotion

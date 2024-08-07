@@ -136,11 +136,24 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
   CFMPFCSystem(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
-      drake::multibody::ModelInstanceIndex model_instance,
       std::vector<int> left_right_stance_fsm_states,
       std::vector<int> post_left_right_fsm_states,
       std::vector<PointOnFramed> left_right_foot,
       const cf_mpfc_params& mpfc_params);
+
+  CFMPFCSystem(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* plant_context,
+      std::vector<int> left_right_stance_fsm_states,
+      std::vector<int> post_left_right_fsm_states,
+      std::vector<PointOnFramed> left_right_foot,
+      const std::string& params_yaml,
+      const std::string& solver_params_yaml
+  ) : CFMPFCSystem(
+      plant, plant_context, left_right_stance_fsm_states,
+      post_left_right_fsm_states, left_right_foot,
+      cf_mpfc_params_io::get_params_from_yaml(
+          params_yaml, solver_params_yaml, plant, *plant_context)){};
 
   void MakeDrivenByStandaloneSimulator(double update_period) {
     DeclareInitializationUnrestrictedUpdateEvent(
@@ -171,7 +184,15 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(fsm_output_port_);
   }
 
- private:
+  static lcmt_cf_mpfc_solution empty_debug_message() {
+    return lcmt_cf_mpfc_solution{};
+  }
+
+  static lcmt_cf_mpfc_output empty_output_message() {
+    return lcmt_cf_mpfc_output{};
+  }
+
+  private:
 
   // System callbacks
   drake::systems::EventStatus UnrestrictedUpdate(
@@ -222,8 +243,6 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::ModelInstanceIndex model_instance_;
-
   std::map<int, const alip_utils::PointOnFramed> stance_foot_map_;
   int nq_;
   int nv_;

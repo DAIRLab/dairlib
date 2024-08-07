@@ -13,9 +13,9 @@ cc_library(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/perception:camera_utils",
-        "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:perceptive_locomotion_preprocessor",
+        "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "@drake//:drake_shared_library",
     ],
 )
@@ -40,9 +40,9 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_mpfc_diagram",
-    srcs = ["alip_mpfc_diagram.cc"],
-    hdrs = ["alip_mpfc_diagram.h"],
+    name = "cassie_mpfc_diagram",
+    srcs = ["cassie_mpfc_diagram.cc"],
+    hdrs = ["cassie_mpfc_diagram.h"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
@@ -53,6 +53,8 @@ cc_library(
         "//systems:system_utils",
         "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
         "//systems/controllers/footstep_planning:alip_utils",
+        "//systems/controllers/footstep_planning:cf_mpfc_system",
+        "//systems/controllers/footstep_planning:mpfc_system_interface",
         "@drake//:drake_shared_library",
     ],
 )
@@ -145,11 +147,11 @@ cc_library(
 cc_library(
     name = "diagrams",
     deps = [
-        ":alip_mpfc_diagram",
+        ":cassie_elevation_mapping_lcm_diagram",
+        ":cassie_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
-        ":cassie_elevation_mapping_lcm_diagram"
     ],
 )
 
@@ -157,7 +159,7 @@ cc_binary(
     name = "test_mpfc_osc_diagram",
     srcs = ["test/test_mpfc_osc_diagram.cc"],
     deps = [
-        ":alip_mpfc_diagram",
+        ":cassie_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",

@@ -6,8 +6,9 @@
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
-#include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/cassie_elevation_mapping_lcm_diagram.h"
+#include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 
 namespace py = pybind11;
 
@@ -15,13 +16,15 @@ namespace dairlib{
 namespace pydairlib{
 
 using multibody::SquareSteppingStoneList;
+using systems::controllers::Alips2sMPFCSystem;
 
 using perceptive_locomotion::MpfcOscDiagram;
-using perceptive_locomotion::AlipMPFCDiagram;
+using perceptive_locomotion::CassieMPFCDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
 using perceptive_locomotion::CassieElevationMappingLcmDiagram;
+
 
 PYBIND11_MODULE(diagrams, m) {
   m.doc() = "Binding perceptive locomotion diagrams for "
@@ -49,8 +52,8 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_input_port_footstep_command",
            &MpfcOscDiagram::get_input_port_footstep_command,
            py_rvp::reference_internal)
-      .def("get_input_port_alip_mpc_output",
-           &MpfcOscDiagram::get_input_port_alip_mpc_output,
+      .def("get_input_port_mpc_output",
+           &MpfcOscDiagram::get_input_port_mpc_output,
            py_rvp::reference_internal)
       .def("get_input_port_radio",
            &MpfcOscDiagram::get_input_port_radio,
@@ -141,23 +144,23 @@ PYBIND11_MODULE(diagrams, m) {
       .def("InitializeElevationMap", &PerceptionModuleDiagram::InitializeElevationMap)
       .def("Make", &PerceptionModuleDiagram::Make);
 
-  py::class_<AlipMPFCDiagram, drake::systems::Diagram<double>>(
+  py::class_<CassieMPFCDiagram<Alips2sMPFCSystem>, drake::systems::Diagram<double>>(
       m, "AlipMPFCDiagram")
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     const std::string&, double>(),
                     py::arg("plant"), py::arg("gains_filename"),
                     py::arg("debug_publish_period"))
       .def("get_input_port_state",
-           &AlipMPFCDiagram::get_input_port_state,
+           &CassieMPFCDiagram<Alips2sMPFCSystem>::get_input_port_state,
            py_rvp::reference_internal)
       .def("get_input_port_footholds",
-           &AlipMPFCDiagram::get_input_port_footholds,
+           &CassieMPFCDiagram<Alips2sMPFCSystem>::get_input_port_footholds,
            py_rvp::reference_internal)
       .def("get_input_port_vdes",
-           &AlipMPFCDiagram::get_input_port_vdes,
+           &CassieMPFCDiagram<Alips2sMPFCSystem>::get_input_port_vdes,
            py_rvp::reference_internal)
       .def("get_output_port_mpc_output",
-           &AlipMPFCDiagram::get_output_port_mpc_output,
+           &CassieMPFCDiagram<Alips2sMPFCSystem>::get_output_port_mpc_output,
            py_rvp::reference_internal);
 
   py::class_<CassieElevationMappingLcmDiagram, drake::systems::Diagram<double>>(

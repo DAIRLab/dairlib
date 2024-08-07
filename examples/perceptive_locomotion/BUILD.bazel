@@ -62,7 +62,7 @@ cc_binary(
         "//systems/perception:perceptive_locomotion_preprocessor",
         "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "@gflags",
-    ]
+    ],
 )
 
 cc_binary(
@@ -158,7 +158,7 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ]
+    ],
 )
 
 cc_binary(
@@ -196,7 +196,7 @@ cc_binary(
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc:high_level_command",
-        "//examples/perceptive_locomotion/diagrams:alip_mpfc_diagram",
+        "//examples/perceptive_locomotion/diagrams:cassie_mpfc_diagram",
         "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
         "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",

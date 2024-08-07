@@ -8,6 +8,14 @@ cc_library(
 )
 
 cc_library(
+    name = "mpfc_system_interface",
+    hdrs = ["mpfc_system_interface.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "alip_mpfc_s2s_system",
     srcs = ["alip_mpfc_s2s_system.cc"],
     hdrs = ["alip_mpfc_s2s_system.h"],

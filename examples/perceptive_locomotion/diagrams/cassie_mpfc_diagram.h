@@ -7,17 +7,18 @@
 
 #include "systems/controllers/footstep_planning/alip_utils.h"
 #include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
-
+#include "systems/controllers/footstep_planning/mpfc_system_interface.h"
 
 namespace dairlib {
 namespace perceptive_locomotion {
 
-class AlipMPFCDiagram  : public drake::systems::Diagram<double> {
+template <mpfc MPC>
+class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
 
  public:
-  AlipMPFCDiagram(const drake::multibody::MultibodyPlant<double>& plant,
-                  const std::string& gains_filename,
-                  double debug_publish_period);
+  CassieMPFCDiagram(const drake::multibody::MultibodyPlant<double>& plant,
+                    const std::string& gains_filename,
+                    double debug_publish_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
       return get_input_port(input_port_state_);

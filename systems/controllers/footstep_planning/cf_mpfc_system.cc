@@ -38,14 +38,12 @@ constexpr int ComplexDim = 6;
 
 CFMPFCSystem::CFMPFCSystem(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
-    drake::multibody::ModelInstanceIndex model_instance,
     std::vector<int> left_right_stance_fsm_states,
     std::vector<int> post_left_right_fsm_states,
     std::vector<PointOnFramed> left_right_foot,
     const cf_mpfc_params& mpfc_params) :
     plant_(plant),
     context_(plant_context),
-    model_instance_(model_instance),
     trajopt_(mpfc_params),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
     post_left_right_fsm_states_(post_left_right_fsm_states),

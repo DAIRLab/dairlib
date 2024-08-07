@@ -2,9 +2,10 @@
 #include "geometry/convex_polygon_set.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
-#include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/systems/cassie_radio_operator.h"
 #include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
+#include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -35,6 +36,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::TriggerType;
 
 using systems::CassieRadioOperator;
+using systems::controllers::Alips2sMPFCSystem;
 
 DEFINE_string(terrain, "examples/perceptive_locomotion/terrains/stones.yaml",
               "yaml file to load terrain from");
@@ -75,7 +77,7 @@ int DoMain(int argc, char **argv) {
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<AlipMPFCDiagram>(plant, gains_mpc_file, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc_file, -1);
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;
@@ -166,7 +168,7 @@ int DoMain(int argc, char **argv) {
   );
   builder.Connect(
       mpfc->get_output_port_mpc_output(),
-      osc_diagram->get_input_port_alip_mpc_output()
+      osc_diagram->get_input_port_mpc_output()
   );
   builder.Connect(
       osc_diagram->get_output_port_actuation(),

@@ -142,7 +142,6 @@ int DoMain(int argc, char** argv) {
   auto foot_placement_controller = builder.AddSystem<CFMPFCSystem>(
       plant,
       plant_context.get(),
-      instance,
       left_right_fsm_states,
       post_left_right_fsm_states,
       left_right_toe,

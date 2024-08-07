@@ -38,12 +38,12 @@ concept mpfc_osc_diagram = requires (C diagram) {
       const std::string&>
   };
   { std::is_base_of_v<C, drake::systems::Diagram<double>> };
-  { diagram->get_input_port_mpc_output() } -> std::same_as<const drake::systems::InputPort<double>&>;
-  { diagram->get_input_port_radio() } -> std::same_as<const drake::systems::InputPort<double>&>;
-  { diagram->get_input_port_state() } -> std::same_as<const drake::systems::InputPort<double>&>;
-  { diagram->get_output_port_actuation() } -> std::same_as<const drake::systems::OutputPort<double>&>;
-  { diagram->get_output_port_u_lcm() } -> std::same_as<const drake::systems::OutputPort<double>&>;
-  { diagram->get_output_port_osc_debug() } -> std::same_as<const drake::systems::OutputPort<double>&>;
+  { diagram.get_input_port_mpc_output() } -> std::same_as<const drake::systems::InputPort<double>&>;
+  { diagram.get_input_port_radio() } -> std::same_as<const drake::systems::InputPort<double>&>;
+  { diagram.get_input_port_state() } -> std::same_as<const drake::systems::InputPort<double>&>;
+  { diagram.get_output_port_actuation() } -> std::same_as<const drake::systems::OutputPort<double>&>;
+  { diagram.get_output_port_u_lcm() } -> std::same_as<const drake::systems::OutputPort<double>&>;
+  { diagram.get_output_port_osc_debug() } -> std::same_as<const drake::systems::OutputPort<double>&>;
 
 
 };

@@ -44,7 +44,6 @@ void AddSteppingStonesToSimFromYaml(MultibodyPlant<double>* plant,
 
 SquareSteppingStoneList
 LoadSteppingStonesFromYaml(const std::string& filename) {
-  std::cout << "Loading " << filename << std::endl;
   return drake::yaml::LoadYamlFile<SquareSteppingStoneList>(filename);
 }
 

@@ -1,18 +1,18 @@
 services:
-  trifinger-env:
+  trifinger-driver:
     init: true
     image: xuanhien070594/trifinger_dev:1.1
-    container_name: trifinger_dev
+    container_name: trifinger_driver
     stop_signal: SIGINT
     command: ["sleep", "infinity"]
     privileged: true
     network_mode: host
     ipc: host
     pid: host
-#    working_dir: /home/trifinger
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/git:/home/trifinger/git
+      - ~/Trifinger/workspace:/home/trifinger/workspace
     environment:
       - DISPLAY=${DISPLAY}
       - ROS_LOCALHOST_ONLY=0

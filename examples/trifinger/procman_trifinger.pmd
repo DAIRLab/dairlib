@@ -29,7 +29,7 @@ group "4. Controllers" {
         host = "localhost";
     }
     cmd "OSC Controller (from hardware)" {
-        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
+        exec = "taskset -c 3-5 bazel-bin/examples/trifinger/trifinger_osc_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
         host = "localhost";
     }
 

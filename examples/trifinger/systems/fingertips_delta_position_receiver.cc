@@ -55,7 +55,8 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
 
   // Discrete state which stores the desired fingertips position.
   fingertips_target_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
-  prev_target_timestamp_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(1));
+  prev_target_timestamp_idx_ =
+      DeclareDiscreteState(Eigen::VectorXd::Zero(1) * (-1));
 }
 
 drake::systems::EventStatus
@@ -94,20 +95,24 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   // if so, no update is performed on the discrete states.
   if (fingertips_delta_pos_lcm_msg->utime ==
       context.get_discrete_state(prev_target_timestamp_idx_)[0]) {
-    // message not yet coming, maintain fingertip targets at current state.
     if (fingertips_delta_pos_lcm_msg->utime > 0) {
       return drake::systems::EventStatus::Succeeded();
     }
-    fingertips_target_pos += Eigen::VectorXd::Zero(9);
+    // message not yet coming, update the current fingertip targets to
+    // the current state and maintain these targets until new messages come.
+    if (context.get_discrete_state(prev_target_timestamp_idx_)[0] == -1) {
+      discrete_state->get_mutable_vector(fingertips_target_idx_)
+          .set_value(fingertips_target_pos);
+    }
   } else {
     fingertips_target_pos +=
         Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
+    discrete_state->get_mutable_vector(fingertips_target_idx_)
+        .set_value(fingertips_target_pos);
+    discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
+        .set_value(
+            (Eigen::VectorXd::Ones(1) * fingertips_delta_pos_lcm_msg->utime));
   }
-  discrete_state->get_mutable_vector(fingertips_target_idx_)
-      .set_value(fingertips_target_pos);
-  discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
-      .set_value(
-          (Eigen::VectorXd::Ones(1) * fingertips_delta_pos_lcm_msg->utime));
   return drake::systems::EventStatus::Succeeded();
 }
 

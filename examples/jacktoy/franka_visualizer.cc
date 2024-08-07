@@ -298,7 +298,7 @@ int do_main(int argc, char* argv[]) {
     repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
     repos_trajectory_drawer_actor->SetLineWidth(10000000);
     c3_exec_trajectory_drawer_actor->SetNumSamples(5);
-    repos_trajectory_drawer_actor->SetNumSamples(6);
+    repos_trajectory_drawer_actor->SetNumSamples(5);
     builder.Connect(c3_execution_trajectory_sub_actor->get_output_port(),
                     c3_exec_trajectory_drawer_actor->get_input_port_trajectory());
     builder.Connect(repos_execution_trajectory_sub_actor->get_output_port(),

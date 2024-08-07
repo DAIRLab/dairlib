@@ -158,7 +158,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   // Adding constraint for x[2] corresponding to end effector z to always be 
   // above the ground at every time step.
   for (int i = 0; i < N_; i++) {
-    prog_.AddLinearConstraint(x_.at(i)[2] >= 0);
+    prog_.AddLinearConstraint(x_.at(i)[2] >= 0.0197);
   }
 
   input_costs_.resize(N_);

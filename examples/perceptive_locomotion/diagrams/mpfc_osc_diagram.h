@@ -86,7 +86,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
                  const string& osc_gains_filename,
                  const string& mpc_gains_filename,
                  const string& osqp_settings_filename,
-                 MpfcOscDiagramInputType input_type);
+                 MpfcOscDiagramInputType input_type=kLcmtAlipMpcOutput);
 
   [[nodiscard]] const InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);

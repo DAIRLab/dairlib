@@ -1,0 +1,12 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "hiking_controller_bench",
+    srcs = ["hiking_controller_bench.cc"],
+    hdrs = ["hiking_controller_bench.h"],
+    deps = [
+        "//examples/perceptive_locomotion/diagrams",
+    ],
+)

@@ -9,12 +9,14 @@
 #include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/non_render_perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
+#include "examples/perceptive_locomotion/diagrams/rl_osc_diagram.h"
 
 namespace py = pybind11;
 
 namespace dairlib{
 namespace pydairlib{
 
+using perceptive_locomotion::RLOscDiagram;
 using perceptive_locomotion::MpfcOscDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
@@ -78,6 +80,45 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal)
       .def("SetSwingFootPositionAtLiftoff",
            &MpfcOscDiagram::SetSwingFootPositionAtLiftoff);
+
+  py::class_<RLOscDiagram, drake::systems::Diagram<double>>(
+      m, "RLOscDiagram")
+      .def(py::init<drake::multibody::MultibodyPlant<double>&,
+           const std::string&, const std::string&, const std::string&>(),
+           py::arg("plant"),
+           py::arg("osc_gains_filename"),
+           py::arg("mpc_gains_filename"),
+           py::arg("osqp_settings_filename"))
+      .def("get_input_port_state",
+           &RLOscDiagram::get_input_port_state,
+           py_rvp::reference_internal)
+      .def("get_input_port_rl",
+           &RLOscDiagram::get_input_port_rl,
+           py_rvp::reference_internal)
+      .def("get_input_port_radio",
+           &RLOscDiagram::get_input_port_radio,
+           py_rvp::reference_internal)
+      .def("get_output_port_actuation",
+           &RLOscDiagram::get_output_port_actuation,
+           py_rvp::reference_internal)
+      .def("get_output_port_fsm",
+           &RLOscDiagram::get_output_port_fsm,
+           py_rvp::reference_internal)
+      .def("get_output_port_alip",
+           &RLOscDiagram::get_output_port_alip,
+           py_rvp::reference_internal)
+      .def("get_output_port_switching_time",
+           &RLOscDiagram::get_output_port_switching_time,
+           py_rvp::reference_internal)
+      .def("get_output_port_swing_ft_tracking_error",
+           &RLOscDiagram::get_output_port_swing_ft_tracking_error,
+           py_rvp::reference_internal)
+      .def("get_output_port_pelvis_yaw",
+           &RLOscDiagram::get_output_port_pelvis_yaw,
+           py_rvp::reference_internal)
+      .def("get_plant", &RLOscDiagram::get_plant, py_rvp::reference_internal)
+      .def("SetSwingFootPositionAtLiftoff",
+           &RLOscDiagram::SetSwingFootPositionAtLiftoff);
 
   py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
       m, "HikingSimDiagram")

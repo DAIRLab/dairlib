@@ -9,6 +9,7 @@ from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.perceptive_locomotion.diagrams import (
     HikingSimDiagram,
     MpfcOscDiagram,
+    RLOscDiagram,
     MpfcOscDiagramInputType,
     PerceptionModuleDiagram,
     NonRenderPerceptionModuleDiagram,
@@ -99,8 +100,8 @@ class CassieFootstepControllerEnvironmentOptions:
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
     
-    controller_input_type: MpfcOscDiagramInputType = \
-        MpfcOscDiagramInputType.kFootstepCommand
+    controller_input_type: Union[MpfcOscDiagramInputType, str] = "RL"
+
     simulate_perception: bool = False
     visualize: bool = False
     meshcat: Meshcat = None
@@ -132,12 +133,11 @@ class CassieFootstepControllerEnvironment(Diagram):
         self.ns = self.controller_plant.num_multibody_states() # 45
 
         builder = DiagramBuilder()
-        self.controller = MpfcOscDiagram(
+        self.controller = RLOscDiagram(
             self.controller_plant,
             params.osc_gains_yaml,
             params.mpfc_gains_yaml,
-            params.osqp_options_yaml,
-            params.controller_input_type
+            params.osqp_options_yaml
         )
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -186,10 +186,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 self.perception_module.get_input_port_cassie_out()
             )
-            #builder.Connect(
-            #    self.perception_module.get_output_port_robot_output(),
-            #    self.controller.get_input_port_state()
-            #)
+            builder.Connect(
+               self.perception_module.get_output_port_robot_output(),
+               self.controller.get_input_port_state()
+            )
 
             elevation_options = ElevationMapOptions()
             elevation_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
@@ -201,10 +201,6 @@ class CassieFootstepControllerEnvironment(Diagram):
             builder.Connect(
                 self.perception_module.get_output_port_elevation_map(),
                 self.height_map_server.get_input_port_by_name('elevation'),
-            )
-            builder.Connect(
-                self.cassie_sim.get_output_port_state_lcm(),
-                self.controller.get_input_port_state(),
             )
             builder.Connect(
                 self.controller.get_output_port_fsm(),
@@ -231,7 +227,6 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_state(),
                 self.height_map_query_server.get_input_port_by_name('x')
             )
-
         else:
             hmap_options = HeightMapOptions()
             hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
@@ -300,13 +295,8 @@ class CassieFootstepControllerEnvironment(Diagram):
         str, InputPortIndex]:
         input_port_indices = {
             'footstep_command': builder.ExportInput(
-                self.controller.get_input_port_footstep_command(),
-                "footstep_command"
-            ),
-        } if self.params.controller_input_type == MpfcOscDiagramInputType.kFootstepCommand else {
-            'alip_mpc_output': builder.ExportInput(
-                self.controller.get_input_port_alip_mpc_output(),
-                "alip_mpc_output"
+                self.controller.get_input_port_rl(),
+                "rl_command"
             ),
         }
         return input_port_indices

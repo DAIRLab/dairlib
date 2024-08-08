@@ -107,8 +107,8 @@ class AlipFootstepLQROptions:
 @dataclass
 class fsm_info:
     fsm_state: int
-    prev_switch_time_us: int
-    next_switch_time_us: int
+    prev_switch_time: int
+    next_switch_time: int
 
 class ResidualBlock_noNorm(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
@@ -277,7 +277,7 @@ class RLSystem(LeafSystem):
                                         shape=(3*64*64 +6+16+23 +3*64*64,),
                                         dtype=np.float32)
         self.model = CustomActorCriticPolicy(observation_space, action_space, get_schedule_fn(1.))
-        self.model.load_state_dict(th.load(model_path)) # Save policy through -> th.save(model.policy.state_dict(), 'test')
+        self.model.load_state_dict(th.load(model_path, map_location=th.device('cpu'))) # Save policy through -> th.save(model.policy.state_dict(), 'test')
         self.model.eval()
         
         self.lstm_states = None
@@ -339,12 +339,24 @@ class RLSystem(LeafSystem):
             }
         self.output_port_indices = {
             'actions': self.DeclareVectorOutputPort(
-                "actions", 3, self.calculate_actions
+                "actions", 6, self.calculate_actions
             ).get_index(),
             'ud': self.DeclareVectorOutputPort( # For plotting
                 "ud", 2, self.calc_ud
+            ).get_index(),
+            'fsm': self.DeclareVectorOutputPort(
+                "fsm", 1, self.calc_fsm_port,
+                prerequisites_of_calc={
+                    self.input_port_ticket(self.input_port_indices['state'])
+                }
             ).get_index()
             }
+
+    def calc_fsm_port(self, context: Context, fsm: BasicVector):
+        states = self.EvalVectorInput(
+            context, self.input_port_indices['state']
+        ).get_value()
+        fsm.set_value(np.array([self.calc_fsm(states[-1]).fsm_state]))
 
     def calc_ud(self, context: Context, ud: BasicVector):
         vdes = self.EvalVectorInput(context, self.input_port_indices['desired_velocity']).get_value()
@@ -392,20 +404,20 @@ class RLSystem(LeafSystem):
 
         if (phase < self.params.double_stance_duration): # Post right double stance
             fsm.fsm_state = self.post_right_double_support_state_
-            fsm.prev_switch_time_us = 1e6 * int(period_start)
-            fsm.next_switch_time_us = 1e6 * int(period_start + self.params.double_stance_duration)
+            fsm.prev_switch_time = period_start
+            fsm.next_switch_time = period_start + self.params.double_stance_duration
         elif (phase < self.params.single_stance_duration + self.params.double_stance_duration): # left stance
             fsm.fsm_state = self.left_stance_state_
-            fsm.prev_switch_time_us = 1e6 * int(period_start + self.params.double_stance_duration)
-            fsm.next_switch_time_us = 1e6 * int(period_start + one_stride_period)
+            fsm.prev_switch_time = period_start + self.params.double_stance_duration
+            fsm.next_switch_time = period_start + one_stride_period
         elif (phase < 2 * self.params.double_stance_duration + self.params.single_stance_duration): # post left double stance
             fsm.fsm_state = self.post_left_double_support_state_
-            fsm.prev_switch_time_us = 1e6 * int(period_start + one_stride_period)
-            fsm.next_switch_time_us = 1e6 * int(period_start + one_stride_period + self.params.double_stance_duration)
+            fsm.prev_switch_time = period_start + one_stride_period
+            fsm.next_switch_time = period_start + one_stride_period + self.params.double_stance_duration
         else: # right stance
             fsm.fsm_state = self.right_stance_state_
-            fsm.prev_switch_time_us = 1e6 * int(period_start + one_stride_period + self.params.double_stance_duration)
-            fsm.next_switch_time_us = 1e6 * int(period_start + two_stride_period)
+            fsm.prev_switch_time = period_start + one_stride_period + self.params.double_stance_duration
+            fsm.next_switch_time = period_start + two_stride_period
         
         fsm.timestamp_us = 1e6 * t
         return fsm
@@ -419,7 +431,7 @@ class RLSystem(LeafSystem):
 
         stance_foot = self.contacts[self.get_stance(fsm)]
 
-        time_until_switch = np.maximum(0, fsm.next_switch_time_us * 1e-6 - t)
+        time_until_switch = np.maximum(0, fsm.next_switch_time - t)
 
         alip = CalcAlipStateInBodyYawFrame(self.plant, self.plant_context, states[:45], "pelvis", stance_foot)
         
@@ -449,7 +461,10 @@ class RLSystem(LeafSystem):
         actions, lstm_states = self.model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
         self.lstm_states = lstm_states
         self.episode_starts = np.zeros((1,), dtype=bool)
-        output.set_value(actions)
+
+        out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
+
+        output.set_value(out)
 
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)
@@ -466,8 +481,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     sim_env = CassieFootstepControllerEnvironment(sim_params)
     sim_env.set_name("CassieFootstepControllerEnvironment")
     builder.AddSystem(sim_env)
-    freq = np.random.uniform(low=0.001, high=0.03)
-    footstep_zoh = ZeroOrderHold(freq, 3)
+    footstep_zoh = ZeroOrderHold(0.05, 6)
 
     rl_system = RLSystem(model_path='test')
     
@@ -563,6 +577,8 @@ def run(sim_env, rl_system, diagram, plot=False):
 
     #  First, align the timing with what's given by the initial condition
     t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
+
+    print(f't_init: {t_init}')
     context.SetTime(t_init)
 
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])

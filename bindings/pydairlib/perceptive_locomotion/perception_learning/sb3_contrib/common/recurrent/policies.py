@@ -142,7 +142,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # self.actor_optimizer = self.optimizer_class(actor_params, lr=lr_schedule(1), **self.optimizer_kwargs)
         # self.critic_optimizer = self.optimizer_class(critic_params, lr=3e-4, **self.optimizer_kwargs)
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
-        print(self.optimizer)
+        # print(self.optimizer)
 
     def _build_mlp_extractor(self) -> None:
         """

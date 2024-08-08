@@ -24,7 +24,7 @@ py_library(
     ],
 )
 
-py_library(
+py_binary(
     name = "RLsystem",
     srcs = ["RLsystem.py"],
     deps = [
@@ -33,6 +33,7 @@ py_library(
         "//bindings/pydairlib/perceptive_locomotion/systems:elevation_map_converter",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
 

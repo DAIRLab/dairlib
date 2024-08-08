@@ -672,6 +672,8 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
     AssignFloatingBaseStateToOutputVector(
         context.get_discrete_state(fb_state_idx_).get_value(), output);
   }
+
+  output->set_timestamp(context.get_time());
 }
 
 void CassieStateEstimator::CopyContact(

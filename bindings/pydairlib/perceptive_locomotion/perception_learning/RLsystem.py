@@ -277,12 +277,12 @@ class RLSystem(LeafSystem):
                                         shape=(3*64*64 +6+16+23 +3*64*64,),
                                         dtype=np.float32)
         self.model = CustomActorCriticPolicy(observation_space, action_space, get_schedule_fn(1.))
-        self.model.load_state_dict(th.load(model_path, map_location=th.device('cpu'))) # Save policy through -> th.save(model.policy.state_dict(), 'test')
+        self.model.load_state_dict(th.load(model_path)) # Save policy through -> th.save(model.policy.state_dict(), 'test')
         self.model.eval()
         
         self.lstm_states = None
         self.episode_starts = np.ones((1,), dtype=bool)
-        self.empty = np.empty(12310)
+        self.empty = np.empty(12311)
         
         ### ALIP parameters ###
         params_folder = "bindings/pydairlib/perceptive_locomotion/params"
@@ -333,9 +333,6 @@ class RLSystem(LeafSystem):
                 'state': self.DeclareVectorInputPort(
                     'x_u_t', 59
                 ).get_index(),
-                'gt_x_u_t': self.DeclareVectorInputPort(
-                    'gt_x_u_t', 59
-                ).get_index(),
                 'height_map' : self.DeclareAbstractInputPort(
                 "elevation_map", model_value=Value(ElevationMapQueryObject())
                 ).get_index(),
@@ -380,7 +377,7 @@ class RLSystem(LeafSystem):
         return x0, u0
 
     def get_stance(self, fsm: fsm_info) -> Stance:
-        stance = Stance.kLeft if fsm.fsm_state == 0 or fsm.fsm_state == 3 else Stance.kRight
+        stance = Stance.kLeft if fsm.fsm_state == 0 or fsm.fsm_state == 4 else Stance.kRight # 3
         return stance
 
     def calc_fsm(self, t: float) -> fsm_info:
@@ -416,14 +413,22 @@ class RLSystem(LeafSystem):
     def calculate_actions(self, context: Context, output: BasicVector):
         vdes = self.EvalVectorInput(context, self.input_port_indices['desired_velocity']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
-        gt_x_u_t = self.EvalVectorInput(context, self.input_port_indices['gt_x_u_t']).get_value()
-        t = gt_x_u_t[-1]
+        t = states[-1]
 
         fsm = self.calc_fsm(t)
+
         stance_foot = self.contacts[self.get_stance(fsm)]
+
+        time_until_switch = np.maximum(0, fsm.next_switch_time_us * 1e-6 - t)
 
         alip = CalcAlipStateInBodyYawFrame(self.plant, self.plant_context, states[:45], "pelvis", stance_foot)
         
+        current_alip_state = alip.copy()
+        current_alip_state[2:] /= self.params.mass
+        alip = CalcMassNormalizedAd(
+            self.params.height, time_until_switch
+        ) @ current_alip_state
+
         xd, ud = self.calc_lqr_reference(vdes, self.get_stance(fsm))
 
         hmap_query = self.EvalAbstractInput(
@@ -461,7 +466,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     sim_env = CassieFootstepControllerEnvironment(sim_params)
     sim_env.set_name("CassieFootstepControllerEnvironment")
     builder.AddSystem(sim_env)
-    freq = np.random.uniform(low=0.001, high=0.05)
+    freq = np.random.uniform(low=0.001, high=0.03)
     footstep_zoh = ZeroOrderHold(freq, 3)
 
     rl_system = RLSystem(model_path='test')
@@ -474,10 +479,6 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder.Connect(
         sim_env.get_output_port_by_name("state"),
         rl_system.get_input_port_by_name("state")
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name("gt_x_u_t"),
-        rl_system.get_input_port_by_name("gt_x_u_t")
     )
 
     builder.AddSystem(footstep_zoh)
@@ -574,9 +575,6 @@ def run(sim_env, rl_system, diagram, plot=False):
         value=datapoint['desired_velocity']
     )
 
-    plant = sim_env.cassie_sim.get_plant()
-    plant_context = plant.GetMyContextFromRoot(context)
-
     simulator.reset_context(context)
    
     terminate = False
@@ -607,7 +605,7 @@ def run(sim_env, rl_system, diagram, plot=False):
                 "dmap", grid_world[0], grid_world[1],
                 grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
 
-    time = context.get_time()-t_init
+        time = context.get_time()-t_init
     
     return time
 

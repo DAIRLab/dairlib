@@ -91,18 +91,23 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   fingertips_target_pos << fingertip_0_pos, fingertip_120_pos,
       fingertip_240_pos;
 
+  auto current_msg_timestamp = fingertips_delta_pos_lcm_msg->utime;
+  auto previous_msg_timestamp = static_cast<int64_t>(
+      context.get_discrete_state(prev_target_timestamp_idx_)[0]);
+
   // check if the obtained message from lcm input port is still old one,
   // if so, no update is performed on the discrete states.
-  if (fingertips_delta_pos_lcm_msg->utime ==
-      context.get_discrete_state(prev_target_timestamp_idx_)[0]) {
+  if (current_msg_timestamp == previous_msg_timestamp) {
     if (fingertips_delta_pos_lcm_msg->utime > 0) {
       return drake::systems::EventStatus::Succeeded();
     }
     // message not yet coming, update the current fingertip targets to
     // the current state and maintain these targets until new messages come.
-    if (context.get_discrete_state(prev_target_timestamp_idx_)[0] == -1) {
+    if (previous_msg_timestamp == -1) {
       discrete_state->get_mutable_vector(fingertips_target_idx_)
           .set_value(fingertips_target_pos);
+      discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
+          .set_value(Eigen::VectorXd::Zero(1));
     }
   } else {
     fingertips_target_pos +=

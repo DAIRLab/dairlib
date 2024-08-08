@@ -21,6 +21,10 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   const drake::systems::InputPort<double> &get_input_port_radio() const {
     return get_input_port(input_port_radio_);
   }
+  const drake::systems::InputPort<double> &get_input_port_applied_spatial_forces()
+  const {
+    return get_input_port(input_port_applied_spatial_forces_);
+  }
   const drake::systems::OutputPort<double> &get_output_port_state() const {
     return get_output_port(output_port_state_);
   }
@@ -82,6 +86,8 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
 
   drake::systems::InputPortIndex input_port_control_;
   drake::systems::InputPortIndex input_port_radio_;
+  drake::systems::InputPortIndex input_port_applied_spatial_forces_;
+
   drake::systems::OutputPortIndex output_port_state_;
   drake::systems::OutputPortIndex output_port_state_lcm_;
   drake::systems::OutputPortIndex output_port_cassie_out_;

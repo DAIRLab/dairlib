@@ -51,7 +51,7 @@ HikingSimDiagram::HikingSimDiagram(
   // magic numbers:
   static constexpr double sim_dt = 1e-3;
   static constexpr double terrain_friction = 0.8;
-  static constexpr double actuator_delay = 2e-3;
+  static constexpr double actuator_delay = 1e-3;
   static constexpr double actuator_update_period = 1e-3;
 
   // other constants
@@ -152,6 +152,9 @@ HikingSimDiagram::HikingSimDiagram(
   );
   input_port_radio_ = builder.ExportInput(
       radio_parser->get_input_port(), "radio channels"
+  );
+  input_port_applied_spatial_forces_ = builder.ExportInput(
+      plant_->get_applied_spatial_force_input_port(), "applied_spatial_forces"
   );
   output_port_state_ = builder.ExportOutput(
       state_receiver->get_output_port(), "x, u, t"

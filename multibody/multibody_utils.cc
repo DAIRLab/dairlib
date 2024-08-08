@@ -549,13 +549,13 @@ template <typename T>
 vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<T>& plant) {
   map<string, int> pos_map = MakeNameToPositionsMap(plant);
   map<string, int> vel_map = MakeNameToVelocitiesMap(plant);
-  vector<string> state_names(pos_map.size() + vel_map.size());
+  vector<string> state_names(plant.num_positions() + plant.num_velocities());
 
   for (const auto& name_index_pair : pos_map) {
     state_names[name_index_pair.second] = name_index_pair.first;
   }
   for (const auto& name_index_pair : vel_map) {
-    state_names[name_index_pair.second + pos_map.size()] =
+    state_names[name_index_pair.second + plant.num_positions()] =
         name_index_pair.first;
   }
   return state_names;

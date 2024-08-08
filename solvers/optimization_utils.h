@@ -110,7 +110,7 @@ class LinearBigMConstraint {
             new_A,
             drake::Vector1d::Constant(1, -std::numeric_limits<double>::infinity()),
             drake::Vector1d::Constant(1, std::numeric_limits<double>::infinity()));
-      } catch (std::runtime_error e)  {
+      } catch (std::runtime_error& e)  {
         std::cout << "tried to update coefficients " <<
         constraint_.evaluator()->GetDenseA() << " to " << new_A << std::endl;
       }

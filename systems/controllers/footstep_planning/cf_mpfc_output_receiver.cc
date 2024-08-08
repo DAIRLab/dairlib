@@ -102,17 +102,35 @@ void CFMPFCOutputReceiver::CopyRTraj(
 
   double t = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, input_port_state_))->get_timestamp();
-  const auto &mpfc_output = get_mpfc_output(context);
 
-  LcmTrajectory lcm_traj(mpfc_output.trajs);
-  LcmTrajectory::Trajectory traj = lcm_traj.GetTrajectory("state_traj");
+  const auto& input_traj =
+      get_cache_entry(traj_cache_).Eval<PiecewisePolynomial<double>>(context);
+  VectorXd yddot = VectorXd::Constant(1, input_traj.value(t)(1));
+  VectorXd y = VectorXd::Zero(yddot.rows());
+  VectorXd ydot = VectorXd::Zero(yddot.rows());
 
   *dynamic_cast<PiecewisePolynomial<double>*>(out) =
-      PiecewisePolynomial<double>::CubicHermite(
-          traj.time_vector,
-          traj.datapoints.block(2, 0, 1, traj.datapoints.cols()),
-          traj.datapoints.block(5, 0, 1, traj.datapoints.cols())
-      );
+      polynomials::ConstantAccelerationTrajectory(y, ydot, yddot, t);
+
+//  const auto &mpfc_output = get_mpfc_output(context);
+//
+//  lcmt_fsm_info fsm_info = get_mpfc_output(context).fsm;
+//
+//  if (1e-6 * fsm_info.next_switch_time_us - t <= 0.01) {
+//
+//
+//    return;
+//  }
+//
+//  LcmTrajectory lcm_traj(mpfc_output.trajs);
+//  LcmTrajectory::Trajectory traj = lcm_traj.GetTrajectory("state_traj");
+//
+//  *dynamic_cast<PiecewisePolynomial<double>*>(out) =
+//      PiecewisePolynomial<double>::CubicHermite(
+//          traj.time_vector,
+//          traj.datapoints.block(2, 0, 1, traj.datapoints.cols()),
+//          traj.datapoints.block(5, 0, 1, traj.datapoints.cols())
+//      );
 }
 
 }

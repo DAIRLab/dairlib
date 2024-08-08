@@ -22,14 +22,14 @@ int DoMain() {
 
   VectorXd v = VectorXd::Zero(22);
 
-  auto alip_bench = HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>(
-      base + "terrains/flat.yaml",
-      base + "gains/osc_gains_alip_s2s_mpfc.yaml",
-      base + "gains/alip_s2s_mpfc_gains.yaml",
-      base + "gains/osqp_options_osc.yaml",
-      base + "misc_params/camera_calib_sim.yaml",
-      true
-  );
+//  auto alip_bench = HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>(
+//      base + "terrains/flat.yaml",
+//      base + "gains/osc_gains_alip_s2s_mpfc.yaml",
+//      base + "gains/alip_s2s_mpfc_gains.yaml",
+//      base + "gains/osqp_options_osc.yaml",
+//      base + "misc_params/camera_calib_sim.yaml",
+//      true
+//  );
 
   auto cf_bench = HikingControllerBench<CFMPFCSystem, CfMpfcOscDiagram>(
       base + "terrains/flat.yaml",
@@ -40,8 +40,7 @@ int DoMain() {
       true
   );
 
-  cf_bench.Simulate(q, v, 1.0, 0.25, "../cf_bench_log");
-
+  cf_bench.Simulate(q, v, 1.0, 10.0, "../cf_bench_log");
 
   return 0;
 }

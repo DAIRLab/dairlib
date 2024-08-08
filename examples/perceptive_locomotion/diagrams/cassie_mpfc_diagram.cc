@@ -66,7 +66,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
       post_left_right_fsm_states, left_right_toe, gains_filename,
       "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml");
 
-  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
+  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.005);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 

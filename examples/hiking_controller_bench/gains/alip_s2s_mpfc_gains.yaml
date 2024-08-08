@@ -1,7 +1,7 @@
 nmodes: 3
 tmin: 0.27
 tmax: 0.33
-height: 0.85
+height: 0.8
 single_stance_duration: 0.3
 double_stance_duration: 0.1
 soft_constraint_cost: 1000

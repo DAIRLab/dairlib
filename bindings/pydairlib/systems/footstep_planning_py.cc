@@ -84,7 +84,7 @@ PYBIND11_MODULE(footstep_planning, m) {
     .def("CalcAlipStateInBodyYawFrame",
          [](const drake::multibody::MultibodyPlant<double>& plant,
             drake::systems::Context<double>* plant_context,
-            const Eigen::Ref<Eigen::VectorXd>& state,
+            const Eigen::VectorXd& state,
             std::string body_name,
             PointOnFramed stance_foot) {
         Eigen::Vector3d CoM;

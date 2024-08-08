@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import torch as th
 import torch.nn as nn
@@ -276,7 +277,7 @@ class RLSystem(LeafSystem):
                                         shape=(3*64*64 +6+16+23 +3*64*64,),
                                         dtype=np.float32)
         self.model = CustomActorCriticPolicy(observation_space, action_space, get_schedule_fn(1.))
-        self.model.load_state_dict(th.load(model_path)) # Save policy through -> th.save(model.policy.state_dict(), 'test')
+        self.model.load_state_dict(th.load(model_path, map_location=th.device('cpu'))) # Save policy through -> th.save(model.policy.state_dict(), 'test')
         self.model.eval()
         
         self.lstm_states = None
@@ -354,7 +355,7 @@ class RLSystem(LeafSystem):
 
         t = states[-1]
         fsm = self.calc_fsm(t)
-        x, u = calc_lqr_reference(vdes, self.get_stance(fsm))
+        x, u = self.calc_lqr_reference(vdes, self.get_stance(fsm))
 
         ud.set_value(u)
 
@@ -423,7 +424,7 @@ class RLSystem(LeafSystem):
 
         alip = CalcAlipStateInBodyYawFrame(self.plant, self.plant_context, states[:45], "pelvis", stance_foot)
         
-        xd, ud = calc_lqr_reference(vdes, self.get_stance(fsm))
+        xd, ud = self.calc_lqr_reference(vdes, self.get_stance(fsm))
 
         hmap_query = self.EvalAbstractInput(
             context, self.input_port_indices['height_map']
@@ -440,7 +441,7 @@ class RLSystem(LeafSystem):
         hmap = hmap.reshape(-1)
 
         obs = np.hstack((hmap, alip, vdes, joint_angle, self.empty)) # 24621
-        actions, lstm_states = model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
+        actions, lstm_states = self.model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
         self.lstm_states = lstm_states
         self.episode_starts = np.zeros((1,), dtype=bool)
         output.set_value(actions)
@@ -452,6 +453,7 @@ class RLSystem(LeafSystem):
     def get_output_port_by_name(self, name: str) -> OutputPort:
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
+
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         -> Tuple[CassieFootstepControllerEnvironment, RLSystem, Diagram]:
@@ -491,6 +493,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     # DrawAndSaveDiagramGraph(diagram, '../Cassie_stand_alone')
     return sim_env, rl_system, diagram
+
 
 def check_termination(sim_env, diagram_context, time) -> bool:
     plant = sim_env.cassie_sim.get_plant()

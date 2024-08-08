@@ -15,7 +15,6 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 
-#include "cassie_acom_tracking_data.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"

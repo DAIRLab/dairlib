@@ -1,6 +1,7 @@
 #include "examples/hiking_controller_bench/hiking_controller_bench.h"
 
 #include "geometry/convex_polygon_set.h"
+#include "examples/cf_mpfc/diagrams/cf_mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/cassie_mpfc_diagram.h"
@@ -32,6 +33,7 @@ using drake::systems::TriggerType;
 
 using geometry::ConvexPolygonSet;
 using systems::controllers::Alips2sMPFCSystem;
+using systems::controllers::CFMPFCSystem;
 
 template <mpfc MPC, mpfc_osc_diagram OSC>
 HikingControllerBench<MPC, OSC>::HikingControllerBench(
@@ -156,7 +158,7 @@ HikingControllerBench<MPC, OSC>::HikingControllerBench(
 template <mpfc MPC, mpfc_osc_diagram OSC>
 void HikingControllerBench<MPC, OSC>::Simulate(
     const Eigen::VectorXd& q, const Eigen::VectorXd& v,
-    double realtime_rate, double end_time, std::string save_file) {
+    double realtime_rate, double end_time, const std::string& save_file) {
 
   lcm_log_sink_.clear();
   auto context = diagram_->CreateDefaultContext();
@@ -181,5 +183,6 @@ void HikingControllerBench<MPC, OSC>::Simulate(
 }
 
 template class HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>;
+template class HikingControllerBench<CFMPFCSystem, CfMpfcOscDiagram>;
 
 }

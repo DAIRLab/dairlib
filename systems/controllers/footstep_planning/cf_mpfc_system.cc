@@ -93,7 +93,7 @@ CFMPFCSystem::CFMPFCSystem(
 
   // output ports
   mpc_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_alip_mpc_output", &CFMPFCSystem::CopyMpcOutput
+      "lcmt_cf_mpfc_output", &CFMPFCSystem::CopyMpcOutput
   ).get_index();
 
   mpc_debug_output_port_ = DeclareAbstractOutputPort(

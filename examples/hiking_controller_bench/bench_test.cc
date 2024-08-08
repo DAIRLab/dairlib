@@ -3,6 +3,7 @@
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/controllers/footstep_planning/cf_mpfc_system.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
+#include "examples/cf_mpfc/diagrams/cf_mpfc_osc_diagram.h"
 
 namespace dairlib::perceptive_locomotion {
 
@@ -21,7 +22,7 @@ int DoMain() {
 
   VectorXd v = VectorXd::Zero(22);
 
-  auto bench = HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>(
+  auto alip_bench = HikingControllerBench<Alips2sMPFCSystem, MpfcOscDiagram>(
       base + "terrains/flat.yaml",
       base + "gains/osc_gains_alip_s2s_mpfc.yaml",
       base + "gains/alip_s2s_mpfc_gains.yaml",
@@ -29,7 +30,19 @@ int DoMain() {
       base + "misc_params/camera_calib_sim.yaml",
       true
   );
-  bench.Simulate(q, v, 1.0, 10.0, "");
+
+  auto cf_bench = HikingControllerBench<CFMPFCSystem, CfMpfcOscDiagram>(
+      base + "terrains/flat.yaml",
+      base + "gains/cf_mpfc_osc_gains.yaml",
+      base + "gains/cf_mpfc_gains.yaml",
+      base + "gains/osqp_options_osc.yaml",
+      base + "misc_params/camera_calib_sim.yaml",
+      true
+  );
+
+  cf_bench.Simulate(q, v, 1.0, 0.25, "../cf_bench_log");
+
+
   return 0;
 }
 

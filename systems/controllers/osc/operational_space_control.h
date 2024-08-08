@@ -180,6 +180,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    */
   const drake::systems::InputPort<double>& get_input_port_tracking_data(
       const std::string& name) const {
+    if (not traj_name_to_port_index_map_.contains(name)) {
+      std::cout << "\nCan't find OSC trajectory " << name << "\n" << std::endl;
+    }
     DRAKE_DEMAND(traj_name_to_port_index_map_.contains(name));
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }

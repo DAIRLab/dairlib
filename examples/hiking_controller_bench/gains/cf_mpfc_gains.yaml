@@ -1,0 +1,38 @@
+nmodes: 3
+nknots: 4
+mu: 0.8
+foot_length: 0.15
+time_regularization: 60
+soft_constraint_cost: 1000
+planar_com_cost: 100
+height: 0.85
+rddot_rate_limit: 40
+single_stance_duration: 0.33
+double_stance_duration: 0.07
+stance_width: 0.3
+reset_discretization_method: 'SPLIT'
+tracking_cost_type: 'velocity'
+com_pos_bound: [0.4, 0.4]
+com_vel_bound: [2.5, 1.5]
+input_bounds: [21.0, 7.0]
+
+Qf:
+  [  100.0, 0, 0, 0,
+     0, 100.0, 0, 0,
+     0, 0, 1.0, 0,
+     0, 0, 0, 1.0  ]
+Q: [ 10, 0, 0, 0,
+     0, 10, 0, 0,
+     0, 0, 0.02, 0,
+     0, 0, 0, 0.02]
+R: [ 0.1, 0, 0,
+     0, 0.5, 0,
+     0, 0, 1.0 ]
+Qc: [ 0.01, 0, 0, 0, 0, 0,
+      0, 0.01, 0, 0, 0, 0,
+      0, 0, 2.5, 0, 0, 0,
+      0, 0, 0, 0.01, 0, 0,
+      0, 0, 0, 0, 0.01, 0,
+      0, 0, 0, 0, 0, 0.5]
+Rc: [ 0.1, 0,
+       0, 0.1 ]

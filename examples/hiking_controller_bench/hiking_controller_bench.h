@@ -23,7 +23,7 @@ class HikingControllerBench {
                 const Eigen::VectorXd& v,
                 double realtime_rate,
                 double end_time,
-                std::string save_file);
+                const std::string& save_file);
  private:
 
   drake::multibody::MultibodyPlant<double> plant_{0.0};

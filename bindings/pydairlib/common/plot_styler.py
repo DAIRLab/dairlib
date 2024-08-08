@@ -12,9 +12,10 @@ class PlotStyler():
     @staticmethod
     def set_default_styling():
         matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-        matplotlib.use('TkAgg')
         if sys.platform == 'darwin':
             matplotlib.use('macosx')
+        else:
+            matplotlib.use('TkAgg')
             # matplotlib.rcParams['figure.figsize'] = 5,5
         # matplotlib.rcParams['figure.autolayout'] = True
         font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}

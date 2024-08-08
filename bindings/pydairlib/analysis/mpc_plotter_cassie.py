@@ -16,7 +16,7 @@ import dairlib
 mpfc_channels = {
     "ALIP_S2S_MPFC_DEBUG": dairlib.lcmt_alip_s2s_mpfc_debug,
     "NETWORK_CASSIE_CONTACT_DISPATCHER": dairlib.lcmt_contact,
-    "CF_MPFC_DEBUG": dairlib.lcmt_cf_mpfc_solution
+    "S2S_MPFC_DEBUG": dairlib.lcmt_cf_mpfc_solution
 }
 
 
@@ -31,8 +31,8 @@ def main():
     log_mpc = lcm.EventLog(filename_mpc, "r")
 
     mpfc_debug_data = get_log_data(
-        log_mpc, mpfc_channels, 1.0, -1, mpfc_plots.cf_mpfc_debug_callback,
-        "CF_MPFC_DEBUG"
+        log_mpc, mpfc_channels, 0, -1, mpfc_plots.cf_mpfc_debug_callback,
+        "S2S_MPFC_DEBUG"
     )
 
     _ = mpfc_plots.plot_solve_time(mpfc_debug_data)

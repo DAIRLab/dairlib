@@ -15,6 +15,7 @@ cc_library(
     srcs = ["hiking_controller_bench.cc"],
     hdrs = ["hiking_controller_bench.h"],
     deps = [
+        "//examples/cf_mpfc/diagrams:cf_mpfc_osc_diagram",
         "//examples/perceptive_locomotion/diagrams",
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",
         "//lcm:lcm_log_sink",

@@ -61,7 +61,6 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
       A_, B_, params_.Q, params_.R.topLeftCorner<2,2>());
   lqr_K_ = lqr_result.K;
   lqr_S_ = lqr_result.S;
-  std::cout << "lqr s: \n" << lqr_S_ << std::endl;
 
   MakeMPCVariables();
   MakeMPCCosts();

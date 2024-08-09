@@ -753,6 +753,17 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 
+  if(!is_doing_c3_){
+    if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+      int index = filtered_solve_time_ / c3_options_.planning_dt;
+      double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
+      x_pred_curr_plan_ = weight * knots.col(index) +
+                (1 - weight) * knots.col(index + 1);
+    } else {
+      x_pred_curr_plan_ = knots.col(N_ - 1);
+    }
+  }
+
   // Add end effector position target to LCM Trajectory.
   LcmTrajectory::Trajectory ee_traj;
   ee_traj.traj_name = "end_effector_position_target";
@@ -815,13 +826,15 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
   // desired as determined by c3_options_.use_predicted_x0.
   // Interpolate the z_sol according to the time it takes to perform a control 
   // loop. If control loop is longer than the plan horizon, use the last z.
-  if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
-    int index = filtered_solve_time_ / c3_options_.planning_dt;
-    double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
-    x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
-              (1 - weight) * z_sol[index + 1].segment(0, n_x_);
-  } else {
-    x_pred_curr_plan_ = z_sol[N_ - 1].segment(0, n_x_);
+  if(is_doing_c3_){
+    if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+      int index = filtered_solve_time_ / c3_options_.planning_dt;
+      double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
+      x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
+                (1 - weight) * z_sol[index + 1].segment(0, n_x_);
+    } else {
+      x_pred_curr_plan_ = z_sol[N_ - 1].segment(0, n_x_);
+    }
   }
 }
 

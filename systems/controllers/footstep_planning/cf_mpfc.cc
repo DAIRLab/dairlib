@@ -327,7 +327,7 @@ void CFMPFC::MakeFootstepConstraints() {
             {pp_.at(i).segment(1, 1), pp_.at(i + 1).segment(1, 1)}
         ));
 
-    constexpr double bigM = 50.0;
+    constexpr double bigM = 10.0;
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
     for (int j = 0; j < kMaxFootholds; ++j) {

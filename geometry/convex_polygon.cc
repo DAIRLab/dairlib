@@ -51,7 +51,8 @@ void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
 
 // Add a face with the (outward facing) normal and a point on the face
 void ConvexPolygon::AddFace(const Vector3d& normal, const Vector3d& pt) {
-  AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
+  Vector3d n = normal.normalized();
+  AddHalfspace(n, n.dot(pt) * VectorXd::Ones(1));
   bounding_box_.valid = false;
 }
 

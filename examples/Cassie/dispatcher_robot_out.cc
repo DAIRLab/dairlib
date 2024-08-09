@@ -89,7 +89,7 @@ DEFINE_int64(test_mode, -1,
              " detected in which case it switches to test mode -1.");
 
 // Initial condition (used for simulation)
-DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
+DEFINE_double(pelvis_x_vel, 0, "external hiking_bench_disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0, "for stability");
 
 

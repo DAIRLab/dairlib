@@ -87,7 +87,7 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the lcm channel that sends Cassie's state");
 
 // Initial condition
-DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
+DEFINE_double(pelvis_x_vel, 0, "external hiking_bench_disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0.3, "for stability");
 
 // Terrain

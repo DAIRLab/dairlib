@@ -143,9 +143,13 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
   auto cur_fingertips_pos =
       context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
 
+  // retrieve current timestamp
+  const OutputVector<double>* trifinger_state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
   double delta_pos_update_period = 1.0 / delta_pos_update_frequency_;
 
-  auto cur_context_time = context.get_time();
+  auto cur_context_time = trifinger_state->get_timestamp();
   Eigen::VectorXd knots(2);
   knots << cur_context_time, cur_context_time + delta_pos_update_period;
   Eigen::MatrixXd samples(cur_fingertips_pos.size(), 2);

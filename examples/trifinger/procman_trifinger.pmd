@@ -71,13 +71,9 @@ group "6.lcm-tools" {
 
 script "run-osc-controller-hardware" {
     stop cmd "state-visualizer-floating (from hardware)";
-    stop cmd "ROS-to-LCM (from hardware)";
-    stop cmd "LCM-to-ROS (from hardware)";
     stop cmd "OSC Controller (from hardware)";
     wait ms 1000;
     start cmd "state-visualizer-floating (from hardware)";
-    start cmd "ROS-to-LCM (from hardware)";
-    start cmd "LCM-to-ROS (from hardware)";
     start cmd "OSC Controller (from hardware)";
 }
 
@@ -91,14 +87,11 @@ script "stop-osc-controller-hardware" {
 script "run-osc-controller-simulation" {
     stop cmd "state-visualizer-floating (from simulation)";
     stop cmd "Simulate";
-    stop cmd "ROS-to-LCM (from simulation)";
-    stop cmd "LCM-to-ROS (from simulation)";
     stop cmd "OSC Controller (from simulation)";
     wait ms 1000;
     start cmd "state-visualizer-floating (from simulation)";
     start cmd "Simulate";
-    start cmd "ROS-to-LCM (from simulation)";
-    start cmd "LCM-to-ROS (from simulation)";
+    wait ms 1000;
     start cmd "OSC Controller (from simulation)";
 }
 

@@ -21,6 +21,7 @@ struct TrifingerImpedanceControllerParams {
   Eigen::MatrixXd Kd_fingertip_120;
   Eigen::MatrixXd Kp_fingertip_240;
   Eigen::MatrixXd Kd_fingertip_240;
+  unsigned int delta_pos_update_frequency;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -36,6 +37,7 @@ struct TrifingerImpedanceControllerParams {
     a->Visit(DRAKE_NVP(KdFingertip120));
     a->Visit(DRAKE_NVP(KpFingertip240));
     a->Visit(DRAKE_NVP(KdFingertip240));
+    a->Visit(DRAKE_NVP(delta_pos_update_frequency));
 
     Kp_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

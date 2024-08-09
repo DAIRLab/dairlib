@@ -22,7 +22,8 @@ class FingertipDeltaPositionReceiver
       const Eigen::Vector3d& max_fingertips_delta_position,
       const std::string& fingertip_0_name,
       const std::string& fingertip_120_name,
-      const std::string& fingertip_240_name);
+      const std::string& fingertip_240_name,
+      const unsigned int& delta_pos_update_frequency);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -50,6 +51,10 @@ class FingertipDeltaPositionReceiver
       const drake::systems::Context<double>& context,
       systems::TimestampedVector<double>* target) const;
 
+  void CopyToOutputCurrentFingertipPositions(
+      const drake::systems::Context<double>& context,
+      systems::TimestampedVector<double>* cur_fingertips_pos) const;
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -61,8 +66,10 @@ class FingertipDeltaPositionReceiver
   drake::systems::InputPortIndex fingertips_delta_position_port_;
   drake::systems::OutputPortIndex fingertips_target_traj_port_;
   drake::systems::OutputPortIndex fingertips_target_port_;
+  drake::systems::OutputPortIndex cur_fingertips_pos_port_;
   drake::systems::DiscreteStateIndex fingertips_target_idx_;
   drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
+  drake::systems::DiscreteStateIndex cur_fingertips_pos_idx_;
 
   Eigen::Vector3d min_fingertips_delta_position_;
   Eigen::Vector3d max_fingertips_delta_position_;
@@ -70,6 +77,8 @@ class FingertipDeltaPositionReceiver
   std::string fingertip_0_name_;
   std::string fingertip_120_name_;
   std::string fingertip_240_name_;
+
+  unsigned int delta_pos_update_frequency_;
 };
 
 }  // namespace dairlib::systems

@@ -6,6 +6,8 @@ fingertip_240_name: finger_tip_link_240
 min_fingertips_delta_position: [-0.015, -0.015, -0.015]
 max_fingertips_delta_position: [0.015, 0.015, 0.015]
 
+delta_pos_update_frequency: 20
+
 KpFingertip0:
   [ 1000, 0, 0,
     0, 1000, 0,

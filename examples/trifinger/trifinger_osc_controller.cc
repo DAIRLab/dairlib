@@ -106,7 +106,8 @@ int DoMain(int argc, char* argv[]) {
           controller_params.max_fingertips_delta_position,
           controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
-          controller_params.fingertip_240_name);
+          controller_params.fingertip_240_name,
+          controller_params.delta_pos_update_frequency);
 
   auto trifinger_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(

@@ -1,4 +1,5 @@
 controller_frequency: 1000
+delta_pos_update_frequency: 20
 
 trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
 cube_model: examples/trifinger/robot_properties_fingers/urdf/cube/cube_v2.urdf

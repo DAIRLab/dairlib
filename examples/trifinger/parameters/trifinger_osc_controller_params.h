@@ -18,6 +18,8 @@ struct TrifingerControllerParams : OSCGains {
 
   bool require_friction_compensation;
 
+  unsigned int delta_pos_update_frequency;
+
   std::vector<double> Fingertip0W;
   std::vector<double> Fingertip0Kp;
   std::vector<double> Fingertip0Kd;
@@ -60,6 +62,7 @@ struct TrifingerControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(Fingertip240Kd));
     a->Visit(DRAKE_NVP(home_position));
     a->Visit(DRAKE_NVP(require_friction_compensation));
+    a->Visit(DRAKE_NVP(delta_pos_update_frequency));
 
     W_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

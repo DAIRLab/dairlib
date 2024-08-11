@@ -252,6 +252,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
     def _build_mlp_extractor(self) -> None:
         self.mlp_extractor = CustomNetwork()
 
+
 class RLSystem(LeafSystem):
     def __init__(self, model_path: str): # alip_params: AlipFootstepLQROptions,
         super().__init__()

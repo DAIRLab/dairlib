@@ -25,15 +25,31 @@ py_library(
 )
 
 py_binary(
+    name = "run_rl_for_real",
+    srcs = ["run_rl_for_real.py"],
+    tags = ["ros"],
+    deps = [
+        ":RLsystem",
+        "//bindings/pydairlib/perceptive_locomotion:ros_diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
+        "//bindings/pydairlib/perceptive_locomotion/systems:elevation_map_converter",
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
     name = "RLsystem",
     srcs = ["RLsystem.py"],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
+        "//bindings/pydairlib/perceptive_locomotion/systems:elevation_map_converter",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
-        "//bindings/pydairlib/perceptive_locomotion/systems:elevation_map_converter",
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
-        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
 
@@ -84,14 +100,13 @@ py_binary(
     name = "train",
     srcs = ["train.py"],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
-    	
     ],
 )
 
@@ -99,14 +114,14 @@ py_binary(
     name = "run_sample",
     srcs = ["run_sample.py"],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
     ],
 )
 
@@ -114,16 +129,16 @@ py_binary(
     name = "imitation",
     srcs = ["imitation.py"],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta"
     ],
 )
 
@@ -131,18 +146,18 @@ py_binary(
     name = "LSTMimitation",
     srcs = ["LSTMimitation.py"],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
     ],
 )
 
@@ -164,7 +179,7 @@ py_library(
 PY_LIBRARIES = [
     ":alip_nn_lqr",
     "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3",
-    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib"
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib",
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -152,11 +152,11 @@ class ObservationPublisher(LeafSystem):
         
         if self.noise:
             if self.init_ == 0:
-                self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
-                #self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                #self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
+                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
             # X, Y offset : Shifts the camera
-            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
-            #camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            #camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -183,23 +183,23 @@ class ObservationPublisher(LeafSystem):
         if self.noise:
             if self.init_ == 0:
                 # Offset for hmap per episode
-                self.episode_noise = np.random.uniform(low=-0.03, high=0.03)
-                #self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                # self.episode_noise = np.random.uniform(low=-0.03, high=0.03)
+                self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
                 self.init_ += 1
             
             # Offset for hmap per step
-            height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.01, high=0.01)
-            # height_noise = np.random.uniform(low=-0.03, high=0.03, size=(self.height,self.height))
-            # step_noise = np.random.uniform(low=-0.02, high=0.02)
+            # height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
+            # step_noise = np.random.uniform(low=-0.01, high=0.01)
+            height_noise = np.random.uniform(low=-0.03, high=0.03, size=(self.height,self.height))
+            step_noise = np.random.uniform(low=-0.02, high=0.02)
             hmap[-1] += height_noise + self.episode_noise + step_noise
             hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
 
-            alip_noise_com = max(abs(alip[:2]))*0.1
-            alip_noise_ang = max(abs(alip[:-2]))*0.1
+            # alip_noise_com = max(abs(alip[:2]))*0.1
+            # alip_noise_ang = max(abs(alip[:-2]))*0.1
 
-            # alip_noise_com = max(abs(alip[:2]))*0.15
-            # alip_noise_ang = max(abs(alip[:-2]))*0.15
+            alip_noise_com = max(abs(alip[:2]))*0.15
+            alip_noise_ang = max(abs(alip[:-2]))*0.15
 
             # alip_noise_com = max(abs(alip[:2]))*0.2
             # alip_noise_ang = max(abs(alip[:-2]))*0.2
@@ -207,11 +207,11 @@ class ObservationPublisher(LeafSystem):
             alipxy_noise = np.random.uniform(low=-alip_noise_com, high=alip_noise_com, size=(2,))
             aliplxly_noise = np.random.uniform(low=-alip_noise_ang, high=alip_noise_ang, size=(2,)) # 20%
             
-            vdes_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
-            angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
+            # vdes_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            # angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
 
-            # vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
-            # angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
 
             alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
             vdes = vdes + vdes_noise
@@ -253,7 +253,7 @@ class RewardSystem(LeafSystem):
             'footstep_command': self.DeclareVectorInputPort(
                 'footstep_command', 3
             ).get_index(),
-            'state': self.DeclareVectorInputPort(
+            'gt_x_u_t': self.DeclareVectorInputPort(
                 'gt_x_u_t', 59
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
@@ -288,7 +288,7 @@ class RewardSystem(LeafSystem):
         ud = xd_ud.value()[4:]
         LQRcost = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
 
-        x_u_t = self.EvalVectorInput(context, self.input_port_indices['state']).value()
+        x_u_t = self.EvalVectorInput(context, self.input_port_indices['gt_x_u_t']).value()
         pos_vel = x_u_t[:45]
         
         plant = self.cassie_sim.get_plant()
@@ -331,8 +331,8 @@ class RewardSystem(LeafSystem):
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
         # velocity_reward = np.exp(-3*np.linalg.norm(vdes[:2] - bf_vel[:2]))
-        vx_reward = np.exp(-3*np.linalg.norm(vdes[0] - bf_vel[0]))
-        vy_reward = np.exp(-3*np.linalg.norm(vdes[1] - bf_vel[1]))
+        vx_reward = np.exp(-2*np.linalg.norm(vdes[0] - bf_vel[0]))
+        vy_reward = np.exp(-2*np.linalg.norm(vdes[1] - bf_vel[1]))
         
         # penalize angular velocity about the z axis
         angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
@@ -394,7 +394,7 @@ class DisturbanceSystem(LeafSystem):
         y = context.get_time() % self.period
         #if not ((y >= 0) and (y <= (self.period - self.duration))):
         rand = np.random.random_sample()
-        if rand < 0.1: # Randomize disturbance
+        if rand < 0.15: # Randomize disturbance
             rand_force_x = np.random.uniform(low=-self.force_x, high=self.force_x)
             rand_force_y = np.random.uniform(low=-self.force_y, high=self.force_y)
             rand_force_z = np.random.uniform(low=-self.force_z, high=self.force_z)
@@ -516,8 +516,8 @@ class CassieFootstepControllerEnvironment(Diagram):
         self.dist = True
 
         if self.dist:
-            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=15.0, \
-            force_y=15.0, force_z=5.0, period=1, duration=0.3))
+            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=25.0, \
+            force_y=25.0, force_z=7.0, period=1, duration=0.3))
             zoh_ = ZeroOrderHold(1.0/30.0, Value([self.disturbance.get_model_value()]))
             builder.AddSystem(zoh_)
             builder.Connect(
@@ -868,7 +868,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         builder.Connect(
             self.get_output_port_by_name("gt_x_u_t"),
-            reward.get_input_port_by_name("state")
+            reward.get_input_port_by_name("gt_x_u_t")
         )
         builder.Connect(
             self.get_output_port_by_name("swing_ft_tracking_error"),

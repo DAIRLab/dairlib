@@ -50,12 +50,24 @@ struct OscTrackingDataState {
       return J_ * dv + JdotV_;
   }
 
-
   /// TODO (@Brian-Acosta)
   /// Fix this hack for doing domain randomization in footstep learning project
   /// by doing it correctly
   Eigen::MatrixXd K_p_;
   Eigen::MatrixXd K_d_;
+
+  friend std::ostream& operator<<(std::ostream& o, const OscTrackingDataState& s) {
+    o << "Osc Tracking Data State" << s.name_ << "\n"
+      << "\ny: " << s.y_.transpose()
+      << "\nydot: " << s.ydot_.transpose()
+      << "\nerror_y: " << s.error_y_.transpose()
+      << "\nerror_ydot: " << s.error_ydot_.transpose()
+      << "\ny_des: " << s.y_des_.transpose()
+      << "\nydot_des: " << s.ydot_des_.transpose()
+      << "\nyddot_des: " << s.yddot_des_converted_.transpose()
+      << "\nyddot_cmd: " << s.yddot_command_.transpose() << std::endl;
+    return o;
+  }
 };
 
 class OscTrackingData {

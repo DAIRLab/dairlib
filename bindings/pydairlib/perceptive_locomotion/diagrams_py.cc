@@ -10,6 +10,8 @@
 #include "examples/perceptive_locomotion/diagrams/non_render_perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "examples/perceptive_locomotion/diagrams/rl_osc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/radio_receiver_module.h"
+#include "examples/perceptive_locomotion/diagrams/mpfc_output_from_rl.h"
 
 namespace py = pybind11;
 
@@ -24,6 +26,8 @@ using perceptive_locomotion::NonRenderPerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
 using perceptive_locomotion::AlipMPFCDiagram;
 using perceptive_locomotion::MpfcOutputFromFootstep;
+using perceptive_locomotion::RadioReceiverModule;
+using perceptive_locomotion::MpfcOutputFromRL;
 
 using multibody::SquareSteppingStoneList;
 
@@ -244,6 +248,11 @@ PYBIND11_MODULE(diagrams, m) {
            &AlipMPFCDiagram::get_output_port_mpc_output,
            py_rvp::reference_internal);
 
+  py::class_<RadioReceiverModule, drake::systems::Diagram<double>>(
+      m, "RadioReceiverModule")
+      .def(py::init<const std::string&, drake::lcm::DrakeLcmInterface*>(),
+          py::arg("cassie_out_channel"), py::arg("lcm"));
+
   py::class_<MpfcOutputFromFootstep, drake::systems::LeafSystem<double>>(
       m, "MpfcOutputFromFootstep")
       .def(py::init<double, double, const drake::multibody::MultibodyPlant<double>&>(),
@@ -253,6 +262,9 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_input_port_footstep", &MpfcOutputFromFootstep::get_input_port_footstep,
            py_rvp::reference_internal);
 
+  py::class_<MpfcOutputFromRL, drake::systems::LeafSystem<double>>(
+      m, "MpfcOutputFromRL")
+      .def(py::init<>());
 
 }
 

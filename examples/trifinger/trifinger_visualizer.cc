@@ -1,5 +1,3 @@
-#pragma once
-
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
@@ -121,7 +119,7 @@ int DoMain(int argc, char* argv[]) {
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+  [[maybe_unused]] auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
   // trifinger_state_receiver->set_publish_period(1.0/30.0);  // framerate
 

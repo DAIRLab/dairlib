@@ -58,14 +58,22 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
                                         CopyToOutputCurrentFingertipPositions)
           .get_index();
 
+  lcm_cur_fingertips_pos_port_ =
+      this->DeclareAbstractOutputPort("lcm_cur_fingertips_pos",
+                                      &FingertipDeltaPositionReceiver::
+                                          CopytoLCMCurrentFingertipPositions)
+          .get_index();
+
   // Declare update event.
   DeclareForcedDiscreteUpdateEvent(
       &FingertipDeltaPositionReceiver::DiscreteVariableUpdate);
 
   // Discrete state which stores the desired fingertips position.
   fingertips_target_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  start_fingertips_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
   prev_target_timestamp_idx_ =
       DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
+  start_time_traj_idx_ = DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
   cur_fingertips_pos_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
 }
 
@@ -111,26 +119,19 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   // check if the obtained message from lcm input port is still old one,
   // if so, no update is performed on the discrete states.
   if (current_msg_timestamp == previous_msg_timestamp) {
-    if (fingertips_delta_pos_lcm_msg->utime > 0) {
-      return drake::systems::EventStatus::Succeeded();
-    }
-    // message not yet coming, update the current fingertip targets to
-    // the current state and maintain these targets until new messages come.
-    if (previous_msg_timestamp == -1) {
-      discrete_state->get_mutable_vector(fingertips_target_idx_)
-          .set_value(fingertips_target_pos);
-      discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
-          .set_value(Eigen::VectorXd::Zero(1));
-    }
-  } else {
-    fingertips_target_pos +=
-        Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
-    discrete_state->get_mutable_vector(fingertips_target_idx_)
-        .set_value(fingertips_target_pos);
-    discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
-        .set_value(
-            (Eigen::VectorXd::Ones(1) * fingertips_delta_pos_lcm_msg->utime));
+    return drake::systems::EventStatus::Succeeded();
   }
+  fingertips_target_pos +=
+      Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
+  discrete_state->get_mutable_vector(start_time_traj_idx_)
+      .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
+  discrete_state->get_mutable_vector(start_fingertips_idx_)
+      .set_value(cur_fingertips_pos);
+  discrete_state->get_mutable_vector(fingertips_target_idx_)
+      .set_value(fingertips_target_pos);
+  discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
+      .set_value(
+          (Eigen::VectorXd::Ones(1) * fingertips_delta_pos_lcm_msg->utime));
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -141,23 +142,23 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
   auto fingertips_target_pos =
       context.get_discrete_state(fingertips_target_idx_).get_value();
   auto cur_fingertips_pos =
-      context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
-
-  // retrieve current timestamp
-  const OutputVector<double>* trifinger_state =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+      context.get_discrete_state(start_fingertips_idx_).get_value();
 
   double delta_pos_update_period = 1.0 / delta_pos_update_frequency_;
 
-  auto cur_context_time = trifinger_state->get_timestamp();
   Eigen::VectorXd knots(2);
-  knots << cur_context_time, cur_context_time + delta_pos_update_period;
+  auto start_time_traj =
+      context.get_discrete_state(start_time_traj_idx_).get_value()[0];
+  knots << start_time_traj, start_time_traj + delta_pos_update_period;
   Eigen::MatrixXd samples(cur_fingertips_pos.size(), 2);
   samples.col(0) = cur_fingertips_pos;
   samples.col(1) = fingertips_target_pos;
+  Eigen::MatrixXd samples_dot =
+      Eigen::MatrixXd::Zero(cur_fingertips_pos.size(), 2);
 
   // generate a constant trajectory that can be fed to OSC controller.
-  auto traj = PiecewisePolynomial<double>::FirstOrderHold(knots, samples);
+  auto traj =
+      PiecewisePolynomial<double>::CubicHermite(knots, samples, samples_dot);
   auto casted_target_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           target_traj);
@@ -180,6 +181,19 @@ void FingertipDeltaPositionReceiver::CopyToOutputCurrentFingertipPositions(
   cur_fingertips_pos->SetDataVector(
       context.get_discrete_state(cur_fingertips_pos_idx_).get_value());
   cur_fingertips_pos->set_timestamp(context.get_time());
+}
+
+void FingertipDeltaPositionReceiver::CopytoLCMCurrentFingertipPositions(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_fingertips_position* lcm_cur_fingertips_pos) const {
+  auto cur_fingertips_pos =
+      context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
+  lcm_cur_fingertips_pos->utime =
+      static_cast<int64_t>(context.get_time() * 1e6);
+
+  for (int i = 0; i < cur_fingertips_pos.size(); i++) {
+    lcm_cur_fingertips_pos->curPos[i] = cur_fingertips_pos[i];
+  }
 }
 
 }  // namespace dairlib::systems

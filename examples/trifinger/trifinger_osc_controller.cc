@@ -109,6 +109,15 @@ int DoMain(int argc, char* argv[]) {
           controller_params.fingertip_240_name,
           controller_params.delta_pos_update_frequency);
 
+  auto trifinger_cur_fingertips_pos_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_fingertips_position>(
+          lcm_channel_params.fingertips_position_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  builder.Connect(fingertips_delta_position_receiver
+                      ->get_output_port_lcm_cur_fingertips_pos(),
+                  trifinger_cur_fingertips_pos_pub->get_input_port());
+
   auto trifinger_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.trifinger_input_channel, &lcm,
@@ -159,9 +168,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   fingertips_delta_position_receiver->get_input_port_state());
 
-  builder.Connect(
-      fingertips_delta_position_receiver->get_output_port_fingertips_target_traj(),
-      target_traj_demultiplexer->get_input_port_traj());
+  builder.Connect(fingertips_delta_position_receiver
+                      ->get_output_port_fingertips_target_traj(),
+                  target_traj_demultiplexer->get_input_port_traj());
   builder.Connect(
       target_traj_demultiplexer->get_output_port_fingertip_0_target_traj(),
       osc->get_input_port_tracking_data("fingertip_0_target"));

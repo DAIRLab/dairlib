@@ -259,15 +259,15 @@ int do_main(int argc, char* argv[]) {
     const auto voxel_grid_filter = builder.AddSystem<VoxelGridFilter>(
         0.025, false
     );
-    const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
-    const auto pc_pub = builder.AddSystem(
-        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
-            FLAGS_points_pub_channel, lcm, FLAGS_points_pub_period
-    ));
-    const auto pc_pub_viz = builder.AddSystem(
-        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
-            "DRAKE_POINT_CLOUD", lcm, FLAGS_pc_visualization_period
-    ));
+//    const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
+//    const auto pc_pub = builder.AddSystem(
+//        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
+//            FLAGS_points_pub_channel, lcm, FLAGS_points_pub_period
+//    ));
+//    const auto pc_pub_viz = builder.AddSystem(
+//        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
+//            "DRAKE_POINT_CLOUD", lcm, FLAGS_pc_visualization_period
+//    ));
 
 
     builder.Connect(scene_graph.get_query_output_port(),
@@ -275,9 +275,9 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(camera->depth_image_32F_output_port(),
                     depth_to_points->depth_image_input_port());
     builder.Connect(*depth_to_points, *voxel_grid_filter);
-    builder.Connect(*voxel_grid_filter, *pc_to_lcm);
-    builder.Connect(*pc_to_lcm, *pc_pub);
-    builder.Connect(*pc_to_lcm, *pc_pub_viz);
+//    builder.Connect(*voxel_grid_filter, *pc_to_lcm);
+//    builder.Connect(*pc_to_lcm, *pc_pub);
+//    builder.Connect(*pc_to_lcm, *pc_pub_viz);
 
 #ifdef DAIR_ROS_ON
     const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");
@@ -287,7 +287,7 @@ int do_main(int argc, char* argv[]) {
             &node_handle,
             TriggerTypeSet({TriggerType::kPeriodic}),
             FLAGS_points_pub_period);
-    builder.Connect(*depth_to_points, *points_bridge);
+    builder.Connect(*voxel_grid_filter, *points_bridge);
     builder.Connect(*points_bridge, *points_pub);
 #endif
   }

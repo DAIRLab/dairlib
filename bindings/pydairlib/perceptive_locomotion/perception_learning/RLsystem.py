@@ -132,14 +132,14 @@ class ResidualBlock_noNorm(nn.Module):
         return out
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
+    def __init__(self, hidden_layer_size = 64):
         super(CustomNetwork, self).__init__()
 
-        self.latent_dim_pi = last_layer_dim_pi
-        self.latent_dim_vf = last_layer_dim_vf
+        self.latent_dim_pi = hidden_layer_size
+        self.latent_dim_vf = hidden_layer_size
         self.vector_state_actor = 6+16
         self.vector_state_critic = 6+23
-        self.h_size = 64
+        self.height_map_size = 64
         ResidualBlock = ResidualBlock_noNorm
 
         n_input_channels = 3
@@ -198,8 +198,18 @@ class CustomNetwork(nn.Module):
             nn.Linear(256, 64),
         )
 
-        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=64, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=64, num_layers=2, batch_first=False)
+        self.actor_combined_lstm = nn.LSTM(
+            input_size=self.vector_state_actor + 64,
+            hidden_size=hidden_layer_size,
+            num_layers=2,
+            batch_first=False
+        )
+        self.critic_combined_lstm = nn.LSTM(
+            input_size=self.vector_state_critic + 64,
+            hidden_size=hidden_layer_size,
+            num_layers=2,
+            batch_first=False
+        )
 
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
@@ -210,20 +220,21 @@ class CustomNetwork(nn.Module):
 
     def multihead_actor(self, observations: th.Tensor):
         batch_size = observations.size(0)
-        image_obs = observations[:, :3*self.h_size*self.h_size].reshape(batch_size, 3, self.h_size, self.h_size)
-        state = observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6+16]
+        image_obs = observations[:, :3 * self.height_map_size * self.height_map_size].reshape(batch_size, 3, self.height_map_size, self.height_map_size)
+        state = observations[:, 3 * self.height_map_size * self.height_map_size: 3 * self.height_map_size * self.height_map_size + 6 + 16]
         actor_cnn_output = self.actor_cnn(image_obs)
         actor_combined_features = th.cat((actor_cnn_output, state), dim=1).unsqueeze(1)
         return actor_combined_features
 
     def multihead_critic(self, observations: th.Tensor):
         batch_size = observations.size(0)
-        image_obs_gt = observations[:, -3*self.h_size*self.h_size:].reshape(batch_size, 3, self.h_size, self.h_size)
-        state = th.cat((observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6], \
-        observations[:, 3*self.h_size*self.h_size+6+16:3*self.h_size*self.h_size+6+16+23]), dim=1)
+        image_obs_gt = observations[:, -3 * self.height_map_size * self.height_map_size:].reshape(batch_size, 3, self.height_map_size, self.height_map_size)
+        state = th.cat((observations[:, 3 * self.height_map_size * self.height_map_size: 3 * self.height_map_size * self.height_map_size + 6], \
+                        observations[:, 3 * self.height_map_size * self.height_map_size + 6 + 16:3 * self.height_map_size * self.height_map_size + 6 + 16 + 23]), dim=1)
         critic_cnn_output_gt = self.critic_cnn_gt(image_obs_gt)
         critic_combined_features = th.cat((critic_cnn_output_gt, state), dim=1).unsqueeze(1)
         return critic_combined_features
+
 
 class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
     def __init__(
@@ -238,23 +249,24 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         *args,
         **kwargs,
     ):
+        self.hidden_layer_size = lstm_hidden_size
 
         super().__init__(
             observation_space,
             action_space,
             lr_schedule,
-            lstm_hidden_size = 64,
+            lstm_hidden_size = lstm_hidden_size,
             n_lstm_layers = 2,
             *args,
             **kwargs,
         )
 
     def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = CustomNetwork()
+        self.mlp_extractor = CustomNetwork(self.hidden_layer_size)
 
 
 class RLSystem(LeafSystem):
-    def __init__(self, model_path: str): # alip_params: AlipFootstepLQROptions,
+    def __init__(self, model_path: str, hidden_size: int): # alip_params: AlipFootstepLQROptions,
         super().__init__()
         ### Multi-Body Plant ###
         self.plant = MultibodyPlant(0.0)
@@ -273,11 +285,18 @@ class RLSystem(LeafSystem):
         ### RL Model ###
         action_space = spaces.Box(low=np.asarray(np.array([-1., -1., -1.]), dtype="float32"),
                                 high=np.asarray(np.array([1., 1., 1.]), dtype="float32"),
-                                dtype=np.float32)                         
+                                dtype=np.float32)
+
         observation_space = spaces.Box(low=-np.inf, high=np.inf,
                                         shape=(3*64*64 +6+16+23 +3*64*64,),
                                         dtype=np.float32)
-        self.model = CustomActorCriticPolicy(observation_space, action_space, get_schedule_fn(1.))
+
+        self.model = CustomActorCriticPolicy(
+            observation_space,
+            action_space,
+            get_schedule_fn(1.),
+            lstm_hidden_size=hidden_size
+        )
         self.model.load_state_dict(th.load(model_path, map_location=th.device('cpu'))) # Save policy through -> th.save(model.policy.state_dict(), 'test')
         self.model.eval()
         

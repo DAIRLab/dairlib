@@ -38,9 +38,11 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
 
-model_path = "test"
+model_path = "test003"
+model_hz = 25.0
+model_hidden_size = 64
 points_topic = "/camera/depth/color/points"
-cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+cassie_state_channel = "CASSIE_STATE_SIMULATION"
 cassie_out_channel = "NETWORK_CASSIE_OUT"
 urdf = "examples/Cassie/urdf/cassie_v2.urdf"
 
@@ -70,26 +72,27 @@ def main():
     map_converter = ElevationMappingConverter(
         urdf, ElevationMapOptions()
     )
-    actor = RLSystem(model_path=model_path)
+    actor = RLSystem(model_path=model_path, hidden_size=model_hidden_size)
 
-    elevation_map_sender = GridMapSender()
-    elevation_map_publisher_local = LcmPublisherSystem.Make(
-        channel="CASSIE_ELEVATION_MAP",
-        lcm_type=lcmt_grid_map,
-        lcm=elevation_mapping.lcm(),
-        publish_triggers={TriggerType.kPeriodic},
-        publish_period=1.0 / 30.0,
-        use_cpp_serializer=True
-    )
+    # elevation_map_sender = GridMapSender()
+    # elevation_map_publisher_local = LcmPublisherSystem.Make(
+    #     channel="CASSIE_ELEVATION_MAP",
+    #     lcm_type=lcmt_grid_map,
+    #     lcm=elevation_mapping.lcm(),
+    #     publish_triggers={TriggerType.kPeriodic},
+    #     publish_period=1.0 / 30.0,
+    #     use_cpp_serializer=True
+    # )
     radio = RadioReceiverModule(cassie_out_channel, elevation_mapping.lcm())
 
     action_sender = MpfcOutputFromRL()
     network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
     action_pub = LcmPublisherSystem.Make(
-        channel="CASSIE_ACTIONS",
+        channel="ALIP_MPC",
         lcm_type=lcmt_alip_mpc_output,
         lcm=network_lcm,
-        publish_triggers={TriggerType.kForced},
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / model_hz,
         use_cpp_serializer=True
     )
 
@@ -99,21 +102,21 @@ def main():
     builder.AddSystem(action_sender)
     builder.AddSystem(map_converter)
     builder.AddSystem(elevation_mapping)
-    builder.AddSystem(elevation_map_sender)
-    builder.AddSystem(elevation_map_publisher_local)
-
-    builder.Connect(
-        elevation_map_sender.get_output_port(),
-        elevation_map_publisher_local.get_input_port()
-    )
+    # builder.AddSystem(elevation_map_sender)
+    # builder.AddSystem(elevation_map_publisher_local)
+    #
+    # builder.Connect(
+    #     elevation_map_sender.get_output_port(),
+    #     elevation_map_publisher_local.get_input_port()
+    # )
     builder.Connect(
         elevation_mapping.get_output_port_state(),
         actor.get_input_port_by_name('state')
     )
-    builder.Connect(
-        elevation_mapping.get_output_port_grid_map(), 
-        elevation_map_sender.get_input_port()
-    )
+    # builder.Connect(
+    #     elevation_mapping.get_output_port_grid_map(),
+    #     elevation_map_sender.get_input_port()
+    # )
     builder.Connect(
         elevation_mapping.get_output_port_grid_map(),
         map_converter.get_input_port_by_name('elevation')

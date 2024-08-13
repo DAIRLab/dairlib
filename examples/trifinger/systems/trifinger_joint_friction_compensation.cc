@@ -63,7 +63,7 @@ drake::systems::EventStatus JointFrictionCompensator::DiscreteVariableUpdate(
   Eigen::VectorXd coulomb_friction_coeff(n_u_);
   Eigen::VectorXd static_friction_stiffness(n_u_);
   coulomb_friction_coeff << 0.0427, 0.0429, 0.0519, 0, 0, 0, 0, 0, 0;
-  static_friction_stiffness << 299.9415, 299.9409, 299.9316, 0, 0, 0, 0, 0, 0;
+  static_friction_stiffness << 7.0, 7.0, 7.0, 0, 0, 0, 0, 0, 0;
 
   auto trifinger_velocities = trifinger_state->GetVelocities();
   auto osc_output_torque_data = osc_output_torque->value();

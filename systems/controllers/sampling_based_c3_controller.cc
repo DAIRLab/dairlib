@@ -727,7 +727,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   for (int i = 0; i < N_; i++) {
     // This is a curve_fraction and is not in the units of time or distance. 
     // When it is 0, it is the current location. When it is 1, it is the goal.
-    double t_spline = (i+1)*c3_options_.planning_dt/total_travel_time;
+    double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
 
     if (i == 1 && t_spline >= 1 && !is_doing_c3_){
       // If it can get there in one step, then set finished_reposition_flag_ to
@@ -748,6 +748,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     VectorXd next_lcs_state = x_lcs;
     next_lcs_state.head(3) = next_ee_loc;
     next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
+    // if z is under the jack height, set it to jack height.
+    if (next_lcs_state[2] < 0.0197) {
+      next_lcs_state[2] = 0.0197;
+    }
 
     knots.col(i)= next_lcs_state;
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;

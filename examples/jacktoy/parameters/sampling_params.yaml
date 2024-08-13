@@ -44,8 +44,8 @@ reposition_speed: 0.30    # m/s
 cost_type: 2
 
 # Cost associated with traveling.
-travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 3000
+travel_cost_per_meter: 10000
+c3_to_repos_hysteresis: 2000
 finished_reposition_cost: 1000000000
 repos_to_c3_hysteresis: 3000
 hysteresis_between_repos_targets: 100000000

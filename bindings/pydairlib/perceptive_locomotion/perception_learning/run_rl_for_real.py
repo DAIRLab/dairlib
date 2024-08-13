@@ -2,7 +2,7 @@ import signal
 import sys
 
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
-    lcmt_contact
+    lcmt_contact, lcmt_alip_mpc_output
 
 from pydrake.systems.all import (
     Diagram,
@@ -20,8 +20,14 @@ from pydrake.common.value import AbstractValue
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 from pydairlib.perceptive_locomotion.ros_diagrams import (
-    CassieElevationMappingRosDiagram
+    CassieElevationMappingRosDiagram,
 )
+
+from pydairlib.perceptive_locomotion.diagrams import (
+    RadioReceiverModule,
+    MpfcOutputFromRL
+)
+
 from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
     import ElevationMappingConverter, ElevationMapOptions, ElevationMapQueryObject
 
@@ -35,6 +41,7 @@ import numpy as np
 model_path = "test"
 points_topic = "/camera/depth/color/points"
 cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+cassie_out_channel = "NETWORK_CASSIE_OUT"
 urdf = "examples/Cassie/urdf/cassie_v2.urdf"
 
 elevation_mapping_params = (
@@ -81,8 +88,22 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
+    radio = RadioReceiverModule(cassie_out_channel, elevation_mapping.lcm())
+
+    action_sender = MpfcOutputFromRL()
+    network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
+    action_pub = LcmPublisherSystem.Make(
+        channel="CASSIE_ACTIONS",
+        lcm_type=lcmt_alip_mpc_output,
+        lcm=network_lcm,
+        publish_triggers={TriggerType.kForced},
+        use_cpp_srializer=True
+    )
 
     builder.AddSystem(actor)
+    builder.AddSystem(radio)
+    builder.AddSystem(action_pub)
+    builder.AddSystem(action_sender)
     builder.AddSystem(map_converter)
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(contact_subscriber)
@@ -120,6 +141,18 @@ def main():
     builder.Connect(
         map_converter.get_output_port_query_object(),
         actor.get_input_port_by_name('height_map')
+    )
+    builder.Connect(
+        radio.get_output_port(),
+        actor.get_output_port_by_name('desired_velocity')
+    )
+    builder.Connect(
+        actor.get_output_port_by_name('actions'),
+        action_sender.get_input_port(),
+    )
+    builder.Connect(
+        action_sender.get_output_port(),
+        action_pub.get_input_port()
     )
 
     diagram = builder.Build()

@@ -193,15 +193,28 @@ cc_library(
 )
 
 cc_library(
+    name = "radio_receiver_module",
+    srcs = ["radio_receiver_module.cc"],
+    hdrs = ["radio_receiver_module.h"],
+    deps = [
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "diagrams",
     deps = [
-        ":rl_osc_diagram",
         ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":mpfc_output_from_footstep",
+        ":mpfc_output_from_rl",
         ":non_render_perception_module_diagram",
         ":perception_module_diagram",
+        ":radio_receiver_module",
+        ":rl_osc_diagram",
     ],
 )
 

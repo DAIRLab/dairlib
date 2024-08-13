@@ -34,8 +34,6 @@ void MpfcOutputFromRL::CalcOutput(
   output->fsm.prev_switch_time_us = 1e6 * rl_cmd(4);
   output->fsm.next_switch_time_us = 1e6 * std::max(rl_cmd(5), context.get_time() + 0.0005);
 
-
-
   // set footstep target from input port
   std::copy(
       rl_cmd.data(),

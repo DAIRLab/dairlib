@@ -1,13 +1,22 @@
 sensor_poses: [
-    {
-        sensor_name: "pelvis_depth",
-        sensor_parent_body: "pelvis",
-        sensor_pose_in_parent_body_yaml:
-          "bindings/pydairlib/perceptive_locomotion/params/rgbd_extrinsics.yaml"
-    }
+{
+  sensor_name: "pelvis_depth",
+  sensor_parent_body: "pelvis",
+  sensor_pose_in_parent_body_yaml: "bindings/pydairlib/perceptive_locomotion/params/rgbd_extrinsics.yaml"
+}
 ]
 
 map_update_trigger_type: "periodic"
 base_frame_name: "pelvis"
-track_point: [0.5, 0, 0]
+track_point: [0., 0, 0] #0.5
 map_update_rate_hz: 30.0
+map_length: [2.0, 2.0]
+resolution: 0.025
+contact_frames: {}
+contact_points: {}
+# To use drift correction examples/perceptive_locomotion/diagrams/perception_module_diagram.cc
+# contact_frames: { left: "toe_left", right: "toe_right" }
+# contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}
+initialization_radius: 1.0
+initialization_offset: 0.0
+point_cloud_bias: [0.0, 0.0, 0.0]

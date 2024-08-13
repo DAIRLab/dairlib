@@ -30,6 +30,7 @@ py_binary(
     tags = ["ros"],
     deps = [
         ":RLsystem",
+        "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/perceptive_locomotion:ros_diagrams_py",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",

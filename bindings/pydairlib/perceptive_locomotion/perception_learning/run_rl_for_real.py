@@ -72,13 +72,6 @@ def main():
     )
     actor = RLSystem(model_path=model_path)
 
-    contact_subscriber = LcmSubscriberSystem.Make(
-        channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
-        lcm_type=lcmt_contact,
-        lcm=elevation_mapping.lcm(),
-        use_cpp_serializer=True
-    )
-
     elevation_map_sender = GridMapSender()
     elevation_map_publisher_local = LcmPublisherSystem.Make(
         channel="CASSIE_ELEVATION_MAP",
@@ -97,7 +90,7 @@ def main():
         lcm_type=lcmt_alip_mpc_output,
         lcm=network_lcm,
         publish_triggers={TriggerType.kForced},
-        use_cpp_srializer=True
+        use_cpp_serializer=True
     )
 
     builder.AddSystem(actor)
@@ -106,14 +99,9 @@ def main():
     builder.AddSystem(action_sender)
     builder.AddSystem(map_converter)
     builder.AddSystem(elevation_mapping)
-    builder.AddSystem(contact_subscriber)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
 
-    builder.Connect(
-        contact_subscriber.get_output_port(),
-        elevation_mapping.get_input_port_contact()
-    )
     builder.Connect(
         elevation_map_sender.get_output_port(),
         elevation_map_publisher_local.get_input_port()
@@ -139,12 +127,12 @@ def main():
         map_converter.get_input_port_by_name('fsm')
     )
     builder.Connect(
-        map_converter.get_output_port_query_object(),
+        map_converter.get_output_port(),
         actor.get_input_port_by_name('height_map')
     )
     builder.Connect(
         radio.get_output_port(),
-        actor.get_output_port_by_name('desired_velocity')
+        actor.get_input_port_by_name('desired_velocity')
     )
     builder.Connect(
         actor.get_output_port_by_name('actions'),

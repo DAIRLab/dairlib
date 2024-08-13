@@ -134,6 +134,21 @@ cc_library(
 )
 
 cc_library(
+    name = "joint_trajectory_generator",
+    srcs = [
+        "joint_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "joint_trajectory_generator.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "franka_kinematics",
     srcs = ["franka_kinematics.cc"],
     hdrs = ["franka_kinematics.h"],

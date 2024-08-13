@@ -151,6 +151,31 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_joint_osc_controller",
+    srcs = ["franka_joint_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//examples/franka/systems:joint_trajectory_generator",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
     data = [

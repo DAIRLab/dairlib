@@ -398,7 +398,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   const auto active_contact_names = contact_names_map_.count(fsm_state) > 0
                                         ? contact_names_map_.at(fsm_state)
                                         : std::vector<std::string>();
-  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {force_tracking_data_vec_->at(0)->GetName()});
+//  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {force_tracking_data_vec_->at(0)->GetName()});
+  // TEMPORARY HACK, MAKE FORCE TRACKING VEC A SET INSTEAD!
+  if (force_tracking_data_vec_->empty()){
+    id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
+  }else{
+    id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {force_tracking_data_vec_->at(0)->GetName()});
+  };
 
   //  Invariant Impacts
   //  Only update when near an impact

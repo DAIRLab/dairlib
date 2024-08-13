@@ -34,6 +34,7 @@ FrankaStateOutTranslator::FrankaStateOutTranslator(
                           "lcmt_robot_output", default_robot_output_msg,
                           &FrankaStateOutTranslator::OutputFrankaState)
                       .get_index();
+  start_ = std::chrono::steady_clock::now();
 }
 
 void FrankaStateOutTranslator::OutputFrankaState(

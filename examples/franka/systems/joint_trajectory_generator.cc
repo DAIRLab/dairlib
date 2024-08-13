@@ -39,6 +39,8 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
 
   initial_position_index_ =
       this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
+  initial_time_index_ =
+      this->DeclareDiscreteState(VectorXd::Zero(1));
   DeclareForcedDiscreteUpdateEvent(
       &JointTrajectoryGenerator::DiscreteVariableUpdate);
   joint_trajectory_ports_.resize(plant.num_positions());
@@ -61,11 +63,13 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
 drake::systems::EventStatus JointTrajectoryGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
-  auto initial_positions = discrete_state->get_mutable_value();
+  auto initial_positions = discrete_state->get_mutable_value(initial_position_index_);
+  auto initial_time = discrete_state->get_mutable_value(initial_time_index_);
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  if (franka_output->get_timestamp() < 1.0) {  // poll for a second
+  if (initial_time[0] == 0.0) {  // poll once
     initial_positions = franka_output->GetPositions();
+    initial_time[0] = context.get_time();
   }
   return drake::systems::EventStatus::Succeeded();
 }
@@ -81,15 +85,16 @@ void JointTrajectoryGenerator::CalcTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto initial_positions =
       context.get_discrete_state(initial_position_index_).value();
+  auto initial_time = context.get_discrete_state(initial_time_index_).value();
+
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
-  std::vector<double> breaks = {1.0, 6.0};
+  std::vector<double> breaks = {initial_time[0] + 1.0, initial_time[0] + 6.0};
   std::vector<MatrixXd> sampled_positions(2);
   sampled_positions[0] = MatrixXd::Zero(1, 1);
   sampled_positions[0] << initial_positions[joint_index];
   sampled_positions[1] = MatrixXd::Zero(1, 1);
   sampled_positions[1] << target_position_[joint_index];
-
   if (context.get_time() >= 1.0) {  // poll for a second
     *casted_traj =
         PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(

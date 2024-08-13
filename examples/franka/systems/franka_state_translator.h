@@ -34,6 +34,7 @@ class FrankaStateOutTranslator : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex panda_status_;
   drake::systems::OutputPortIndex state_output_;
+  mutable std::chrono::time_point<std::chrono::steady_clock> start_;
 };
 
 class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {

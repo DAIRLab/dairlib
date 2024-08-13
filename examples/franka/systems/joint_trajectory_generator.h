@@ -35,6 +35,7 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex radio_port_;
   std::vector<drake::systems::OutputPortIndex> joint_trajectory_ports_;
   drake::systems::DiscreteStateIndex initial_position_index_;
+  drake::systems::DiscreteStateIndex initial_time_index_;
   const Eigen::VectorXd target_position_;
 
   double default_speed = 0.1;  // rad/s

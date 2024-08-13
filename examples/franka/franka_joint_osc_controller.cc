@@ -143,7 +143,7 @@ int DoMain(int argc, char* argv[]) {
        ++joint_idx) {
     string joint_name = joint_names[joint_idx];
     MatrixXd W = 1.0 * MatrixXd::Identity(1, 1);
-    MatrixXd K_p = 50 * MatrixXd::Identity(1, 1);
+    MatrixXd K_p = 100 * MatrixXd::Identity(1, 1);
     MatrixXd K_d = 5 * MatrixXd::Identity(1, 1);
     joint_tracking_data_vec.push_back(std::make_unique<JointSpaceTrackingData>(
         joint_name + "_traj", K_p, K_d, W, plant, plant));

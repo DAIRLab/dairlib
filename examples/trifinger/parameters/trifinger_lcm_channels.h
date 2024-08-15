@@ -6,6 +6,7 @@ struct TrifingerLcmChannels {
   bool is_real_robot;
   std::string trifinger_state_channel;
   std::string cube_state_channel;
+  std::string cube_target_channel;
   std::string trifinger_input_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -19,6 +20,7 @@ struct TrifingerLcmChannels {
     a->Visit(DRAKE_NVP(is_real_robot));
     a->Visit(DRAKE_NVP(trifinger_state_channel));
     a->Visit(DRAKE_NVP(cube_state_channel));
+    a->Visit(DRAKE_NVP(cube_target_channel));
     a->Visit(DRAKE_NVP(trifinger_input_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));

@@ -4,7 +4,7 @@ cube_model: examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf
 dt: 0.0005
 realtime_rate: 1.0
 trifinger_publish_rate: 1000
-cube_publish_rate: 100
+cube_publish_rate: 7
 publish_efforts: true
 actuator_delay: 0.000
 visualizer_publish_rate: 60
@@ -12,4 +12,4 @@ visualizer_publish_rate: 60
 contact_solver: SAP
 
 q_init_trifinger: [0, 0.8, -1.5, 0, 0.8, -1.5, 0, 0.8, -1.5]
-q_init_cube: [1, 0, 0, 0, 0, 0, 0.05]
+q_init_cube: [1, 0, 0, 0, 0, 0, 0.0325]

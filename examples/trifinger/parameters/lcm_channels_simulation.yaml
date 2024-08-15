@@ -1,6 +1,7 @@
 is_real_robot: false
 trifinger_state_channel: TRIFINGER_STATE_SIMULATION # lcmt_robot_output
 cube_state_channel: CUBE_STATE_SIMULATION #lcmt_object_output
+cube_target_channel: CUBE_TARGET_SIMULATION #lcmt_object_output
 trifinger_input_channel: TRIFINGER_INPUT_SIMULATION # lcmt_robot_input
 osc_channel: OSC_TRIFINGER
 osc_debug_channel: OSC_DEBUG_TRIFINGER

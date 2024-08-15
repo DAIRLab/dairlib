@@ -45,6 +45,7 @@ cc_binary(
         "//common:find_resource",
         "//examples/trifinger/parameters:trifinger_lcm_channels",
         "//examples/trifinger/parameters:trifinger_sim_params",
+        "//examples/trifinger/systems:lcm_visualization_systems",
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",

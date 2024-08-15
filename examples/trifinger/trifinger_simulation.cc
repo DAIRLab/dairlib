@@ -42,6 +42,8 @@ using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+Eigen::VectorXd GenerateInitialCubePose();
+
 int SimulateTrifinger(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -120,7 +122,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
 
   // Set initial conditions of the simulation
   VectorXd q_init(plant.num_positions());
-  q_init << sim_params.q_init_trifinger, sim_params.q_init_cube;
+  q_init << sim_params.q_init_trifinger, GenerateInitialCubePose();
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
   diagram_context->SetTime(0);
@@ -133,6 +135,21 @@ int SimulateTrifinger(int argc, char* argv[]) {
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
+}
+
+Eigen::VectorXd GenerateInitialCubePose() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(-1.0, 1.0);
+
+  Eigen::VectorXd cube_pose(7);
+  Eigen::Vector3d cube_pos;
+  cube_pos << dis(gen) * 0.005, dis(gen) * 0.005, 0.0325;
+  auto cube_quaternion = Eigen::Quaternion<double>(
+      Eigen::AngleAxis<double>(dis(gen) * 0.05, Vector3d::UnitZ()));
+  cube_pose << cube_quaternion.w(), cube_quaternion.x(), cube_quaternion.y(),
+      cube_quaternion.z(), cube_pos;
+  return cube_pose;
 }
 
 }  // namespace dairlib

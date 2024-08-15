@@ -9,18 +9,19 @@
 
 namespace rs2_systems {
 
-struct CassieRSFrames {
-  rs2::frame color;
-  rs2::frame color_aligned_depth;
-  rs2::frame decimated_depth;
-};
 
 class SingleRSInterface {
  public:
   SingleRSInterface();
   ~SingleRSInterface();
 
-  using HandlerFunction = std::function<void(const CassieRSFrames&)>;
+  struct rs_frames {
+    rs2::frame color;
+    rs2::frame color_aligned_depth;
+    rs2::frame decimated_depth;
+  };
+
+  using HandlerFunction = std::function<void(const rs_frames&)>;
 
   void Start();
   void Stop();

@@ -17,6 +17,18 @@ cc_test(
 )
 
 cc_library(
+    name = "realsense_point_cloud_subscriber",
+    srcs = ["realsense_point_cloud_subscriber.cc"],
+    hdrs = ["realsense_point_cloud_subscriber.h"],
+    deps = [
+        ":rs_interface",
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
     name = "rs_interface",
     srcs = ["single_rs_interface.cc"],
     hdrs = ["single_rs_interface.h"],

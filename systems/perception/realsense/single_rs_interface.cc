@@ -10,6 +10,10 @@ SingleRSInterface::SingleRSInterface() {
 }
 
 void SingleRSInterface::Start() {
+  // if already running, do nothing
+  if (run_) {
+    return;
+  }
   run_ = true;
   pipeline_.start(config_);
   poll_thread_ = std::thread(&SingleRSInterface::poll, this);
@@ -36,13 +40,15 @@ void SingleRSInterface::poll() {
   rs2::decimation_filter decimation;
   decimation.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f);
 
-  CassieRSFrames frames;
+  rs_frames frames;
+
   while (run_) {
     frameset = pipeline_.wait_for_frames();
     frames.color = frameset.get_color_frame();
     aligned = frame_aligner_.process(frameset);
     frames.color_aligned_depth = aligned.get_depth_frame();
     frames.decimated_depth = decimation.process(frameset.get_depth_frame());
+
     for (const auto& callback : callbacks) {
       callback(frames);
     }

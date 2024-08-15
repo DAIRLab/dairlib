@@ -4,6 +4,8 @@
 #include "pcl/filters/filter.h"
 #include "pcl/filters/passthrough.h"
 
+#include <iostream>
+
 namespace dairlib::perception {
 
 using drake::Value;
@@ -94,29 +96,37 @@ void RealsensePointCloudSubscriber<PointT>::DoCalcNextUpdateTime(
 template <typename PointT>
 void RealsensePointCloudSubscriber<PointT>::HandleFrame(
     const rs2_systems::SingleRSInterface::rs_frames &frame) {
-  std::lock_guard<std::mutex> lock(received_frame_mutex_);
-  received_depth_frame_ = frame.decimated_depth;
+  frame_queue_.enqueue(frame.decimated_depth);
+
+  std::scoped_lock<std::mutex> lock(received_frame_mutex_);
   received_frames_count_++;
+  received_frame_variable_.notify_one();
 }
 
 template <typename PointT>
 EventStatus
 RealsensePointCloudSubscriber<PointT>::ProcessFrameAndStoreToAbstractState(
     const Context<double> &context, State<double>* state) const {
-  std::lock_guard<std::mutex> lock(received_frame_mutex_);
 
-  const int
-      context_frame_count = context.get_abstract_state<int>(frame_count_index_);
-  if (context_frame_count == received_frames_count_) {
-    state->SetFrom(context.get_state());
-    return EventStatus::DidNothing();
+  {
+    std::scoped_lock<std::mutex> lock(received_frame_mutex_);
+    const int
+        context_frame_count = context.get_abstract_state<int>(frame_count_index_);
+    if (context_frame_count == received_frames_count_) {
+      state->SetFrom(context.get_state());
+      return EventStatus::DidNothing();
+    }
+    state->get_mutable_abstract_state<int>(frame_count_index_) = received_frames_count_;
   }
 
-  const rs2::depth_frame &depth = received_depth_frame_.as<rs2::depth_frame>();
+
+  rs2::frame received_depth_frame;
+  frame_queue_.poll_for_frame(&received_depth_frame);
+  const rs2::depth_frame &depth = received_depth_frame.as<rs2::depth_frame>();
   const int width = depth.get_width();
   const int height = depth.get_height();
   const int npoints = width * height;
-  const rs2_intrinsics depth_interinsics = received_depth_frame_.get_profile().as<
+  const rs2_intrinsics depth_interinsics = received_depth_frame.get_profile().as<
       rs2::video_stream_profile>().get_intrinsics();
 
 
@@ -143,7 +153,11 @@ RealsensePointCloudSubscriber<PointT>::ProcessFrameAndStoreToAbstractState(
   pcl::Indices indices;
   pcl::removeNaNFromPointCloud(cloud, cloud, indices);
 
+  // ms to us
   cloud.header.stamp = 1e3 * depth.get_timestamp();
+
+//  std::cout << "\ntime: " << context.get_time() << "\nframe number " << received_frames_count_ << "\n"
+//            << nfinite << "points, timestamp = " << cloud.header.stamp << std::endl;
 
   return EventStatus::Succeeded();
 }

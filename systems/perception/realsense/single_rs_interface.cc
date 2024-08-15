@@ -1,3 +1,4 @@
+#include <iostream>
 #include "single_rs_interface.h"
 
 namespace rs2_systems {

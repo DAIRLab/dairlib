@@ -7,12 +7,12 @@ add_lint_tests()
 
 package(default_visibility = ["//visibility:public"])
 
-cc_test(
+cc_binary(
     name = "rs_interface_test",
     srcs = ["test/test_rs_interface.cc"],
     deps = [
         ":rs_interface",
-        "@gtest//:main",
+        ":realsense_point_cloud_subscriber",
     ],
 )
 

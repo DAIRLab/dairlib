@@ -22,8 +22,10 @@ DRAKE_CHECKSUM = "31a49b0e59fc9000f1dac6efa7276f1fc279cf333acaed75e65cba7a1340ad
 load("//:environ.bzl", "drake_repository")
 load("//:environ.bzl", "inekf_repository")
 
-drake_repository(name="drake_path")
-inekf_repository(name="inekf_path")
+drake_repository(name = "drake_path")
+
+inekf_repository(name = "inekf_path")
+
 load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
 load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
@@ -70,10 +72,6 @@ load("@dairlib//tools/workspace/fcc_qp:repository.bzl", "fcc_qp_repository")
 
 fcc_qp_repository(name = "fcc_qp")
 
-load("@dairlib//tools/workspace/cgal:repository.bzl", "cgal_repository")
-
-cgal_repository(name = "cgal")
-
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
@@ -117,16 +115,21 @@ load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
 
 setup_pcl()
 
-load("//tools/workspace/opencv:repository.bzl", "opencv_repository")
+load("//:environ.bzl", "os_repository")
 
-opencv_repository("opencv")
+os_repository(name = "os_type")
 
-http_archive(
-    name = "acd2d",
-    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
-    strip_prefix = "acd2d-master",
-    urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
+load("@os_type//:environ.bzl", "OSTYPE")
+
+os = ["macos"] if "darwin" in OSTYPE else []
+
+print("OS = {}".format(OSTYPE))
+
+load("//tools/workspace:perception.bzl", "add_perception_repositories")
+
+add_perception_repositories(
+    excludes = [],
+    os = os,
 )
 
 # dairlib can use either a local version of invariant-ekf or a pegged revision
@@ -140,7 +143,6 @@ http_archive(
 INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
-
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -228,9 +230,8 @@ http_archive(
 # clion 2024.1.3:
 http_archive(
     name = "rules_java",
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
     urls = [
         "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
     ],
-    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
 )
-

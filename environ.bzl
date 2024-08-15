@@ -54,12 +54,17 @@ drake_repository = repository_rule(
     implementation = _impl,
     environ = ["DAIRLIB_LOCAL_DRAKE_PATH"],
     local = True,
-    attrs = {"_vars": attr.string_list(default=["DAIRLIB_LOCAL_DRAKE_PATH"])},
+    attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_DRAKE_PATH"])},
 )
 inekf_repository = repository_rule(
     implementation = _impl,
     environ = ["DAIRLIB_LOCAL_INEKF_PATH"],
     local = True,
-    attrs = {"_vars": attr.string_list(default=["DAIRLIB_LOCAL_INEKF_PATH"])},
+    attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_INEKF_PATH"])},
 )
-
+os_repository = repository_rule(
+    implementation = _impl,
+    environ = ["OSTYPE"],
+    local = True,
+    attrs = {"_vars": attr.string_list(default = ["OSTYPE"])},
+)

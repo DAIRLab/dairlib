@@ -1,0 +1,28 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+add_lint_tests()
+
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "rs_interface_test",
+    srcs = ["test/test_rs_interface.cc"],
+    deps = [
+        ":rs_interface",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "rs_interface",
+    srcs = ["single_rs_interface.cc"],
+    hdrs = ["single_rs_interface.h"],
+    deps = [
+        "@drake//common:essential",
+        "@drake//common:scoped_singleton",
+        "@realsense2",
+    ],
+)

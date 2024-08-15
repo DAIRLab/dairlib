@@ -119,18 +119,9 @@ load("//tools/workspace:os.bzl", "os_repository")
 
 os_repository(name = "os_type")
 
-load("@os_type//:os.bzl", "OSTYPE")
-
-os = ["macos"] if "darwin" in OSTYPE else []
-
-print("OS = {}".format(os))
-
 load("//tools/workspace:perception.bzl", "add_perception_repositories")
 
-add_perception_repositories(
-    excludes = [],
-    os = os,
-)
+add_perception_repositories()
 
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use

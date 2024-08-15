@@ -115,15 +115,15 @@ load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
 
 setup_pcl()
 
-load("//:environ.bzl", "os_repository")
+load("//tools/workspace:os.bzl", "os_repository")
 
 os_repository(name = "os_type")
 
-load("@os_type//:environ.bzl", "OSTYPE")
+load("@os_type//:os.bzl", "OSTYPE")
 
 os = ["macos"] if "darwin" in OSTYPE else []
 
-print("OS = {}".format(OSTYPE))
+print("OS = {}".format(os))
 
 load("//tools/workspace:perception.bzl", "add_perception_repositories")
 

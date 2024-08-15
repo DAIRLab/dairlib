@@ -62,9 +62,3 @@ inekf_repository = repository_rule(
     local = True,
     attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_INEKF_PATH"])},
 )
-os_repository = repository_rule(
-    implementation = _impl,
-    environ = ["OSTYPE"],
-    local = True,
-    attrs = {"_vars": attr.string_list(default = ["OSTYPE"])},
-)

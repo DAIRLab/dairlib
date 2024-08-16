@@ -155,8 +155,7 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
   samples.col(1) = fingertips_target_pos;
 
   // generate a constant trajectory that can be fed to OSC controller.
-  auto traj = PiecewisePolynomial<double>::CubicHermite(
-      knots, samples, Eigen::MatrixXd::Zero(cur_fingertips_pos.size(), 2));
+  auto traj = PiecewisePolynomial<double>::FirstOrderHold(knots, samples);
   auto casted_target_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           target_traj);

@@ -152,6 +152,18 @@ int DoMain(int argc, char* argv[]) {
           plant, plant);
   fingertip_240_position_tracking_data->AddPointToTrack(
       controller_params.fingertip_240_name);
+
+  // Disable feed-forward acceleration
+  std::set<int> disabled_indices;
+  for (int i = 0; i < 3; ++i) {
+    disabled_indices.emplace_hint(disabled_indices.end(), i);
+  }
+  fingertip_0_position_tracking_data->DisableFeedforwardAccel(disabled_indices);
+  fingertip_120_position_tracking_data->DisableFeedforwardAccel(
+      disabled_indices);
+  fingertip_240_position_tracking_data->DisableFeedforwardAccel(
+      disabled_indices);
+
   osc->AddTrackingData(std::move(fingertip_0_position_tracking_data));
   osc->AddTrackingData(std::move(fingertip_120_position_tracking_data));
   osc->AddTrackingData(std::move(fingertip_240_position_tracking_data));

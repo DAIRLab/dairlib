@@ -192,7 +192,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex contact_idx_;
 
   // state history buffer for use with landmarks
-  mutable TimeSeriesBuffer<inekf::RobotState> state_history_;
+  mutable TimeSeriesBuffer<inekf::RobotState, 500> state_history_;
 
   // Cassie parameters
   std::vector<

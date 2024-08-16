@@ -76,10 +76,10 @@ cc_library(
     hdrs = ["cassie_state_estimator.h"],
     deps = [
         ":cassie_utils",
+        "//common:time_series_buffer",
         "//examples/Cassie:cassie_state_estimator_settings",
         "//examples/Cassie/datatypes:cassie_names",
         "//examples/Cassie/datatypes:cassie_out_t",
-        "//examples/Cassie/systems:robot_state_buffer",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody/kinematic",
@@ -286,7 +286,7 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ]
+    ],
 )
 
 cc_binary(

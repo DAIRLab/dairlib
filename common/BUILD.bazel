@@ -81,3 +81,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "time_series_buffer",
+    srcs = ["time_series_buffer.cc"],
+    hdrs = ["time_series_buffer.h"],
+    deps = [
+        "@inekf//src:InEKF",
+    ],
+)

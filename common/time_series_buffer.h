@@ -1,13 +1,13 @@
 #pragma once
-#include "src/InEKF.h"
 #include <array>
 
 namespace dairlib {
 
-class RobotStateBuffer {
+template <typename T>
+class TimeSeriesBuffer {
  public:
-  explicit RobotStateBuffer() = default;
-  void put(long utime, const inekf::RobotState& state);
+  explicit TimeSeriesBuffer() = default;
+  void put(long utime, const T& state);
 
   void reset() {
     head_ = 0;
@@ -20,16 +20,16 @@ class RobotStateBuffer {
 
   [[nodiscard]] bool full() const {return size_ == kBufSize;}
 
-  /// get the robot state corresponding to the most recent time in the buffer
+  /// get the item corresponding to the most recent time in the buffer
   /// before the requested time stamp. If no times are earlier than the
   /// requested time, returns the earliest available time
-  [[nodiscard]] const inekf::RobotState& get(uint64_t utime) const;
+  [[nodiscard]] const T& get(uint64_t utime) const;
 
   static constexpr size_t kBufSize = 500;
 
  private:
   std::array<uint64_t, kBufSize> timestamps_{};
-  std::array<inekf::RobotState, kBufSize> state_history_{};
+  std::array<T, kBufSize> state_history_{};
 
   size_t head_{}; // most recently added element
   size_t size_{};

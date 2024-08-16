@@ -1,11 +1,19 @@
-#include "robot_state_buffer.h"
+#include "time_series_buffer.h"
+
+#include "src/InEKF.h"
+#include <Eigen/Dense>
 
 namespace dairlib {
 
 using inekf::RobotState;
 
-void RobotStateBuffer::put(long utime, const RobotState &state) {
-  // TODO (@Brian-Acosta) validate timestamps
+template <typename T>
+void TimeSeriesBuffer<T>::put(long utime, const T& state) {
+  // silently reject out of order entries
+  if (timestamps_[head_] >= utime) {
+    return;
+  }
+
   timestamps_[head_] = utime;
   state_history_[head_] = state;
   ++head_;
@@ -15,7 +23,8 @@ void RobotStateBuffer::put(long utime, const RobotState &state) {
   }
 }
 
-const inekf::RobotState& RobotStateBuffer::get(uint64_t utime) const {
+template <typename T>
+const T& TimeSeriesBuffer<T>::get(uint64_t utime) const {
   size_t earliest_timestamp = full() ? (head_ + 1) % kBufSize : 0;
 
   size_t start_idx = (head_ == 0) ? head_ : head_ - 1;
@@ -34,5 +43,8 @@ const inekf::RobotState& RobotStateBuffer::get(uint64_t utime) const {
   }
   return state_history_.at(earliest_timestamp);
 }
+
+template class TimeSeriesBuffer<inekf::RobotState>;
+template class TimeSeriesBuffer<Eigen::VectorXd>;
 
 }

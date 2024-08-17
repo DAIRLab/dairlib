@@ -489,8 +489,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_sample_costs_[i] = c3_cost + 
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
-      if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
+      if ((i==CURRENT_REPOSITION_INDEX) && (finished_reposition_flag_==true)) {
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
+        finished_reposition_flag_ = false;
       }
     }
   // End of parallelization

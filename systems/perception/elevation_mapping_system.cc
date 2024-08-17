@@ -142,19 +142,16 @@ EventStatus ElevationMappingSystem::Initialize(const Context<double> &context,
 EventStatus ElevationMappingSystem::UpdateStateBuffer(
     const Context<double> &context, State<double> *state) const {
 
-  uint64_t now = static_cast<uint64_t>(context.get_time());
-
   // 1. Get the robot base pose and covariance
-  const VectorXd& robot_state = dynamic_cast<const OutputVector<double>*>(
+  const auto& robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, input_port_state_)
-  )->GetState();
+  );
+
+  uint64_t now = 1e6 * robot_output->get_timestamp();
+  const VectorXd& robot_state = robot_output->GetState();
 
   auto& buf_ptr = state->get_mutable_abstract_state<
       std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
-
-  if (buf_ptr->get(now) == robot_state) {
-    return EventStatus::DidNothing();
-  }
 
   buf_ptr->put(now, robot_state);
   return EventStatus::Succeeded();
@@ -301,7 +298,9 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
     const auto X_bias = RigidTransformd(params_.point_cloud_bias);
 
-    const auto& state_for_cloud = state_buffer->get(cloud->header.stamp);
+    const auto& state_for_cloud = state_buffer->empty() ?
+        q_v : state_buffer->get(cloud->header.stamp);
+
     multibody::SetPositionsAndVelocitiesIfNew<double>(
         plant_, state_for_cloud, context_
     );

@@ -320,7 +320,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 context,
                 np.zeros((3,)),
                 0.15,
-                1.01
+                0.95
             )
         else:
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)

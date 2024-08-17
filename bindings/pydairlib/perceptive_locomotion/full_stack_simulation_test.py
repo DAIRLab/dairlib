@@ -181,13 +181,13 @@ def main():
     sim_env.initialize_state(context, diagram)
 
     simulator.reset_context(context)
-    simulator.set_target_realtime_rate(1.0)
+    simulator.set_target_realtime_rate(0.5)
 
     tnext = 0.01
 
     meshcat = sim_env.plant_visualizer.get_meshcat()
     meshcat.StartRecording(set_visualizations_while_recording=True)
-    while tnext < 1.0:
+    while tnext < 10.0:
         diagram.CalcForcedUnrestrictedUpdate(
             context, context.get_mutable_state()
         )

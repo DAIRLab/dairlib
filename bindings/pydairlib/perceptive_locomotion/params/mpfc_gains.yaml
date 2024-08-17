@@ -7,12 +7,12 @@ double_stance_duration: 0.1
 soft_constraint_cost: 1000
 time_regularization: 60
 stance_width: 0.22
-max_ankle_torque: 10
+max_ankle_torque: 20
 ankle_torque_regularization: 0.25
 reset_discretization_method: 'SPLIT'
 cost_type: 'velocity'
 
-com_pos_bound: [0.3, 0.3]
+com_pos_bound: [0.4, 0.4]
 com_vel_bound: [2.5, 1.5]
 
 Qf:
@@ -24,6 +24,6 @@ Q: [ 2, 0, 0, 0,
      0, 2, 0, 0,
      0, 0, 0.02, 0,
      0, 0, 0, 0.02]
-R: [ 5.0, 0, 0,
-     0, 5.0, 0,
+R: [ 1.0, 0, 0,
+     0, 1.0, 0,
      0, 0, 4 ]

@@ -35,10 +35,10 @@ from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 import numpy as np
 
-# controller_type = 'mpfc'
+controller_type = 'mpfc'
 
 
-controller_type = 'lqr'
+# controller_type = 'lqr'
 elevation_mapping_yaml = 'bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml'
 
 def big_flat_polygon():
@@ -68,11 +68,11 @@ def main():
         controller_type == 'lqr') else AlipMPFC(
         controller_params, sim_env.controller_plant
     )
-    footstep_zoh = ZeroOrderHold(1.0 / 50.0, 3)
+    footstep_zoh = ZeroOrderHold(1.0 / 100.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)
 
-    desired_velocity = ConstantVectorSource(np.array([0.1, 0]))
+    desired_velocity = ConstantVectorSource(np.array([0, 0]))
     foothold_source = ConstantValueSource(Value(big_flat_polygon()))
 
     builder.AddSystem(controller)

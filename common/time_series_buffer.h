@@ -8,7 +8,7 @@ class TimeSeriesBuffer {
  public:
   explicit TimeSeriesBuffer() = default;
 
-  void put(long utime, const T& state) {
+  void put(uint64_t utime, const T& state) {
     // silently reject out of order entries
     if (timestamps_[head_] >= utime) {
       return;

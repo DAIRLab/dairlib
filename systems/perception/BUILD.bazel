@@ -39,6 +39,7 @@ cc_library(
         ":camera_utils",
         ":perceptive_locomotion_preprocessor",
         "//common:find_resource",
+        "//common:time_series_buffer",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

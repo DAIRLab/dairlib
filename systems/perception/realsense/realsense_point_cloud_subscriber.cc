@@ -14,7 +14,7 @@ using drake::systems::Context;
 using drake::systems::EventStatus;
 
 using pcl::PointCloud;
-
+\
 using rs2_systems::SingleRSInterface;
 
 template <typename PointT>
@@ -154,7 +154,15 @@ RealsensePointCloudSubscriber<PointT>::ProcessFrameAndStoreToAbstractState(
   pcl::removeNaNFromPointCloud(cloud, cloud, indices);
 
   // ms to us
-  cloud.header.stamp = 1e3 * depth.get_timestamp();
+  uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  uint64_t frame_time = 1e3 * depth.get_timestamp();
+
+  uint64_t utime = std::max<uint64_t>(
+      0, static_cast<uint64_t>(context.get_time() * 1e6) - (now - frame_time)
+  );
+
+  cloud.header.stamp = utime;
 
 //  std::cout << "\ntime: " << context.get_time() << "\nframe number " << received_frames_count_ << "\n"
 //            << nfinite << "points, timestamp = " << cloud.header.stamp << std::endl;

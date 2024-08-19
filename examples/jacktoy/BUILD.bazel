@@ -98,6 +98,33 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_joint_osc_controller",
+    srcs = ["franka_joint_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":parameters",
+        ":franka_lcm_channels",
+        ":franka_osc_controller_params",
+        "//common",
+        "//examples/jacktoy/systems:franka_systems",
+        "//examples/jacktoy/systems:joint_trajectory_generator",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_c3_controller",
     srcs = ["franka_c3_controller.cc"],
     data = [
@@ -165,6 +192,7 @@ cc_binary(
     deps = [
         ":franka_lcm_channels",
         ":franka_sim_params",
+        ":franka_c3_controller_params",
         "//systems/controllers:sampling_params",
         "//common",
         "//multibody:utils",
@@ -317,6 +345,7 @@ cc_library(
     data = [
         "parameters/franka_c3_controller_params.yaml",
         "parameters/franka_c3_options_floating.yaml",
+        "parameters/franka_c3_options_floating_safe.yaml",
         "parameters/franka_qp_options.yaml",
     ],
     deps = [

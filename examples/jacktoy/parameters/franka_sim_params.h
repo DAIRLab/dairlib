@@ -33,14 +33,11 @@ struct FrankaSimParams {
   Eigen::Vector3d platform_franka_frame;
   Eigen::Vector3d ground_world_frame;
 
-  Eigen::VectorXd world_x_limits;
-  Eigen::VectorXd world_y_limits;
-  Eigen::VectorXd world_z_limits;
 
   // Visualizer settings
   std::string visualizer_sample_locations_model;
   std::string visualizer_c3_mode_model;
-  bool visualize_workspace;
+  bool visualize_c3_workspace;
   bool visualize_c3_state;
   bool visualize_is_c3_mode;
   bool visualize_sample_locations;
@@ -91,13 +88,9 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(ground_franka_frame));
     a->Visit(DRAKE_NVP(platform_franka_frame));
 
-    a->Visit(DRAKE_NVP(world_x_limits));
-    a->Visit(DRAKE_NVP(world_y_limits));
-    a->Visit(DRAKE_NVP(world_z_limits));
-
     a->Visit(DRAKE_NVP(visualizer_sample_locations_model));
     a->Visit(DRAKE_NVP(visualizer_c3_mode_model));
-    a->Visit(DRAKE_NVP(visualize_workspace));
+    a->Visit(DRAKE_NVP(visualize_c3_workspace));
     a->Visit(DRAKE_NVP(visualize_c3_state));
     a->Visit(DRAKE_NVP(visualize_is_c3_mode));
     a->Visit(DRAKE_NVP(visualize_sample_locations));

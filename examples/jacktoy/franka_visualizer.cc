@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/parameters/franka_sim_params.h"
+#include "examples/jacktoy/parameters/franka_c3_controller_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -72,6 +73,11 @@ int do_main(int argc, char* argv[]) {
 	SamplingC3SamplingParams sampling_params =
       drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
           "examples/jacktoy/parameters/sampling_params.yaml");
+  FrankaC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
+          "examples/jacktoy/parameters/franka_c3_controller_params.yaml");
+  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
+      controller_params.c3_options_file);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
@@ -212,9 +218,9 @@ int do_main(int argc, char* argv[]) {
           sim_params.object_body_name,
 					false);
 	builder.Connect(franka_state_receiver->get_output_port(),
-																	reduced_order_model_receiver->get_input_port_franka_state());
+		reduced_order_model_receiver->get_input_port_franka_state());
 	builder.Connect(tray_state_receiver->get_output_port(),
-																	reduced_order_model_receiver->get_input_port_object_state());
+		reduced_order_model_receiver->get_input_port_object_state());
 
 	// This system subscribes to the lcmt_timestamped_saved_traj message containing
 	auto is_c3_mode_sub = builder.AddSystem(
@@ -275,17 +281,18 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
 
-  if (sim_params.visualize_workspace){
-    double width = sim_params.world_x_limits[1] - sim_params.world_x_limits[0];
-    double depth = sim_params.world_y_limits[1] - sim_params.world_y_limits[0];
-    double height = sim_params.world_z_limits[1] - sim_params.world_z_limits[0];
-    Vector3d workspace_center = {0.5 * (sim_params.world_x_limits[1] + sim_params.world_x_limits[0]),
-                                 0.5 * (sim_params.world_y_limits[1] + sim_params.world_y_limits[0]),
-                                 0.5 * (sim_params.world_z_limits[1] + sim_params.world_z_limits[0])};
-    meshcat->SetObject("c3_state/workspace", drake::geometry::Box(width, depth, height),
-                       {1, 0, 0, 0.2});
-    meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));
+  if (sim_params.visualize_c3_workspace){
+    double width = c3_options.world_x_limits[1] - c3_options.world_x_limits[0];
+    double depth = c3_options.world_y_limits[1] - c3_options.world_y_limits[0];
+    double height = c3_options.world_z_limits[1] - c3_options.world_z_limits[0];
+    Vector3d workspace_center = {0.5 * (c3_options.world_x_limits[1] + c3_options.world_x_limits[0]),
+                                 0.5 * (c3_options.world_y_limits[1] + c3_options.world_y_limits[0]),
+                                 0.5 * (c3_options.world_z_limits[1] + c3_options.world_z_limits[0])};
+    meshcat->SetObject("c3_state/c3_workspace", drake::geometry::Box(width, depth, height),
+                       {0, 1, 0, 0.2});
+    meshcat->SetTransform("c3_state/c3_workspace", RigidTransformd(workspace_center));
   }
+
   if (sim_params.visualize_execution_plan){
     auto c3_exec_trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(

@@ -31,11 +31,6 @@ platform_franka_frame: [0, 0, -0.01225]
 # plant_for_lcs in the c3_controller which does not have a full franka model.
 ground_world_frame: [0, 0, -0.05]   
 
-# Workspace Limits
-world_x_limits: [-2, 2]
-world_y_limits: [-2, 2]
-world_z_limits: [-2, 2]
-
 dt: 0.0001
 realtime_rate: 1
 
@@ -50,12 +45,12 @@ realtime_rate: 1
 q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 
 # Check the dependencies and clear/clean this line up.
-q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.4, 0.35, 0.1]
+q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.35, 0.1]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf
 visualizer_c3_mode_model: examples/jacktoy/urdf/c3_mode_visualization.urdf
-visualize_workspace: false
+visualize_c3_workspace: true
 visualize_c3_state: true
 visualize_is_c3_mode: true
 

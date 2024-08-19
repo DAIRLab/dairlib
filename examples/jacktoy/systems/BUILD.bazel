@@ -9,6 +9,7 @@ cc_library(
         ":end_effector_trajectory",
         ":franka_kinematics",
         ":control_target_generator",
+        ":joint_trajectory_generator",
         ":c3_state_sender",
         ":c3_trajectory_generator",
         ":is_c3_mode_sender",
@@ -68,6 +69,15 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "joint_trajectory_generator",
+    srcs = ["joint_trajectory_generator.cc"],
+    hdrs = ["joint_trajectory_generator.h"],
+    deps = [
+        "//systems/framework:vector",
     ],
 )
 

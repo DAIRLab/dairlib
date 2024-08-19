@@ -24,7 +24,11 @@ group "operator" {
     }
 }
 
-group "controllers" {
+group "controllers" {    
+    cmd "move_to_init" {
+        exec = "bazel-bin/examples/jacktoy/franka_joint_osc_controller";
+        host = "localhost";
+    }
     cmd "franka_osc" {
         exec = "bazel-bin/examples/jacktoy/franka_osc_controller";
         host = "localhost";
@@ -42,9 +46,22 @@ group "debug" {
     }
 }
 
-script "start_experiment"{
+script "start_experiment_no_logs"{
+    restart cmd "franka_sim";
+    restart cmd "move_to_init";
+    wait ms 10000;
+    stop cmd "move_to_init";
+    restart cmd "franka_osc";
+    wait ms 50;
+    restart cmd "franka_c3";
+}
+
+script "start_experiment_with_logs"{
     restart cmd "start_logging";
     restart cmd "franka_sim";
+    restart cmd "move_to_init";
+    wait ms 10000;
+    stop cmd "move_to_init";
     restart cmd "franka_osc";
     wait ms 50;
     restart cmd "franka_c3";

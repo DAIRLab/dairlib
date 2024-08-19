@@ -7,9 +7,9 @@
 #include "multibody/multibody_utils.h"
 #include "parameters/trifinger_lcm_channels.h"
 #include "parameters/trifinger_sim_params.h"
+#include "systems/lcm_visualization_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/lcm_visualization_systems.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
@@ -120,16 +120,23 @@ int DoMain(int argc, char* argv[]) {
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  [[maybe_unused]] auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-      &builder, scene_graph, meshcat, std::move(params));
+
+  // set desired camera pose.
+  Eigen::Vector3d camera_in_world(0.4, 0.4, 0.4);
+  Eigen::Vector3d camera_target = Eigen::Vector3d::Zero();
+  meshcat->SetCameraPose(camera_in_world, camera_target);
+
+  [[maybe_unused]] auto visualizer =
+      &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+          &builder, scene_graph, meshcat, std::move(params));
   // trifinger_state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   // Add target visualization system
   auto cube_target_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channels.cube_target_channel, lcm));
-  auto target_drawer = builder
-      .AddSystem<dairlib::systems::LcmCubeTargetDrawer>(meshcat);
+  auto target_drawer =
+      builder.AddSystem<dairlib::systems::LcmCubeTargetDrawer>(meshcat);
   builder.Connect(cube_target_sub->get_output_port(0),
                   target_drawer->get_input_port(0));
 

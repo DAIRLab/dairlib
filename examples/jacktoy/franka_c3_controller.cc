@@ -64,10 +64,6 @@ DEFINE_string(trajectory_settings,
               "examples/jacktoy/parameters/trajectory_params.yaml",
               "Trajectory settings such as trajectory type, size/shape, and "
               "goal location.");
-DEFINE_string(sampling_settings,
-              "examples/jacktoy/parameters/sampling_params.yaml",
-              "Sampling settings such as sampling strategy, geometric "
-              "parameters, number of samples.");
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -85,17 +81,23 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3TrajectoryParams trajectory_params =
       drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
           FLAGS_trajectory_settings);
-  SamplingC3SamplingParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
-          "examples/jacktoy/parameters/sampling_params.yaml");
 	// Sim params are only used to keep the offsets between different models 
 	// in the scene consistent across all systems.
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/jacktoy/parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
-  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      controller_params.c3_options_file);
+
+  C3Options c3_options;
+  SamplingC3SamplingParams sampling_params;
+  int safety_mode_index = controller_params.run_in_safe_mode ? 0 : 1;
+  std::string safety_mode_name = controller_params.run_in_safe_mode ? "safe" : "normal";
+  std::cout << "Running in " << safety_mode_name << " mode" << std::endl;
+  c3_options = drake::yaml::LoadYamlFile<C3Options>(
+                controller_params.c3_options_file[safety_mode_index]);
+  sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+                controller_params.sampling_params_file[safety_mode_index]);
+
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))

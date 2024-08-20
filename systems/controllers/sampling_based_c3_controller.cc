@@ -306,40 +306,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // If not tele-opping and if generating samples about a predicted lcs state, 
   // clamp the predicted next state to be not too far away from the current 
   // state.
-  if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_curr_plan_.isZero()) {
-    // Use fixed approximate loop time for acceleration capping heuristic.
-    float approximate_loop_dt = 0.05;
-    float nominal_acceleration = 10;
-    x_lcs_curr[0] = std::clamp(
-      x_pred_curr_plan_[0], 
-      x_lcs_curr[0] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[0] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
-    );
-    x_lcs_curr[1] = std::clamp(
-      x_pred_curr_plan_[1], 
-      x_lcs_curr[1] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[1] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
-    );
-    x_lcs_curr[2] = std::clamp(
-      x_pred_curr_plan_[2], 
-      x_lcs_curr[2] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
-      x_lcs_curr[2] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
-    );
-    x_lcs_curr[n_q_ + 0] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 0], 
-      x_lcs_curr[n_q_ + 0] - nominal_acceleration * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 0] + nominal_acceleration * approximate_loop_dt
-    );
-    x_lcs_curr[n_q_ + 1] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 1], 
-      x_lcs_curr[n_q_ + 1] - nominal_acceleration * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 1] + nominal_acceleration * approximate_loop_dt
-    );
-    x_lcs_curr[n_q_ + 2] = std::clamp(
-      x_pred_curr_plan_[n_q_ + 2], 
-      x_lcs_curr[n_q_ + 2] - nominal_acceleration * approximate_loop_dt,
-      x_lcs_curr[n_q_ + 2] + nominal_acceleration * approximate_loop_dt
-    );
+  // Only use predicted state for c3 if use_predicted_x0_c3 is true and is_doing_c3_.
+  // Only use predicted state for repositioning if use_predicted_x0_repos is true and !is_doing_c3_.
+  if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
+    ClampEndEffectorAcceleration(x_lcs_curr);
+  }
+  if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
+    ClampEndEffectorAcceleration(x_lcs_curr);
   }
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
@@ -364,8 +337,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
-    n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
-
+    n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_);
+  
   // Add the previous best repositioning target to the candidate states at the 
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_){
@@ -581,6 +554,44 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
+// Helper function to clamp end effector acceleration if using predicted state.
+void SamplingC3Controller::ClampEndEffectorAcceleration(
+  drake::VectorX<double>& x_lcs_curr) const {
+  // Use fixed approximate loop time for acceleration capping heuristic.
+  float approximate_loop_dt = 0.05;
+  float nominal_acceleration = 10;
+        x_lcs_curr[0] = std::clamp(
+          x_pred_curr_plan_[0], 
+          x_lcs_curr[0] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+          x_lcs_curr[0] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
+        );
+        x_lcs_curr[1] = std::clamp(
+          x_pred_curr_plan_[1], 
+          x_lcs_curr[1] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+          x_lcs_curr[1] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
+        );
+        x_lcs_curr[2] = std::clamp(
+          x_pred_curr_plan_[2], 
+          x_lcs_curr[2] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
+          x_lcs_curr[2] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
+        );
+        x_lcs_curr[n_q_ + 0] = std::clamp(
+          x_pred_curr_plan_[n_q_ + 0], 
+          x_lcs_curr[n_q_ + 0] - nominal_acceleration * approximate_loop_dt,
+          x_lcs_curr[n_q_ + 0] + nominal_acceleration * approximate_loop_dt
+        );
+        x_lcs_curr[n_q_ + 1] = std::clamp(
+          x_pred_curr_plan_[n_q_ + 1], 
+          x_lcs_curr[n_q_ + 1] - nominal_acceleration * approximate_loop_dt,
+          x_lcs_curr[n_q_ + 1] + nominal_acceleration * approximate_loop_dt
+        );
+        x_lcs_curr[n_q_ + 2] = std::clamp(
+          x_pred_curr_plan_[n_q_ + 2], 
+          x_lcs_curr[n_q_ + 2] - nominal_acceleration * approximate_loop_dt,
+          x_lcs_curr[n_q_ + 2] + nominal_acceleration * approximate_loop_dt
+        );
+  }
+  
 // Helper function to update context of a plant with a given state.
 void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state) const {
     // Update autodiff.
@@ -643,6 +654,20 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   // TODO: Set the last knot to the simulated last state in the plan.
   knots.col(N_-1) = x_sol[N_-1];
   timestamps[N_-1] = t + filtered_solve_time_ + N_*c3_options_.planning_dt;
+
+
+  if(is_doing_c3_){
+    if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+      int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
+      double fraction_to_next_index =
+        (filtered_solve_time_ / c3_options_.planning_dt) - (double)last_passed_index;
+      x_pred_curr_plan_ = knots.col(last_passed_index) +
+        fraction_to_next_index * (knots.col(last_passed_index + 1) -
+          knots.col(last_passed_index));
+    } else {
+      x_pred_curr_plan_ = knots.col(N_ - 1);
+    }
+  }
 
   // Add end effector position target to LCM Trajectory.
   LcmTrajectory::Trajectory ee_traj;
@@ -760,10 +785,12 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   if(!is_doing_c3_){
     if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
-      int index = filtered_solve_time_ / c3_options_.planning_dt;
-      double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
-      x_pred_curr_plan_ = weight * knots.col(index) +
-                (1 - weight) * knots.col(index + 1);
+      int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
+      double fraction_to_next_index =
+        (filtered_solve_time_ / c3_options_.planning_dt) - (double)last_passed_index;
+      x_pred_curr_plan_ = knots.col(last_passed_index) +
+        fraction_to_next_index * (knots.col(last_passed_index + 1) -
+          knots.col(last_passed_index));
     } else {
       x_pred_curr_plan_ = knots.col(N_ - 1);
     }
@@ -825,21 +852,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
-  }
-
-  // Store the predicted next lcs state, about which we generate samples if
-  // desired as determined by c3_options_.use_predicted_x0.
-  // Interpolate the z_sol according to the time it takes to perform a control 
-  // loop. If control loop is longer than the plan horizon, use the last z.
-  if(is_doing_c3_){
-    if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
-      int index = filtered_solve_time_ / c3_options_.planning_dt;
-      double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
-      x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
-                (1 - weight) * z_sol[index + 1].segment(0, n_x_);
-    } else {
-      x_pred_curr_plan_ = z_sol[N_ - 1].segment(0, n_x_);
-    }
   }
 }
 

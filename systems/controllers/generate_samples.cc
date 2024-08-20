@@ -20,7 +20,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
     const bool& is_doing_c3,
-    const SamplingC3SamplingParams sampling_params){
+    const SamplingC3SamplingParams sampling_params,
+    const C3Options c3_options){
 
   // Determine number of samples based on mode.
   int num_samples;
@@ -39,40 +40,71 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         n_q, n_v, x_lcs, num_samples, i,
         sampling_params.sampling_radius, sampling_params.sampling_height
       );
-    }    
+    if(sampling_params.filter_samples_for_safety && 
+      !is_sample_within_workspace(candidate_states[i], c3_options)){
+      throw std::runtime_error("Error:  Radially symmetric sample location is outside workspace.");
+    }
+    }
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING){
     for (int i = 0; i < num_samples; i++){
-      candidate_states[i] = generate_random_sample_location_on_circle(
-        n_q, n_v, x_lcs, sampling_params.sampling_radius,
-        sampling_params.sampling_height
-      );
+      // Generate a random sample location on the circle. Regenerate if the
+      // sample is outside workspace in xyz directions.
+      do{
+        candidate_states[i] = generate_random_sample_location_on_circle(
+          n_q, n_v, x_lcs, sampling_params.sampling_radius,
+          sampling_params.sampling_height
+        );
+      } while(sampling_params.filter_samples_for_safety && 
+        !is_sample_within_workspace(candidate_states[i], c3_options));
     }
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING){
     for (int i = 0; i < num_samples; i++){
-      candidate_states[i] = generate_random_sample_location_on_sphere(
-        n_q, n_v, x_lcs, sampling_params.sampling_radius,
-        sampling_params.min_angle_from_vertical,
-        sampling_params.max_angle_from_vertical
-      );
+      do{
+        // Generate a random sample location on the sphere. Regenerate if the
+        // sample is outside workspace in xyz directions.
+        candidate_states[i] = generate_random_sample_location_on_sphere(
+          n_q, n_v, x_lcs, sampling_params.sampling_radius,
+          sampling_params.min_angle_from_vertical,
+          sampling_params.max_angle_from_vertical
+        );
+      } while(sampling_params.filter_samples_for_safety && 
+        !is_sample_within_workspace(candidate_states[i], c3_options));
+      }
     }
-  }
   else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
     if(num_samples > sampling_params.fixed_sample_locations.size()){
-      std::cout << "Error:  More fixed samples requested than provided." << std::endl;
+      throw std::runtime_error("Error:  More fixed samples requested than provided.");
     }
     else if (num_samples != 0){
       for (int i = 0; i < num_samples; i++){
         candidate_states[i] = generate_fixed_sample(
           n_q, n_v, x_lcs, sampling_params.sampling_height, 
           sampling_params.fixed_sample_locations[i]);
+      if(sampling_params.filter_samples_for_safety && 
+        !is_sample_within_workspace(candidate_states[i], c3_options)){
+        throw std::runtime_error("Error:  Fixed sample location is outside workspace.");
+      }
       }
     }
   }
   return candidate_states;
 }
 
+// Helper function to check sample validity.
+bool is_sample_within_workspace(const Eigen::VectorXd& candidate_state,
+  const C3Options c3_options){
+  if(candidate_state[0] < c3_options.world_x_limits[0] ||
+              candidate_state[0] > c3_options.world_x_limits[1] ||
+              candidate_state[1] < c3_options.world_y_limits[0] ||
+              candidate_state[1] > c3_options.world_y_limits[1] ||
+              candidate_state[2] < c3_options.world_z_limits[0] ||
+              candidate_state[2] > c3_options.world_z_limits[1]){
+    return false;
+  }
+  return true;
+}
 
 // Sampling strategy 0:  Equally spaced on perimeter of circle of fixed radius
 // and height. This generates angle offsets from world frame. 

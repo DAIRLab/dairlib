@@ -91,6 +91,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         ":sampling_params",
+        "//solvers:c3",
     ],
 )
 

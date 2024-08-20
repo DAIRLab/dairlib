@@ -15,12 +15,12 @@ fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
 sampling_radius: 0.12
 
 # Height of sampling circle; used for circle perimeter (0, 1).
-sampling_height: 0.04
+sampling_height: 0.069
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
 min_angle_from_vertical: 0  #0.785
-max_angle_from_vertical: 1.822 #Equivalent to 104deg
+max_angle_from_vertical: 1.65 #Equivalent to 95deg
 
 # Number of additional samples to consider in each mode (repositioning or C3).
 # In repositioning mode, we automatically store the current location and the 
@@ -34,7 +34,7 @@ num_additional_samples_c3: 2
 
 # Repositioning parameters.
 spline_width: 0.17
-reposition_speed: 0.30    # m/s
+reposition_speed: 0.20   # m/s
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
@@ -45,8 +45,8 @@ reposition_speed: 0.30    # m/s
 cost_type: 2
 
 # Cost associated with traveling.
-travel_cost_per_meter: 10000
-c3_to_repos_hysteresis: 2000
+travel_cost_per_meter: 0
+c3_to_repos_hysteresis: 3000
 finished_reposition_cost: 1000000000
 repos_to_c3_hysteresis: 3000
-hysteresis_between_repos_targets: 100000000
+hysteresis_between_repos_targets: 10000000

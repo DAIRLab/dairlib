@@ -13,6 +13,7 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
 struct SamplingC3SamplingParams {
   int control_loop_delay_ms;
   int sampling_strategy;
+  bool filter_samples_for_safety;
   std::vector<Eigen::VectorXd> fixed_sample_locations;
   double sampling_radius;
   double min_angle_from_vertical;
@@ -33,6 +34,7 @@ struct SamplingC3SamplingParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
     a->Visit(DRAKE_NVP(sampling_strategy));
+    a->Visit(DRAKE_NVP(filter_samples_for_safety));
     a->Visit(DRAKE_NVP(fixed_sample_locations));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(min_angle_from_vertical));

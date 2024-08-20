@@ -16,6 +16,8 @@ struct C3Options {
   std::string contact_model;
   bool warm_start;
   bool use_predicted_x0;
+  bool use_predicted_x0_c3;
+  bool use_predicted_x0_repos;
   double solve_time_filter_alpha;
 
   std::vector<double> world_x_limits;
@@ -81,6 +83,8 @@ struct C3Options {
     }
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
+    a->Visit(DRAKE_NVP(use_predicted_x0_c3));
+    a->Visit(DRAKE_NVP(use_predicted_x0_repos));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
 
     a->Visit(DRAKE_NVP(world_x_limits));

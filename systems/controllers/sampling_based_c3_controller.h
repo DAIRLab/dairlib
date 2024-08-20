@@ -132,6 +132,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
+  
+  void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
 
   void UpdateContext(Eigen::VectorXd lcs_state) const;
 

@@ -5,7 +5,9 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct FrankaC3ControllerParams {
-  std::string c3_options_file;
+  bool run_in_safe_mode;
+  std::vector<std::string> c3_options_file;
+  std::vector<std::string> sampling_params_file;
   std::string osqp_settings_file;
   std::string franka_model;
   std::string end_effector_model;
@@ -28,7 +30,9 @@ struct FrankaC3ControllerParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(run_in_safe_mode));
     a->Visit(DRAKE_NVP(c3_options_file));
+    a->Visit(DRAKE_NVP(sampling_params_file));
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(platform_model));

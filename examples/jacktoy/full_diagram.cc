@@ -100,10 +100,10 @@ DEFINE_string(controller_settings,
               "examples/jacktoy/parameters/franka_c3_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
-DEFINE_string(sampling_controller_settings,
-              "systems/controllers/sampling_params.yaml",
-              "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
-              "number of gflags");
+// DEFINE_string(sampling_controller_settings,
+//               "systems/controllers/sampling_params.yaml",
+//               "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
+//               "number of gflags");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -124,8 +124,10 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(c3_controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      c3_controller_params.c3_options_file);
+
+//   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
+//       c3_controller_params.c3_options_file);
+
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml"),
@@ -134,12 +136,24 @@ int DoMain(int argc, char* argv[]) {
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml");
-  SamplingC3SamplingParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
-          "examples/jacktoy/parameters/sampling_params.yaml");
+
+//   SamplingC3SamplingParams sampling_params =
+//       drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+//           "examples/jacktoy/parameters/sampling_params.yaml");
+
   SamplingC3TrajectoryParams trajectory_params =
       drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
           "examples/jacktoy/parameters/trajectory_params.yaml");
+
+  C3Options c3_options;
+  SamplingC3SamplingParams sampling_params;
+  int safety_mode_index = c3_controller_params.run_in_safe_mode ? 0 : 1;
+  std::string safety_mode_name = c3_controller_params.run_in_safe_mode ? "safe" : "normal";
+  std::cout << "Running in " << safety_mode_name << " mode" << std::endl;
+  c3_options = drake::yaml::LoadYamlFile<C3Options>(
+                c3_controller_params.c3_options_file[safety_mode_index]);
+  sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+                c3_controller_params.sampling_params_file[safety_mode_index]);
 
   DiagramBuilder<double> builder;
 

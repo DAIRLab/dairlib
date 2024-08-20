@@ -2,6 +2,7 @@
 #include <random>
 
 #include "systems/controllers/sampling_params.h"
+#include "solvers/c3_options.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
@@ -20,9 +21,14 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
     const bool& is_doing_c3,
-    const SamplingC3SamplingParams sampling_params);
+    const SamplingC3SamplingParams sampling_params,
+    const C3Options c3_options);
 
 // Private function signatures.
+bool is_sample_within_workspace(
+    const Eigen::VectorXd& candidate_state,
+    const C3Options c3_options);
+
 Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& n_q,
     const int& n_v,

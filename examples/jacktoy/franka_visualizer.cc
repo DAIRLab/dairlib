@@ -70,14 +70,20 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/jacktoy/parameters/franka_sim_params.yaml");
-	SamplingC3SamplingParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
-          "examples/jacktoy/parameters/sampling_params.yaml");
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           "examples/jacktoy/parameters/franka_c3_controller_params.yaml");
-  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      controller_params.c3_options_file);
+     
+  C3Options c3_options;
+  SamplingC3SamplingParams sampling_params;
+  int safety_mode_index = controller_params.run_in_safe_mode ? 0 : 1;
+  std::string safety_mode_name = controller_params.run_in_safe_mode ? "safe" : "normal";
+  std::cout << "Running in " << safety_mode_name << " mode" << std::endl;
+  c3_options = drake::yaml::LoadYamlFile<C3Options>(
+                controller_params.c3_options_file[safety_mode_index]);
+  sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+                controller_params.sampling_params_file[safety_mode_index]);
+                
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 

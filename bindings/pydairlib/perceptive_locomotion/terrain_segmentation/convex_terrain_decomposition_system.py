@@ -131,6 +131,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                     child_index = hierarchy[child_index][0]
                 polygons.append(polygon)
 
+        import pdb; pdb.set_trace()
         convex_polygons = ProcessTerrain2d(polygons, 0.25)
 
         if polygons and not convex_polygons:

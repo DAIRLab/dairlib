@@ -19,7 +19,7 @@ def grad_whittling_cost(a: np.ndarray, v: np.ndarray, verts: List[np.ndarray]):
     for vert in verts:
         if a.dot(vert) > b:
             c = v - vert
-            grad += 2 * np.linalg.outer(c, c) @ a - 2 * c
+            grad += 2 * np.outer(c, c) @ a - 2 * c
     return grad
 
 
@@ -45,12 +45,10 @@ def make_cost_grid(v, verts):
     return x, y, z
 
 
-def test_cost():
+def test_cost(v, test_vertices):
     t = np.linspace(0, 2 * np.pi, 100)
     test_directions = [np.array([np.cos(ti), np.sin(ti)]) for ti in t]
-    test_vertices = [np.array([3 * np.cos(ti), np.sin(ti)]) for ti in np.linspace(0, 2 * np.pi, 100)]
 
-    v = np.array([2.9, 0.01])
     costs = [whittling_cost(a, v, test_vertices) for a in test_directions]
     grads = [grad_whittling_cost(a, v, test_vertices) for a in test_directions]
 
@@ -72,8 +70,8 @@ def test_cost():
         angles
     )
 
-
     plt.show()
 
+
 if __name__ == '__main__':
-    test_cost()
+    pass

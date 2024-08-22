@@ -8,10 +8,10 @@ ground_model: examples/jacktoy/urdf/ground.urdf
 platform_model: examples/jacktoy/urdf/platform.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
-ground_franka_frame: [0, 0, -0.0745]
-platform_franka_frame: [0, 0, -0.01225]
-# This is the z value of the base of the franka wrt the surface of the table.  
-franka_origin: [0, 0, 0.0245]
+p_world_to_franka: [0, 0, 0]
+p_franka_to_ground: [0, 0, -0.029]
+# This is the z value of the platform wrt to the base of the franka.
+p_franka_to_platform: [0, 0, -0.0145]
 
 # neutral_position: [0.31, 0.4, 0.15]
 neutral_position: [0.33, 0.42, 0.10]

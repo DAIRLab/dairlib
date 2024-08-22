@@ -23,13 +23,10 @@ camera_target: [0.5, 0, 0.5]
 
 tool_attachment_frame: [0, 0, 0.107]
 # This is the z value of the base of the franka wrt the surface of the table.  
-franka_origin: [0, 0, 0.0245]
-ground_franka_frame: [0, 0, -0.0745]
+p_world_to_franka: [0, 0, 0]
+p_franka_to_ground: [0, 0, -0.029]
 # This is the z value of the platform wrt to the base of the franka.
-platform_franka_frame: [0, 0, -0.01225]
-# This is the z value of the ground wrt to the world frame. This is used for the 
-# plant_for_lcs in the c3_controller which does not have a full franka model.
-ground_world_frame: [0, 0, -0.05]   
+p_franka_to_platform: [0, 0, -0.0145]
 
 # Workspace Limits
 world_x_limits: [-2, 2]

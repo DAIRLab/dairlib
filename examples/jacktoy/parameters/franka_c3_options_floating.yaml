@@ -46,6 +46,10 @@ world_z_limits: [0, 0.5]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
+
+# minimum end effector z-state constraint in c3
+ee_z_state_min: 0.02
+
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

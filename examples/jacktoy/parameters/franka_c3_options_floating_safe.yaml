@@ -36,16 +36,23 @@ num_contacts_index: 0
 num_contacts: [4,6,5,7]
 N: 5
 use_predicted_x0: false
-use_predicted_x0_c3: true
+use_predicted_x0_c3: false
 use_predicted_x0_repos: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0.25, 0.65]
 world_y_limits: [-0.45, 0.45]
-world_z_limits: [0.020, 0.3]
+world_z_limits: [0.05, 0.3]
+# world_x_limits: [0.25, 0.75]
+# world_y_limits: [-0.5, 0.5]
+# world_z_limits: [0, 0.5]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
+
+# minimum end effector z-state constraint in c3
+ee_z_state_min: 0.02
+
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
@@ -55,7 +62,7 @@ g_lambda_n: [[1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1]]
 g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_lambda: [[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+g_lambda: [[0.005, 0.005, 0.005, 0.005, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001],
            [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
@@ -106,7 +113,7 @@ qp_projection_scaling: 1
 # POSITION GOAL GIANS
 q_vector: [0, 0, 0,        # end effector position
            0, 0, 0, 0,              # object orientation
-           1500, 1500, 1500,    # object position
+           1500, 1500, 50,    # object position
            0.1, 0.1, 0.1,              # end effector linear velocity
            0.01, 0.01, 0.01,                 # object angular velocity
            1, 1, 1]           # object linear velocity

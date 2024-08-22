@@ -280,7 +280,7 @@ int DoMain(int argc, char* argv[]) {
             controller_params.tool_attachment_frame);
 //   RigidTransform<double> X_F_G_franka =
 //       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-//                              c3_controller_params.ground_franka_frame);
+//                              c3_controller_params.p_franka_to_ground);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
       plant_franka.GetFrameByName("end_effector_base", end_effector_index), T_EE_W);

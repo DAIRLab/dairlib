@@ -23,13 +23,10 @@ camera_target: [0.5, 0, 0.5]
 
 tool_attachment_frame: [0, 0, 0.107]
 # This is the z value of the base of the franka wrt the surface of the table.  
-franka_origin: [0, 0, 0.0245]
-ground_franka_frame: [0, 0, -0.0745]
+p_world_to_franka: [0, 0, 0]
+p_franka_to_ground: [0, 0, -0.029]
 # This is the z value of the platform wrt to the base of the franka.
-platform_franka_frame: [0, 0, -0.01225]
-# This is the z value of the ground wrt to the world frame. This is used for the 
-# plant_for_lcs in the c3_controller which does not have a full franka model.
-ground_world_frame: [0, 0, -0.05]   
+p_franka_to_platform: [0, 0, -0.0145]
 
 dt: 0.0001
 realtime_rate: 1
@@ -45,7 +42,8 @@ realtime_rate: 1
 q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 
 # Check the dependencies and clear/clean this line up.
-q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.35, 0.1]
+# q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.35, 0.1]
+q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.30, 0.1]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf

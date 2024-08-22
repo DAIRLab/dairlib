@@ -28,10 +28,9 @@ struct FrankaSimParams {
   Eigen::VectorXd q_init_franka;
   Eigen::VectorXd q_init_object;
   Eigen::VectorXd tool_attachment_frame;
-  Eigen::Vector3d franka_origin;
-  Eigen::Vector3d ground_franka_frame;
-  Eigen::Vector3d platform_franka_frame;
-  Eigen::Vector3d ground_world_frame;
+  Eigen::Vector3d p_world_to_franka;
+  Eigen::Vector3d p_franka_to_ground;
+  Eigen::Vector3d p_franka_to_platform;
 
 
   // Visualizer settings
@@ -66,7 +65,6 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(object_body_name));
     a->Visit(DRAKE_NVP(platform_model));
-    a->Visit(DRAKE_NVP(ground_world_frame));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -84,9 +82,9 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-    a->Visit(DRAKE_NVP(franka_origin));
-    a->Visit(DRAKE_NVP(ground_franka_frame));
-    a->Visit(DRAKE_NVP(platform_franka_frame));
+    a->Visit(DRAKE_NVP(p_world_to_franka));
+    a->Visit(DRAKE_NVP(p_franka_to_ground));
+    a->Visit(DRAKE_NVP(p_franka_to_platform));
 
     a->Visit(DRAKE_NVP(visualizer_sample_locations_model));
     a->Visit(DRAKE_NVP(visualizer_c3_mode_model));

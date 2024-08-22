@@ -126,15 +126,15 @@ int DoMain(int argc, char* argv[]) {
         controller_params.tool_attachment_frame);
   RigidTransform<double> X_F_P =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.platform_franka_frame);
+                             controller_params.p_franka_to_platform);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.ground_franka_frame);
+                             controller_params.p_franka_to_ground);
 
   // Create a rigid transform from the world frame to the panda_link0 frame.
   // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), controller_params.franka_origin);
+      drake::math::RotationMatrix<double>(), controller_params.p_world_to_franka);
 
   plant.WeldFrames(plant.world_frame(), 
                    plant.GetFrameByName("panda_link0"), X_F_W);
@@ -263,6 +263,10 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
+    if (FLAGS_lcm_channels == "examples/jacktoy/parameters/lcm_channels_simulation.yaml"){
+      std::cerr << "In simulation, OSC needs to have cancel_gravity_compensation: false" << std::endl;
+      return -1;
+    }
     auto gravity_compensator =
         builder.AddSystem<systems::GravityCompensationRemover>(plant,
                                                                *plant_context);
@@ -272,7 +276,7 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port());
   } else {
     if (FLAGS_lcm_channels == "examples/jacktoy/parameters/lcm_channels_hardware.yaml"){
-      std::cerr << "Using hardware lcm channels but not cancelling gravity compensation. Please check the OSC settings" << std::endl;
+      std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"<< std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),

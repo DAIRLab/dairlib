@@ -21,7 +21,7 @@ platform_model: examples/jacktoy/urdf/platform.urdf
 object_body_name: capsule_1
 
 tool_attachment_frame: [0, 0, 0.107]
-ground_franka_frame: [0, 0, -0.0745]
+p_franka_to_ground: [0, 0, -0.029]
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan

@@ -18,7 +18,7 @@ struct FrankaC3ControllerParams {
   std::string platform_model;
 
   Eigen::Vector3d tool_attachment_frame;
-  Eigen::Vector3d ground_franka_frame;
+  Eigen::Vector3d p_franka_to_ground;
  
   double workspace_margin;
 
@@ -43,6 +43,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(target_frequency));
     
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-    a->Visit(DRAKE_NVP(ground_franka_frame));
+    a->Visit(DRAKE_NVP(p_franka_to_ground));
   }
 };

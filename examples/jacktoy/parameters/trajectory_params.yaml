@@ -8,7 +8,7 @@ lead_angle: 40
 # fixed path specific parameters
 fixed_goal_x: 0.45
 fixed_goal_y: -0.25
-fixed_target_orientation: [-0.385788646, 0.35, 0.45, 0.1]
+fixed_target_orientation: [-0.03809317, 0.53219632, 0.78316801, -0.31931779]
 # fixed_target_orientation: [1, 0, 0, 0]
 step_size: 2
 # adaptive straight line path specific parameters

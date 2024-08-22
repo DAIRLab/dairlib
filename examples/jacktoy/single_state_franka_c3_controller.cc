@@ -132,15 +132,15 @@ int DoMain(int argc, char* argv[]) {
         sim_params.tool_attachment_frame);
   RigidTransform<double> X_F_P =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.platform_franka_frame);
+                             sim_params.p_franka_to_platform);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.ground_franka_frame);
+                             sim_params.p_franka_to_ground);
 
   // Create a rigid transform from the world frame to the panda_link0 frame.
   // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.franka_origin);
+      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 
   plant_franka.WeldFrames(plant_franka.world_frame(), 
                    plant_franka.GetFrameByName("panda_link0"), X_F_W);
@@ -176,9 +176,11 @@ int DoMain(int argc, char* argv[]) {
   // or might just be removed entirely.
   /// TODO: @Bibit/Will Please check if the weld frames are correct
 	RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  Eigen::Vector3d p_world_to_ground = sim_params.p_world_to_franka + 
+                                      sim_params.p_franka_to_ground;
   RigidTransform<double> X_W_G =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.ground_world_frame);
+                             p_world_to_ground);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),

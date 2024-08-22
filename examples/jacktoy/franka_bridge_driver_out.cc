@@ -61,11 +61,10 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
 
 //   parser.AddModelsFromUrl(sim_params.franka_model);
-  Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-  RigidTransform<double> R_X_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), franka_origin);
+  RigidTransform<double> W_X_R = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   R_X_W);
+                   W_X_R);
   plant.Finalize();
 
   auto pos_map = multibody::MakeNameToPositionsMap(plant);

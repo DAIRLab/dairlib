@@ -120,15 +120,15 @@ int do_main(int argc, char* argv[]) {
         sim_params.tool_attachment_frame);
   RigidTransform<double> X_F_P =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.platform_franka_frame);
+                             sim_params.p_franka_to_platform);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.ground_franka_frame);
+                             sim_params.p_franka_to_ground);
 
   // Create a rigid transform from the world frame to the panda_link0 frame.
   // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.franka_origin);
+      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 
   plant.WeldFrames(plant.world_frame(), 
                    plant.GetFrameByName("panda_link0"), X_F_W);

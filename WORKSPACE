@@ -75,7 +75,7 @@ fcc_qp_repository(name = "fcc_qp")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "fc526a61dcf19dd6b03d3d4202cbc13103f2262a739ccdf430acf87d47fa7b8c"
+ELEVATION_MAPPING_CHECKSUM = "bb43995dee10e3d43d694d52b79f3ab8e7db11f12f925853d9d4309344b4ba9f"
 
 http_archive(
     name = "elevation_mapping",

@@ -15,6 +15,11 @@ int DoMain(int argc, char** argv) {
   Eigen::MatrixXd D_monomial = B.completeOrthogonalDecomposition().solve(DB);
   std::cout << "\nD (monomial basis):\n" << D_monomial << std::endl;
 
+  std::cout << "basis changes\n";
+  for(int i = 0; i < 5; ++i) {
+    std::cout <<MakeChangeOfBasisOperatorFromLegendreToMonomials(i) << std::endl << std::endl;
+  }
+
   return 0;
 }
 

@@ -196,6 +196,7 @@ cc_library(
     deps = [
         "//common:eigen_utils",
         "//solvers:fcc_qp_solver",
+        "//common:polynomial_utils",
         "@drake//:drake_shared_library",
     ],
 )

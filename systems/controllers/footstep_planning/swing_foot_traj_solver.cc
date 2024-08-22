@@ -1,6 +1,6 @@
 #include "swing_foot_traj_solver.h"
 #include "common/eigen_utils.h"
-
+#include "common/legendre.h"
 
 namespace dairlib::systems::controllers {
 
@@ -66,16 +66,11 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
     x_knot_constraints_.push_back(xtmp);
     y_knot_constraints_.push_back(ytmp);
     z_knot_constraints_.push_back(ztmp);
+
   }
 
-  min_accel_Q_ = MatrixXd::Zero(kPolyDegXY, kPolyDegXY);
-
-  for (int k = 2; k < kPolyDegXY; ++k) {
-    for (int l = 2; l < kPolyDegXY; ++l) {
-      min_accel_Q_(k,l) = factorial(k) * factorial(l) / (k + l - 3) /
-          (factorial(k - 2) * factorial(l - 2));
-    }
-  }
+  min_accel_Q_ = polynomials::MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
+      kPolyDegXY - 1 , 2);
 
   int n = 2 * kPolyDegXY + kPolyDegZ;
   midpoint_target_cost_ = prog_.AddQuadraticCost(
@@ -105,34 +100,30 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
 
   // we are using the polynomial from the kth control cycle to
   // derive coefficients for the k+1th control cycle
-  double tk = prev_time - t_start;
-  double T = t_end - t_start;
+  double tk = -1 + 2 * (prev_time - t_start) / (t_end - t_start);
 
-  std::vector<double> knots = {
-      conditioning_offset_,
-      conditioning_offset_ + tk,
-      conditioning_offset_ + T
-  };
+  std::vector<double> knots = {-1, tk, 1};
 
-  double tmid = conditioning_offset_ + T / 2;
+  double tmid = 0;
 
-  RowVectorXd mid_mult = RowVectorXd::Zero(kPolyDegZ);
+  RowVectorXd mid_mult = polynomials::EvalLegendreBasis(kPolyDegZ - 1, tmid).transpose();
+
   for (int k = 0; k < 3; ++k) {
-    for (int i = 0; i < kPolyDegZ; ++i) {
-      mid_mult(i) = pow(tmid, i);
-      knot_deriv_multipliers_.at(k).at(0)(i) = pow(knots.at(k), i);
-      knot_deriv_multipliers_.at(k).at(1)(i) = i * pow(knots.at(k), i - 1);
-      knot_deriv_multipliers_.at(k).at(2)(i) = i * (i - 1) * pow(knots.at(k), i - 2);
-    }
+    knot_deriv_multipliers_.at(k).at(0) = polynomials::EvalLegendreBasis(kPolyDegZ - 1, knots.at(k)).transpose();
+    knot_deriv_multipliers_.at(k).at(1) = polynomials::EvalLegendreBasisDerivative(kPolyDegZ - 1, 1, knots.at(k)).transpose();
+    knot_deriv_multipliers_.at(k).at(2) = polynomials::EvalLegendreBasisDerivative(kPolyDegZ - 1, 2, knots.at(k)).transpose();
   }
 
   for (int i = 0; i < 3; ++i) {
-    knot_deriv_rhs_.at(1).at(i) = prev_traj.EvalDerivative(prev_time, i);
+    double scale = pow(2 / (t_end - t_start), -i);
+    knot_deriv_rhs_.at(1).at(i) = scale * prev_traj.EvalDerivative(prev_time, i);
   }
+
   knot_deriv_rhs_.front().front() = initial_pos;
-  knot_deriv_rhs_.at(2).at(0) =
-      footstep_target + Vector3d(0, 0, z_pos_final_offset);
-  knot_deriv_rhs_.at(2).at(1) = Vector3d(0, 0, z_vel_final);
+
+  double z_vel_final_scaled = (t_end - t_start) * (t_end - t_start) * z_vel_final / 4.0;
+  knot_deriv_rhs_.at(2).at(0) = footstep_target + Vector3d(0, 0, z_pos_final_offset);
+  knot_deriv_rhs_.at(2).at(1) = Vector3d(0, 0, z_vel_final_scaled);
 
   Vector3d pos_T = footstep_target - initial_pos;
   double disp_yaw = atan2(pos_T(1), pos_T(0));
@@ -168,31 +159,48 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
       2 * Q, -2 * b, mid_mult_broad.squaredNorm(), true);
 
   MatrixXd Qacc = min_accel_Q_;
-  for (int k = 2; k < kPolyDegXY; ++k) {
-    for(int l = 2; l < kPolyDegXY; ++l) {
-      Qacc(k,l) *= pow(knots.back(), k+l-3) - pow(knots.at(1), k+l-3);
-    }
-  }
-  Qacc += 0.25 * MatrixXd::Identity(kPolyDegXY, kPolyDegXY);
+//  for (int k = 2; k < kPolyDegXY; ++k) {
+//    for(int l = 2; l < kPolyDegXY; ++l) {
+//      Qacc(k,l) *= pow(knots.back(), k+l-3) - pow(knots.at(1), k+l-3);
+//    }
+//  }
+//  Qacc += 0.25 * MatrixXd::Identity(kPolyDegXY, kPolyDegXY);
 
   x_min_accel_cost->UpdateCoefficients(Qacc, VectorXd::Zero(kPolyDegXY), true);
   y_min_accel_cost->UpdateCoefficients(Qacc, VectorXd::Zero(kPolyDegXY), true);
 
+
   auto result = solver_.Solve(prog_);
 
   drake::Vector3<Polynomial<double>> polymat;
+  const MatrixXd bchange = polynomials::MakeChangeOfBasisOperatorFromLegendreToMonomials(kPolyDegZ - 1);
+
+  Polynomial<double> t_shift(Eigen::Vector2d(-1, 1));
+
   for ( int i = 0; i < 3; ++i) {
     Eigen::VectorXd coeffs = result.GetSolution(dim_var_map_.at(i));
+
+    const MatrixXd& B = bchange.topLeftCorner(coeffs.rows(), coeffs.rows());
+    coeffs = B * coeffs;
+
+    for (double t = -1; t < 1; t+=.05) {
+      double sum = 0;
+      for (int i = 0; i < coeffs.rows(); ++i) {
+        sum += coeffs(i) * pow(t, i);
+      }
+    }
+
     polymat(i) = Polynomial<double>(coeffs);
+    polymat(i) = polymat(i).Substitute(*(polymat(i).GetVariables().begin()), t_shift);
   }
 
   std::vector<drake::MatrixX<Polynomial<double>>> polys = {polymat};
-  std::vector<double> breaks = {0, knots.back()};
+  std::vector<double> breaks = {0, 2};
   PiecewisePolynomial<double> pp(polys, breaks);
 
   auto time_scaling = PiecewisePolynomial<double>::FirstOrderHold(
       Eigen::Vector2d(t_start, t_end),
-      Eigen::RowVector2d(knots.front(), knots.back())
+      Eigen::RowVector2d(0, 2) // hack for pp offset
   );
 
   PathParameterizedTrajectory<double> path(pp, time_scaling);

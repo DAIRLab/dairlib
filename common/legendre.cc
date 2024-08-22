@@ -1,4 +1,5 @@
 #include "legendre.h"
+#include <cassert>
 
 namespace dairlib::polynomials {
 
@@ -28,7 +29,7 @@ Eigen::MatrixXd MakeChangeOfBasisOperatorFromLegendreToMonomials(int order) {
       long double denom = powl(2, n) * factorial(m) * factorial(n - m) * factorial(n - 2 * m);
 
       int row_idx = n - 2 * m ;//+ row_offset;
-      B(col, row_idx) = pow_neg_1 * num / denom;
+      B(row_idx, col) = pow_neg_1 * num / denom;
     }
   }
   return B;
@@ -66,6 +67,55 @@ Eigen::VectorXd EvalLegendreBasis(int order, double t) {
     b(i) = std::legendre(i, t);
   }
   return b;
+}
+
+Eigen::VectorXd EvalLegendreBasisDerivative(int order, int deriv, double t) {
+  assert(fabs(t) <= 1);
+
+  int N = order + 1;
+
+  Eigen::VectorXd d = Eigen::VectorXd::Zero(N);
+  Eigen::MatrixXi D = LegendreBasisDerivativeOperator(order);
+  Eigen::MatrixXi op = Eigen::MatrixXi::Identity(N, N);
+
+  for (int i = 0; i < deriv; ++i) {
+    op = D * op;
+  }
+
+  for (int i = 0; i <= order; ++i) {
+    double sum = 0;
+    for (int j = 0; j < N; ++j) {
+      if (op(i, j) != 0) {
+        sum += op(i, j) * std::legendre(j, t);
+      }
+    }
+    d(i) = sum;
+  }
+  return d;
+}
+
+Eigen::MatrixXd MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
+    int poly_order, int deriv_order) {
+  assert(deriv_order >= 1);
+  assert(poly_order >= deriv_order);
+
+  int N = poly_order + 1;
+  Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(N, N);
+
+  Eigen::MatrixXi B = Eigen::MatrixXi::Identity(N, N);
+  Eigen::MatrixXi diff_operator = LegendreBasisDerivativeOperator(poly_order);
+
+  for (int i = 0; i < deriv_order; ++i) {
+    B = diff_operator * B;
+  }
+
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      Q(i, j) = LegendreBasisInner(
+          B.col(i).cast<double>(), B.col(j).cast<double>());
+    }
+  }
+  return Q;
 }
 
 }

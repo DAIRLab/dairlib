@@ -2,6 +2,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/path_parameterized_trajectory.h"
+#include "drake/solvers/gurobi_solver.h"
 
 #include "solvers/fcc_qp_solver.h"
 

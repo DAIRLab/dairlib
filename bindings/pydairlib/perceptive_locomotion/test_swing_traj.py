@@ -168,6 +168,7 @@ def multi_spline_figure(save_video=True):
     for i in range(n):
         dp = rng.uniform(low=-0.01, high=0.01, size=(3,))
         dp[-1] = rng.uniform(low=-0.001, high=0.001)
+        s = time.time()
         traj = solver.AdaptSwingFootTraj(
             prev_traj=prev_traj,
             prev_time=start_time + i * dt,
@@ -179,41 +180,44 @@ def multi_spline_figure(save_video=True):
             initial_pos=p0,
             footstep_target=p1 + dp,
         )
+        e = time.time()
+        print(f't: {e - s}')
 
         prev_traj = traj
         cont_trajs.append(traj)
-        breaks = [start_time, (start_time + t) / 2, start_time + t]
-        samples = [
-            p0.reshape((3, 1)),
-            (0.5 * (p0 + p1 + dp) + h * np.array([0, 0, 1.0])).reshape((3, 1)),
-            (p1 + dp).reshape((3, 1))
-        ]
-        sample_dot_at_start = np.zeros((3, 1))
-        sample_dot_at_end = np.zeros((3, 1))
-        pp_traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
-            breaks=breaks,
-            samples=samples,
-            sample_dot_at_start=sample_dot_at_start,
-            sample_dot_at_end=sample_dot_at_end
-        )
-        pp_trajs.append(pp_traj)
+
+        # breaks = [start_time, (start_time + t) / 2, start_time + t]
+        # samples = [
+        #     p0.reshape((3, 1)),
+        #     (0.5 * (p0 + p1 + dp) + h * np.array([0, 0, 1.0])).reshape((3, 1)),
+        #     (p1 + dp).reshape((3, 1))
+        # ]
+        # sample_dot_at_start = np.zeros((3, 1))
+        # sample_dot_at_end = np.zeros((3, 1))
+        # pp_traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
+        #     breaks=breaks,
+        #     samples=samples,
+        #     sample_dot_at_start=sample_dot_at_start,
+        #     sample_dot_at_end=sample_dot_at_end
+        # )
+        # pp_trajs.append(pp_traj)
         starts.append(start_time + (i * dt))
-        p1 = p1 + dp
+        # p1 = p1 + dp
 
     fx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=0
+        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=0
     )
     fdx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=1
+        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=1
     )
     fddx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=2
+        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=2
     )
 
-    fx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=0)
-    fdx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=1)
-    fddx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=2)
-    
+    # fx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=0)
+    # fdx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=1)
+    # fddx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=2)
+    #
     if save_video:
         make_video(cont_trajs, starts, 'continuous_splines')
         make_video(pp_trajs, starts, 'prev_splines')

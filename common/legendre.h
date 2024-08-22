@@ -18,7 +18,11 @@ Eigen::MatrixXi LegendreBasisDerivativeOperator(int order);
  */
 double LegendreBasisInner(const Eigen::VectorXd& u, const Eigen::VectorXd& v);
 
+Eigen::MatrixXd MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
+    int poly_order, int deriv_order);
+
 Eigen::VectorXd EvalLegendreBasis(int order, double t);
+Eigen::VectorXd EvalLegendreBasisDerivative(int order, int deriv, double t);
 
 }
 

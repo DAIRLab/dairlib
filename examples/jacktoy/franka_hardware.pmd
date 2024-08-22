@@ -8,7 +8,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "logger" {
-        exec = "python3 start_logging.py hw";
+        exec = "python3 start_logging_jacktoy.py hw";
         host = "localhost";
     }
     cmd "record_video" {
@@ -44,9 +44,9 @@ group "drivers" {
         exec = "bazel-bin/examples/jacktoy/franka_bridge_driver_in";
         host = "localhost";
     }
-    cmd "position_driver" {
-        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=position";
-        host = "franka_control";
+    cmd "move_to_init" {
+        exec = "bazel-bin/examples/jacktoy/franka_joint_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
     }
     cmd "torque_driver" {
         exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
@@ -54,23 +54,38 @@ group "drivers" {
     }
 }
 
-script "start_operator_commands" {
-    restart cmd "visualizer";
-    restart cmd "xbox";
+
+script "init_experiment" {
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
+    stop cmd "torque_driver";
+    wait ms 1000;
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "torque_driver";
+    start cmd "move_to_init";
+    wait ms 5000;
+    stop group "drivers";
 }
 
 script "start_experiment" {
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
-    stop cmd "franka_osc";
     stop cmd "torque_driver";
+    stop cmd "franka_osc";
     start cmd "record_video";
     start cmd "logger";
     wait ms 1000;
     start cmd "franka_driver_out";
     start cmd "franka_driver_in";
     start cmd "torque_driver";
+    start cmd "move_to_init";
     start cmd "franka_osc";
+}
+
+script "start_operator_commands" {
+    restart cmd "visualizer";
+    restart cmd "xbox";
 }
 
 script "stop_experiment" {

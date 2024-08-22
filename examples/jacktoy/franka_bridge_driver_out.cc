@@ -11,6 +11,7 @@
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
+#include "drake/common/find_resource.h"
 
 #include "examples/jacktoy/parameters/franka_drake_lcm_driver_channels.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
@@ -57,7 +58,9 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  parser.AddModelsFromUrl(sim_params.franka_model);
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
+
+//   parser.AddModelsFromUrl(sim_params.franka_model);
   Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);

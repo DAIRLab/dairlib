@@ -80,7 +80,7 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
   y_min_accel_cost = prog_.AddQuadraticCost(
       min_accel_Q_.topLeftCorner<kPolyDegXY, kPolyDegXY>(), VectorXd::Zero(kPolyDegXY),  cy_, true).evaluator();
   z_min_accel_cost = prog_.AddQuadraticCost(
-      min_accel_Q_, VectorXd::Zero(kPolyDegZ), cz_, true).evaluator();
+      0.01 * min_accel_Q_, VectorXd::Zero(kPolyDegZ), cz_, true).evaluator();
 
   solver_.InitializeSolver(prog_, drake::solvers::SolverOptions(), 0, 0, {});
 

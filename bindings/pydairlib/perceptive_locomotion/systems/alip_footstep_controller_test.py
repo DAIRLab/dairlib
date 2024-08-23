@@ -35,7 +35,7 @@ from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 import numpy as np
 
-controller_type = 'mpfc'
+controller_type = 'lqr'
 
 
 # controller_type = 'lqr'

@@ -238,11 +238,9 @@ def simulate_init(sim_params):
         rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/flat/flat_{rand}.yaml'
         terrain = 'flat'
-    # terrain_yaml = 'params/flat.yaml'
-    # terrain = 'no_obs'
+    terrain_yaml = 'params/flat.yaml'
+    terrain = 'no_obs'
     print(terrain_yaml)
-    sim_params.terrain = 'terrain/params/normal_stair/dustair_0.yaml'
-    terrain = 'stair'
     #sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)

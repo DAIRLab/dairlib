@@ -237,7 +237,7 @@ def run_play(sim_params, model_path=None):
 
     #model_path = 'RPPO_mirror_noise.zip'
     #model_path = 'RPPO_003_1.zip'
-    model_path = 'rl_model_10260000_steps.zip'
+    model_path = 'latest_model.zip'
     #model_path = 'logs/rl_model_6720000_steps.zip'
     
     #model = RecurrentPPO.load(model_path, env, verbose=1)
@@ -267,7 +267,15 @@ def run_play(sim_params, model_path=None):
             obs, _ = env.reset()
             total_reward = 0
 
-def load_without_dependencies():
+def load_without_dependencies(sim_params):
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
+    env = gym.make("DrakeCassie-v0",
+                    sim_params = sim_params,
+                    )
+    # rate = 1.0
+    # env.simulator.set_target_realtime_rate(rate)
+
     max_steps = 3e4
     
     lstm=True
@@ -285,16 +293,23 @@ def load_without_dependencies():
 
     model.load_state_dict(th.load('test')) # Save policy through -> th.save(model.policy.state_dict(), 'test')
 
+    obs, _ = env.reset()
     input("Start..")
 
     model.eval()
 
-    obs = np.load('observation.npy')
+    #obs = np.load('observation.npy')
     for i in range(int(max_steps)):
-        action, lstm_states = model.predict(obs[i], state=lstm_states, episode_start=episode_starts, deterministic=True)
-        print(action)
-        input("==")
-
+        action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+        # print(action)
+        # input("==")
+        obs, reward, terminated, truncated, info = env.step(action)
+        episode_starts = terminated
+            
+        if terminated or truncated:
+            lstm_states = None
+            episode_starts = np.ones((1,), dtype=bool)
+            obs, _ = env.reset()
         reward = 0
         terminated = 0
         truncated = 0
@@ -309,8 +324,8 @@ def _main(model_path=None):
         entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv")  # noqa
 
     #sample(sim_params)
-    run_play(sim_params, model_path=None)
-    #load_without_dependencies()
+    #run_play(sim_params, model_path=None)
+    load_without_dependencies(sim_params)
 
 if __name__ == '__main__':
 

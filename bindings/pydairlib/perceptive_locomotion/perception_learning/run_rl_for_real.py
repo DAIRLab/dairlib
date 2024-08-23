@@ -43,7 +43,7 @@ model_hz = 25.0
 model_hidden_size = 64
 points_topic = "/camera/depth/color/points"
 cassie_state_channel = "CASSIE_STATE_SIMULATION"
-cassie_out_channel = "NETWORK_CASSIE_OUT"
+cassie_out_channel = "CASSIE_OUTPUT_ECHO"
 urdf = "examples/Cassie/urdf/cassie_v2.urdf"
 
 elevation_mapping_params = (

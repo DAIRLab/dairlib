@@ -148,7 +148,7 @@ def multi_spline_figure(save_video=True):
     p0 = np.zeros((3,))
     p1 = np.array([0.1, 0.3, 0.0])
     t = 0.3
-    h = 0.15
+    h = 0.25
 
     start_time = 0.0
     pp = PiecewisePolynomial(p0)
@@ -162,12 +162,12 @@ def multi_spline_figure(save_video=True):
     pp_trajs = []
     starts = []
 
-    n = 35
+    n = 55
     dt = 0.005
     rng = np.random.default_rng(52125)
     for i in range(n):
-        dp = rng.uniform(low=-0.01, high=0.01, size=(3,))
-        dp[-1] = rng.uniform(low=-0.01, high=0.01)
+        dp = rng.uniform(low=-0.005, high=0.005, size=(3,))
+        dp[-1] = rng.uniform(low=-0.005, high=0.005)
         s = time.time()
         traj = solver.AdaptSwingFootTraj(
             prev_traj=prev_traj,

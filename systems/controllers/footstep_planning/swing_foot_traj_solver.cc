@@ -43,7 +43,7 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
   knot_deriv_rhs_ = std::vector<std::vector<Vector3d>>(
       3, std::vector<Vector3d>(3, Vector3d::Zero()));
 
-  for (int knot = 0; knot < 3; ++knot) {
+  for (int knot = 1; knot < 3; ++knot) {
     std::vector<drake::solvers::LinearEqualityConstraint*> xtmp;
     std::vector<drake::solvers::LinearEqualityConstraint*> ytmp;
     std::vector<drake::solvers::LinearEqualityConstraint*> ztmp;
@@ -67,8 +67,8 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
 
   }
 
-  min_accel_Q_ = 0.1 * polynomials::MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
-      kPolyDegZ - 1 , 2) + 0.001 * MatrixXd::Identity(kPolyDegZ, kPolyDegZ);
+  min_accel_Q_ = polynomials::MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
+      kPolyDegZ - 1 , 2);
 
   int n = 2 * kPolyDegXY + kPolyDegZ;
   midpoint_target_cost_ = prog_.AddQuadraticCost(
@@ -131,15 +131,15 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
   Vector3d n = n_planar.cross(pos_T).normalized();
   Vector3d des_mid_point = initial_pos + 0.5 * pos_T + swing_foot_clearance * n;
 
-  for (int knot = 0; knot < 3; ++knot) {
+  for (int knot = 1; knot < 3; ++knot) {
     for (int deriv = 0; deriv < 3; ++ deriv) {
-      x_knot_constraints_.at(knot).at(deriv)->UpdateCoefficients(
+      x_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
           knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
           knot_deriv_rhs_.at(knot).at(deriv).segment<1>(0));
-      y_knot_constraints_.at(knot).at(deriv)->UpdateCoefficients(
+      y_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
           knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
           knot_deriv_rhs_.at(knot).at(deriv).segment<1>(1));
-      z_knot_constraints_.at(knot).at(deriv)->UpdateCoefficients(
+      z_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
           knot_deriv_multipliers_.at(knot).at(deriv),
           knot_deriv_rhs_.at(knot).at(deriv).segment<1>(2));
     }
@@ -150,8 +150,8 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
       BlockDiagonalRepeat<double>(mid_mult.leftCols<kPolyDegXY>(), 2);
   mid_mult_broad.bottomRightCorner<1, kPolyDegZ>() = mid_mult;
 
-  MatrixXd Q = 1000 * mid_mult_broad.transpose() * mid_mult_broad;
-  VectorXd b = 1000 * mid_mult_broad.transpose() * des_mid_point;
+  MatrixXd Q = mid_mult_broad.transpose() * mid_mult_broad;
+  VectorXd b = mid_mult_broad.transpose() * des_mid_point;
 
   midpoint_target_cost_->UpdateCoefficients(
       2 * Q, -2 * b, mid_mult_broad.squaredNorm(), true);

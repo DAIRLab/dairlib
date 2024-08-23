@@ -9,8 +9,8 @@
 namespace dairlib::systems::controllers {
 
 class SwingFootTrajSolver {
-  static constexpr int kPolyDegZ = 10;
-  static constexpr int kPolyDegXY = 7;
+  static constexpr int kPolyDegZ = 11;
+  static constexpr int kPolyDegXY = 11;
 
  public:
 
@@ -56,6 +56,7 @@ class SwingFootTrajSolver {
   std::shared_ptr<drake::solvers::QuadraticCost> midpoint_target_cost_;
   std::shared_ptr<drake::solvers::QuadraticCost> x_min_accel_cost;
   std::shared_ptr<drake::solvers::QuadraticCost> y_min_accel_cost;
+  std::shared_ptr<drake::solvers::QuadraticCost> z_min_accel_cost;
 
 
 };

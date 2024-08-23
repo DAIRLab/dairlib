@@ -28,12 +28,13 @@ cc_library(
     name = "polynomial_utils",
     srcs = ["legendre.cc"],
     hdrs = [
+        "legendre.h",
         "polynomial_utils.h",
-        "legendre.h"
     ],
     deps = [
-        "@eigen",
+        "@boost//:math",
         "@drake//:drake_shared_library",
+        "@eigen",
     ],
 )
 
@@ -97,6 +98,6 @@ cc_binary(
     name = "test_legendre",
     srcs = ["test_legendre.cc"],
     deps = [
-        ":polynomial_utils"
+        ":polynomial_utils",
     ],
 )

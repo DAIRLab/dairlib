@@ -1,5 +1,6 @@
 #include "legendre.h"
 #include <cassert>
+#include "boost/math/special_functions.hpp"
 
 namespace dairlib::polynomials {
 
@@ -47,7 +48,7 @@ Eigen::MatrixXi LegendreBasisDerivativeOperator(int order) {
       o += 2;
     }
   }
-  return D;
+  return D.transpose();
 }
 
 double LegendreBasisInner(const Eigen::VectorXd &u, const Eigen::VectorXd& v) {
@@ -64,7 +65,7 @@ Eigen::VectorXd EvalLegendreBasis(int order, double t) {
   assert(fabs(t) <= 1);
   Eigen::VectorXd b = Eigen::VectorXd::Zero(order + 1);
   for (int i = 0; i <= order; ++i) {
-    b(i) = std::legendre(i, t);
+    b(i) = boost::math::legendre_p(i, t);
   }
   return b;
 }
@@ -85,8 +86,8 @@ Eigen::VectorXd EvalLegendreBasisDerivative(int order, int deriv, double t) {
   for (int i = 0; i <= order; ++i) {
     double sum = 0;
     for (int j = 0; j < N; ++j) {
-      if (op(i, j) != 0) {
-        sum += op(i, j) * std::legendre(j, t);
+      if (op(j, i) != 0) {
+        sum += op(j, i) * boost::math::legendre_p(j, t);
       }
     }
     d(i) = sum;
@@ -112,7 +113,8 @@ Eigen::MatrixXd MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasi
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < N; ++j) {
       Q(i, j) = LegendreBasisInner(
-          B.col(i).cast<double>(), B.col(j).cast<double>());
+          B.col(i).cast<double>().transpose(),
+          B.col(j).cast<double>().transpose());
     }
   }
   return Q;

@@ -1,4 +1,3 @@
-#include <cmath>
 #include <Eigen/Dense>
 
 namespace dairlib::polynomials {

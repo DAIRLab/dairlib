@@ -167,7 +167,7 @@ def multi_spline_figure(save_video=True):
     rng = np.random.default_rng(52125)
     for i in range(n):
         dp = rng.uniform(low=-0.01, high=0.01, size=(3,))
-        dp[-1] = rng.uniform(low=-0.001, high=0.001)
+        dp[-1] = rng.uniform(low=-0.01, high=0.01)
         s = time.time()
         traj = solver.AdaptSwingFootTraj(
             prev_traj=prev_traj,
@@ -204,15 +204,10 @@ def multi_spline_figure(save_video=True):
         starts.append(start_time + (i * dt))
         # p1 = p1 + dp
 
-    fx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=0
-    )
-    fdx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=1
-    )
-    fddx = plot_time_trajs(
-        cont_trajs, starts, 50, 'continous_traj', dim=2, deriv=2
-    )
+    for i in range(3):
+        for j in range(3):
+            _ = plot_time_trajs(cont_trajs, starts, 100, 'continuous_traj', dim=i, deriv=j)
+
 
     # fx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=0)
     # fdx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=1)

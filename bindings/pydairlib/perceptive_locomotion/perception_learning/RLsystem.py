@@ -1,4 +1,5 @@
 import math
+import time
 import numpy as np
 import torch as th
 import torch.nn as nn
@@ -297,7 +298,7 @@ class RLSystem(LeafSystem):
             get_schedule_fn(1.),
             lstm_hidden_size=hidden_size
         )
-        self.model.load_state_dict(th.load(model_path, map_location=th.device('cpu'))) # Save policy through -> th.save(model.policy.state_dict(), 'test')
+        self.model.load_state_dict(th.load(model_path)) # Save policy through -> th.save(model.policy.state_dict(), 'test')
         self.model.eval()
         
         self.lstm_states = None
@@ -443,6 +444,8 @@ class RLSystem(LeafSystem):
         return fsm
 
     def calculate_actions(self, context: Context, output: BasicVector):
+
+        t_start = time.time()
         vdes = self.EvalVectorInput(context, self.input_port_indices['desired_velocity']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         t = states[-1]
@@ -467,11 +470,15 @@ class RLSystem(LeafSystem):
             context, self.input_port_indices['height_map']
         ).get_value()
         
-        adverserial_offset = np.zeros(2,)    
+        adverserial_offset = np.zeros(2,)
+
+
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
         )
-        
+
+
+
         joint_angle = states[7:23] # Only joint angles (reject pelvis)
         joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
 
@@ -480,11 +487,15 @@ class RLSystem(LeafSystem):
         obs = np.hstack((hmap, alip, vdes, joint_angle, self.empty)) # 24621
         actions, lstm_states = self.model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
         self.lstm_states = lstm_states
+
         self.episode_starts = np.zeros((1,), dtype=bool)
 
         out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
 
         output.set_value(out)
+        t_end = time.time()
+
+        # print(t_end - t_start)
 
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)

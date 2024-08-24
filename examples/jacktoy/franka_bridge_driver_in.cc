@@ -81,9 +81,13 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
           franka_driver_channel_params.franka_command_channel, &lcm,
           1.0 / 1000.0));
+    auto franka_status_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_panda_status>(
+          franka_driver_channel_params.franka_status_channel, &lcm));
   auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
   builder.Connect(*franka_command_translator, *franka_command_pub);
+  builder.Connect(franka_status_sub->get_output_port(), franka_command_translator->get_input_port_panda_status());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_bridge_driver_in"));

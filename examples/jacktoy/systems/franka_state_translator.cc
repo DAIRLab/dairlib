@@ -20,7 +20,7 @@ FrankaStateOutTranslator::FrankaStateOutTranslator(
   this->set_name("franka_state_translator");
 
   panda_status_ =
-      this->DeclareAbstractInputPort("franka_state",
+      this->DeclareAbstractInputPort("franka_status",
                                      drake::Value<drake::lcmt_panda_status>())
           .get_index();
   DRAKE_DEMAND(joint_position_names.size() == kNumFrankaJoints);
@@ -34,6 +34,7 @@ FrankaStateOutTranslator::FrankaStateOutTranslator(
                           "lcmt_robot_output", default_robot_output_msg,
                           &FrankaStateOutTranslator::OutputFrankaState)
                       .get_index();
+  start_ = std::chrono::steady_clock::now();
 }
 
 void FrankaStateOutTranslator::OutputFrankaState(
@@ -41,7 +42,10 @@ void FrankaStateOutTranslator::OutputFrankaState(
     dairlib::lcmt_robot_output* output) const {
   const auto& panda_status =
       this->EvalInputValue<drake::lcmt_panda_status>(context, panda_status_);
-  output->utime = panda_status->utime;
+  // converting franka panda time which uses time since epoch to start at 0
+  output->utime =
+        (duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_)).count();
+  
   output->position = panda_status->joint_position;
   output->num_positions = panda_status->num_joints;
   output->num_velocities = panda_status->num_joints;
@@ -58,7 +62,10 @@ FrankaEffortsInTranslator::FrankaEffortsInTranslator() {
       this->DeclareAbstractInputPort("franka_state",
                                      drake::Value<dairlib::lcmt_robot_input>())
           .get_index();
-
+  panda_status_ =
+      this->DeclareAbstractInputPort("franka_status",
+                                     drake::Value<drake::lcmt_panda_status>())
+          .get_index();
   franka_command_output_ =
       this->DeclareAbstractOutputPort(
               "lcmt_panda_command",
@@ -71,8 +78,11 @@ void FrankaEffortsInTranslator::OutputFrankaCommand(
     drake::lcmt_panda_command* output) const {
   const auto& robot_input =
       this->EvalInputValue<dairlib::lcmt_robot_input>(context, robot_input_);
+  const auto& panda_status =
+      this->EvalInputValue<drake::lcmt_panda_status>(context, panda_status_);
   DRAKE_DEMAND(robot_input->efforts.size() == kNumFrankaJoints);
-  output->utime = robot_input->utime;
+  // using franka panda time which uses time since epoch instead of starting at 0
+  output->utime = panda_status->utime;
   output->num_joint_torque = robot_input->efforts.size();
   output->joint_torque = robot_input->efforts;
   output->control_mode_expected = drake::lcmt_panda_status::CONTROL_MODE_TORQUE;

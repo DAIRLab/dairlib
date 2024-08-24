@@ -80,6 +80,8 @@ script "start_experiment" {
     start cmd "franka_driver_in";
     start cmd "torque_driver";
     start cmd "move_to_init";
+    wait ms 5000;
+    stop cmd "move_to_init";
     start cmd "franka_osc";
 }
 

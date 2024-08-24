@@ -38,8 +38,8 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
 
-model_path = "test_025_2"
-model_hz = 40.0
+model_path = "no_noise" # cluster_108 | cluster_125 | new_1 | no_noise
+model_hz = 25.0
 model_hidden_size = 64
 points_topic = "/camera/depth/color/points"
 cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"

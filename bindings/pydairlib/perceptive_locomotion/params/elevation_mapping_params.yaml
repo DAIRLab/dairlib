@@ -19,4 +19,4 @@ contact_points: {}
 # contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}
 initialization_radius: 1.0
 initialization_offset: 0.0
-point_cloud_bias: [0.0, 0.0, 0.0]
+point_cloud_bias: [0.0, 0.0, 0.03]

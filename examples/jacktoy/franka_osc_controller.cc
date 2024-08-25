@@ -148,7 +148,7 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
   
   // TODO: Figure out which channels to subscribe to.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);

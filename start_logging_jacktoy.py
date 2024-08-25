@@ -4,6 +4,7 @@ import glob
 import codecs
 from datetime import date
 import sys
+import yaml
 
 def main(log_type):
     curr_date = date.today().strftime("%m_%d_%y")
@@ -14,10 +15,23 @@ def main(log_type):
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
 
+    # franka_cr_controller params path
+    franka_c3_controller_params_path = dair + "examples/jacktoy/parameters/franka_c3_controller_params.yaml"
+
+    # Load the run_in_safe_mode param from dair + "examples/jacktoy/parameters/franka_c3_controller_params.yaml"
+    with open(franka_c3_controller_params_path) as f:
+        franka_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
+
+    # if franka_c3_controller_params.yaml has run_in_safe_mode: true, then load the safe mode gains
+    if (franka_c3_controller_params['run_in_safe_mode']):
+        c3_gains = dair + "examples/jacktoy/parameters/franka_c3_options_floating_safe.yaml"
+        sampling_params = dair + "examples/jacktoy/parameters/sampling_params_safe.yaml"
+    else:
+        c3_gains = dair + "examples/jacktoy/parameters/franka_c3_options_floating.yaml"
+        sampling_params = dair + "examples/jacktoy/parameters/sampling_params.yaml"
+
     osc_gains = dair + "examples/jacktoy/parameters/franka_osc_controller_params.yaml"
     sim_params = dair + "examples/jacktoy/parameters/franka_sim_params.yaml"
-    c3_gains = dair + "examples/jacktoy/parameters/franka_c3_options_floating.yaml"
-    sampling_params = dair + "examples/jacktoy/parameters/sampling_params.yaml"
     trajectory_params = dair + "examples/jacktoy/parameters/trajectory_params.yaml"
     ee_simple_model_urdf = dair + "examples/jacktoy/urdf/end_effector_simple_model.urdf"
     jack_sdf = dair + "examples/jacktoy/urdf/jack.sdf"
@@ -49,6 +63,7 @@ def main(log_type):
     
     os.chdir(log_num)
     logname = f'{log_type}log-{log_num}'
+    subprocess.run(['cp', franka_c3_controller_params_path, f'franka_c3_controller_params_{log_num}.yaml'])
     subprocess.run(['cp', osc_gains, f'osc_gains_{log_num}.yaml'])
     subprocess.run(['cp', sim_params, f'sim_params_{log_num}.yaml'])
     subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])

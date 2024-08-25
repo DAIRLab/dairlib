@@ -76,7 +76,7 @@ int DoMain(int argc, char* argv[]) {
   auto act_names = multibody::ExtractOrderedNamesFromMap(act_map);
 
   /* -------------------------------------------------------------------------------------------*/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
 
 
   auto franka_state_pub =

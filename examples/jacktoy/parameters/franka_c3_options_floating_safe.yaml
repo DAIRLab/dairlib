@@ -1,3 +1,5 @@
+# SAFE C3 GAINS
+
 admm_iter: 3
 rho: 0  #This isn't used anywhere!
 rho_scale: 3

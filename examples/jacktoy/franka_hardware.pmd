@@ -18,13 +18,13 @@ group "operator" {
 }
 
 group "controllers (hardware)" {
-    cmd "franka_osc" {
-        exec = "bazel-bin/examples/jacktoy/franka_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
-        host = "franka_control";
-    }
     cmd "franka_c3" {
         exec = "bazel-bin/examples/jacktoy/franka_c3_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
         host = "localhost";
+    }
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/jacktoy/franka_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
+        host = "franka_control";
     }
 }
 
@@ -36,6 +36,10 @@ group "debug" {
 }
 
 group "drivers" {
+    cmd "move_to_init" {
+        exec = "bazel-bin/examples/jacktoy/franka_joint_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
+        host = "franka_control";
+    }
     cmd "franka_driver_out" {
         exec = "bazel-bin/examples/jacktoy/franka_bridge_driver_out";
         host = "franka_control";
@@ -44,13 +48,9 @@ group "drivers" {
         exec = "bazel-bin/examples/jacktoy/franka_bridge_driver_in";
         host = "franka_control";
     }
-    cmd "move_to_init" {
-        exec = "bazel-bin/examples/jacktoy/franka_joint_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
-        host = "franka_control";
-    }
     cmd "torque_driver" {
         exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
-        host = "franka_control";
+        host = "drake_franka_driver";
     }
 }
 

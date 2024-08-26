@@ -54,26 +54,8 @@ These dependencies are necessary for some advanced visualization and process man
 #### LCM and libbot
 Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation (option 1.a) should add the proper apt repo for these.
 
-#### ROS
-To integrate with ROS (tested on ROS Noetic with 20.04), the following steps are required.
-1. Install ROS http://wiki.ros.org/ROS/Installation
-2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
-```
-export ROS_MASTER_URI=http://localhost:11311
-source /opt/ros/noetic/setup.bash 
-```
-3. Install additional dependencies
-```
-sudo apt install python3-rosinstall-generator python-catkin-tools python3-vcstool
-```
-4. Build the ROS workspace using catkin. From `dairlib/`,
-```
-sudo ./tools/workspace/ros/compile_ros_workspace.sh
-```
-5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
-```
-export DAIRLIB_WITH_ROS=ON
-```
+#### Install procman 
+Install procman from https://github.com/ashuang/procman
 
 #### Invariant-EKF
 State Estimation for Cassie is done using contact-aided invariant-EKF. `invariant-ekf` is an external repository forked from Ross Hartley's repository of the same name. By default, a pegged version of this forked repository is used i.e. the `bazel` branch of DAIR lab's fork of `invariant-ekf` is automatically downloaded and used. However, to make changes to the files, the [DAIR Lab's fork of invariant-ekf](https://github.com/DAIRLab/invariant-ekf/tree/bazel "DAIR Lab's fork of invariant-ekf") can be cloned as a local repository.
@@ -96,14 +78,3 @@ Build what you want via Bazel. From `dairlib`,  `bazel build ...` will build the
 ## Included Modules
 A list of included modules
 
-### DIRCON
-A modern Drake implementation of the DIRCON constrained trajectory optimization algorithm. Currently under construction. See `/examples/PlanarWalker/run_gait_dircon.cc` for a simple example of the hybrid DIRCON algorithm. The more complete example set (from the paper) currently exists on an older version of Drake https://github.com/mposa/drake/tree/hybrid-merge
-
-Based off the publication
-
-Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization of Trajectories for Constrained Dynamical Systems." Proceedings of the International Conference on Robotics and Automation (ICRA), 2016. 
-
-Available online at https://posa.seas.upenn.edu/wp-content/uploads/Posa16a.pdf
-
-## Docker (experimental)
-Docker support is currently experimental. See `install/bionic/Dockerfile` for an Ubuntu Dockerfile. Docker is being used in conjuction with Cirrus Continuous Integration, and should be better supported in the future.

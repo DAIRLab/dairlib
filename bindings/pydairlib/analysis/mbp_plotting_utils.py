@@ -331,6 +331,52 @@ def process_object_state_channel(data):
             'q': positions,
             'v': velocities,}
 
+def process_sample_costs(data):
+    t = []
+    costs = []
+    # Each message is a timestamped saved trajectory that has a timestamp and 
+    # a list of saved trajectories. 
+    # Here we have only one saved trajectory per message containing a vector of 
+    # costs for each sample considered in that time stamp/control loop.
+    # print("message type is " + str(type(data[0])))
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        # num_samples = msg.saved_traj.trajectories[0].num_points
+        # print("Number of trajectories: " + str(msg.saved_traj.num_trajectories))         #Should print 1
+        # print("Trajectory names: " + str(msg.saved_traj.trajectory_names[0]))            #Should print "sample_costs"
+        # Datapoints here are the list of costs for each sample in the trajectory
+        # at that time stamp.
+        sample_costs_vector = msg.saved_traj.trajectories[0].datapoints
+        costs.append(sample_costs_vector)
+    # These two should be the same length corresponding to the number of
+    # messages.
+    # print("Length of time vector: " + str(len(t)))
+    # print("Length of costs: " + str(len(costs)))
+
+    t = np.array(t)
+    costs = np.array(costs)
+
+    return {'t': t,
+            'costs': costs,}
+
+def process_is_c3_mode(data):
+    t = []
+    is_c3_mode = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        # print("num values of modes" + str(msg.saved_traj.trajectories[0].num_points))
+        is_c3_mode_at_current_time = msg.saved_traj.trajectories[0].datapoints
+        is_c3_mode.append(is_c3_mode_at_current_time)
+    
+    # print("Length of time vector: " + str(len(t)))
+    # print("Length of costs: " + str(len(is_c3_mode)))
+
+    t = np.array(t)
+    is_c3_mode = np.array(is_c3_mode)
+
+    return {'t': t,
+            'is_c3_mode': is_c3_mode,}
+
 
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
@@ -355,15 +401,79 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
-def load_c3_debug(data, c3_debug_channel, c3_target_channel, c3_actual_channel):
-    c3_debug = process_c3_debug(data[c3_debug_channel])
+def load_c3_debug(data, c3_debug_output_curr_channel, c3_debug_output_best_channel, 
+                  c3_target_channel, c3_actual_channel):
+    c3_debug_curr = process_c3_debug(data[c3_debug_output_curr_channel])
+    c3_debug_best = process_c3_debug(data[c3_debug_output_best_channel])
     c3_tracking_target = process_c3_tracking(data[c3_target_channel])
     c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
-    return c3_debug, c3_tracking_target, c3_tracking_actual
+    return c3_debug_curr, c3_debug_best, c3_tracking_target, c3_tracking_actual
 
 def load_object_state(data, object_state_channel):
     object_state = process_object_state_channel(data[object_state_channel])
     return object_state
+
+def load_sample_costs(data, sample_costs_channel):
+    print("This is sample costs channel" + sample_costs_channel)
+    sample_costs = process_sample_costs(data[sample_costs_channel])
+    return sample_costs
+
+def load_is_c3_mode(data, is_c3_mode_channel):
+    is_c3_mode = process_is_c3_mode(data[is_c3_mode_channel])
+    return is_c3_mode
+
+def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict = None):
+    ps = plot_styler.PlotStyler()
+    num_samples = time_sample_costs_dict['costs'].shape[2]
+    print("shape of costs: " + str(time_sample_costs_dict['costs'].shape))
+    keys_to_plot = [f'sample_{i}_costs' for i in range(num_samples)]
+    data_dict = time_sample_costs_dict
+    # add cost to the dictionary
+    for i in range(num_samples):
+        print("key", keys_to_plot[i])
+        data_dict[keys_to_plot[i]] = time_sample_costs_dict['costs'][:,:, i]
+
+    legend_entries = {f'sample_{i}_costs': [f'Sample {i} Costs'] for i in range(num_samples)}
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        keys_to_plot,
+        {key: time_slice for key in keys_to_plot},
+        legend_entries,
+        {'xlabel': 'Time',
+         'ylabel': 'Cost',
+         'title': 'Sample Costs vs time'},
+        ps)
+    
+    if(time_is_c3_mode_dict is not None):
+        data_dict["is_c3_mode"] = time_is_c3_mode_dict['is_c3_mode'][:,:,0]
+        # shade the regions where the C3 mode is active
+        for i in range(len(time_is_c3_mode_dict['is_c3_mode'])-1):
+            if(time_is_c3_mode_dict['is_c3_mode'][i] == 1):
+                plt.axvspan(time_sample_costs_dict['t'][i], time_sample_costs_dict['t'][i+1], color='pink', alpha=0.3)
+            else:
+                plt.axvspan(time_sample_costs_dict['t'][i], time_sample_costs_dict['t'][i+1], color='gray', alpha=0.3)
+                        
+    return ps
+
+def plot_is_c3_mode(time_is_c3_mode_dict, time_slice):
+    ps = plot_styler.PlotStyler()
+    # print("keys in is_c3_mode", is_c3_mode_dict.keys())
+    # print("shape of is_c3_mode", is_c3_mode_dict['is_c3_mode'].shape)      #This should be (num_messages, 1, 1)
+    data_dict = time_is_c3_mode_dict
+    data_dict["is_c3_mode"] = time_is_c3_mode_dict['is_c3_mode'][:,:,0]
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['is_c3_mode'],
+        {'is_c3_mode': time_slice},
+        {'is_c3_mode': ['is_c3_mode']},
+        {'xlabel': 'Time',
+         'ylabel': 'Is C3 Mode',
+         'title': 'Is C3 Mode vs time'},
+        ps)
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,

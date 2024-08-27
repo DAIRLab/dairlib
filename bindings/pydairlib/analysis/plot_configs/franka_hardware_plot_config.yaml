@@ -1,16 +1,39 @@
 # LCM channels to read data from
-channel_x: "FRANKA_STATE"
-channel_u: "OSC_FRANKA"
-channel_osc: "OSC_DEBUG_FRANKA"
-channel_c3: "C3_DEBUG"
-channel_tray: "TRAY_STATE"
-channel_c3_target: "C3_TARGET"
-channel_c3_actual: "C3_ACTUAL"
-plot_style: 'paper' # compact, paper, default
+franka_state_channel: "FRANKA_STATE"
+object_state_channel: "OBJECT_STATE"
+osc_channel: "OSC_FRANKA"
+osc_debug_channel: "OSC_DEBUG_FRANKA"
 
-start_time: 7.4
+c3_actor_curr_plan_channel: "C3_TRAJECTORY_ACTOR_CURR_PLAN" # lcmt_timestamped_saved_traj
+c3_object_curr_plan_channel: "C3_TRAJECTORY_OBJECT_CURR_PLAN" # lcmt_timestamped_saved_traj
+c3_force_curr_channel: "C3_FORCES_CURR"
+c3_debug_output_curr_channel: "C3_DEBUG_CURR"
+
+c3_actor_best_plan_channel: "C3_TRAJECTORY_ACTOR_BEST_PLAN" # lcmt_timestamped_saved_traj
+c3_object_best_plan_channel: "C3_TRAJECTORY_OBJECT_BEST_PLAN" # lcmt_timestamped_saved_traj
+c3_force_best_channel: "C3_FORCES_BEST"
+c3_debug_output_best_channel: "C3_DEBUG_BEST"
+
+
+c3_trajectory_exec_actor_channel: "C3_EXECUTION_TRAJECTORY_ACTOR" # lcmt_timestamped_saved_traj
+repos_trajectory_exec_actor_channel: "REPOS_EXECUTION_TRAJECTORY_ACTOR" # lcmt_timestamped_saved_traj
+
+tracking_trajectory_actor_channel: "TRACKING_TRAJECTORY_ACTOR" # lcmt_timestamped_saved_traj
+tracking_trajectory_object_channel: "TRACKING_TRAJECTORY_OBJECT" # lcmt_timestamped_saved_traj
+
+c3_target_state_channel: "C3_TARGET" # lcmt_c3_state
+c3_actual_state_channel: "C3_ACTUAL" # lcmt_c3_state
+
+sample_locations_channel: "SAMPLE_LOCATIONS"  # lcmt_timestamped_saved_traj
+sample_costs_channel: "SAMPLE_COSTS"          # lcmt_timestamped_saved_traj
+is_c3_mode_channel: "IS_C3_MODE"              # lcmt_timestamped_saved_traj
+
+radio_channel: "RADIO"
+
+plot_style: 'paper' # compact, paper, default
+start_time: 0
 #duration: 0.47
-duration: 1.5
+duration: -1
 # Plant properties
 
 # Desired RobotOutput plots
@@ -25,9 +48,6 @@ special_positions_to_plot: []
 special_velocities_to_plot: []
 special_efforts_to_plot: []
 
-# Finite State Machine Names
-fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 'Right Flight (RF)' ]
-
 # Desired osc plots
 plot_qp_costs: false
 plot_qp_solve_time: false
@@ -38,6 +58,10 @@ tracking_datas_to_plot:
 #  end_effector_target: {'dims': [0], 'derivs': ['accel']}
 #  end_effector_orientation_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
 #  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-plot_c3_debug: true
-plot_c3_tracking: true
+plot_c3_debug: false
+plot_c3_tracking: false
 plot_object_state: false
+
+# Desired sampling controller plots
+plot_sample_costs: true
+plot_is_c3_mode: true

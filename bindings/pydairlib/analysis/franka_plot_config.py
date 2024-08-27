@@ -10,15 +10,37 @@ except ImportError:
 class FrankaPlotConfig():
     def __init__(self, filename):
         data = load(io.open(filename, 'r'), Loader=Loader)
-        self.channel_x = data['channel_x']
-        self.channel_u = data['channel_u']
-        self.channel_osc = data['channel_osc']
-        self.channel_c3 = data['channel_c3']
-        self.channel_tray = data['channel_tray']
-        self.channel_c3_target = data['channel_c3_target']
-        self.channel_c3_actual = data['channel_c3_actual']
-        self.plot_style = data['plot_style']
+        self.franka_state_channel = data['franka_state_channel']
+        self.object_state_channel = data['object_state_channel']
+        self.osc_channel = data['osc_channel']
+        self.osc_debug_channel = data['osc_debug_channel']
 
+        self.c3_actor_curr_plan_channel = data['c3_actor_curr_plan_channel']
+        self.c3_object_curr_plan_channel = data['c3_object_curr_plan_channel']
+        self.c3_force_curr_channel = data['c3_force_curr_channel']
+        self.c3_debug_output_curr_channel = data['c3_debug_output_curr_channel']
+
+        self.c3_actor_best_plan_channel = data['c3_actor_best_plan_channel']
+        self.c3_object_best_plan_channel = data['c3_object_best_plan_channel']
+        self.c3_force_best_channel = data['c3_force_best_channel']
+        self.c3_debug_output_best_channel = data['c3_debug_output_best_channel']
+
+        self.c3_trajectory_exec_actor_channel = data['c3_trajectory_exec_actor_channel']
+        self.repos_trajectory_exec_actor_channel = data['repos_trajectory_exec_actor_channel']
+
+        self.tracking_trajectory_actor_channel = data['tracking_trajectory_actor_channel']
+        self.tracking_trajectory_object_channel = data['tracking_trajectory_object_channel']
+
+        self.c3_target_state_channel = data['c3_target_state_channel']
+        self.c3_actual_state_channel = data['c3_actual_state_channel']
+
+        self.sample_locations_channel = data['sample_locations_channel']
+        self.sample_costs_channel = data['sample_costs_channel']
+        self.is_c3_mode_channel = data['is_c3_mode_channel']
+
+        self.radio_channel = data['radio_channel']
+        
+        self.plot_style = data['plot_style']
         self.start_time = data['start_time']
         self.duration = data['duration']
         self.plot_joint_positions = data['plot_joint_positions']
@@ -37,8 +59,6 @@ class FrankaPlotConfig():
             data['special_efforts_to_plot'] if \
             data['special_efforts_to_plot'] else []
 
-        self.fsm_state_names = data['fsm_state_names']
-
         self.plot_qp_costs = data['plot_qp_costs']
         self.plot_qp_solve_time = data['plot_qp_solve_time']
         self.plot_qp_solutions = data['plot_qp_solutions']
@@ -49,3 +69,13 @@ class FrankaPlotConfig():
         self.plot_c3_debug = data['plot_c3_debug']
         self.plot_c3_tracking = data['plot_c3_tracking']
         self.plot_object_state = data['plot_object_state']
+        self.plot_sample_costs = data['plot_sample_costs']
+        self.plot_is_c3_mode = data['plot_is_c3_mode']
+        self.print_keys(data)
+
+    # define a function to print all the keys in the data dictionary
+    def print_keys(self, data):
+        print("PRINTING KEYS IN THE DATA DICTIONARY")
+        for key in data:
+            print(key)
+

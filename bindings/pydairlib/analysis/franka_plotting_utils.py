@@ -16,9 +16,9 @@ from pydrake.all import MultibodyPlant, Parser, RigidTransform, RotationMatrix, 
 franka_urdf = FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf")
 end_effector_model = "examples/jacktoy/urdf/end_effector_full.urdf"
-tray_model = "examples/jacktoy/urdf/jack.sdf"
+object_model = "examples/jacktoy/urdf/jack.sdf"
 tool_attachment_frame = np.array([0, 0, 0.107])
-franka_origin = np.array([0, 0, 0.0245])
+franka_origin = np.array([0, 0, 0])
 
 franka_default_channels = \
     {'FRANKA_STATE': dairlib.lcmt_robot_output,
@@ -33,14 +33,16 @@ franka_default_channels = \
      'C3_TRAJECTORY_OBJECT_CURR_PLAN': dairlib.lcmt_timestamped_saved_traj,
      'C3_TRAJECTORY_ACTOR_BEST_PLAN': dairlib.lcmt_timestamped_saved_traj,
      'C3_TRAJECTORY_OBJECT_BEST_PLAN': dairlib.lcmt_timestamped_saved_traj,
-    #  'C3_DEBUG': dairlib.lcmt_c3_output,
      'C3_DEBUG_BEST': dairlib.lcmt_c3_output,
      'C3_DEBUG_CURR': dairlib.lcmt_c3_output,
      'C3_ACTUAL': dairlib.lcmt_c3_state,
      'C3_TARGET': dairlib.lcmt_c3_state,
      'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,
      'RADIO': dairlib.lcmt_radio_out,
+     'SAMPLE_COSTS': dairlib.lcmt_timestamped_saved_traj,
+     'IS_C3_MODE': dairlib.lcmt_timestamped_saved_traj,
      'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}
+     
 
 
 def make_plant_and_context():
@@ -63,11 +65,11 @@ def make_plant_and_context():
                                                         end_effector_index),
                             T_EE_W)
 
-    tray_plant = MultibodyPlant(0.0)
-    tray_parser = Parser(tray_plant)
-    tray_parser.AddModels(tray_model)
+    object_plant = MultibodyPlant(0.0)
+    object_parser = Parser(object_plant)
+    object_parser.AddModels(object_model)
 
     franka_plant.Finalize()
-    tray_plant.Finalize()
-    return (franka_plant, franka_plant.CreateDefaultContext(), tray_plant,
-            tray_plant.CreateDefaultContext())
+    object_plant.Finalize()
+    return (franka_plant, franka_plant.CreateDefaultContext(), object_plant,
+            object_plant.CreateDefaultContext())

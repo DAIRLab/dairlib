@@ -487,6 +487,13 @@ def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict =
         t = time_sample_costs_dict['t'].squeeze()
         plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
         plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
+         # Create custom legend patches for the shaded areas
+        pink_patch = Patch(color='pink', alpha=0.5, label='C3 Mode')
+        gray_patch = Patch(color='gray', alpha=0.5, label='Repositioning Mode')
+        
+        # Add the custom patches to the existing legend
+        ps.axes[0].legend(handles=ps.axes[0].get_legend_handles_labels()[0] + [pink_patch, gray_patch],
+                        loc='lower right')
                         
     return ps
 
@@ -521,6 +528,13 @@ def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice, time_is_
         t = time_curr_and_best_costs_dict['t'].squeeze()
         plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
         plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
+         # Create custom legend patches for the shaded areas
+        pink_patch = Patch(color='pink', alpha=0.5, label='C3 Mode')
+        gray_patch = Patch(color='gray', alpha=0.5, label='Repositioning Mode')
+        
+        # Add the custom patches to the existing legend
+        ps.axes[0].legend(handles=ps.axes[0].get_legend_handles_labels()[0] + [pink_patch, gray_patch],
+                        loc='lower right')
 
     return ps
 

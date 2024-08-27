@@ -18,10 +18,29 @@ import time
 
 import matplotlib.pyplot as plt
 
+from typing import Tuple
+
+
+def initialize_from_input_map(init_map: GridMap, input_map: GridMap) -> None:
+    init_map.setGeometry(
+        input_map.getLength(),
+        input_map.getResolution(),
+        input_map.getPosition()
+    )
+    # Initialize to all safe terrain
+    init_map["segmentation"][:] = np.ones(init_map.getSize())
+
+
+def clopen(img: np.ndarray):
+    kernel = np.ones((3, 3), np.uint8)
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+    return img
+
 
 class TerrainSegmentationSystem(LeafSystem):
 
-    def __init__(self):
+    def __init__(self, safety_callbacks):
         super().__init__()
         self.set_name("S3")
 
@@ -50,86 +69,48 @@ class TerrainSegmentationSystem(LeafSystem):
             self.UpdateTerrainSegmentation
         )
         self.safety_hysteresis = 0.6
-
-        self.kernel_size = 0.17
-
-        # gaussian blur in meters
-        self.variance_blur = self.kernel_size / 2
-        self.laplacian_blur = self.kernel_size / 4
-        self.var_safety_margin = self.kernel_size / 2.0
-        self.safe_inf_norm = 0.04  # maximum difference between map and smoothed map
-
-        self.below_edge_factor = 5.0
+        self.kernel_length = 0.17
+        self.erosion_kernel_length = self.kernel_length / 2.0
         self.safety_threshold = 0.7
-        self.debug_mode = False
 
-    def get_raw_safety_score(self, elevation: np.ndarray,
-                             elevation_inpainted,
-                             resolution: float):
-        ksize_int = int(self.kernel_size / resolution + 0.5)
+        self.safety_criterion_callbacks = safety_callbacks
 
-        lowpass = cv2.boxFilter(
-            elevation_inpainted, -1, (ksize_int, ksize_int),
-            normalize=True
-        )
+    def get_raw_safety_score(
+            self, elevation: np.ndarray, elevation_inpainted: np.ndarray,
+            resolution: float) -> np.ndarray:
 
-        stddev = gaussian_filter(
-            np.abs(elevation_inpainted - lowpass),
-            self.variance_blur
-        )
+        raw_safety = np.ones_like(elevation_inpainted)
+        kernel = self.get_kernel_size(resolution)
 
-        dilation_kernel = cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE, (ksize_int, ksize_int)
-        )
-        stddev = cv2.dilate(stddev, dilation_kernel)
+        for _, callback in self.safety_criterion_callbacks.items():
+            raw_safety = raw_safety * callback(
+                elevation_inpainted, kernel, resolution
+            )
 
-        var_safety_score = np.minimum(
-            np.ones_like(stddev),
-            np.exp(25 * (self.safe_inf_norm - stddev))
-        )
-
-        median = cv2.medianBlur(elevation_inpainted, 5)
-        curvature = gaussian_laplace(
-            median,
-            sigma=int(self.laplacian_blur / resolution + 0.5)
-        )
-        below_edges = np.maximum(curvature, np.zeros_like(curvature))
-
-        second_order_safety_score = np.exp(
-            (-self.below_edge_factor / resolution) * below_edges
-        )
-
-        second_order_safety_score = np.minimum(
-            second_order_safety_score,
-            np.ones_like(second_order_safety_score)
-        )
-
-        # treat safety scores like independent probabilities
-        raw_safety = np.sqrt(var_safety_score * second_order_safety_score)
+        raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         raw_safety[np.isnan(elevation)] = 0
 
-        if self.debug_mode:
-            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(17, 17))
+        return raw_safety
 
-            im = ax1.imshow(elevation, cmap='inferno')
-            plt.colorbar(im, ax=ax1)
-            ax1.set_title('Elevation')
+    def get_kernel_size(self, resolution: float, length=None) -> Tuple[int, int]:
+        length = self.kernel_length if length is None else length
+        ksize_int = int(length / resolution + 0.5)
+        return ksize_int, ksize_int
 
-            im = ax2.imshow(var_safety_score, cmap='inferno')
-            plt.colorbar(im, ax=ax2)
-            ax2.set_title('Variance Safety Score')
-
-            ax3.set_title('Curvature Safety Score')
-            ax3.imshow(second_order_safety_score, cmap='inferno')
-            plt.colorbar(im, ax=ax3)
-
-            ax4.set_title('Combined Safety Score')
-            ax4.imshow(raw_safety, cmap='inferno')
-            plt.colorbar(im, ax=ax4)
-
-            plt.show()
-
-        return raw_safety, lowpass
+    def cleanup_and_add_hysteresis(
+            self, raw_safety_score: np.ndarray,
+            prev_segmentation: np.ndarray, resolution: float) -> np.ndarray:
+        final_safety_score = np.minimum(
+            np.ones_like(raw_safety_score),
+            raw_safety_score + self.safety_hysteresis * prev_segmentation
+        )
+        erosion_ksize = self.get_kernel_size(
+            resolution, length=self.erosion_kernel_length
+        )
+        erosion_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, erosion_ksize
+        )
+        return cv2.erode(final_safety_score, erosion_kernel)
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
@@ -149,13 +130,7 @@ class TerrainSegmentationSystem(LeafSystem):
 
         # make the previous segmentation match the geometry of the elevation map
         if segmented_map.getSize()[0] == 0:
-            segmented_map.setGeometry(
-                elevation_map.getLength(),
-                elevation_map.getResolution(),
-                elevation_map.getPosition()
-            )
-            # Initialize to all safe terrain
-            segmented_map["segmentation"][:] = np.ones(segmented_map.getSize())
+            initialize_from_input_map(segmented_map, elevation_map)
 
         segmented_map.move(elevation_map.getPosition())
         segmented_map.convertToDefaultStartIndex()
@@ -167,42 +142,33 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
-        raw_safety_score, upsampled = self.get_raw_safety_score(
+        raw_safety_score = self.get_raw_safety_score(
             elevation_map['elevation'],
             elevation_map['elevation_inpainted'],
             elevation_map.getResolution()
         )
 
-        segmented_map['interpolated'][:] = upsampled
+        smoothed = cv2.boxFilter(
+            elevation_map['elevation_inpainted'],
+            -1,
+            self.get_kernel_size(elevation_map.getResolution()),
+            normalize=True)
 
+        segmented_map['interpolated'][:] = smoothed
         segmented_map["raw_safety_score"][:] = raw_safety_score
-        final_safety_score = np.minimum(
-            np.ones_like(raw_safety_score),
-            raw_safety_score + self.safety_hysteresis * prev_segmentation
+        segmented_map['safety_score'][:] = self.cleanup_and_add_hysteresis(
+            raw_safety_score, prev_segmentation, elevation_map.getResolution()
         )
 
-        erosion_ksize_int = int(
-            self.var_safety_margin /
-            elevation_map.getResolution() + 0.5
-        ) + 1
-        erosion_kernel = cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE, (erosion_ksize_int, erosion_ksize_int)
-        )
-        final_safety_score = cv2.erode(final_safety_score, erosion_kernel)
-
-        segmented_map['safety_score'][:] = final_safety_score
-
-        safe = (segmented_map[
-                    'safety_score'] > self.safety_threshold).astype(float)
+        safe = (
+            segmented_map['safety_score'] > self.safety_threshold
+        ).astype(float)
 
         # clean up small holes in the safe regions
-        kernel = np.ones((3, 3), np.uint8)
-        safe = cv2.morphologyEx(safe, cv2.MORPH_CLOSE, kernel)
-        safe = cv2.morphologyEx(safe, cv2.MORPH_OPEN, kernel)
+        safe = clopen(safe)
 
         segmented_map['segmentation'][:] = safe
 
         safe_elevation = np.copy(elevation_map['elevation'])
         safe_elevation[~(safe > 0)] = np.nan
-
         segmented_map['segmented_elevation'][:] = safe_elevation

@@ -46,6 +46,50 @@ def plot_polygons_with_holes(polys):
     plt.show()
 
 
+def get_polygons_by_contour_extraction(mask: np.ndarray):
+    safe_regions, hierarchy = cv2.findContours(
+        mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if hierarchy is None:
+        return []
+
+    hierarchy = hierarchy.squeeze()
+    hierarchy = np.reshape(hierarchy, (-1, 4))
+
+    # vector is an outer contour if is has no parent
+    def is_outer_contour(hierarchy_vector):
+        return hierarchy_vector[-1] < 0
+
+    polygons = []
+    for i, boundary in enumerate(safe_regions):
+        boundary = np.fliplr(boundary.squeeze())
+        if is_outer_contour(hierarchy[i]):
+            boundary_points = np.zeros_like(boundary, dtype=float)
+            for j in range(boundary_points.shape[0]):
+                boundary_points[j] = grid.getPosition(
+                    index=boundary[j]
+                )
+
+            polygon = (boundary_points.transpose(), [])
+            child_index = hierarchy[i][2]
+
+            while child_index > 0:
+                hole_boundary = np.fliplr(safe_regions[child_index].squeeze())
+                hole_points = np.zeros_like(
+                    hole_boundary, dtype=float
+                )
+                for j in range(hole_points.shape[0]):
+                    hole_points[j] = grid.getPosition(
+                        index=hole_boundary[j]
+                    )
+                polygon[1].append(hole_points.transpose())
+                child_index = hierarchy[child_index][0]
+            polygons.append(polygon)
+
+    return polygons
+
+
 class ConvexTerrainDecompositionSystem(LeafSystem):
 
     def __init__(self):
@@ -91,50 +135,14 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
 
-        safe_regions, hierarchy = cv2.findContours(
-            safe_terrain_image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
-        )
+        polygons = get_polygons_by_contour_extraction(safe_terrain_image)
 
-        if hierarchy is None:
+        if not polygons:
             return
 
-        hierarchy = hierarchy.squeeze()
-        hierarchy = np.reshape(hierarchy, (-1, 4))
-
-        # vector is an outer contour if is has no parent
-        def is_outer_contour(hierarchy_vector):
-            return hierarchy_vector[-1] < 0
-
-        polygons = []
-        for i, boundary in enumerate(safe_regions):
-            boundary = np.fliplr(boundary.squeeze())
-            if is_outer_contour(hierarchy[i]):
-                boundary_points = np.zeros_like(boundary, dtype=float)
-                for j in range(boundary_points.shape[0]):
-                    boundary_points[j] = grid.getPosition(
-                        index=boundary[j]
-                    )
-
-                polygon = (boundary_points.transpose(), [])
-                child_index = hierarchy[i][2]
-
-                while child_index > 0:
-                    hole_boundary = np.fliplr(safe_regions[child_index].squeeze())
-                    hole_points = np.zeros_like(
-                        hole_boundary, dtype=float
-                    )
-                    for j in range(hole_points.shape[0]):
-                        hole_points[j] = grid.getPosition(
-                            index=hole_boundary[j]
-                        )
-                    polygon[1].append(hole_points.transpose())
-                    child_index = hierarchy[child_index][0]
-                polygons.append(polygon)
-
-        import pdb; pdb.set_trace()
         convex_polygons = ProcessTerrain2d(polygons, 0.25)
 
-        if polygons and not convex_polygons:
+        if not convex_polygons:
             return
 
         for polygon in convex_polygons:

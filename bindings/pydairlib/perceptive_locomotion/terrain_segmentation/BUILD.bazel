@@ -15,6 +15,7 @@ py_binary(
     name = "test_segmentation_on_log",
     srcs = ["test_segmentation_on_log.py"],
     deps = [
+        ":segmentation_criteria",
         ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
@@ -53,10 +54,18 @@ py_library(
     srcs = ["terrain_segmentation_system.py"],
     deps = [
         ":vision_utils",
+        ":segmentation_criteria",
         "//bindings/grid_map",
         "@drake//bindings/pydrake",
     ],
 )
+
+py_library(
+    name = "segmentation_criteria",
+    srcs = ["segmentation_criteria.py"],
+    deps = [],
+)
+
 
 py_library(
     name = "whittling_solver",

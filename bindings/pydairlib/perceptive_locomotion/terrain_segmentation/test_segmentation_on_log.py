@@ -37,6 +37,9 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
 
+import pydairlib.perceptive_locomotion.terrain_segmentation. \
+    segmentation_criteria as seg_criteria
+
 
 from argparse import ArgumentParser
 
@@ -76,7 +79,12 @@ def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
     terrain_segmentation = PlaneSegmentationSystem(
         'systems/perception/ethz_plane_segmentation/params.yaml'
     ) \
-        if mode == 'planar' else TerrainSegmentationSystem()
+        if mode == 'planar' else TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'variance_criterion': seg_criteria.variance_criterion
+        }
+    )
 
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
@@ -216,14 +224,19 @@ def run_profiling(logfile):
             'CASSIE_ELEVATION_MAP': lcmt_grid_map,
             state_channel: lcmt_robot_output
         },
-        start_time=3,
+        start_time=0,
         duration=-1,
         data_processing_callback=process_grid_maps
     )
     plane_segmentation = PlaneSegmentationSystem(
         'systems/perception/ethz_plane_segmentation/params.yaml'
     )
-    s3 = TerrainSegmentationSystem()
+    s3 = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'variance_criterion': seg_criteria.variance_criterion
+        }
+    )
 
     results = [
         profile_segmentation(plane_segmentation, deepcopy(grid_maps)),
@@ -231,7 +244,6 @@ def run_profiling(logfile):
     ]
 
     matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-    # matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 15, 'family': 'serif'}
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
     matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
@@ -262,7 +274,7 @@ def run_profiling(logfile):
     plt.ylabel('IOU  with Next Frame')
     fig.tight_layout()
 
-# animate_segmentations(results)
+    animate_segmentations(results)
     plt.show()
 
 
@@ -309,8 +321,8 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    visualize(args.logfile)
-    # run_profiling(args.logfile)
+    # visualize(args.logfile)
+    run_profiling(args.logfile)
 
 
 if __name__ == '__main__':

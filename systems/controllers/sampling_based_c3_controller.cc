@@ -254,6 +254,11 @@ SamplingC3Controller::SamplingC3Controller(
     &SamplingC3Controller::OutputAllSampleCosts
   ).get_index();
 
+  curr_and_best_sample_costs_port_ = this->DeclareAbstractOutputPort(
+    "current_and_best_sample_cost", std::vector<double>(2, -1), 
+    &SamplingC3Controller::OutputCurrAndBestSampleCost
+  ).get_index();
+
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
 
@@ -531,6 +536,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
+
+  // This is a redundant value used only for plotting and analysis.
+  // update current and best sample costs.
+  curr_and_best_sample_cost_ = {all_sample_costs_[CURRENT_LOCATION_INDEX],
+                                all_sample_costs_[best_sample_index_]};
 
   // Update the execution trajectories.  Both C3 and repositioning trajectories
   // are updated, but the is_doing_c3_ flag determines which one is used via the
@@ -1056,6 +1066,12 @@ void SamplingC3Controller::OutputAllSampleCosts(
     const drake::systems::Context<double>& context,
     std::vector<double>* all_sample_costs) const {
   *all_sample_costs = all_sample_costs_;
+}
+
+void SamplingC3Controller::OutputCurrAndBestSampleCost(
+    const drake::systems::Context<double>& context,
+    std::vector<double>* curr_and_best_sample_cost) const {
+  *curr_and_best_sample_cost = curr_and_best_sample_cost_;
 }
 
 } // namespace systems 

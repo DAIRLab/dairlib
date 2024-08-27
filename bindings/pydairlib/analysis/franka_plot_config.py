@@ -36,6 +36,7 @@ class FrankaPlotConfig():
 
         self.sample_locations_channel = data['sample_locations_channel']
         self.sample_costs_channel = data['sample_costs_channel']
+        self.curr_and_best_costs_channel = data['curr_and_best_sample_costs_channel']
         self.is_c3_mode_channel = data['is_c3_mode_channel']
 
         self.radio_channel = data['radio_channel']
@@ -70,6 +71,7 @@ class FrankaPlotConfig():
         self.plot_c3_tracking = data['plot_c3_tracking']
         self.plot_object_state = data['plot_object_state']
         self.plot_sample_costs = data['plot_sample_costs']
+        self.plot_curr_and_best_sample_costs = data['plot_curr_and_best_sample_costs']
         self.plot_is_c3_mode = data['plot_is_c3_mode']
         self.print_keys(data)
 

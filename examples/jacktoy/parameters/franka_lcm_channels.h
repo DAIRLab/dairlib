@@ -33,6 +33,7 @@ struct FrankaLcmChannels {
 
   std::string sample_locations_channel;
   std::string sample_costs_channel;
+  std::string curr_and_best_sample_costs_channel;
   std::string is_c3_mode_channel;
 
   template <typename Archive>
@@ -66,6 +67,7 @@ struct FrankaLcmChannels {
 
     a->Visit(DRAKE_NVP(sample_locations_channel));
     a->Visit(DRAKE_NVP(sample_costs_channel));
+    a->Visit(DRAKE_NVP(curr_and_best_sample_costs_channel));
     a->Visit(DRAKE_NVP(is_c3_mode_channel));
   }
 };

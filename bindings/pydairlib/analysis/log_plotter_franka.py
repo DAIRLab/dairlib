@@ -101,6 +101,13 @@ def main():
                                     mbp_plots.load_sample_costs,
                                     plot_config.sample_costs_channel)
     
+    if plot_config.plot_curr_and_best_sample_costs:
+        time_curr_and_best_costs_dict = get_log_data(log, default_channels,
+                                    plot_config.start_time,
+                                    plot_config.duration,
+                                    mbp_plots.load_curr_and_best_costs,
+                                    plot_config.curr_and_best_costs_channel)
+    
     if plot_config.plot_is_c3_mode:
         time_is_c3_mode_dict = get_log_data(log, default_channels,
                                     plot_config.start_time,
@@ -128,7 +135,12 @@ def main():
         else:
             plot = mbp_plots.plot_sample_costs(time_sample_costs_dict, t_sample_costs_slice)
 
-
+    if plot_config.plot_curr_and_best_sample_costs:
+        t_curr_and_best_costs_slice = slice(time_curr_and_best_costs_dict['t'].size)
+        if (plot_config.plot_is_c3_mode):
+            plot = mbp_plots.plot_curr_and_best_costs(time_curr_and_best_costs_dict, t_curr_and_best_costs_slice, time_is_c3_mode_dict)
+        else:
+            plot = mbp_plots.plot_curr_and_best_costs(time_curr_and_best_costs_dict, t_curr_and_best_costs_slice)
 
     if plot_config.plot_is_c3_mode:
         # plots the c3 vs repositioning in separate plot

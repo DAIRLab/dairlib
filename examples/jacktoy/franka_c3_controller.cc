@@ -415,6 +415,8 @@ int DoMain(int argc, char* argv[]) {
     builder.AddSystem<systems::SampleLocationSender>();
   auto sample_costs_sender = 
     builder.AddSystem<systems::SampleCostSender>();
+  auto curr_and_best_sample_costs_sender = 
+    builder.AddSystem<systems::SampleCostSender>("curr_and_best_sample_costs_sender");
   auto is_c3_mode_sender = 
     builder.AddSystem<systems::IsC3ModeSender>();
 
@@ -426,6 +428,10 @@ int DoMain(int argc, char* argv[]) {
   auto sample_costs_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_costs_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto curr_and_best_sample_costs_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto is_c3_mode_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -554,10 +560,14 @@ int DoMain(int argc, char* argv[]) {
                   sample_costs_sender->get_input_port());
   builder.Connect(controller->get_output_port_is_c3_mode(),
                   is_c3_mode_sender->get_input_port());
+  builder.Connect(controller->get_output_port_curr_and_best_sample_costs(),
+                  curr_and_best_sample_costs_sender->get_input_port());
   builder.Connect(sample_locations_sender->get_output_port(),
                   sample_locations_publisher->get_input_port());
   builder.Connect(sample_costs_sender->get_output_port(),
                   sample_costs_publisher->get_input_port());
+  builder.Connect(curr_and_best_sample_costs_sender->get_output_port(),
+                  curr_and_best_sample_costs_publisher->get_input_port());
   builder.Connect(is_c3_mode_sender->get_output_port(),
                   is_c3_mode_publisher->get_input_port());
 

@@ -10,7 +10,7 @@ class SampleCostSender: public drake::systems::LeafSystem<double> {
 	// This is a system that reads the all_sample_costs output of 
 	// std::vector<Eigen::vector3d> from the sampling controller and outputs it as an lcm message.
  public:
-  SampleCostSender();
+  SampleCostSender(std::string name = "sample_cost_sender");
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_sample_costs() const {

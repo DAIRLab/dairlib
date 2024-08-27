@@ -10,8 +10,9 @@
 namespace dairlib {
 namespace systems {
 
-SampleCostSender::SampleCostSender() {
-  this->set_name("sample_cost_sender");
+SampleCostSender::SampleCostSender(std::string name) {
+  if(name != "sample_cost_sender")
+    this->set_name(name);
 
   sample_costs_input_port_ = this->DeclareAbstractInputPort(
           "sample_costs_input",

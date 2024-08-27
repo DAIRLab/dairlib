@@ -359,6 +359,38 @@ def process_sample_costs(data):
     return {'t': t,
             'costs': costs,}
 
+def process_curr_and_best_sample_costs(data):
+    t = []
+    curr_costs = []
+    best_costs = []
+    # Each message is a timestamped saved trajectory that has a timestamp and 
+    # a list of saved trajectories. 
+    # Here we have only one saved trajectory per message containing a vector of 
+    # costs for each sample considered in that time stamp/control loop.
+    # print("message type is " + str(type(data[0])))
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        # num_samples = msg.saved_traj.trajectories[0].num_points
+        # print("Number of trajectories: " + str(msg.saved_traj.num_trajectories))         #Should print 1
+        # print("Trajectory names: " + str(msg.saved_traj.trajectory_names[0]))            #Should print "curr_and_best_sample_costs"
+        # Datapoints here are the list of costs for each sample in the trajectory
+        # at that time stamp.
+        # print("Number of datapoints: " + str(msg.saved_traj.trajectories[0].num_points))
+        sample_costs_vector = msg.saved_traj.trajectories[0].datapoints
+        curr_costs.append(sample_costs_vector)
+    # These two should be the same length corresponding to the number of
+    # messages.
+    # print("Length of time vector: " + str(len(t)))
+    # print("Length of costs: " + str(len(costs)))
+
+    t = np.array(t)
+    curr_costs = np.array(curr_costs)
+    best_costs = np.array(best_costs)
+
+    return {'t': t,
+            'curr_costs': curr_costs,
+            'best_costs': best_costs,}
+
 def process_is_c3_mode(data):
     t = []
     is_c3_mode = []
@@ -414,9 +446,13 @@ def load_object_state(data, object_state_channel):
     return object_state
 
 def load_sample_costs(data, sample_costs_channel):
-    print("This is sample costs channel" + sample_costs_channel)
+    # print("This is sample costs channel" + sample_costs_channel)
     sample_costs = process_sample_costs(data[sample_costs_channel])
     return sample_costs
+
+def load_curr_and_best_costs(data, curr_and_best_costs_channel):
+    curr_and_best_costs = process_curr_and_best_sample_costs(data[curr_and_best_costs_channel])
+    return curr_and_best_costs
 
 def load_is_c3_mode(data, is_c3_mode_channel):
     is_c3_mode = process_is_c3_mode(data[is_c3_mode_channel])
@@ -425,12 +461,12 @@ def load_is_c3_mode(data, is_c3_mode_channel):
 def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict = None):
     ps = plot_styler.PlotStyler()
     num_samples = time_sample_costs_dict['costs'].shape[2]
-    print("shape of costs: " + str(time_sample_costs_dict['costs'].shape))
+    # print("shape of costs: " + str(time_sample_costs_dict['costs'].shape))
     keys_to_plot = [f'sample_{i}_costs' for i in range(num_samples)]
     data_dict = time_sample_costs_dict
     # add cost to the dictionary
     for i in range(num_samples):
-        print("key", keys_to_plot[i])
+        # print("key", keys_to_plot[i])
         data_dict[keys_to_plot[i]] = time_sample_costs_dict['costs'][:,:, i]
 
     legend_entries = {f'sample_{i}_costs': [f'Sample {i} Costs'] for i in range(num_samples)}
@@ -445,16 +481,47 @@ def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict =
          'ylabel': 'Cost',
          'title': 'Sample Costs vs time'},
         ps)
+        
+    if(time_is_c3_mode_dict is not None):
+        is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
+        t = time_sample_costs_dict['t'].squeeze()
+        plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
+        plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
+                        
+    return ps
+
+def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice, time_is_c3_mode_dict = None):
+    ps = plot_styler.PlotStyler()
+    # This inclused current location costs and best sample costs
+    num_samples = time_curr_and_best_costs_dict['curr_costs'].shape[2]
+    # print("shape of costs: " + str(time_curr_and_best_costs_dict['curr_costs'].shape))
+    # keys_to_plot = [f'curr_sample_{i}_costs' for i in range(num_samples)]
+    keys_to_plot = ['curr_sample_cost', 'best_sample_cost']
+    data_dict = time_curr_and_best_costs_dict
+    # add cost to the dictionary
+    for i in range(num_samples):
+        # print("key", keys_to_plot[i])
+        data_dict[keys_to_plot[i]] = time_curr_and_best_costs_dict['curr_costs'][:,:, i]
+    
+    legend_entries = {'curr_sample_cost': ['Current Sample Cost'], 'best_sample_cost': ['Best Sample Cost']}
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        keys_to_plot,
+        {key: time_slice for key in keys_to_plot},
+        legend_entries,
+        {'xlabel': 'Time',
+         'ylabel': 'Cost',
+         'title': 'Current and Best Sample Cost vs time'},
+        ps)
     
     if(time_is_c3_mode_dict is not None):
-        data_dict["is_c3_mode"] = time_is_c3_mode_dict['is_c3_mode'][:,:,0]
-        # shade the regions where the C3 mode is active
-        for i in range(len(time_is_c3_mode_dict['is_c3_mode'])-1):
-            if(time_is_c3_mode_dict['is_c3_mode'][i] == 1):
-                plt.axvspan(time_sample_costs_dict['t'][i], time_sample_costs_dict['t'][i+1], color='pink', alpha=0.3)
-            else:
-                plt.axvspan(time_sample_costs_dict['t'][i], time_sample_costs_dict['t'][i+1], color='gray', alpha=0.3)
-                        
+        is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
+        t = time_curr_and_best_costs_dict['t'].squeeze()
+        plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
+        plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
+
     return ps
 
 def plot_is_c3_mode(time_is_c3_mode_dict, time_slice):

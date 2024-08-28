@@ -484,9 +484,23 @@ def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict =
         
     if(time_is_c3_mode_dict is not None):
         is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
+        is_c3_mode = is_c3_mode.astype(bool)
+        right_shifted_is_c3_mode = np.append(is_c3_mode[0], is_c3_mode[:-1])
+
+        c3_mode_shading_mask = np.ravel(np.column_stack(
+            (right_shifted_is_c3_mode, is_c3_mode)))
+        not_c3_mode_shading_mask = np.ravel(np.column_stack(
+            (~right_shifted_is_c3_mode, ~is_c3_mode)))
+    
         t = time_sample_costs_dict['t'].squeeze()
-        plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
-        plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.5, transform=ps.axes[0].get_xaxis_transform())
+        double_t = np.repeat(t, 2)
+        plt.fill_between(double_t, 0, 1, where=c3_mode_shading_mask,
+                         color='pink', alpha=0.5,
+                         transform=ps.axes[0].get_xaxis_transform())
+        plt.fill_between(double_t, 0, 1, where=not_c3_mode_shading_mask,
+                         color='gray', alpha=0.5,
+                         transform=ps.axes[0].get_xaxis_transform())
+
          # Create custom legend patches for the shaded areas
         pink_patch = Patch(color='pink', alpha=0.5, label='C3 Mode')
         gray_patch = Patch(color='gray', alpha=0.5, label='Repositioning Mode')
@@ -526,8 +540,23 @@ def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice, time_is_
     if(time_is_c3_mode_dict is not None):
         is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
         t = time_curr_and_best_costs_dict['t'].squeeze()
-        plt.fill_between(t, 0, 1, where=is_c3_mode == 1, color='pink', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
-        plt.fill_between(t, 0, 1, where=is_c3_mode == 0, color='gray', alpha=0.3, transform=ps.axes[0].get_xaxis_transform())
+        
+        is_c3_mode = is_c3_mode.astype(bool)
+        right_shifted_is_c3_mode = np.append(is_c3_mode[0], is_c3_mode[:-1])
+
+        c3_mode_shading_mask = np.ravel(np.column_stack(
+            (right_shifted_is_c3_mode, is_c3_mode)))
+        not_c3_mode_shading_mask = np.ravel(np.column_stack(
+            (~right_shifted_is_c3_mode, ~is_c3_mode)))
+
+        double_t = np.repeat(t, 2)
+        plt.fill_between(double_t, 0, 1, where=c3_mode_shading_mask,
+                         color='pink', alpha=0.5,
+                         transform=ps.axes[0].get_xaxis_transform())
+        plt.fill_between(double_t, 0, 1, where=not_c3_mode_shading_mask,
+                         color='gray', alpha=0.5,
+                         transform=ps.axes[0].get_xaxis_transform())
+
          # Create custom legend patches for the shaded areas
         pink_patch = Patch(color='pink', alpha=0.5, label='C3 Mode')
         gray_patch = Patch(color='gray', alpha=0.5, label='Repositioning Mode')

@@ -528,6 +528,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
           finished_reposition_flag_ = false;
       }
+      // Controller will switch to pursuing a new sample from its previous
+      // repositioning target only if the cost of switching to that new sample
+      // (with repos_to_repos hysteresis) is less than switching to C3 from
+      // current location (with repos_to_c3 hysteresis), so add the
+      // repos_to_repos hysteresis value here before the comparison to the
+      // current location C3 cost with repos_to_c3 hysteresis afterwards.
+      else {
+        best_additional_sample_cost += sampling_params_.hysteresis_between_repos_targets;
+      }
     }
     if (best_additional_sample_cost > 
         all_sample_costs_[CURRENT_LOCATION_INDEX] + 

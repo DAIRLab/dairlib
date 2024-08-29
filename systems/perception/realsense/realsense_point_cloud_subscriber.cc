@@ -14,7 +14,6 @@ using drake::systems::Context;
 using drake::systems::EventStatus;
 
 using pcl::PointCloud;
-\
 using rs2_systems::SingleRSInterface;
 
 template <typename PointT>

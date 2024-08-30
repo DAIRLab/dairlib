@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
   /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
   /// messages to Cassie
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-      "udpm://239.255.76.67:7667?ttl=0");
+      "udpm://239.255.76.67:7667?ttl=1");
 
   // Create trifinger and cube state receiver.
   auto trifinger_state_sub =

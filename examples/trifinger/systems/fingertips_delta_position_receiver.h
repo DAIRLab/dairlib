@@ -81,10 +81,12 @@ class FingertipDeltaPositionReceiver
   drake::systems::OutputPortIndex fingertips_target_port_;
   drake::systems::OutputPortIndex cur_fingertips_pos_port_;
   drake::systems::OutputPortIndex lcm_cur_fingertips_pos_port_;
-  drake::systems::DiscreteStateIndex fingertips_target_idx_;
-  drake::systems::DiscreteStateIndex start_fingertips_idx_;
-  drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
+  drake::systems::DiscreteStateIndex fingertips_target_pos_idx_;
+  drake::systems::DiscreteStateIndex fingertips_target_vel_idx_;
+  drake::systems::DiscreteStateIndex start_fingertips_pos_traj_idx_;
+  drake::systems::DiscreteStateIndex start_fingertips_vel_traj_idx_;
   drake::systems::DiscreteStateIndex start_time_traj_idx_;
+  drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
   drake::systems::DiscreteStateIndex cur_fingertips_pos_idx_;
 
   Eigen::Vector3d min_fingertips_delta_position_;

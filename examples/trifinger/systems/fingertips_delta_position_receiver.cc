@@ -69,8 +69,12 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
       &FingertipDeltaPositionReceiver::DiscreteVariableUpdate);
 
   // Discrete state which stores the desired fingertips position.
-  fingertips_target_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
-  start_fingertips_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  fingertips_target_pos_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  fingertips_target_vel_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  start_fingertips_pos_traj_idx_ =
+      DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  start_fingertips_vel_traj_idx_ =
+      DeclareDiscreteState(Eigen::VectorXd::Zero(9));
   prev_target_timestamp_idx_ =
       DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
   start_time_traj_idx_ = DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
@@ -96,18 +100,35 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
           .EvalBodyPoseInWorld(*context_,
                                plant_.GetBodyByName(fingertip_0_name_))
           .translation();
+  auto fingertip_0_vel =
+      plant_
+          .EvalBodySpatialVelocityInWorld(
+              *context_, plant_.GetBodyByName(fingertip_0_name_))
+          .translational();
   auto fingertip_120_pos =
       plant_
           .EvalBodyPoseInWorld(*context_,
                                plant_.GetBodyByName(fingertip_120_name_))
           .translation();
+  auto fingertip_120_vel =
+      plant_
+          .EvalBodySpatialVelocityInWorld(
+              *context_, plant_.GetBodyByName(fingertip_120_name_))
+          .translational();
   auto fingertip_240_pos =
       plant_
           .EvalBodyPoseInWorld(*context_,
                                plant_.GetBodyByName(fingertip_240_name_))
           .translation();
+  auto fingertip_240_vel =
+      plant_
+          .EvalBodySpatialVelocityInWorld(
+              *context_, plant_.GetBodyByName(fingertip_240_name_))
+          .translational();
   Eigen::VectorXd cur_fingertips_pos(9);
+  Eigen::VectorXd cur_fingertips_vel(9);
   cur_fingertips_pos << fingertip_0_pos, fingertip_120_pos, fingertip_240_pos;
+  cur_fingertips_vel << fingertip_0_vel, fingertip_120_vel, fingertip_240_vel;
   discrete_state->get_mutable_vector(cur_fingertips_pos_idx_)
       .set_value(cur_fingertips_pos);
 
@@ -125,10 +146,15 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
       Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
   discrete_state->get_mutable_vector(start_time_traj_idx_)
       .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
-  discrete_state->get_mutable_vector(start_fingertips_idx_)
+  discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)
       .set_value(cur_fingertips_pos);
-  discrete_state->get_mutable_vector(fingertips_target_idx_)
+  discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
+      .set_value(cur_fingertips_vel);
+  discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
       .set_value(fingertips_target_pos);
+  discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
+      .set_value(
+          Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->targetVel, 9));
   discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
       .set_value(
           (Eigen::VectorXd::Ones(1) * fingertips_delta_pos_lcm_msg->utime));
@@ -140,22 +166,32 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
     Trajectory<double>* target_traj) const {
   // retrieve fingertips target positions from the current discrete state.
   auto fingertips_target_pos =
-      context.get_discrete_state(fingertips_target_idx_).get_value();
+      context.get_discrete_state(fingertips_target_pos_idx_).get_value();
+  auto fingertips_target_vel =
+      context.get_discrete_state(fingertips_target_vel_idx_).get_value();
   auto cur_fingertips_pos =
-      context.get_discrete_state(start_fingertips_idx_).get_value();
+      context.get_discrete_state(start_fingertips_pos_traj_idx_).get_value();
+  auto cur_fingertips_vel =
+      context.get_discrete_state(start_fingertips_vel_traj_idx_).get_value();
 
   double delta_pos_update_period = 1.0 / delta_pos_update_frequency_;
 
+  // generate a CubicSpline trajectory that can be fed to OSC controller.
   Eigen::VectorXd knots(2);
   auto start_time_traj =
       context.get_discrete_state(start_time_traj_idx_).get_value()[0];
   knots << start_time_traj, start_time_traj + delta_pos_update_period;
+
   Eigen::MatrixXd samples(cur_fingertips_pos.size(), 2);
   samples.col(0) = cur_fingertips_pos;
   samples.col(1) = fingertips_target_pos;
 
-  // generate a constant trajectory that can be fed to OSC controller.
-  auto traj = PiecewisePolynomial<double>::FirstOrderHold(knots, samples);
+  Eigen::MatrixXd samples_dot(cur_fingertips_vel.size(), 2);
+  samples_dot.col(0) = cur_fingertips_vel;
+  samples_dot.col(1) = fingertips_target_vel;
+
+  auto traj =
+      PiecewisePolynomial<double>::CubicHermite(knots, samples, samples_dot);
   auto casted_target_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           target_traj);
@@ -167,7 +203,7 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTarget(
     TimestampedVector<double>* fingertips_target) const {
   // retrieve fingertips target positions from the current discrete state.
   auto fingertips_target_pos =
-      context.get_discrete_state(fingertips_target_idx_).get_value();
+      context.get_discrete_state(fingertips_target_pos_idx_).get_value();
   fingertips_target->SetDataVector(fingertips_target_pos);
   fingertips_target->set_timestamp(context.get_time());
 }

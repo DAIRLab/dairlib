@@ -144,6 +144,9 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   }
   fingertips_target_pos +=
       Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
+  fingertips_target_pos[2] = 0.0325;
+  fingertips_target_pos[5] = 0.0325;
+  fingertips_target_pos[8] = 0.0325;
   discrete_state->get_mutable_vector(start_time_traj_idx_)
       .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
   discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)

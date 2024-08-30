@@ -92,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
 
   // create lcm systems.
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
   auto fingertips_delta_position_sub = builder.AddSystem(

@@ -243,7 +243,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
-  std::vector<Eigen::MatrixXd> Q_;
+  mutable std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::MatrixXd> U_;
@@ -284,6 +284,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;
   mutable bool finished_reposition_flag_ = false;
+  // This flag is meant to indicate the first time the object reaches within 
+  // some fixed radius of the target. When this is true, the controller will
+  // change the cost to care about the object orientation as well.
+  mutable bool crossed_cost_switching_threshold_ = false;
   mutable int num_threads_to_use_;
 
   enum SampleIndex { CURRENT_LOCATION_INDEX,

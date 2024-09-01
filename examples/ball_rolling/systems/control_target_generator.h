@@ -35,8 +35,8 @@ class TargetGenerator
   }
 
   void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& fixed_target_position,
+    const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
     const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, const double& ee_goal_height, const double& object_half_width);
 
  private:
@@ -58,8 +58,7 @@ class TargetGenerator
   double x_c_;
   double y_c_;
   double lead_angle_;
-  double fixed_goal_x_;
-  double fixed_goal_y_;
+  Eigen::VectorXd fixed_target_position_;
   Eigen::VectorXd fixed_target_orientation_;
   double step_size_;
   double start_point_x_;

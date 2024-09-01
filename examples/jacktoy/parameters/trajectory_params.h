@@ -10,8 +10,7 @@ struct SamplingC3TrajectoryParams {
   double x_c;
   double y_c;
   double lead_angle;
-  double fixed_goal_x;
-  double fixed_goal_y;
+  Eigen::VectorXd fixed_target_position;
   Eigen::VectorXd fixed_target_orientation;
   double step_size;
   double start_point_x;
@@ -30,8 +29,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(x_c));
     a->Visit(DRAKE_NVP(y_c));
     a->Visit(DRAKE_NVP(lead_angle));
-    a->Visit(DRAKE_NVP(fixed_goal_x));
-    a->Visit(DRAKE_NVP(fixed_goal_y));
+    a->Visit(DRAKE_NVP(fixed_target_position));
     a->Visit(DRAKE_NVP(fixed_target_orientation));
     a->Visit(DRAKE_NVP(step_size));
     a->Visit(DRAKE_NVP(start_point_x));

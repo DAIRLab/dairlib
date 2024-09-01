@@ -63,11 +63,11 @@ SamplingC3Controller::SamplingC3Controller(
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
+    Q_.push_back(discount_factor * c3_options_.Q_position);
     R_.push_back(discount_factor * c3_options_.R);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q);
+  Q_.push_back(discount_factor * c3_options_.Q_position);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -425,6 +425,33 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<std::vector<Eigen::VectorXd>> ws(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
 
+  // get element of Q corresponding to object location
+  std::cout<<"Cost on obj location:"<<Q_.at(0)(8,8)<<std::endl;
+  // std::cout<<"Cost on obj location:"<<Q_.rows()<<std::endl;
+  
+  // if object is within a fixed radius of the desired location, 
+  // change crossed_cost_switching_threshold_ to true.
+  if (!crossed_cost_switching_threshold_){
+    // std::cout<<"current object location: "<<x_lcs_curr.segment(7,2).transpose()<<std::endl;
+    if ((x_lcs_curr.segment(7,2) - x_lcs_des.value().segment(7,2)).norm() < 
+        sampling_params_.cost_switching_threshold_distance){
+      crossed_cost_switching_threshold_ = true;
+      std::cout << "Crossed cost switching threshold." << std::endl;
+    }
+  }
+
+  if(crossed_cost_switching_threshold_){
+    // clear the Q_ values and replace with costs for position and orientation.
+    Q_.clear();
+    double discount_factor = 1;
+    for (int i = 0; i < N_; ++i) {
+      Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+      discount_factor *= c3_options_.gamma;
+    }
+    Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+    std::cout << "Q_ values have been replaced with costs for position and orientation." << std::endl;
+  }
+
   // Parallelize over computing C3 costs for each sample.
   #pragma omp parallel for num_threads(num_threads_to_use_)
     for (int i = 0; i < num_total_samples; i++) {
@@ -494,7 +521,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
                                   + sampling_params_.c3_to_repos_hysteresis + 99;
   }
-
+  // These class variables get populated in the constructor in order to set osqp 
+  // options. They get replaced by the following values. (TODO: Verify this in case there's an error.)
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
   c3_best_plan_ = c3_objects.at(best_sample_index_);

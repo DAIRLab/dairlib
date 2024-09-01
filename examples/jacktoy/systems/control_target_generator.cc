@@ -44,10 +44,10 @@ TargetGenerator::TargetGenerator(
 
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
-    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, 
-    const double& ee_goal_height, const double& object_half_width) {
+    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position, 
+    const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, 
+    const double& start_point_y, const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, 
+    const double& max_step_size, const double& ee_goal_height, const double& object_half_width) {
   // Set the target parameters
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
@@ -55,8 +55,7 @@ void TargetGenerator::SetRemoteControlParameters(
   x_c_ = x_c;
   y_c_ = y_c; 
   lead_angle_ = lead_angle;
-  fixed_goal_x_ = fixed_goal_x;
-  fixed_goal_y_ = fixed_goal_y;
+  target_object_position_ = target_object_position;
   target_object_orientation_ = target_object_orientation;
   step_size_ = step_size;
   start_point_x_ = start_point_x;
@@ -116,20 +115,15 @@ void TargetGenerator::CalcObjectTarget(
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){
     // initializing fixed goal vector that remains constant.
-    VectorXd fixed_goal = VectorXd::Zero(3);
-    fixed_goal(0) = fixed_goal_x_;
-    fixed_goal(1) = fixed_goal_y_;
-    fixed_goal(2) = object_half_width_; 
-
-    if ((fixed_goal - obj_curr_position).norm() < step_size_){
+    if ((target_object_position_ - obj_curr_position).norm() < step_size_){
       // if the jack is within one step size of the fixed goal, set the target to be the fixed goal.
-      target_obj_position(0) = fixed_goal[0];
-      target_obj_position(1) = fixed_goal[1];
-      target_obj_position(2) = fixed_goal[2];
+      target_obj_position(0) = target_object_position_[0];
+      target_obj_position(1) = target_object_position_[1];
+      target_obj_position(2) = target_object_position_[2];
     }
     else{
       // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
-      VectorXd next_target = obj_curr_position + step_size_ * (fixed_goal - obj_curr_position); 
+      VectorXd next_target = obj_curr_position + step_size_ * (target_object_position_ - obj_curr_position); 
       target_obj_position(0) = next_target[0];
       target_obj_position(1) = next_target[1];
       target_obj_position(2) = next_target[2];
@@ -160,7 +154,7 @@ void TargetGenerator::CalcObjectTarget(
       target_on_line_with_lookahead = end_point;
     }
     else {
-      VectorXd step_vector =lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
       target_on_line_with_lookahead = projection_point + step_vector;
     }
 
@@ -181,6 +175,28 @@ void TargetGenerator::CalcObjectTarget(
     target_obj_position(0) = next_target[0];
     target_obj_position(1) = next_target[1];
     target_obj_position(2) = next_target[2];
+  }
+  else if(trajectory_type_ == 4){
+    VectorXd start_point = obj_curr_position;
+    VectorXd end_point = target_object_position_;
+
+    // compute vector from start point to end point
+    VectorXd distance_vector = end_point - start_point;
+
+    if(distance_vector.norm() < lookahead_step_size_){
+      target_obj_position(0) = end_point[0];
+      target_obj_position(1) = end_point[1];
+      target_obj_position(2) = end_point[2];
+    }
+    else{
+      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd target_on_line_with_lookahead = start_point + step_vector;
+      target_obj_position(0) = target_on_line_with_lookahead[0];
+      target_obj_position(1) = target_on_line_with_lookahead[1];
+      target_obj_position(2) = target_on_line_with_lookahead[2];
+    }
+
+    
   }
 
   else if(trajectory_type_ == 0){

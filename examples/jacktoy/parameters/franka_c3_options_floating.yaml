@@ -40,9 +40,9 @@ use_predicted_x0_c3: true
 use_predicted_x0_repos: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
-world_x_limits: [0, 0.75]
-world_y_limits: [-0.5, 0.5]
-world_z_limits: [0, 0.5]
+world_x_limits: [0.25, 0.65]
+world_y_limits: [-0.45, 0.45]
+world_z_limits: [-0.01, 0.5]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
@@ -107,6 +107,14 @@ qp_projection_scaling: 1
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
+# ORIENTATION GOAL GIANS
+q_vector_position_and_orientation: [0, 0, 0,        # end effector position
+           100, 100, 100, 100,              # object orientation
+           2000, 2000, 150,    # object position
+           0.1, 0.1, 0.1,              # end effector linear velocity
+           0.2, 0.2, 0.2,                 # object angular velocity
+           1, 1, 1]           # object linear velocity
+
 # POSITION GOAL GIANS
 q_vector: [0, 0, 0,        # end effector position
            0, 0, 0, 0,              # object orientation

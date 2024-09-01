@@ -43,7 +43,7 @@ use_predicted_x0_repos: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0.25, 0.65]
-world_y_limits: [-0.45, 0.45]
+world_y_limits: [-0.5, 0.5]
 world_z_limits: [0.05, 0.2]
 # world_x_limits: [0.25, 0.75]
 # world_y_limits: [-0.5, 0.5]
@@ -92,7 +92,7 @@ warm_start: false     # TODO: Check if we use this. Delete otherwise.
 w_Q: 25
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 0.16
+w_G: 0.18
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
@@ -112,6 +112,13 @@ qp_projection_scaling: 1
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
+# # ORIENTATION GOAL GIANS
+q_vector_position_and_orientation: [0, 0, 0,                 # end effector position
+                                    1500, 1500, 1500, 1500,  # object orientation
+                                    1500, 1500, 0,          # object position
+                                    0.1, 0.1, 0.1,           # end effector linear velocity
+                                    1, 1, 1,              # object angular velocity
+                                    1, 1, 1]                 # object linear velocity
 # POSITION GOAL GIANS
 q_vector: [0, 0, 0,        # end effector position
            0, 0, 0, 0,              # object orientation

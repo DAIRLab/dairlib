@@ -70,3 +70,4 @@ plot_object_state: false
 plot_sample_costs: true
 plot_curr_and_best_sample_costs: true
 plot_is_c3_mode: true
+plot_errors_with_mode_highlights: true

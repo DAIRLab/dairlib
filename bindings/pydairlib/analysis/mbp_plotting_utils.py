@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from scipy.spatial.transform import Rotation as R
 
 from pydrake.all import JacobianWrtVariable, JointActuatorIndex, JointIndex
 
@@ -458,7 +459,21 @@ def load_is_c3_mode(data, is_c3_mode_channel):
     is_c3_mode = process_is_c3_mode(data[is_c3_mode_channel])
     return is_c3_mode
 
-def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict = None):
+def get_shading_masks(bool_array):
+    bool_array = bool_array.squeeze()
+    assert bool_array.ndim == 1
+    bool_array = bool_array.astype(bool)
+    right_shifted_yes = np.append(bool_array[0], bool_array[:-1])
+
+    yes_shading_mask = np.ravel(np.column_stack(
+        (right_shifted_yes, bool_array)))
+    no_shading_mask = np.ravel(np.column_stack(
+        (~right_shifted_yes, ~bool_array)))
+    
+    return yes_shading_mask, no_shading_mask
+
+def plot_sample_costs(time_sample_costs_dict, time_slice,
+                      time_is_c3_mode_dict = None):
     ps = plot_styler.PlotStyler()
     num_samples = time_sample_costs_dict['costs'].shape[2]
     # print("shape of costs: " + str(time_sample_costs_dict['costs'].shape))
@@ -483,14 +498,8 @@ def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict =
         ps)
         
     if(time_is_c3_mode_dict is not None):
-        is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
-        is_c3_mode = is_c3_mode.astype(bool)
-        right_shifted_is_c3_mode = np.append(is_c3_mode[0], is_c3_mode[:-1])
-
-        c3_mode_shading_mask = np.ravel(np.column_stack(
-            (right_shifted_is_c3_mode, is_c3_mode)))
-        not_c3_mode_shading_mask = np.ravel(np.column_stack(
-            (~right_shifted_is_c3_mode, ~is_c3_mode)))
+        c3_mode_shading_mask, not_c3_mode_shading_mask = get_shading_masks(
+            time_is_c3_mode_dict['is_c3_mode'][:,:, 0])
     
         t = time_sample_costs_dict['t'].squeeze()
         double_t = np.repeat(t, 2)
@@ -511,7 +520,8 @@ def plot_sample_costs(time_sample_costs_dict, time_slice, time_is_c3_mode_dict =
                         
     return ps
 
-def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice, time_is_c3_mode_dict = None):
+def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice,
+                             time_is_c3_mode_dict = None):
     ps = plot_styler.PlotStyler()
     # This inclused current location costs and best sample costs
     num_samples = time_curr_and_best_costs_dict['curr_costs'].shape[2]
@@ -538,16 +548,10 @@ def plot_curr_and_best_costs(time_curr_and_best_costs_dict, time_slice, time_is_
         ps)
     
     if(time_is_c3_mode_dict is not None):
-        is_c3_mode = time_is_c3_mode_dict['is_c3_mode'][:,:, 0].squeeze()
         t = time_curr_and_best_costs_dict['t'].squeeze()
         
-        is_c3_mode = is_c3_mode.astype(bool)
-        right_shifted_is_c3_mode = np.append(is_c3_mode[0], is_c3_mode[:-1])
-
-        c3_mode_shading_mask = np.ravel(np.column_stack(
-            (right_shifted_is_c3_mode, is_c3_mode)))
-        not_c3_mode_shading_mask = np.ravel(np.column_stack(
-            (~right_shifted_is_c3_mode, ~is_c3_mode)))
+        c3_mode_shading_mask, not_c3_mode_shading_mask = get_shading_masks(
+            time_is_c3_mode_dict['is_c3_mode'][:,:, 0])
 
         double_t = np.repeat(t, 2)
         plt.fill_between(double_t, 0, 1, where=c3_mode_shading_mask,
@@ -584,6 +588,104 @@ def plot_is_c3_mode(time_is_c3_mode_dict, time_slice):
          'ylabel': 'Is C3 Mode',
          'title': 'Is C3 Mode vs time'},
         ps)
+    
+def wxyz2xyzw(quat_wxyz):
+    """
+    quat_wxyz: (N,4) or (4,)
+    """
+    original_shape = quat_wxyz.shape
+
+    if len(original_shape) == 1:
+        assert original_shape[0] == 4
+        quat_wxyz = quat_wxyz.reshape(1, 4)
+
+    w = quat_wxyz[:, 0:1]
+    xyz = quat_wxyz[:, 1:4]
+    return np.concatenate((xyz, w), axis=1).reshape(original_shape)
+    
+def quaternion_errors(quat1_wxyz, quat2_wxyz):
+    """Input quaternions must be in wxyz format.  Returns the angular error in
+    radians between the two quaternions over time.  Inputs can be (N, 4) or
+    (4,)."""
+    # Convert the quaternions.
+    rot1 = R.from_quat(wxyz2xyzw(quat1_wxyz))
+    rot2 = R.from_quat(wxyz2xyzw(quat2_wxyz))
+
+    # Compute the angular error.
+    rot_shift = rot1.inv() * rot2
+    angle_error = rot_shift.magnitude()
+
+    return angle_error
+
+def plot_object_position_error(c3_tracking_actual_dict, c3_tracking_target_dict,
+                               time_is_c3_mode_dict, time_slice,
+                               orientation_too=False):
+    breakpoint()
+    ps = plot_styler.PlotStyler(nrows=2, ncols=1)
+
+    actual_ts = c3_tracking_actual_dict['t']
+    goal_ts = c3_tracking_target_dict['t']
+    assert np.array_equal(actual_ts, goal_ts)
+
+    actual_pos = c3_tracking_actual_dict['x'][:, 7:10]
+    goal_pos = c3_tracking_target_dict['x'][:, 7:10]
+    pos_error = np.linalg.norm(actual_pos - goal_pos, axis=1).reshape(-1, 1)
+
+    actual_quat = c3_tracking_actual_dict['x'][:, 3:7]
+    goal_quat = c3_tracking_target_dict['x'][:, 3:7]
+    angle_error = quaternion_errors(actual_quat, goal_quat).reshape(-1, 1)
+    deg_error = np.rad2deg(angle_error)
+
+    data_dict = {'t': actual_ts, 'pos_error': pos_error}
+    plotting_utils.make_plot(
+        data_dict,
+        time_key='t',
+        time_slice=time_slice,
+        keys_to_plot=['pos_error'],
+        slices_to_plot={'pos_error': time_slice},
+        legend_entries={},
+        plot_labels={'xlabel': None,
+                     'ylabel': 'Position Error [m]',
+                     'title': 'Position Error vs Time'},
+        ps=ps,
+        subplot_index=0)
+    data_dict = {'t': actual_ts, 'angle_error': deg_error}
+    plotting_utils.make_plot(
+        data_dict,
+        time_key='t',
+        time_slice=time_slice,
+        keys_to_plot=['angle_error'],
+        slices_to_plot={'angle_error': time_slice},
+        legend_entries={},
+        plot_labels={'xlabel': 'Time',
+                     'ylabel': 'Angular Error [deg]',
+                     'title': 'Angular Error vs Time'},
+        ps=ps,
+        subplot_index=1)
+    
+    if(time_is_c3_mode_dict is not None):
+        t = actual_ts.squeeze()
+        
+        c3_mode_shading_mask, not_c3_mode_shading_mask = get_shading_masks(
+            time_is_c3_mode_dict['is_c3_mode'][:,:, 0])
+
+        double_t = np.repeat(t, 2)
+        for ax in ps.axes:
+            ax.fill_between(double_t, 0, 1, where=c3_mode_shading_mask,
+                            color='pink', alpha=0.5,
+                            transform=ax.get_xaxis_transform())
+            ax.fill_between(double_t, 0, 1, where=not_c3_mode_shading_mask,
+                            color='gray', alpha=0.5,
+                            transform=ax.get_xaxis_transform())
+
+         # Create custom legend patches for the shaded areas
+        pink_patch = Patch(color='pink', alpha=0.5, label='C3 Mode')
+        gray_patch = Patch(color='gray', alpha=0.5, label='Repositioning Mode')
+        
+        # Add the custom patches to the existing legend
+        ps.axes[0].legend(handles=ps.axes[0].get_legend_handles_labels()[0] + \
+                          [pink_patch, gray_patch], loc='upper right')
+
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
@@ -606,7 +708,6 @@ def plot_q_or_v_or_u(
          'ylabel': ylabel,
          'title': title}, ps, subplot_index=subplot_index)
     return ps
-
 
 def plot_u_cmd(
     robot_input, key, x_names, x_slice, time_slice,

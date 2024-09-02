@@ -2,6 +2,7 @@ import sys
 import lcm
 import matplotlib.pyplot as plt
 import numpy as np
+import pdb
 
 from bindings.pydairlib.analysis.franka_plot_config import FrankaPlotConfig
 from bindings.pydairlib.lcm.process_lcm_log import get_log_data
@@ -75,12 +76,15 @@ def main():
                      osc_debug_channel)  # processing callback arguments
 
     # processing callback arguments
-    if plot_config.plot_c3_debug:
-        c3_output_curr, c3_output_best, c3_tracking_target, c3_tracking_actual = get_log_data(log, 
-                                 default_channels, plot_config.start_time,
-                                 plot_config.duration, mbp_plots.load_c3_debug,
-                                 c3_debug_output_curr_channel,
-                                 c3_debug_output_best_channel, c3_target_state_channel, c3_actual_state_channel)
+    if plot_config.plot_c3_debug or plot_config.plot_errors_with_mode_highlights:
+        c3_output_curr, c3_output_best, c3_tracking_target, c3_tracking_actual=\
+            get_log_data(log, 
+                         default_channels, plot_config.start_time,
+                         plot_config.duration, mbp_plots.load_c3_debug,
+                         c3_debug_output_curr_channel,
+                         c3_debug_output_best_channel,
+                         c3_target_state_channel,
+                         c3_actual_state_channel)
         solve_times = np.diff(c3_output_curr['t'], prepend=[c3_output_curr['t'][0]])
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output_curr['t'])))
 
@@ -115,7 +119,6 @@ def main():
                                     mbp_plots.load_is_c3_mode,
                                     plot_config.is_c3_mode_channel)
 
-
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t'].size)
@@ -131,21 +134,42 @@ def main():
     if plot_config.plot_sample_costs:
         t_sample_costs_slice = slice(time_sample_costs_dict['t'].size)
         if (plot_config.plot_is_c3_mode):
-            plot = mbp_plots.plot_sample_costs(time_sample_costs_dict, t_sample_costs_slice, time_is_c3_mode_dict)
+            print(f'First: {time_is_c3_mode_dict["is_c3_mode"].shape}')
+            plot = mbp_plots.plot_sample_costs(
+                time_sample_costs_dict,
+                t_sample_costs_slice,
+                time_is_c3_mode_dict)
         else:
-            plot = mbp_plots.plot_sample_costs(time_sample_costs_dict, t_sample_costs_slice)
+            plot = mbp_plots.plot_sample_costs(
+                time_sample_costs_dict,
+                t_sample_costs_slice)
 
     if plot_config.plot_curr_and_best_sample_costs:
         t_curr_and_best_costs_slice = slice(time_curr_and_best_costs_dict['t'].size)
         if (plot_config.plot_is_c3_mode):
-            plot = mbp_plots.plot_curr_and_best_costs(time_curr_and_best_costs_dict, t_curr_and_best_costs_slice, time_is_c3_mode_dict)
+            print(f'Second: {time_is_c3_mode_dict["is_c3_mode"].shape}')
+            plot = mbp_plots.plot_curr_and_best_costs(
+                time_curr_and_best_costs_dict,
+                t_curr_and_best_costs_slice,
+                time_is_c3_mode_dict)
         else:
-            plot = mbp_plots.plot_curr_and_best_costs(time_curr_and_best_costs_dict, t_curr_and_best_costs_slice)
+            plot = mbp_plots.plot_curr_and_best_costs(
+                time_curr_and_best_costs_dict,
+                t_curr_and_best_costs_slice)
+
+    if plot_config.plot_errors_with_mode_highlights:
+        print(f'Third: {time_is_c3_mode_dict["is_c3_mode"].shape}')
+        t_is_c3_mode_slice = slice(time_is_c3_mode_dict['t'].size)
+        plot = mbp_plots.plot_object_position_error(
+            c3_tracking_actual, c3_tracking_target, time_is_c3_mode_dict,
+            t_is_c3_mode_slice, orientation_too=True)
 
     if plot_config.plot_is_c3_mode:
         # plots the c3 vs repositioning in separate plot
         t_is_c3_mode_slice = slice(time_is_c3_mode_dict['t'].size)
+        print(f'Fourth: {time_is_c3_mode_dict["is_c3_mode"].shape}')
         plot = mbp_plots.plot_is_c3_mode(time_is_c3_mode_dict, t_is_c3_mode_slice)
+
 
     # Plot joint positions
     if plot_config.plot_joint_positions:

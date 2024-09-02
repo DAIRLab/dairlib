@@ -76,6 +76,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(lcs_contact_jacobian_curr_plan_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_curr_plan() 
+      const {
+    return this->get_output_port(dynamically_feasible_curr_plan_port_);
+  }
 
   // Best sample plan output ports
   const drake::systems::OutputPort<double>& get_output_port_c3_solution_best_plan()
@@ -90,6 +94,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(lcs_contact_jacobian_best_plan_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_best_plan() 
+      const {
+    return this->get_output_port(dynamically_feasible_best_plan_port_);
+  }
+
 
   // Execution trajectory output ports
   const drake::systems::OutputPort<double>& get_output_port_c3_traj_execute() 
@@ -169,6 +178,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const;
 
+  void OutputDynamicallyFeasibleCurrPlan(
+    const drake::systems::Context<double>& context,
+    std::vector<Eigen::VectorXd>* dynamically_feasible_curr_plan) const;
+
+  void OutputDynamicallyFeasibleBestPlan(
+    const drake::systems::Context<double>& context,
+    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const;
+
   void OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
     std::vector<Eigen::Vector3d>* all_sample_locations) const;
@@ -213,6 +230,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex repos_traj_execute_port_;
   drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex is_c3_mode_port_;
+  // Dynamically feasible plan output port indices
+  drake::systems::OutputPortIndex dynamically_feasible_curr_plan_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_best_plan_port_;
   // Sample related output port indices
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
@@ -277,6 +297,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Samples and associated costs.
   // TODO: to be updated in ComputePlan
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
+  mutable std::vector<std::vector<Eigen::VectorXd>> all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
   mutable std::vector<double> curr_and_best_sample_cost_;

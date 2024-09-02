@@ -6,11 +6,13 @@ x_c: 0.35
 y_c: 0
 lead_angle: 40
 # fixed path specific parameters
-fixed_target_position: [0.45, -0.25, 0.03]
+fixed_target_position: [0.4, 0.15, 0.03]
 # only yaw
-# fixed_target_orientation: [-0.03809317, 0.53219632, 0.78316801, -0.31931779]
+# fixed_target_orientation: [0.010604407, 0.61336935, 0.6423365, -0.45962018]
 # 90 deg flip
 fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_orientation: [-0.17435307, -0.34287302,  0.81921544, -0.42535298]
+# fixed_target_orientation: [ 0.28876167,  0.09415564, -0.88306883,  0.35768821]
 # fixed_target_orientation: [1, 0, 0, 0]
 step_size: 2
 # adaptive straight line path specific parameters
@@ -21,7 +23,8 @@ end_point_y: -0.35            # y coordinate of end point of straight line.
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead, the lookahead step size 
 ####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
-lookahead_step_size: 0.2      # lookahead size for adaptive straight line and fixed goal with lookahead.
+lookahead_step_size: 0.08      # lookahead size for adaptive straight line and fixed goal with lookahead.
+lookahead_angle: 0.785        # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters

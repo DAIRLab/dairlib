@@ -40,7 +40,7 @@ use_predicted_x0_c3: true
 use_predicted_x0_repos: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
-world_x_limits: [0.25, 0.65]
+world_x_limits: [0.25, 0.75]
 world_y_limits: [-0.45, 0.45]
 world_z_limits: [-0.01, 0.5]
 workspace_margins: 0.05
@@ -84,10 +84,10 @@ u_u: [30, 30, 30]
 warm_start: false     # TODO: Check if we use this. Delete otherwise.
 
 # matrix scaling
-w_Q: 25
+w_Q: 45
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 0.16
+w_G: 0.21
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
@@ -107,15 +107,21 @@ qp_projection_scaling: 1
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
-# ORIENTATION GOAL GIANS
+# ORIENTATION GOAL GAINS
+# q_vector_position_and_orientation: [0, 0, 0,        # end effector position
+#            3000, 3000, 3000, 3000,              # object orientation
+#            200, 200, 200,    # object position
+#            0.1, 0.1, 0.1,              # end effector linear velocity
+#            2.5, 2.5, 2.5,                 # object angular velocity
+#            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0, 0, 0,        # end effector position
-           100, 100, 100, 100,              # object orientation
-           2000, 2000, 150,    # object position
-           0.1, 0.1, 0.1,              # end effector linear velocity
-           0.2, 0.2, 0.2,                 # object angular velocity
-           1, 1, 1]           # object linear velocity
+           1800, 1800, 1800, 1800,              # object orientation
+           3000, 3000, 0,    # object position
+           0.2, 0.2, 0.2,              # end effector linear velocity
+           2.8, 2.8, 2.8,                 # object angular velocity
+           0.2, 0.2, 0.2]           # object linear velocity
 
-# POSITION GOAL GIANS
+# POSITION GOAL GAINS
 q_vector: [0, 0, 0,        # end effector position
            0, 0, 0, 0,              # object orientation
            1500, 1500, 1500,    # object position

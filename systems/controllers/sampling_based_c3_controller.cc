@@ -63,11 +63,11 @@ SamplingC3Controller::SamplingC3Controller(
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
+    Q_.push_back(discount_factor * c3_options_.Q_position);
     R_.push_back(discount_factor * c3_options_.R);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q);
+  Q_.push_back(discount_factor * c3_options_.Q_position);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -237,6 +237,17 @@ SamplingC3Controller::SamplingC3Controller(
   is_c3_mode_port_ = this->DeclareVectorOutputPort(
     "is_c3_mode", drake::systems::BasicVector<double>(1),
     &SamplingC3Controller::OutputIsC3Mode
+  ).get_index();
+
+  // Output ports for dynamically feasible plans used for cost computation and 
+  // visualization.
+  dynamically_feasible_curr_plan_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_curr_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)), 
+    &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan
+  ).get_index();
+  dynamically_feasible_best_plan_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_best_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)), 
+    &SamplingC3Controller::OutputDynamicallyFeasibleBestPlan
   ).get_index();
   
   // Sample location related output ports.
@@ -419,11 +430,35 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Preparation for parallelization.
   // This size is adapting to the number of samples based on mode.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
+  all_sample_dynamically_feasible_plans_ = std::vector<std::vector<Eigen::VectorXd>>(
+    num_total_samples, std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
   std::vector<std::shared_ptr<solvers::C3>> c3_objects(num_total_samples, nullptr);
   std::vector<std::vector<Eigen::VectorXd>> deltas(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
   std::vector<std::vector<Eigen::VectorXd>> ws(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
+  
+  // if object is within a fixed radius of the desired location, 
+  // change crossed_cost_switching_threshold_ to true.
+  if (!crossed_cost_switching_threshold_){
+    // std::cout<<"current object location: "<<x_lcs_curr.segment(7,2).transpose()<<std::endl;
+    if ((x_lcs_curr.segment(7,2) - x_lcs_des.value().segment(7,2)).norm() < 
+        sampling_params_.cost_switching_threshold_distance){
+      crossed_cost_switching_threshold_ = true;
+      std::cout << "Crossed cost switching threshold." << std::endl;
+    }
+  }
+
+  if(crossed_cost_switching_threshold_){
+    // clear the Q_ values and replace with costs for position and orientation.
+    Q_.clear();
+    double discount_factor = 1;
+    for (int i = 0; i < N_; ++i) {
+      Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+      discount_factor *= c3_options_.gamma;
+    }
+    Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+  }
 
   // Parallelize over computing C3 costs for each sample.
   #pragma omp parallel for num_threads(num_threads_to_use_)
@@ -456,6 +491,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       auto cost_trajectory_pair = test_c3_object->CalcCost(
         sampling_params_.cost_type);
       double c3_cost = cost_trajectory_pair.first;
+      all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
       #pragma omp critical
       {
@@ -494,16 +530,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
                                   + sampling_params_.c3_to_repos_hysteresis + 99;
   }
-
-  // Update C3 objects and intermediates for current and best samples.
-  c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
-  c3_best_plan_ = c3_objects.at(best_sample_index_);
-  // These aren't currently used anywhere but may be required when implementing 
-  // warm start.
-  delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
-  delta_best_plan_ = deltas.at(best_sample_index_);
-  w_curr_plan_ = ws.at(CURRENT_LOCATION_INDEX);
-  w_best_plan_ = ws.at(best_sample_index_);
 
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
@@ -545,6 +571,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
+
+  // These class variables get populated in the constructor in order to set osqp 
+  // options. They get replaced by the following values.
+  // Update C3 objects and intermediates for current and best samples.
+  c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
+  c3_best_plan_ = c3_objects.at(best_sample_index_);
+  // These aren't currently used anywhere but may be required when implementing 
+  // warm start.
+  delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
+  delta_best_plan_ = deltas.at(best_sample_index_);
+  w_curr_plan_ = ws.at(CURRENT_LOCATION_INDEX);
+  w_best_plan_ = ws.at(best_sample_index_);
 
   // This is a redundant value used only for plotting and analysis.
   // update current and best sample costs.
@@ -1058,6 +1096,35 @@ void SamplingC3Controller::OutputIsC3Mode(
     drake::systems::BasicVector<double>* is_c3_mode) const {
   Eigen::VectorXd vec = VectorXd::Constant(1, is_doing_c3_);
   is_c3_mode->SetFromVector(vec);
+}
+
+// Output port handler for Dynamically feasible trajectory used for cost 
+// computation.
+void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan(
+    const drake::systems::Context<double>& context,
+    std::vector<Eigen::VectorXd>* dynamically_feasible_curr_plan) const {
+    std::vector<Eigen::VectorXd> obj_pose = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(7));
+  // Extract object pose only from the dynamically feasible plan for each time step.
+  for(int i = 0; i < N_ + 1; i++){
+    obj_pose[i] << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7);
+  }
+  std::vector<Eigen::VectorXd> object_pose = std::vector<Eigen::VectorXd>(
+    obj_pose.begin(), obj_pose.end());
+  // Output dynamically feasible current plan.
+  *dynamically_feasible_curr_plan = object_pose;
+}
+void SamplingC3Controller::OutputDynamicallyFeasibleBestPlan(
+    const drake::systems::Context<double>& context,
+    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const { 
+    std::vector<Eigen::VectorXd> obj_pose = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(7));
+  // Extract object pose only from the dynamically feasible plan for each time step.
+  for(int i = 0; i < N_ + 1; i++){
+    obj_pose[i] << all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i].segment(3,7);
+  }
+  std::vector<Eigen::VectorXd> object_pose = std::vector<Eigen::VectorXd>(
+    obj_pose.begin(), obj_pose.end());
+  // Output dynamically feasible current plan.
+  *dynamically_feasible_best_plan = object_pose;
 }
 
 // Output port handlers for sample-related ports

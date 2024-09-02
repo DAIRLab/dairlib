@@ -40,11 +40,11 @@ C3Controller::C3Controller(
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
+    Q_.push_back(discount_factor * c3_options_.Q_position);
     R_.push_back(discount_factor * c3_options_.R);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q);
+  Q_.push_back(discount_factor * c3_options_.Q_position);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 

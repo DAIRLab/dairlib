@@ -6,8 +6,7 @@ x_c: 0.35
 y_c: 0
 lead_angle: 20
 # fixed path specific parameters
-fixed_goal_x: 0.35
-fixed_goal_y: -0.1
+fixed_target_position: [0.45, -0.25, 0.03]
 # fixed_target_orientation: [0.9136, 0.3196, -0.3491, -0.0402]
 fixed_target_orientation: [1, 0, 0, 0]
 step_size: 2
@@ -17,6 +16,7 @@ start_point_y: 0.35           # y coordinate of start point of straight line.
 end_point_x: 0.45             # x coordinate of end point of straight line.
 end_point_y: -0.35            # y coordinate of end point of straight line.
 lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
+lookahead_angle: 0.785        # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters

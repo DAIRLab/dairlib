@@ -44,10 +44,11 @@ TargetGenerator::TargetGenerator(
 
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
-    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, 
-    const double& ee_goal_height, const double& object_half_width) {
+    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position, 
+    const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, 
+    const double& start_point_y, const double& end_point_x, const double& end_point_y, const double& lookahead_step_size,
+    const double& lookahead_angle, const double& max_step_size, const double& ee_goal_height,
+    const double& object_half_width) {
   // Set the target parameters
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
@@ -55,8 +56,7 @@ void TargetGenerator::SetRemoteControlParameters(
   x_c_ = x_c;
   y_c_ = y_c; 
   lead_angle_ = lead_angle;
-  fixed_goal_x_ = fixed_goal_x;
-  fixed_goal_y_ = fixed_goal_y;
+  target_object_position_ = target_object_position;
   target_object_orientation_ = target_object_orientation;
   step_size_ = step_size;
   start_point_x_ = start_point_x;
@@ -64,6 +64,7 @@ void TargetGenerator::SetRemoteControlParameters(
   end_point_x_ = end_point_x;
   end_point_y_ = end_point_y;
   lookahead_step_size_ = lookahead_step_size;
+  lookahead_angle_ = lookahead_angle;
   max_step_size_ = max_step_size;
   ee_goal_height_ = ee_goal_height;
   object_half_width_ = object_half_width;
@@ -98,6 +99,10 @@ void TargetGenerator::CalcObjectTarget(
 
   VectorXd target_obj_state = VectorXd::Zero(7);
   VectorXd target_obj_position = VectorXd::Zero(3);
+  VectorXd target_obj_orientation = VectorXd::Zero(4);
+
+  // Default to the target object orientation.
+  target_obj_orientation = target_object_orientation_;
 
   // Adaptive circular trajectory for traj_type = 1
   if (trajectory_type_ == 1){
@@ -116,20 +121,15 @@ void TargetGenerator::CalcObjectTarget(
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){
     // initializing fixed goal vector that remains constant.
-    VectorXd fixed_goal = VectorXd::Zero(3);
-    fixed_goal(0) = fixed_goal_x_;
-    fixed_goal(1) = fixed_goal_y_;
-    fixed_goal(2) = object_half_width_; 
-
-    if ((fixed_goal - obj_curr_position).norm() < step_size_){
+    if ((target_object_position_ - obj_curr_position).norm() < step_size_){
       // if the jack is within one step size of the fixed goal, set the target to be the fixed goal.
-      target_obj_position(0) = fixed_goal[0];
-      target_obj_position(1) = fixed_goal[1];
-      target_obj_position(2) = fixed_goal[2];
+      target_obj_position(0) = target_object_position_[0];
+      target_obj_position(1) = target_object_position_[1];
+      target_obj_position(2) = target_object_position_[2];
     }
     else{
       // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
-      VectorXd next_target = obj_curr_position + step_size_ * (fixed_goal - obj_curr_position); 
+      VectorXd next_target = obj_curr_position + step_size_ * (target_object_position_ - obj_curr_position); 
       target_obj_position(0) = next_target[0];
       target_obj_position(1) = next_target[1];
       target_obj_position(2) = next_target[2];
@@ -160,7 +160,7 @@ void TargetGenerator::CalcObjectTarget(
       target_on_line_with_lookahead = end_point;
     }
     else {
-      VectorXd step_vector =lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
       target_on_line_with_lookahead = projection_point + step_vector;
     }
 
@@ -182,6 +182,53 @@ void TargetGenerator::CalcObjectTarget(
     target_obj_position(1) = next_target[1];
     target_obj_position(2) = next_target[2];
   }
+  else if(trajectory_type_ == 4){
+    // First handle position lookahead.
+    VectorXd start_point = obj_curr_position;
+    VectorXd end_point = target_object_position_;
+
+    // compute vector from start point to end point
+    VectorXd distance_vector = end_point - start_point;
+
+    if(distance_vector.norm() < lookahead_step_size_){
+      target_obj_position(0) = end_point[0];
+      target_obj_position(1) = end_point[1];
+      target_obj_position(2) = end_point[2];
+    }
+    else{
+      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd target_on_line_with_lookahead = start_point + step_vector;
+      target_obj_position(0) = target_on_line_with_lookahead[0];
+      target_obj_position(1) = target_on_line_with_lookahead[1];
+      target_obj_position(2) = target_on_line_with_lookahead[2];
+    }
+
+    // Second handle orientation lookahead.
+    // Get target orientation
+    Eigen::Quaterniond y_quat_des(target_object_orientation_[0], 
+                                  target_object_orientation_[1], 
+                                  target_object_orientation_[2], 
+                                  target_object_orientation_[3]);
+    const VectorX<double> &q = object_state->GetPositions().head(4);
+    Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+    Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
+    VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
+
+    if (angle_axis_diff.angle() < lookahead_angle_){
+      target_obj_orientation << target_object_orientation_;
+    }
+    else{
+      // Cap the angle error to the lookahead angle.
+      Eigen::Quaterniond smaller_delta_angle(
+        Eigen::AngleAxisd(lookahead_angle_, angle_axis_diff.axis()));
+
+      Eigen::Quaterniond smaller_quaternion = smaller_delta_angle * y_quat;
+      target_obj_orientation(0) = smaller_quaternion.w();
+      target_obj_orientation(1) = smaller_quaternion.x();
+      target_obj_orientation(2) = smaller_quaternion.y();
+      target_obj_orientation(3) = smaller_quaternion.z();
+    }
+  }
 
   else if(trajectory_type_ == 0){
         // Throw an error.
@@ -194,7 +241,7 @@ void TargetGenerator::CalcObjectTarget(
     DRAKE_THROW_UNLESS(false);
   }
 
-  target_obj_state << target_object_orientation_, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
+  target_obj_state << target_obj_orientation, target_obj_position;
   target->SetFromVector(target_obj_state);
 }
 

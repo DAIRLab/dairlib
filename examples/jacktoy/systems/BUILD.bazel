@@ -16,6 +16,7 @@ cc_library(
         ":tracking_trajectory_generator",
         ":sample_cost_sender",
         ":sample_location_sender",
+        ":dynamically_feasible_plan_sender",
         ":c3_mode_visualizer",
     ],
 )
@@ -155,6 +156,25 @@ cc_library(
     ],
     hdrs = [
         "sample_location_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "dynamically_feasible_plan_sender",
+    srcs = [
+        "dynamically_feasible_plan_sender.cc",
+    ],
+    hdrs = [
+        "dynamically_feasible_plan_sender.h",
     ],
     deps = [
         ":franka_kinematics",

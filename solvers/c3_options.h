@@ -37,6 +37,7 @@ struct C3Options {
   double w_U;
 
   std::vector<double> q_vector;
+  std::vector<double> q_vector_position_and_orientation;
   std::vector<double> r_vector;
   std::vector<double> g_vector;
   std::vector<double> g_x;
@@ -65,7 +66,8 @@ struct C3Options {
   int num_friction_directions;
   int num_contacts_index;
   std::vector<int> num_contacts;
-  Eigen::MatrixXd Q;
+  Eigen::MatrixXd Q_position;
+  Eigen::MatrixXd Q_position_and_orientation;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
   Eigen::MatrixXd U;
@@ -112,6 +114,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
     a->Visit(DRAKE_NVP(q_vector));
+    a->Visit(DRAKE_NVP(q_vector_position_and_orientation));
     a->Visit(DRAKE_NVP(r_vector));
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
@@ -152,6 +155,8 @@ struct C3Options {
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());
+    Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->q_vector_position_and_orientation.data(), this->q_vector_position_and_orientation.size());
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
     Eigen::VectorXd g = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
@@ -159,7 +164,8 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    Q = w_Q * q.asDiagonal();
+    Q_position = w_Q * q.asDiagonal();
+    Q_position_and_orientation = w_Q * q_position_and_orientation.asDiagonal();
     R = w_R * r.asDiagonal();
     G = w_G * g.asDiagonal();
     U = w_U * u.asDiagonal();

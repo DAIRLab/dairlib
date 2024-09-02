@@ -22,6 +22,7 @@
 #include "examples/jacktoy/systems/franka_kinematics.h"
 #include "examples/jacktoy/systems/tracking_trajectory_generator.h"
 #include "examples/jacktoy/systems/sample_location_sender.h"
+#include "examples/jacktoy/systems/dynamically_feasible_plan_sender.h"
 #include "examples/jacktoy/systems/sample_cost_sender.h"
 #include "examples/jacktoy/systems/is_c3_mode_sender.h"
 #include "multibody/multibody_utils.h"
@@ -283,12 +284,13 @@ int DoMain(int argc, char* argv[]) {
   control_target->SetRemoteControlParameters(
       trajectory_params.trajectory_type, trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
-      trajectory_params.lead_angle, trajectory_params.fixed_goal_x,
-      trajectory_params.fixed_goal_y, trajectory_params.fixed_target_orientation, trajectory_params.step_size,
+      trajectory_params.lead_angle, trajectory_params.fixed_target_position,
+       trajectory_params.fixed_target_orientation, trajectory_params.step_size,
       trajectory_params.start_point_x, trajectory_params.start_point_y,
       trajectory_params.end_point_x, trajectory_params.end_point_y,
-      trajectory_params.lookahead_step_size, trajectory_params.max_step_size,
-      trajectory_params.ee_goal_height, trajectory_params.object_half_width);
+      trajectory_params.lookahead_step_size, trajectory_params.lookahead_angle,
+      trajectory_params.max_step_size, trajectory_params.ee_goal_height,
+      trajectory_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -409,6 +411,12 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  
+  // These systems send the dynamically feasible plans used to compute costs.
+  auto dynamically_feasible_curr_plan_sender = 
+    builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("curr");
+  auto dynamically_feasible_best_plan_sender = 
+    builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("best");
 
   // These systems send the sample locations and sample costs.
   auto sample_locations_sender = 
@@ -436,6 +444,14 @@ int DoMain(int argc, char* argv[]) {
   auto is_c3_mode_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_curr_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_best_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
@@ -521,6 +537,14 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
                   c3_forces_publisher_best_plan->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan(),
+                  dynamically_feasible_curr_plan_sender->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan(),
+                  dynamically_feasible_best_plan_sender->get_input_port());
+  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port(),
+                  dynamically_feasible_curr_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port(),
+                  dynamically_feasible_best_plan_publisher->get_input_port());
 
   // ACTUAL AND TARGET LCS_STATE CONNECTIONS
   builder.Connect(target_state_mux->get_output_port(),

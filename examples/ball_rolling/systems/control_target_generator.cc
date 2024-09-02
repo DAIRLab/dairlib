@@ -40,9 +40,9 @@ TargetGenerator::TargetGenerator(
 
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
-    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, 
+    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& fixed_target_position, 
+    const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& lookahead_angle, const double& max_step_size, 
     const double& ee_goal_height, const double& object_half_width) {
   // Set the target parameters
   // Create class variables for each parameter
@@ -51,8 +51,7 @@ void TargetGenerator::SetRemoteControlParameters(
   x_c_ = x_c;
   y_c_ = y_c; 
   lead_angle_ = lead_angle;
-  fixed_goal_x_ = fixed_goal_x;
-  fixed_goal_y_ = fixed_goal_y;
+  fixed_target_position_ = fixed_target_position;
   fixed_target_orientation_ = fixed_target_orientation;
   step_size_ = step_size;
   start_point_x_ = start_point_x;
@@ -60,6 +59,7 @@ void TargetGenerator::SetRemoteControlParameters(
   end_point_x_ = end_point_x;
   end_point_y_ = end_point_y;
   lookahead_step_size_ = lookahead_step_size;
+  lookahead_angle_ = lookahead_angle;
   max_step_size_ = max_step_size;
   ee_goal_height_ = ee_goal_height;
   object_half_width_ = object_half_width;
@@ -112,10 +112,7 @@ void TargetGenerator::CalcObjectTarget(
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){
     // initializing fixed goal vector that remains constant.
-    VectorXd fixed_goal = VectorXd::Zero(3);
-    fixed_goal(0) = fixed_goal_x_;
-    fixed_goal(1) = fixed_goal_y_;
-    fixed_goal(2) = object_half_width_; 
+    VectorXd fixed_goal = fixed_target_position_;
 
     // // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
     // if ((fixed_goal - obj_curr_position).norm() < step_size_){

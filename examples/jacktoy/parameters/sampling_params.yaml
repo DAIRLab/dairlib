@@ -19,8 +19,8 @@ sampling_height: 0.04
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
-min_angle_from_vertical: 0  #0.785
-max_angle_from_vertical: 1.822 #Equivalent to 104deg
+min_angle_from_vertical: 0.5  #0.785
+max_angle_from_vertical: 1.95 #Equivalent to 104deg
 
 # Number of additional samples to consider in each mode (repositioning or C3).
 # In repositioning mode, we automatically store the current location and the 
@@ -43,10 +43,13 @@ reposition_speed: 0.30    # m/s
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 2
-
+####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
+####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
+####### sampling_params.
+cost_switching_threshold_distance: 0.15
 # Cost associated with traveling.
-travel_cost_per_meter: 10000
-c3_to_repos_hysteresis: 2000
+travel_cost_per_meter: 0
+c3_to_repos_hysteresis: 280
 finished_reposition_cost: 1000000000
-repos_to_c3_hysteresis: 3000
-hysteresis_between_repos_targets: 100000000
+repos_to_c3_hysteresis: 430
+hysteresis_between_repos_targets: 600

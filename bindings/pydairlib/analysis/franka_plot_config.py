@@ -35,6 +35,8 @@ class FrankaPlotConfig():
         self.c3_actual_state_channel = data['c3_actual_state_channel']
 
         self.sample_locations_channel = data['sample_locations_channel']
+        self.dynamically_feasible_curr_plan_channel = data['dynamically_feasible_curr_plan_channel']
+        self.dynamically_feasible_best_plan_channel = data['dynamically_feasible_best_plan_channel']
         self.sample_costs_channel = data['sample_costs_channel']
         self.curr_and_best_costs_channel = data['curr_and_best_sample_costs_channel']
         self.is_c3_mode_channel = data['is_c3_mode_channel']

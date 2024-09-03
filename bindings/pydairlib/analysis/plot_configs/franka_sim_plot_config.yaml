@@ -71,6 +71,6 @@ plot_object_state: false
 
 # Desired sampling controller plots
 plot_sample_costs: true
-plot_curr_and_best_sample_costs: true
+plot_curr_and_best_sample_costs: false
 plot_is_c3_mode: true
 plot_errors_with_mode_highlights: true

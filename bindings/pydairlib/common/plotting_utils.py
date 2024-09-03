@@ -25,7 +25,8 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
     if key not in slices_to_plot:
       ps.plot(data_dictionary[time_key][time_slice],
               data_dictionary[key][time_slice], xlabel=plot_labels['xlabel'],
-              ylabel=plot_labels['ylabel'], title=plot_labels['title'], subplot_index=subplot_index)
+              ylabel=plot_labels['ylabel'], title=plot_labels['title'],
+              subplot_index=subplot_index)
     else:
       ps.plot(data_dictionary[time_key][time_slice],
               data_dictionary[key][time_slice, slices_to_plot[key]],

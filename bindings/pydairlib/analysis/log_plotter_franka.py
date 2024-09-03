@@ -88,18 +88,22 @@ def main():
         solve_times = np.diff(c3_output_curr['t'], prepend=[c3_output_curr['t'][0]])
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output_curr['t'])))
 
-    if plot_config.plot_lcs_debug:
-        lcs_debug = get_log_data(log, default_channels,
-                                 plot_config.start_time,
-                                 plot_config.duration,
-                                 mbp_plots.load_lcs_debug,
-                                 plot_config.dynamically_feasible_curr_plan_channel,
-                                 plot_config.dynamically_feasible_best_plan_channel,
-                                 c3_target_state_channel,
-                                 c3_actual_state_channel)
-
-    breakpoint()
     # processing callback arguments
+    if plot_config.plot_lcs_debug:
+        lcs_curr, lcs_best, c3_target, c3_actual, c3_forces_curr, c3_debug_curr = \
+            get_log_data(
+                log, default_channels,
+                plot_config.start_time,
+                plot_config.duration,
+                mbp_plots.load_lcs_debug,
+                plot_config.dynamically_feasible_curr_plan_channel,
+                plot_config.dynamically_feasible_best_plan_channel,
+                c3_target_state_channel,
+                c3_actual_state_channel,
+                plot_config.c3_force_curr_channel,
+                plot_config.c3_debug_output_curr_channel)
+        t_slice = slice(lcs_curr['t'].size)
+
     if plot_config.plot_object_state:
         object_state = get_log_data(log, default_channels,
                                     plot_config.start_time,
@@ -140,6 +144,11 @@ def main():
     (franka_joint_position_limit_range, franka_joint_velocity_limit_range,
      franka_joint_actuator_limit_range) = mbp_plots.generate_joint_limits(
         franka_plant)
+    
+    if plot_config.plot_lcs_debug:
+        plot = mbp_plots.plot_lcs_debug(
+            lcs_curr, lcs_best, c3_target, c3_actual, c3_forces_curr,
+            c3_debug_curr, t_slice)
     
     if plot_config.plot_sample_costs:
         t_sample_costs_slice = slice(time_sample_costs_dict['t'].size)

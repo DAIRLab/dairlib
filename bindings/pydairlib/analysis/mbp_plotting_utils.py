@@ -332,6 +332,30 @@ def process_object_state_channel(data):
             'q': positions,
             'v': velocities,}
 
+def process_c3_forces(data):
+    t = []
+    contact_points = []
+    contact_forces = []
+
+    for msg in data:
+        t.append(msg.utime / 1e6)
+
+        single_points = []
+        single_forces = []
+        for force_msg in msg.forces:
+            single_points.append(force_msg.contact_point)
+            single_forces.append(force_msg.contact_force)
+
+        contact_points.append(single_points)
+        contact_forces.append(single_forces)
+
+    t = np.array(t)
+    contact_points = np.array(contact_points)
+    contact_forces = np.array(contact_forces)
+
+    return {'t': t, 'contact_points': contact_points,
+            'contact_forces': contact_forces}
+
 def process_lcs_debug(data):
     t = []
     position_states = []
@@ -475,13 +499,18 @@ def load_c3_debug(data, c3_debug_output_curr_channel, c3_debug_output_best_chann
     c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
     return c3_debug_curr, c3_debug_best, c3_tracking_target, c3_tracking_actual
 
-def load_lcs_debug(data, dynamically_feasible_curr_plan_channel, dynamically_feasible_best_plan_channel, 
-                  c3_target_channel, c3_actual_channel):
+def load_lcs_debug(data, dynamically_feasible_curr_plan_channel,
+                   dynamically_feasible_best_plan_channel, 
+                   c3_target_channel, c3_actual_channel,
+                   c3_force_curr_channel, c3_debug_output_curr_channel):
     lcs_debug_curr = process_lcs_debug(data[dynamically_feasible_curr_plan_channel])
     lcs_debug_best = process_lcs_debug(data[dynamically_feasible_best_plan_channel])
     c3_tracking_target = process_c3_tracking(data[c3_target_channel])
     c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
-    return lcs_debug_curr, lcs_debug_best, c3_tracking_target, c3_tracking_actual
+    c3_forces_curr = process_c3_forces(data[c3_force_curr_channel])
+    c3_debug_output_curr = process_c3_debug(data[c3_debug_output_curr_channel])
+    return lcs_debug_curr, lcs_debug_best, c3_tracking_target, \
+        c3_tracking_actual, c3_forces_curr, c3_debug_output_curr
 
 def load_object_state(data, object_state_channel):
     object_state = process_object_state_channel(data[object_state_channel])
@@ -630,6 +659,152 @@ def plot_is_c3_mode(time_is_c3_mode_dict, time_slice):
          'title': 'Is C3 Mode vs time'},
         ps)
     
+def plot_lcs_debug(lcs_debug_curr_dict, lcs_debug_best_dict, c3_target_dict,
+                   c3_actual_dict, c3_forces_curr, c3_debug_curr, time_slice):
+    ps = plot_styler.PlotStyler(nrows=4, ncols=3)
+    ts = lcs_debug_curr_dict['t']
+
+    # Don't actually want to use time from any of the dictionaries, since these
+    # are plans.  Make a time dictionary the length of one of the plans with a
+    # dt of 0.1 seconds.
+    t = 0.1 * np.arange(lcs_debug_curr_dict['positions'].shape[2])
+
+    data_dict = {'t': t,
+                 'x0': lcs_debug_curr_dict['positions'][0, 0, :],
+                 'y0': lcs_debug_curr_dict['positions'][0, 1, :],
+                 'z0': lcs_debug_curr_dict['positions'][0, 2, :],
+                 'qw0': lcs_debug_curr_dict['orientations'][0, 0, :],
+                 'qx0': lcs_debug_curr_dict['orientations'][0, 1, :],
+                 'qy0': lcs_debug_curr_dict['orientations'][0, 2, :],
+                 'qz0': lcs_debug_curr_dict['orientations'][0, 3, :],
+                 'x1': lcs_debug_curr_dict['positions'][1, 0, :],
+                 'y1': lcs_debug_curr_dict['positions'][1, 1, :],
+                 'z1': lcs_debug_curr_dict['positions'][1, 2, :],
+                 'qw1': lcs_debug_curr_dict['orientations'][1, 0, :],
+                 'qx1': lcs_debug_curr_dict['orientations'][1, 1, :],
+                 'qy1': lcs_debug_curr_dict['orientations'][1, 2, :],
+                 'qz1': lcs_debug_curr_dict['orientations'][1, 3, :],
+                 'x2': lcs_debug_curr_dict['positions'][2, 0, :],
+                 'y2': lcs_debug_curr_dict['positions'][2, 1, :],
+                 'z2': lcs_debug_curr_dict['positions'][2, 2, :],
+                 'qw2': lcs_debug_curr_dict['orientations'][2, 0, :],
+                 'qx2': lcs_debug_curr_dict['orientations'][2, 1, :],
+                 'qy2': lcs_debug_curr_dict['orientations'][2, 2, :],
+                 'qz2': lcs_debug_curr_dict['orientations'][2, 3, :],
+                 }
+    shorter_data_dict = {'t': t[:-1],
+                         'ux0': c3_debug_curr['u'][0, 0, :],
+                         'uy0': c3_debug_curr['u'][0, 1, :],
+                         'uz0': c3_debug_curr['u'][0, 2, :],
+                         'ux1': c3_debug_curr['u'][1, 0, :],
+                         'uy1': c3_debug_curr['u'][1, 1, :],
+                         'uz1': c3_debug_curr['u'][1, 2, :],
+                         'ux2': c3_debug_curr['u'][2, 0, :],
+                         'uy2': c3_debug_curr['u'][2, 1, :],
+                         'uz2': c3_debug_curr['u'][2, 2, :],
+                         }
+
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['x0', 'x1', 'x2'],
+        # slices_to_plot={'x0': time_slice, 'x1': time_slice, 'x2': time_slice},
+        slices_to_plot={},
+        legend_entries={'x0': [str(ts[0])], 'x1': [str(ts[1])],
+                        'x2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'X Position [m]',
+                     'title': 'X Position [m] vs Time'},
+        ps=ps, subplot_index=(0, 0))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['y0', 'y1', 'y2'],
+        # slices_to_plot={'y0': time_slice, 'y1': time_slice, 'y2': time_slice},
+        slices_to_plot={},
+        legend_entries={'y0': [str(ts[0])], 'y1': [str(ts[1])],
+                        'y2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'Y Position [m]',
+                     'title': 'Y Position [m] vs Time'},
+        ps=ps, subplot_index=(1, 0))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['z0', 'z1', 'z2'],
+        # slices_to_plot={'z0': time_slice, 'z1': time_slice, 'z2': time_slice},
+        slices_to_plot={},
+        legend_entries={'z0': [str(ts[0])], 'z1': [str(ts[1])],
+                        'z2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'Z Position [m]',
+                     'title': 'Z Position [m] vs Time'},
+        ps=ps, subplot_index=(2, 0))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['qw0', 'qw1', 'qw2'],
+        # slices_to_plot={'qw0': time_slice, 'qw1': time_slice, 'qw2': time_slice},
+        slices_to_plot={},
+        legend_entries={'qw0': [str(ts[0])], 'qw1': [str(ts[1])],
+                        'qw2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'QW Orientation',
+                     'title': 'QW Orientation vs Time'},
+        ps=ps, subplot_index=(0, 1))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['qx0', 'qx1', 'qx2'],
+        # slices_to_plot={'qx0': time_slice, 'qx1': time_slice, 'qx2': time_slice},
+        slices_to_plot={},
+        legend_entries={'qx0': [str(ts[0])], 'qx1': [str(ts[1])],
+                        'qx2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'QX Orientation',
+                     'title': 'QX Orientation vs Time'},
+        ps=ps, subplot_index=(1, 1))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['qy0', 'qy1', 'qy2'],
+        # slices_to_plot={'qy0': time_slice, 'qy1': time_slice, 'qy2': time_slice},
+        slices_to_plot={},
+        legend_entries={'qy0': [str(ts[0])], 'qy1': [str(ts[1])],
+                        'qy2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'QY Orientation',
+                     'title': 'QY Orientation vs Time'},
+        ps=ps, subplot_index=(2, 1))
+    plotting_utils.make_plot(
+        data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['qz0', 'qz1', 'qz2'],
+        # slices_to_plot={'qz0': time_slice, 'qz1': time_slice, 'qz2': time_slice},
+        slices_to_plot={},
+        legend_entries={'qz0': [str(ts[0])], 'qz1': [str(ts[1])],
+                        'qz2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'QZ Orientation',
+                     'title': 'QZ Orientation vs Time'},
+        ps=ps, subplot_index=(3, 1))
+    plotting_utils.make_plot(
+        shorter_data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['ux0', 'ux1', 'ux2'],
+        # slices_to_plot={'x0': time_slice, 'x1': time_slice, 'x2': time_slice},
+        slices_to_plot={},
+        legend_entries={'ux0': [str(ts[0])], 'ux1': [str(ts[1])],
+                        'ux2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'X Inputs [N]',
+                     'title': 'X Inputs vs Time'},
+        ps=ps, subplot_index=(0, 2))
+    plotting_utils.make_plot(
+        shorter_data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['uy0', 'uy1', 'uy2'],
+        # slices_to_plot={'y0': time_slice, 'y1': time_slice, 'y2': time_slice},
+        slices_to_plot={},
+        legend_entries={'uy0': [str(ts[0])], 'uy1': [str(ts[1])],
+                        'uy2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'Y Inputs [N]',
+                     'title': 'Y Inputs vs Time'},
+        ps=ps, subplot_index=(1, 2))
+    plotting_utils.make_plot(
+        shorter_data_dict, time_key='t', time_slice=time_slice,
+        keys_to_plot=['uz0', 'uz1', 'uz2'],
+        # slices_to_plot={'z0': time_slice, 'z1': time_slice, 'z2': time_slice},
+        slices_to_plot={},
+        legend_entries={'uz0': [str(ts[0])], 'uz1': [str(ts[1])],
+                        'uz2': [str(ts[2])]},
+        plot_labels={'xlabel': 'Time [s]', 'ylabel': 'Z Inputs [N]',
+                     'title': 'Z Inputs vs Time'},
+        ps=ps, subplot_index=(2, 2))
+
 def wxyz2xyzw(quat_wxyz):
     """
     quat_wxyz: (N,4) or (4,)
@@ -661,8 +836,7 @@ def quaternion_errors(quat1_wxyz, quat2_wxyz):
 def plot_object_position_error(c3_tracking_actual_dict, c3_tracking_target_dict,
                                time_is_c3_mode_dict, time_slice,
                                orientation_too=False):
-    breakpoint()
-    ps = plot_styler.PlotStyler(nrows=2, ncols=1)
+    ps = plot_styler.PlotStyler(nrows=2 if orientation_too else 1, ncols=1)
 
     actual_ts = c3_tracking_actual_dict['t']
     goal_ts = c3_tracking_target_dict['t']
@@ -690,19 +864,21 @@ def plot_object_position_error(c3_tracking_actual_dict, c3_tracking_target_dict,
                      'title': 'Position Error vs Time'},
         ps=ps,
         subplot_index=0)
-    data_dict = {'t': actual_ts, 'angle_error': deg_error}
-    plotting_utils.make_plot(
-        data_dict,
-        time_key='t',
-        time_slice=time_slice,
-        keys_to_plot=['angle_error'],
-        slices_to_plot={'angle_error': time_slice},
-        legend_entries={},
-        plot_labels={'xlabel': 'Time',
-                     'ylabel': 'Angular Error [deg]',
-                     'title': 'Angular Error vs Time'},
-        ps=ps,
-        subplot_index=1)
+    
+    if orientation_too:
+        data_dict = {'t': actual_ts, 'angle_error': deg_error}
+        plotting_utils.make_plot(
+            data_dict,
+            time_key='t',
+            time_slice=time_slice,
+            keys_to_plot=['angle_error'],
+            slices_to_plot={'angle_error': time_slice},
+            legend_entries={},
+            plot_labels={'xlabel': 'Time',
+                        'ylabel': 'Angular Error [deg]',
+                        'title': 'Angular Error vs Time'},
+            ps=ps,
+            subplot_index=1)
     
     if(time_is_c3_mode_dict is not None):
         t = actual_ts.squeeze()

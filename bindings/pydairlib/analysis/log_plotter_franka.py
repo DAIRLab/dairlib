@@ -88,7 +88,17 @@ def main():
         solve_times = np.diff(c3_output_curr['t'], prepend=[c3_output_curr['t'][0]])
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output_curr['t'])))
 
+    if plot_config.plot_lcs_debug:
+        lcs_debug = get_log_data(log, default_channels,
+                                 plot_config.start_time,
+                                 plot_config.duration,
+                                 mbp_plots.load_lcs_debug,
+                                 plot_config.dynamically_feasible_curr_plan_channel,
+                                 plot_config.dynamically_feasible_best_plan_channel,
+                                 c3_target_state_channel,
+                                 c3_actual_state_channel)
 
+    breakpoint()
     # processing callback arguments
     if plot_config.plot_object_state:
         object_state = get_log_data(log, default_channels,

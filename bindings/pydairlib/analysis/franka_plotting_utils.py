@@ -42,7 +42,9 @@ franka_default_channels = \
      'SAMPLE_COSTS': dairlib.lcmt_timestamped_saved_traj,
      'CURR_AND_BEST_SAMPLE_COSTS': dairlib.lcmt_timestamped_saved_traj,
      'IS_C3_MODE': dairlib.lcmt_timestamped_saved_traj,
-     'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}
+     'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz,
+     'DYNAMICALLY_FEASIBLE_CURR_PLAN': dairlib.lcmt_timestamped_saved_traj,
+     'DYNAMICALLY_FEASIBLE_BEST_PLAN': dairlib.lcmt_timestamped_saved_traj,}
      
 
 

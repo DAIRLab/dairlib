@@ -332,6 +332,39 @@ def process_object_state_channel(data):
             'q': positions,
             'v': velocities,}
 
+def process_lcs_debug(data):
+    t = []
+    position_states = []
+    orientation_states = []
+    # Each message is a timestamped saved trajectory that has a timestamp and 
+    # a list of saved trajectories. 
+    # Here we have only one saved trajectory per message containing a vector of 
+    # costs for each sample considered in that time stamp/control loop.
+    # print("message type is " + str(type(data[0])))
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        # num_samples = msg.saved_traj.trajectories[0].num_points
+        # print("Number of trajectories: " + str(msg.saved_traj.num_trajectories))         #Should print 1
+        # print("Trajectory names: " + str(msg.saved_traj.trajectory_names[0]))            #Should print "sample_costs"
+        # Datapoints here are the list of costs for each sample in the trajectory
+        # at that time stamp.
+        orientation_state = msg.saved_traj.trajectories[0].datapoints
+        orientation_states.append(orientation_state)
+        position_state = msg.saved_traj.trajectories[1].datapoints
+        position_states.append(position_state)
+    # These two should be the same length corresponding to the number of
+    # messages.
+    # print("Length of time vector: " + str(len(t)))
+    # print("Length of costs: " + str(len(costs)))
+
+    t = np.array(t)
+    orientation_states = np.array(orientation_states)
+    position_states = np.array(position_states)
+
+    return {'t': t,
+            'orientations': orientation_states,
+            'positions': position_states}
+
 def process_sample_costs(data):
     t = []
     costs = []
@@ -441,6 +474,14 @@ def load_c3_debug(data, c3_debug_output_curr_channel, c3_debug_output_best_chann
     c3_tracking_target = process_c3_tracking(data[c3_target_channel])
     c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
     return c3_debug_curr, c3_debug_best, c3_tracking_target, c3_tracking_actual
+
+def load_lcs_debug(data, dynamically_feasible_curr_plan_channel, dynamically_feasible_best_plan_channel, 
+                  c3_target_channel, c3_actual_channel):
+    lcs_debug_curr = process_lcs_debug(data[dynamically_feasible_curr_plan_channel])
+    lcs_debug_best = process_lcs_debug(data[dynamically_feasible_best_plan_channel])
+    c3_tracking_target = process_c3_tracking(data[c3_target_channel])
+    c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
+    return lcs_debug_curr, lcs_debug_best, c3_tracking_target, c3_tracking_actual
 
 def load_object_state(data, object_state_channel):
     object_state = process_object_state_channel(data[object_state_channel])

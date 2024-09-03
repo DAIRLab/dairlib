@@ -75,6 +75,7 @@ class FrankaPlotConfig():
         self.plot_sample_costs = data['plot_sample_costs']
         self.plot_curr_and_best_sample_costs = data['plot_curr_and_best_sample_costs']
         self.plot_is_c3_mode = data['plot_is_c3_mode']
+        self.plot_lcs_debug = data['plot_lcs_debug']
         self.plot_errors_with_mode_highlights = \
             data['plot_errors_with_mode_highlights']
         self.print_keys(data)

@@ -118,6 +118,15 @@ int DoMain(int argc, char* argv[]) {
                       ->get_output_port_lcm_cur_fingertips_pos(),
                   trifinger_cur_fingertips_pos_pub->get_input_port());
 
+  auto trifinger_target_fingertips_pos_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_fingertips_position>(
+          lcm_channel_params.fingertips_target_position_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  builder.Connect(fingertips_delta_position_receiver
+                      ->get_output_port_lcm_target_fingertips_pos(),
+                  trifinger_target_fingertips_pos_pub->get_input_port());
+
   auto trifinger_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.trifinger_input_channel, &lcm,

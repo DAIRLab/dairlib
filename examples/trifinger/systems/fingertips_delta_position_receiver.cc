@@ -64,6 +64,12 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
                                           CopytoLCMCurrentFingertipPositions)
           .get_index();
 
+  lcm_target_fingertips_pos_port_ =
+      this->DeclareAbstractOutputPort("lcm_target_fingertips_pos",
+                                      &FingertipDeltaPositionReceiver::
+                                          CopytoLCMTargetFingertipPositions)
+          .get_index();
+
   // Declare update event.
   DeclareForcedDiscreteUpdateEvent(
       &FingertipDeltaPositionReceiver::DiscreteVariableUpdate);
@@ -172,9 +178,9 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
       context.get_discrete_state(fingertips_target_pos_idx_).get_value();
   auto fingertips_target_vel =
       context.get_discrete_state(fingertips_target_vel_idx_).get_value();
-  auto cur_fingertips_pos =
+  auto start_fingertips_pos_traj =
       context.get_discrete_state(start_fingertips_pos_traj_idx_).get_value();
-  auto cur_fingertips_vel =
+  auto start_fingertips_vel_traj =
       context.get_discrete_state(start_fingertips_vel_traj_idx_).get_value();
 
   double delta_pos_update_period = 1.0 / delta_pos_update_frequency_;
@@ -185,12 +191,12 @@ void FingertipDeltaPositionReceiver::CopyToOutputFingertipsTargetTraj(
       context.get_discrete_state(start_time_traj_idx_).get_value()[0];
   knots << start_time_traj, start_time_traj + delta_pos_update_period;
 
-  Eigen::MatrixXd samples(cur_fingertips_pos.size(), 2);
-  samples.col(0) = cur_fingertips_pos;
+  Eigen::MatrixXd samples(start_fingertips_pos_traj.size(), 2);
+  samples.col(0) = start_fingertips_pos_traj;
   samples.col(1) = fingertips_target_pos;
 
-  Eigen::MatrixXd samples_dot(cur_fingertips_vel.size(), 2);
-  samples_dot.col(0) = cur_fingertips_vel;
+  Eigen::MatrixXd samples_dot(start_fingertips_vel_traj.size(), 2);
+  samples_dot.col(0) = start_fingertips_vel_traj;
   samples_dot.col(1) = fingertips_target_vel;
 
   auto traj =
@@ -232,4 +238,16 @@ void FingertipDeltaPositionReceiver::CopytoLCMCurrentFingertipPositions(
   }
 }
 
+void FingertipDeltaPositionReceiver::CopytoLCMTargetFingertipPositions(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_fingertips_position* lcm_target_fingertips_pos) const {
+  auto target_fingertips_pos =
+      context.get_discrete_state(fingertips_target_pos_idx_).get_value();
+  lcm_target_fingertips_pos->utime =
+      static_cast<int64_t>(context.get_time() * 1e6);
+
+  for (int i = 0; i < target_fingertips_pos.size(); i++) {
+    lcm_target_fingertips_pos->curPos[i] = target_fingertips_pos[i];
+  }
+}
 }  // namespace dairlib::systems

@@ -50,6 +50,10 @@ class FingertipDeltaPositionReceiver
   get_output_port_lcm_cur_fingertips_pos() const {
     return this->get_output_port(lcm_cur_fingertips_pos_port_);
   }
+  const drake::systems::OutputPort<double>&
+  get_output_port_lcm_target_fingertips_pos() const {
+    return this->get_output_port(lcm_target_fingertips_pos_port_);
+  }
 
  private:
   void CopyToOutputFingertipsTargetTraj(
@@ -68,6 +72,10 @@ class FingertipDeltaPositionReceiver
       const drake::systems::Context<double>& context,
       dairlib::lcmt_fingertips_position* lcm_cur_fingertips_pos) const;
 
+  void CopytoLCMTargetFingertipPositions(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_fingertips_position* lcm_target_fingertips_pos) const;
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -81,6 +89,7 @@ class FingertipDeltaPositionReceiver
   drake::systems::OutputPortIndex fingertips_target_port_;
   drake::systems::OutputPortIndex cur_fingertips_pos_port_;
   drake::systems::OutputPortIndex lcm_cur_fingertips_pos_port_;
+  drake::systems::OutputPortIndex lcm_target_fingertips_pos_port_;
   drake::systems::DiscreteStateIndex fingertips_target_pos_idx_;
   drake::systems::DiscreteStateIndex fingertips_target_vel_idx_;
   drake::systems::DiscreteStateIndex start_fingertips_pos_traj_idx_;

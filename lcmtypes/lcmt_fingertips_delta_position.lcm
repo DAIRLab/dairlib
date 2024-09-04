@@ -1,8 +1,0 @@
-package dairlib;
-
-struct lcmt_fingertips_delta_position
-{
-  int64_t utime;
-  double deltaPos [9];
-  double targetVel [9];
-}

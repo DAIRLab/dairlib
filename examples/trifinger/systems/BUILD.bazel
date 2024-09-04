@@ -4,9 +4,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "fingertips_delta_position_receiver",
-    srcs = ["fingertips_delta_position_receiver.cc"],
-    hdrs = ["fingertips_delta_position_receiver.h"],
+    name = "fingertips_target_position_receiver",
+    srcs = ["fingertips_target_position_receiver.cc"],
+    hdrs = ["fingertips_target_position_receiver.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -21,24 +21,6 @@ cc_library(
     hdrs = ["fingertips_target_traj_demultiplexer.h"],
     deps = [
         "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "trifinger_ros_lcm_msgs_conversions",
-    srcs = ["trifinger_ros_lcm_msgs_conversions.cc"],
-    hdrs = ["trifinger_ros_lcm_msgs_conversions.h"],
-    deps = [
-        "//common",
-        "//examples/trifinger/trifinger_msgs:trifinger_msgs_cc",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@ros2//:nav_msgs_cc",
-        "@ros2//:rclcpp_cc",
-        "@ros2//:sensor_msgs_cc",
-        "@ros2//:std_msgs_cc",
     ],
 )
 

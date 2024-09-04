@@ -1,10 +1,10 @@
 #include "common/find_resource.h"
-#include "dairlib/lcmt_fingertips_delta_position.hpp"
+#include "dairlib/lcmt_fingertips_target_position.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "gflags/gflags.h"
 #include "parameters/trifinger_impedance_controller_params.h"
 #include "parameters/trifinger_lcm_channels.h"
-#include "systems/fingertips_delta_position_receiver.h"
+#include "systems/fingertips_target_position_receiver.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -63,14 +63,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto fingertips_delta_position_sub =
       builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
-                        dairlib ::lcmt_fingertips_delta_position>(
+                        dairlib ::lcmt_fingertips_target_position>(
           lcm_channel_params.fingertips_delta_position_channel, &lcm));
 
   auto fingertips_delta_position_receiver =
-      builder.AddSystem<systems::FingertipDeltaPositionReceiver>(
+      builder.AddSystem<systems::FingertipTargetPositionReceiver>(
           plant, plant_context.get(),
-          controller_params.min_fingertips_delta_position,
-          controller_params.max_fingertips_delta_position,
           controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
           controller_params.fingertip_240_name,

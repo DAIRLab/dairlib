@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dairlib/lcmt_fingertips_delta_position.hpp"
+#include "dairlib/lcmt_fingertips_target_position.hpp"
 #include "dairlib/lcmt_fingertips_position.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "multibody/multibody_utils.h"
@@ -13,25 +13,23 @@
 
 namespace dairlib::systems {
 
-class FingertipDeltaPositionReceiver
+class FingertipTargetPositionReceiver
     : public drake::systems::LeafSystem<double> {
  public:
-  FingertipDeltaPositionReceiver(
+  FingertipTargetPositionReceiver(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      const Eigen::Vector3d& min_fingertips_delta_position,
-      const Eigen::Vector3d& max_fingertips_delta_position,
       const std::string& fingertip_0_name,
       const std::string& fingertip_120_name,
       const std::string& fingertip_240_name,
-      const unsigned int& delta_pos_update_frequency);
+      const unsigned int& target_pos_update_frequency);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>&
   get_input_port_fingertips_delta_position() const {
-    return this->get_input_port(fingertips_delta_position_port_);
+    return this->get_input_port(fingertips_target_position_port_);
   }
   const drake::systems::OutputPort<double>&
   get_output_port_fingertips_target_traj() const {
@@ -84,7 +82,7 @@ class FingertipDeltaPositionReceiver
   drake::systems::Context<double>* context_;
 
   drake::systems::InputPortIndex state_port_;
-  drake::systems::InputPortIndex fingertips_delta_position_port_;
+  drake::systems::InputPortIndex fingertips_target_position_port_;
   drake::systems::OutputPortIndex fingertips_target_traj_port_;
   drake::systems::OutputPortIndex fingertips_target_port_;
   drake::systems::OutputPortIndex cur_fingertips_pos_port_;
@@ -98,14 +96,11 @@ class FingertipDeltaPositionReceiver
   drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
   drake::systems::DiscreteStateIndex cur_fingertips_pos_idx_;
 
-  Eigen::Vector3d min_fingertips_delta_position_;
-  Eigen::Vector3d max_fingertips_delta_position_;
-
   std::string fingertip_0_name_;
   std::string fingertip_120_name_;
   std::string fingertip_240_name_;
 
-  unsigned int delta_pos_update_frequency_;
+  unsigned int target_pos_update_frequency_;
 };
 
 }  // namespace dairlib::systems

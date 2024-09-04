@@ -1,8 +1,5 @@
 # -*- mode: python -*-
 # vi: set ft=python :
-
-load("@ros2//:ros_cc.bzl", "ros_cc_binary")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -67,7 +64,7 @@ cc_binary(
         "//common:find_resource",
         "//examples/trifinger/parameters:trifinger_lcm_channels",
         "//examples/trifinger/parameters:trifinger_osc_controller_params",
-        "//examples/trifinger/systems:fingertips_delta_position_receiver",
+        "//examples/trifinger/systems:fingertips_target_position_receiver",
         "//examples/trifinger/systems:fingertips_target_traj_demultiplexer",
         "//examples/trifinger/systems:trifinger_joint_friction_compensation",
         "//lcm:lcm_trajectory_saver",
@@ -114,53 +111,6 @@ py_binary(
     ],
 )
 
-ros_cc_binary(
-    name = "trifinger_ros_lcm_bridge",
-    srcs = ["trifinger_ros_lcm_bridge.cc"],
-    data = [
-        ":trifinger_urdf",
-    ],
-    rmw_implementation = "rmw_fastrtps_cpp",
-    deps = [
-        "//common",
-        "//examples/trifinger/parameters:trifinger_lcm_channels",
-        "//examples/trifinger/parameters:trifinger_ros2_channels",
-        "//examples/trifinger/parameters:trifinger_sim_params",
-        "//examples/trifinger/systems:trifinger_ros_lcm_msgs_conversions",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/primitives",
-        "//tools/drake_ros:drake_ros_core",
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "@ros2//:rclcpp_cc",
-    ],
-)
-
-ros_cc_binary(
-    name = "trifinger_lcm_ros_bridge",
-    srcs = ["trifinger_lcm_ros_bridge.cc"],
-    data = [
-        ":trifinger_urdf",
-    ],
-    rmw_implementation = "rmw_fastrtps_cpp",
-    deps = [
-        "//common",
-        "//examples/trifinger/parameters:trifinger_lcm_channels",
-        "//examples/trifinger/parameters:trifinger_ros2_channels",
-        "//examples/trifinger/parameters:trifinger_sim_params",
-        "//examples/trifinger/systems:trifinger_ros_lcm_msgs_conversions",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "//tools/drake_ros:drake_ros_core",
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "@ros2//:rclcpp_cc",
-    ],
-)
-
 py_binary(
     name = "start_logging",
     srcs = ["start_logging.py"],
@@ -177,7 +127,7 @@ cc_binary(
         "//common:find_resource",
         "//examples/trifinger/parameters:trifinger_impedance_controller_params",
         "//examples/trifinger/parameters:trifinger_lcm_channels",
-        "//examples/trifinger/systems:fingertips_delta_position_receiver",
+        "//examples/trifinger/systems:fingertips_target_position_receiver",
         "//examples/trifinger/systems:trifinger_impedance_control",
         "//multibody:utils",
         "//systems:robot_lcm_systems",

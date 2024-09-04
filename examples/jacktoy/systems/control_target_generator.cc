@@ -3,9 +3,11 @@
 #include <iostream>
 
 #include "dairlib/lcmt_radio_out.hpp"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 
 using dairlib::systems::StateVector;
 using drake::multibody::MultibodyPlant;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using Eigen::VectorXd;
@@ -209,25 +211,23 @@ void TargetGenerator::CalcObjectTarget(
                                   target_object_orientation_[1], 
                                   target_object_orientation_[2], 
                                   target_object_orientation_[3]);
+    
+    // Get current orientation
     const VectorX<double> &q = object_state->GetPositions().head(4);
     Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+
+    // Generate spherically interpolated trajectory.
+     auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
+      {0, 1}, {y_quat, y_quat_des});
+
+    // Compute the error.
     Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
-    VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
 
-    if (angle_axis_diff.angle() < lookahead_angle_){
-      target_obj_orientation << target_object_orientation_;
-    }
-    else{
-      // Cap the angle error to the lookahead angle.
-      Eigen::Quaterniond smaller_delta_angle(
-        Eigen::AngleAxisd(lookahead_angle_, angle_axis_diff.axis()));
-
-      Eigen::Quaterniond smaller_quaternion = smaller_delta_angle * y_quat;
-      target_obj_orientation(0) = smaller_quaternion.w();
-      target_obj_orientation(1) = smaller_quaternion.x();
-      target_obj_orientation(2) = smaller_quaternion.y();
-      target_obj_orientation(3) = smaller_quaternion.z();
-    }
+    // Evaluate the trajectory at the lookahead time.
+    // Scale time based on lookahead angle.
+    double lookahead_fraction = std::max(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+    Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
+    target_obj_orientation = y_quat_lookahead;
   }
 
   else if(trajectory_type_ == 0){
@@ -256,18 +256,29 @@ void TargetGenerator::CalcObjectVelocityTarget(
                                 target_object_orientation_[1], 
                                 target_object_orientation_[2], 
                                 target_object_orientation_[3]);
+
+  // Get current orientation
   const VectorX<double> &q = object_state->GetPositions().head(4);
   Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+
+  // Compute the error.
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
-  VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
+  
+  // Generate spherically interpolated trajectory.
+    auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
+    {0, 1}, {y_quat, y_quat_des});
+
+  // Evaluate the trajectory at the lookahead time.
+  // Scale time based on lookahead angle.
+  double lookahead_fraction = std::max(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+  Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
+  Eigen::Quaterniond y_quat_lookahead_quat(y_quat_lookahead(0), y_quat_lookahead(1), y_quat_lookahead(2), y_quat_lookahead(3));
+
+  // Compute the error.
+  Eigen::AngleAxis<double> angle_axis_diff_to_lookahead(y_quat_lookahead_quat * y_quat.inverse());
+  VectorXd angle_error = angle_axis_diff_to_lookahead.angle() * angle_axis_diff_to_lookahead.axis();
 
   VectorXd target_obj_state = VectorXd::Zero(6);
-
-  //  tray_position(0) = 0.55;
-  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
-  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
-  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
-  //  tray_position(2) = 0.45;
   target_obj_state << angle_error, VectorXd::Zero(3); 
   target->SetFromVector(target_obj_state);
 }

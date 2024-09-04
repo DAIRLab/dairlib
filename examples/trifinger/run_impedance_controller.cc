@@ -64,7 +64,7 @@ int DoMain(int argc, char* argv[]) {
   auto fingertips_target_kinematics_sub =
       builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
                         dairlib ::lcmt_fingertips_target_kinematics>(
-          lcm_channel_params.fingertips_delta_position_channel, &lcm));
+              lcm_channel_params.fingertips_target_kinematics_channel, &lcm));
 
   auto fingertips_target_kinematics_receiver =
       builder.AddSystem<systems::FingertipTargetKinematicsReceiver>(

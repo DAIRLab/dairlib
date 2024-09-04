@@ -3,7 +3,7 @@ package dairlib;
 struct lcmt_fingertips_target_kinematics
 {
   int64_t utime;
-  boolean is_delta_pos;
+  boolean isAbsoluteTargetPos;
   double targetPos [9];
   double targetVel [9];
 }

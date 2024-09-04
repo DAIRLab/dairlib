@@ -10,7 +10,7 @@ struct TrifingerLcmChannels {
   std::string trifinger_input_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
-  std::string fingertips_delta_position_channel;
+  std::string fingertips_target_kinematics_channel;
   std::string fingertips_position_channel;
   std::string fingertips_target_position_channel;
   std::string estimated_friction_torque;
@@ -25,7 +25,7 @@ struct TrifingerLcmChannels {
     a->Visit(DRAKE_NVP(trifinger_input_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
-    a->Visit(DRAKE_NVP(fingertips_delta_position_channel));
+    a->Visit(DRAKE_NVP(fingertips_target_kinematics_channel));
     a->Visit(DRAKE_NVP(fingertips_position_channel));
     a->Visit(DRAKE_NVP(fingertips_target_position_channel));
     a->Visit(DRAKE_NVP(estimated_friction_torque));

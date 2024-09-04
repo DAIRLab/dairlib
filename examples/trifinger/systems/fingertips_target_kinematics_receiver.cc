@@ -141,7 +141,7 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
   if (current_msg_timestamp == previous_msg_timestamp) {
     return drake::systems::EventStatus::Succeeded();
   }
-  if (fingertips_target_kinematics_lcm_msg->is_delta_pos) {
+  if (!fingertips_target_kinematics_lcm_msg->isAbsoluteTargetPos) {
     fingertips_target_pos += Eigen::VectorXd::Map(
         fingertips_target_kinematics_lcm_msg->targetPos, 9);
   } else if (previous_msg_timestamp != -1) {
@@ -193,7 +193,15 @@ void FingertipTargetKinematicsReceiver::CopyToOutputFingertipsTargetTraj(
 
   Eigen::MatrixXd samples_dot(start_fingertips_vel_traj.size(), 2);
   samples_dot.col(0) = start_fingertips_vel_traj;
-  samples_dot.col(1) = fingertips_target_vel;
+
+  // If target velocities are not set (default value is NaN), we set target
+  // velocities as ones from first-order hold interpolation.
+  if (!fingertips_target_vel.array().isNaN().any()) {
+    samples_dot.col(1) = fingertips_target_vel;
+  } else {
+    samples_dot.col(1) = (fingertips_target_pos - start_fingertips_pos_traj) /
+                         target_kinematics_update_period;
+  }
 
   auto traj =
       PiecewisePolynomial<double>::CubicHermite(knots, samples, samples_dot);

@@ -116,25 +116,25 @@ py_binary(
     srcs = ["start_logging.py"],
 )
 
-cc_binary(
-    name = "run_impedance_controller",
-    srcs = ["run_impedance_controller.cc"],
-    data = [
-        ":trifinger_urdf",
-    ],
-    deps = [
-        "//common:eigen_utils",
-        "//common:find_resource",
-        "//examples/trifinger/parameters:trifinger_impedance_controller_params",
-        "//examples/trifinger/parameters:trifinger_lcm_channels",
-        "//examples/trifinger/systems:fingertips_target_position_receiver",
-        "//examples/trifinger/systems:trifinger_impedance_control",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
+#cc_binary(
+#    name = "run_impedance_controller",
+#    srcs = ["run_impedance_controller.cc"],
+#    data = [
+#        ":trifinger_urdf",
+#    ],
+#    deps = [
+#        "//common:eigen_utils",
+#        "//common:find_resource",
+#        "//examples/trifinger/parameters:trifinger_impedance_controller_params",
+#        "//examples/trifinger/parameters:trifinger_lcm_channels",
+#        "//examples/trifinger/systems:fingertips_target_position_receiver",
+#        "//examples/trifinger/systems:trifinger_impedance_control",
+#        "//multibody:utils",
+#        "//systems:robot_lcm_systems",
+#        "//systems:system_utils",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/primitives",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)

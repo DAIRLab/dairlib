@@ -1,14 +1,11 @@
 controller_frequency: 1000
-delta_pos_update_frequency: 20
+target_kinematics_update_frequency: 20
 
 trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
 cube_model: examples/trifinger/robot_properties_fingers/urdf/cube/cube_v2.urdf
 fingertip_0_name: finger_tip_link_0
 fingertip_120_name: finger_tip_link_120
 fingertip_240_name: finger_tip_link_240
-
-min_fingertips_delta_position: [-0.015, -0.015, 0]
-max_fingertips_delta_position: [0.015, 0.015, 0]
 
 home_position: [0, -0.8, -1.3, 0, -0.8, -1.3, 0, -0.8, -1.3]
 require_friction_compensation: false

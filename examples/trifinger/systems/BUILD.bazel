@@ -5,8 +5,8 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "fingertips_target_position_receiver",
-    srcs = ["fingertips_target_position_receiver.cc"],
-    hdrs = ["fingertips_target_position_receiver.h"],
+    srcs = ["fingertips_target_kinematics_receiver.cc"],
+    hdrs = ["fingertips_target_kinematics_receiver.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

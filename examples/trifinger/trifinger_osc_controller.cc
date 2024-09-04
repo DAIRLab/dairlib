@@ -2,9 +2,9 @@
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_estimated_joint_friction_trifinger.hpp"
-#include "dairlib/lcmt_fingertips_target_position.hpp"
+#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "dairlib/lcmt_fingertips_position.hpp"
-#include "examples/trifinger/systems/fingertips_target_position_receiver.h"
+#include "examples/trifinger/systems/fingertips_target_kinematics_receiver.h"
 #include "examples/trifinger/systems/fingertips_target_traj_demultiplexer.h"
 #include "examples/trifinger/systems/trifinger_joint_friction_compensation.h"
 #include "multibody/multibody_utils.h"
@@ -96,24 +96,24 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
-  auto fingertips_target_position_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_fingertips_target_position>(
+  auto fingertips_target_kinematics_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_fingertips_target_kinematics>(
           lcm_channel_params.fingertips_delta_position_channel, &lcm));
 
-  auto fingertips_target_position_receiver =
-      builder.AddSystem<systems::FingertipTargetPositionReceiver>(
+  auto fingertips_target_kinematics_receiver =
+      builder.AddSystem<systems::FingertipTargetKinematicsReceiver>(
           plant, plant_context.get(),
           controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
           controller_params.fingertip_240_name,
-          controller_params.delta_pos_update_frequency);
+          controller_params.target_kinematics_update_frequency);
 
   auto trifinger_cur_fingertips_pos_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_fingertips_position>(
           lcm_channel_params.fingertips_position_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(fingertips_target_position_receiver
+  builder.Connect(fingertips_target_kinematics_receiver
                       ->get_output_port_lcm_cur_fingertips_pos(),
                   trifinger_cur_fingertips_pos_pub->get_input_port());
 
@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.fingertips_target_position_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(fingertips_target_position_receiver
+  builder.Connect(fingertips_target_kinematics_receiver
                       ->get_output_port_lcm_target_fingertips_pos(),
                   trifinger_target_fingertips_pos_pub->get_input_port());
 
@@ -182,13 +182,13 @@ int DoMain(int argc, char* argv[]) {
   auto target_traj_demultiplexer =
       builder.AddSystem<dairlib::systems::FingertipsTargetTrajDemultiplexer>(
           plant_context.get());
-  builder.Connect(fingertips_target_position_sub->get_output_port(),
-                  fingertips_target_position_receiver
-                      ->get_input_port_fingertips_delta_position());
+  builder.Connect(fingertips_target_kinematics_sub->get_output_port(),
+                  fingertips_target_kinematics_receiver
+                          ->get_input_port_fingertips_target_kinematics());
   builder.Connect(state_receiver->get_output_port(0),
-                  fingertips_target_position_receiver->get_input_port_state());
+                  fingertips_target_kinematics_receiver->get_input_port_state());
 
-  builder.Connect(fingertips_target_position_receiver
+  builder.Connect(fingertips_target_kinematics_receiver
                       ->get_output_port_fingertips_target_traj(),
                   target_traj_demultiplexer->get_input_port_traj());
   builder.Connect(

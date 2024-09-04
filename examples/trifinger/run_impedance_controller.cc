@@ -1,10 +1,10 @@
 #include "common/find_resource.h"
-#include "dairlib/lcmt_fingertips_target_position.hpp"
+#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "gflags/gflags.h"
 #include "parameters/trifinger_impedance_controller_params.h"
 #include "parameters/trifinger_lcm_channels.h"
-#include "systems/fingertips_target_position_receiver.h"
+#include "systems/fingertips_target_kinematics_receiver.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -61,13 +61,13 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
-  auto fingertips_delta_position_sub =
+  auto fingertips_target_kinematics_sub =
       builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
-                        dairlib ::lcmt_fingertips_target_position>(
+                        dairlib ::lcmt_fingertips_target_kinematics>(
           lcm_channel_params.fingertips_delta_position_channel, &lcm));
 
-  auto fingertips_delta_position_receiver =
-      builder.AddSystem<systems::FingertipTargetPositionReceiver>(
+  auto fingertips_target_kinematics_receiver =
+      builder.AddSystem<systems::FingertipTargetKinematicsReceiver>(
           plant, plant_context.get(),
           controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
@@ -99,16 +99,16 @@ int DoMain(int argc, char* argv[]) {
           controller_params.Kp_fingertip_240,
           controller_params.Kd_fingertip_240);
 
-  builder.Connect(fingertips_delta_position_sub->get_output_port(),
-                  fingertips_delta_position_receiver
-                      ->get_input_port_fingertips_delta_position());
+  builder.Connect(fingertips_target_kinematics_sub->get_output_port(),
+                  fingertips_target_kinematics_receiver
+                          ->get_input_port_fingertips_target_kinematics());
   builder.Connect(state_receiver->get_output_port(0),
-                  fingertips_delta_position_receiver->get_input_port_state());
+                  fingertips_target_kinematics_receiver->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   impedance_controller->get_input_port_state());
   builder.Connect(
-      fingertips_delta_position_receiver->get_output_port_fingertips_target(),
-      impedance_controller->get_input_port_fingertips_delta_position());
+          fingertips_target_kinematics_receiver->get_output_(),
+          impedance_controller->get_input_port_fingertips_delta_position());
   builder.Connect(impedance_controller->get_commanded_torque_port(),
                   trifinger_command_sender->get_input_port(0));
   builder.Connect(trifinger_command_sender->get_output_port(0),

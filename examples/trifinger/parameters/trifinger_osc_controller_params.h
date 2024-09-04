@@ -11,14 +11,11 @@ struct TrifingerControllerParams : OSCGains {
   std::string fingertip_120_name;
   std::string fingertip_240_name;
 
-  Eigen::Vector3d min_fingertips_delta_position;
-  Eigen::Vector3d max_fingertips_delta_position;
-
   std::vector<double> home_position;
 
   bool require_friction_compensation;
 
-  unsigned int delta_pos_update_frequency;
+  unsigned int target_kinematics_update_frequency;
 
   std::vector<double> Fingertip0W;
   std::vector<double> Fingertip0Kp;
@@ -49,8 +46,6 @@ struct TrifingerControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(fingertip_0_name));
     a->Visit(DRAKE_NVP(fingertip_120_name));
     a->Visit(DRAKE_NVP(fingertip_240_name));
-    a->Visit(DRAKE_NVP(min_fingertips_delta_position));
-    a->Visit(DRAKE_NVP(max_fingertips_delta_position));
     a->Visit(DRAKE_NVP(Fingertip0W));
     a->Visit(DRAKE_NVP(Fingertip0Kp));
     a->Visit(DRAKE_NVP(Fingertip0Kd));
@@ -62,7 +57,7 @@ struct TrifingerControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(Fingertip240Kd));
     a->Visit(DRAKE_NVP(home_position));
     a->Visit(DRAKE_NVP(require_friction_compensation));
-    a->Visit(DRAKE_NVP(delta_pos_update_frequency));
+    a->Visit(DRAKE_NVP(target_kinematics_update_frequency));
 
     W_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

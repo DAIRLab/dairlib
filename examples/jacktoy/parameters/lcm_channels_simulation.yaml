@@ -23,6 +23,7 @@ repos_trajectory_exec_actor_channel: REPOS_EXECUTION_TRAJECTORY_ACTOR # lcmt_tim
 tracking_trajectory_actor_channel: TRACKING_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
 tracking_trajectory_object_channel: TRACKING_TRAJECTORY_OBJECT # lcmt_timestamped_saved_traj
 
+c3_final_target_state_channel: C3_FINAL_TARGET # lcmt_c3_state
 c3_target_state_channel: C3_TARGET # lcmt_c3_state
 c3_actual_state_channel: C3_ACTUAL # lcmt_c3_state
 

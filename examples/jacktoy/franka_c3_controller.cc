@@ -294,9 +294,14 @@ int DoMain(int argc, char* argv[]) {
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+  auto final_target_state_mux =
+      builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
+  auto object_zero_velocity_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(6));
 //   auto object_zero_velocity_source =
 //       builder.AddSystem<drake::systems::ConstantVectorSource>(
 //           VectorXd::Zero(6));
@@ -308,6 +313,17 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(control_target->get_output_port_object_velocity_target(),
                   target_state_mux->get_input_port(3));
+                  
+  builder.Connect(control_target->get_output_port_end_effector_target(),
+                  final_target_state_mux->get_input_port(0));
+  builder.Connect(control_target->get_output_port_object_final_target(),
+                  final_target_state_mux->get_input_port(1));
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
+                  final_target_state_mux->get_input_port(2));
+  builder.Connect(object_zero_velocity_source->get_output_port(),
+                  final_target_state_mux->get_input_port(3));
+
+  
 
 
   // Instantiating the sampling based c3 controller.
@@ -473,6 +489,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto c3_final_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_final_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
 
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
@@ -549,10 +569,14 @@ int DoMain(int argc, char* argv[]) {
   // ACTUAL AND TARGET LCS_STATE CONNECTIONS
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
+  builder.Connect(final_target_state_mux->get_output_port(),
+                  c3_state_sender->get_input_port_final_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   c3_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_final_target_c3_state(),
+                  c3_final_target_state_publisher->get_input_port());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                   c3_actual_state_publisher->get_input_port());
 

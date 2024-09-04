@@ -162,6 +162,11 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                              bool draw_tray = true, bool draw_ee = false);
 
+  const drake::systems::InputPort<double>& get_input_port_c3_state_final_target()
+      const {
+    return this->get_input_port(c3_state_final_target_input_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_c3_state_target()
       const {
     return this->get_input_port(c3_state_target_input_port_);
@@ -179,6 +184,7 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
+  drake::systems::InputPortIndex c3_state_final_target_input_port_;
   drake::systems::InputPortIndex c3_state_target_input_port_;
   drake::systems::InputPortIndex c3_state_actual_input_port_;
 
@@ -192,6 +198,7 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
   const std::string c3_state_path_ = "c3_state";
+  const std::string c3_final_target_tray_path_ = "c3_state/c3_final_target_tray";
   const std::string c3_target_tray_path_ = "c3_state/c3_target_tray";
   const std::string c3_actual_tray_path_ = "c3_state/c3_actual_tray";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";

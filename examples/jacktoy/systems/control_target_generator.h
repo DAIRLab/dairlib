@@ -39,6 +39,11 @@ class TargetGenerator
     return this->get_output_port(object_velocity_target_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_object_final_target()
+  const {
+    return this->get_output_port(object_final_target_port_);
+  }
+
   void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position,
      const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
@@ -52,6 +57,8 @@ class TargetGenerator
                       drake::systems::BasicVector<double>* target) const;
    void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
+   void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -61,14 +68,15 @@ class TargetGenerator
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex object_target_port_;
   drake::systems::OutputPortIndex object_velocity_target_port_;
+  drake::systems::OutputPortIndex object_final_target_port_;
 
   int trajectory_type_;
   double traj_radius_;
   double x_c_;
   double y_c_;
   double lead_angle_;
-  Eigen::VectorXd target_object_position_;
-  Eigen::VectorXd target_object_orientation_;
+  Eigen::VectorXd target_final_object_position_;
+  Eigen::VectorXd target_final_object_orientation_;
   double step_size_;
   double start_point_x_;
   double start_point_y_;

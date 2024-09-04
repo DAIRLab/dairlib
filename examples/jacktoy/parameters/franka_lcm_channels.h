@@ -27,6 +27,7 @@ struct FrankaLcmChannels {
   std::string tracking_trajectory_actor_channel;
   std::string tracking_trajectory_object_channel;
 
+  std::string c3_final_target_state_channel;
   std::string c3_target_state_channel;
   std::string c3_actual_state_channel;
   std::string radio_channel;
@@ -63,6 +64,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(tracking_trajectory_actor_channel));
     a->Visit(DRAKE_NVP(tracking_trajectory_object_channel));
 
+    a->Visit(DRAKE_NVP(c3_final_target_state_channel));
     a->Visit(DRAKE_NVP(c3_target_state_channel));
     a->Visit(DRAKE_NVP(c3_actual_state_channel));
     a->Visit(DRAKE_NVP(radio_channel));

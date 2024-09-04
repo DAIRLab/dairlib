@@ -283,6 +283,9 @@ int do_main(int argc, char* argv[]) {
   auto c3_state_target_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
+  auto c3_final_state_target_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_final_target_state_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
@@ -424,6 +427,8 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_target());
+    builder.Connect(c3_final_state_target_sub->get_output_port(),
+                    c3_target_drawer->get_input_port_c3_state_final_target());
   }
 
   if (sim_params.visualize_c3_forces_curr){

@@ -87,7 +87,7 @@ warm_start: false     # TODO: Check if we use this. Delete otherwise.
 w_Q: 45
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 0.21
+w_G: 0.25
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
@@ -116,7 +116,7 @@ qp_projection_scaling: 1
 #            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0, 0, 0,        # end effector position
            1800, 1800, 1800, 1800,              # object orientation
-           3000, 3000, 0,    # object position
+           6000, 6000, 100,    # object position
            0.2, 0.2, 0.2,              # end effector linear velocity
            2.8, 2.8, 2.8,                 # object angular velocity
            0.2, 0.2, 0.2]           # object linear velocity

@@ -427,6 +427,10 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
     bool draw_ee)
     : meshcat_(meshcat), draw_tray_(draw_tray), draw_ee_(draw_ee) {
   this->set_name("LcmC3TargetDrawer");
+  c3_state_final_target_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: final_target",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
   c3_state_target_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_state: target",
                                      drake::Value<dairlib::lcmt_c3_state>{})
@@ -442,6 +446,12 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 
   // TODO(yangwill): Clean up all this visualization, move to separate
   // visualization directory1
+  meshcat_->SetObject(c3_final_target_tray_path_ + "/x-axis", cylinder_for_tray_,
+                      {1, 0, 0, 1});
+  meshcat_->SetObject(c3_final_target_tray_path_ + "/y-axis", cylinder_for_tray_,
+                      {0, 1, 0, 1});
+  meshcat_->SetObject(c3_final_target_tray_path_ + "/z-axis", cylinder_for_tray_,
+                      {0, 0, 1, 1});
   meshcat_->SetObject(c3_target_tray_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
   meshcat_->SetObject(c3_target_tray_path_ + "/y-axis", cylinder_for_tray_,
@@ -484,6 +494,9 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   auto z_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
                       0.5 * Vector3d{0.0, 0.0, 0.05});
+  meshcat_->SetTransform(c3_final_target_tray_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_final_target_tray_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_final_target_tray_path_ + "/z-axis", z_axis_transform);
   meshcat_->SetTransform(c3_target_tray_path_ + "/x-axis", x_axis_transform);
   meshcat_->SetTransform(c3_target_tray_path_ + "/y-axis", y_axis_transform);
   meshcat_->SetTransform(c3_target_tray_path_ + "/z-axis", z_axis_transform);
@@ -504,6 +517,11 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
+                                                   c3_state_final_target_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
                                                    c3_state_target_input_port_)
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
@@ -520,11 +538,20 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
   }
   discrete_state->get_mutable_value(last_update_time_index_)[0] =
       context.get_time();
+  const auto& c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+      context, c3_state_final_target_input_port_);
   const auto& c3_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
       context, c3_state_target_input_port_);
   const auto& c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(
       context, c3_state_actual_input_port_);
   if (draw_tray_) {
+    meshcat_->SetTransform(
+        c3_final_target_tray_path_,
+        RigidTransformd(
+            Eigen::Quaterniond(c3_final_target->state[3], c3_final_target->state[4],
+                               c3_final_target->state[5], c3_final_target->state[6]),
+            Vector3d{c3_final_target->state[7], c3_final_target->state[8],
+                     c3_final_target->state[9]}));
     meshcat_->SetTransform(
         c3_target_tray_path_,
         RigidTransformd(

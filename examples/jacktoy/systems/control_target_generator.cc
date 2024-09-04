@@ -233,7 +233,7 @@ void TargetGenerator::CalcObjectTarget(
 
     // Evaluate the trajectory at the lookahead time.
     // Scale time based on lookahead angle.
-    double lookahead_fraction = std::max(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+    double lookahead_fraction = std::min(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
     Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
     target_obj_orientation = y_quat_lookahead;
   }
@@ -278,7 +278,7 @@ void TargetGenerator::CalcObjectVelocityTarget(
 
   // Evaluate the trajectory at the lookahead time.
   // Scale time based on lookahead angle.
-  double lookahead_fraction = std::max(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+  double lookahead_fraction = std::min(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
   Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
   Eigen::Quaterniond y_quat_lookahead_quat(y_quat_lookahead(0), y_quat_lookahead(1), y_quat_lookahead(2), y_quat_lookahead(3));
 

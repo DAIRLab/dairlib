@@ -83,8 +83,8 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    #model_path = 'latest_model.zip'
-    model_path = 'logs/rl_model_6048000_steps.zip'
+    #model_path = '128_joint1.zip'
+    model_path = '1/rl_model_8064000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
     #model.save('128_joint_new')

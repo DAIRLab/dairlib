@@ -345,9 +345,8 @@ class RewardSystem(LeafSystem):
         angular_reward = np.exp(-2*np.linalg.norm(bf_ang))
         track_penalty = 0.0
 
-        if track_error > 0.05 and (context.get_time() > 1.5):
+        if track_error > 0.05 and (context.get_time() > 1.):
             track_penalty = np.exp(4*(track_error-0.05)) - 1
-            # if track_error > 0.3:
             #     print(f'track error : {track_error}')
             #     print(f'track penalty : {track_penalty}')
             #     input("track_penalty")

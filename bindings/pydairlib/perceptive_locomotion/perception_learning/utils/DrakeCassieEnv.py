@@ -123,12 +123,12 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/ic_new.npz'
+            'tmp/ic.npz'
         )
     )
     
-    #datapoint = ic_generator.random()
-    datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
+    datapoint = ic_generator.random()
+    #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
     
     v_x = 0.8
     v_y = 0.2
@@ -142,8 +142,8 @@ def reset_handler(simulator, terrain, seed, drake_rng):
         vy = np.random.uniform(-v_y, v_y)
     datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
 
-    #datapoint['desired_velocity'] = np.array([0.6, 0.]).flatten()
-    print(datapoint['desired_velocity'])
+    # datapoint['desired_velocity'] = np.array([0.6, 0.]).flatten()
+    # print(datapoint['desired_velocity'])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -276,8 +276,8 @@ def simulate_init(sim_params):
     # terrain = 'no_obs'
     # terrain_yaml = 'params/easy_stair/dustair_1.yaml'
     # terrain = 'stair'
-    # terrain_yaml = 'params/normal_stair/dustair_944.yaml'
-    # terrain = 'stair'
+    terrain_yaml = 'params/reg_stair/dustair_944.yaml'
+    terrain = 'stair'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
@@ -331,7 +331,7 @@ def simulate_init(sim_params):
         if left_angle > .6:
             return EventStatus.ReachedTermination(diagram, "Left Angle Exceeded")
         
-        if track_error > 0.4 and (context.get_time() > 1.5):
+        if track_error > 0.5 and (context.get_time() > 1.):
             return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
 
         return EventStatus.Succeeded()

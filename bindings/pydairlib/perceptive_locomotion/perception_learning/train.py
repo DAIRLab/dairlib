@@ -317,7 +317,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = '128_joint.zip' # x/logs2/rl_model_1728000_steps
+        model_path = '128_joint1.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = linear_schedule(1e-4), max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.01, target_kl = 0.02, vf_coef=0.5,
@@ -326,9 +326,9 @@ def _run_training(config, args):
         #                 tensorboard_log=tensorboard_log)
 
         model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.1, ent_coef=0.01, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
+                        clip_range = 0.05, ent_coef=0.01, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
                         n_steps=int(64), n_epochs=5,
-                        batch_size=64, seed=46, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+                        batch_size=64, seed=47, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
@@ -389,7 +389,7 @@ def _main():
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 3000,
+        "model_save_freq": 5000,
         "sim_params" : sim_params
     }
 

@@ -89,11 +89,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     # else:
     #     cost_logger = 0
     
-    freq = np.random.uniform(low=0.001, high=0.05)
+    freq = np.random.uniform(low=0.001, high=0.025)
     #print(f'Zero Order Hold : {freq}')
     footstep_zoh = ZeroOrderHold(freq, 3)#ZeroOrderHold(1.0 / 30.0, 3)
     #footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
-    
+
     builder.AddSystem(footstep_zoh)
     builder.Connect(
         controller.get_output_port_by_name('footstep_command'),
@@ -111,7 +111,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
 
 def reset_handler(simulator, terrain, seed, drake_rng):
-
+    #np.random.seed(seed)
     # Get controller from context or simulator
     diagram = simulator.get_system()
     context = diagram.CreateDefaultContext()
@@ -127,13 +127,23 @@ def reset_handler(simulator, terrain, seed, drake_rng):
         )
     )
     
-    datapoint = ic_generator.random()
-    #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
-    v_des_theta = 0.1
-    v_des_norm = 0.8
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    #datapoint = ic_generator.random()
+    datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
+    
+    v_x = 0.8
+    v_y = 0.2
+    
+    if terrain == 'no_obs':
+        v_y = 0.4
+        vx = np.random.uniform(-v_x, v_x)
+        vy = np.random.uniform(-v_y, v_y)
+    else:
+        vx = np.random.uniform(0.0, v_x)
+        vy = np.random.uniform(-v_y, v_y)
+    datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+
+    #datapoint['desired_velocity'] = np.array([0.6, 0.]).flatten()
+    print(datapoint['desired_velocity'])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -148,23 +158,27 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
     # Change initial settings
     if terrain == 'stair':
-        rand = np.random.randint(1, 4)
-        if rand == 1:
-            yaw = math.pi # Downstair
-        else:
+        rand = np.random.randint(1,4)
+        if rand in [1,2]:
             yaw = 0.0 # Upstair
+        else:
+            yaw = math.pi # Downstair
         
         rand = np.random.randint(1, 4)
         if rand == 1:
-            rand = np.random.uniform(low=-8.0, high=8.0)
+            #rand = np.random.uniform(low=-8.0, high=8.0)
+            rand = 0
             datapoint['q'][4:6] = np.array([-15., rand])
         elif rand == 2:
-            rand = np.random.uniform(low=-8.0, high=8.0)
+            #rand = np.random.uniform(low=-8.0, high=8.0)
+            rand = 0
             datapoint['q'][4:6] = np.array([15., rand])
         else:
-            rand = np.random.uniform(low=-8.0, high=8.0)
+            #rand = np.random.uniform(low=-8.0, high=8.0)
+            rand = 0
             datapoint['q'][4:6] = np.array([0., rand])
-
+    elif terrain == 'no_obs':
+        yaw = np.random.uniform(low=-math.pi, high=math.pi)
     else: # Flat
         rand = np.random.randint(1, 3)
         if rand == 1:
@@ -217,33 +231,66 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     return context
 
 def simulate_init(sim_params):
-    rand = np.random.randint(1, 5)
-    if rand == 1:
-        rand = np.random.randint(0, 1000)
-        terrain_yaml = f'params/flat/flat_{rand}.yaml'
-        terrain = 'flat'
-    elif rand == 2:
+    rand = np.random.randint(1, 21)
+    if rand in [1,2,3,4,5,6,7,8,9,10,11,12]:
+        rand = np.random.randint(1, 11)
+        if rand in [1,2]:
+            rand = np.random.randint(0, 1000)
+            terrain_yaml = f'params/easy_stair/dustair_{rand}.yaml'
+            terrain = 'stair'
+        elif rand in [3,4]:
+            rand = np.random.randint(0, 1000)
+            terrain_yaml = f'params/normal_stair/dustair_{rand}.yaml'
+            terrain = 'stair'
+        elif rand in [5,6,7,8]:
+            rand = np.random.randint(0, 1000)
+            terrain_yaml = f'params/reg_stair/dustair_{rand}.yaml'
+            terrain = 'stair'
+        else:
+            rand = np.random.randint(0, 1000)
+            terrain_yaml = f'params/new_stair15_25/dustair_{rand}.yaml'
+            terrain = 'stair'
+    elif rand in [13,14]:
         rand = np.random.randint(0, 1000)
         terrain_yaml = f'params/slope/stair_{rand}.yaml'
         terrain = 'stair'
+    elif rand in [15,16]:
+        terrain_yaml = 'params/flat.yaml'
+        terrain = 'no_obs'
     else:
-        rand = np.random.randint(0, 1000)
-        terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
-        terrain = 'stair'
+        #rand = np.random.randint(1, 4)
+        #if rand == 1:
+        rand = np.random.randint(0, 1500)
+        terrain_yaml = f'params/flat/flat_{rand}.yaml'
+        terrain = 'flat'
+        # elif rand == 2:
+        #     rand = np.random.randint(0, 1000)
+        #     terrain_yaml = f'params/normal_flat/flat_{rand}.yaml'
+        #     terrain = 'flat'
+        # else:
+        #     rand = np.random.randint(0, 1000)
+        #     terrain_yaml = f'params/hard_flat/flat_{rand}.yaml'
+        #     terrain = 'flat'
     print(terrain_yaml)
+    # terrain_yaml = 'params/flat.yaml'
+    # terrain = 'no_obs'
+    # terrain_yaml = 'params/easy_stair/dustair_1.yaml'
+    # terrain = 'stair'
+    # terrain_yaml = 'params/normal_stair/dustair_944.yaml'
+    # terrain = 'stair'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
-    
+
     def monitor(context):
-        time_limit = 10
+        time_limit = 8
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
-        # sim_context = sim_env.GetMyMutableContextFromRoot(context)
-        # track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
+        sim_context = sim_env.GetMyMutableContextFromRoot(context)
+        track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
         
         # if center of mas is 20cm 
         left_toe_pos = plant.CalcPointsPositions(
@@ -257,21 +304,35 @@ def simulate_init(sim_params):
         com = plant.CalcCenterOfMassPositionInWorld(plant_context)
         z1 = com[2] - left_toe_pos[2]
         z2 = com[2] - right_toe_pos[2]
+        
+        front_contact_pt = np.array((-0.0457, 0.112, 0))
+        rear_contact_pt = np.array((0.088, 0, 0))
+
+        toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+        
+        toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
         if context.get_time() > time_limit:
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
-
-        # if track_error > 0.5 and context.get_time() > 2.0:
-        #     print(context.get_time())
-        #     print(f'Tracking Error: {track_error}')
-        #     input("==")
-        #    return EventStatus.ReachedTermination(diagram, "Tracking error Exceeded")
-
+        
         if z1 < 0.2:
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
+
+        if right_angle > .6:
+            return EventStatus.ReachedTermination(diagram, "Right Angle Exceeded")
+        
+        if left_angle > .6:
+            return EventStatus.ReachedTermination(diagram, "Left Angle Exceeded")
+        
+        if track_error > 0.4 and (context.get_time() > 1.5):
+            return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
 
         return EventStatus.Succeeded()
 
@@ -293,13 +354,22 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     action_space = spaces.Box(low=np.asarray(la, dtype="float32"),
                                   high=np.asarray(ha, dtype="float32"),
                                   dtype=np.float32)
-                                  
+
+    # Joint                              
     observation_space = spaces.Box(low=-np.inf, high=np.inf,
                                     shape=(3*64*64 +6+16+23 +3*64*64,),
                                     dtype=np.float32)
+    # ALIP
+    # observation_space = spaces.Box(low=-np.inf, high=np.inf,
+    #                                 shape=(3*64*64 +6 +23 +3*64*64,),
+    #                                 dtype=np.float32)
+    # full state
+    # observation_space = spaces.Box(low=-np.inf, high=np.inf,
+    #                                 shape=(3*64*64+6+23 +23 +3*64*64,),
+    #                                 dtype=np.float32)
 
     # Time_step to match walking
-    time_step = 0.05
+    time_step = 0.025
     
     env = DrakeGymEnv(
         simulator=simulator,

@@ -693,7 +693,7 @@ class ActorCriticPolicy(BasePolicy):
         :return: Action distribution
         """
         mean_actions = self.action_net(latent_pi)
-        self.log_std = nn.Parameter(th.tensor([-3.2, -3.2, -3.2,], device='cuda:0'))
+        # self.log_std = nn.Parameter(th.tensor([-3.2, -3.2, -3.6,], device='cuda:0'))
         
         # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m, 0.1rad] Initialize with log_std
         #self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6, -2.3], device='cuda:0'))
@@ -707,8 +707,8 @@ class ActorCriticPolicy(BasePolicy):
             mean_actions = mean_actions + z.to(mean_actions.device)
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
-            #print(self.log_std)
-            #print(self.action_dist.proba_distribution(mean_actions, self.log_std).entropy()[0])
+            # print(self.log_std)
+            # print(self.action_dist.proba_distribution(mean_actions, self.log_std).entropy()[0])
             return self.action_dist.proba_distribution(mean_actions, self.log_std)
         elif isinstance(self.action_dist, CategoricalDistribution):
             # Here mean_actions are the logits before the softmax

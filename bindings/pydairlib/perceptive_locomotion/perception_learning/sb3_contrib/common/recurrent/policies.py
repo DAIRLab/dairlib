@@ -78,8 +78,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
         share_features_extractor: bool = True,
         normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,#th.optim.RAdam, #th.optim.Adam
+        optimizer_kwargs: Optional[Dict[str, Any]] = None, #{'weight_decay': 1e-4, 'eps': 1e-5},#None
         lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         shared_lstm: bool = False,
@@ -111,8 +111,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         self.shared_lstm = shared_lstm # Do not share LSTM
         self.enable_critic_lstm = enable_critic_lstm # True
 
-        self.lstm_actor = self.mlp_extractor.actor_combined_lstm
-        self.lstm_critic = self.mlp_extractor.critic_combined_lstm
+        # self.lstm_actor = self.mlp_extractor.actor_combined_lstm
+        # self.lstm_critic = self.mlp_extractor.critic_combined_lstm
 
         # For the predict() method, to initialize hidden states
         # (n_lstm_layers, batch_size, lstm_hidden_size)

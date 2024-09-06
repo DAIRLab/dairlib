@@ -156,7 +156,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
 
         # We assume that LSTM for the actor and the critic
         # have the same architecture
-        lstm = self.policy.lstm_actor
+        lstm = self.policy.mlp_extractor.actor_combined_lstm
 
         if not isinstance(self.policy, RecurrentActorCriticPolicy):
             raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
@@ -462,7 +462,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 value_loss = th.mean(((rollout_data.returns - values_pred) ** 2)[mask])
 
                 value_losses.append(value_loss.item())
-
+                # loss = self.vf_coef * value_loss
                 # Entropy loss favor exploration
                 if entropy is None:
                     # Approximate entropy when no analytical form

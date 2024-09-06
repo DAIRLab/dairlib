@@ -83,11 +83,11 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'RPPO_mirror_noise.zip'
-    #model_path = 'logs/rl_model_1500000_steps.zip'
+    #model_path = 'latest_model.zip'
+    model_path = 'logs/rl_model_6048000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
-    
+    #model.save('128_joint_new')
     obs, _ = env.reset()
     input("Start..")
     total_reward = 0
@@ -97,11 +97,11 @@ def run_play(sim_params, model_path=None):
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
-        
+        #print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
             episode_starts = terminated
-            
+        # print(reward)
         total_reward += reward
         if terminated or truncated:
             print(total_reward)

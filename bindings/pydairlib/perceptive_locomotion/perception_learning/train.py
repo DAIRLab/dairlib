@@ -131,13 +131,13 @@ class InitialBatchNorm(nn.Module):
 
 class CustomNetwork(nn.Module):
     def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
-        super().__init__()
+        super(CustomNetwork, self).__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
         self.latent_dim_vf = last_layer_dim_vf
-        self.vector_state_actor = 6+23
+        self.vector_state_actor = 6+16
         self.vector_state_critic = 6+23
-        self.heightmap_size = 64
+        self.h_size = 64
         self.use_BN = False # Use BatchNorm2D
         if self.use_BN:
             ResidualBlock = ResidualBlock_Norm
@@ -147,59 +147,22 @@ class CustomNetwork(nn.Module):
         n_input_channels = 3
 
         self.actor_cnn = nn.Sequential(
-            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(48)
-                )),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-
-            ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
-                nn.Conv2d(48, 64, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(64)
-                )),
-
-            nn.Flatten(),
-            nn.Linear(64*2*2, 512),
-            nn.Tanh(),
-            nn.Linear(512, 256),
-            nn.Tanh(),
-            nn.Linear(256, 96),
-        )
-
-        self.critic_cnn = nn.Sequential(
-            #InitialBatchNorm(),
-            nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            #nn.BatchNorm2d(16),
-            nn.LeakyReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-
-            ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
-                nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(32)
-                )),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-
-            ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
-                nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
@@ -207,31 +170,26 @@ class CustomNetwork(nn.Module):
             nn.Tanh(),
             nn.Linear(512, 256),
             nn.Tanh(),
-            nn.Linear(256, 96),
+            nn.Linear(256, 64),
         )
 
         self.critic_cnn_gt = nn.Sequential(
-            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
@@ -239,42 +197,13 @@ class CustomNetwork(nn.Module):
             nn.Tanh(),
             nn.Linear(512, 256),
             nn.Tanh(),
-            nn.Linear(256, 96),
+            nn.Linear(256, 64),
         )
 
-        # MLP for ALIP state + Vdes (6,) + State (23,)
-        self.actor_alip_mlp = nn.Sequential(
-            nn.Linear(self.vector_state_actor, 64),
-            nn.Tanh(),
-            nn.Linear(64, 32),
-            nn.Tanh(),
-        )
-        self.critic_alip_mlp = nn.Sequential(
-            nn.Linear(self.vector_state_critic, 64),
-            nn.Tanh(),
-            nn.Linear(64, 32),
-            nn.Tanh(),
-        )
+        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=64, num_layers=2, batch_first=False)
+        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=64, num_layers=2, batch_first=False)
 
-        self.actor_combined_lstm = nn.LSTM(input_size=128, hidden_size=64, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=32+96+96, hidden_size=64, num_layers=2, batch_first=False)
-        
-        self.actor_combined_fc = nn.Sequential(
-            nn.Linear(64, 256),
-            nn.Tanh(),
-            nn.Linear(256, 128),
-            nn.Tanh(),
-            nn.Linear(128, self.latent_dim_pi),
-            nn.Tanh(),
-        )
-        self.critic_combined_fc = nn.Sequential(
-            nn.Linear(64, 256),
-            nn.Tanh(),
-            nn.Linear(256, 128),
-            nn.Tanh(),
-            nn.Linear(128, self.latent_dim_vf),
-            nn.Tanh(),
-        )
+        # self.actor_multitask = nn.Linear(self.latent_dim_pi, 16)
 
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
@@ -283,63 +212,52 @@ class CustomNetwork(nn.Module):
         actor_combined_lstm_output, _ = self.actor_combined_lstm(actor_combined_features)
         critic_combined_lstm_output, _ = self.critic_combined_lstm(critic_combined_features)
         
-        latent_pi = self.forward_actor(actor_combined_lstm_output)
-        latent_vf = self.forward_critic(critic_combined_lstm_output)
-        return latent_pi, latent_vf
+        return actor_combined_lstm_output, critic_combined_lstm_output
 
     def multihead_actor(self, observations: th.Tensor):
         batch_size = observations.size(0)
-        image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size : 3 * self.heightmap_size * self.heightmap_size+6+23]
+        image_obs = observations[:, :3*self.h_size*self.h_size].reshape(batch_size, 3, self.h_size, self.h_size)
+        state = observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6+16]
 
         actor_cnn_output = self.actor_cnn(image_obs)
-        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)
-        actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1).unsqueeze(1)
+        actor_combined_features = th.cat((actor_cnn_output, state), dim=1).unsqueeze(1)
         return actor_combined_features
 
     def multihead_critic(self, observations: th.Tensor):
         batch_size = observations.size(0)
-        image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        image_obs_gt = observations[:, -3 * self.heightmap_size * self.heightmap_size:].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-
-        alip_state = th.cat((observations[:, 3*self.heightmap_size*self.heightmap_size : 3*self.heightmap_size*self.heightmap_size+6], \
-        observations[:, 3*self.heightmap_size*self.heightmap_size+6+23:3*self.heightmap_size*self.heightmap_size+6+23+23]), dim=1)
-
-        critic_cnn_output = self.critic_cnn(image_obs)
+        image_obs_gt = observations[:, -3*self.h_size*self.h_size:].reshape(batch_size, 3, self.h_size, self.h_size)
+        state = th.cat((observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6], \
+        observations[:, 3*self.h_size*self.h_size+6+16:3*self.h_size*self.h_size+6+16+23]), dim=1)
         critic_cnn_output_gt = self.critic_cnn_gt(image_obs_gt)
-        
-        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)
-        critic_combined_features = th.cat((critic_cnn_output, critic_cnn_output_gt, critic_alip_mlp_output), dim=1).unsqueeze(1)
+        critic_combined_features = th.cat((critic_cnn_output_gt, state), dim=1).unsqueeze(1)
+
         return critic_combined_features
+    
+    # def multitask_actor(self, features: th.Tensor) -> th.Tensor:
+    #     multitask_outputs = self.actor_multitask(features)
+    #     return multitask_outputs
 
-    def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        actor_actions = self.actor_combined_fc(features)
-        return actor_actions
-
-    def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        critic_actions = self.critic_combined_fc(features)
-        return critic_actions
-        
+# LSTM forward is done in RecurrentActorCriticPolicy
 class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
     def __init__(
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_actor = CustomNetwork().actor_combined_lstm,
-        lstm_critic = CustomNetwork().critic_combined_lstm,
-        optimizer_class= th.optim.RAdam, #torch.optim.RAdam Try RAdam with decoupled_weight_decay=True
-        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
+        lstm_hidden_size: int = 128,
+        n_lstm_layers: int = 2,
+        optimizer_class= th.optim.Adam, #th.optim.RAdam,
+        optimizer_kwargs = {'weight_decay': 1e-4, 'epsilon': 1e-5},
         *args,
         **kwargs,
     ):
-        kwargs["ortho_init"] = True
+
         super().__init__(
             observation_space,
             action_space,
             lr_schedule,
-            lstm_actor,
-            lstm_critic,
+            lstm_hidden_size = 128,
+            n_lstm_layers = 2,
             *args,
             **kwargs,
         )
@@ -399,38 +317,38 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'RPPO_mirror_noise.zip' # x/logs2/rl_model_1728000_steps
+        model_path = '128_joint.zip' # x/logs2/rl_model_1728000_steps
 
-        # model = RecurrentPPO(policy_type, env, learning_rate = 3e-4, max_grad_norm = 0.5, #linear_schedule(1e-5)
-        #                 clip_range = 0.2, ent_coef=0.03, target_kl = 0.2,
-        #                 n_steps=int(1024*num_env/num_env), n_epochs=10,
-        #                 batch_size=64*num_env, seed=42, verbose=1,
+        # model = RecurrentPPO(policy_type, env, learning_rate = linear_schedule(1e-4), max_grad_norm = 0.5, #linear_schedule(1e-5)
+        #                 clip_range = 0.2, ent_coef=0.01, target_kl = 0.02, vf_coef=0.5,
+        #                 n_steps=int(1024), n_epochs=5,
+        #                 batch_size=64, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = 1e-5, max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.05, ent_coef=0.0, target_kl = 0.02, vf_coef=0.2, clip_range_vf=None,
-                        n_steps=int(512), n_epochs=5,
-                        batch_size=64, seed=27, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
+                        clip_range = 0.1, ent_coef=0.01, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
+                        n_steps=int(64), n_epochs=5,
+                        batch_size=64, seed=46, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    sim_params_eval.visualize = True
-    sim_params_eval.meshcat = Meshcat()
+    # sim_params_eval.visualize = True
+    # sim_params_eval.meshcat = Meshcat()
     # sim_params_eval.visualize = False
     # sim_params_eval.meshcat = None
-    eval_env = gym.make(env_name, sim_params = sim_params_eval,)
+    # eval_env = gym.make(env_name, sim_params = sim_params_eval,)
 
-    eval_env = DummyVecEnv([lambda: eval_env])
-    eval_env = VecNormalize(venv=eval_env, norm_obs=False)
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path=log_dir+f'eval_logs/test',
-        log_path=log_dir+f'eval_logs/test',
-        eval_freq=eval_freq,
-        n_eval_episodes=3,
-        deterministic=True,
-        render=False)
+    # eval_env = DummyVecEnv([lambda: eval_env])
+    # eval_env = VecNormalize(venv=eval_env, norm_obs=False)
+    # eval_callback = EvalCallback(
+    #     eval_env,
+    #     best_model_save_path=log_dir+f'eval_logs/test',
+    #     log_path=log_dir+f'eval_logs/test',
+    #     eval_freq=eval_freq,
+    #     n_eval_episodes=3,
+    #     deterministic=True,
+    #     render=False)
 
     checkpoint_callback = CheckpointCallback(
         save_freq=eval_freq*0.5,
@@ -438,7 +356,7 @@ def _run_training(config, args):
         name_prefix="rl_model",
     )
 
-    callback = CallbackList([checkpoint_callback, eval_callback])
+    callback = CallbackList([checkpoint_callback,])
 
     input("Start learning...")
 
@@ -462,7 +380,7 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 64
+        num_env = 96
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {

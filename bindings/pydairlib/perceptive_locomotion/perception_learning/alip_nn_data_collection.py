@@ -63,7 +63,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     )
     #cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
 
-    footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    footstep_zoh = ZeroOrderHold(1.0 / 40.0, 3)
 
     builder.AddSystem(footstep_zoh)
     if simulate_perception:
@@ -128,7 +128,7 @@ def check_termination(sim_env, diagram_context, time) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    return z1 < 0.2 or z2 < 0.2
+    return z1 < 0.2 or z2 < 0.2 or left_angle > .8 or right_angle > .8
 
 def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     
@@ -142,12 +142,17 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     datapoint = ic_generator.random()
     #datapoint = ic_generator.choose(1)
     
-    v_des_theta = 0.1
-    v_des_norm = 0.8
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
+    # v_des_theta = 0.1
+    # v_des_norm = 0.8
+    # v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+    # v_norm = np.random.uniform(0.2, v_des_norm)
+    # datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    v_x = 0.8
+    v_y = 0.2
+    vx = np.random.uniform(0.0, v_x)
+    vy = np.random.uniform(-v_y, v_y)
+    datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+    print(datapoint['desired_velocity'])
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
     
@@ -233,10 +238,10 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         if check_termination(sim_env, context, time):
             terminate = True
             break
-        simulator.AdvanceTo(t_init + 0.05*i)
+        simulator.AdvanceTo(t_init + 0.025*i)
         if simulate_perception:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
-            alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            alip = controller.get_output_port_by_name('x').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
             fsm = controller.get_input_port_by_name('fsm').Eval(controller_context)
             joint_angle = states[:23]
@@ -278,19 +283,19 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
             # Plot depth image
             if plot:
-                grid_world = dmap_query.calc_height_map_world_frame(
-                    np.array([ud[0], ud[1], 0])
-                )
-                dmap_query.plot_surface(
-                    "dmap", grid_world[0], grid_world[1],
-                    grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
-                
-                # grid_world = hmap_query.calc_height_map_world_frame(
+                # grid_world = dmap_query.calc_height_map_world_frame(
                 #     np.array([ud[0], ud[1], 0])
                 # )
-                # hmap_query.plot_surface(
-                #     "hmap", grid_world[0], grid_world[1],
-                #     grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
+                # dmap_query.plot_surface(
+                #     "dmap", grid_world[0], grid_world[1],
+                #     grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+                
+                grid_world = hmap_query.calc_height_map_world_frame(
+                    np.array([ud[0], ud[1], 0])
+                )
+                hmap_query.plot_surface(
+                    "hmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -390,12 +395,13 @@ def main():
         else:
             terrain = 'params/stair_curriculum.yaml'
         #terrain = 'params/hard/stair_up/ustair_1.yaml'
-        #terrain = 'params/new/flat/flat_11.yaml'
-        terrain = 'params/flat.yaml'
-        
+        #terrain = 'params/flat/flat_0.yaml'
+        # terrain = 'params/flat.yaml'
+        # terrain = 'params/stair_curriculum.yaml'
+        terrain = 'params/new_stair20_25/dustair_0.yaml'
         os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-        sim_params.terrain = 'terrain/stair_0.yaml'
+        #sim_params.terrain = 'terrain/stair_0.yaml'
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=True)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")

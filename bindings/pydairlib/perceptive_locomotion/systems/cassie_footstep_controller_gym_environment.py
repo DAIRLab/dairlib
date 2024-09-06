@@ -56,6 +56,7 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
+    ZeroOrderHold,
 )
 
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
@@ -127,7 +128,7 @@ class ObservationPublisher(LeafSystem):
     def calculate_obs(self, context: Context, output):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         ud = xd_ud.value()[4:]
-        
+
         if self.simulate_perception:
             # Ground truth height map for Critic
             gt_hmap_query = self.EvalAbstractInput(
@@ -139,6 +140,8 @@ class ObservationPublisher(LeafSystem):
             )
 
             # Plot ground truth height map
+            # gt_hmap_grid_world = gt_hmap_query.calc_height_map_world_frame(
+            #      np.array([ud[0], ud[1], 0]))
             # gt_hmap_query.plot_surface(
             #     "hmap", gt_hmap_grid_world[0], gt_hmap_grid_world[1],
             #     gt_hmap_grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
@@ -149,10 +152,12 @@ class ObservationPublisher(LeafSystem):
         
         if self.noise:
             if self.init_ == 0:
-                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
-            # X, Y offset : Shifts the camera 
-            camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
-            adverserial_offset = self.camera_episode_noise + camera_step_noise
+                #self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
+                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,))
+            # X, Y offset : Shifts the camera
+            #camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            #camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            adverserial_offset = self.camera_episode_noise #+ camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
         
@@ -170,7 +175,7 @@ class ObservationPublisher(LeafSystem):
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
-        
+
         joint_angle = states[7:23] # Only joint angles (reject pelvis)
         joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
         gt_joint_angle = gt_states[:23]
@@ -178,23 +183,42 @@ class ObservationPublisher(LeafSystem):
         if self.noise:
             if self.init_ == 0:
                 # Offset for hmap per episode
-                self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                #self.episode_noise = np.random.uniform(low=-0.03, high=0.03)
+                self.episode_noise = np.random.uniform(low=-0.06, high=0.06)
                 self.init_ += 1
             
             # Offset for hmap per step
+            # height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
+            # step_noise = np.random.uniform(low=-0.01, high=0.01)
             height_noise = np.random.uniform(low=-0.02, high=0.02, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.02, high=0.02)
-            hmap[-1] += height_noise + self.episode_noise + step_noise
-            hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
+            #step_noise = np.random.uniform(low=-0.02, high=0.02)
+            hmap[-1] += height_noise + self.episode_noise# + step_noise
+            # hmap_grid_world[-1] += height_noise + self.episode_noise #+ step_noise
 
-            alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
-            aliplxly_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,)) # 20%
-            vdes_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
-            angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
-            alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
-            vdes = vdes + vdes_noise
+            alip_noise_comx = abs(alip[0])*0.1 # 0.1, 0.15, 0.2
+            alip_noise_comy = abs(alip[1])*0.1
+            alip_noise_angx = abs(alip[2])*0.1
+            alip_noise_angy = abs(alip[3])*0.1
+
+            alipxy_noisex = np.random.uniform(low=-alip_noise_comx, high=alip_noise_comx, size=(1,))
+            alipxy_noisey = np.random.uniform(low=-alip_noise_comy, high=alip_noise_comy, size=(1,))
+            
+            aliplxly_noisex = np.random.uniform(low=-alip_noise_angx, high=alip_noise_angx, size=(1,))
+            aliplxly_noisey = np.random.uniform(low=-alip_noise_angy, high=alip_noise_angy, size=(1,))
+            
+            # alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(2,)) 
+            # aliplxly_noise = np.random.uniform(low=-0.03, high=0.03, size=(2,))
+            
+            # vdes_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            # angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
+
+            #vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            angle_noise = np.random.uniform(low=-0.01, high=0.01, size=(16,))
+
+            alip = alip + np.hstack((alipxy_noisex, alipxy_noisey, aliplxly_noisex, aliplxly_noisey))
+            # alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
+            #vdes = vdes + vdes_noise
             joint_angle = joint_angle + angle_noise
-
 
         # Plot depth map with noise
         hmap_query.plot_surface(
@@ -204,7 +228,8 @@ class ObservationPublisher(LeafSystem):
         hmap = hmap.reshape(-1)
         gt_hmap = gt_hmap.reshape(-1)
 
-        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # 24621
+        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # JOINT 24621
+        # out = np.hstack((hmap, alip, vdes, gt_joint_angle, gt_hmap)) # ALIP
         output.set_value(out)
 
 class RewardSystem(LeafSystem):
@@ -214,6 +239,8 @@ class RewardSystem(LeafSystem):
         self.params = alip_params
         self.cassie_sim = sim_env
         self.prev_fsm = None
+        self.prev_action = None
+        self.stance_change = 1
 
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
@@ -231,7 +258,7 @@ class RewardSystem(LeafSystem):
             'footstep_command': self.DeclareVectorInputPort(
                 'footstep_command', 3
             ).get_index(),
-            'state': self.DeclareVectorInputPort(
+            'gt_x_u_t': self.DeclareVectorInputPort(
                 'gt_x_u_t', 59
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
@@ -241,7 +268,9 @@ class RewardSystem(LeafSystem):
                 'swing_ft_tracking_error', 1
             ).get_index(),
         }
-
+        self.input_port_indices.update({'height_map_query' : self.DeclareAbstractInputPort(
+            "height_map_query", model_value=Value(HeightMapQueryObject())
+            ).get_index()})
         self.output_port_indices = {
             'reward': self.DeclareVectorOutputPort(
                 "reward", 1, self.calc_reward
@@ -266,7 +295,7 @@ class RewardSystem(LeafSystem):
         ud = xd_ud.value()[4:]
         LQRcost = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
 
-        x_u_t = self.EvalVectorInput(context, self.input_port_indices['state']).value()
+        x_u_t = self.EvalVectorInput(context, self.input_port_indices['gt_x_u_t']).value()
         pos_vel = x_u_t[:45]
         
         plant = self.cassie_sim.get_plant()
@@ -309,39 +338,90 @@ class RewardSystem(LeafSystem):
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
         # velocity_reward = np.exp(-3*np.linalg.norm(vdes[:2] - bf_vel[:2]))
-        vx_reward = np.exp(-np.linalg.norm(vdes[0] - bf_vel[0]))
-        vy_reward = np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
+        vx_reward = np.exp(-3*np.linalg.norm(vdes[0] - bf_vel[0]))
+        vy_reward = np.exp(-3*np.linalg.norm(vdes[1] - bf_vel[1]))
         
         # penalize angular velocity about the z axis
-        angular_reward = np.exp(-np.linalg.norm(bf_ang))
+        angular_reward = np.exp(-2*np.linalg.norm(bf_ang))
         track_penalty = 0.0
 
-        if track_error > 0.05:
-            track_penalty = min(np.exp(2.5*(track_error-0.05)) - 1, 2)
+        if track_error > 0.05 and (context.get_time() > 1.5):
+            track_penalty = np.exp(4*(track_error-0.05)) - 1
+            # if track_error > 0.3:
+            #     print(f'track error : {track_error}')
+            #     print(f'track penalty : {track_penalty}')
+            #     input("track_penalty")
 
         fsm = self.EvalVectorInput(context, self.input_port_indices['fsm']).value()
-
-        if left_angle > 0.35:# and (fsm == 0. or fsm == 4.):
-            left_penalty = 1.
-        if right_angle > 0.35:# and (fsm == 1. or fsm == 3.):
-            right_penalty = 1.
         
+        # if left_angle > 0.5:# and (fsm == 0. or fsm == 4.):
+        #     left_penalty = 1.
+            # print(left_angle)
+            # input("left")
+        # if right_angle > 0.5:# and (fsm == 1. or fsm == 3.):
+        #     right_penalty = 1.
+            # print(right_angle)
+            # input("right")
+
+        gt_hmap_query = self.EvalAbstractInput(
+            context, self.input_port_indices['height_map_query']
+            ).get_value()
+
+        gt_hmap = gt_hmap_query.calc_height_map_stance_frame(
+            np.array([ud[0], ud[1], 0])
+        )
+
         if self.prev_fsm == 3. and fsm == 1.:
             ud_penalty = 0.
             LQRreward = 0.
+            z_reward = 0.
         elif self.prev_fsm == 4. and fsm == 0.:
             ud_penalty = 0.
             LQRreward = 0.
+            z_reward = 0.
         else:
             LQRreward = np.exp(-3*LQRcost)
-            track_penalty = 0.
             ud_penalty = np.linalg.norm(u - ud)
+            
+            x_index = np.argmin((gt_hmap[0][0] - u[0])**2)
+            y_index = np.argmin((gt_hmap[1,:,0] - u[1])**2)
+            z = gt_hmap[-1, y_index, x_index]
+            z_reward = np.exp(-5*np.linalg.norm(footstep_command[-1] - z))
 
+        action_penalty = 0
+        if self.prev_action is not None:
+            if (self.prev_fsm != fsm):
+                self.stance_change = 1.
+                action_penalty = np.exp(5*np.linalg.norm(footstep_command - self.prev_action))-1
+            elif (self.prev_fsm == fsm) and self.stance_change != 0.:
+                action_penalty = 0
+                self.stance_change = 0.
+            else:
+                action_penalty = np.exp(5*np.linalg.norm(footstep_command - self.prev_action))-1 # np.linalg.norm(footstep_command - self.prev_action)
+                self.stance_change = 0.
+        
+        # print(z_reward)
+        # print(action_penalty)
+        self.prev_action = footstep_command.copy()
         self.prev_fsm = fsm.copy()
-
-        reward = 0.25 * LQRreward + 0.5 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward \
-                - (left_penalty + right_penalty) - track_penalty - 0.25 * ud_penalty
-
+        if action_penalty > 0.3:
+            action_penalty = 0.
+        # reward = 0.2 * LQRreward + 0.2 * vx_reward + 0.15 * vy_reward + 0.15 * angular_reward + 0.3 * z_reward \
+        #         - track_penalty - 0.25 * ud_penalty - action_penalty # - v_penalty - (left_penalty + right_penalty)
+        reward = 0.15 * LQRreward + 0.5 * vx_reward + 0.25 * vy_reward + 0.25 * angular_reward + 0.35 * z_reward \
+               - track_penalty - 0.25 * ud_penalty - action_penalty# - v_penalty - (left_penalty + right_penalty)
+        # print(f'LQR = {LQRreward}')
+        # print(f'vx = {vx_reward}')
+        # print(f'vy = {vy_reward}')
+        # print(f'angl = {angular_reward}')
+        # print(f'track = {track_penalty}')
+        # print(f'ud = {ud_penalty}')
+        # print(f'action = {action_penalty}')
+        # print(footstep_command[-1])
+        # print(z)
+        # print(f'z = {z_reward}')
+        # print(reward)
+        # input("====")
         output[0] = reward
 
 class DisturbanceSystem(LeafSystem):
@@ -365,19 +445,28 @@ class DisturbanceSystem(LeafSystem):
         force.body_index = self.pelvis.index()
         force.p_BoBq_B = self.pelvis.default_com()
         y = context.get_time() % self.period
-        if not ((y >= 0) and (y <= (self.period - self.duration))):
+        #if not ((y >= 0) and (y <= (self.period - self.duration))):
+        rand = np.random.random_sample()
+        if rand < 0.15: # Randomize disturbance
             rand_force_x = np.random.uniform(low=-self.force_x, high=self.force_x)
             rand_force_y = np.random.uniform(low=-self.force_y, high=self.force_y)
             rand_force_z = np.random.uniform(low=-self.force_z, high=self.force_z)
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
                 f=[rand_force_x, rand_force_y, rand_force_z])
+            # print(spatial_force)
         else:
             spatial_force = SpatialForce(
                 tau=[0, 0, 0],
                 f=[0, 0, 0])
         force.F_Bq_W = spatial_force
         spatial_forces.set_value([force])
+
+    def get_model_value(self):
+        force = ExternallyAppliedSpatialForce_[float]()
+        force.body_index = self.pelvis.index()
+        force.p_BoBq_B = self.pelvis.default_com()
+        return force
 
 class InitialConditionsServer:
     def __init__(self, fname: str):
@@ -477,12 +566,20 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
 
-        self.disturbance = True
-        if self.disturbance:
-            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=30.0, \
-            force_y=30.0, force_z=10.0, period=1, duration=0.3))
+        self.dist = False
+
+        if self.dist:
+            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=50.0, \
+            force_y=50.0, force_z=30.0, period=1, duration=0.3))
+            zoh_ = ZeroOrderHold(1.0/30.0, Value([self.disturbance.get_model_value()]))
+            builder.AddSystem(zoh_)
             builder.Connect(
                     self.disturbance.get_output_port(),
+                    zoh_.get_input_port()
+            )
+            
+            builder.Connect(
+                    zoh_.get_output_port(),
                     self.cassie_sim.get_input_port_spatial_force()
                 )
 
@@ -765,7 +862,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(noise=True, simulate_perception=self.params.simulate_perception)
+        obs_pub = ObservationPublisher(noise=False, simulate_perception=self.params.simulate_perception)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
@@ -824,11 +921,15 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         builder.Connect(
             self.get_output_port_by_name("gt_x_u_t"),
-            reward.get_input_port_by_name("state")
+            reward.get_input_port_by_name("gt_x_u_t")
         )
         builder.Connect(
             self.get_output_port_by_name("swing_ft_tracking_error"),
             reward.get_input_port_by_name("swing_ft_tracking_error")
+        )
+        builder.Connect(
+            self.get_output_port_by_name("height_map_query"),
+            reward.get_input_port_by_name("height_map_query")
         )
 
         builder.ExportOutput(reward.get_output_port(), "reward")

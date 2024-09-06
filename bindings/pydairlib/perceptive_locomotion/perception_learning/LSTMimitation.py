@@ -254,10 +254,6 @@ class CustomNetwork(nn.Module):
         critic_combined_features = th.cat((critic_cnn_output_gt, state), dim=1).unsqueeze(1)
 
         return critic_combined_features
-    
-    # def multitask_actor(self, features: th.Tensor) -> th.Tensor:
-    #     multitask_outputs = self.actor_multitask(features)
-    #     return multitask_outputs
 
 # LSTM forward is done in RecurrentActorCriticPolicy
 class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
@@ -268,8 +264,8 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         lr_schedule: Callable[[float], float],
         lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
-        optimizer_class= th.optim.RAdam,#th.optim.Adam,
-        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
+        optimizer_class= th.optim.Adam, #th.optim.RAdam,
+        optimizer_kwargs = None,#{'weight_decay': 1e-4, 'epsilon': 1e-5},
         *args,
         **kwargs,
     ):
@@ -361,44 +357,44 @@ def pretrain_agent(
         model.train()
         total_loss = []
         total_multi_loss = []
-        total_mirror_loss = []
+        # total_mirror_loss = []
         sequence_length = 64
         lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2]) # 2,1,64
         
         for batch_idx, (data, target) in enumerate(train_loader):
             # Inject noise
             if noise:
-                camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
                 camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(data.size(0), 64*64))
                 data[:, 2*64*64:3*64*64] = data[:, 2*64*64:3*64*64] + camera_episode_noise + camera_step_noise
 
-                alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) 
-                aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) # 20%
-                vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2))
-                angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 16))
-                data[:, 3*64*64:3*64*64+4] = data[:, 3*64*64:3*64*64+4] + np.hstack((alipxy_noise, aliplxly_noise))
-                data[:, 3*64*64+4:3*64*64+4+2] = data[:, 3*64*64+4:3*64*64+4+2] + vdes_noise
-                data[:, 3*64*64+6:3*64*64+6+16] = data[:, 3*64*64+6:3*64*64+6+16] + angle_noise
+                # alipxy_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) 
+                # aliplxly_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2)) # 20%
+                # vdes_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 2))
+                # angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(data.size(0), 16))
+                # data[:, 3*64*64:3*64*64+4] = data[:, 3*64*64:3*64*64+4] + np.hstack((alipxy_noise, aliplxly_noise))
+                # data[:, 3*64*64+4:3*64*64+4+2] = data[:, 3*64*64+4:3*64*64+4+2] + vdes_noise
+                # data[:, 3*64*64+6:3*64*64+6+16] = data[:, 3*64*64+6:3*64*64+6+16] + angle_noise
             
             data, target = data.to(device), target.to(device)
             
             ### Mirror ###
-            image = data[:, 2*64*64:3*64*64].clone()
-            image = image.view(-1, 64, 64)
-            image = th.flip(image, [1])
-            image = image.view(-1, 64*64)
-            y_pos = data[:, 64*64:2*64*64].clone()
-            y_pos = y_pos.view(-1, 64, 64)
-            y_pos = th.flip(-y_pos, [1])
-            y_pos = y_pos.view(-1, 64*64)
+            # image = data[:, 2*64*64:3*64*64].clone()
+            # image = image.view(-1, 64, 64)
+            # image = th.flip(image, [1])
+            # image = image.view(-1, 64*64)
+            # y_pos = data[:, 64*64:2*64*64].clone()
+            # y_pos = y_pos.view(-1, 64, 64)
+            # y_pos = th.flip(-y_pos, [1])
+            # y_pos = y_pos.view(-1, 64*64)
 
-            obs = data[:, 3*64*64:3*64*64+6+16].clone()
-            ALIP, vdes, joint = obs[:, :4].clone(), obs[:, 4:6].clone(), obs[:, -16:].clone()
-            ALIP[:, 1:3] = -ALIP[:, 1:3]
-            vdes[:, 1] = -vdes[:, 1]
-            joint[:, [0,1,2,3,4,5,6,7]], joint[:, [8,9,10,11,12,13,14,15]] = joint[:, [8,9,10,11,12,13,14,15]], joint[:, [0,1,2,3,4,5,6,7]]
-            joint[:, [0,1]], joint[:, [8,9]] = -joint[:, [0,1]], -joint[:, [8,9]] # Negate hip roll & hip yaw
-            mirror_data = th.cat((data[:, :64*64].clone(), y_pos, image, ALIP, vdes, joint, data[:, 3*64*64+6+16:].clone()), dim=1)
+            # obs = data[:, 3*64*64:3*64*64+6+16].clone()
+            # ALIP, vdes, joint = obs[:, :4].clone(), obs[:, 4:6].clone(), obs[:, -16:].clone()
+            # ALIP[:, 1:3] = -ALIP[:, 1:3]
+            # vdes[:, 1] = -vdes[:, 1]
+            # joint[:, [0,1,2,3,4,5,6,7]], joint[:, [8,9,10,11,12,13,14,15]] = joint[:, [8,9,10,11,12,13,14,15]], joint[:, [0,1,2,3,4,5,6,7]]
+            # joint[:, [0,1]], joint[:, [8,9]] = -joint[:, [0,1]], -joint[:, [8,9]] # Negate hip roll & hip yaw
+            # mirror_data = th.cat((data[:, :64*64].clone(), y_pos, image, ALIP, vdes, joint, data[:, 3*64*64+6+16:].clone()), dim=1)
             
             batch_size = data.size(0)
 
@@ -406,8 +402,8 @@ def pretrain_agent(
             target_sequences = [target[i:i+sequence_length] for i in range(0, batch_size, sequence_length)]
             
             ### Mirror ###
-            mirror_sequences = [mirror_data[i:i+sequence_length] for i in range(0, batch_size, sequence_length)]
-            mirror_sequences = pad_sequence(mirror_sequences)
+            # mirror_sequences = [mirror_data[i:i+sequence_length] for i in range(0, batch_size, sequence_length)]
+            # mirror_sequences = pad_sequence(mirror_sequences)
 
             sequences = pad_sequence(sequences)
             target_sequences = pad_sequence(target_sequences)
@@ -422,20 +418,20 @@ def pretrain_agent(
                     ),
                     )
 
-            mirror_states = RNNStates(
-                    (
-                        th.zeros(lstm_hidden_state_shape, device=device),
-                        th.zeros(lstm_hidden_state_shape, device=device),
-                    ),
-                    (
-                        th.zeros(lstm_hidden_state_shape, device=device),
-                        th.zeros(lstm_hidden_state_shape, device=device),
-                    ),
-                    )
+            # mirror_states = RNNStates(
+            #         (
+            #             th.zeros(lstm_hidden_state_shape, device=device),
+            #             th.zeros(lstm_hidden_state_shape, device=device),
+            #         ),
+            #         (
+            #             th.zeros(lstm_hidden_state_shape, device=device),
+            #             th.zeros(lstm_hidden_state_shape, device=device),
+            #         ),
+            #         )
 
             optimizer.zero_grad()
             batch_loss = 0.0
-            batch_mirror_loss = 0.0
+            # batch_mirror_loss = 0.0
             if MTL:
                 batch_multi_loss = 0.0
 
@@ -443,7 +439,7 @@ def pretrain_agent(
                 sequence_data = sequences[:, i, :]
                 sequence_target = target_sequences[:, i, :]
                 ### Mirror ###
-                mirror_sequence_data = mirror_sequences[:, i, :]
+                # mirror_sequence_data = mirror_sequences[:, i, :]
 
                 if MTL:
                     multi_target = sequence_data[:, -16:]
@@ -460,34 +456,34 @@ def pretrain_agent(
                     action, _, _, states = model.forward(sequence_data, states, episode_starts, deterministic=True)
                 
                 ### Mirror ###
-                mirror_action, _, _, mirror_states, _ = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
-                mirror_action[:, 1] = -mirror_action[:, 1]
+                # mirror_action, _, _, mirror_states = model.forward(mirror_sequence_data, mirror_states, episode_starts, deterministic=True)
+                # mirror_action[:, 1] = -mirror_action[:, 1]
 
                 if (i+1 == sequences.size(1)):
                     action = action[:16]
-                    mirror_action = mirror_action[:16]
+                    # mirror_action = mirror_action[:16]
                     sequence_target = sequence_target[:16]
                     if MTL:
                         multi_task = multi_task[:16]
                         multi_target = multi_target[:16]
 
                 loss = criterion(action.to(th.float32), sequence_target.to(th.float32))
-                mirror_loss = criterion(mirror_action.to(th.float32), sequence_target.to(th.float32))
+                # mirror_loss = criterion(mirror_action.to(th.float32), sequence_target.to(th.float32))
 
-                if MTL:
-                    multi_loss = criterion(multi_task.to(th.float32) , multi_target.to(th.float32))
-                    batch_loss += loss + 0.3 * multi_loss + 0.3 * mirror_loss
-                    batch_multi_loss += 0.3 * multi_loss
-                    batch_mirror_loss += 0.3 * mirror_loss
-                else:
-                    batch_loss += loss + mirror_loss
-                    batch_mirror_loss += mirror_loss
-            
+                # if MTL:
+                #     multi_loss = criterion(multi_task.to(th.float32) , multi_target.to(th.float32))
+                #     batch_loss += loss + 0.3 * multi_loss + 0.3 * mirror_loss
+                #     batch_multi_loss += 0.3 * multi_loss
+                #     batch_mirror_loss += 0.3 * mirror_loss
+                # else:
+                #     batch_loss += loss + mirror_loss
+                #     batch_mirror_loss += mirror_loss
+                batch_loss += loss
             batch_loss.backward()
             optimizer.step()
             total_loss.append(batch_loss.item() / sequences.size(1))
 
-            total_mirror_loss.append(batch_mirror_loss.item() / sequences.size(1))
+            # total_mirror_loss.append(batch_mirror_loss.item() / sequences.size(1))
 
             if MTL:
                 total_multi_loss.append(batch_multi_loss.item() / sequences.size(1))
@@ -495,13 +491,13 @@ def pretrain_agent(
             if batch_idx % log_interval == 0 and batch_idx > 0:
                 current_loss = np.mean(total_loss[-log_interval:])
                 current_multi_loss = np.mean(total_multi_loss[-log_interval:])
-                current_mirror_loss = np.mean(total_mirror_loss[-log_interval:])
+                # current_mirror_loss = np.mean(total_mirror_loss[-log_interval:])
                 if MTL:
                     print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
                     f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tLoss: {current_multi_loss*0.1:.6f}")
                 else:
                     print(f"Train Epoch: {epoch} [{batch_idx * data.size(0)}/{len(train_loader.dataset)} "
-                    f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}\tMirror Loss: {current_mirror_loss:.6f}")
+                    f"({100.0 * batch_idx / len(train_loader):.0f}%)]\tLoss: {current_loss:.6f}")# Mirror Loss: {current_mirror_loss:.6f}
 
         return np.mean(total_loss)
 
@@ -618,15 +614,16 @@ def _main():
 
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
     #student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
-    student = RecurrentPPO.load('RPPO_multi_noise2.zip', env)
-    obs_data = path.join(perception_learning_base_folder, 'tmp/observations_new1.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/actions_new1.npy')
+    student = RecurrentPPO.load('128_joint.zip', env)
+    obs_data = path.join(perception_learning_base_folder, 'tmp/data_collection/observation.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/data_collection/action.npy')
 
     expert_observations = np.load(obs_data)
     expert_actions = np.load(action_data)
-    #expert_actions = np.hstack((expert_actions, -np.zeros((expert_actions.shape[0], 1))))
+    expert_observations = np.hstack((expert_observations, np.zeros((expert_observations.shape[0], 23))))
+    print(expert_observations.shape)
 
-    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=.8)
+    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=0.9)
     print(f"Total Dataset: {len(expert_observations)}, Train Dataset: {len(train_expert_dataset)}, Test Dataset: {len(test_expert_dataset)}")
 
     pretrain_agent(
@@ -639,13 +636,13 @@ def _main():
         learning_rate=1.,
         log_interval=100,
         cuda=True,
-        seed=77,
+        seed=44,
         train_batch_size=400,
         test_batch_size=400,
-        patience=10,
+        patience=40,
     )
 
-    student.save("RPPO_multi_noise3")
+    student.save("128_joint")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

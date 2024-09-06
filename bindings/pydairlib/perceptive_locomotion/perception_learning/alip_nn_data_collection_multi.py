@@ -7,10 +7,13 @@ from typing import Dict, Tuple
 import argparse
 import multiprocessing
 from pydrake.geometry import Rgba
+import math
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
 from pydrake.geometry import Meshcat
+from pydrake.math import RotationMatrix
+from pydrake.common.eigen_geometry import Quaternion
 from pydrake.systems.all import (
     Diagram,
     Context,
@@ -63,7 +66,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     )
     cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
 
-    footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    footstep_zoh = ZeroOrderHold(1.0 / 40.0, 3)
 
     builder.AddSystem(footstep_zoh)
     if simulate_perception:
@@ -133,7 +136,7 @@ def check_termination(sim_env, diagram_context, time) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    return z1 < 0.2 or z2 < 0.2 #or left_angle > 0.35 or right_angle > 0.35 or (track_error > 0.4 and time > 2.)
+    return z1 < 0.2 or z2 < 0.2 or left_angle > .8 or right_angle > .8#or (track_error > 0.4 and time > 2.)
 
 # Use Temporal Difference (TD(0)) as the Value target
 def calculate_returns(rewards, gamma=0.99):
@@ -147,7 +150,7 @@ def calculate_returns(rewards, gamma=0.99):
 
     return V_targets
 
-def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
+def run(sim_env, controller, diagram, terrain, simulate_perception=False, plot=False):
     
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
@@ -157,11 +160,17 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     )
     
     datapoint = ic_generator.random()
-    v_des_theta = 0.1
-    v_des_norm = 0.8
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    v_x = 0.8
+    v_y = 0.2
+    if terrain == 'no_obs':
+        v_y = 0.4
+        vx = np.random.uniform(-v_x, v_x)
+        vy = np.random.uniform(-v_y, v_y)
+    else:
+        vx = np.random.uniform(0.0, v_x)
+        vy = np.random.uniform(-v_y, v_y)
+    datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+    # print(datapoint['desired_velocity'])
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -180,6 +189,25 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     #  First, align the timing with what's given by the initial condition
     t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
     context.SetTime(t_init)
+
+    
+    rand = np.random.randint(1,3)
+    if rand in [1]:
+        yaw = 0.0 # Upstair
+    else:
+        yaw = math.pi # Downstair
+    
+    quat = datapoint['q'][:4]
+    quat = quat / np.linalg.norm(quat)
+    R_WP = RotationMatrix(Quaternion(quat))
+
+    wRp = RotationMatrix.MakeZRotation(yaw) @ R_WP
+    q_pelvis = wRp.ToQuaternion().wxyz()
+    w_pelvis = wRp @ datapoint['v'][:3]
+    v_pelvis = wRp @ datapoint['v'][3:6]
+    datapoint['q'][:4] = q_pelvis
+    datapoint['v'][:3] = w_pelvis
+    datapoint['v'][3:6] = v_pelvis
 
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(
@@ -205,12 +233,12 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     REWARDtmp = []
     terminate = False
     time = 0.0
-    for i in range(1, 201): # 10 seconds
+    for i in range(1, 401): # 10 seconds
 
         if check_termination(sim_env, context, time):
             terminate = True
             break
-        simulator.AdvanceTo(t_init + 0.05*i)
+        simulator.AdvanceTo(t_init + 0.025*i)
 
         if simulate_perception:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -231,24 +259,24 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             '''
             Reward for Critic X
             '''
-            LQRreward = (x - xd).T @ Q @ (x - xd) + (u - ud).T @ R @ (u - ud)
-            LQRreward = np.exp(-5*LQRreward)
+            # LQRreward = (x - xd).T @ Q @ (x - xd) + (u - ud).T @ R @ (u - ud)
+            # LQRreward = np.exp(-5*LQRreward)
             
-            plant = sim_env.cassie_sim.get_plant()
-            plant_context = plant.CreateDefaultContext()
-            plant.SetPositionsAndVelocities(plant_context, gt_states[:45])
+            # plant = sim_env.cassie_sim.get_plant()
+            # plant_context = plant.CreateDefaultContext()
+            # plant.SetPositionsAndVelocities(plant_context, gt_states[:45])
 
-            fb_frame = plant.GetBodyByName("pelvis").body_frame()
-            bf_velocity = fb_frame.CalcSpatialVelocity(
-                plant_context, plant.world_frame(), fb_frame)
-            bf_vel = bf_velocity.translational()
-            bf_ang = bf_velocity.rotational()
-            vdes = datapoint['desired_velocity']
+            # fb_frame = plant.GetBodyByName("pelvis").body_frame()
+            # bf_velocity = fb_frame.CalcSpatialVelocity(
+            #     plant_context, plant.world_frame(), fb_frame)
+            # bf_vel = bf_velocity.translational()
+            # bf_ang = bf_velocity.rotational()
+            # vdes = datapoint['desired_velocity']
 
-            velocity_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0])) + np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
-            angular_reward = np.exp(-np.linalg.norm(bf_ang))
+            # velocity_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0])) + np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
+            # angular_reward = np.exp(-np.linalg.norm(bf_ang))
             
-            reward = 0.5*LQRreward + 0.25*velocity_reward + 0.25*angular_reward
+            # reward = 0.5*LQRreward + 0.25*velocity_reward + 0.25*angular_reward
 
             # Depth map
             dmap_query = controller.EvalAbstractInput(
@@ -279,7 +307,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
-            alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            alip = controller.get_output_port_by_name('x').Eval(controller_context)
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
             joint_angle = states[7:23]
@@ -312,19 +340,19 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         VDEStmp.append(datapoint['desired_velocity'])
         JOINTtmp.append(joint_angle)
         GTJOINTtmp.append(gt_joint_angle)
-        REWARDtmp.append(reward)
+        #REWARDtmp.append(reward)
         FOOTSTEPtmp.append(footstep)
 
         time = context.get_time()-t_init
 
-    RETURNtmp = REWARDtmp
+    #RETURNtmp = REWARDtmp
 
-    return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, GTJOINTtmp, RETURNtmp, FOOTSTEPtmp, terminate, time
+    return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, GTJOINTtmp, FOOTSTEPtmp, terminate, time
 
 
 def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_base_folder):
     random_terrain = True
-    HMAP = []
+    #HMAP = []
     DMAP = []
     ALIP = []
     VDES = []
@@ -334,51 +362,51 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
     FOOTSTEP = []
     time = 0.0
     print(f"Starting simulation {sim_id}...")
-    np.random.seed(sim_id + 32 * 3321) # + 32 to change seed value
-    for i in range(6):
+    np.random.seed(sim_id + 32 * 333) # + 32 to change seed value
+    for i in range(8):
         if random_terrain:
-            rand = np.random.randint(1,3)
-            if rand == 1:
-                rand = np.random.randint(1, 13)
-                if rand in [1,2,3,4,5]:
+            rand = np.random.randint(1, 18)
+            if rand in [1,2,3,4,5,6,7,8,9,10,12,13,14,15]:
+                rand = np.random.randint(1, 4)
+                if rand in [1]:
                     rand = np.random.randint(0, 1000)
-                    terrain = f'params/easy/stair_down/dstair_{rand}.yaml'
+                    terrain_yaml = f'params/new_stair20_25/dustair_{rand}.yaml'
+                    terrain = 'stair'
+                elif rand in [2]:
+                    rand = np.random.randint(0, 1000)
+                    terrain_yaml = f'params/reg_stair/dustair_{rand}.yaml'
+                    terrain = 'stair'
                 else:
                     rand = np.random.randint(0, 1000)
-                    terrain = f'params/easy/stair_up/ustair_{rand}.yaml'
-
+                    terrain_yaml = f'params/new_stair15_25/dustair_{rand}.yaml'
+                    terrain = 'stair'
+            elif rand in [16,17]:
+                rand = np.random.randint(0, 1000)
+                terrain_yaml = f'params/slope/stair_{rand}.yaml'
+                terrain = 'stair'
             else:
-                rand = np.random.randint(1, 13)
-                if rand in [1,2,3,4,5]:
-                    rand = np.random.randint(0, 1000)
-                    terrain = f'params/medium/stair_down/dstair_{rand}.yaml'
-                else:
-                    rand = np.random.randint(0, 1000)
-                    terrain = f'params/medium/stair_up/ustair_{rand}.yaml'
-
+                terrain_yaml = 'params/flat.yaml'
+                terrain = 'no_obs'
         else:
-            terrain = 'params/stair_curriculum.yaml'
+            terrain_yaml = 'params/stair_curriculum.yaml'
 
-        rand = np.random.randint(0, 1000)
-        terrain = f'params/hard/flat/flat_{rand}.yaml'
-        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        hmap, dmap, alip, vdes, joint, gtjoint, Return, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
-        print(f"Simulation {sim_id}, Iteration {i}: Terminated in {time} seconds in {terrain}.")
+        hmap, dmap, alip, vdes, joint, gtjoint, footstep, terminate, time = run(sim_env, controller, diagram, terrain, sim_params.simulate_perception, plot=False)
+        print(f"Simulation {sim_id}, Iteration {i}: Terminated in {time} seconds in {terrain_yaml}.")
 
         if not terminate:
-            HMAP.extend(hmap)
+            #HMAP.extend(hmap)
             DMAP.extend(dmap)
             ALIP.extend(alip)
             VDES.extend(vdes)
             JOINT.extend(joint)
             GTJOINT.extend(gtjoint)
-            RETURN.extend(Return)
             FOOTSTEP.extend(footstep)
 
         del sim_env, controller, diagram
 
-    return HMAP, DMAP, ALIP, VDES, JOINT, GTJOINT, RETURN, FOOTSTEP
+    return DMAP, ALIP, VDES, JOINT, GTJOINT, FOOTSTEP#HMAP, DMAP, ALIP, VDES, JOINT, GTJOINT, RETURN, FOOTSTEP
 
 
 def main():
@@ -390,40 +418,46 @@ def main():
 
     print("Starting multiprocessing simulations...")
 
-    num_processes = 24
+    num_processes = 32
     pool = multiprocessing.Pool(processes=num_processes)
 
     tasks = [(i, sim_params, checkpoint_path, perception_learning_base_folder) for i in range(num_processes)]
     results = pool.starmap(simulation_worker, tasks)
 
-    HMAP = []
+    # HMAP = []
     DMAP = []
     ALIP = []
     VDES = []
     JOINT = []
     GTJOINT = []
-    RETURN = []
+    # RETURN = []
     FOOTSTEP = []
 
     for result in results:
-        HMAP.extend(result[0])
-        DMAP.extend(result[1])
-        ALIP.extend(result[2])
-        VDES.extend(result[3])
-        JOINT.extend(result[4])
-        GTJOINT.extend(result[5])
-        RETURN.extend(result[6])
-        FOOTSTEP.extend(result[7])
+        DMAP.extend(result[0])
+        ALIP.extend(result[1])
+        VDES.extend(result[2])
+        JOINT.extend(result[3])
+        GTJOINT.extend(result[4])
+        FOOTSTEP.extend(result[5])
+        # HMAP.extend(result[0])
+        # DMAP.extend(result[1])
+        # ALIP.extend(result[2])
+        # VDES.extend(result[3])
+        # JOINT.extend(result[4])
+        # GTJOINT.extend(result[5])
+        # RETURN.extend(result[6])
+        # FOOTSTEP.extend(result[7])
 
     print(f"Number of collected datapoints is: {np.array(ALIP).shape[0]}")
-    print(f"Number of collected datapoints is: {np.array(VDES).shape[0]}")
-    print(f"Number of collected datapoints is: {np.array(JOINT).shape[0]}")
-    print(f"Number of collected datapoints is: {np.array(GTJOINT).shape[0]}")
+    # print(f"Number of collected datapoints is: {np.array(VDES).shape[0]}")
+    # print(f"Number of collected datapoints is: {np.array(JOINT).shape[0]}")
+    # print(f"Number of collected datapoints is: {np.array(GTJOINT).shape[0]}")
     
-    np.save(
-        f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/HMAP.npy', HMAP
-    )
+    # np.save(
+    #     f'{perception_learning_base_folder}/tmp/data_collection'
+    #     f'/HMAP.npy', HMAP
+    # )
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
         f'/DMAP.npy', DMAP
@@ -445,12 +479,12 @@ def main():
         f'/GTJOINT.npy', GTJOINT
     )
 
-    print("Saving rewards ...")
+    # print("Saving rewards ...")
 
-    np.save(
-        f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/RETURN.npy', RETURN
-    )
+    # np.save(
+    #     f'{perception_learning_base_folder}/tmp/data_collection'
+    #     f'/RETURN.npy', RETURN
+    # )
 
     print("Saving actions and observations ...")
 
@@ -470,7 +504,8 @@ def main():
 
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT), axis=1)
+        #f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT), axis=1)
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT), axis=1)
     )
 
 if __name__ == '__main__':

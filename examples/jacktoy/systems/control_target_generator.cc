@@ -64,10 +64,6 @@ void TargetGenerator::SetRemoteControlParameters(
   lead_angle_ = lead_angle;
   target_final_object_position_ = target_object_position;
   target_final_object_orientation_ = target_object_orientation;
-
-  std::cout << "Target final object position: " << target_final_object_position_.transpose() << std::endl;
-  std::cout << "Target final object orientation: " << target_final_object_orientation_.transpose() << std::endl;
-  
   step_size_ = step_size;
   start_point_x_ = start_point_x;
   start_point_y_ = start_point_y;

@@ -509,6 +509,8 @@ int DoMain(int argc, char* argv[]) {
   // control_target output connections to mux set up earlier.
   builder.Connect(target_state_mux->get_output_port(),
                   controller->get_input_port_target());
+  builder.Connect(final_target_state_mux->get_output_port(),
+                  controller->get_input_port_final_target());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
 

@@ -170,6 +170,8 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+  final_target_input_port_ =
+      this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
 
   // Output ports.
   auto c3_solution = C3Output::C3Solution();
@@ -312,6 +314,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // vector.
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
+  const BasicVector<double>& x_lcs_final_des =
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);
   const TimestampedVector<double>* lcs_x_curr =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -442,7 +446,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // change crossed_cost_switching_threshold_ to true.
   if (!crossed_cost_switching_threshold_){
     // std::cout<<"current object location: "<<x_lcs_curr.segment(7,2).transpose()<<std::endl;
-    if ((x_lcs_curr.segment(7,2) - x_lcs_des.value().segment(7,2)).norm() < 
+    if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() < 
         sampling_params_.cost_switching_threshold_distance){
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
@@ -1152,4 +1156,3 @@ void SamplingC3Controller::OutputCurrAndBestSampleCost(
 
 } // namespace systems 
 } // namespace dairlib
-

@@ -55,6 +55,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_input_port(target_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_final_target() const {
+    return this->get_input_port(final_target_input_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
@@ -215,6 +219,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     std::vector<double>* curr_and_best_sample_cost) const;
 
   drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex final_target_input_port_;
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   // Current sample output port indices

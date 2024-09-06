@@ -453,11 +453,11 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   meshcat_->SetObject(c3_final_target_tray_path_ + "/z-axis", cylinder_for_tray_,
                       {0, 0, 1, 1});
   meshcat_->SetObject(c3_target_tray_path_ + "/x-axis", cylinder_for_tray_,
-                      {1, 0, 0, 1});
+                      {1, 0, 0, 0.3});
   meshcat_->SetObject(c3_target_tray_path_ + "/y-axis", cylinder_for_tray_,
-                      {0, 1, 0, 1});
+                      {0, 1, 0, 0.3});
   meshcat_->SetObject(c3_target_tray_path_ + "/z-axis", cylinder_for_tray_,
-                      {0, 0, 1, 1});
+                      {0, 0, 1, 0.3});
   meshcat_->SetObject(c3_actual_tray_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
   meshcat_->SetObject(c3_actual_tray_path_ + "/y-axis", cylinder_for_tray_,

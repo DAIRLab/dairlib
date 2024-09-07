@@ -1,0 +1,21 @@
+cc_binary(
+    name = "lcm_log_loader",
+    srcs = [
+        "lcm_log_loader.cc",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//systems/controllers:sampling_c3_controller",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems:system_utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//examples/jacktoy:franka_c3_controller_params",
+        "//examples/jacktoy:franka_sim_params",
+    ],
+)

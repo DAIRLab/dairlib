@@ -22,16 +22,20 @@ using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 
 int main(int argc,  char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " <time_into_log>" << std::endl;
+  if (argc != 3) {
+    std::cerr << "Usage: " << argv[0] <<" <log_folder> <time_into_log>" << std::endl;
     return 1;
   }
-  double time_into_log = std::stod(std::string(argv[1]));
+  const std::string& log_folder = std::string(argv[1]);
+  const double& time_into_log = std::stod(std::string(argv[2]));
+
+  // Turn the folder into a file path
+  std::string log_number = log_folder.substr(log_folder.find_last_of("/")+1,6);
+  std::string log_filepath = log_folder + "/simlog-" + log_number;
+  std::cout<<"Parsing log at: " << log_filepath << std::endl;
 
   // Set the start time
   const int64_t u_time_into_log = time_into_log*1e6;
-  const std::string& log_filepath = "/home/sharanya/logs/2024/09_04_24/000024/simlog-000024";
-  // const std::string& log_filepath = "/home/sharanya/logs/2024/09_04_24/000023/simlog-000023";
 
   std::cout << "time into log: " << time_into_log << std::endl;
   std::cout << " in useconds: " << u_time_into_log << std::endl;
@@ -50,6 +54,8 @@ int main(int argc,  char* argv[]) {
   c3_gains_path.replace(c3_gains_path.find(to_replace), to_replace.length(), c3_gains_path_replacement);
   C3Options c3_options;
   c3_options = drake::yaml::LoadYamlFile<C3Options>(c3_gains_path + ".yaml");
+  // // NOTE:  can temporarily hard code many more ADMM iterations
+  // c3_options.admm_iter = 8;
 
   std::string sim_params_path = log_filepath;
   std::string sim_params_path_replacement = "sim_params_";
@@ -187,8 +193,6 @@ int main(int argc,  char* argv[]) {
 
   // Create the plant for the LCS
   DiagramBuilder<double> plant_builder;
-  // MultibodyPlant<double> plant_for_lcs(0.0);
-  // auto plant_diagram = plant_builder.Build();
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
 
@@ -215,12 +219,7 @@ int main(int argc,  char* argv[]) {
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
 
-  // std::unique_ptr<drake::systems::Context<double>> diagram_context =
-  //     plant_diagram->CreateDefaultContext();
-  // auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
-  //     plant_for_lcs, diagram_context.get());
   auto plant_diagram = plant_builder.Build();
-  // auto plant_for_lcs_context = plant_for_lcs.CreateDefaultContext();
   std::unique_ptr<drake::systems::Context<double>> diagram_context =
       plant_diagram->CreateDefaultContext();
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
@@ -269,8 +268,6 @@ int main(int argc,  char* argv[]) {
   std::vector<SortedPair<GeometryId>> ground_contact3{
       SortedPair(contact_geoms["CAPSULE_3"], contact_geoms["GROUND"])};
   
-  // std::cout<< "HERE" << std::endl;
-
   std::vector<std::vector<SortedPair<GeometryId>>>
       contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)],
                       // [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
@@ -288,11 +285,6 @@ int main(int argc,  char* argv[]) {
   contact_pairs.push_back(ground_contact2);
   contact_pairs.push_back(ground_contact3);
 
-  // plant_diagram->set_name(("single_state_c3_plant"));
-  // dairlib::DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy/test/single_state_c3_plant");
-  // Get names of all positions and velocities in the plant
-  // plant_for_lcs->GetPositionNames();
-  // plant_for_lcs->GetVelocityNames();
   std::cout<<"num_positions: " << plant_for_lcs.num_positions() << std::endl;
   std::cout<<"num_velocities: " << plant_for_lcs.num_velocities() << std::endl;
   // plant_for_lcs.SetPositionsAndVelocities(plant_for_lcs_context.get(), x_lcs_actual);
@@ -315,23 +307,9 @@ int main(int argc,  char* argv[]) {
   controller->get_input_port_target().FixValue(controller_context.get(), x_lcs_desired.cast<double>());
   controller->get_input_port_final_target().FixValue(controller_context.get(), x_lcs_final_desired.cast<double>());
 
-  // controller->ForcedPublish(*controller_context);
-
   auto discrete_state = controller->AllocateDiscreteVariables();
   controller->CalcForcedDiscreteVariableUpdate(*controller_context, discrete_state.get());
 
   std::cout << "Finished ForcedPublish" << std::endl;
-
-  // Evaluate the controller input port
-  // auto controller_input = controller->EvalVectorInput(*controller_context, controller->get_input_port_lcs_state().get_index());
-  // std::cout<<"controller input: "<<controller_input->get_value()<<std::endl;
-  // std::cout
-  // std::cout<<"position values: " << plant_for_lcs.GetPositions(plant_for_lcs_context)[0] << std::endl;
-  // std::cout<< "controller built" << std::endl;
-  // auto controller = dairlib::systems::SamplingC3Controller(
-  //     plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-  //     plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
-  //     sampling_params);
-
   return 0;
 }

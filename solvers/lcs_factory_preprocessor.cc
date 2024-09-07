@@ -11,6 +11,7 @@ using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using drake::geometry::SignedDistancePair;
 
 
 vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
@@ -37,9 +38,22 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                     SortedPair<GeometryId> verbose_test_pair = contact_geoms.at(i).at(0);
                     multibody::GeomGeomCollider collider(plant, verbose_test_pair);
                     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+
+                    const SignedDistancePair<double> signed_distance_pair =
+                        query_object.ComputeSignedDistancePairClosestPoints(
+                            verbose_test_pair.first(), verbose_test_pair.second());
+
+                    const Eigen::Vector3d& p_ACa =
+                        inspector.GetPoseInFrame(verbose_test_pair.first()).template cast<double>() *
+                        signed_distance_pair.p_ACa;
+                    const Eigen::Vector3d& p_BCb =
+                        inspector.GetPoseInFrame(verbose_test_pair.second()).template cast<double>() *
+                        signed_distance_pair.p_BCb;
+
                     std::cout << "Contact pair "<< i <<" : (" << inspector.GetName(verbose_test_pair.first()) 
                                 << ", " << inspector.GetName(verbose_test_pair.second())
-                                << ") with phi = " << phi_i << std::endl;
+                                << ") with phi = " << phi_i << " between points ((" << p_ACa.transpose() << "), ("
+                                << p_BCb.transpose() << "))" << std::endl;
                 }
             } 
             else {
@@ -64,9 +78,23 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                             query_port.template Eval<drake::geometry::QueryObject<double>>(context);
                         const auto& inspector = query_object.inspector();
                         SortedPair<GeometryId> verbose_test_pair = contact_geoms.at(i).at(j);
+
+                        const SignedDistancePair<double> signed_distance_pair =
+                            query_object.ComputeSignedDistancePairClosestPoints(
+                                verbose_test_pair.first(), verbose_test_pair.second());
+
+                        const Eigen::Vector3d& p_ACa =
+                            inspector.GetPoseInFrame(verbose_test_pair.first()).template cast<double>() *
+                            signed_distance_pair.p_ACa;
+                        const Eigen::Vector3d& p_BCb =
+                            inspector.GetPoseInFrame(verbose_test_pair.second()).template cast<double>() *
+                            signed_distance_pair.p_BCb;
+
                         std::cout << "   " << j << "(" << inspector.GetName(verbose_test_pair.first()) 
                                     << ", " << inspector.GetName(verbose_test_pair.second())
-                                    << ") with phi = " << phi_i << std::endl;
+                                    << ") with phi = " << phi_i << " between points (("
+                                    << p_ACa.transpose() << "), ("
+                                    << p_BCb.transpose() << "))" << std::endl;
                     }
                 }
                 // Pick minimum distance contact pair
@@ -97,9 +125,23 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                     const auto& inspector = query_object.inspector();
                     multibody::GeomGeomCollider collider(plant, pair);
                     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+
+                    const SignedDistancePair<double> signed_distance_pair =
+                        query_object.ComputeSignedDistancePairClosestPoints(
+                            pair.first(), pair.second());
+
+                    const Eigen::Vector3d& p_ACa =
+                        inspector.GetPoseInFrame(pair.first()).template cast<double>() *
+                        signed_distance_pair.p_ACa;
+                    const Eigen::Vector3d& p_BCb =
+                        inspector.GetPoseInFrame(pair.second()).template cast<double>() *
+                        signed_distance_pair.p_BCb;
+
                     std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
                                 << ", " << inspector.GetName(pair.second())
-                                << ") with phi = " << phi_i << std::endl;
+                                << ") with phi = " << phi_i << " between points (("
+                                << p_ACa.transpose() << "), ("
+                                << p_BCb.transpose() << "))" << std::endl;
                 }
             }
         }

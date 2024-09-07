@@ -393,6 +393,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
 
+  if(verbose_){
+    std::cout << "num_total_samples: " << num_total_samples << std::endl;
+  }
+  
   // Update the set of sample locations under consideration.
   for (int i = 0; i < num_total_samples; i++) {
     all_sample_locations_[i] = candidate_states[i].head(3);
@@ -673,6 +677,25 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::vector<VectorXd> zs = c3_curr_plan_->GetFullSolution();
     for (int i = 0; i < N_; i++) {
       std::cout << "z[" << i << "]: " << zs[i].transpose() << std::endl;
+    }
+    solvers::LCS verbose_lcs = candidate_lcs_objects.at(CURRENT_LOCATION_INDEX);
+    Eigen::MatrixXd E = verbose_lcs.E_[0];
+    Eigen::MatrixXd F = verbose_lcs.F_[0];
+    Eigen::MatrixXd H = verbose_lcs.H_[0];
+    Eigen::VectorXd c = verbose_lcs.c_[0];
+    std::cout<< "\nRight side of complementarity: "<<std::endl;
+    for(int i = 0; i < N_; i++){
+      Eigen::VectorXd x = zs[i].head(n_x_);
+      Eigen::VectorXd lambda = zs[i].segment(n_x_, n_lambda_);
+      Eigen::VectorXd u = zs[i].tail(n_u_);
+      std::cout<< "\t" << i << ": " <<(E*x + F*lambda + H*u + c).transpose()<<std::endl;
+    }
+    std::cout<< "\nComplementarity violation: "<<std::endl;
+    for(int i = 0; i < N_; i++){
+      Eigen::VectorXd x = zs[i].head(n_x_);
+      Eigen::VectorXd lambda = zs[i].segment(n_x_, n_lambda_);
+      Eigen::VectorXd u = zs[i].tail(n_u_);
+      std::cout<< "\t" << i << ": " <<lambda.dot(E*x + F*lambda + H*u + c)<<std::endl;
     }
   }
 

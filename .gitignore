@@ -15,4 +15,4 @@ logs/
 a.out
 venv/
 *.svg
-test/
+/test/

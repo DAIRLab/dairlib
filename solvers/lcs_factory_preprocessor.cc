@@ -10,6 +10,9 @@ using std::vector;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Body;
+using drake::math::RigidTransform;
+using drake::geometry::FrameId;
 using drake::systems::Context;
 using drake::geometry::SignedDistancePair;
 
@@ -50,10 +53,24 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                         inspector.GetPoseInFrame(verbose_test_pair.second()).template cast<double>() *
                         signed_distance_pair.p_BCb;
 
+                    // Represent the witness points as points in world frame.
+                    RigidTransform T_body1_contact = RigidTransform(p_ACa);
+                    const FrameId f1_id = inspector.GetFrameId(verbose_test_pair.first());
+                    const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+                    RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+                    Eigen::Vector3d p_world_contact_a = T_world_body1*T_body1_contact.translation();
+
+                    RigidTransform T_body2_contact = RigidTransform(p_BCb);
+                    const FrameId f2_id = inspector.GetFrameId(verbose_test_pair.second());
+                    const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+                    RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+                    Eigen::Vector3d p_world_contact_b = T_world_body2*T_body2_contact.translation();
+
                     std::cout << "Contact pair "<< i <<" : (" << inspector.GetName(verbose_test_pair.first()) 
                                 << ", " << inspector.GetName(verbose_test_pair.second())
-                                << ") with phi = " << phi_i << " between points ((" << p_ACa.transpose() << "), ("
-                                << p_BCb.transpose() << "))" << std::endl;
+                                << ") with phi = " << phi_i << " between world points ["
+                                << p_world_contact_a.transpose() << "], ["
+                                << p_world_contact_b.transpose() << "]" << std::endl;
                 }
             } 
             else {
@@ -79,6 +96,7 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                         const auto& inspector = query_object.inspector();
                         SortedPair<GeometryId> verbose_test_pair = contact_geoms.at(i).at(j);
 
+                        // Get the witness points on each geometry.
                         const SignedDistancePair<double> signed_distance_pair =
                             query_object.ComputeSignedDistancePairClosestPoints(
                                 verbose_test_pair.first(), verbose_test_pair.second());
@@ -90,11 +108,24 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                             inspector.GetPoseInFrame(verbose_test_pair.second()).template cast<double>() *
                             signed_distance_pair.p_BCb;
 
+                        // Represent the witness points as points in world frame.
+                        RigidTransform T_body1_contact = RigidTransform(p_ACa);
+                        const FrameId f1_id = inspector.GetFrameId(verbose_test_pair.first());
+                        const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+                        RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+                        Eigen::Vector3d p_world_contact_a = T_world_body1*T_body1_contact.translation();
+
+                        RigidTransform T_body2_contact = RigidTransform(p_BCb);
+                        const FrameId f2_id = inspector.GetFrameId(verbose_test_pair.second());
+                        const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+                        RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+                        Eigen::Vector3d p_world_contact_b = T_world_body2*T_body2_contact.translation();
+
                         std::cout << "   " << j << "(" << inspector.GetName(verbose_test_pair.first()) 
                                     << ", " << inspector.GetName(verbose_test_pair.second())
-                                    << ") with phi = " << phi_i << " between points (("
-                                    << p_ACa.transpose() << "), ("
-                                    << p_BCb.transpose() << "))" << std::endl;
+                                    << ") with phi = " << phi_i << " between world points ["
+                                    << p_world_contact_a.transpose() << "], ["
+                                    << p_world_contact_b.transpose() << "]" << std::endl;
                     }
                 }
                 // Pick minimum distance contact pair
@@ -137,11 +168,24 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
                         inspector.GetPoseInFrame(pair.second()).template cast<double>() *
                         signed_distance_pair.p_BCb;
 
+                    // Represent the witness points as points in world frame.
+                    RigidTransform T_body1_contact = RigidTransform(p_ACa);
+                    const FrameId f1_id = inspector.GetFrameId(pair.first());
+                    const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+                    RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+                    Eigen::Vector3d p_world_contact_a = T_world_body1*T_body1_contact.translation();
+
+                    RigidTransform T_body2_contact = RigidTransform(p_BCb);
+                    const FrameId f2_id = inspector.GetFrameId(pair.second());
+                    const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+                    RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+                    Eigen::Vector3d p_world_contact_b = T_world_body2*T_body2_contact.translation();
+
                     std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
                                 << ", " << inspector.GetName(pair.second())
-                                << ") with phi = " << phi_i << " between points (("
-                                << p_ACa.transpose() << "), ("
-                                << p_BCb.transpose() << "))" << std::endl;
+                                << ") with phi = " << phi_i << " between world points ["
+                                << p_world_contact_a.transpose() << "], ["
+                                << p_world_contact_b.transpose() << "]" << std::endl;
                 }
             }
         }

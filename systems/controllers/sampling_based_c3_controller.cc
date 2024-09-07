@@ -48,7 +48,8 @@ SamplingC3Controller::SamplingC3Controller(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     C3Options c3_options,
-    SamplingC3SamplingParams sampling_params)
+    SamplingC3SamplingParams sampling_params,
+    bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
@@ -58,7 +59,8 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_params_(std::move(sampling_params)),
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
       U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
-      N_(c3_options_.N) {
+      N_(c3_options_.N),
+      verbose_(verbose){
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
@@ -288,6 +290,10 @@ SamplingC3Controller::SamplingC3Controller(
   else {
     num_threads_to_use_ = c3_options_.num_outer_threads;
   }
+
+  if (verbose_) {
+    std::cout << "Initial filtered_solve_time_: " << filtered_solve_time_ << std::endl;
+  }
 }
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
@@ -323,6 +329,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
 
+  if(verbose_){
+    std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
+    std::cout << "x_lcs_des: " << x_lcs_des.get_value().transpose() << std::endl;
+    std::cout << "x_lcs_final_des: " << x_lcs_final_des.get_value().transpose() << std::endl;
+    std::cout << "x_pred_curr_plan_: " << x_pred_curr_plan_.transpose() << std::endl;
+  }
+
   // If not tele-opping and if generating samples about a predicted lcs state, 
   // clamp the predicted next state to be not too far away from the current 
   // state.
@@ -330,9 +343,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Only use predicted state for repositioning if use_predicted_x0_repos is true and !is_doing_c3_.
   if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
     ClampEndEffectorAcceleration(x_lcs_curr);
+    if(verbose_){
+      std::cout << "x_lcs_curr after clamping in C3 mode: " << x_lcs_curr.transpose() << std::endl;
+    }
   }
-  if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
+  else if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
     ClampEndEffectorAcceleration(x_lcs_curr);
+    if(verbose_){
+      std::cout << "x_lcs_curr after clamping in repositioning mode: " << x_lcs_curr.transpose() << std::endl;
+    }
+  }
+  else if (verbose_) {
+    std::cout << "Not clamping x_lcs_curr." << std::endl;
   }
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
@@ -418,7 +440,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
       plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
       c3_options_.num_contacts[c3_options_.num_contacts_index], 
-      use_closest_ee_obj_contact);
+      use_closest_ee_obj_contact, verbose_);
 
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
@@ -430,6 +452,27 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
   // Reset the context to the current lcs state. 
   UpdateContext(x_lcs_curr);
+
+  if (verbose_) {
+    // Print the LCS matrices for verbose inspection.
+    solvers::LCS verbose_lcs = candidate_lcs_objects.at(CURRENT_LOCATION_INDEX);
+    std::cout<<"A: "<<std::endl;
+    std::cout<<verbose_lcs.A_[0]<<std::endl;
+    std::cout<<"B: "<<std::endl;
+    std::cout<<verbose_lcs.B_[0]<<std::endl;
+    std::cout<<"D: "<<std::endl;
+    std::cout<<verbose_lcs.D_[0]<<std::endl;
+    std::cout<<"d: "<<std::endl;
+    std::cout<<verbose_lcs.d_[0]<<std::endl;
+    std::cout<<"E: "<<std::endl;
+    std::cout<<verbose_lcs.E_[0]<<std::endl;
+    std::cout<<"F: "<<std::endl;
+    std::cout<<verbose_lcs.F_[0]<<std::endl;
+    std::cout<<"H: "<<std::endl;
+    std::cout<<verbose_lcs.H_[0]<<std::endl;
+    std::cout<<"c: "<<std::endl;
+    std::cout<<verbose_lcs.c_[0]<<std::endl;
+  }
 
   // Preparation for parallelization.
   // This size is adapting to the number of samples based on mode.
@@ -462,6 +505,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       discount_factor *= c3_options_.gamma;
     }
     Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+  }
+
+  if (verbose_) {
+    std::cout << "Q_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << Q_[0] << std::endl;
+    std::cout << "R_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << R_[0] << std::endl;
   }
 
   // Parallelize over computing C3 costs for each sample.
@@ -535,6 +585,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                   + sampling_params_.c3_to_repos_hysteresis + 99;
   }
 
+  if (verbose_) {
+    std::cout << "All sample costs before hystereses: " << std::endl;
+    for (int i = 0; i < num_total_samples; i++) {
+      std::cout << "Sample " << i << " cost: " << all_sample_costs_[i] << std::endl;
+    }
+    std::cout << "In C3 mode? " << is_doing_c3_ << std::endl;
+  }
+
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
@@ -576,6 +634,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  if (verbose_) {
+    std::cout << "All sample costs before hystereses: " << std::endl;
+    for (int i = 0; i < num_total_samples; i++) {
+      std::cout << "Sample " << i << " cost: " << all_sample_costs_[i] << std::endl;
+    }
+    std::cout << "In C3 mode after considering switch? " << is_doing_c3_ << std::endl;
+  }
+
   // These class variables get populated in the constructor in order to set osqp 
   // options. They get replaced by the following values.
   // Update C3 objects and intermediates for current and best samples.
@@ -602,6 +668,22 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
+  if (verbose_) {
+    std::cout << "x_pred_curr_plan_ after updating: " << x_pred_curr_plan_.transpose() << std::endl;
+    std::vector<VectorXd> zs = c3_curr_plan_->GetFullSolution();
+    for (int i = 0; i < N_; i++) {
+      std::cout << "z[" << i << "]: " << zs[i].transpose() << std::endl;
+    }
+  }
+
+  if (verbose_) {
+    std::cout << "Dynamically feasible current plan: " << std::endl;
+    for (int i=0; i<N_+1; i++){
+      std::cout << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7).transpose() << std::endl;
+    }
+  }
+
+
   // Adding delay
   std::this_thread::sleep_for(std::chrono::milliseconds(sampling_params_.control_loop_delay_ms));
   // End of control loop cleanup.
@@ -612,6 +694,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       1e6;
   filtered_solve_time_ = (1 - solve_time_filter_constant_) * solve_time +
                          (solve_time_filter_constant_)*filtered_solve_time_;
+
+  if (verbose_) {
+    std::cout << "At end of loop solve_time: " << solve_time << std::endl;
+    std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
+  }
+  
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -973,7 +1061,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
     plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
     c3_options_.num_contacts[c3_options_.num_contacts_index], 
-    use_closest_ee_obj_contact);
+    use_closest_ee_obj_contact, verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
@@ -1061,7 +1149,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
     plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
     c3_options_.num_contacts[c3_options_.num_contacts_index], 
-    use_closest_ee_obj_contact);
+    use_closest_ee_obj_contact, verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,

@@ -49,7 +49,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
       C3Options c3_options,
-      SamplingC3SamplingParams sampling_params);
+      SamplingC3SamplingParams sampling_params, bool verbose = false);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -259,6 +259,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // convenience for variable sizes
+  const bool verbose_;
   int n_q_;
   int n_v_;
   int n_x_;

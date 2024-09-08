@@ -53,7 +53,6 @@ visualize_c3_state: true
 visualize_is_c3_mode: true
 
 visualize_sample_locations: true
-
 visualize_execution_plan: true
 
 visualizer_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_curr_traj_visualization_model.urdf

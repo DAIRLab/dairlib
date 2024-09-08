@@ -10,20 +10,23 @@ lead_angle: 40
 
 
 #### C3 sanity checking good starting configurations ####
-fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
-fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) TODO
-# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
+# fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 4) TODO
-# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
+fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) TODO
-# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) Balancing on blue and green prongs at almost half a topple
+# fixed_target_orientation: [ -0.15288758, 0.40935087, 0.827526, -0.35267374]
+
+# fixed_target_position: [0.4, 0.3, 0.031971466]    # 6) 2 topples starting at position goal
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]  # -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
 #^^# C3 sanity checking good starting configurations #^^#
 
 
@@ -44,7 +47,7 @@ end_point_y: -0.35            # y coordinate of end point of straight line.
 ####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
 lookahead_step_size: 0.18      # lookahead size for adaptive straight line and fixed goal with lookahead.
-lookahead_angle: 0.523        # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
+lookahead_angle: 0.785       # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters

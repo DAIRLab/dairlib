@@ -6,6 +6,7 @@
 #include <utility>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
@@ -19,6 +20,7 @@
 namespace dairlib {
 
 using drake::multibody::ModelInstanceIndex;
+using drake::trajectories::PiecewisePolynomial;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
@@ -804,32 +806,21 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   // Get full state solution from the plan.
   vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
-  // Resolving contact model param to ContactModel type to pass to LCSFactory.
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
-
   // Setting up matrices to set up LCMTrajectory object.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
   // Set up matrices for LCMTrajectory object.
-  for (int i = 0; i < N_-1; i++) {
-    knots.col(i) = x_sol[i+1];
-    timestamps[i] = t + filtered_solve_time_ + (i+1)*c3_options_.planning_dt;
+  for (int i = 0; i < N_; i++) {
+    knots.col(i) = x_sol[i];
+    timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
-  // TODO: Set the last knot to the simulated last state in the plan.
-  knots.col(N_-1) = x_sol[N_-1];
-  timestamps[N_-1] = t + filtered_solve_time_ + N_*c3_options_.planning_dt;
-
 
   if(is_doing_c3_){
-    if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+    if (filtered_solve_time_ < c3_options_.planning_dt && 
+        c3_options_.at_least_predict_first_planned_trajectory_knot) {
+      x_pred_curr_plan_ = knots.col(1);
+    } else if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
       int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
       double fraction_to_next_index =
         (filtered_solve_time_ / c3_options_.planning_dt) - (double)last_passed_index;
@@ -901,20 +892,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   Vector3d curr_to_goal_vec = best_sample_location - current_ee_location;
 
-  // Compute spline waypoints.
-  Vector3d p0 = current_ee_location;
-  Vector3d p3 = best_sample_location;
-  Vector3d p1 = current_ee_location + 0.25*curr_to_goal_vec - 
-                current_object_location;
-  p1 = current_object_location + sampling_params_.spline_width*p1/p1.norm();
-  Vector3d p2 = current_ee_location + 0.75*curr_to_goal_vec - 
-                current_object_location;
-  p2 = current_object_location + sampling_params_.spline_width*p2/p2.norm();
-
-  // Compute total estimated travel time for spline.
-  double travel_distance = curr_to_goal_vec.norm();
-  double total_travel_time = travel_distance/sampling_params_.reposition_speed;
-
   // Read the time from the t_context i/p for setting timestamps.
   double t = t_context;
 
@@ -922,40 +899,89 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
-  for (int i = 0; i < N_; i++) {
-    // This is a curve_fraction and is not in the units of time or distance. 
-    // When it is 0, it is the current location. When it is 1, it is the goal.
-    double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
+  // Compute total estimated travel time for spline.
+  double travel_distance = curr_to_goal_vec.norm();
+  double total_travel_time = travel_distance/sampling_params_.reposition_speed;
 
-    if (i == 1 && t_spline >= 1 && !is_doing_c3_){
-      // If it can get there in one step, then set finished_reposition_flag_ to
-      // true.
-      finished_reposition_flag_ = true;
-    }
-    // Don't overshoot the end of the spline.
-    t_spline = std::min(1.0, t_spline);
+  // Use a straight line trajectory if close to the target.
+  if (travel_distance < sampling_params_.use_straight_line_traj_under) {
+    Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
+    times[0] = 0;
+    times[1] = total_travel_time;
 
-    Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
-                           std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
-                           std::pow(t_spline,3) * (-p0 + 3*p1 - 3*p2 + p3);
-
-    // Set the next LCS state as the current state with updated end effector
-    // location and zero end effector velocity. Note that this means that the
-    // object does not move in the planned trajectory. An alternative is that we
-    // could simulate the object's motion with 0 input.
+    Eigen::MatrixXd points = Eigen::MatrixXd::Zero(n_x_, 2);
+    points.col(0) = x_lcs;
     VectorXd next_lcs_state = x_lcs;
-    next_lcs_state.head(3) = next_ee_loc;
+    next_lcs_state.head(3) = best_sample_location;
     next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
-    // if z is under the jack height, set it to jack height.
-    if (next_lcs_state[2] < 0.0197) {
-      next_lcs_state[2] = 0.0197;
-    }
+    points.col(1) = next_lcs_state;
+    auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+      times, points);
 
-    knots.col(i)= next_lcs_state;
-    timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
+    for (int i = 0; i < N_; i++) {
+      double t_line = std::min((i)*c3_options_.planning_dt, total_travel_time);
+      knots.col(i) = trajectory.value(t_line);
+      timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
+
+      if (i == 1 && t_line == total_travel_time && !is_doing_c3_){
+        // If it can get there in one step, then set finished_reposition_flag_ to
+        // true.
+        finished_reposition_flag_ = true;
+      }
+    }
+  }
+  // Use a spline trajectory if further from the target (to avoid hitting the jack).
+  else{
+    // Compute spline waypoints.
+    Vector3d p0 = current_ee_location;
+    Vector3d p3 = best_sample_location;
+    Vector3d p1 = current_ee_location + 0.25*curr_to_goal_vec - 
+                  current_object_location;
+    p1 = current_object_location + sampling_params_.spline_width*p1/p1.norm();
+    Vector3d p2 = current_ee_location + 0.75*curr_to_goal_vec - 
+                  current_object_location;
+    p2 = current_object_location + sampling_params_.spline_width*p2/p2.norm();
+
+    for (int i = 0; i < N_; i++) {
+      // This is a curve_fraction and is not in the units of time or distance. 
+      // When it is 0, it is the current location. When it is 1, it is the goal.
+      double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
+
+      if (i == 1 && t_spline >= 1 && !is_doing_c3_){
+        // If it can get there in one step, then set finished_reposition_flag_ to
+        // true.
+        finished_reposition_flag_ = true;
+        std::cout<<"WARNING! Using spline but finished repositioning in one step."<<std::endl;
+      }
+      // Don't overshoot the end of the spline.
+      t_spline = std::min(1.0, t_spline);
+
+      Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
+                            std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
+                            std::pow(t_spline,3) * (-p0 + 3*p1 - 3*p2 + p3);
+
+      // Set the next LCS state as the current state with updated end effector
+      // location and zero end effector velocity. Note that this means that the
+      // object does not move in the planned trajectory. An alternative is that we
+      // could simulate the object's motion with 0 input.
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = next_ee_loc;
+      next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
+      // if z is under the table, set it to a min height.
+      if (next_lcs_state[2] < c3_options_.ee_z_state_min) {
+        next_lcs_state[2] = c3_options_.ee_z_state_min;
+      }
+
+      knots.col(i) = next_lcs_state;
+      timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
+    }
   }
 
   if(!is_doing_c3_){
+    if (filtered_solve_time_ < c3_options_.planning_dt && 
+        c3_options_.at_least_predict_first_planned_trajectory_knot) {
+      x_pred_curr_plan_ = knots.col(1);
+    } else
     if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
       int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
       double fraction_to_next_index =

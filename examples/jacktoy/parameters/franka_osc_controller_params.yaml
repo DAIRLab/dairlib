@@ -13,14 +13,22 @@ p_franka_to_ground: [0, 0, -0.029]
 # This is the z value of the platform wrt to the base of the franka.
 p_franka_to_platform: [0, 0, -0.0145]
 
+
+#### C3 sanity checking good starting configurations ####
+neutral_position: [0.4, 0.4, 0.05]    # 1) topple from behind and slide
+# neutral_position: [0.43, 0.3, 0.12]    # 2) topple from the top
+# neutral_position: [0.4, 0.4, 0.05]    # 3) TODO
+# neutral_position: [0.4, 0.4, 0.05]    # 4) TODO
+# neutral_position: [0.4, 0.4, 0.05]    # 5) TODO
+#^^# C3 sanity checking good starting configurations #^^#
+
 # neutral_position: [0.31, 0.4, 0.15]
-neutral_position: [0.33, 0.42, 0.10]
 #neutral_position: [0.38, 0.46, 0.10]
 # EE in a far off position beyond c3 target
 # neutral_position: [0.50, -0.50, 0.10]
-x_scale: 0.1
-y_scale: 0.1
-z_scale: 0.1
+x_scale: 0.2
+y_scale: 0.2
+z_scale: 0.2
 
 w_input: 0.00
 w_input_reg: 0.0

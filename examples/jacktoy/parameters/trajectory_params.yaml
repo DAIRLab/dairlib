@@ -6,11 +6,31 @@ x_c: 0.35
 y_c: 0
 lead_angle: 40
 # fixed path specific parameters
-fixed_target_position: [0.4, -0.25, 0.031971466]
+# fixed_target_position: [0.4, 0.15, 0.031971466]
+
+
+#### C3 sanity checking good starting configurations ####
+fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
+fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) TODO
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 4) TODO
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) TODO
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+#^^# C3 sanity checking good starting configurations #^^#
+
+
 # only yaw
 # fixed_target_orientation: [0.010604407, 0.61336935, 0.6423365, -0.45962018]
 # 90 deg flip
-fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 # fixed_target_orientation: [-0.17435307, -0.34287302,  0.81921544, -0.42535298]
 # fixed_target_orientation: [ 0.28876167,  0.09415564, -0.88306883,  0.35768821]
 # fixed_target_orientation: [1, 0, 0, 0]

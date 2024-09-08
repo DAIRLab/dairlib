@@ -21,7 +21,7 @@ dt: 100    # This is not used for the sampling_based controller that uses
            # planning and execution dt instead. This param is being left in 
            #  for compatibility with other c3 controllers.
 planning_dt: 0.1
-execution_dt: 0.03
+execution_dt: 0.03   # unused
 num_friction_directions: 2
 # If num_contacts_index is 0, then we use 4 closest contacts with resolved 
 # ee-jack contact.
@@ -35,9 +35,11 @@ num_contacts_index: 0
 # num_contacts changes based on the num_contacts_index.
 num_contacts: [4,6,5,7]
 N: 5
-use_predicted_x0: false
+use_predicted_x0: false   # unused for sampling-based c3 controller
 use_predicted_x0_c3: true
-use_predicted_x0_repos: false
+use_predicted_x0_repos: true
+at_least_predict_first_planned_trajectory_knot: true
+
 solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0.25, 0.75]
@@ -115,9 +117,9 @@ qp_projection_scaling: 1
 #            2.5, 2.5, 2.5,                 # object angular velocity
 #            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0, 0, 0,        # end effector position
-           1800, 1800, 1800, 1800,              # object orientation
-           6000, 6000, 100,    # object position
-           0.2, 0.2, 0.2,              # end effector linear velocity
+           2500, 2500, 2500, 2500,              # object orientation
+           5000, 5000, 100,    # object position
+           0.1, 0.1, 0.1,              # end effector linear velocity
            2.8, 2.8, 2.8,                 # object angular velocity
            0.2, 0.2, 0.2]           # object linear velocity
 

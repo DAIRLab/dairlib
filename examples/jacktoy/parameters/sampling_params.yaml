@@ -34,7 +34,9 @@ num_additional_samples_c3: 2
 
 # Repositioning parameters.
 spline_width: 0.17
-reposition_speed: 0.30    # m/s
+reposition_speed: 0.10    # m/s
+use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
+                                    # uses a straight line instead of spline
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
@@ -46,10 +48,10 @@ cost_type: 2
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
 ####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
-cost_switching_threshold_distance: 0.15
+cost_switching_threshold_distance: 0.25
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 600
+c3_to_repos_hysteresis: 900
 finished_reposition_cost: 1000000000
 repos_to_c3_hysteresis: 430
 hysteresis_between_repos_targets: 600

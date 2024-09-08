@@ -585,7 +585,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::distance(std::begin(additional_sample_cost_vector), it) + 1);
   }
   else{
-    // If there is no other sample, then set the best sample to the current 
+    // If there is no other sample, then set the best sample to the current
     // location and set the cost to a high value to ensure that the c3 is chosen.
     best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
                                   + sampling_params_.c3_to_repos_hysteresis + 99;
@@ -907,7 +907,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   if (travel_distance < sampling_params_.use_straight_line_traj_under) {
     Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
     times[0] = 0;
-    times[1] = total_travel_time;
+    // Ensure the times used to define PiecewisePolynomial are increasing.
+    times[1] = std::max(total_travel_time, 0.0001);
 
     Eigen::MatrixXd points = Eigen::MatrixXd::Zero(n_x_, 2);
     points.col(0) = x_lcs;

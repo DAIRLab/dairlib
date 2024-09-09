@@ -10,6 +10,7 @@ using drake::multibody::MultibodyPlant;
 using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
+using drake::math::RotationMatrix;
 using Eigen::VectorXd;
 
 namespace dairlib {
@@ -278,8 +279,11 @@ void TargetGenerator::CalcObjectVelocityTarget(
   Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
   Eigen::Quaterniond y_quat_lookahead_quat(y_quat_lookahead(0), y_quat_lookahead(1), y_quat_lookahead(2), y_quat_lookahead(3));
 
-  // Compute the error.
-  Eigen::AngleAxis<double> angle_axis_diff_to_lookahead(y_quat_lookahead_quat * y_quat.inverse());
+  RotationMatrix rot_from_world_to_curr(y_quat);
+  RotationMatrix rot_from_world_to_desired(y_quat_lookahead_quat);
+  RotationMatrix rot_from_curr_to_desired = rot_from_world_to_curr.InvertAndCompose(rot_from_world_to_desired);
+  Eigen::AngleAxis<double> angle_axis_diff_to_lookahead = rot_from_curr_to_desired.ToAngleAxis();
+
   VectorXd angle_error = angle_axis_diff_to_lookahead.angle() * angle_axis_diff_to_lookahead.axis();
 
   VectorXd target_obj_velocity = VectorXd::Zero(6);

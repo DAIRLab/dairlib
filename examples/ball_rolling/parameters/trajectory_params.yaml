@@ -17,6 +17,7 @@ end_point_x: 0.45             # x coordinate of end point of straight line.
 end_point_y: -0.35            # y coordinate of end point of straight line.
 lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
 lookahead_angle: 0.785        # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
+angle_err_to_vel_factor: 1    # factor for converting an angular error to angular velocity command.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters

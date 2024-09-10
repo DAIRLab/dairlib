@@ -54,7 +54,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position, 
     const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, 
     const double& start_point_y, const double& end_point_x, const double& end_point_y, const double& lookahead_step_size,
-    const double& lookahead_angle, const double& max_step_size, const double& ee_goal_height,
+    const double& lookahead_angle, const double& angle_err_to_vel_factor, const double& max_step_size, const double& ee_goal_height,
     const double& object_half_width) {
   // Set the target parameters
   // Create class variables for each parameter
@@ -72,6 +72,7 @@ void TargetGenerator::SetRemoteControlParameters(
   end_point_y_ = end_point_y;
   lookahead_step_size_ = lookahead_step_size;
   lookahead_angle_ = lookahead_angle;
+  angle_err_to_vel_factor_ = angle_err_to_vel_factor;
   max_step_size_ = max_step_size;
   ee_goal_height_ = ee_goal_height;
   object_half_width_ = object_half_width;
@@ -281,6 +282,7 @@ void TargetGenerator::CalcObjectVelocityTarget(
 
   Eigen::AngleAxis<double> angle_axis_diff_to_lookahead(y_quat_lookahead_quat * y_quat.inverse());
   VectorXd angle_error = angle_axis_diff_to_lookahead.angle() * angle_axis_diff_to_lookahead.axis();
+  angle_error *= angle_err_to_vel_factor_;
 
   VectorXd target_obj_velocity = VectorXd::Zero(6);
   target_obj_velocity << angle_error, VectorXd::Zero(3);

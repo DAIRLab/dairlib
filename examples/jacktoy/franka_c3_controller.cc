@@ -289,6 +289,7 @@ int DoMain(int argc, char* argv[]) {
       trajectory_params.start_point_x, trajectory_params.start_point_y,
       trajectory_params.end_point_x, trajectory_params.end_point_y,
       trajectory_params.lookahead_step_size, trajectory_params.lookahead_angle,
+      trajectory_params.angle_err_to_vel_factor,
       trajectory_params.max_step_size, trajectory_params.ee_goal_height,
       trajectory_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};

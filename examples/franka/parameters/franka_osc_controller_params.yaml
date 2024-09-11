@@ -7,8 +7,8 @@ end_effector_name: plate
 tool_attachment_frame: [0, 0, 0.107]
 
 neutral_position: [0.55, 0, 0.45]
-x_scale: 0.1
-y_scale: 0.1
+x_scale: 0.4
+y_scale: 0.4
 z_scale: 0.1
 
 w_input: 0.00
@@ -21,7 +21,7 @@ impact_tau: 0.000
 mu: 1.0 # unused
 end_effector_acceleration: 10
 track_end_effector_orientation: false
-cancel_gravity_compensation: true
+cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
 publish_debug_info: true
 

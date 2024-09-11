@@ -36,14 +36,22 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_state_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_lcs_input() const {
+    return this->get_output_port(lcs_input_port_);
+  }
+
  private:
   void ComputeLCSState(
       const drake::systems::Context<double>& context,
-      FrankaKinematicsVector<double>* output_traj) const;
+      FrankaKinematicsVector<double>* lcs_state) const;
+  void ComputeLCSInput(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* lcs_input) const;
 
   drake::systems::InputPortIndex franka_state_port_;
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex lcs_state_port_;
+  drake::systems::OutputPortIndex lcs_input_port_;
 
   int num_end_effector_positions_;
   int num_object_positions_;

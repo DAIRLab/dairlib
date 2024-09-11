@@ -6,9 +6,11 @@
 namespace dairlib {
 
 using drake::multibody::MultibodyPlant;
+using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
 using systems::OutputVector;
 using systems::StateVector;
 using systems::TimestampedVector;
@@ -54,6 +56,13 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                   num_end_effector_positions_, num_object_positions_,
                   num_end_effector_velocities_, num_object_velocities_),
               &FrankaKinematics::ComputeLCSState)
+          .get_index();
+  lcs_input_port_ =
+      this->DeclareVectorOutputPort(
+              "u_lcs",
+              BasicVector<double>(
+                  3),
+              &FrankaKinematics::ComputeLCSInput)
           .get_index();
 }
 
@@ -112,6 +121,28 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
+}
+
+void FrankaKinematics::ComputeLCSInput(
+    const drake::systems::Context<double>& context,
+    BasicVector<double>* lcs_input) const {
+  const OutputVector<double>* franka_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
+
+  VectorXd q_franka = franka_output->GetPositions();
+  VectorXd v_franka = franka_output->GetVelocities();
+  multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
+                                       franka_context_);
+  multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
+                                        franka_context_);
+  MatrixXd J_ee = MatrixXd::Zero(num_end_effector_velocities_,
+                                 franka_plant_.num_velocities());
+  franka_plant_.CalcJacobianTranslationalVelocity(
+      *franka_context_, JacobianWrtVariable::kV,
+      franka_plant_.GetBodyByName(end_effector_name_).body_frame(),
+      VectorXd::Zero(3), world_, world_, &J_ee);
+
+  lcs_input->SetFromVector(J_ee * franka_output->GetEfforts());
 }
 
 }  // namespace systems

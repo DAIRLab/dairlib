@@ -277,10 +277,12 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_object_state());
   builder.Connect(tray_state_receiver->get_output_port(),
                   plate_balancing_target->get_input_port_tray_state());
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   controller->get_input_port_lcs_state());
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   lcs_factory->get_input_port_lcs_state());
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_input(),
+                  lcs_factory->get_input_port_lcs_input());
   builder.Connect(radio_to_vector->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),

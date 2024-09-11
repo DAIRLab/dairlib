@@ -57,9 +57,9 @@ LCSFactorySystem::LCSFactorySystem(
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
 
-//  lcs_inputs_input_port_ =
-//      this->DeclareVectorInputPort("u_lcs", BasicVector<double>(n_u_))
-//          .get_index();
+  lcs_inputs_input_port_ =
+      this->DeclareVectorInputPort("u_lcs", BasicVector<double>(n_u_))
+          .get_index();
 
   MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
@@ -85,16 +85,15 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
-//  const auto lcs_u =
-//      (BasicVector<double>*)this->EvalVectorInput(context,
-//                                                  lcs_inputs_input_port_);
+  const auto lcs_u =
+      (BasicVector<double>*)this->EvalVectorInput(context,
+                                                  lcs_inputs_input_port_);
   DRAKE_DEMAND(lcs_x->get_data().size() == n_x_);
-//  DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
+  DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
-//  q_v_u << lcs_x->get_data(), lcs_u->get_value();
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+  q_v_u << lcs_x->get_data(), lcs_u->get_value();
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   plant_.SetPositionsAndVelocities(&context_, q_v_u.head(n_x_));

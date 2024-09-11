@@ -28,9 +28,9 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lcs_state_input_port_);
   }
 
-//  const drake::systems::InputPort<double>& get_input_port_lcs_input() const {
-//    return this->get_input_port(lcs_inputs_input_port_);
-//  }
+  const drake::systems::InputPort<double>& get_input_port_lcs_input() const {
+    return this->get_input_port(lcs_inputs_input_port_);
+  }
 
   const drake::systems::OutputPort<double>& get_output_port_lcs() const {
     return this->get_output_port(lcs_port_);
@@ -47,7 +47,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
                                 std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*) const;
 
   drake::systems::InputPortIndex lcs_state_input_port_;
-//  drake::systems::InputPortIndex lcs_inputs_input_port_;
+  drake::systems::InputPortIndex lcs_inputs_input_port_;
   drake::systems::OutputPortIndex lcs_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
 

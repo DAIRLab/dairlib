@@ -92,6 +92,7 @@ int main(int argc,  char* argv[]) {
   Eigen::VectorXf x_lcs_desired = Eigen::VectorXf::Zero(19);
   Eigen::VectorXf x_lcs_final_desired = Eigen::VectorXf::Zero(19);
   Eigen::MatrixXf dyn_feas_curr_plan_pos = Eigen::MatrixXf::Zero(3, c3_options.N+1);
+  Eigen::MatrixXf dyn_feas_curr_plan_orientation = Eigen::MatrixXf::Zero(4, c3_options.N+1);
   Eigen::MatrixXf u_sol = Eigen::MatrixXf::Zero(3, c3_options.N);
     
   // Read the log until the first C3_ACTUAL message after the start time.
@@ -111,6 +112,7 @@ int main(int argc,  char* argv[]) {
           if ((x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
               (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (dyn_feas_curr_plan_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
               (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
             break;
           }
@@ -129,7 +131,8 @@ int main(int argc,  char* argv[]) {
           }
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1))) {
+              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (dyn_feas_curr_plan_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1))) {
             break;
           }
         } else {
@@ -148,6 +151,7 @@ int main(int argc,  char* argv[]) {
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
               (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (dyn_feas_curr_plan_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
               (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
             break;
           }
@@ -162,6 +166,11 @@ int main(int argc,  char* argv[]) {
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received DYNAMICALLY_FEASIBLE_CURR_PLAN message at: " <<
             (event->timestamp- u_init_time)/1e6 << std::endl;
+          for (int i=0; i<4; i++) {
+            for (int j=0; j<c3_options.N+1; j++) {
+              dyn_feas_curr_plan_orientation(i,j) = message.saved_traj.trajectories[0].datapoints[i][j];
+            }
+          }
           for (int i=0; i<3; i++) {
             for (int j=0; j<c3_options.N+1; j++) {
               dyn_feas_curr_plan_pos(i,j) = message.saved_traj.trajectories[1].datapoints[i][j];
@@ -192,7 +201,8 @@ int main(int argc,  char* argv[]) {
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1))) {
+              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (dyn_feas_curr_plan_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1))) {
             break;
           }
         } else {
@@ -216,6 +226,7 @@ int main(int argc,  char* argv[]) {
   std::cout << "Desired: " << x_lcs_desired.transpose() << std::endl;
   std::cout << "Final Desired: " << x_lcs_final_desired.transpose() << std::endl;
   std::cout << "\nDyn Feas Curr plan from log:\n" << dyn_feas_curr_plan_pos << std::endl;
+  std::cout << "\nDyn Feas Curr plan orientation from log:\n" << dyn_feas_curr_plan_orientation << std::endl;
   std::cout << "\nU_sol from log:\n" << u_sol << std::endl;
 
   // Create the plant for the LCS

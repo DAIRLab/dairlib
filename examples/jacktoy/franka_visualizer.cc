@@ -364,7 +364,7 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target", 5, false);
+        "object_position_target", "object_orientation_target", 5, true);
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
@@ -377,7 +377,7 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "dynamically_feasible_curr_plan", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target", 6, false);
+        "object_position_target", "object_orientation_target", 6, true);
     builder.Connect(dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
                     dynamically_feasible_object_pose_drawer_curr->get_input_port_trajectory());
   }

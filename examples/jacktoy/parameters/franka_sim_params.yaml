@@ -43,7 +43,8 @@ q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 
 # Check the dependencies and clear/clean this line up.
 # q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.35, 0.1]
-q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.30, 0.1]
+# q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.30, 0.1]
+q_init_object: [-0.3347435, -0.026718954, 0.8878204, 0.31518626, 0.4, 0.30, 0.03]   #For test case 8, 1 topple in the direction of the goal
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf

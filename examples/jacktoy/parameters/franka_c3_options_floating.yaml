@@ -1,6 +1,6 @@
 admm_iter: 3
 rho: 0  #This isn't used anywhere!
-rho_scale: 3
+rho_scale: 3  #2.3
 num_threads: 5
 num_outer_threads: 4
 # delta_option: 1
@@ -16,24 +16,34 @@ contact_model: 'anitescu'
 mu: [[0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 1, 0.4615, 0.4615, 0.4615],
-    [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615]]
+    [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615],
+    [0.4615, 0.4615, 0.4615, 0.4615, 0.4615]]
 dt: 100    # This is not used for the sampling_based controller that uses 
            # planning and execution dt instead. This param is being left in 
            #  for compatibility with other c3 controllers.
-planning_dt: 0.1
-execution_dt: 0.03   # unused
+planning_dt: 0.05
+execution_dt: 0.1   # unused
 num_friction_directions: 2
-# If num_contacts_index is 0, then we use 4 closest contacts with resolved 
-# ee-jack contact.
+# If num_contacts_index is 0, then we use 1 ee-jack contact and 3 ground-jack
+# contacts.
 # If num_contacts_index is 1, then we use 6 contacts without resolving 
 # ee-jack contact.
 # If num_contacts_index is 2, then we use 4 closest ee-jack contacts with an 
 # additional contact between ee and ground.
 # If num_contacts_index is 3, then we use 6 ee-jack contacts with an additional
 #  contact between ee and ground.
-num_contacts_index: 0
+# If num_contacts_index is 4, then we use 1 ee-jack contact and 4 ground-jack
+# contacts.
+num_contacts_index: 4
 # num_contacts changes based on the num_contacts_index.
-num_contacts: [4,6,5,7]
+num_contacts: [4,6,5,7,5]
+# If two numbers, the first is for ee-jack contact(s) and the second is for
+# ground-jack contact(s).  If three, the middle is for the ee-ground contact.
+resolve_contacts_to_list: [[1,3],
+                           [3,3],
+                           [1,1,3],
+                           [3,1,3],
+                           [1,4]]
 N: 5
 use_predicted_x0: false   # unused for sampling-based c3 controller
 use_predicted_x0_c3: true
@@ -47,14 +57,14 @@ world_y_limits: [-0.45, 0.45]
 world_z_limits: [0.05, 0.2]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
-u_vertical_limits: [0, 50]
+u_vertical_limits: [-50, 50]
 
 # minimum end effector z-state constraint in c3
 ee_z_state_min: 0.02
 
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
-g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma: [[1, 1, 1, 1],
           [1, 1, 1, 1, 1, 1]]
 g_lambda_n: [[1, 1, 1, 1],
@@ -64,8 +74,9 @@ g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 g_lambda: [[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
            [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_u: [0.1,0.1,0.1]
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]]
+g_u: [30, 30, 30]
 
 # Penalty on matching the QP variables
 u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -75,12 +86,13 @@ u_lambda_n: [[1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1]]
 u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-# This is not used for the QP projection. It gets overwritten by alpha*F.
+# u_lambda is not used for the QP projection. It gets overwritten by alpha*F.
 u_lambda: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
             [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-u_u: [30, 30, 30]
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]]
+u_u: [0.01, 0.01, 0.01]
 
 
 warm_start: false     # TODO: Check if we use this. Delete otherwise.
@@ -117,11 +129,11 @@ qp_projection_scaling: 1
 #            2.5, 2.5, 2.5,                 # object angular velocity
 #            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0, 0, 0,        # end effector position
-           2500, 2500, 2500, 2500,              # object orientation
-           5000, 5000, 100,    # object position
-           0.1, 0.1, 0.1,              # end effector linear velocity
-           2.8, 2.8, 2.8,                 # object angular velocity
-           0.2, 0.2, 0.2]           # object linear velocity
+           100, 100, 100, 100,              # object orientation
+           0, 0, 1,    # object position
+           0.05, 0.05, 0.05,              # end effector linear velocity
+           100, 100, 100,                 # object angular velocity
+           0, 0, 0]           # object linear velocity
 
 # POSITION GOAL GAINS
 q_vector: [0, 0, 0,        # end effector position

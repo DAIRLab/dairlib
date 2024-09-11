@@ -177,7 +177,31 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   }
 }
 
+void C3::UpdateCostMatrices(const C3::CostMatrices& costs) {
+  DRAKE_DEMAND(costs.Q.size() == N_ + 1);
+  DRAKE_DEMAND(costs.R.size() == N_);
+  DRAKE_DEMAND(costs.U.size() == N_);
+  DRAKE_DEMAND(costs.G.size() == N_);
+  DRAKE_DEMAND(costs.Q[0].rows() == n_);
+  DRAKE_DEMAND(costs.Q[0].cols() == n_);
+  DRAKE_DEMAND(costs.R[0].rows() == k_);
+  DRAKE_DEMAND(costs.R[0].cols() == k_);
+  DRAKE_DEMAND(costs.U[0].rows() == n_ + m_ + k_);
+  DRAKE_DEMAND(costs.U[0].cols() == n_ + m_ + k_);
+  DRAKE_DEMAND(costs.G[0].rows() == n_ + m_ + k_);
+  DRAKE_DEMAND(costs.G[0].cols() == n_ + m_ + k_);
+  Q_ = costs.Q;
+  R_ = costs.R;
+  U_ = costs.U;
+  G_ = costs.G;
+}
+
 void C3::UpdateLCS(const LCS& lcs) {
+  DRAKE_DEMAND(lcs.A_.size() == N_);
+  DRAKE_DEMAND(lcs.A_[0].rows() == n_);
+  DRAKE_DEMAND(lcs.A_[0].cols() == n_);
+  DRAKE_DEMAND(lcs.D_[0].cols() == m_);
+  DRAKE_DEMAND(lcs.B_[0].cols() == k_);
   // Update the stored LCS object.
   lcs_ = lcs;
   // lcs_(lcs);
@@ -377,18 +401,31 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     // std::cout<<"\t\tx_desired_ee: "<<x_desired_[i].segment(0,3).transpose()<<std::endl;
     // // Print error terms and cost values for this part of the cost function.
     // std::cout<<"\t\txee error: "<<(XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()<<std::endl;
-    // std::cout<<"\t\tCost contribution from qow, qox, qoy, qoz: "<<
-    //   (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*
-    //   Q_eff.at(i).block(3,3,4,4)*(XX[i].segment(3,4) - x_desired_[i].segment(3,4))<<std::endl;
-    // std::cout<<"\t\tcost contribution from qox, qoy, qoz: "<<
-    //   (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*
-    //   Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - x_desired_[i].segment(7,3))<<std::endl;
-    // std::cout<<"\t\tcost contribution from vxee, vyee, vzee: "<<
-    //   (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*
-    //   Q_eff.at(i).block(10,10,3,3)*(XX[i].segment(10,3) - x_desired_[i].segment(10,3))<<std::endl;
-    // std::cout<<"\t\tcost contribution from wox, woy, woz: "<<
-    //   (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*
-    //   Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - x_desired_[i].segment(13,3))<<std::endl;
+    // if (i == 0) {
+    //   std::cout<<"Unscaled object position error: "<<
+    //     (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*  //Q_eff.at(i).block(7,7,3,3)*
+    //     (XX[i].segment(7,3) - x_desired_[i].segment(7,3))<<std::endl;
+    //   std::cout<<"\tUnscaled object orientation error: "<<
+    //     (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*  //Q_eff.at(i).block(3,3,4,4)*
+    //     (XX[i].segment(3,4) - x_desired_[i].segment(3,4))<<std::endl;
+    //   // std::cout<<"\t\tcost contribution from vxee, vyee, vzee: "<<
+    //   //   (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*
+    //   //   Q_eff.at(i).block(10,10,3,3)*(XX[i].segment(10,3) - x_desired_[i].segment(10,3))<<std::endl;
+    //   std::cout<<"\tUnscaled object angular velocity error: "<<
+    //     (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()* //Q_eff.at(i).block(13,13,3,3)*
+    //     (XX[i].segment(13,3) - x_desired_[i].segment(13,3))<<std::endl;
+
+      // if ((XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*  //Q_eff.at(i).block(3,3,4,4)*
+      //   (XX[i].segment(3,4) - x_desired_[i].segment(3,4)) > 0.99) {
+      //     std::cout<<"\nWARNING! ISSUE DETECTED:"<<std::endl;
+      //     std::cout<<"Cost type: "<<cost_type<<std::endl;
+      //     std::cout<<"XX[0] = "<<XX[0].transpose()<<std::endl;
+      //     std::cout<<"x_desired_[0] = "<<x_desired_[0].transpose()<<std::endl;
+      //     std::cout<<"zfin_[0] = "<<zfin_[0].transpose()<<std::endl;
+      //     std::cout<<"\n"<<std::endl;
+      // }
+    // }
+
     // std::cout<<"\t\tcost contribution from vxox, vxoy, vxoz: "<<
     //   (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
     //   Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3))<<std::endl;
@@ -448,7 +485,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   if (h_is_zero_ == 1) {
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
+    LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
   }
 
@@ -511,6 +548,10 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
       warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
     }
   }
+  // else {
+  //   std::cout<<"CAUTION: C3 QP solve did not succeed" << std::endl;
+  //   std::cout<<"First result: "<<result.GetSolution(x_[0]).transpose()<<std::endl;
+  // }
 
   return *z_sol_;
 }

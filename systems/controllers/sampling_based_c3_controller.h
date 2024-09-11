@@ -15,6 +15,7 @@
 #include "sampling_params.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
+#include "solvers/lcs_factory.h"
 #include "solvers/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -250,6 +251,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_pairs_;
+  solvers::ContactModel contact_model_;
 
   C3Options c3_options_;
   SamplingC3SamplingParams sampling_params_;

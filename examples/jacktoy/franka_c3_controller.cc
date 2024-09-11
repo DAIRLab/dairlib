@@ -206,6 +206,26 @@ int DoMain(int argc, char* argv[]) {
   drake::geometry::GeometryId capsule3_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("capsule_3"))[0];
+
+  drake::geometry::GeometryId capsule1_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_1"))[1];
+  drake::geometry::GeometryId capsule1_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_1"))[2];
+  drake::geometry::GeometryId capsule2_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"))[1];
+  drake::geometry::GeometryId capsule2_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"))[2];
+  drake::geometry::GeometryId capsule3_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"))[1];
+  drake::geometry::GeometryId capsule3_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"))[2];
+
   drake::geometry::GeometryId ground_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("ground"))[0];
@@ -216,6 +236,12 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["CAPSULE_1"] = capsule1_geoms;
   contact_geoms["CAPSULE_2"] = capsule2_geoms;
   contact_geoms["CAPSULE_3"] = capsule3_geoms;
+  contact_geoms["CAPSULE_1_SPHERE_1"] = capsule1_sphere1_geoms;
+  contact_geoms["CAPSULE_1_SPHERE_2"] = capsule1_sphere2_geoms;
+  contact_geoms["CAPSULE_2_SPHERE_1"] = capsule2_sphere1_geoms;
+  contact_geoms["CAPSULE_2_SPHERE_2"] = capsule2_sphere2_geoms;
+  contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
+  contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
   contact_geoms["GROUND"] = ground_geoms;
 
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
@@ -228,17 +254,31 @@ int DoMain(int argc, char* argv[]) {
       SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
   ee_contact_pairs.push_back(
       SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
+
   //   Creating a list of contact pairs for the jack and the ground
-  std::vector<SortedPair<GeometryId>> ground_contact1{
-      SortedPair(contact_geoms["CAPSULE_1"], contact_geoms["GROUND"])};
-  std::vector<SortedPair<GeometryId>> ground_contact2{
-      SortedPair(contact_geoms["CAPSULE_2"], contact_geoms["GROUND"])};
-  std::vector<SortedPair<GeometryId>> ground_contact3{
-      SortedPair(contact_geoms["CAPSULE_3"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_1_1{
+      SortedPair(contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_1_2{
+      SortedPair(contact_geoms["CAPSULE_1_SPHERE_2"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_2_1{
+      SortedPair(contact_geoms["CAPSULE_2_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_2_2{
+      SortedPair(contact_geoms["CAPSULE_2_SPHERE_2"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_3_1{
+      SortedPair(contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_3_2{
+      SortedPair(contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"])};
 
   std::vector<std::vector<SortedPair<GeometryId>>>
-      contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                      // [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+      contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
+                      // but e.g. num_contacts_index = 0 means this will have
+                      // [[(ee,cap1), (ee,cap2), (ee_cap3)],
+                      //  [(ground,cap1sph1), (ground,cap1sph2),
+                      //   (ground,cap2sph1), (ground,cap2sph2),
+                      //   (ground,cap3sph1), (ground,cap3sph2)]]
+                      // and the first list (of 3) will get resolved to a single
+                      // ee-jack contact, and the second list (of 6) will get
+                      // resolved to 3 ground-jack contacts.
   contact_pairs.push_back(ee_contact_pairs);
 
   if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
@@ -248,11 +288,14 @@ int DoMain(int argc, char* argv[]) {
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
     contact_pairs.push_back(ee_ground_contact);
   }
-
-  contact_pairs.push_back(ground_contact1);
-  contact_pairs.push_back(ground_contact2);
-  contact_pairs.push_back(ground_contact3);
-
+std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+  ground_object_contact_pairs.push_back(ground_contact_1_1);
+  ground_object_contact_pairs.push_back(ground_contact_1_2);
+  ground_object_contact_pairs.push_back(ground_contact_2_1);
+  ground_object_contact_pairs.push_back(ground_contact_2_2);
+  ground_object_contact_pairs.push_back(ground_contact_3_1);
+  ground_object_contact_pairs.push_back(ground_contact_3_2);
+  contact_pairs.push_back(ground_object_contact_pairs);
 
   DiagramBuilder<double> builder;
 
@@ -285,7 +328,7 @@ int DoMain(int argc, char* argv[]) {
       trajectory_params.trajectory_type, trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
       trajectory_params.lead_angle, trajectory_params.fixed_target_position,
-       trajectory_params.fixed_target_orientation, trajectory_params.step_size,
+      trajectory_params.fixed_target_orientation, trajectory_params.step_size,
       trajectory_params.start_point_x, trajectory_params.start_point_y,
       trajectory_params.end_point_x, trajectory_params.end_point_y,
       trajectory_params.lookahead_step_size, trajectory_params.lookahead_angle,

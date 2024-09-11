@@ -30,6 +30,8 @@ num_friction_directions: 2
 num_contacts_index: 1
 # num_contacts changes based on the num_contacts_index.
 num_contacts: [2,3]
+resolve_contacts_to_list: [[1,1],
+                           [1,1,1]]
 N: 5
 # This param has to do with the xbox input?
 use_predicted_x0: false

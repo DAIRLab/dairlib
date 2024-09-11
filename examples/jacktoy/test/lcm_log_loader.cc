@@ -92,6 +92,7 @@ int main(int argc,  char* argv[]) {
   Eigen::VectorXf x_lcs_desired = Eigen::VectorXf::Zero(19);
   Eigen::VectorXf x_lcs_final_desired = Eigen::VectorXf::Zero(19);
   Eigen::MatrixXf dyn_feas_curr_plan_pos = Eigen::MatrixXf::Zero(3, c3_options.N+1);
+  Eigen::MatrixXf u_sol = Eigen::MatrixXf::Zero(3, c3_options.N);
     
   // Read the log until the first C3_ACTUAL message after the start time.
   while ((event = log_file.readNextEvent()) != nullptr) {
@@ -109,7 +110,8 @@ int main(int argc,  char* argv[]) {
           }
           if ((x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1))) {
+              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
             break;
           }
         } else {
@@ -145,7 +147,8 @@ int main(int argc,  char* argv[]) {
           }
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1))) {
+              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
+              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
             break;
           }
         } else {
@@ -166,11 +169,34 @@ int main(int argc,  char* argv[]) {
           }
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
               (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_desired != Eigen::VectorXf::Zero(19))) {
+              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
+              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
             break;
           }
         } else {
           std::cerr << "Failed to decode DYNAMICALLY_FEASIBLE_CURR_PLANs message" << std::endl;
+        }
+      }
+    }
+    else if (event->channel == "C3_DEBUG_CURR") {
+      if(event->timestamp > u_time_into_log + u_init_time) {
+        dairlib::lcmt_c3_output message;
+        if (message.decode(event->data, 0, event->datalen) > 0) {
+          std::cout << "Received C3_DEBUG_CURR message at: " <<
+            (event->timestamp- u_init_time)/1e6 << std::endl;
+          for (int i=0; i<3; i++) {
+            for (int j=0; j<c3_options.N+1; j++) {
+              u_sol(i,j) = message.c3_solution.u_sol[i][j];
+            }
+          }
+          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
+              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
+              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
+              (dyn_feas_curr_plan_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1))) {
+            break;
+          }
+        } else {
+          std::cerr << "Failed to decode C3_DEBUG_CURRs message" << std::endl;
         }
       }
     }
@@ -189,7 +215,8 @@ int main(int argc,  char* argv[]) {
   std::cout << "Actual: " << x_lcs_actual.transpose() << std::endl;
   std::cout << "Desired: " << x_lcs_desired.transpose() << std::endl;
   std::cout << "Final Desired: " << x_lcs_final_desired.transpose() << std::endl;
-  std::cout << "Dyn Feas Curr plan from log:\n" << dyn_feas_curr_plan_pos << std::endl;
+  std::cout << "\nDyn Feas Curr plan from log:\n" << dyn_feas_curr_plan_pos << std::endl;
+  std::cout << "\nU_sol from log:\n" << u_sol << std::endl;
 
   // Create the plant for the LCS
   DiagramBuilder<double> plant_builder;
@@ -242,12 +269,37 @@ int main(int argc,  char* argv[]) {
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("ground"))[0];
 
+  drake::geometry::GeometryId capsule1_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_1"))[1];
+  drake::geometry::GeometryId capsule1_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_1"))[2];
+  drake::geometry::GeometryId capsule2_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"))[1];
+  drake::geometry::GeometryId capsule2_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"))[2];
+  drake::geometry::GeometryId capsule3_sphere1_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"))[1];
+  drake::geometry::GeometryId capsule3_sphere2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"))[2];
+
   //   Creating a map of contact geoms
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["CAPSULE_1"] = capsule1_geoms;
   contact_geoms["CAPSULE_2"] = capsule2_geoms;
   contact_geoms["CAPSULE_3"] = capsule3_geoms;
+  contact_geoms["CAPSULE_1_SPHERE_1"] = capsule1_sphere1_geoms;
+  contact_geoms["CAPSULE_1_SPHERE_2"] = capsule1_sphere2_geoms;
+  contact_geoms["CAPSULE_2_SPHERE_1"] = capsule2_sphere1_geoms;
+  contact_geoms["CAPSULE_2_SPHERE_2"] = capsule2_sphere2_geoms;
+  contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
+  contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
   contact_geoms["GROUND"] = ground_geoms;
 
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
@@ -261,12 +313,18 @@ int main(int argc,  char* argv[]) {
   ee_contact_pairs.push_back(
       SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
   //   Creating a list of contact pairs for the jack and the ground
-  std::vector<SortedPair<GeometryId>> ground_contact1{
-      SortedPair(contact_geoms["CAPSULE_1"], contact_geoms["GROUND"])};
-  std::vector<SortedPair<GeometryId>> ground_contact2{
-      SortedPair(contact_geoms["CAPSULE_2"], contact_geoms["GROUND"])};
-  std::vector<SortedPair<GeometryId>> ground_contact3{
-      SortedPair(contact_geoms["CAPSULE_3"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_1_1{
+      SortedPair(contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_1_2{
+      SortedPair(contact_geoms["CAPSULE_1_SPHERE_2"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_2_1{
+      SortedPair(contact_geoms["CAPSULE_2_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_2_2{
+      SortedPair(contact_geoms["CAPSULE_2_SPHERE_2"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_3_1{
+      SortedPair(contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"])};
+    SortedPair<GeometryId> ground_contact_3_2{
+      SortedPair(contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"])};
   
   std::vector<std::vector<SortedPair<GeometryId>>>
       contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)],
@@ -281,9 +339,14 @@ int main(int argc,  char* argv[]) {
     contact_pairs.push_back(ee_ground_contact);
   }
 
-  contact_pairs.push_back(ground_contact1);
-  contact_pairs.push_back(ground_contact2);
-  contact_pairs.push_back(ground_contact3);
+  std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+  ground_object_contact_pairs.push_back(ground_contact_1_1);
+  ground_object_contact_pairs.push_back(ground_contact_1_2);
+  ground_object_contact_pairs.push_back(ground_contact_2_1);
+  ground_object_contact_pairs.push_back(ground_contact_2_2);
+  ground_object_contact_pairs.push_back(ground_contact_3_1);
+  ground_object_contact_pairs.push_back(ground_contact_3_2);
+  contact_pairs.push_back(ground_object_contact_pairs);
 
   std::cout<<"num_positions: " << plant_for_lcs.num_positions() << std::endl;
   std::cout<<"num_velocities: " << plant_for_lcs.num_velocities() << std::endl;

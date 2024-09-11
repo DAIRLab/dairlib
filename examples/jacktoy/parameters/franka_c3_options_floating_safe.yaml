@@ -18,7 +18,8 @@ contact_model: 'anitescu'
 mu: [[0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615],
     [0.4615, 1, 0.4615, 0.4615, 0.4615],
-    [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615]]
+    [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615],
+    [0.4615, 0.4615, 0.4615, 0.4615, 4615]]
 dt: 100    # This is not used for the sampling_based controller that uses 
            # planning and execution dt instead. This param is being left in 
            #  for compatibility with other c3 controllers.
@@ -35,7 +36,12 @@ num_friction_directions: 2
 #  contact between ee and ground.
 num_contacts_index: 0
 # num_contacts changes based on the num_contacts_index.
-num_contacts: [4,6,5,7]
+num_contacts: [4,6,5,7,5]
+resolve_contacts_to_list: [[1,3],
+                           [3,3],
+                           [1,1,3],
+                           [3,1,3],
+                           [1,4]]
 N: 5
 use_predicted_x0: false
 use_predicted_x0_c3: false

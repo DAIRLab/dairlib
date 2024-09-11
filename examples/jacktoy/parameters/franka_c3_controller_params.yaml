@@ -12,7 +12,8 @@ end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
 end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: end_effector_simple
-jack_model: examples/jacktoy/urdf/jack.sdf
+# jack_model: examples/jacktoy/urdf/jack.sdf
+jack_model: examples/jacktoy/urdf/jack_ground.sdf
 ground_model: examples/jacktoy/urdf/ground.urdf
 platform_model: examples/jacktoy/urdf/platform.urdf
 

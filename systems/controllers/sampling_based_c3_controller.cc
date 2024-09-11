@@ -11,7 +11,6 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
-#include "solvers/lcs_factory.h"
 #include "solvers/lcs_factory_preprocessor.h"
 #include "generate_samples.h"
 
@@ -83,14 +82,16 @@ SamplingC3Controller::SamplingC3Controller(
 
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
         2 * c3_options_.num_contacts[c3_options_.num_contacts_index] +
         2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
   } else if (c3_options_.contact_model == "anitescu") {
+    contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ =
         2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
   } else {
-    std::cerr << ("Unknown contact model") << std::endl;
+    std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
 
@@ -413,45 +414,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Context needs to be updated to create the LCS objects.
     UpdateContext(candidate_states[i]);
 
-    // TODO: Make the ContactModel contact_model accessiible everywhere from 
-    // constructor.
-    // Resolving contact model param to ContactModel type to pass to LCSFactory.
-    solvers::ContactModel contact_model;
-    if (c3_options_.contact_model == "stewart_and_trinkle") {
-      contact_model = solvers::ContactModel::kStewartAndTrinkle;
-    } else if (c3_options_.contact_model == "anitescu") {
-      contact_model = solvers::ContactModel::kAnitescu;
-    } else {
-      throw std::runtime_error("unknown or unsupported contact model");
-    }
     // Create an LCS object.
     // Preprocessing the contact pairs
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
-    bool use_closest_ee_obj_contact;
-    // num_contacts_index 0 and 2 mean model closest ee-obj pair.
-    // num_contacts_index 2 includes ee-ground contact. This is already handled 
-    // in franka_c3_controller.cc.
-    if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-      use_closest_ee_obj_contact = true;
-    }
-    // num_contacts_index 1 and 3 mean model each ee-capsule pair.
-    // num_contacts_index 3 includes ee-ground contact. This is already handled 
-    // in franka_c3_controller.cc.
-    else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
-      use_closest_ee_obj_contact = false;
-    }
-    else{
-      throw std::runtime_error("unknown or unsupported num_contacts_index");
-    }
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-      c3_options_.num_contacts[c3_options_.num_contacts_index], 
-      use_closest_ee_obj_contact, verbose_);
+      plant_, *context_, contact_pairs_,
+      c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+      c3_options_.num_friction_directions,
+      c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
 
+    // std::cout<<"THIS IS MU"<<c3_options_.mu[c3_options_.num_contacts_index].size()<<std::endl;
+    // std::cout<< "This is num_contacts"<<c3_options_.num_contacts[c3_options_.num_contacts_index]<<std::endl;
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], 
-      c3_options_.planning_dt, N_, contact_model);
+      c3_options_.planning_dt, N_, contact_model_);
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
@@ -529,20 +506,31 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
-      
-      if (c3_options_.projection_type == "MIQP") {
-        test_c3_object = std::make_shared<C3MIQP>(test_system, 
-                                            C3::CostMatrices(Q_, R_, G_, U_), 
-                                            x_desired, c3_options_);
 
-      } else if (c3_options_.projection_type == "QP") {
-        test_c3_object = std::make_shared<C3QP>(test_system, 
-                                            C3::CostMatrices(Q_, R_, G_, U_), 
-                                            x_desired, c3_options_);
-      } else {
-        std::cerr << ("Unknown projection type") << std::endl;
-        DRAKE_THROW_UNLESS(false);
+
+      if (i == 0) {
+        c3_curr_plan_->UpdateTarget(x_desired);
+        c3_curr_plan_->UpdateLCS(test_system);
+        c3_curr_plan_->UpdateCostMatrices(C3::CostMatrices(Q_, R_, G_, U_));
+        test_c3_object = c3_curr_plan_;
       }
+      else{
+        if (c3_options_.projection_type == "MIQP") {
+          test_c3_object = std::make_shared<C3MIQP>(test_system, 
+                                              C3::CostMatrices(Q_, R_, G_, U_), 
+                                              x_desired, c3_options_);
+
+        } else if (c3_options_.projection_type == "QP") {
+          test_c3_object = std::make_shared<C3QP>(test_system, 
+                                              C3::CostMatrices(Q_, R_, G_, U_), 
+                                              x_desired, c3_options_);
+        } else {
+          std::cerr << ("Unknown projection type") << std::endl;
+          DRAKE_THROW_UNLESS(false);
+        }
+      }
+
+
 
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
@@ -648,7 +636,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "In C3 mode after considering switch? " << is_doing_c3_ << std::endl;
   }
 
-  // These class variables get populated in the constructor in order to set osqp 
+  // These class variables get populated in the constructor in order to set osqp
   // options. They get replaced by the following values.
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
@@ -817,9 +805,9 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   }
 
   if(is_doing_c3_){
-    if (filtered_solve_time_ < c3_options_.planning_dt && 
+    if (filtered_solve_time_ < 2*c3_options_.planning_dt && 
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
-      x_pred_curr_plan_ = knots.col(1);
+      x_pred_curr_plan_ = knots.col(2);
     } else if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
       int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
       double fraction_to_next_index =
@@ -1081,44 +1069,20 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   UpdateContext(lcs_x->get_data());
   
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
-
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  bool use_closest_ee_obj_contact;
-  // num_contacts_index 0 and 2 mean model closest ee-obj pair.
-  // num_contacts_index 2 includes ee-ground contact. This is already handled 
-  // in franka_c3_controller.cc.
-  if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-    use_closest_ee_obj_contact = true;
-  }
-  // num_contacts_index 1 and 3 mean model each ee-capsule pair.
-  // num_contacts_index 3 includes ee-ground contact. This is already handled 
-  // in franka_c3_controller.cc.
-  else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
-    use_closest_ee_obj_contact = false;
-  }
-  else{
-    throw std::runtime_error("unknown or unsupported num_contacts_index");
-  }
   resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-    plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-    c3_options_.num_contacts[c3_options_.num_contacts_index], 
-    use_closest_ee_obj_contact, verbose_);
+    plant_, *context_, contact_pairs_,
+    c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+    c3_options_.num_friction_directions,
+    c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, 
       c3_options_.mu[c3_options_.num_contacts_index], c3_options_.planning_dt,
-      c3_options_.N, contact_model);
+      c3_options_.N, contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -1168,44 +1132,20 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   VectorXd x_sample = lcs_x->get_data();
   x_sample.head(3) = all_sample_locations_[best_sample_index_];
   UpdateContext(x_sample);
-  // TODO
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  bool use_closest_ee_obj_contact;
-  // num_contacts_index 0 and 2 mean model closest ee-obj pair.
-  // num_contacts_index 2 includes ee-ground contact. This is already handled 
-  // in franka_c3_controller.cc.
-  if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
-    use_closest_ee_obj_contact = true;
-  }
-  // num_contacts_index 1 and 3 mean model each ee-capsule pair.
-  // num_contacts_index 3 includes ee-ground contact. This is already handled 
-  // in franka_c3_controller.cc.
-  else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
-    use_closest_ee_obj_contact = false;
-  }
-  else{
-    throw std::runtime_error("unknown or unsupported num_contacts_index");
-  }
   resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
-    plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-    c3_options_.num_contacts[c3_options_.num_contacts_index], 
-    use_closest_ee_obj_contact, verbose_);
+    plant_, *context_, contact_pairs_,
+    c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+    c3_options_.num_friction_directions,
+    c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, 
       c3_options_.mu[c3_options_.num_contacts_index], c3_options_.planning_dt,
-      c3_options_.N, contact_model);
+      c3_options_.N, contact_model_);
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

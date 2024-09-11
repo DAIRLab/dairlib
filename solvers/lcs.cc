@@ -83,6 +83,7 @@ LCS& LCS::operator=(const LCS& lcs) {
     H_.at(i) = lcs.H_.at(i);
     c_.at(i) = lcs.c_.at(i);
   }
+  return *this;
 }
 
 const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input) {

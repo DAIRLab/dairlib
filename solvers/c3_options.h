@@ -67,6 +67,7 @@ struct C3Options {
   int num_friction_directions;
   int num_contacts_index;
   std::vector<int> num_contacts;
+  std::vector<std::vector<int>> resolve_contacts_to_list;
   Eigen::MatrixXd Q_position;
   Eigen::MatrixXd Q_position_and_orientation;
   Eigen::MatrixXd R;
@@ -108,6 +109,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts));
+    a->Visit(DRAKE_NVP(resolve_contacts_to_list));
 
     a->Visit(DRAKE_NVP(N));
     a->Visit(DRAKE_NVP(gamma));

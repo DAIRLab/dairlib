@@ -18,9 +18,11 @@ p_franka_to_platform: [0, 0, -0.0145]
 # neutral_position: [0.4, 0.4, 0.05]    # 1) topple from behind and slide
 # neutral_position: [0.43, 0.3, 0.12]   # 2) topple from the top
 # neutral_position: [0.4, 0.4, 0.05]    # 3) One topple and a significant yaw
-neutral_position: [0.4, 0.4, 0.05]    # 4) 2 topples and distance error
+# neutral_position: [0.4, 0.4, 0.05]    # 4) 2 topples and distance error
 # neutral_position: [0.4, 0.4, 0.05]    # 5) Balancing on blue and green prongs at almost half a topple
 # neutral_position: [0.43, 0.28, 0.12]  #0.39, 0.33, 0.12]    # 6) 2 topples starting at position goal
+# neutral_position: [0.43, 0.28, 0.12]  #0.39, 0.33, 0.12]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+neutral_position: [0.410, 0.33, 0.13]  #0.39, 0.33, 0.12]    # 8) 1 topple but in the opposite direction of the position goal and then should move to position goal.
 #^^# C3 sanity checking good starting configurations #^^#
 
 # neutral_position: [0.31, 0.4, 0.15]

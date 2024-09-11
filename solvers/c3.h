@@ -111,6 +111,7 @@ class C3 {
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
   
  public:
+  void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
@@ -139,10 +140,10 @@ class C3 {
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
   double AnDn_ = 1.0;
-  const std::vector<Eigen::MatrixXd> Q_;
-  const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> U_;
-  const std::vector<Eigen::MatrixXd> G_;
+  std::vector<Eigen::MatrixXd> Q_;
+  std::vector<Eigen::MatrixXd> R_;
+  std::vector<Eigen::MatrixXd> U_;
+  std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
 
   bool h_is_zero_;

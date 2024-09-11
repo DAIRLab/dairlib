@@ -44,6 +44,9 @@ class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_efforts() const {
     return this->get_input_port(robot_input_);
   }
+  const drake::systems::InputPort<double>& get_input_port_panda_status() const {
+    return this->get_input_port(panda_status_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_panda_command()
       const {
     return this->get_output_port(franka_command_output_);
@@ -54,6 +57,7 @@ class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
                          drake::lcmt_panda_command* output) const;
 
   drake::systems::InputPortIndex robot_input_;
+  drake::systems::InputPortIndex panda_status_;
   drake::systems::OutputPortIndex franka_command_output_;
 };
 

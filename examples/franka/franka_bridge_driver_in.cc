@@ -37,8 +37,10 @@ using dairlib::systems::TimestampedVector;
 DEFINE_string(lcm_channels,
               "examples/franka/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
-DEFINE_string(franka_driver_channels, "examples/franka/parameters/franka_drake_lcm_driver_channels.yaml",
-              "Filepath containing drake franka driver channels");
+DEFINE_string(
+    franka_driver_channels,
+    "examples/franka/parameters/franka_drake_lcm_driver_channels.yaml",
+    "Filepath containing drake franka driver channels");
 
 namespace dairlib {
 
@@ -48,7 +50,8 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   FrankaDrakeLcmDriverChannels franka_driver_channel_params =
-      drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(FLAGS_franka_driver_channels);
+      drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(
+          FLAGS_franka_driver_channels);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/parameters/franka_sim_params.yaml");
 
@@ -80,9 +83,15 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
           franka_driver_channel_params.franka_command_channel, &lcm,
           1.0 / 1000.0));
-  auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
+  auto franka_status_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_panda_status>(
+          franka_driver_channel_params.franka_status_channel, &lcm));
+  auto franka_command_translator =
+      builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
   builder.Connect(*franka_command_translator, *franka_command_pub);
+  builder.Connect(franka_status_sub->get_output_port(),
+                  franka_command_translator->get_input_port_panda_status());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_bridge_driver_in"));

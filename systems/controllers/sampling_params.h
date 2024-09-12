@@ -25,6 +25,7 @@ struct SamplingC3SamplingParams {
   double reposition_speed;
   double use_straight_line_traj_under;
   int cost_type;
+  bool use_more_contacts_to_compute_cost;
   double cost_switching_threshold_distance;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
@@ -48,6 +49,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
     a->Visit(DRAKE_NVP(cost_type));
+    a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));

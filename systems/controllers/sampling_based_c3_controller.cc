@@ -410,6 +410,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
+  // These objects will be linearized the same as candidate_lcs_objects but will have all contact pairs resolved.
+  // These will not be used to solve c3 but will be used to compute more realistic costs.
+  std::vector<solvers::LCS> lcs_objects_with_more_contacts_for_cost_simulation;
+
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
     UpdateContext(candidate_states[i]);
@@ -432,6 +436,22 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
+
+    if(sampling_params_.use_more_contacts_to_compute_cost){
+      // Create an LCS object with all contact pairs resolved.
+      // Preprocessing the contact pairs
+      vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
+      resolved_contact_pairs_for_cost_simulation = LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_,
+        {3,3},
+        c3_options_.num_friction_directions,
+        6, verbose_);
+      solvers::LCS lcs_object_sample_for_cost_simulation = solvers::LCSFactory::LinearizePlantToLCS(
+        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs_for_cost_simulation,
+        c3_options_.num_friction_directions, {0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615}, 
+        c3_options_.planning_dt, N_, contact_model_);
+      lcs_objects_with_more_contacts_for_cost_simulation.push_back(lcs_object_sample_for_cost_simulation);
+    }
   }
   // Reset the context to the current lcs state. 
   UpdateContext(x_lcs_curr);
@@ -513,17 +533,29 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         c3_curr_plan_->UpdateLCS(test_system);
         c3_curr_plan_->UpdateCostMatrices(C3::CostMatrices(Q_, R_, G_, U_));
         test_c3_object = c3_curr_plan_;
+        if(sampling_params_.use_more_contacts_to_compute_cost){
+          // Compute the cost using the lcs object with more contacts.
+          test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
+        }
       }
       else{
         if (c3_options_.projection_type == "MIQP") {
           test_c3_object = std::make_shared<C3MIQP>(test_system, 
                                               C3::CostMatrices(Q_, R_, G_, U_), 
                                               x_desired, c3_options_);
+          if(sampling_params_.use_more_contacts_to_compute_cost){
+            // Compute the cost using the lcs object with more contacts.
+            test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
+          }
 
         } else if (c3_options_.projection_type == "QP") {
           test_c3_object = std::make_shared<C3QP>(test_system, 
                                               C3::CostMatrices(Q_, R_, G_, U_), 
                                               x_desired, c3_options_);
+          if(sampling_params_.use_more_contacts_to_compute_cost){
+            // Compute the cost using the lcs object with more contacts.
+            test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
+          }
         } else {
           std::cerr << ("Unknown projection type") << std::endl;
           DRAKE_THROW_UNLESS(false);
@@ -534,7 +566,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
-      test_c3_object->Solve(test_state, deltas.at(i), ws.at(i));
+      test_c3_object->Solve(test_state, deltas.at(i), ws.at(i), verbose_);
       // Get the state solution and calculate the cost.
       auto cost_trajectory_pair = test_c3_object->CalcCost(
         sampling_params_.cost_type);
@@ -687,6 +719,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       Eigen::VectorXd u = zs[i].tail(n_u_);
       std::cout<< "\t" << i << ": " <<lambda.dot(E*x + F*lambda + H*u + c)<<std::endl;
     }
+    VectorXd u_alternate = VectorXd::Zero(3);
+    u_alternate << 0.374249, 0.00592046, -0.365617;
+    std::cout << "Predicted LCS state c3 opt" << std::endl;
+    std::cout << candidate_lcs_objects.at(CURRENT_LOCATION_INDEX).Simulate(zs[0].head(n_x_), zs[0].tail(n_u_)).transpose() << std::endl;
+    std::cout << "Predicted LCS state alternate" << std::endl;
+    std::cout << candidate_lcs_objects.at(CURRENT_LOCATION_INDEX).Simulate(zs[0].head(n_x_), u_alternate).transpose() << std::endl;
   }
 
   if (verbose_) {

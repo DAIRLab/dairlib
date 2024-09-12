@@ -40,7 +40,7 @@ class C3 {
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
   void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
-             std::vector<Eigen::VectorXd>& w);
+             std::vector<Eigen::VectorXd>& w, bool verbose = false);
 
   /// Compute the MPC cost, using previously solved MPC solution
   /// @return The cost and the full state trajectory
@@ -55,7 +55,7 @@ class C3 {
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
                 std::vector<Eigen::MatrixXd>* G,
-                int admm_iteration);
+                int admm_iteration, bool verbose = false);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
@@ -113,6 +113,7 @@ class C3 {
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
+  void UpdateCostLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
  protected:
@@ -131,6 +132,7 @@ class C3 {
 
  private:
   mutable LCS lcs_;
+  std::unique_ptr<LCS> LCS_for_cost_computation_;
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
   std::vector<Eigen::MatrixXd> D_;

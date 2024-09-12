@@ -94,6 +94,10 @@ int main(int argc,  char* argv[]) {
   Eigen::MatrixXf dyn_feas_curr_plan_pos = Eigen::MatrixXf::Zero(3, c3_options.N+1);
   Eigen::MatrixXf dyn_feas_curr_plan_orientation = Eigen::MatrixXf::Zero(4, c3_options.N+1);
   Eigen::MatrixXf u_sol = Eigen::MatrixXf::Zero(3, c3_options.N);
+  Eigen::MatrixXf x_sol = Eigen::MatrixXf::Zero(19, c3_options.N);
+  Eigen::MatrixXf lambda_sol = Eigen::MatrixXf::Zero(16, c3_options.N);
+  Eigen::MatrixXf w_sol = Eigen::MatrixXf::Zero(38, c3_options.N);
+  Eigen::MatrixXf delta_sol = Eigen::MatrixXf::Zero(38, c3_options.N);
     
   // Read the log until the first C3_ACTUAL message after the start time.
   while ((event = log_file.readNextEvent()) != nullptr) {
@@ -105,7 +109,7 @@ int main(int argc,  char* argv[]) {
       if(event->timestamp > u_time_into_log + u_init_time) {
         dairlib::lcmt_c3_state message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
-          std::cout << "Received C3_ACTUAL message in seconds: " << (event->timestamp - u_init_time)/1e6<< std::endl;
+          std::cout << "Received C3_ACTUAL message in seconds: " << (message.utime)/1e6<< std::endl;
           for (int i=0; i<19; i++) {
             x_lcs_actual(i) = message.state[i];
           }
@@ -125,7 +129,7 @@ int main(int argc,  char* argv[]) {
       if(event->timestamp > u_time_into_log + u_init_time) {
         dairlib::lcmt_c3_state message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
-          std::cout << "Received C3_TARGET message at: " << (event->timestamp - u_init_time)/1e6 << std::endl;
+          std::cout << "Received C3_TARGET message at: " << (message.utime)/1e6 << std::endl;
           for (int i=0; i<19; i++) {
             x_lcs_desired(i) = message.state[i];
           }
@@ -144,7 +148,7 @@ int main(int argc,  char* argv[]) {
       if(event->timestamp > u_time_into_log + u_init_time) {
         dairlib::lcmt_c3_state message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
-          std::cout << "Received C3_FINAL_TARGET message at: " << (event->timestamp- u_init_time)/1e6 << std::endl;
+          std::cout << "Received C3_FINAL_TARGET message at: " << (message.utime)/1e6 << std::endl;
           for (int i=0; i<19; i++) {
             x_lcs_final_desired(i) = message.state[i];
           }
@@ -165,7 +169,7 @@ int main(int argc,  char* argv[]) {
         dairlib::lcmt_timestamped_saved_traj message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received DYNAMICALLY_FEASIBLE_CURR_PLAN message at: " <<
-            (event->timestamp- u_init_time)/1e6 << std::endl;
+            (message.utime)/1e6 << std::endl;
           for (int i=0; i<4; i++) {
             for (int j=0; j<c3_options.N+1; j++) {
               dyn_feas_curr_plan_orientation(i,j) = message.saved_traj.trajectories[0].datapoints[i][j];
@@ -192,10 +196,32 @@ int main(int argc,  char* argv[]) {
         dairlib::lcmt_c3_output message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received C3_DEBUG_CURR message at: " <<
-            (event->timestamp- u_init_time)/1e6 << std::endl;
+            (message.utime)/1e6 << std::endl;
           for (int i=0; i<3; i++) {
             for (int j=0; j<c3_options.N+1; j++) {
               u_sol(i,j) = message.c3_solution.u_sol[i][j];
+            }
+          }
+          // Read the c3 intermediates and print them
+          // std::cout<<"Printing C3 Final solution including the ws and deltas"<<std::endl;
+          for(int i = 0; i < 19; i++){
+            for(int j = 0; j < c3_options.N; j++){
+              x_sol(i,j) = message.c3_solution.x_sol[i][j];
+            }
+          }
+          for(int i = 0; i < 16; i++){
+            for(int j = 0; j < c3_options.N; j++){
+              lambda_sol(i,j) = message.c3_solution.lambda_sol[i][j];
+            }
+          }
+          for(int i = 0; i < 38; i++){
+            for(int j = 0; j < c3_options.N; j++){
+              w_sol(i,j) = message.c3_intermediates.w_sol[i][j];
+            }
+          }
+          for(int i = 0; i < 38; i++){
+            for(int j = 0; j < c3_options.N; j++){
+              delta_sol(i,j) = message.c3_intermediates.delta_sol[i][j];
             }
           }
           if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
@@ -227,7 +253,11 @@ int main(int argc,  char* argv[]) {
   std::cout << "Final Desired: " << x_lcs_final_desired.transpose() << std::endl;
   std::cout << "\nDyn Feas Curr plan from log:\n" << dyn_feas_curr_plan_pos << std::endl;
   std::cout << "\nDyn Feas Curr plan orientation from log:\n" << dyn_feas_curr_plan_orientation << std::endl;
-  std::cout << "\nU_sol from log:\n" << u_sol << std::endl;
+  std::cout << "\nFinal U_sol from log:\n" << u_sol << std::endl;
+  std::cout << "\nFinal x_sol from log:\n" << x_sol << std::endl;
+  std::cout << "\nFinal lambda_sol from log:\n" << lambda_sol << std::endl;
+  std::cout << "\nFinal w_sol from log:\n" << w_sol << std::endl;
+  std::cout << "\nFinal delta_sol from log:\n" << delta_sol << std::endl;
 
   // Create the plant for the LCS
   DiagramBuilder<double> plant_builder;

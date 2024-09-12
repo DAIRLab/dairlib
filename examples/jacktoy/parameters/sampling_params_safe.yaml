@@ -43,6 +43,7 @@ reposition_speed: 0.30    # m/s
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 2
+use_more_contacts_to_compute_cost: false
 cost_switching_threshold_distance: 0.15
 
 # Cost associated with traveling.

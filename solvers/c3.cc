@@ -241,6 +241,19 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
+void C3::UpdateCostLCS(const LCS& lcs) {
+  DRAKE_DEMAND(lcs.A_.size() == N_);
+  DRAKE_DEMAND(lcs.A_[0].rows() == n_);
+  DRAKE_DEMAND(lcs.A_[0].cols() == n_);
+  DRAKE_DEMAND(lcs.B_[0].cols() == k_);
+  // Update the stored LCS object.
+  if (!LCS_for_cost_computation_){
+    LCS_for_cost_computation_ = std::make_unique<LCS>(lcs);
+  }else{
+    *LCS_for_cost_computation_ = lcs;
+  }
+}
+
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; i++) {
@@ -250,7 +263,7 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 }
 
 void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
-               vector<VectorXd>& w) {
+               vector<VectorXd>& w, bool verbose) {
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
@@ -259,17 +272,47 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     // input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
     //                                     Eigen::VectorXd::Zero(k_));
   }
+  
+  if(verbose){
+    std::cout << "x0: " << x0.transpose() << std::endl;
+  }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    ADMMStep(x0, &delta, &w, &Gv, iter);
+    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
+    if(verbose){
+      std::cout << "ADMM Iteration: " << iter << std::endl;
+      Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+      Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+      for(int i = 0; i < N_; i++){
+        verbose_delta.col(i) = delta[i];
+        verbose_w.col(i) = w[i];
+      }
+      std::cout<<"delta: \n"<<verbose_delta<<std::endl;
+      std::cout<<"w: \n"<<verbose_w<<std::endl;
+    }
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
-
   zfin_ = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+
+  if(verbose){
+    std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
+    // Make a printable delta and w matrix.
+    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    for(int i = 0; i < N_; i++){
+      verbose_delta.col(i) = delta[i];
+      verbose_w.col(i) = w[i];
+      verbose_zfin.col(i) = zfin_[i];
+    }
+    std::cout<<"zfin: \n"<<verbose_zfin<<std::endl;
+    std::cout<<"delta: \n"<<verbose_delta<<std::endl;
+    std::cout<<"w: \n"<<verbose_w<<std::endl;
+  }
 
   *z_sol_ = delta;
   z_sol_->at(0).segment(0, n_) = x0;
@@ -305,7 +348,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
       UU[i] = zfin_[i].segment(n_ + m_, k_);
-      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      if(LCS_for_cost_computation_){
+        XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      }
+      else{
+        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      }
     }
   }
   else if(cost_type == 1){
@@ -314,7 +362,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
       if(i == N_-1){
-        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+        if(LCS_for_cost_computation_){
+          XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+        }
+        else{
+          XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+        }
       }
     }
   }
@@ -325,7 +378,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
       UU[i] = zfin_[i].segment(n_ + m_, k_);
-      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      if(LCS_for_cost_computation_){
+        XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      }
+      else{
+        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      }
     }
     // Replace ee traj with those from zfin_.
     for (int i = 0; i < N_; i++){
@@ -336,7 +394,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
       // previous loop because the [N_-1] states of the end effector are not
       // the same.
       if(i == N_-1){
-        XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
+        if(LCS_for_cost_computation_){
+          XX[i+1].segment(0,3) = LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,3);
+        }
+        else{
+          XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
+        }
       }
     }
   }
@@ -353,7 +416,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
       if(i == N_-1){
-        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+        if(LCS_for_cost_computation_){
+          XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+        }
+        else{
+          XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+        }
       }
     }
 
@@ -369,7 +437,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
       UU_new[i] = UU[i] + 
         Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
         Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
-      XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
+        if(LCS_for_cost_computation_){
+          XX_new[i+1] = LCS_for_cost_computation_->Simulate(XX_new[i], UU_new[i]);
+        }
+        else{
+          XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
+        }
       std::cout<<"XX_new["<<i+1<<"]: "<<XX_new[i+1].transpose()<<std::endl;
     }
     // Replace the original state and control sequences with the new ones for 
@@ -446,7 +519,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
                   vector<VectorXd>* w, vector<MatrixXd>* Gv,
-                  int admm_iteration) {
+                  int admm_iteration, bool verbose) {
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
 
   for (int i = 0; i < N_; i++) {
@@ -454,6 +527,14 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
+  if(verbose){
+    std::cout << "SolveQP Iteration: " << admm_iteration << std::endl;
+    Eigen::MatrixXd verbose_z = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    for(int i = 0; i < N_; i++){
+      verbose_z.col(i) = z[i];
+    }
+    std::cout<<"z: \n"<<verbose_z<<std::endl;
+  }
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {

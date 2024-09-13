@@ -208,7 +208,9 @@ def main():
         # mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
 
         t_c3_slice_curr = slice(c3_output_curr['t'].size)
-        plot_curr = mbp_plots.plot_c3_inputs(c3_output_curr, t_c3_slice_curr, 1)
+        plot_curr = mbp_plots.plot_c3_inputs(c3_output_curr, t_c3_slice_curr,0)
+        plot_curr = mbp_plots.plot_c3_inputs(c3_output_curr, t_c3_slice_curr,1)
+        plot_curr = mbp_plots.plot_c3_inputs(c3_output_curr, t_c3_slice_curr,2)
         plot_curr.axes[0].axhline(y=8.06, color='r', linestyle='-')
         plot_curr.axes[0].axhline(y=-8.06, color='r', linestyle='-')
         # set plot title

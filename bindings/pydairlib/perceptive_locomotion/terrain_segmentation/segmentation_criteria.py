@@ -7,6 +7,7 @@ from typing import Tuple
 
 import pydairlib.perceptive_locomotion.terrain_segmentation.segmentation_utils as utils
 
+
 def curvature_criterion(
         elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
         resolution: float) -> np.ndarray:

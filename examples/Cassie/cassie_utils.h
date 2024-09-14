@@ -59,6 +59,9 @@ template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+void AddRealSenseInertia(drake::multibody::MultibodyPlant<double>& plant,
+                         drake::multibody::ModelInstanceIndex instance);
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
@@ -70,16 +73,12 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 ///        Default = true
 /// @param add_loop_closure Whether or not to add the loop closure
 ///        distance constraint via stiff springs. Default = true.
-/// @param add_reflected_inertia Whether or not to add reflected inertia.
-///        Rotor inertia and gear ratio values are constant values from the
-///        model given by Agility Robotics
 const drake::multibody::ModelInstanceIndex AddCassieMultibody(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    bool add_leaf_springs = true, bool add_loop_closure = true,
-    bool add_reflected_inertia = true);
+    bool add_leaf_springs = true, bool add_loop_closure = true);
 
 /// Add simulated gyroscope and accelerometer along with sensor aggregator,
 /// which creates and publishes a simulated lcmt_cassie_out LCM message.

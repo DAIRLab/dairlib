@@ -130,16 +130,7 @@ int DoMain(int argc, char* argv[]) {
       AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
 
   if (FLAGS_add_camera_inertia) {
-    auto camera_inertia_about_com =
-        RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
-            0.04, 0.04, 0.04, 0, 0, 0);
-    auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
-        1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
-    plant.AddRigidBody("camera_inertia", instance, camera_inertia);
-    plant.WeldFrames(
-        plant.GetBodyByName("pelvis").body_frame(),
-        plant.GetBodyByName("camera_inertia").body_frame()
-    );
+    AddRealSenseInertia(plant, instance);
   }
   plant.Finalize();
 

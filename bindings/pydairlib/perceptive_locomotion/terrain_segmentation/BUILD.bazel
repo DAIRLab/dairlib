@@ -63,7 +63,9 @@ py_library(
 py_library(
     name = "segmentation_criteria",
     srcs = ["segmentation_criteria.py"],
-    deps = [],
+    deps = [
+        ":utils_py"
+    ],
 )
 
 
@@ -104,8 +106,23 @@ py_library(
     ],
 )
 
+pybind_py_library(
+    name = "utils_py",
+    cc_deps = [
+        "@eigen"
+    ],
+    cc_so_name = "segmentation_utils",
+    cc_srcs = ["utils_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 PY_LIBRARIES = [
+    ":segmentation_criteria",
     ":whittling_solver",
+    ":utils_py",
     ":terrain_segmentation_system",
     ":convex_terrain_decomposition_system",
     ":vision_utils",

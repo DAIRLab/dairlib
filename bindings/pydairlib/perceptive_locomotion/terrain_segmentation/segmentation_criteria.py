@@ -5,6 +5,7 @@ import cv2
 
 from typing import Tuple
 
+import pydairlib.perceptive_locomotion.terrain_segmentation.segmentation_utils as utils
 
 def curvature_criterion(
         elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
@@ -52,3 +53,14 @@ def variance_criterion(
     )
 
     return var_safety_score
+
+
+def inclination_criterion(
+        elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
+        resolution: float) -> np.ndarray:
+
+    median = cv2.medianBlur(elevation_inpainted, 5)
+    inclination, _ = \
+        utils.CalculateNormalsAndSquaredError(median, ksize[0], resolution)
+
+    return np.power(inclination, 2)

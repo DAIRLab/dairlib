@@ -279,8 +279,8 @@ def load_default_channels(data, plant, controller_plant,
     robot_input = process_effort_channel(data[input_channel], plant)
     if osc_debug_channel:
         osc_debug = process_osc_channel(data[osc_debug_channel])
-        osc_debug = permute_osc_joint_ordering(
-            osc_debug, data[state_channel][0], controller_plant)
+        # osc_debug = permute_osc_joint_ordering(
+        #     osc_debug, data[state_channel][0], controller_plant)
     else:
         osc_debug = None
     imu = process_imu_channel(data[state_channel])

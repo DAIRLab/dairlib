@@ -313,12 +313,10 @@ class ElevationMappingConverter(LeafSystem):
 
         coordinates = np.argwhere(~np.isnan(heightmap)) # Coordinates of known values
         values = heightmap[~np.isnan(heightmap)] # Known values from the map
-        # grid_x, grid_y = np.mgrid[0:heightmap.shape[0], 0:heightmap.shape[1]] # Grid of coordinates for interpolation
-
-
-        # filled_map = griddata(coordinates, values, (grid_x, grid_y), method='nearest') # Interpolate using linear, nearest or cubic
+        grid_x, grid_y = np.mgrid[0:heightmap.shape[0], 0:heightmap.shape[1]] # Grid of coordinates for interpolation
+        filled_map = griddata(coordinates, values, (grid_x, grid_y), method='nearest') # Interpolate using linear, nearest or cubic
         # t_end = time.time()
-        heightmap = median_filter(heightmap, size=3)
+        heightmap = median_filter(filled_map, size=3)
         heightmap = np.nan_to_num(heightmap, nan=-1)
 
         # print(t_end - t_start)

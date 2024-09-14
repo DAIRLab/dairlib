@@ -410,7 +410,7 @@ class RLSystem(LeafSystem):
         return x0, u0
 
     def get_stance(self, fsm: fsm_info) -> Stance:
-        stance = Stance.kLeft if fsm.fsm_state == 0 or fsm.fsm_state == 4 else Stance.kRight # 3
+        stance = Stance.kLeft if fsm.fsm_state == 0 or fsm.fsm_state == 3 else Stance.kRight # 3
         return stance
 
     def calc_fsm(self, t: float) -> fsm_info:
@@ -485,13 +485,14 @@ class RLSystem(LeafSystem):
         hmap = hmap.reshape(-1)
 
         obs = np.hstack((hmap, alip, vdes, joint_angle, self.empty)) # 24621
+
         actions, lstm_states = self.model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
         self.lstm_states = lstm_states
 
         self.episode_starts = np.zeros((1,), dtype=bool)
 
         out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
-
+        print(actions)
         output.set_value(out)
         t_end = time.time()
 
@@ -512,9 +513,9 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     sim_env = CassieFootstepControllerEnvironment(sim_params)
     sim_env.set_name("CassieFootstepControllerEnvironment")
     builder.AddSystem(sim_env)
-    footstep_zoh = ZeroOrderHold(0.05, 6)
+    footstep_zoh = ZeroOrderHold(0.025, 6)
 
-    rl_system = RLSystem(model_path='test')
+    rl_system = RLSystem(model_path='test', hidden_size=64)
     
     builder.AddSystem(rl_system)
     builder.Connect(
@@ -632,7 +633,7 @@ def run(sim_env, rl_system, diagram, plot=False):
             terminate = True
             break
 
-        simulator.AdvanceTo(t_init + 0.03*i)
+        simulator.AdvanceTo(t_init + 0.025*i)
         ud = rl_system.get_output_port_by_name('ud').Eval(rl_context)
         # Depth map
         dmap_query = rl_system.EvalAbstractInput(

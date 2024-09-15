@@ -8,6 +8,7 @@
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/cassie_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/cassie_elevation_mapping_lcm_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_realsense_driver_diagram.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 
 namespace py = pybind11;
@@ -23,6 +24,7 @@ using perceptive_locomotion::CassieMPFCDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
+using perceptive_locomotion::CassieRealSenseDriverDiagram;
 using perceptive_locomotion::CassieElevationMappingLcmDiagram;
 
 
@@ -172,6 +174,17 @@ PYBIND11_MODULE(diagrams, m) {
         .def("plant", &CassieElevationMappingLcmDiagram::plant, py_rvp::reference_internal)
         .def("get_input_port_state", &CassieElevationMappingLcmDiagram::get_input_port_state, py_rvp::reference_internal)
         .def("get_input_port_contact", &CassieElevationMappingLcmDiagram::get_input_port_contact, py_rvp::reference_internal);
+
+  py::class_<CassieRealSenseDriverDiagram, drake::systems::Diagram<double>>(
+        m, "CassieRealSenseDriverDiagram")
+        .def(py::init<const std::string&>(), py::arg("points_channel"))
+        .def("InitializeElevationMap", &CassieRealSenseDriverDiagram::InitializeElevationMap)
+        .def("lcm", &CassieRealSenseDriverDiagram::lcm, py_rvp::reference_internal)
+        .def("plant", &CassieRealSenseDriverDiagram::plant, py_rvp::reference_internal)
+        .def("get_input_port_state", &CassieRealSenseDriverDiagram::get_input_port_state, py_rvp::reference_internal)
+        .def("get_input_port_contact", &CassieRealSenseDriverDiagram::get_input_port_contact, py_rvp::reference_internal)
+        .def("start_rs", &CassieRealSenseDriverDiagram::start_rs)
+        .def("stop_rs", &CassieRealSenseDriverDiagram::stop_rs);
   }
 
 

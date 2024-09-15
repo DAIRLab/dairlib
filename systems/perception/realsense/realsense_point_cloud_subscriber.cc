@@ -136,7 +136,7 @@ RealsensePointCloudSubscriber<PointT>::ProcessFrameAndStoreToAbstractState(
   int nfinite = 0;
 
   for (int y = 0; y < height; ++y) {
-    for(int x = 0; x < width; ++x) {
+    for (int x = 0; x < width; ++x) {
       float d = depth.get_distance(x, y);
       if (d == 0.0f)  continue;
 
@@ -173,7 +173,6 @@ template <typename PointT>
 EventStatus  RealsensePointCloudSubscriber<PointT>::Initialize(
     const drake::systems::Context<double>& context,
     drake::systems::State<double>* state) const {
-
   return EventStatus::Succeeded();
 }
 

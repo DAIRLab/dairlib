@@ -28,11 +28,12 @@ ConvexPolygon MakeFootholdFromConvexPolygon(const MatrixXd& convex_poly2d) {
   // Append the first vertex to the end of the list to make the H
   // representation closed
   MatrixXd convex_hull = convex_poly2d;
-  convex_hull.conservativeResize(2, convex_hull.cols() + 1);
+  convex_hull.conservativeResize(3, convex_hull.cols() + 1);
+  convex_hull.bottomRows<1>().setZero();
   convex_hull.rightCols(1) = convex_hull.col(0);
 
-  auto poly_out = ConvexPolygon();
-  poly_out.SetPlane(Vector3d::UnitZ(), Vector3d::Zero());
+  ConvexPolygon poly_out{};
+  poly_out.SetPlane(Vector3d::UnitZ(), 0);
 
   for (int i = 0; i < convex_hull.cols() - 1; i++) {
     poly_out.AddVertices(convex_hull.col(i), convex_hull.col(i+1));
@@ -189,9 +190,10 @@ namespace {
     facets.insert(facets.begin() + new_facet_idx, new_facet);
     cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
 
-    for (int & i : idx_redundant) {
-      i += (i >= new_facet_idx);
+    for (int i = 0; i < idx_redundant.size(); i++) {
+      idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
     }
+
 
     for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
       if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
@@ -249,6 +251,9 @@ namespace {
     DRAKE_DEMAND(result.is_success());
 
     Vector2d a_sol = result.GetSolution(a);
+
+    DRAKE_DEMAND(not a_sol.hasNaN());
+
     a_sol.normalize();
     return {a_sol, a_sol.dot(p)};
   }

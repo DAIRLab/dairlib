@@ -22,7 +22,7 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
 
 from pydairlib.perceptive_locomotion.diagrams import (
-    CassieElevationMappingLcmDiagram
+    CassieRealSenseDriverDiagram
 )
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
@@ -38,6 +38,9 @@ from pydairlib.systems.perception import GridMapSender
 from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
+
+import pydairlib.perceptive_locomotion.terrain_segmentation. \
+    segmentation_criteria as seg_criteria
 
 
 points_topic = "DRAKE_POINT_CLOUD"
@@ -68,12 +71,14 @@ def main():
         if len(sys.argv) > 1 and sys.argv[1] == 'sim' else \
         elevation_mapping_params
 
-    elevation_mapping = CassieElevationMappingLcmDiagram(
-        params_to_use,
-        points_topic
-    )
+    elevation_mapping = CassieRealSenseDriverDiagram(params_to_use)
     plant = elevation_mapping.plant()
-    terrain_segmentation = TerrainSegmentationSystem()
+    terrain_segmentation = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'variance_criterion': seg_criteria.variance_criterion,
+        }
+    )
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
     network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
@@ -185,6 +190,7 @@ def main():
         robot_state,
         driven_loop.get_diagram_mutable_context()
     )
+    elevation_mapping.start_rs()
 
     driven_loop.Simulate()
 

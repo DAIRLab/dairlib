@@ -82,7 +82,7 @@ class TerrainSegmentationSystem(LeafSystem):
         raw_safety = np.ones_like(elevation_inpainted)
         kernel = self.get_kernel_size(resolution)
 
-        for _, callback in self.safety_criterion_callbacks.items():
+        for name, callback in self.safety_criterion_callbacks.items():
             raw_safety = raw_safety * callback(
                 elevation_inpainted, kernel, resolution
             )

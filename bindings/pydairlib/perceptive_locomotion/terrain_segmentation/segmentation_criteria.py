@@ -63,5 +63,4 @@ def inclination_criterion(
     median = cv2.medianBlur(elevation_inpainted, 5)
     inclination, _ = \
         utils.CalculateNormalsAndSquaredError(median, ksize[0], resolution)
-
     return np.power(inclination, 2)

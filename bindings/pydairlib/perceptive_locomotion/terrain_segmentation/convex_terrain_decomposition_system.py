@@ -46,7 +46,7 @@ def plot_polygons_with_holes(polys):
     plt.show()
 
 
-def get_polygons_by_contour_extraction(mask: np.ndarray):
+def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
     safe_regions, hierarchy = cv2.findContours(
         mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
     )
@@ -135,7 +135,9 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
 
-        polygons = get_polygons_by_contour_extraction(safe_terrain_image)
+        polygons = get_polygons_by_contour_extraction(
+            safe_terrain_image, grid
+        )
 
         if not polygons:
             return
@@ -148,4 +150,5 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)
+
         out.set_value(ConvexPolygonSet(convex_polygons))

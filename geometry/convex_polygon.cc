@@ -57,6 +57,9 @@ void ConvexPolygon::AddFace(const Vector3d& normal, const Vector3d& pt) {
 }
 
 void ConvexPolygon::AddVertices(const Vector3d &v1, const Vector3d &v2) {
+  if (v1.hasNaN() or v2.hasNaN()) {
+    throw std::logic_error("Trying to add a NaN vertex to a convex polygon");
+  }
   Vector3d face = v2 - v1;
   Vector3d normal = face.cross(A_eq_.transpose());
   AddFace(normal, v1);

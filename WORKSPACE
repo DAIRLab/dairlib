@@ -49,7 +49,7 @@ fcc_qp_repository(name = "fcc_qp")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "7083e567d6ccf99b4f36ac37beaeb21d80fb2f85fe277674e75c903f71843938"
+ELEVATION_MAPPING_CHECKSUM = "bb43995dee10e3d43d694d52b79f3ab8e7db11f12f925853d9d4309344b4ba9f"
 
 http_archive(
     name = "elevation_mapping",
@@ -135,7 +135,6 @@ INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
 
-
 # Maybe download InEKF
 http_archive(
     name = "inekf",
@@ -145,7 +144,6 @@ http_archive(
         "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
     ]],
 )
-
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.

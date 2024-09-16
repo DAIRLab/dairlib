@@ -476,8 +476,12 @@ class RLSystem(LeafSystem):
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
         )
-
-
+        # hmap_grid_world = hmap_query.calc_height_map_world_frame(
+        #     np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
+        # )
+        # hmap_query.plot_surface(
+        #     "hmap", hmap_grid_world[0], hmap_grid_world[1], hmap_grid_world[2], rgba=Rgba(0.678, 0.847, 0.902, 1.0)
+        # )
 
         joint_angle = states[7:23] # Only joint angles (reject pelvis)
         joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
@@ -492,9 +496,9 @@ class RLSystem(LeafSystem):
         self.episode_starts = np.zeros((1,), dtype=bool)
 
         out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
-        print(actions)
+        # print(actions)
         output.set_value(out)
-        t_end = time.time()
+        # t_end = time.time()
 
         # print(t_end - t_start)
 

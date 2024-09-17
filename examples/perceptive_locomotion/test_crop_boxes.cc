@@ -54,7 +54,9 @@ int DoMain(int argc, char **argv) {
   plant.Finalize();
 
   auto plant_context = plant.CreateDefaultContext();
-  auto preprocessor = MakeCassieElevationMappingPreProcessor(plant, plant_context.get());
+  auto preprocessor = MakeCassieElevationMappingPreProcessorForCropBoxTest(
+      plant, plant_context.get()
+  );
 
   // visualization
   auto to_pose =

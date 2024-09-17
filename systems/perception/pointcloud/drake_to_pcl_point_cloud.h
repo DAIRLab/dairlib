@@ -19,9 +19,6 @@ class DrakeToPclPointCloud : public drake::systems::LeafSystem<double> {
   void Calc(const drake::systems::Context<double> &context,
             typename pcl::PointCloud<PointT>::Ptr *ptr) const;
 
-  static void AssignFields(const drake::perception::PointCloud& drake_cloud,
-                           typename pcl::PointCloud<PointT>::Ptr& ptr);
-
 };
 
 }

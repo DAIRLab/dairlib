@@ -42,6 +42,12 @@ class PerceptiveLocomotionPreprocessor : public elevation_mapping::StructuredLig
 
   // return the context in order to check against another context if needed
   drake::systems::Context<double>* context() {return context_;}
+
+ public:
+  bool TestFilter(elevation_mapping::PointCloudType::Ptr pointCloud) {
+    return filterPointCloudSensorType(pointCloud);
+  }
+
  private:
 
   bool filterPointCloudSensorType(

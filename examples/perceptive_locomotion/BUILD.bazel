@@ -15,6 +15,15 @@ cc_library(
 )
 
 cc_binary(
+    name = "test_crop_boxes",
+    srcs = ["test_crop_boxes.cc"],
+    deps = [
+        ":cassie_perception_utils",
+        "//systems/perception/pointcloud:point_cloud_conversions",
+    ],
+)
+
+cc_binary(
     name = "run_feature_tracking",
     srcs = ["run_feature_tracking.cc"],
     tags = ["manual"],

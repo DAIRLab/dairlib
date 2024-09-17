@@ -11,5 +11,10 @@ MakeCassieElevationMappingPreProcessor(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* plant_context);
 
+std::shared_ptr<perception::PerceptiveLocomotionPreprocessor>
+MakeCassieElevationMappingPreProcessorForCropBoxTest(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* plant_context);
+
 }
 }

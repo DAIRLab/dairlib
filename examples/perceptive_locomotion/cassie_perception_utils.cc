@@ -6,11 +6,9 @@ namespace perceptive_locomotion {
 
 using Eigen::Vector3d;
 
-std::shared_ptr<perception::PerceptiveLocomotionPreprocessor>
-MakeCassieElevationMappingPreProcessor(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* plant_context) {
-  perception::perceptive_locomotion_preprocessor_params processor_params {
+namespace {
+perception::perceptive_locomotion_preprocessor_params get_defaults() {
+  return {
       "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
       {
           {"toe_left", Vector3d(0.3, 0.1, 0.2),
@@ -23,12 +21,33 @@ MakeCassieElevationMappingPreProcessor(
            drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
       }
   };
-//  processor_params.min_y = -0.15;
-//  processor_params.min_z = 0.7;
-//  processor_params.max_z = 3.0;
+}
+
+}
+
+std::shared_ptr<perception::PerceptiveLocomotionPreprocessor>
+MakeCassieElevationMappingPreProcessor(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* plant_context) {
+
+  auto processor_params = get_defaults();
+  processor_params.min_y = -0.15;
+  processor_params.min_z = 0.7;
+  processor_params.max_z = 3.0;
 
   return std::make_shared<perception::PerceptiveLocomotionPreprocessor>(
       plant, plant_context, processor_params,
+      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
+  );
+}
+
+std::shared_ptr<perception::PerceptiveLocomotionPreprocessor>
+MakeCassieElevationMappingPreProcessorForCropBoxTest(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* plant_context) {
+
+  return std::make_shared<perception::PerceptiveLocomotionPreprocessor>(
+      plant, plant_context, get_defaults(),
       elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
   );
 }

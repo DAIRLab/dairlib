@@ -65,7 +65,8 @@ Eigen::VectorXd EvalLegendreBasis(int order, double t) {
   assert(fabs(t) <= 1);
   Eigen::VectorXd b = Eigen::VectorXd::Zero(order + 1);
   for (int i = 0; i <= order; ++i) {
-    b(i) = boost::math::legendre_p(i, t);
+    double tclip = std::clamp(t, -1., 1.);
+    b(i) = boost::math::legendre_p(i, tclip);
   }
   return b;
 }
@@ -83,11 +84,12 @@ Eigen::VectorXd EvalLegendreBasisDerivative(int order, int deriv, double t) {
     op = D * op;
   }
 
+  double tclip = std::clamp(t, -1., 1.);
   for (int i = 0; i <= order; ++i) {
     double sum = 0;
     for (int j = 0; j < N; ++j) {
       if (op(j, i) != 0) {
-        sum += op(j, i) * boost::math::legendre_p(j, t);
+        sum += op(j, i) * boost::math::legendre_p(j, tclip);
       }
     }
     d(i) = sum;

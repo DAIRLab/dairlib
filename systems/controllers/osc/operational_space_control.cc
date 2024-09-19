@@ -354,7 +354,7 @@ void OperationalSpaceControl::Build() {
   }
 
   fccqp_solver_ = std::make_unique<solvers::FCCQPSolver>();
-  osqp_solver_ = std::make_unique<drake::solvers::OsqpSolver>();
+  osqp_solver_ = std::make_unique<solvers::FastOsqpSolver>();
   id_qp_.get_mutable_prog().SetSolverOptions(fcc_qp_solver_options_);
   id_qp_.get_mutable_prog().SetSolverOptions(osqp_solver_options_);
 }
@@ -382,9 +382,9 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
         << timestamp;
-//    if (osqp_solver_->IsInitialized()) {
-//      osqp_solver_->DisableWarmStart();
-//    }
+    if (osqp_solver_->IsInitialized()) {
+      osqp_solver_->DisableWarmStart();
+    }
   }
   return drake::systems::EventStatus::Succeeded();
 }
@@ -623,10 +623,9 @@ void OperationalSpaceControl::SolveQp(
         id_qp_.get_ordered_friction_coeffs());
   }
 
-
-//  if (!osqp_solver_->IsInitialized()) {
-//    osqp_solver_->InitializeSolver(id_qp_.get_prog(), osqp_solver_options_);
-//  }
+  if (!osqp_solver_->IsInitialized()) {
+    osqp_solver_->InitializeSolver(id_qp_.get_prog(), osqp_solver_options_);
+  }
 
   // Solve the QP
   MathematicalProgramResult result;
@@ -653,11 +652,11 @@ void OperationalSpaceControl::SolveQp(
     sol->lambda_h_sol_ = result.GetSolution(id_qp_.lambda_h());
     sol->epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
     fccqp_solver_->set_warm_start(true);
-//    osqp_solver_->EnableWarmStart();
+    osqp_solver_->EnableWarmStart();
   } else {
     sol->u_prev_ = 0.99 * sol->u_sol_ + VectorXd::Random(n_u_);
     fccqp_solver_->set_warm_start(false);
-//    osqp_solver_->DisableWarmStart();
+    osqp_solver_->DisableWarmStart();
   }
 }
 
@@ -734,8 +733,7 @@ void OperationalSpaceControl::UpdateContactForceRegularization(
 }
 
 namespace {
-inline bool has_active_ii_proj(
-    const OscTrackingData* data, int fsm_state) {
+inline bool has_active_ii_proj(const OscTrackingData* data, int fsm_state) {
   return data->IsActive(fsm_state) and data->GetImpactInvariantProjection();
 }
 }

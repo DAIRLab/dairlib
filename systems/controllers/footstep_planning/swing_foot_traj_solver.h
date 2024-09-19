@@ -9,8 +9,8 @@
 namespace dairlib::systems::controllers {
 
 class SwingFootTrajSolver {
-  static constexpr int kPolyDegZ = 11;
-  static constexpr int kPolyDegXY = 11;
+  static constexpr int kPolyDegZ = 10;
+  static constexpr int kPolyDegXY = 7;
 
  public:
 

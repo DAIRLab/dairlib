@@ -39,6 +39,16 @@ cc_library(
 )
 
 cc_library(
+    name = "legendre_polynomial_trajectory",
+    srcs = ["legendre_polynomial_trajectory.cc"],
+    hdrs = ["legendre_polynomial_trajectory.h"],
+    deps = [
+        ":polynomial_utils",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "eigen_utils",
     srcs = ["eigen_utils.cc"],
     hdrs = [

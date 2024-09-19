@@ -195,6 +195,7 @@ cc_library(
     hdrs = ["swing_foot_traj_solver.h"],
     deps = [
         "//common:eigen_utils",
+        "//common:legendre_polynomial_trajectory",
         "//solvers:fcc_qp_solver",
         "//common:polynomial_utils",
         "@drake//:drake_shared_library",

@@ -1,6 +1,7 @@
 #include "swing_foot_traj_solver.h"
 #include "common/eigen_utils.h"
 #include "common/legendre.h"
+#include "common/legendre_polynomial_trajectory.h"
 
 namespace dairlib::systems::controllers {
 
@@ -8,6 +9,8 @@ using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
 using drake::trajectories::PathParameterizedTrajectory;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::LegendrePolynomialTrajectory;
+
 using drake::Polynomial;
 
 using Eigen::Vector3d;
@@ -167,38 +170,22 @@ SwingFootTrajSolver::ConvertSolutionToTrajectory(
     const drake::solvers::MathematicalProgramResult& result,
     double t_start, double t_end) const {
 
-  drake::Vector3<Polynomial<double>> polymat;
-  const MatrixXd bchange = MakeChangeOfBasisOperatorFromLegendreToMonomials(kPolyDegZ - 1);
+  MatrixXd coeffs = Eigen::MatrixXd::Zero(3, kPolyDegZ);
 
-  Polynomial<double> t_shift(Eigen::Vector2d(-1, 1));
-
-  for ( int i = 0; i < 3; ++i) {
-    Eigen::VectorXd coeffs = result.GetSolution(dim_var_map_.at(i));
-
-    const MatrixXd& B = bchange.topLeftCorner(coeffs.rows(), coeffs.rows());
-    coeffs = B * coeffs;
-
-    for (double t = -1; t < 1; t+=.05) {
-      double sum = 0;
-      for (int j = 0; j < coeffs.rows(); ++j) {
-        sum += coeffs(j) * pow(t, j);
-      }
-    }
-
-    polymat(i) = Polynomial<double>(coeffs);
-    polymat(i) = polymat(i).Substitute(*(polymat(i).GetVariables().begin()), t_shift);
+  for (int i = 0; i < 3; ++i) {
+    const auto& sol = result.GetSolution(dim_var_map_.at(i));
+    coeffs.row(i).leftCols(sol.rows()) = sol.transpose();
   }
 
-  std::vector<drake::MatrixX<Polynomial<double>>> polys = {polymat};
-  std::vector<double> breaks = {0, 2};
-  PiecewisePolynomial<double> pp(polys, breaks);
+
 
   auto time_scaling = PiecewisePolynomial<double>::FirstOrderHold(
       Eigen::Vector2d(t_start, t_end),
-      Eigen::RowVector2d(0, 2)
+      Eigen::RowVector2d(-1, 1)
   );
 
-  return PathParameterizedTrajectory<double>(pp, time_scaling);
+  return PathParameterizedTrajectory<double>(
+      LegendrePolynomialTrajectory(coeffs), time_scaling);
 }
 
 Eigen::Vector3d SwingFootTrajSolver::CalcDesiredMidpoint(

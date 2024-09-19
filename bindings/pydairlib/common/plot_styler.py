@@ -21,7 +21,7 @@ class PlotStyler():
         font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}
         matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
         matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
-        matplotlib.rc('text', usetex=True)
+        # matplotlib.rc('text', usetex=True)
         matplotlib.rc('font', **font)
         matplotlib.rcParams['lines.linewidth'] = 1
         matplotlib.rcParams['axes.titlesize'] = 20

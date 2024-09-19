@@ -1,6 +1,6 @@
 nmodes: 3
-tmin: 0.27
-tmax: 0.33
+tmin: 0.3
+tmax: 0.35
 height: 0.85
 single_stance_duration: 0.3
 double_stance_duration: 0.1

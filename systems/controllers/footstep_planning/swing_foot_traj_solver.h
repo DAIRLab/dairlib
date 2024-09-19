@@ -9,8 +9,8 @@
 namespace dairlib::systems::controllers {
 
 class SwingFootTrajSolver {
-  static constexpr int kPolyDegZ = 11;
-  static constexpr int kPolyDegXY = 11;
+  static constexpr int kPolyDegZ = 10;
+  static constexpr int kPolyDegXY = 7;
 
  public:
 
@@ -29,7 +29,6 @@ class SwingFootTrajSolver {
       const Eigen::Vector3d& initial_pos, const Eigen::Vector3d& footstep_target);
 
  private:
-  const double conditioning_offset_ = 0.4;
 
   drake::solvers::MathematicalProgram prog_{};
 

@@ -82,7 +82,7 @@ def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
         if mode == 'planar' else TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion
+            'variance_criterion': seg_criteria.variance_criterion,
         }
     )
 
@@ -225,7 +225,7 @@ def run_profiling(logfile):
             state_channel: lcmt_robot_output
         },
         start_time=0,
-        duration=-1,
+        duration=5,
         data_processing_callback=process_grid_maps
     )
     plane_segmentation = PlaneSegmentationSystem(

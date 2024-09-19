@@ -430,11 +430,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
           FindResourceOrThrow("solvers/fcc_qp_options_default.yaml"))
           .GetAsSolverOptions(dairlib::solvers::FCCQPSolver::id());
 
-  std::unique_ptr<drake::solvers::OsqpSolver> osqp_solver_ = nullptr;
+  std::unique_ptr<solvers::FastOsqpSolver> osqp_solver_ = nullptr;
   drake::solvers::SolverOptions osqp_solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+          .GetAsSolverOptions(solvers::FastOsqpSolver::id());
 
   const OscSolverChoice solver_choice_;
 

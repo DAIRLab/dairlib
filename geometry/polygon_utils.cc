@@ -41,234 +41,208 @@ ConvexPolygon MakeFootholdFromConvexPolygon(const MatrixXd& convex_poly2d) {
   return poly_out;
 }
 
+
 namespace {
-  struct facet {
-    Vector2d a_;
-    double b_;
-    Vector2d v0_;
-    Vector2d v1_;
-
-    bool redundant(Vector2d a,  double b) {
-      return (a.dot(v0_) > b and a.dot(v1_) > b);
-    }
-
-    bool intersects(Vector2d a, double b) {
-      return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
-    }
-
-    // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
-    static facet intersect(facet f0, facet f1, Vector2d a, double b) {
-      Matrix2d A = Matrix2d::Zero();
-      A.row(0) = f0.a_.transpose();
-      A.row(1) = a.transpose();
-      Vector2d v0 = A.inverse() * Vector2d(f0.b_, b);
-      A.row(0) = f1.a_.transpose();
-      Vector2d v1 = A.inverse() * Vector2d(f1.b_, b);
-      return {a, b, v0, v1};
-    }
-  };
-
-  std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
-    const auto& verts = poly_in.vertices();
-    DRAKE_DEMAND(verts.rows() == 2);
-    std::vector<facet> facets;
-    const int n = verts.cols();
-    facets.reserve(n);
-    for (int i = 0; i < n; i++) {
-      VectorXd v = verts.col((i + 1) % n) - verts.col(i);
-      Vector2d a(-v(1), v(0));
-      a.normalize();
-      double b = a.dot(verts.col(i));
-      facets.push_back({a, b, verts.col(i), verts.col((i + 1) % n)});
-    }
-    return facets;
+std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
+  const auto& verts = poly_in.vertices();
+  DRAKE_DEMAND(verts.rows() == 2);
+  std::vector<facet> facets;
+  const int n = verts.cols();
+  facets.reserve(n);
+  for (int i = 0; i < n; i++) {
+    VectorXd v = verts.col((i + 1) % n) - verts.col(i);
+    Vector2d a(-v(1), v(0));
+    a.normalize();
+    double b = a.dot(verts.col(i));
+    facets.push_back({a, b, verts.col(i), verts.col((i + 1) % n)});
   }
+  return facets;
+}
 
-  bool contained(const std::vector<facet>& facets, const Vector2d& v) {
-    for (const auto& f: facets) {
-      if (f.a_.dot(v) >= f.b_) {
-        return false;
-      }
+bool contained(const std::vector<facet>& facets, const Vector2d& v) {
+  for (const auto& f: facets) {
+    if (f.a_.dot(v) >= f.b_) {
+      return false;
     }
-    return true;
   }
+  return true;
+}
 
-  double distance_to_boundary(
-      const std::vector<facet>& facets, const Vector2d& v) {
-    double min_distance = std::numeric_limits<double>::max();
-    for (const auto& f : facets) {
-      double d = f.b_ - f.a_.dot(v);
-      if (d <= 0){
-        return -1;
-      }
-      if (d <= min_distance) {
-        min_distance = d;
-      }
+double distance_to_boundary(
+    const std::vector<facet>& facets, const Vector2d& v) {
+  double min_distance = std::numeric_limits<double>::max();
+  for (const auto& f : facets) {
+    double d = f.b_ - f.a_.dot(v);
+    if (d <= 0){
+      return -1;
     }
-    return min_distance;
+    if (d <= min_distance) {
+      min_distance = d;
+    }
   }
+  return min_distance;
+}
 
-   Vector2d normal_of_closest_face(
-      const std::vector<facet>& facets, const Vector2d& v) {
-    DRAKE_DEMAND(contained(facets, v));
-    double min_distance = std::numeric_limits<double>::max();
-    Vector2d normal = Vector2d::Zero();
-     for (const auto& f : facets) {
-       double d = f.b_ - f.a_.dot(v);
-       if (d <= min_distance) {
-         min_distance = d;
-         normal = f.a_;
-       }
+ Vector2d normal_of_closest_face(
+    const std::vector<facet>& facets, const Vector2d& v) {
+  DRAKE_DEMAND(contained(facets, v));
+  double min_distance = std::numeric_limits<double>::max();
+  Vector2d normal = Vector2d::Zero();
+   for (const auto& f : facets) {
+     double d = f.b_ - f.a_.dot(v);
+     if (d <= min_distance) {
+       min_distance = d;
+       normal = f.a_;
      }
+   }
 
-     DRAKE_DEMAND(not normal.cwiseEqual(Vector2d::Zero()).all());
-     return normal;
+   DRAKE_DEMAND(not normal.cwiseEqual(Vector2d::Zero()).all());
+   return normal;
+}
+
+vector<Vector2d> get_sorted_interior_points(
+    const std::vector<facet>& facets, const MatrixXd& verts) {
+  typedef std::pair<int, double> idx_dist;
+
+  std::vector<idx_dist> vert_distances;
+  for (int j = 0; j < verts.cols(); j++) {
+    vert_distances.push_back({j, distance_to_boundary(facets, verts.col(j))});
   }
 
-  vector<Vector2d> get_sorted_interior_points(
-      const std::vector<facet>& facets, const MatrixXd& verts) {
-    typedef std::pair<int, double> idx_dist;
+  std::sort(vert_distances.begin(), vert_distances.end(),
+            [](const idx_dist& p1, const idx_dist& p2) {
+    return p1.second > p2.second;
+  });
 
-    std::vector<idx_dist> vert_distances;
-    for (int j = 0; j < verts.cols(); j++) {
-      vert_distances.push_back({j, distance_to_boundary(facets, verts.col(j))});
-    }
-
-    std::sort(vert_distances.begin(), vert_distances.end(),
-              [](const idx_dist& p1, const idx_dist& p2) {
-      return p1.second > p2.second;
-    });
-
-    int i = 0;
-    std::vector<Vector2d> verts_sorted;
-    while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
-      verts_sorted.push_back(verts.col(vert_distances[i].first));
-      ++i;
-    }
-    return verts_sorted;
+  int i = 0;
+  std::vector<Vector2d> verts_sorted;
+  while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
+    verts_sorted.push_back(verts.col(vert_distances[i].first));
+    ++i;
   }
+  return verts_sorted;
+}
 
-  void insert(std::vector<facet>& facets, Vector2d& a, double b) {
-    std::vector<int> idx_redundant;
-    std::vector<int> idx_intersect;
-    for (int i = 0; i < facets.size(); i++) {
-      if (facets.at(i).redundant(a, b)) {
-        idx_redundant.push_back(i);
-      } else if (facets.at(i).intersects(a, b)) {
-        idx_intersect.push_back(i);
-      }
-    }
-    if (idx_redundant.empty()) {
-      int delta = idx_intersect.back() - idx_intersect.front();
-      DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
-    } else if (idx_intersect.empty()) {
-      DRAKE_DEMAND(idx_redundant.size() == 0);
-      return;
-    }
-    DRAKE_DEMAND(idx_intersect.size() == 2);
-
-    int ccw_facet_idx = 0;
-    int cw_facet_idx = 0;
-    if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
-      ccw_facet_idx = idx_intersect.front();
-      cw_facet_idx = idx_intersect.back();
-    } else {
-      ccw_facet_idx = idx_intersect.back();
-      cw_facet_idx = idx_intersect.front();
-    }
-
-    auto new_facet = facet::intersect(
-        facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
-
-    DRAKE_DEMAND(not new_facet.v0_.hasNaN());
-    DRAKE_DEMAND(not new_facet.v1_.hasNaN());
-
-    facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
-    facets.at(cw_facet_idx).v0_ = new_facet.v1_;
-
-    int new_facet_idx = ccw_facet_idx + 1;
-    facets.insert(facets.begin() + new_facet_idx, new_facet);
-    cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
-
-    for (int i = 0; i < idx_redundant.size(); i++) {
-      idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
-    }
-
-
-    for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
-      if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
-        idx_redundant.push_back(i);
-      }
-    }
-    std::sort(idx_redundant.begin(), idx_redundant.end());
-    for (int i = 0; i < idx_redundant.size(); i++) {
-      idx_redundant.at(i) -= i;
-    }
-    for (const auto &i : idx_redundant) {
-      facets.erase(facets.begin() + i);
+void insert(std::vector<facet>& facets, Vector2d& a, double b) {
+  std::vector<int> idx_redundant;
+  std::vector<int> idx_intersect;
+  for (int i = 0; i < facets.size(); i++) {
+    if (facets.at(i).redundant(a, b)) {
+      idx_redundant.push_back(i);
+    } else if (facets.at(i).intersects(a, b)) {
+      idx_intersect.push_back(i);
     }
   }
+  if (idx_redundant.empty()) {
+    int delta = idx_intersect.back() - idx_intersect.front();
+    DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
+  } else if (idx_intersect.empty()) {
+    DRAKE_DEMAND(idx_redundant.size() == 0);
+    return;
+  }
+  DRAKE_DEMAND(idx_intersect.size() == 2);
 
-  std::pair<Vector2d, double> GetBestSupportAsRayToBoundary(
-      Vector2d p, const std::vector<facet>& facets ) {
-    Vector2d a =  normal_of_closest_face(facets, p);
-    double b = a.dot(p);
-    return {a, b};
+  int ccw_facet_idx = 0;
+  int cw_facet_idx = 0;
+  if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
+    ccw_facet_idx = idx_intersect.front();
+    cw_facet_idx = idx_intersect.back();
+  } else {
+    ccw_facet_idx = idx_intersect.back();
+    cw_facet_idx = idx_intersect.front();
   }
 
-  std::pair<Vector2d, double> SolveForBestApproximateSupport(
-      Vector2d p, const std::vector<facet>& facets, const MatrixXd& all_verts) {
-    MatrixXd points = MatrixXd::Zero(2, facets.size());
-    for (int i = 0; i < facets.size(); i++) {
-      points.col(i) = facets.at(i).v1_;
+  auto new_facet = facet::intersect(
+      facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
+
+  DRAKE_DEMAND(not new_facet.v0_.hasNaN());
+  DRAKE_DEMAND(not new_facet.v1_.hasNaN());
+
+  facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
+  facets.at(cw_facet_idx).v0_ = new_facet.v1_;
+
+  int new_facet_idx = ccw_facet_idx + 1;
+  facets.insert(facets.begin() + new_facet_idx, new_facet);
+  cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
+
+  for (int i = 0; i < idx_redundant.size(); i++) {
+    idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
+  }
+
+  for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
+    if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
+      idx_redundant.push_back(i);
     }
-    const int n = all_verts.cols();
-    auto prog = MathematicalProgram();
-    auto solver = OsqpSolver();
-
-    auto a = prog.NewContinuousVariables(2);
-    auto u = prog.NewContinuousVariables(n);
-
-    prog.AddQuadraticErrorCost(MatrixXd::Identity(n,n), VectorXd::Zero(n), u);
-    prog.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(), u);
-    prog.AddLinearConstraint(
-        (p - centroid(points)).transpose(),
-        Vector1d::Constant(0.01),
-        Vector1d::Constant(std::numeric_limits<double>::infinity()),
-        a);
-    MatrixXd A = MatrixXd::Zero(n, n+2);
-    A.rightCols(n) = -MatrixXd::Identity(n, n);
-    for (int i = 0; i < all_verts.cols(); i++) {
-      A.block<1,2>(i,0) = (all_verts.col(i) - p).transpose();
-    }
-    prog.AddLinearConstraint(
-        A,
-        VectorXd::Constant(n, -std::numeric_limits<double>::infinity()),
-        VectorXd::Zero(n),
-        {a, u});
-    auto result = solver.Solve(prog);
-
-    DRAKE_DEMAND(result.is_success());
-
-    Vector2d a_sol = result.GetSolution(a);
-
-    DRAKE_DEMAND(not a_sol.hasNaN());
-
-    a_sol.normalize();
-    return {a_sol, a_sol.dot(p)};
   }
-
-  MatrixXd get_vertices(const std::vector<facet>& f) {
-    MatrixXd verts = MatrixXd::Zero(2, f.size());
-    for (int i = 0; i < f.size(); i++) {
-      verts.col(i) = f.at(i).v1_;
-    }
-    return verts;
+  std::sort(idx_redundant.begin(), idx_redundant.end());
+  for (int i = 0; i < idx_redundant.size(); i++) {
+    idx_redundant.at(i) -= i;
   }
-
-  ConvexPolygon MakeFootholdFromFacetList(const std::vector<facet>& f) {
-    return MakeFootholdFromConvexPolygon(get_vertices(f));
+  for (const auto &i : idx_redundant) {
+    facets.erase(facets.begin() + i);
   }
+}
+
+std::pair<Vector2d, double> GetBestSupportAsRayToBoundary(
+    Vector2d p, const std::vector<facet>& facets ) {
+  Vector2d a =  normal_of_closest_face(facets, p);
+  double b = a.dot(p);
+  return {a, b};
+}
+
+std::pair<Vector2d, double> SolveForBestApproximateSupport(
+    Vector2d p, const std::vector<facet>& facets, const MatrixXd& all_verts) {
+  MatrixXd points = MatrixXd::Zero(2, facets.size());
+  for (int i = 0; i < facets.size(); i++) {
+    points.col(i) = facets.at(i).v1_;
+  }
+  const int n = all_verts.cols();
+  auto prog = MathematicalProgram();
+  auto solver = OsqpSolver();
+
+  auto a = prog.NewContinuousVariables(2);
+  auto u = prog.NewContinuousVariables(n);
+
+  prog.AddQuadraticErrorCost(MatrixXd::Identity(n,n), VectorXd::Zero(n), u);
+  prog.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(), u);
+  prog.AddLinearConstraint(
+      (p - centroid(points)).transpose(),
+      Vector1d::Constant(0.01),
+      Vector1d::Constant(std::numeric_limits<double>::infinity()),
+      a);
+  MatrixXd A = MatrixXd::Zero(n, n+2);
+  A.rightCols(n) = -MatrixXd::Identity(n, n);
+  for (int i = 0; i < all_verts.cols(); i++) {
+    A.block<1,2>(i,0) = (all_verts.col(i) - p).transpose();
+  }
+  prog.AddLinearConstraint(
+      A,
+      VectorXd::Constant(n, -std::numeric_limits<double>::infinity()),
+      VectorXd::Zero(n),
+      {a, u});
+  auto result = solver.Solve(prog);
+
+  DRAKE_DEMAND(result.is_success());
+
+  Vector2d a_sol = result.GetSolution(a);
+
+  DRAKE_DEMAND(not a_sol.hasNaN());
+
+  a_sol.normalize();
+  return {a_sol, a_sol.dot(p)};
+}
+
+MatrixXd get_vertices(const std::vector<facet>& f) {
+  MatrixXd verts = MatrixXd::Zero(2, f.size());
+  for (int i = 0; i < f.size(); i++) {
+    verts.col(i) = f.at(i).v1_;
+  }
+  return verts;
+}
+
+ConvexPolygon MakeFootholdFromFacetList(const std::vector<facet>& f) {
+  return MakeFootholdFromConvexPolygon(get_vertices(f));
+}
 }
 
 ConvexPolygon MakeInscribedConvexPolygon(

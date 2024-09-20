@@ -20,6 +20,36 @@
 namespace dairlib {
 namespace geometry {
 
+/*!
+ * Convenience struct to represent a polygon as a list of facets
+ * for fast halfspace intersections.
+ */
+struct facet {
+  Eigen::Vector2d a_;
+  double b_;
+  Eigen::Vector2d v0_;
+  Eigen::Vector2d v1_;
+
+  bool redundant(Eigen::Vector2d a,  double b) {
+    return (a.dot(v0_) > b and a.dot(v1_) > b);
+  }
+
+  bool intersects(Eigen::Vector2d a, double b) {
+    return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+  }
+
+  // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
+  static facet intersect(facet f0, facet f1, Eigen::Vector2d a, double b) {
+    assert(f0.intersects(a, b) and f0.intersects(a, b));
+    Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
+    A.row(0) = f0.a_.transpose();
+    A.row(1) = a.transpose();
+    Eigen::Vector2d v0 = A.inverse() * Eigen::Vector2d(f0.b_, b);
+    A.row(0) = f1.a_.transpose();
+    Eigen::Vector2d v1 = A.inverse() * Eigen::Vector2d(f1.b_, b);
+    return {a, b, v0, v1};
+  }
+};
 
 /*!
  * Decomposes every 2D polygon in terrain, represented as the pair

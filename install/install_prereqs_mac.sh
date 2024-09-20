@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # look in WORKSPACE file for appropriate commit number
-DRAKE_COMMIT="v1.30.0"
+DRAKE_COMMIT="v1.33.0"
 
 ubuntu_codename=$(lsb_release -sc)
 
@@ -29,4 +29,4 @@ cd ..
 rm -rf tmp/
 # In addition to drake, install lcm and libbot2
 # TODO: the line below is not tested, need a mac user to see if it will work!
-brew install lcm libbot2
+#brew install lcm libbot2

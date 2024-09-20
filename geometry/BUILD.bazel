@@ -24,6 +24,15 @@ cc_library(
 )
 
 cc_library(
+    name = "whittling_solver",
+    srcs = ["whittling_solver.cc"],
+    hdrs = ["whittling_solver.h"],
+    deps = [
+        "@eigen",
+    ],
+)
+
+cc_library(
     name = "polygon_utils",
     srcs = ["polygon_utils.cc"],
     hdrs = ["polygon_utils.h"],

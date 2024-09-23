@@ -322,8 +322,8 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    # visualize(args.logfile)
-    run_profiling(args.logfile)
+    visualize(args.logfile)
+    # run_profiling(args.logfile)
 
 
 if __name__ == '__main__':

@@ -9,8 +9,8 @@ class WhittlingSolver {
 
   std::pair<Eigen::Vector2d, double> SolveForBestCut(
       const Eigen::Vector2d &interior_vertex,
-      const Eigen::Vector2d &direction,
-      const Eigen::MatrixXd &vertices) const;
+      const Eigen::MatrixXd &vertices,
+      const Eigen::Vector2d& initial_guess) const;
 
  private:
   double SquaredHingeLoss(
@@ -21,13 +21,9 @@ class WhittlingSolver {
       const Eigen::Vector2d &direction, const Eigen::Vector2d &vertex,
       const Eigen::MatrixXd &vertices) const;
 
-  Eigen::Matrix2d SquaredHingeLossHessian(
-      const Eigen::Vector2d &direction, const Eigen::Vector2d &vertex,
-      const Eigen::MatrixXd &vertices) const;
-
-  Eigen::Vector2d GetNewtonDirection(const Eigen::Vector2d &direction,
-                                     const Eigen::Vector2d &vertex,
-                                     const Eigen::MatrixXd &vertices) const;
+  double GetSearchDirection(const Eigen::Vector2d &direction,
+                            const Eigen::Vector2d &vertex,
+                            const Eigen::MatrixXd &vertices) const;
 
 };
 }

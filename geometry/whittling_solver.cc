@@ -46,6 +46,7 @@ std::pair<Eigen::Vector2d, double> WhittlingSolver::SolveForBestCut(
     double fx = SquaredHingeLoss(x, interior_vertex, vertices);
     while (SquaredHingeLoss(Rotate(x, t * dx), interior_vertex, vertices) > fx) {
       t *= beta;
+      if (t < 1e-20) { break; }
     }
     x = Rotate(x, t * dx);
     x.normalize(); // normalizing x always decreases the cost
@@ -86,7 +87,12 @@ double WhittlingSolver::GetSearchDirection(
     const Eigen::MatrixXd &vertices) const {
 
   Vector2d g = SquaredHingeLossGradient(direction, vertex, vertices);
+
+  // (negative) component of the cost gradient in the tangent space of the
+  // unit-norm constraint
   Vector2d step = -(g - g.dot(direction) * direction);
+
+  // angle by which to rotate our candidate solution based on the gradient
   return cross(direction, step);
 
 }

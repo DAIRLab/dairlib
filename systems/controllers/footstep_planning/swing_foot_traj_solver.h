@@ -39,6 +39,8 @@ class SwingFootTrajSolver {
       const drake::solvers::MathematicalProgramResult& result,
       double t_start, double t_end) const;
 
+  void UpdateContinuityConstraintsWithSlack();
+
   static Eigen::Vector3d CalcDesiredMidpoint(const Eigen::Vector3d& initial_pos,
                                       const Eigen::Vector3d& target,
                                       double clearance);
@@ -50,6 +52,7 @@ class SwingFootTrajSolver {
   drake::solvers::VectorXDecisionVariable cx_;
   drake::solvers::VectorXDecisionVariable cy_;
   drake::solvers::VectorXDecisionVariable cz_;
+  drake::solvers::VectorXDecisionVariable cont_slack_;
 
   solvers::FCCQPSolver solver_;
 
@@ -57,17 +60,18 @@ class SwingFootTrajSolver {
   std::vector<std::vector<Eigen::RowVectorXd>> knot_deriv_multipliers_;
   std::vector<std::vector<Eigen::Vector3d>> knot_deriv_rhs_;
 
-  std::vector<std::vector<
-      drake::solvers::LinearEqualityConstraint*>> x_knot_constraints_;
-  std::vector<std::vector<
-      drake::solvers::LinearEqualityConstraint*>> y_knot_constraints_;
-  std::vector<std::vector<
-      drake::solvers::LinearEqualityConstraint*>> z_knot_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> x_knot_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> y_knot_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> z_knot_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> x_end_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> y_end_constraints_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> z_end_constraints_;
 
   std::shared_ptr<drake::solvers::QuadraticCost> x_min_accel_cost;
   std::shared_ptr<drake::solvers::QuadraticCost> y_min_accel_cost;
   std::shared_ptr<drake::solvers::QuadraticCost> z_min_accel_cost;
   std::shared_ptr<drake::solvers::QuadraticCost> midpoint_target_cost_;
+  std::shared_ptr<drake::solvers::QuadraticCost> cont_slack_cost_;
 
 };
 

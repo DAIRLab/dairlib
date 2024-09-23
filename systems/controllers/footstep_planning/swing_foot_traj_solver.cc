@@ -28,6 +28,14 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
   cx_ = prog_.NewContinuousVariables(kPolyDegXY, "cx");
   cy_ = prog_.NewContinuousVariables(kPolyDegXY, "cy");
   cz_ = prog_.NewContinuousVariables(kPolyDegZ, "cz");
+  cont_slack_ = prog_.NewContinuousVariables(9, "e");
+
+  Eigen::MatrixXd cont_cost = 10 * Eigen::MatrixXd::Identity(9,9);
+  cont_cost.block<3,3>(0,0) *= 1000;
+  cont_cost.block<3,3>(3,3) *= 10;
+
+  cont_slack_cost_ = prog_.AddQuadraticCost(
+      cont_cost, VectorXd::Zero(9), cont_slack_).evaluator();
 
   dim_var_map_ = {cx_, cy_, cz_};
 
@@ -37,29 +45,33 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
   knot_deriv_rhs_ = std::vector<std::vector<Vector3d>>(
       3, std::vector<Vector3d>(3, Vector3d::Zero()));
 
-  for (int knot = 1; knot < 3; ++knot) {
-    std::vector<drake::solvers::LinearEqualityConstraint*> xtmp;
-    std::vector<drake::solvers::LinearEqualityConstraint*> ytmp;
-    std::vector<drake::solvers::LinearEqualityConstraint*> ztmp;
-    for (int deriv = 0; deriv < 3; ++deriv) {
-      xtmp.push_back(
-          prog_.AddLinearEqualityConstraint(
-              RowVectorXd::Zero(kPolyDegXY), VectorXd::Zero(1), cx_
-              ).evaluator().get());
-      ytmp.push_back(
-          prog_.AddLinearEqualityConstraint(
-              RowVectorXd::Zero(kPolyDegXY), VectorXd::Zero(1), cy_
-          ).evaluator().get());
-      ztmp.push_back(
-          prog_.AddLinearEqualityConstraint(
-              RowVectorXd::Zero(kPolyDegZ), VectorXd::Zero(1), cz_
-          ).evaluator().get());
-    }
-    x_knot_constraints_.push_back(xtmp);
-    y_knot_constraints_.push_back(ytmp);
-    z_knot_constraints_.push_back(ztmp);
-
+  for (int deriv = 0; deriv < 3; ++deriv) {
+    x_end_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegXY), VectorXd::Zero(1), cx_
+            ).evaluator().get());
+    y_end_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegXY), VectorXd::Zero(1), cy_
+        ).evaluator().get());
+    z_end_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegZ), VectorXd::Zero(1), cz_
+        ).evaluator().get());
+    x_knot_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegXY + 1), VectorXd::Zero(1), {cx_, cont_slack_.segment<1>(3*deriv)}
+        ).evaluator().get());
+    y_knot_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegXY + 1), VectorXd::Zero(1), {cy_, cont_slack_.segment<1>(3*deriv + 1)}
+        ).evaluator().get());
+    z_knot_constraints_.push_back(
+        prog_.AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kPolyDegZ + 1), VectorXd::Zero(1), {cz_, cont_slack_.segment<1>(3*deriv + 2)}
+        ).evaluator().get());
   }
+
 
   min_acc_Q_ =
       MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
@@ -134,19 +146,21 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
 
   Vector3d des_mid_point = CalcDesiredMidpoint(initial_pos, target, clearance);
 
-  for (int knot = 1; knot < 3; ++knot) {
-    for (int deriv = 0; deriv < 3; ++ deriv) {
-      x_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
-          knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
-          knot_deriv_rhs_.at(knot).at(deriv).segment<1>(0));
-      y_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
-          knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
-          knot_deriv_rhs_.at(knot).at(deriv).segment<1>(1));
-      z_knot_constraints_.at(knot-1).at(deriv)->UpdateCoefficients(
-          knot_deriv_multipliers_.at(knot).at(deriv),
-          knot_deriv_rhs_.at(knot).at(deriv).segment<1>(2));
-    }
+  UpdateContinuityConstraintsWithSlack();
+
+  for (int deriv = 0; deriv < 3; ++ deriv) {
+    int knot = 2;
+    x_end_constraints_.at(deriv)->UpdateCoefficients(
+        knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
+        knot_deriv_rhs_.at(knot).at(deriv).segment<1>(0));
+    y_end_constraints_.at(deriv)->UpdateCoefficients(
+        knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>(),
+        knot_deriv_rhs_.at(knot).at(deriv).segment<1>(1));
+    z_end_constraints_.at(deriv)->UpdateCoefficients(
+        knot_deriv_multipliers_.at(knot).at(deriv),
+        knot_deriv_rhs_.at(knot).at(deriv).segment<1>(2));
   }
+
 
   RowVectorXd mid_mult = EvalLegendreBasis(kPolyDegZ - 1, 0).transpose();
   MatrixXd mid_mult_broad = MatrixXd::Zero(3, 2 * kPolyDegXY + kPolyDegZ);
@@ -187,6 +201,25 @@ SwingFootTrajSolver::ConvertSolutionToTrajectory(
   return PathParameterizedTrajectory<double>(
       LegendrePolynomialTrajectory(coeffs), time_scaling);
 }
+
+void SwingFootTrajSolver::UpdateContinuityConstraintsWithSlack() {
+  int knot = 1;
+  for (int deriv = 0; deriv < 3; ++deriv) {
+    Eigen::MatrixXd A_xy = Eigen::MatrixXd::Ones(1, kPolyDegXY + 1);
+    A_xy.leftCols(kPolyDegXY) = knot_deriv_multipliers_.at(knot).at(deriv).leftCols<kPolyDegXY>();
+    Eigen::MatrixXd A_z = Eigen::MatrixXd::Ones(1, kPolyDegZ + 1);
+    A_z.leftCols(kPolyDegZ) = knot_deriv_multipliers_.at(knot).at(deriv);
+
+    x_knot_constraints_.at(deriv)->UpdateCoefficients(
+        A_xy, knot_deriv_rhs_.at(knot).at(deriv).segment<1>(0));
+    y_knot_constraints_.at(deriv)->UpdateCoefficients(
+        A_xy,
+        knot_deriv_rhs_.at(knot).at(deriv).segment<1>(1));
+    z_knot_constraints_.at(deriv)->UpdateCoefficients(
+        A_z,
+        knot_deriv_rhs_.at(knot).at(deriv).segment<1>(2));
+  }
+};
 
 Eigen::Vector3d SwingFootTrajSolver::CalcDesiredMidpoint(
     const Vector3d &initial_pos, const Vector3d &target, double clearance) {

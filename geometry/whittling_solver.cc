@@ -33,7 +33,6 @@ std::pair<Eigen::Vector2d, double> WhittlingSolver::SolveForBestCut(
   double beta = 0.8;
   double eps = 1e-8;
 
-//  Vector2d initial_guess = interior_vertex - centroid(vertices);
   Vector2d x = initial_guess.normalized();
 
   int count = 0;

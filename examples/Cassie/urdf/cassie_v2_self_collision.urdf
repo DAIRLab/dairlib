@@ -5,7 +5,7 @@
             <origin
                     xyz=".05066 0.000346 .02841"
                     rpy="0 0 0" />
-            <mass value="10.33" />
+            <mass value="9.33" />
             <inertia
                     ixx=".094158"
                     ixy=".0001685"

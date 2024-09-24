@@ -44,7 +44,7 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 
 points_topic = "DRAKE_POINT_CLOUD"
-cassie_state_channel = "CASSIE_STATE_SIMULATION"
+cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
 
 elevation_mapping_params = (
     "bindings/pydairlib/perceptive_locomotion/params"

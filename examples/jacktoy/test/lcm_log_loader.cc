@@ -11,6 +11,10 @@
 #include "examples/jacktoy/parameters/franka_sim_params.h"
 #include "systems/system_utils.h"
 #include "systems/framework/timestamped_vector.h"
+#include "solvers/c3_output.h"
+
+
+namespace dairlib {
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::DiagramBuilder;
@@ -21,7 +25,7 @@ using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 
-int main(int argc,  char* argv[]) {
+int DoMain(int argc,  char* argv[]) {
   if (argc != 3) {
     std::cerr << "Usage: " << argv[0] <<" <log_folder> <time_into_log>" << std::endl;
     return 1;
@@ -56,6 +60,17 @@ int main(int argc,  char* argv[]) {
   c3_options = drake::yaml::LoadYamlFile<C3Options>(c3_gains_path + ".yaml");
   // // NOTE:  can temporarily hard code many more ADMM iterations
   // c3_options.admm_iter = 8;
+  // NOTE: Temporarily hard coding the Q values to something higher
+  // c3_options.q_vector = {10, 10, 10,  
+  //          10, 10, 10, 10,             
+  //          20, 20, 20,   
+  //          50, 50, 50,            
+  //          500, 500, 500,               
+  //          50, 50, 50};
+
+  // Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+  //       q_vector_position_and_orientation.data(), q_vector_position_and_orientation.size());
+  // c3_options.Q_position_and_orientation = c3_options.w_Q * q_position_and_orientation.asDiagonal();
 
   std::string sim_params_path = log_filepath;
   std::string sim_params_path_replacement = "sim_params_";
@@ -261,6 +276,11 @@ int main(int argc,  char* argv[]) {
 
   // Create the plant for the LCS
   DiagramBuilder<double> plant_builder;
+  // This function initializes a MultibodyPlant with a specified time step,
+  // ensures that the builder is valid, and then passes the newly created Multibodyplant 
+  // to an overloaded definition of AddMultibodyPlantSceneGraph that takes in the plant
+  // and a scene graph and adds it to the diagram.
+  // This overloaded function then returns a tuple of pointers to the plant and the scene graph.
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
 
@@ -395,7 +415,11 @@ int main(int argc,  char* argv[]) {
   std::cout<<"position names: " << plant_for_lcs.GetPositionNames()[0] << std::endl;
   // cast to VectorXd since the SetPositionsAndVelocities function requires a VectorXd
   plant_for_lcs.SetPositionsAndVelocities(&plant_for_lcs_context, x_lcs_actual.cast<double>());
+  // auto xu_ad = drake::math::InitializeAutoDiff(x_lcs_actual.cast<double>());
+  // plant_for_lcs_autodiff->SetPositionsAndVelocities(plant_for_lcs_context_ad.get(), xu_ad);
 
+  plant_diagram->set_name(("franka_c3_plant"));
+  DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy/test/franka_c3_plant_in_log_loader");
 
   DiagramBuilder<double> builder;
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
@@ -404,6 +428,12 @@ int main(int argc,  char* argv[]) {
       sampling_params, true);
   // get controller context
   auto controller_context = controller->CreateDefaultContext();
+
+  auto owned_diagram = builder.Build();
+  owned_diagram->set_name(("franka_c3_controller"));
+
+  DrawAndSaveDiagramGraph(*owned_diagram, "examples/jacktoy/test/franka_c3_controller_in_log_loader");
+
   // fix input port values
   controller->get_input_port_radio().FixValue(controller_context.get(), drake::Value<dairlib::lcmt_radio_out>{});
   std::cout<<"input port size: "<<controller->get_input_port_lcs_state().size()<<std::endl;
@@ -413,7 +443,19 @@ int main(int argc,  char* argv[]) {
 
   auto discrete_state = controller->AllocateDiscreteVariables();
   controller->CalcForcedDiscreteVariableUpdate(*controller_context, discrete_state.get());
+  controller->ForcedPublish(*controller_context);
+  
+  auto c3_solution = dairlib::C3Output::C3Solution();
+  c3_solution.x_sol_ = Eigen::MatrixXf::Zero(19, 5);
+  c3_solution.lambda_sol_ = Eigen::MatrixXf::Zero(16, 5);
+  c3_solution.u_sol_ = Eigen::MatrixXf::Zero(3, 5);
+  c3_solution.time_vector_ = Eigen::VectorXf::Zero(5);
+  controller->OutputC3SolutionCurrPlan(*controller_context, &c3_solution);
+  
 
   std::cout << "Finished ForcedPublish" << std::endl;
   return 0;
 }
+}  // namespace dairlib
+
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

@@ -144,6 +144,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   }
   
+  void OutputC3SolutionCurrPlan(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const;
+
  private:
   solvers::LCS CreatePlaceholderLCS() const;
 
@@ -159,9 +163,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs, const double& t_context) const;
 
-  void OutputC3SolutionCurrPlan(
-    const drake::systems::Context<double>& context,
-    C3Output::C3Solution* c3_solution) const;
 
   void OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,

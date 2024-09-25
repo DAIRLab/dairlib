@@ -157,7 +157,9 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
 
   // Adding constraint for x[2] corresponding to end effector z to always be 
   // above the ground at every time step.
-  for (int i = 0; i < N_; i++) {
+  // Impose constraint for timestep 1 and beyond to ensure that the plan doesn't go below the safe threshold/ground
+  // but allow the 0th timestep to be where the ee currently is in order to not invalidate the x_[0] == x0 constraint.
+  for (int i = 1; i < N_; i++) {
     prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
   }
 
@@ -278,18 +280,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
-    if(verbose){
-      std::cout << "ADMM Iteration: " << iter << std::endl;
-      Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-      Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-      for(int i = 0; i < N_; i++){
-        verbose_delta.col(i) = delta[i];
-        verbose_w.col(i) = w[i];
-      }
-      std::cout<<"delta: \n"<<verbose_delta<<std::endl;
-      std::cout<<"w: \n"<<verbose_w<<std::endl;
-    }
+    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);    
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -304,12 +295,15 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_zsol = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     for(int i = 0; i < N_; i++){
       verbose_delta.col(i) = delta[i];
       verbose_w.col(i) = w[i];
       verbose_zfin.col(i) = zfin_[i];
+      verbose_zsol.col(i) = z_sol_->at(i);
     }
     std::cout<<"zfin: \n"<<verbose_zfin<<std::endl;
+    std::cout<<"zsol: \n"<<verbose_zsol<<std::endl;
     std::cout<<"delta: \n"<<verbose_delta<<std::endl;
     std::cout<<"w: \n"<<verbose_w<<std::endl;
   }
@@ -331,6 +325,9 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     lambda_sol_->at(i) *= AnDn_;
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
+  // Will added this line since zfin_ should be z_sol? Reconfirm with him.
+  // Commented for now since these look to be the same.
+  // zfin_ = *z_sol_;
 }
 
 // This function relies on the previously computed zfin_ from the Solve function.
@@ -499,6 +496,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
       // }
     // }
 
+    // print object angular velocity error
+    // std::cout<<"Cost contribution from angular velocity error: "<<
+    //   (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*(XX[i].segment(13,3) - x_desired_[i].segment(13,3))<<std::endl;
+    // std::cout<<"Cost contribution from object position error: "<<
+    //   (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*(XX[i].segment(7,3) - x_desired_[i].segment(7,3))<<std::endl;
+
     // std::cout<<"\t\tcost contribution from vxox, vxoy, vxoz: "<<
     //   (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
     //   Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3))<<std::endl;
@@ -546,6 +549,16 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   } else {
     *delta = SolveProjection(U_, ZW, admm_iteration);
   }
+  if(verbose){
+    std::cout << "ADMM Iteration: " << admm_iteration << std::endl;
+    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    // Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    for(int i = 0; i < N_; i++){
+      verbose_delta.col(i) = delta->at(i);
+      // verbose_w.col(i) = w[i];
+    }
+    std::cout<<"delta: \n"<<verbose_delta.block(10, 0, 9, 5)<<std::endl;
+  }
 
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
@@ -561,6 +574,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
+  if(x0[2] < options_.ee_z_state_min){
+    std::cout<<"CAUTION: Initial state is below the min z height. C3 plan will have the z go up suddenly in the first step of the plan."<<std::endl;
+  }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (h_is_zero_ == 1) {
@@ -629,10 +645,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
       warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
     }
   }
-  // else {
-  //   std::cout<<"CAUTION: C3 QP solve did not succeed" << std::endl;
-  //   std::cout<<"First result: "<<result.GetSolution(x_[0]).transpose()<<std::endl;
-  // }
+  else {
+    std::cout<<"CAUTION: C3 QP solve did not succeed" << std::endl;
+  }
 
   return *z_sol_;
 }

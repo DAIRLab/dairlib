@@ -197,7 +197,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       footholds_idx_
   );
 
-  if (!foothold_set.empty()) {
+  if (not foothold_set.empty()) {
     footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, 1.8);
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";

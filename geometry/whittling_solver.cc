@@ -39,6 +39,7 @@ std::pair<Eigen::Vector2d, double> WhittlingSolver::SolveForBestCut(
   double dx = 10;
   while (dx > eps and count < 50) {
     dx = GetSearchDirection(x, interior_vertex, vertices);
+    if (dx == 0) { break; } // can't improve current direction
 
     // line search
     double t = 0.1 / fabs(dx);

@@ -258,7 +258,6 @@ ConvexPolygon MakeInscribedConvexPolygon(
 
   WhittlingSolver solver;
 
-
   while (not verts_sorted.empty()) {
     // To avoid numerical issues, ignore violations of less than 1mm
     if (distance_to_boundary(facets, verts_sorted.front()) < 0.001) {

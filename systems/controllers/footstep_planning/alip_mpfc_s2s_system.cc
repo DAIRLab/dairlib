@@ -204,6 +204,9 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   }
 
   if (footholds_filt.empty()) {
+    if (not foothold_set.empty()) {
+      std::cerr << "WARNING: Pruning QP eliminated all potential footholds!\n";
+    }
     footholds_filt = prev_footholds;
   }
 

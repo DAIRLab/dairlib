@@ -13,8 +13,8 @@ track_point: [0.5, 0, 0]
 map_update_rate_hz: 30.0
 map_length: [2.5, 2.5]
 resolution: 0.025
-contact_frames: {}
-contact_points: {}
+contact_frames: { left: "toe_left", right: "toe_right" }
+contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}
 initialization_radius: 1.0
 initialization_offset: 0.0
 point_cloud_bias: [0.0, 0.0, 0.0]

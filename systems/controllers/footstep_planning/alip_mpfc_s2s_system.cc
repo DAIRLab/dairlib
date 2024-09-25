@@ -115,8 +115,8 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
-      get_value<ConvexPolygonSet>();
+  auto foothold_set = this->EvalAbstractInput(
+      context, foothold_input_port_)->get_value<ConvexPolygonSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();

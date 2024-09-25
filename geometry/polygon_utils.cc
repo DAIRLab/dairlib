@@ -242,7 +242,14 @@ MatrixXd get_vertices(const std::vector<facet>& f) {
 }
 
 ConvexPolygon MakeFootholdFromFacetList(const std::vector<facet>& f) {
-  return MakeFootholdFromConvexPolygon(get_vertices(f));
+  ConvexPolygon poly;
+  poly.SetPlane(Vector3d::UnitZ(), Vector3d::Zero());
+  for (const auto& facet : f) {
+    Vector3d face = Vector3d::Zero();
+    face.head<2>() = facet.a_;
+    poly.AddHalfspace(face, VectorXd::Constant(1, facet.b_));
+  }
+  return poly;
 }
 }
 

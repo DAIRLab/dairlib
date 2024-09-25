@@ -527,19 +527,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
 
-
-      if (i == 0) {
-        c3_curr_plan_->UpdateTarget(x_desired);
-        c3_curr_plan_->UpdateLCS(test_system);
-        c3_curr_plan_->UpdateCostMatrices(C3::CostMatrices(Q_, R_, G_, U_));
-        test_c3_object = c3_curr_plan_;
-        if(sampling_params_.use_more_contacts_to_compute_cost){
-          // Compute the cost using the lcs object with more contacts.
-          test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
-        }
-      }
-      else{
-        if (c3_options_.projection_type == "MIQP") {
+      if (c3_options_.projection_type == "MIQP") {
           test_c3_object = std::make_shared<C3MIQP>(test_system, 
                                               C3::CostMatrices(Q_, R_, G_, U_), 
                                               x_desired, c3_options_);
@@ -560,7 +548,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           std::cerr << ("Unknown projection type") << std::endl;
           DRAKE_THROW_UNLESS(false);
         }
-      }
 
 
 
@@ -719,12 +706,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       Eigen::VectorXd u = zs[i].tail(n_u_);
       std::cout<< "\t" << i << ": " <<lambda.dot(E*x + F*lambda + H*u + c)<<std::endl;
     }
-    VectorXd u_alternate = VectorXd::Zero(3);
-    u_alternate << 0.374249, 0.00592046, -0.365617;
-    std::cout << "Predicted LCS state c3 opt" << std::endl;
-    std::cout << candidate_lcs_objects.at(CURRENT_LOCATION_INDEX).Simulate(zs[0].head(n_x_), zs[0].tail(n_u_)).transpose() << std::endl;
-    std::cout << "Predicted LCS state alternate" << std::endl;
-    std::cout << candidate_lcs_objects.at(CURRENT_LOCATION_INDEX).Simulate(zs[0].head(n_x_), u_alternate).transpose() << std::endl;
   }
 
   if (verbose_) {

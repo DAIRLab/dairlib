@@ -4,7 +4,7 @@
 #include <pybind11/stl.h>
 
 #include <Eigen/Eigenvalues>
-
+#include <iostream>
 
 namespace py = pybind11;
 
@@ -71,22 +71,28 @@ PYBIND11_MODULE(segmentation_utils, m) {
   m.doc() = "";
 
   m.def("CalculateNormalsAndSquaredError",
-        [](const py::EigenDRef<const Eigen::MatrixXd>& map, int kernel_size, double resolution) {
+        [](const py::EigenDRef<const Eigen::MatrixXd>& map, int kernel_size,
+           double resolution) -> std::pair<Eigen::MatrixXd, Eigen::MatrixXd> {
+
+    kernel_size = kernel_size % 2 == 0 ? kernel_size - 1 : kernel_size;
+    kernel_size = std::max(kernel_size, 5);
+
     Eigen::MatrixXd inclination = Eigen::MatrixXd::Zero(map.rows(), map.cols());
     Eigen::MatrixXd error = Eigen::MatrixXd::Zero(map.rows(), map.cols());
     Eigen::Vector3d n;
     double sigma_squared;
 
-    for (int i = 1; i < map.rows() - 1; ++i) {
-      for (int j = 1; j < map.cols() - 1; ++j) {
+    int pad = kernel_size / 2;
+    for (int i = pad; i < map.rows() - pad; ++i) {
+      for (int j = pad; j < map.cols() - pad; ++j) {
         std::tie(n, sigma_squared) = computeNormalAndErrorForWindow(
-            map.block<3, 3>(i-1, j-1), kernel_size, resolution);
+            map.block(i-pad, j-pad, kernel_size, kernel_size), kernel_size, resolution);
         inclination(i, j) = n.z();
         error(i, j) = sigma_squared;
       }
     }
 
-    return std::tie(inclination, error);
+    return {inclination, error};
   }, py::arg("map"), py::arg("kernel_size"), py::arg("resolution"));
 }
 

@@ -72,7 +72,7 @@ def process_grid_maps(data_dict):
     return grid_maps, robot_output_msgs
 
 
-def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
+def build_diagram(mode: str, lcm: DrakeLcm, profiling=None) -> Diagram:
 
     builder = DiagramBuilder()
 
@@ -83,10 +83,12 @@ def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
             'variance_criterion': seg_criteria.variance_criterion,
-        }
+            'inclination_criterion': seg_criteria.inclination_criterion
+        },
+        profiling
     )
 
-    convex_decomposition = ConvexTerrainDecompositionSystem()
+    convex_decomposition = ConvexTerrainDecompositionSystem(profiling)
     foothold_sender = ConvexPolygonSender()
 
     foothold_publisher = LcmPublisherSystem.Make(
@@ -216,7 +218,7 @@ def animate_segmentations(results):
     plt.show()
 
 
-def run_profiling(logfile):
+def run_segmentation_profiling(logfile):
     log = lcm.EventLog(logfile, "r")
     grid_maps, _ = get_log_data(
         lcm_log=log,
@@ -279,6 +281,62 @@ def run_profiling(logfile):
     plt.show()
 
 
+def profile_full_pipeline(logfile):
+    profiling_results = {
+        'segmentation': [],
+        'seg_callbacks': [[], [], []],
+        'decomposition': [],
+        'plane_fitting': [],
+        'num_polygons': []
+    }
+
+    log = lcm.EventLog(logfile, "r")
+    lcm_interface = DrakeLcm()
+
+    diagram = build_diagram('convex', lcm_interface, profiling=profiling_results)
+
+    grid_maps, robot_output = get_log_data(
+            lcm_log=log,
+            lcm_channels={
+                'CASSIE_ELEVATION_MAP': lcmt_grid_map,
+                state_channel: lcmt_robot_output
+            },
+            start_time=0,
+            duration=-1,
+            data_processing_callback=process_grid_maps
+        )
+
+    context = diagram.CreateDefaultContext()
+
+    states_per_gm = round(len(robot_output) / len(grid_maps))
+    s = 0
+    for map in grid_maps:
+        diagram.get_input_port().FixValue(context, map)
+        start = time.time()
+        diagram.CalcForcedUnrestrictedUpdate(
+            context,
+            context.get_mutable_state()
+        )
+        diagram.ForcedPublish(context)
+        end = time.time()
+        print(end - start)
+        for i in range(states_per_gm):
+            if s >= len(robot_output):
+                break
+            lcm_interface.Publish(
+                state_channel,
+                robot_output[s].encode()
+            )
+            s += 1
+        sleep(0.05)
+
+    for i in range(3):
+        plt.plot(profiling_results['seg_callbacks'][i])
+
+    plt.legend(['curvature', 'variance', 'inclination'])
+    plt.show()
+
+
 def visualize(logfile):
     lcm_interface = DrakeLcm()
     diagram = build_diagram('convex', lcm_interface)
@@ -322,9 +380,9 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    visualize(args.logfile)
-    # run_profiling(args.logfile)
-
+    # visualize(args.logfile)
+    # run_segmentation_profiling(args.logfile)
+    profile_full_pipeline(args.logfile)
 
 if __name__ == '__main__':
     main()

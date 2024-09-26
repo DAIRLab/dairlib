@@ -40,7 +40,7 @@ def clopen(img: np.ndarray):
 
 class TerrainSegmentationSystem(LeafSystem):
 
-    def __init__(self, safety_callbacks):
+    def __init__(self, safety_callbacks, profiling=None):
         super().__init__()
         self.set_name("S3")
 
@@ -74,6 +74,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.safety_threshold = 0.7
 
         self.safety_criterion_callbacks = safety_callbacks
+        self.profiling = profiling
 
     def get_raw_safety_score(
             self, elevation: np.ndarray, elevation_inpainted: np.ndarray,
@@ -82,13 +83,21 @@ class TerrainSegmentationSystem(LeafSystem):
         raw_safety = np.ones_like(elevation_inpainted)
         kernel = self.get_kernel_size(resolution)
 
+        i = 0
         for name, callback in self.safety_criterion_callbacks.items():
+            start = time.time()
             raw_safety = raw_safety * callback(
                 elevation_inpainted, kernel, resolution
             )
+            end = time.time()
+            if self.profiling:
+                self.profiling['seg_callbacks'][i].append(end - start)
+            i += 1
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         raw_safety[np.isnan(elevation)] = 0
+
+
 
         return raw_safety
 
@@ -114,6 +123,9 @@ class TerrainSegmentationSystem(LeafSystem):
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
+
+        start = time.time()
+
         elevation_map = self.EvalAbstractInput(
             context, self.input_port_grid_map
         ).get_value()
@@ -172,3 +184,7 @@ class TerrainSegmentationSystem(LeafSystem):
         safe_elevation = np.copy(elevation_map['elevation'])
         safe_elevation[~(safe > 0)] = np.nan
         segmented_map['segmented_elevation'][:] = safe_elevation
+
+        end = time.time()
+        if self.profiling:
+            self.profiling['segmentation'].append(end - start)

@@ -92,7 +92,7 @@ def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
 
 class ConvexTerrainDecompositionSystem(LeafSystem):
 
-    def __init__(self):
+    def __init__(self, profiling=None):
         super().__init__()
 
         self.input_port_safe_terrain = self.DeclareAbstractInputPort(
@@ -107,6 +107,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                 self.input_port_ticket(self.input_port_safe_terrain)
             }
         )
+        self.profiling = profiling
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
@@ -129,6 +130,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
     def calc(self, context: Context, out: Value) -> None:
         # Get the safe terrain segmentation grid map
+        start = time.time()
         grid = self.EvalAbstractInput(
             context, self.input_port_safe_terrain
         ).get_value()
@@ -143,12 +145,23 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             return
 
         convex_polygons = ProcessTerrain2d(polygons, 0.25)
+        end_convexity = time.time()
 
         if not convex_polygons:
+            if self.profiling:
+                self.profiling['decomposition'].append(end_convexity - start)
+                self.profiling['plane_fitting'].append(0)
+                self.profiling['num_polygons'].append(0)
             return
 
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)
 
+        end_plane_fitting = time.time()
         out.set_value(ConvexPolygonSet(convex_polygons))
+
+        if self.profiling:
+            self.profiling['decomposition'].append(end_convexity - start)
+            self.profiling['plane_fitting'].append(end_plane_fitting - end_convexity)
+            self.profiling['num_polygons'].append(len(convex_polygons))

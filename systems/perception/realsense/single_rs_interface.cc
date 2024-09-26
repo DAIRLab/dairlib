@@ -45,9 +45,8 @@ void SingleRSInterface::poll() {
 
   while (run_) {
     frameset = pipeline_.wait_for_frames();
-    frames.color = frameset.get_color_frame();
     aligned = frame_aligner_.process(frameset);
-    frames.color_aligned_depth = aligned.get_depth_frame();
+    frames.color_depth_pair = aligned;
     frames.decimated_depth = decimation.process(frameset.get_depth_frame());
 
     for (const auto& callback : callbacks) {

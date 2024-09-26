@@ -29,6 +29,18 @@ cc_library(
 )
 
 cc_library(
+    name = "realsense_image_pair_subscriber",
+    srcs = ["realsense_image_pair_subscriber.cc"],
+    hdrs = ["realsense_image_pair_subscriber.h"],
+    deps = [
+        ":rs_interface",
+        "//systems/perception:image_pair",
+        "@drake//:drake_shared_library",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
     name = "rs_interface",
     srcs = ["single_rs_interface.cc"],
     hdrs = ["single_rs_interface.h"],

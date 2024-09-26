@@ -16,9 +16,8 @@ class SingleRSInterface {
   ~SingleRSInterface();
 
   struct rs_frames {
-    rs2::frame color;
-    rs2::frame color_aligned_depth;
     rs2::frame decimated_depth;
+    rs2::frameset color_depth_pair;
   };
 
   using HandlerFunction = std::function<void(const rs_frames&)>;

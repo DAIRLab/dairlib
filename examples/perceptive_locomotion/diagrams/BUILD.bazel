@@ -34,6 +34,7 @@ cc_library(
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:perceptive_locomotion_preprocessor",
         "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
+        "//systems/perception/realsense:realsense_image_pair_subscriber",
         "//systems/perception/realsense:realsense_point_cloud_subscriber",
         "//systems/perception/realsense:rs_interface",
         "@drake//:drake_shared_library",

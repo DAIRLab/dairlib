@@ -37,7 +37,7 @@ RealsenseImagePairSubscriber::RealsenseImagePairSubscriber(
   this->DeclareInitializationUnrestrictedUpdateEvent(
       &RealsenseImagePairSubscriber::Initialize);
 
-  this->set_name("realsense_pointcloud_subscriber");
+  this->set_name("realsense_image_pair_subscriber");
 }
 
 void RealsenseImagePairSubscriber::SetDefaultState(

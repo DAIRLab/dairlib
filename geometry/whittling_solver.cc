@@ -1,5 +1,4 @@
 #include "whittling_solver.h"
-#include "include/_usr_include_eigen3/Eigen/Core"
 #include <algorithm>
 #include <iostream>
 

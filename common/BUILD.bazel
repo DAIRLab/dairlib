@@ -79,3 +79,9 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "time_series_buffer",
+    hdrs = ["time_series_buffer.h"],
+    deps = [],
+)

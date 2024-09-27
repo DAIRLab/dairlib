@@ -4,6 +4,7 @@
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/framework/output_vector.h"
+#include "common/time_series_buffer.h"
 
 namespace dairlib {
 namespace perception {
@@ -17,6 +18,7 @@ using systems::OutputVector;
 using drake::systems::State;
 using drake::systems::Context;
 using drake::systems::TriggerType;
+using drake::systems::EventStatus;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::MultibodyPlant;
@@ -26,6 +28,10 @@ using elevation_mapping::ElevationMap;
 using elevation_mapping::PointCloudType;
 using elevation_mapping::RobotMotionMapUpdater;
 using elevation_mapping::SensorProcessorBase;
+
+namespace {
+  static constexpr size_t kBufSize = 20;
+}
 
 ElevationMappingSystem::ElevationMappingSystem(
     const MultibodyPlant<double>& plant,
@@ -82,6 +88,9 @@ ElevationMappingSystem::ElevationMappingSystem(
   elevation_map_state_index_ = DeclareAbstractState(model_value_map);
   motion_updater_state_index_ = DeclareAbstractState(model_value_updater);
 
+  state_buffer_index_ = DeclareAbstractState(
+      drake::Value<std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(nullptr));
+
   output_port_elevation_map_ = DeclareStateOutputPort(
       "elevation_map", elevation_map_state_index_
   ).get_index();
@@ -109,6 +118,43 @@ ElevationMappingSystem::ElevationMappingSystem(
       throw std::runtime_error(
           "Elevation map update type must be kPeriodic or kForced");
   }
+  DeclarePerStepUnrestrictedUpdateEvent(
+      &ElevationMappingSystem::UpdateStateBuffer);
+}
+
+void ElevationMappingSystem::SetDefaultState(const Context<double> &context,
+                                             State<double> *state) const {
+  auto& buf_ptr = state->get_mutable_abstract_state<
+      std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
+  buf_ptr = std::make_shared<TimeSeriesBuffer<VectorXd, kBufSize>>();
+  buf_ptr->reset();
+}
+
+EventStatus ElevationMappingSystem::Initialize(const Context<double> &context,
+                                               State<double> *state) const {
+  auto& buf_ptr = state->get_mutable_abstract_state<
+      std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
+  buf_ptr->reset();
+
+  return EventStatus::Succeeded();
+}
+
+EventStatus ElevationMappingSystem::UpdateStateBuffer(
+    const Context<double> &context, State<double> *state) const {
+
+  // 1. Get the robot base pose and covariance
+  const auto& robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, input_port_state_)
+  );
+
+  uint64_t now = 1e6 * robot_output->get_timestamp();
+  const VectorXd& robot_state = robot_output->GetState();
+
+  auto& buf_ptr = state->get_mutable_abstract_state<
+      std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
+
+  buf_ptr->put(now, robot_state);
+  return EventStatus::Succeeded();
 }
 
 void ElevationMappingSystem::AddSensorPreProcessor(
@@ -198,7 +244,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     int n_valid_contacts = 0;
 
     for (int i = 0; i < contact_msg.num_contacts; i++) {
-      if (contact_msg.contact[i]) {
+      if (contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
         const auto& grid_map = map.getRawGridMap();
 
         const auto& contact = contacts_.at(contact_msg.contact_names[i]);
@@ -208,7 +254,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         ) * contact.second;
         try {
 
-          double sub_map_length = 4.0 * grid_map.getResolution();
+          double sub_map_length = 3.0 * grid_map.getResolution();
           grid_map::Position center_sub_map = stance_pos.head<2>();
           grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
           bool success;
@@ -241,6 +287,9 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     map.shift_map_z(map_offset);
   }
 
+  const auto& state_buffer = state->get_abstract_state<
+      std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
+
   // 5. add the point clouds to the map
   for (const auto& [name, cloud] : new_pointclouds) {
     // allocate data for processing
@@ -248,6 +297,13 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     PointCloudType::Ptr pc_processed(new PointCloudType);
 
     const auto X_bias = RigidTransformd(params_.point_cloud_bias);
+
+    const auto& state_for_cloud = state_buffer->empty() ?
+        q_v : state_buffer->get(cloud->header.stamp);
+
+    multibody::SetPositionsAndVelocitiesIfNew<double>(
+        plant_, state_for_cloud, context_
+    );
 
     // TODO (@Brian-Acosta) does it make sense to propogate the base variance
     //  if we add non-base parent frames?

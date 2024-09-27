@@ -49,7 +49,7 @@ fcc_qp_repository(name = "fcc_qp")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "bb43995dee10e3d43d694d52b79f3ab8e7db11f12f925853d9d4309344b4ba9f"
+ELEVATION_MAPPING_CHECKSUM = "3b7c5b34d4b20a2770fb69df46e06fbf87c4db55adf85e3c4c1746bab643f5a8"
 
 http_archive(
     name = "elevation_mapping",
@@ -89,39 +89,13 @@ load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
 
 setup_pcl()
 
-# Prebuilt ROS workspace
-new_local_repository(
-    name = "ros",
-    build_file = "tools/workspace/ros/ros.bazel",
-    path = "tools/workspace/ros/bundle_ws/install",
-)
+load("//tools/workspace:os.bzl", "os_repository")
 
-http_archive(
-    name = "acd2d",
-    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
-    strip_prefix = "acd2d-master",
-    urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
-)
+os_repository(name = "os_type")
 
-# Other catkin packages from source
-# TODO: generate this automatically from rosinstall_generator
+load("//tools/workspace:perception.bzl", "add_perception_repositories")
 
-http_archive(
-    name = "genmsg_repo",
-    build_file = "@//tools/workspace/ros/bazel:genmsg.BUILD",
-    sha256 = "d7627a2df169e4e8208347d9215e47c723a015b67ef3ed8cda8b61b6cfbf94d2",
-    strip_prefix = "genmsg-0.5.8",
-    urls = ["https://github.com/ros/genmsg/archive/0.5.8.tar.gz"],
-)
-
-http_archive(
-    name = "genpy_repo",
-    build_file = "@//tools/workspace/ros/bazel:genpy.BUILD",
-    sha256 = "35e5cd2032f52a1f77190df5c31c02134dc460bfeda3f28b5a860a95309342b9",
-    strip_prefix = "genpy-0.6.5",
-    urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
-)
+add_perception_repositories()
 
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
@@ -198,5 +172,15 @@ http_archive(
     strip_prefix = "buildtools-4.2.2",
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
+    ],
+)
+
+## For some reason, this is needed for the clion bazel plugin to work on
+# clion 2024.1.3:
+http_archive(
+    name = "rules_java",
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
     ],
 )

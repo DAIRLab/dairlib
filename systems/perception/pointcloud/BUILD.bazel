@@ -16,6 +16,7 @@ cc_library(
     srcs = ["drake_to_pcl_point_cloud.cc"],
     hdrs = ["drake_to_pcl_point_cloud.h"],
     deps = [
+        ":point_cloud_conversions",
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
         "@pcl//:common",
@@ -34,17 +35,6 @@ cc_library(
 )
 
 cc_library(
-    name = "drake_to_ros_point_cloud",
-    srcs = ["drake_to_ros_point_cloud.cc"],
-    hdrs = ["drake_to_ros_point_cloud.h"],
-    tags = ["ros"],
-    deps = [
-        "@drake//:drake_shared_library",
-        "@ros",
-    ],
-)
-
-cc_library(
     name = "voxel_grid_filter",
     srcs = ["voxel_grid_filter.cc"],
     hdrs = ["voxel_grid_filter.h"],
@@ -54,14 +44,13 @@ cc_library(
 )
 
 cc_library(
-    name = "ros_point_cloud2_receiver",
-    srcs = ["ros_point_cloud2_receiver.cc"],
-    hdrs = ["ros_point_cloud2_receiver.h"],
-    tags = ["ros"],
+    name = "point_cloud_conversions",
+    srcs = ["point_cloud_conversions.cc"],
+    hdrs = ["point_cloud_conversions.h"],
     deps = [
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
         "@pcl//:common",
-        "@ros",
+        "@pcl//:filters",
     ],
 )

@@ -80,8 +80,22 @@ struct feature_tracking_node_params {
   explicit FeatureTracker(
       const feature_tracking_node_params& params);
 
-  void SetMask(const cv::Mat& mask);
-  void SetMask(const Eigen::MatrixXd& mask);
+  void SetMask(const cv::Mat& mask) {
+    mask_ = mask;
+  };
+
+  void SetMask(const Eigen::MatrixXd& mask) {
+    cv::Mat mat(mask.rows(), mask.cols(), CV_8UC1);
+
+    for (int i = 0; i < mask.rows(); ++i) {
+      for (int j = 0; j < mask.cols(); ++j) {
+        if (mask(i, j) > 0) {
+          mat.at<uchar>(i, j) = 255;
+        }
+      }
+    }
+    mask_ = mat;
+  };
 
  private:
 

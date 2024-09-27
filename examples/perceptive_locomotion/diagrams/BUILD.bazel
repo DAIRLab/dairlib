@@ -227,6 +227,7 @@ cc_library(
     name = "diagrams",
     deps = [
         ":alip_mpfc_diagram",
+        ":cassie_realsense_driver_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":mpfc_output_from_footstep",

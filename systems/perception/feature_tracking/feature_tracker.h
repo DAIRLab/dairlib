@@ -4,13 +4,6 @@
 #include <queue>
 #include <list>
 
-// ROS
-#include <ros/ros.h>
-#include <sensor_msgs/Image.h>
-#include <cv_bridge/cv_bridge.h>
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-
 // OpenCV
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -22,9 +15,13 @@
 #include "feat/FeatureDatabase.h"
 
 // dairlib
-#include "lcm/lcm-cpp.hpp"
 #include "dairlib/lcmt_landmark_array.hpp"
 #include "systems/perception/feature_tracking/klt_tracking_params.h"
+#include "systems/perception/image_pair.h"
+
+// drake
+#include "drake/systems/framework/leaf_system.h"
+#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 
 namespace dairlib {
 namespace perception {
@@ -77,12 +74,11 @@ struct feature_tracking_node_params {
   }
 };
 
-class FeatureTrackingNode {
+ class FeatureTracker : public drake::systems::LeafSystem<double> {
  public:
   static constexpr int kImgQueueSize = 10;
 
-  explicit FeatureTrackingNode(
-      ros::NodeHandle& node_handle,
+  explicit FeatureTracker(
       const feature_tracking_node_params& params);
 
   void SetMask(const cv::Mat& mask);
@@ -90,36 +86,38 @@ class FeatureTrackingNode {
 
  private:
 
-  void ImagePairCallback(
-      const sensor_msgs::ImageConstPtr& color,
-      const sensor_msgs::ImageConstPtr& depth);
+  drake::systems::EventStatus
+  UnrestrictedUpdate(const drake::systems::Context<double> &context,
+                     drake::systems::State<double>* state) const;
+
+  void SetDefaultState(const drake::systems::Context<double>& context,
+                        drake::systems::State<double>* state) const final;
+
+  void ProcessImagePair(const ImagePair& images,
+                        ov_core::TrackKLT& tracker,
+                        std::list<size_t>& ids_to_delete,
+                        lcmt_landmark_array& landmarks) const;
 
   Eigen::Vector3d DeprojectLatest3d(
       const ov_core::Feature& feature, const cv::Mat& depth) const;
 
-  // ROS
-  ros::NodeHandle& node_handle_;
+  drake::systems::InputPortIndex input_port_image_pair_;
+
+  drake::systems::AbstractStateIndex tracker_index_;
+  drake::systems::AbstractStateIndex ids_to_delete_index_;
+  drake::systems::AbstractStateIndex prev_timestamp_index_;
+  drake::systems::AbstractStateIndex current_landmarks_index_;
 
   // params
   feature_tracking_node_params params_;
 
   // internal data
-  std::unique_ptr<ov_core::TrackKLT> tracker_;
   std::shared_ptr<ov_core::CamBase> camera_;
-  std::list<size_t> ids_to_delete_;
-  std::queue<double> timestamps_;
+
   const size_t queue_size_ = 100;
 
   cv::Mat mask_;
   const int cam_id_ = 0;
-
-  // io
-  message_filters::Subscriber<sensor_msgs::Image> color_img_sub_;
-  message_filters::Subscriber<sensor_msgs::Image> depth_img_sub_;
-  message_filters::TimeSynchronizer<
-  sensor_msgs::Image, sensor_msgs::Image> img_pair_sub_;
-
-  lcm::LCM lcm_{"udpm://239.255.76.67:7667?ttl=1"};
 
 };
 

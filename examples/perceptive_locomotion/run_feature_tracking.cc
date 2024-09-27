@@ -1,7 +1,7 @@
 #include <gflags/gflags.h>
 #include <signal.h>
 
-#include "systems/perception/feature_tracking/feature_tracking_node.h"
+#include "systems/perception/feature_tracking/feature_tracker.h"
 
 void SigintHandler(int sig) {
   ros::shutdown();

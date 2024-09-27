@@ -1,10 +1,8 @@
-#include "feature_tracking_node.h"
+#include "feature_tracker.h"
 #include "systems/perception/feature_tracking/ov_core/feat/Feature.h"
 
 namespace dairlib {
 namespace perception {
-
-using ros::NodeHandle;
 
 using ov_core::TrackKLT;
 using ov_core::Feature;
@@ -17,12 +15,12 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
-FeatureTrackingNode::FeatureTrackingNode(
-    ros::NodeHandle& node_handle,
-    const feature_tracking_node_params& params) :
-    node_handle_(node_handle),
-    params_(params),
-    img_pair_sub_(kImgQueueSize) /* queue size */ {
+using drake::Value;
+using drake::systems::Context;
+using drake::systems::State;
+
+FeatureTracker::FeatureTracker(const feature_tracking_node_params& params) :
+    params_(params) {
 
   // initialize camera model
   camera_ = std::make_shared<CamRadtan>(
@@ -35,39 +33,71 @@ FeatureTrackingNode::FeatureTrackingNode(
   camera_calib(2) = params.intrinsics.at("center_x");
   camera_calib(3) = params.intrinsics.at("center_y");
 
-  camera_->set_value(camera_calib); // who named these functions? lol
+  camera_->set_value(camera_calib);
 
-  std::unordered_map<size_t, std::shared_ptr<CamBase>> cams{{cam_id_, camera_}};
+  tracker_index_ = DeclareAbstractState(Value<std::shared_ptr<TrackKLT>>(nullptr));
+  ids_to_delete_index_ = DeclareAbstractState(Value<std::list<size_t>>());
+  prev_timestamp_index_ = DeclareAbstractState(Value<uint64_t>(0));
+  current_landmarks_index_ = DeclareAbstractState(Value<lcmt_landmark_array>());
 
-  // initialize tracker
-  tracker_ = std::make_unique<TrackKLT>(
-      cams,
-      params.tracker_params.num_pts,
-      params.tracker_params.num_aruco,
-      params.tracker_params.use_stereo,
-      params.tracker_params.histogram,
-      params.tracker_params.fast_threshold,
-      params.tracker_params.grid_x,
-      params.tracker_params.grid_y,
-      params.tracker_params.min_px_dist
-  );
+  DeclareStateOutputPort(
+      drake::systems::kUseDefaultName, current_landmarks_index_);
+
+  input_port_image_pair_ = DeclareAbstractInputPort(
+      "image pairs", Value<std::shared_ptr<ImagePair>>(nullptr)).get_index();
+
+  DeclareForcedUnrestrictedUpdateEvent(&FeatureTracker::UnrestrictedUpdate);
 
   // initialize mask
   mask_ = cv::Mat::zeros(
       static_cast<int>(params.intrinsics.at("height")),
       static_cast<int>(params.intrinsics.at("width")), CV_8UC1);
 
-  // setup ros publishers and subscribers
-  color_img_sub_.subscribe(node_handle, params.rgb_topic, kImgQueueSize);
-  depth_img_sub_.subscribe(node_handle, params.depth_topic, kImgQueueSize);
-  img_pair_sub_.connectInput(color_img_sub_, depth_img_sub_);
-  img_pair_sub_.registerCallback(&FeatureTrackingNode::ImagePairCallback, this);
+}
 
+void FeatureTracker::SetDefaultState(
+    const Context<double> &context, State<double> *state) const {
+  std::unordered_map<size_t, std::shared_ptr<CamBase>> cams{{cam_id_, camera_}};
+
+  auto& tracker = state->get_mutable_abstract_state<
+      std::shared_ptr<TrackKLT>>(tracker_index_);
+
+  tracker = std::make_unique<TrackKLT>(
+      cams,
+      params_.tracker_params.num_pts,
+      params_.tracker_params.num_aruco,
+      params_.tracker_params.use_stereo,
+      params_.tracker_params.histogram,
+      params_.tracker_params.fast_threshold,
+      params_.tracker_params.grid_x,
+      params_.tracker_params.grid_y,
+      params_.tracker_params.min_px_dist
+  );
+
+}
+
+drake::systems::EventStatus FeatureTracker::UnrestrictedUpdate(
+    const drake::systems::Context<double> &context, drake::systems::State<double>* state) const {
+
+  auto& tracker = state->get_mutable_abstract_state<std::shared_ptr<TrackKLT>>(tracker_index_);
+  auto& ids_to_delete = state->get_mutable_abstract_state<std::list<size_t>>(ids_to_delete_index_);
+  auto& prev_timestamp = state->get_mutable_abstract_state<uint64_t>(prev_timestamp_index_);
+  auto& landmarks = state->get_mutable_abstract_state<lcmt_landmark_array>(current_landmarks_index_);
+
+  auto images = EvalAbstractInput(context, input_port_image_pair_)->get_value<std::shared_ptr<ImagePair>>();
+
+  if (images != nullptr and images->utime_ > prev_timestamp) {
+    landmarks.landmarks.clear();
+    ProcessImagePair(*images, *tracker, ids_to_delete, landmarks);
+    prev_timestamp = images->utime_;
+    return drake::systems::EventStatus::Succeeded();
+  }
+  return drake::systems::EventStatus::DidNothing();
 }
 
 // Reference:
 // https://github.com/IntelRealSense/librealsense/blob/4673a37d981164af8eeb8e296e430fc1427e008d/src/rs.cpp#L3576
-Eigen::Vector3d FeatureTrackingNode::DeprojectLatest3d(
+Eigen::Vector3d FeatureTracker::DeprojectLatest3d(
   const ov_core::Feature &feature, const cv::Mat& depth) const {
   const Eigen::VectorXf& uv = feature.uvs.at(cam_id_).back();
 
@@ -115,53 +145,44 @@ Eigen::Vector3d FeatureTrackingNode::DeprojectLatest3d(
   return params_.sensor_orientation * xyz + params_.sensor_translation;
 }
 
-void FeatureTrackingNode::ImagePairCallback(
-    const sensor_msgs::ImageConstPtr& color,
-    const sensor_msgs::ImageConstPtr& depth) {
+void FeatureTracker::ProcessImagePair(
+    const ImagePair& images, TrackKLT& tracker,
+    std::list<size_t>& ids_to_delete, lcmt_landmark_array& landmarks) const {
 
-  cv_bridge::CvImageConstPtr img_ptr = cv_bridge::toCvCopy(
-      color, sensor_msgs::image_encodings::RGB8);
-
-  cv::Mat frame = img_ptr->image;
-  cv::cvtColor(frame, frame, cv::COLOR_RGB2GRAY);
-
-  cv_bridge::CvImageConstPtr depth_ptr = cv_bridge::toCvShare(depth);
-
-  double timestamp = img_ptr->header.stamp.toSec();
+  double timestamp = images.utime_ / 1e6;
 
   // feed the rgb image to the tracker
   CameraData data;
   data.timestamp = timestamp;
   data.sensor_ids.push_back(cam_id_);
-  data.images.push_back(frame);
+  data.images.push_back(images.gray_);
   data.masks.push_back(mask_);
-  tracker_->feed_new_camera(data);
+  tracker.feed_new_camera(data);
 
   // maybe display the tracking history
   if (params_.tracker_params.display) {
     cv::Mat img_active;
-    tracker_->display_active(img_active, 255, 0, 0, 0, 0, 255);
+    tracker.display_active(img_active, 255, 0, 0, 0, 0, 255);
     cv::imshow("Active Tracks", img_active);
     cv::waitKey(10);
   }
 
   // Delete lost features
-  std::shared_ptr<FeatureDatabase> features = tracker_->get_feature_database();
+  std::shared_ptr<FeatureDatabase> features = tracker.get_feature_database();
   std::vector<std::shared_ptr<Feature>> lost =
       features->features_not_containing_newer(timestamp);
 
   for (auto& feat : lost) {
     feat->to_delete = true;
-    ids_to_delete_.push_back(feat->featid);
+    ids_to_delete.push_back(feat->featid);
   }
 
   // Delete expired features
   features->cleanup();
 
   // Get 3d coords of valid features
-  lcmt_landmark_array landmarks{};
   for (const auto& feat: features->features_containing(timestamp)) {
-    Vector3d xyz = DeprojectLatest3d(*feat, depth_ptr->image);
+    Vector3d xyz = DeprojectLatest3d(*feat, images.depth_);
     lcmt_landmark landmark;
     if (not xyz.hasNaN()) {
       landmark.id = feat->featid;
@@ -169,24 +190,24 @@ void FeatureTrackingNode::ImagePairCallback(
       landmarks.landmarks.push_back(landmark);
     } else {
       feat->to_delete = true;
-      ids_to_delete_.push_back(feat->featid);
+      ids_to_delete.push_back(feat->featid);
     }
   }
   features->cleanup();
 
   // publish feature message
   landmarks.num_landmarks = landmarks.landmarks.size();
-  landmarks.num_expired = ids_to_delete_.size();
-  landmarks.utime = color->header.stamp.toNSec() / 1e3;
+  landmarks.num_expired = ids_to_delete.size();
+  landmarks.utime = images.utime_;
   landmarks.expired_landmark_ids.clear();
-  for (const auto & id : ids_to_delete_) {
+
+  for (const auto & id : ids_to_delete) {
     landmarks.expired_landmark_ids.push_back(id);
   }
-  lcm_.publish(params_.landmark_channel, &landmarks);
 
   // finally, cleanup the deletion list
-  while (ids_to_delete_.size() > queue_size_) {
-    ids_to_delete_.pop_front();
+  while (ids_to_delete.size() > queue_size_) {
+    ids_to_delete.pop_front();
   }
 }
 

@@ -32,14 +32,14 @@ cc_binary(
 
 
 cc_library(
-    name = "feature_tracking_node",
-    hdrs = ["feature_tracking_node.h"],
-    srcs = ["feature_tracking_node.cc"],
-    tags = ["manual"],
+    name = "feature_tracker",
+    hdrs = ["feature_tracker.h"],
+    srcs = ["feature_tracker.cc"],
     deps = [
         ":klt_tracking_params",
         ":ov_core",
         "//lcmtypes:lcmt_robot",
-        "@lcm"
+        "//systems/perception:image_pair",
+        "@drake//:drake_shared_library"
     ],
 )

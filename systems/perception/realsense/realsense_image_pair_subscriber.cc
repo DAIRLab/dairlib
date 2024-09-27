@@ -130,6 +130,15 @@ EventStatus RealsenseImagePairSubscriber::ProcessFrameAndStoreToAbstractState(
   cv::imshow("gray", image_pair.gray_);
   cv::waitKey(1);
 
+  // ms to us
+  uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  uint64_t frame_time = 1e3 * depth_frame.get_timestamp();
+
+  image_pair.utime_= std::max<uint64_t>(
+      0, static_cast<uint64_t>(context.get_time() * 1e6) - (now - frame_time)
+  );
+
   return EventStatus::Succeeded();
 }
 

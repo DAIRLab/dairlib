@@ -125,6 +125,7 @@ CassieStateEstimator::CassieStateEstimator(
     P.block<3, 3>(9, 9) = 0.0001 * MatrixXd::Identity(3, 3);  // gyro bias
     P.block<3, 3>(12, 12) = 0.01 * MatrixXd::Identity(3, 3);  // accel bias
     initial_state.setP(P);
+
     // initialize ekf input noise
     cov_w_ = 0.000289 * Eigen::MatrixXd::Identity(16, 16);
     inekf::NoiseParams noise_params;
@@ -133,6 +134,8 @@ CassieStateEstimator::CassieStateEstimator(
     noise_params.setGyroscopeBiasNoise(0.001);
     noise_params.setAccelerometerBiasNoise(0.001);
     noise_params.setContactNoise(0.05);
+    noise_params.setLandmarkNoise(Vector3d(0.025, 0.025, 0.075));
+
     // 2. estimated EKF state (imu frame)
     inekf::InEKF value(initial_state, noise_params);
     ekf_idx_ = DeclareAbstractState(*AbstractValue::Make<inekf::InEKF>(value));
@@ -642,8 +645,7 @@ EventStatus CassieStateEstimator::Update(
   }
 
   // Save the EKF state to history buffer for later use if needed
-  uint64_t stamp = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  uint64_t stamp = context.get_time() * 1e6;
   state_history_.put(stamp, ekf.getState());
 
   // Step 5 - Assign values to floating base state (pelvis)

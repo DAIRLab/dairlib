@@ -5,9 +5,11 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/perception/feature_tracking/feature_tracker.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 namespace perceptive_locomotion {
@@ -20,10 +22,11 @@ using Eigen::Vector3d;
 using perception::ElevationMappingSystem;
 using perception::RealsensePointCloudSubscriber;
 using perception::RealsenseImagePairSubscriber;
+using perception::FeatureTracker;
 using perception::elevation_mapping_params_io;
 using systems::RobotOutputReceiver;
 
-using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmPublisherSystem;
 using drake::lcmt_point_cloud;
 
 CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& params_yaml) {

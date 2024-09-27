@@ -22,6 +22,7 @@
 // drake
 #include "drake/systems/framework/leaf_system.h"
 
+
 namespace dairlib {
 namespace perception {
 
@@ -79,6 +80,10 @@ struct feature_tracking_node_params {
 
   explicit FeatureTracker(
       const feature_tracking_node_params& params);
+
+   explicit FeatureTracker(const std::string& params_file) :
+   FeatureTracker(
+       drake::yaml::LoadYamlFile<feature_tracking_node_params>(params_file)){};
 
   void SetMask(const cv::Mat& mask) {
     mask_ = mask;

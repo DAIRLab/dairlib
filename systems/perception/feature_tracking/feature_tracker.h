@@ -21,7 +21,6 @@
 
 // drake
 #include "drake/systems/framework/leaf_system.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 
 namespace dairlib {
 namespace perception {

@@ -575,7 +575,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
   constraints_.clear();
   if(x0[2] < options_.ee_z_state_min){
-    std::cout<<"CAUTION: Initial state is below the min z height. C3 plan will have the z go up suddenly in the first step of the plan."<<std::endl;
+    std::cout<<x0.segment(0,3).transpose()<<std::endl;
+    std::cout<<"CAUTION: Initial state (curr or sample) is below the min z height. C3 plan will have the z go up suddenly in the first step of the plan."<<std::endl;
   }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 

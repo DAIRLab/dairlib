@@ -19,8 +19,8 @@ from pydrake.common.value import AbstractValue
 
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
-from pydairlib.perceptive_locomotion.ros_diagrams import (
-    CassieElevationMappingRosDiagram,
+from pydairlib.perceptive_locomotion.diagrams import (
+    CassieRealSenseDriverDiagram,
 )
 
 from pydairlib.perceptive_locomotion.diagrams import (
@@ -63,10 +63,7 @@ def main():
     signal.signal(signal.SIGINT, stop)
     builder = DiagramBuilder()
 
-    elevation_mapping = CassieElevationMappingRosDiagram(
-        elevation_mapping_params,
-        points_topic
-    )
+    elevation_mapping = CassieRealSenseDriverDiagram(elevation_mapping_params)
     plant = elevation_mapping.plant()
 
     map_converter = ElevationMappingConverter(
@@ -172,11 +169,13 @@ def main():
         is_forced_publish=True
     )
     robot_state = driven_loop.WaitForFirstState(plant)
+
     elevation_mapping.InitializeElevationMap(
         robot_state,
         driven_loop.get_diagram_mutable_context()
     )
 
+    elevation_mapping.start_rs()
     driven_loop.Simulate()
 
 

@@ -62,7 +62,7 @@ void FeatureTracker::SetDefaultState(
   auto& tracker = state->get_mutable_abstract_state<
       std::shared_ptr<TrackKLT>>(tracker_index_);
 
-  tracker = std::make_unique<TrackKLT>(
+  tracker = std::make_shared<TrackKLT>(
       cams,
       params_.tracker_params.num_pts,
       params_.tracker_params.num_aruco,
@@ -104,7 +104,8 @@ Eigen::Vector3d FeatureTracker::DeprojectLatest3d(
   // Extracting depth from depth map
   int u = static_cast<int>(uv(0));
   int v = static_cast<int>(uv(1));
-  ushort z_int = depth.at<ushort>(u, v);
+  ushort z_int = depth.at<ushort>(v, u);
+  
   float z = static_cast<float>(z_int) * params_.intrinsics.at("depth_scale");
 
   if (z > params_.max_depth or z < params_.min_depth) {

@@ -1,9 +1,9 @@
-center_x: 650.075439453125
-center_y: 365.653106689453
-focal_x: 643.305114746094
-focal_y: 642.657897949219
-height: 720
-width: 1280
+center_x: 326.045257568359
+center_y: 243.391860961914
+focal_x: 385.773315429688
+focal_y: 385.385131835938
+height: 480
+width: 640
 depth_scale: 0.001
 
 # distortion coeffs
@@ -14,13 +14,13 @@ dc3: 0.000908877234905958
 dc4: -0.0207199472934008
 
 #  Pulled from Realsense Driver (rs-enumerate-devices -c)
-#  Intrinsic of "Color" / 1280x720 / {YUYV/RGB8/BGR8/RGBA8/BGRA8/Y8/Y16}
-#  Width:      	1280
-#  Height:     	720
-#  PPX:        	650.075439453125
-#  PPY:        	365.653106689453
-#  Fx:         	643.305114746094
-#  Fy:         	642.657897949219
-#  Distortion: 	Inverse Brown Conrady
-#  Coeffs:     	-0.0555831044912338  	0.0652384832501411  	-8.71340546382271e-07  	0.000908877234905958  	-0.0207199472934008
-#  FOV (deg):  	89.7 x 58.51
+# Intrinsic of "Color" / 640x480 / {YUYV/RGB8/BGR8/RGBA8/BGRA8/Y8}
+#   Width:      	640
+#   Height:     	480
+#   PPX:        	326.045257568359
+#   PPY:        	243.391860961914
+#   Fx:         	385.773315429688
+#   Fy:         	385.385131835938
+#   Distortion: 	Inverse Brown Conrady
+#   Coeffs:     	-0.0555831044912338  	0.0652384832501411  	-8.71340546382271e-07  	0.000908877234905958  	-0.0207199472934008  
+#   FOV (deg):  	79.34 x 63.82

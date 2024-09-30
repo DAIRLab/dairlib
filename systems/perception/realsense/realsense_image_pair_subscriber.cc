@@ -126,10 +126,6 @@ EventStatus RealsenseImagePairSubscriber::ProcessFrameAndStoreToAbstractState(
   cv::cvtColor(color_image, image_pair.gray_, cv::COLOR_RGB2GRAY);
   image_pair.depth_ = cv::Mat(height, width, CV_16UC1, (void*)depth_frame.get_data());
 
-  cv::imshow("depth", image_pair.depth_);
-  cv::imshow("gray", image_pair.gray_);
-  cv::waitKey(1);
-
   // ms to us
   uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::high_resolution_clock::now().time_since_epoch()).count();

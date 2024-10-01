@@ -1,5 +1,10 @@
 # Trajectory generation parameters
 trajectory_type: 4       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path, 4 to use a fixed goal but with a lookahead
+use_changing_final_goal_position: false
+use_changing_final_goal_orientation: false
+final_goal_position_tolerance: [0.01, 0.01, 0.01]  # 1cm error in each direction
+final_goal_orientation_tolerance: [0.01, 0.01, 0.01, 0.01]  # 0.01 rad is about 0.57 degrees #THIS IS CURRENTLY UNUSED
+final_goal_time_tolerance: 45 # in seconds
 # Adaptive circular path parameters
 traj_radius: 0.2
 x_c: 0.35
@@ -9,12 +14,12 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]
 
 
-#### C3 sanity checking good starting configurations ####
+# #### C3 sanity checking good starting configurations ####
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
-# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
+fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
 # fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
@@ -32,8 +37,14 @@ lead_angle: 40
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]  # -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
 #^^# C3 sanity checking good starting configurations #^^#
 
-fixed_target_position: [0.4, 0.15, 0.031971466]    # 8) 
-fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]  # -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 8) 
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]  # -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 9) Configuration used to sanity check target angular velocities
+# fixed_target_orientation: [1, 0, 0, 0]  
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 10) topple from the back to achive same goal pose as scenario 2.
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 #^^# C3 sanity checking good starting configurations #^^#
 
 
@@ -54,8 +65,8 @@ end_point_y: -0.35            # y coordinate of end point of straight line.
 ####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
 lookahead_step_size: 0.18      # lookahead size for adaptive straight line and fixed goal with lookahead.
-lookahead_angle: 0.262 # 15 deg  #0.785 # 45 deg       # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
-angle_err_to_vel_factor: 4    # factor for converting an angular error to angular velocity command.
+lookahead_angle: 10 # 15 deg  #0.785 # 45 deg       # lookahead angle for adaptive straight line and fixed goal with lookahead -- 0.785 is 45 degrees.
+angle_err_to_vel_factor: 5    # factor for converting an angular error to angular velocity command.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters

@@ -69,6 +69,9 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "//solvers:c3",
+        "//examples/jacktoy:franka_c3_controller_params",
+        "//systems/controllers:sampling_params",
         "@lcm",
     ],
 )

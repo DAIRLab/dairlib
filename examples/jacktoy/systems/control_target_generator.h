@@ -44,7 +44,8 @@ class TargetGenerator
     return this->get_output_port(object_final_target_port_);
   }
 
-  void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
+  void SetRemoteControlParameters(const int& trajectory_type, const bool& use_changing_final_goal_position,
+    const bool& use_changing_final_goal_orientation, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position,
      const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
     const double& end_point_x, const double& end_point_y, const double& lookahead_step_size,
@@ -72,6 +73,8 @@ class TargetGenerator
   drake::systems::OutputPortIndex object_final_target_port_;
 
   int trajectory_type_;
+  bool use_changing_final_goal_position_;
+  bool use_changing_final_goal_orientation_;
   double traj_radius_;
   double x_c_;
   double y_c_;

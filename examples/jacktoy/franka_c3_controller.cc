@@ -325,7 +325,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       plant_jack);  // This system generates the target for the end effector and
                     // the object.
   control_target->SetRemoteControlParameters(
-      trajectory_params.trajectory_type, trajectory_params.traj_radius,
+      trajectory_params.trajectory_type, trajectory_params.use_changing_final_goal_position,
+      trajectory_params.use_changing_final_goal_orientation, trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
       trajectory_params.lead_angle, trajectory_params.fixed_target_position,
       trajectory_params.fixed_target_orientation, trajectory_params.step_size,

@@ -6,13 +6,15 @@ namespace dairlib {
 template <typename T, size_t BufSize>
 class TimeSeriesBuffer {
  public:
-  // need this line toavoid runtime warnings when storing TimeSeriesBuffer in
-  // a Drake Context : https://github.com/RobotLocomotion/drake/blob/73dbe00760616434cd013854ade0d638498f7da0/common/test/value_test.cc#L428
+  // need this line to avoid runtime warnings when storing TimeSeriesBuffer in
+  // a drake Context
   using NonTypeTemplateParameter = std::integral_constant<size_t, BufSize>;
 
   explicit TimeSeriesBuffer() = default;
 
   void put(uint64_t utime, const T& state) {
+    assert(timestamps_[head] < utime);
+
     // silently reject out of order entries
     if (timestamps_[head_] >= utime) {
       return;

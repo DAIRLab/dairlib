@@ -1,0 +1,27 @@
+# -*- python -*-
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "plane_seg",
+    srcs = [
+        "plane_seg/src/IncrementalPlaneEstimator.cpp",
+        "plane_seg/src/BlockFitter.cpp",
+        "plane_seg/src/PlaneFitter.cpp",
+        "plane_seg/src/PlaneSegmenter.cpp",
+        "plane_seg/src/RobustNormalEstimator.cpp",
+        "plane_seg/src/RectangleFitter.cpp",
+
+    ],
+    hdrs = glob(["plane_seg/include/plane_seg/*.hpp"]),
+    strip_include_prefix = "plane_seg/include/",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@grid_map//grid_map_core",
+        "@pcl//:common",
+        "@pcl//:filters",
+        "@pcl//:search",
+        "@pcl//:surface"
+    ],
+    local_defines=["HAVE_QHULL"]
+)

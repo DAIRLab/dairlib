@@ -107,7 +107,6 @@ pcl_repositories(
     excludes = [
         "gtest",
         "eigen",
-        "libpng",
         "zlib",
     ],
 )

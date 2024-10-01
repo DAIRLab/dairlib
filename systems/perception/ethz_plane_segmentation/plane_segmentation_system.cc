@@ -45,7 +45,6 @@ void PlaneSegmentationSystem::CalcOutput(
   grid_map.convertToDefaultStartIndex();
 
   preprocessor_->preprocess(grid_map, "elevation");
-
   plane_extractor_->runExtraction(grid_map, "elevation");
 
   cv::Mat binary_image;

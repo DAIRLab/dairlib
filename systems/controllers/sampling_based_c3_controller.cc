@@ -1,6 +1,7 @@
 #include "sampling_based_c3_controller.h"
 #include <iostream>
 #include <thread>
+#include <ctime>
 
 #include <omp.h>
 #include <utility>
@@ -315,6 +316,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
+  // Printing the time at the beginning of the plan computation.
+  std::cout << "Compute plan begins: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(start.time_since_epoch()).count() << std::endl;
 
   // Evaluate input ports.
   const auto& radio_out =
@@ -731,6 +735,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
+  // Printing the time at the end of the loop.
+  auto now_end = std::chrono::high_resolution_clock::now();
+  std::cout << "Compute plan ends: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(now_end.time_since_epoch()).count()<< std::endl;
   
   return drake::systems::EventStatus::Succeeded();
 }

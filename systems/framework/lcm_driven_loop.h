@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <chrono>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -242,9 +243,19 @@ class LcmDrivenLoop {
           time =
               name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
           last_input_msg_time_ = time;
+          // print current cpu time
+          // get current time point
+          auto now = std::chrono::high_resolution_clock::now();
+          std::cout << "Time of receipt of robot state: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
         } else {
           // use the robot state to advance
           time = state_sub_->message().utime * 1e-6;
+          // print current cpu time
+          // get current time point
+          auto now = std::chrono::high_resolution_clock::now();
+          std::cout << "Time of receipt of robot state: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
           state_sub_->clear();
         }
 
@@ -268,6 +279,11 @@ class LcmDrivenLoop {
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
+          // print current cpu time
+          // get current time point
+          auto now = std::chrono::high_resolution_clock::now();
+          std::cout << "Time of publish: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
         }
 
         // Clear messages in the current input channel

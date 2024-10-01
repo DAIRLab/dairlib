@@ -996,7 +996,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   if(!is_doing_c3_){
     if (filtered_solve_time_ < c3_options_.planning_dt && 
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
-      x_pred_curr_plan_ = knots.col(1);
+      x_pred_curr_plan_ = knots.col(2);
     } else
     if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
       int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;

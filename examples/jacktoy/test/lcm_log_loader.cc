@@ -125,16 +125,29 @@ int DoMain(int argc,  char* argv[]) {
   Eigen::MatrixXf delta_sol = Eigen::MatrixXf::Zero(38, c3_options.N);
     
   // Read the log until the first C3_ACTUAL message after the start time.
-  std::unordered_map<int64_t, int64_t> utime_to_event_map;
+  std::unordered_map<int64_t, int64_t> utime_to_event_map_franka_state;
+  std::unordered_map<int64_t, int64_t> utime_to_event_map_object_state;
+
+  // Loop through events in log file.
   while ((event = log_file.readNextEvent()) != nullptr) {
+    // offset the time stamp by the initial time for better readability.
+    int64_t adjusted_timestamp = event->timestamp - u_init_time;
+
     if(event->channel == "FRANKA_STATE_SIMULATION"){
       // grab event time stamp and message u_time
       if(event->timestamp >= time_into_log_in_microsecs + u_init_time){
-        // dairlib::lcmt_object_state message;
         dairlib::lcmt_robot_output message;
          if (message.decode(event->data, 0, event->datalen) > 0){
-            // Offset the time stamp by the initial time for better readability.
-            utime_to_event_map[message.utime] = event->timestamp - u_init_time; 
+            utime_to_event_map_franka_state[message.utime] = adjusted_timestamp; 
+         }
+      }
+    }
+    else if(event->channel == "OBJECT_STATE_SIMULATION"){
+      // grab event time stamp and message u_time
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time){
+        dairlib::lcmt_object_state message;
+         if (message.decode(event->data, 0, event->datalen) > 0){
+            utime_to_event_map_object_state[message.utime] = adjusted_timestamp; 
          }
       }
     }
@@ -143,16 +156,23 @@ int DoMain(int argc,  char* argv[]) {
       if(event->timestamp >= time_into_log_in_microsecs + u_init_time){
         dairlib::lcmt_timestamped_saved_traj message;
          if (message.decode(event->data, 0, event->datalen) > 0){
-            if(utime_to_event_map.find(message.utime) != utime_to_event_map.end()){
-              // Offset the time stamps by the initial time for better readability.
+            if(utime_to_event_map_franka_state.find(message.utime) != utime_to_event_map_franka_state.end()){
               std::cout << "-----------------------------" << std::endl;
-              std::cout << "Received FRANKA_STATE_SIMULATION message   at: "<< utime_to_event_map[message.utime]*1e-6 << " with u_time = "<<message.utime<<std::endl;
-              std::cout << "Received TRACKING_TRAJECTORY_ACTOR message at: " << (event->timestamp - u_init_time)*1e-6 << " with u_time = "<<message.utime<< std::endl;
-              std::cout << "Timing difference in seconds is "<< (((event->timestamp- u_init_time)*1e-6) - utime_to_event_map[message.utime]*1e-6)<<std::endl;
+              std::cout << "Received FRANKA_STATE_SIMULATION message   at: "<< utime_to_event_map_franka_state[message.utime]*1e-6 << " with u_time = "<<message.utime<<std::endl;
+              std::cout << "Received TRACKING_TRAJECTORY_ACTOR message at: " << adjusted_timestamp*1e-6 << " with u_time = "<<message.utime<< std::endl;
+              std::cout << "Timing difference in seconds is "<< (adjusted_timestamp - utime_to_event_map_franka_state[message.utime])*1e-6<<std::endl;
               std::cout << "-----------------------------" << std::endl;
             }
-            // std::cout << "Received TRACKING_TRAJECTORY_ACTOR message at: " << event->timestamp << " with u_time = "<<message.utime<< std::endl;
-            // u_times_to_match.push_back(message.utime);
+            else if(utime_to_event_map_object_state.find(message.utime) != utime_to_event_map_object_state.end()){
+              std::cout << "-----------------------------" << std::endl;
+              std::cout << "Received OBJECT_STATE_SIMULATION message   at: "<< utime_to_event_map_object_state[message.utime]*1e-6 << " with u_time = "<<message.utime<<std::endl;
+              std::cout << "Received TRACKING_TRAJECTORY_ACTOR message at: " << adjusted_timestamp*1e-6 << " with u_time = "<<message.utime<< std::endl;
+              std::cout << "Timing difference in seconds is "<< (adjusted_timestamp - utime_to_event_map_object_state[message.utime])*1e-6<<std::endl;
+              std::cout << "-----------------------------" << std::endl;
+            }
+            else{
+              std::cout << "\tReceived TRACKING_TRAJECTORY_ACTOR message at: " << adjusted_timestamp*1e-6 << " with u_time = "<<message.utime<< std::endl;
+            }
          }
       }
     }

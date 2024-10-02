@@ -11,7 +11,6 @@ class PlaneSegSystem : public drake::systems::LeafSystem<double> {
  public:
   explicit PlaneSegSystem(std::string layer);
 
-
  private:
 
   std::string layer_;
@@ -20,7 +19,7 @@ class PlaneSegSystem : public drake::systems::LeafSystem<double> {
                   geometry::ConvexPolygonSet* output) const;
 
   planeseg::BlockFitter::Result ProcessDataAsCloud(
-      const std::string& cloudFrame, planeseg::LabeledCloud::Ptr& inCloud,
+      planeseg::LabeledCloud::Ptr& inCloud,
       Eigen::Vector3f origin, Eigen::Vector3f lookDir) const;
 
 };

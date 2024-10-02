@@ -15,8 +15,8 @@ PlaneSegSystem::PlaneSegSystem(std::string layer) : layer_(layer) {
 }
 
 planeseg::BlockFitter::Result PlaneSegSystem::ProcessDataAsCloud(
-    const std::string &cloudFrame, planeseg::LabeledCloud::Ptr &inCloud,
-    Vector3f origin, Vector3f lookDir) const {
+    planeseg::LabeledCloud::Ptr &inCloud, Vector3f origin,
+    Vector3f lookDir) const {
 
   planeseg::BlockFitter fitter;
   fitter.setSensorPose(origin, lookDir);
@@ -41,6 +41,9 @@ void PlaneSegSystem::CalcOutput(
 
   AssignFields<pcl::PointXYZL>(grid_map, layer_, inCloud);
 
+  Vector3f origin = Vector3f::Zero();
+  origin.head<2>() = grid_map.getPosition().cast<float>();
+  ProcessDataAsCloud(inCloud, origin, Vector3f::UnitX());
 
 }
 

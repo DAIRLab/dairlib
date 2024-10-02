@@ -14,6 +14,8 @@ PlaneSegSystem::PlaneSegSystem(std::string layer) : layer_(layer) {
   DeclareAbstractOutputPort("polygons", &PlaneSegSystem::CalcOutput);
 }
 
+// Note - the comments in this function are directly copied from the plane_seg
+// repository
 planeseg::BlockFitter::Result PlaneSegSystem::ProcessDataAsCloud(
     planeseg::LabeledCloud::Ptr &inCloud, Vector3f origin,
     Vector3f lookDir) const {
@@ -43,8 +45,23 @@ void PlaneSegSystem::CalcOutput(
 
   Vector3f origin = Vector3f::Zero();
   origin.head<2>() = grid_map.getPosition().cast<float>();
-  ProcessDataAsCloud(inCloud, origin, Vector3f::UnitX());
+  planeseg::BlockFitter::Result res =
+      ProcessDataAsCloud(inCloud, origin, Vector3f::UnitX());
 
+  output->clear();
+
+  for (const auto& block: res.mBlocks) {
+    geometry::ConvexPolygon poly;
+    poly.SetPlane(block.mPose.linear().col(2).cast<double>(),
+                  block.mPose.translation().cast<double>());
+
+    for (size_t i = 0; i <= block.mHull.size(); ++i) {
+      size_t j = (i+1) % block.mHull.size();
+      poly.AddVertices(block.mHull.at(i).cast<double>(),
+                       block.mHull.at(j).cast<double>());
+    }
+    output->append(poly);
+  }
 }
 
 }

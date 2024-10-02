@@ -1,6 +1,4 @@
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
-add_lint_tests()
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "plane_seg_system",

@@ -53,8 +53,6 @@ class TerrainSegmentationSystem(LeafSystem):
                     [
                         "elevation",
                         "elevation_inpainted",
-                        "raw_safety_score",
-                        "safety_score",
                         "segmentation",
                         "interpolated",
                         "segmented_elevation"
@@ -167,14 +165,11 @@ class TerrainSegmentationSystem(LeafSystem):
             normalize=True)
 
         segmented_map['interpolated'][:] = smoothed
-        segmented_map["raw_safety_score"][:] = raw_safety_score
-        segmented_map['safety_score'][:] = self.cleanup_and_add_hysteresis(
+        final_safety_score = self.cleanup_and_add_hysteresis(
             raw_safety_score, prev_segmentation, elevation_map.getResolution()
         )
 
-        safe = (
-            segmented_map['safety_score'] > self.safety_threshold
-        ).astype(float)
+        safe = (final_safety_score > self.safety_threshold).astype(float)
 
         # clean up small holes in the safe regions
         safe = clopen(safe)

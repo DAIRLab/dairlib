@@ -7,5 +7,5 @@ grid_y: 4
 min_px_dist: 20
 do_downsizing: false
 use_stereo: false
-display: true
+display: false
 histogram_method: 'CLAHE' # Valid values are NONE, CLAHE, or HISTOGRAM

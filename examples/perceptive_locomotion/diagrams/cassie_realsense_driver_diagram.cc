@@ -29,6 +29,7 @@ using systems::RobotOutputReceiver;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::lcmt_point_cloud;
 
+
 CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& params_yaml) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
@@ -56,10 +57,10 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
 
   point_cloud_subscriber_ = builder.AddSystem<
       RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>>(&realsense_);
-  image_pair_subscriber_ =
-      builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
-
-  auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
+  // image_pair_subscriber_ =
+  //     builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
+  //
+  // auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
 
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
@@ -84,7 +85,7 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       cov_source->get_output_port(),
       elevation_mapping_system_->get_input_port_covariance()
   );
-  builder.Connect(*image_pair_subscriber_, *feature_tracker);
+  // builder.Connect(*image_pair_subscriber_, *feature_tracker);
 
   input_port_robot_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcmt_robot_output"
@@ -100,10 +101,10 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       elevation_mapping_system_->get_output_port_grid_map(),
       "elevation_grid_map"
   );
-  output_port_landmarks_ = builder.ExportOutput(
-      feature_tracker->get_output_port(),
-      "lcmt_landmark_array"
-  );
+  // output_port_landmarks_ = builder.ExportOutput(
+  //     feature_tracker->get_output_port(),
+  //     "lcmt_landmark_array"
+  // );
 
   builder.BuildInto(this);
   this->set_name("elevation_mapping_ros_diagram");

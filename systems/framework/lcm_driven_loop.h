@@ -60,6 +60,9 @@ namespace systems {
  * for multi-threaded locking; it should only be used in cases where the
  * governing DrakeLcmInterface::HandleSubscriptions is called from the same
  * thread that owns all copies of this object.
+ *
+ * This is a duplicate of drake::lcm::Subscriber, but makes the subscription_
+ * object public, which we need to change the queue size.
  */
 template <typename Message>
 class Subscriber final {

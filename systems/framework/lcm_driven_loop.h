@@ -136,6 +136,9 @@ class LcmDrivenLoop {
   ///     incoming lcm message
   ///     @param input_channel The name of the input channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
+  ///     @param queue_capacity The queue size for the LCM subscriber on the input channels.
+  ///            Defaults to 1, but should be set higher if stepping the LCMDrivenLoop will take
+  ///            longer than the driving channel.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::System<double>* lcm_parser,
@@ -154,6 +157,9 @@ class LcmDrivenLoop {
   ///     @param active_channel The name of the initial active input channel
   ///     @param switch_channel The name of the switch channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
+  ///     @param queue_capacity The queue size for the LCM subscriber on the input channels.
+  ///            Defaults to 1, but should be set higher if stepping the LCMDrivenLoop will take
+  ///            longer than the driving channel.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::System<double>* lcm_parser,

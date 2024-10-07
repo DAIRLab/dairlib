@@ -136,14 +136,9 @@ class LcmDrivenLoop {
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
-<<<<<<< HEAD
                 const drake::systems::LeafSystem<double>* lcm_parser,
-                const std::string& input_channel, bool is_forced_publish)
-=======
-                const drake::systems::System<double>* lcm_parser,
                 const std::string& input_channel, bool is_forced_publish,
                 int queue_capacity=1)
->>>>>>> 0423e9d80 (update lcm driven loop to use most recent message)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish, queue_capacity){};
@@ -321,19 +316,17 @@ class LcmDrivenLoop {
           time =
               name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
           last_input_msg_time_ = time;
-          // print current cpu time
-          // get current time point
-          auto now = std::chrono::high_resolution_clock::now();
-          std::cout << "Time of receipt of robot state: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
+          // print current cpu time for timing analysis
+          // auto now = std::chrono::high_resolution_clock::now();
+          // std::cout << "Time of receipt of robot state: "
+          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<<" at utime: "<< time << std::endl;
         } else {
           // use the robot state to advance
           time = state_sub_->message().utime * 1e-6;
-          // print current cpu time
-          // get current time point
-          auto now = std::chrono::high_resolution_clock::now();
-          std::cout << "Time of receipt of robot state: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
+          // print current cpu time for timing analysis
+          // auto now = std::chrono::high_resolution_clock::now();
+          // std::cout << "Time of receipt of robot state: "
+          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<<" at utime: "<< time << std::endl;
           state_sub_->clear();
         }
 
@@ -357,11 +350,10 @@ class LcmDrivenLoop {
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
-          // print current cpu time
-          // get current time point
-          auto now = std::chrono::high_resolution_clock::now();
-          std::cout << "Time of publish: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
+          // print current cpu time for timing analysis
+          // auto now = std::chrono::high_resolution_clock::now();
+          // std::cout << "Time of publish: "
+          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
         }
 
         // Clear messages in the current input channel

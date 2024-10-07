@@ -71,7 +71,7 @@ DEFINE_string(lcm_channels,
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;
@@ -673,9 +673,10 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy/franka_c3_plant");
 
   // Run lcm-driven simulation
+  int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+      lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   DrawAndSaveDiagramGraph(*loop.get_diagram(), "examples/jacktoy/loop");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());

@@ -31,7 +31,7 @@ using drake::lcmt_point_cloud;
 
 
 CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& params_yaml) {
-
+  ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel::ALL);
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   const std::string feat_params = "examples/perceptive_locomotion/feature_tracking_node_params.yaml";
 
@@ -63,7 +63,7 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
   auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
 
   Eigen::MatrixXd mask = feature_tracker->get_empty_mask();
-  for (size_t i = 0; i < mask.rows() / 3; ++i) {
+  for (size_t i = 0; i < mask.rows() / 4; ++i) {
     mask.row(i).setOnes();
   }
   feature_tracker->SetMask(mask);
@@ -90,7 +90,7 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       cov_source->get_output_port(),
       elevation_mapping_system_->get_input_port_covariance()
   );
-  // builder.Connect(*image_pair_subscriber_, *feature_tracker);
+  builder.Connect(*image_pair_subscriber_, *feature_tracker);
 
   input_port_robot_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcmt_robot_output"

@@ -123,8 +123,8 @@ Eigen::Vector3d FeatureTracker::DeprojectLatest3d(
   float c4 = params_.intrinsics.at("dc4");
 
   // Reprojecting into 3D space
-  float x = (uv(0) - cx) / fx;
-  float y = (uv(1) - cy) / fy;
+  float x = (uv(1) - cx) / fx;
+  float y = (uv(0) - cy) / fy;
 
   float xo = x;
   float yo = y;

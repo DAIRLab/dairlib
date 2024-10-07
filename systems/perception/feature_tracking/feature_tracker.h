@@ -124,6 +124,11 @@ struct feature_tracking_node_params {
   Eigen::Vector3d DeprojectLatest3d(
       const ov_core::Feature& feature, const cv::Mat& depth) const;
 
+ drake::systems::EventStatus Initialize(
+    const drake::systems::Context<double>& context, drake::systems::State<double>* state) const {
+  return drake::systems::EventStatus::Succeeded();
+}
+
   drake::systems::InputPortIndex input_port_image_pair_;
 
   drake::systems::AbstractStateIndex tracker_index_;

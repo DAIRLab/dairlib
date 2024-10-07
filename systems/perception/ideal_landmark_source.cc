@@ -28,7 +28,7 @@ IdealLandmarkSource::IdealLandmarkSource(
 void IdealLandmarkSource::CalcLandmarks(
     const Context<double> &context, lcmt_landmark_array *out) const {
 
-  int num_landmarks = 10;
+  int num_landmarks = 5;
 
   Matrix3Xd landmarks = Matrix3Xd::Zero(3, num_landmarks);
   for (int i = 0; i < num_landmarks; ++i) {
@@ -37,8 +37,7 @@ void IdealLandmarkSource::CalcLandmarks(
 
   out->num_landmarks = num_landmarks;
   out->parent_frame = landmark_frame_.name();
-  out->utime = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  out->utime = 1e6 * context.get_time();
   out->landmarks.clear();
 
   const VectorXd& x = EvalVectorInput(context, 0)->get_value();

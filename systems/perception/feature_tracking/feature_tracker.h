@@ -102,6 +102,11 @@ struct feature_tracking_node_params {
     mask_ = mat;
   };
 
+  Eigen::MatrixXd get_empty_mask() {
+    return Eigen::MatrixXd::Zero(
+        params_.intrinsics.at("height"), params_.intrinsics.at("width"));
+  }
+
  private:
 
   drake::systems::EventStatus

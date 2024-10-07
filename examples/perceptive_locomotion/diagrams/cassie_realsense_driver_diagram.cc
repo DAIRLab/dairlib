@@ -57,11 +57,16 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
 
   point_cloud_subscriber_ = builder.AddSystem<
       RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>>(&realsense_);
-   image_pair_subscriber_ =
-       builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
+  image_pair_subscriber_ =
+      builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
 
-   auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
+  auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
 
+  Eigen::MatrixXd mask = feature_tracker->get_empty_mask();
+  for (size_t i = 0; i < mask.rows() / 3; ++i) {
+    mask.row(i).setOnes();
+  }
+  feature_tracker->SetMask(mask);
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
   base_cov_dummy.resize(36,1);

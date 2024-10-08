@@ -317,7 +317,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = '128_joint1.zip' # x/logs2/rl_model_1728000_steps
+        model_path = '128_joint.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = linear_schedule(1e-4), max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.01, target_kl = 0.02, vf_coef=0.5,

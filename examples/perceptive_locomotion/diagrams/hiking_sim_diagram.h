@@ -13,7 +13,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HikingSimDiagram)
   HikingSimDiagram(const std::variant<
       std::string, multibody::SquareSteppingStoneList> &terrain,
-                   const std::string &camera_pose_yaml);
+                   const std::string &camera_pose_yaml, double terrain_friction =0.8);
 
   const drake::systems::InputPort<double> &get_input_port_actuation() const {
     return get_input_port(input_port_control_);

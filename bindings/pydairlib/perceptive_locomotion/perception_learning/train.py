@@ -317,7 +317,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = '128_joint.zip' # x/logs2/rl_model_1728000_steps
+        model_path = 'new5_log1.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = linear_schedule(1e-4), max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.01, target_kl = 0.02, vf_coef=0.5,
@@ -325,38 +325,38 @@ def _run_training(config, args):
         #                 batch_size=64, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.05, ent_coef=0.01, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
-                        n_steps=int(64), n_epochs=5,
-                        batch_size=64, seed=47, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(4e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
+                        clip_range = 0.05, ent_coef=0.025, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
+                        n_steps=int(128), n_epochs=5,
+                        batch_size=128, seed=212, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    # sim_params_eval.visualize = True
-    # sim_params_eval.meshcat = Meshcat()
+    sim_params_eval.visualize = True
+    sim_params_eval.meshcat = Meshcat()
     # sim_params_eval.visualize = False
     # sim_params_eval.meshcat = None
-    # eval_env = gym.make(env_name, sim_params = sim_params_eval,)
+    eval_env = gym.make(env_name, sim_params = sim_params_eval, evaluate=True)
 
-    # eval_env = DummyVecEnv([lambda: eval_env])
-    # eval_env = VecNormalize(venv=eval_env, norm_obs=False)
-    # eval_callback = EvalCallback(
-    #     eval_env,
-    #     best_model_save_path=log_dir+f'eval_logs/test',
-    #     log_path=log_dir+f'eval_logs/test',
-    #     eval_freq=eval_freq,
-    #     n_eval_episodes=3,
-    #     deterministic=True,
-    #     render=False)
+    eval_env = DummyVecEnv([lambda: eval_env])
+    eval_env = VecNormalize(venv=eval_env, norm_obs=False)
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=log_dir+f'eval_logs/test',
+        log_path=log_dir+f'eval_logs/test',
+        eval_freq=eval_freq,
+        n_eval_episodes=3,
+        deterministic=True,
+        render=False)
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=eval_freq*0.5,
+        save_freq=eval_freq*2,
         save_path="./logs/",
         name_prefix="rl_model",
     )
 
-    callback = CallbackList([checkpoint_callback,])
+    callback = CallbackList([checkpoint_callback,eval_callback])
 
     input("Start learning...")
 
@@ -380,12 +380,12 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 96
+        num_env = 84
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 10e6 if not args.test else 5000,
+        "total_timesteps": 50e6 if not args.test else 5000,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,

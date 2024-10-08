@@ -37,6 +37,7 @@ class DrakeGymEnv(gym.Env):
                                OutputPortIndex, str],
                  sim_params: CassieFootstepControllerEnvironmentOptions,
                  terrain: str,
+                 evaluate: bool = False,
                  action_port_id: Union[InputPort, InputPortIndex, str] = None,
                  observation_port_id: Union[OutputPortIndex, str] = None,
                  render_rgb_port_id: Union[OutputPortIndex, str] = None,
@@ -168,7 +169,7 @@ class DrakeGymEnv(gym.Env):
         self.sim_params = sim_params
         self.terrain = terrain
         self.hardware = hardware
-
+        self.evaluate = evaluate
         if self.simulator:
             self._setup()
 
@@ -292,7 +293,7 @@ class DrakeGymEnv(gym.Env):
         
         if seed is None:
             seed = 0
-        context = self.reset_handler(self.simulator, self.terrain, seed, self.generator)
+        context = self.reset_handler(self.simulator, self.terrain, self.evaluate, seed, self.generator)
 
         observation = self.observation_port.Eval(context).astype(np.float32)
         #print(f'reset observation: {observation.dtype}')

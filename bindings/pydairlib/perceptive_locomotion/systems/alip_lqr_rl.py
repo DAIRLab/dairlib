@@ -256,9 +256,8 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['action_ue']
         ).value().ravel()
-        # footstep_command[:2] = ud + ue[:2]
-        # footstep_command[:2] = ud - ue[:2]
-        # footstep.set_value(footstep_command)
+        scaling_factor = np.array([2, 2, 4])
+        u = u / scaling_factor
         footstep.set_value(u)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \

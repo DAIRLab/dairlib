@@ -83,12 +83,22 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    #model_path = '128_joint1.zip'
-    model_path = '1/rl_model_8064000_steps.zip'
+    #model_path = 'new5_log1.zip'
+    #model_path = 'ethan/rl_model_1050000_steps.zip'
+    model_path = 'logs/rl_model_5880000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
-    #model.save('128_joint_new')
+    #model.save('pbody')
+    #th.save(model.policy.state_dict(), 'atlas_new')
     obs, _ = env.reset()
+    # print("Parameter sizes:")
+    # total_params = 0
+    # for name, param in model.policy.named_parameters():
+    #     num_params = param.numel()
+    #     total_params += num_params
+    #     print(f"{name}: {num_params} parameters")
+
+    # print(f"Total number of parameters: {total_params}")
     input("Start..")
     total_reward = 0
     model.policy.eval()
@@ -97,7 +107,14 @@ def run_play(sim_params, model_path=None):
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
-        #print(action)
+        print(action)
+
+        # scaling_factor = np.array([2, 2, 4])
+        # scale_action = action / scaling_factor
+        #print(scale_action)
+        # if action[0] > 0.5:
+        #     print(action)
+        #print("==")
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
             episode_starts = terminated
@@ -110,7 +127,66 @@ def run_play(sim_params, model_path=None):
                 episode_starts = np.ones((1,), dtype=bool)
             obs, _ = env.reset()
             total_reward = 0
-            
+
+def run_eval(sim_params, num_env=3, model_path=None):
+    # sim_params.visualize = True
+    # sim_params.meshcat = Meshcat()
+    
+    env = make_vec_env(
+                    "DrakeCassie-v0",
+                    n_envs=num_env,
+                    seed=42,
+                    vec_env_cls=SubprocVecEnv,
+                    env_kwargs={
+                    'sim_params': sim_params,
+                    },
+                    )
+    # env = gym.make("DrakeCassie-v0",
+    #                 sim_params = sim_params,
+    #                 )
+    # rate = 1.0
+    # env.simulator.set_target_realtime_rate(rate)
+    max_steps = 3e4
+    
+    lstm=True
+    lstm_states = None
+    episode_starts = np.ones((num_env,), dtype=bool)
+
+    model_path = 'logs/rl_model_5720000_steps.zip'
+    
+    model = RecurrentPPO.load(model_path, env, verbose=1)
+    #model.save('pbody')
+    #th.save(model.policy.state_dict(), 'atlas_new')
+    obs = env.reset()
+    input("Start..")
+    total_reward = 0
+    model.policy.eval()
+    for i in range(int(max_steps)):
+        if lstm:
+            action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+        else:
+            action, states = model.predict(obs, deterministic=True)
+        #print(action)
+        scaling_factor = np.array([2, 2, 4])
+        scale_action = action / scaling_factor
+        #print(scale_action)
+        # if action[0] > 0.5:
+        #     print(action)
+        #print("==")
+        obs, reward, dones, infos = env.step(action)
+        if lstm:
+            episode_starts = dones
+        # print(reward)
+        total_reward += reward
+        print(infos)
+        # if terminated or truncated:
+        #     print(total_reward)
+        #     if lstm:
+        #         lstm_states = None
+        #         episode_starts = np.ones((1,), dtype=bool)
+        #     obs = env.reset()
+        #     total_reward = 0
+
 def _main(model_path=None):
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
@@ -120,6 +196,7 @@ def _main(model_path=None):
 
     #sample(sim_params)
     run_play(sim_params, model_path=None)
+    #run_eval(sim_params, model_path=None)
 
 if __name__ == '__main__':
 

@@ -77,8 +77,8 @@ PYBIND11_MODULE(diagrams, m) {
   py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
       m, "HikingSimDiagram")
       .def(py::init<const std::variant<std::string, SquareSteppingStoneList>&,
-                    const std::string&>(),
-           py::arg("tarrain_yaml"), py::arg("camera_pose_yaml"))
+                    const std::string&, double>(),
+           py::arg("terrain_yaml"), py::arg("camera_pose_yaml"), py::arg("terrain_friction") = 0.8)
       .def("get_input_port_actuation",
            &HikingSimDiagram::get_input_port_actuation,
            py_rvp::reference_internal)
@@ -99,6 +99,9 @@ PYBIND11_MODULE(diagrams, m) {
            py_rvp::reference_internal)
       .def("get_output_port_lcm_radio",
            &HikingSimDiagram::get_output_port_lcm_radio,
+           py_rvp::reference_internal)
+      .def("get_output_port_scene_graph_query",
+           &HikingSimDiagram::get_output_port_scene_graph_query,
            py_rvp::reference_internal)
       .def("get_output_port_depth_image",
            &HikingSimDiagram::get_output_port_depth_image,

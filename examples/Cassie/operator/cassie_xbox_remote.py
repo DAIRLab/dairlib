@@ -3,7 +3,7 @@ import pygame
 import dairlib.lcmt_radio_out
 import lcm
 import numpy as np
-from pygame_utils import TextPrint
+from examples.Cassie.operator.pygame_utils import TextPrint
 
 # colors
 cassie_blue = (6, 61, 128)
@@ -27,6 +27,7 @@ def main():
     radio_channel_6_pos = 0
     radio_channel_6_delta = 0.05
 
+    pygame.joystick.init()
     if (pygame.joystick.get_count() != 1):
         raise RuntimeError("Please connect exactly one controller")
 
@@ -34,10 +35,10 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 1.0/3.0
+    max_speed = 0.25
     ramp_up = np.arange(0, max_speed, 0.01)
-    stay = max_speed * np.ones(400)
-    ramp_down = np.flip(np.arange(0, max_speed, 0.01))
+    stay = max_speed * np.ones(120)
+    ramp_down = np.flip(np.arange(-0.05, max_speed, 0.02))
     speeds = np.hstack((ramp_up, stay, ramp_down))
     n = speeds.size
     i = 0

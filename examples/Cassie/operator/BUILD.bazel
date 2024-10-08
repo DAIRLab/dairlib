@@ -45,6 +45,20 @@ py_binary(
     ],
     main = "cassie_xbox_remote.py",
     deps = [
+        ":pygame_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "cassie_virtual_remote_py",
+    srcs = ["cassie_virtual_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_virtual_remote.py",
+    deps = [
+        ":pygame_utils",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
@@ -54,6 +68,11 @@ load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 drake_runfiles_binary(
     name = "cassie_xbox_remote",
     target = "cassie_xbox_remote_py",
+)
+
+drake_runfiles_binary(
+    name = "cassie_virtual_remote",
+    target = "cassie_virtual_remote_py",
 )
 
 drake_runfiles_binary(

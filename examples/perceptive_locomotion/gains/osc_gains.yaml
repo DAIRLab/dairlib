@@ -17,7 +17,7 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: -0.75
+vel_scale_rot: -1.125
 vel_scale_trans_sagital: 0.0
 vel_scale_trans_lateral: 0.0
 

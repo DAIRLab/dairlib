@@ -115,7 +115,7 @@ pybind_py_library(
         ":module_py",
     ],
     py_imports = ["."],
-    tags = ["ros"],
+    tags = ["manual"],
 )
 
 PY_LIBRARIES = [

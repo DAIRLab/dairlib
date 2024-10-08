@@ -107,7 +107,10 @@ OperationalSpaceControl::OperationalSpaceControl(
                       .get_index();
 
   osc_solution_cache_ = DeclareCacheEntry(
-      "osc_solution", &OperationalSpaceControl::SolveIDQP).cache_index();
+      "osc_solution",
+      drake::systems::ValueProducer(
+          this, &OperationalSpaceControl::AllocateSolution,
+          &OperationalSpaceControl::SolveIDQP)).cache_index();
 
   tracking_data_cache_ = DeclareCacheEntry(
       "tracking_data_states",
@@ -176,6 +179,9 @@ void OperationalSpaceControl::AddContactPoint(
     const std::string& name,
     std::unique_ptr<const multibody::WorldPointEvaluator<double>> evaluator,
     std::vector<int> fsm_states) {
+
+  DRAKE_DEMAND(not name.empty());
+
   if (fsm_states.empty()) {
     fsm_states.push_back(-1);
   }
@@ -234,6 +240,21 @@ OperationalSpaceControl::AllocateTrackingDataStates() const {
     states->push_back(data->AllocateState());
   }
   return states;
+}
+
+std::unique_ptr<OperationalSpaceControl::id_qp_solution>
+OperationalSpaceControl::AllocateSolution() const {
+  DRAKE_DEMAND(this->id_qp_.built());
+  std::unique_ptr<id_qp_solution> sol =
+      std::make_unique<id_qp_solution>();
+  sol->u_sol_ = VectorXd::Zero(this->n_u_);
+  sol->u_prev_ = VectorXd::Zero(this->n_u_);
+  sol->dv_sol_ = VectorXd::Zero(this->n_v_);
+  sol->lambda_h_sol_ = VectorXd::Zero(this->id_qp_.nh());
+  sol->lambda_c_sol_ = VectorXd::Zero(this->id_qp_.nc());
+  sol->epsilon_sol_ = VectorXd::Zero(this->id_qp_.nc_active());
+  sol->solve_time_ = 0;
+  return sol;
 }
 
 // Osc checkers and constructor
@@ -485,11 +506,14 @@ void OperationalSpaceControl::UpdateTrackingData(
 
 }
 
-VectorXd OperationalSpaceControl::SolveQp(
+void OperationalSpaceControl::SolveQp(
     const VectorXd& x,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double t_since_last_state_switch, double alpha, int next_fsm_state,
     OperationalSpaceControl::id_qp_solution* sol) const {
+
+  DRAKE_DEMAND(osqp_solver_ != nullptr);
+  DRAKE_DEMAND(fccqp_solver_ != nullptr);
 
   // Update context
   SetPositionsIfNew<double>(
@@ -635,6 +659,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     case kFastOSQP:
       result = osqp_solver_->Solve(id_qp_.get_prog());
       sol->solve_time_ = result.get_solver_details<drake::solvers::OsqpSolver>().run_time;
+      break;
+    default:
+      throw std::runtime_error("unrecognized solver option");
   }
 
   if (result.is_success()) {
@@ -652,8 +679,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     fccqp_solver_->set_warm_start(false);
     osqp_solver_->DisableWarmStart();
   }
-
-  return sol->u_sol_;
 }
 
 
@@ -693,11 +718,10 @@ void OperationalSpaceControl::SolveIDQP(
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-    u_sol = SolveQp(x, context, clock_time, fsm_state(0),
+    SolveQp(x, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0), alpha, next_fsm_state, solution);
   } else {
-    u_sol = SolveQp(x, context, current_time, -1, current_time,
-                    0, -1, solution);
+    SolveQp(x, context, current_time, -1, current_time, 0, -1, solution);
   }
 }
 
@@ -724,8 +748,7 @@ void OperationalSpaceControl::UpdateContactForceRegularization(
 }
 
 namespace {
-static inline bool has_active_ii_proj(
-    const OscTrackingData* data, int fsm_state) {
+inline bool has_active_ii_proj(const OscTrackingData* data, int fsm_state) {
   return data->IsActive(fsm_state) and data->GetImpactInvariantProjection();
 }
 }

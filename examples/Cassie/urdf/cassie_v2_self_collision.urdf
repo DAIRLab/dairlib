@@ -5,7 +5,7 @@
             <origin
                     xyz=".05066 0.000346 .02841"
                     rpy="0 0 0" />
-            <mass value="10.33" />
+            <mass value="9.33" />
             <inertia
                     ixx=".094158"
                     ixy=".0001685"
@@ -566,33 +566,39 @@
 
         <collision>
             <geometry>
-                <box size="0.17 0.01 0.01"/>
+                <box size="0.15 0.001 0.001"/>
             </geometry>
-            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
+        <visual>
+            <geometry>
+                <box size="0.15 0.01 0.01"/>
+            </geometry>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
+        </visual>
 
         <!-- Toe spheres -->
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>
@@ -628,35 +634,43 @@
         <!-- Toe spheres -->
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.0025"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>
 
         <collision>
             <geometry>
-                <box size="0.17 0.01 0.01"/>
+                <box size="0.15 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
+
+        <visual>
+            <geometry>
+                <box size="0.15 0.01 0.01"/>
+            </geometry>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
+        </visual>
+
     </link>
 
 

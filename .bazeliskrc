@@ -1,2 +1,2 @@
 # Keep this version up to date with the version used by drake
-USE_BAZEL_VERSION=6.4.0
+USE_BAZEL_VERSION=7.3.1

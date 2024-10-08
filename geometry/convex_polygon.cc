@@ -51,11 +51,15 @@ void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
 
 // Add a face with the (outward facing) normal and a point on the face
 void ConvexPolygon::AddFace(const Vector3d& normal, const Vector3d& pt) {
-  AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
+  Vector3d n = normal.normalized();
+  AddHalfspace(n, n.dot(pt) * VectorXd::Ones(1));
   bounding_box_.valid = false;
 }
 
 void ConvexPolygon::AddVertices(const Vector3d &v1, const Vector3d &v2) {
+  if (v1.hasNaN() or v2.hasNaN()) {
+    throw std::logic_error("Trying to add a NaN vertex to a convex polygon");
+  }
   Vector3d face = v2 - v1;
   Vector3d normal = face.cross(A_eq_.transpose());
   AddFace(normal, v1);

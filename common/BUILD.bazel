@@ -26,8 +26,26 @@ cc_library(
 
 cc_library(
     name = "polynomial_utils",
-    hdrs = ["polynomial_utils.h"],
-    deps = [],
+    srcs = ["legendre.cc"],
+    hdrs = [
+        "legendre.h",
+        "polynomial_utils.h",
+    ],
+    deps = [
+        "@boost//:math",
+        "@drake//:drake_shared_library",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "legendre_polynomial_trajectory",
+    srcs = ["legendre_polynomial_trajectory.cc"],
+    hdrs = ["legendre_polynomial_trajectory.h"],
+    deps = [
+        ":polynomial_utils",
+        "@drake//:drake_shared_library"
+    ],
 )
 
 cc_library(
@@ -77,5 +95,19 @@ cc_library(
     ],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "time_series_buffer",
+    hdrs = ["time_series_buffer.h"],
+    deps = [],
+)
+
+cc_binary(
+    name = "test_legendre",
+    srcs = ["test_legendre.cc"],
+    deps = [
+        ":polynomial_utils",
     ],
 )

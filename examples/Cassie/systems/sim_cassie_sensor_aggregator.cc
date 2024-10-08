@@ -1,6 +1,7 @@
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 
 #include <iostream>
+#include <set>
 
 namespace dairlib {
 namespace systems {
@@ -47,7 +48,14 @@ void SimCassieSensorAggregator::CopyJointStates(
     const std::map<std::string, int>& velocity_index_map,
     lcmt_cassie_out* cassie_out_msg, const BasicVector<double>* state) {
 
-  int num_positions = position_index_map.size();
+
+  // num positions may contain duplicate keys for the same position index,
+  // so we need to make sure we are not double counting
+  int num_positions = 0;
+  for (const auto& [k, v] : position_index_map) {
+    num_positions = std::max(v, num_positions);
+  }
+  ++num_positions;
 
   // Motor position, velocity and torque
   cassie_out_msg->leftLeg.hipRollDrive.position = state->GetAtIndex(

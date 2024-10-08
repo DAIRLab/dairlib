@@ -11,10 +11,6 @@
 
 namespace dairlib::systems::controllers {
 
-enum AlipTrackingCostType {
-  kVelocity, kGait
-};
-
 struct alip_s2s_mpfc_params {
   alip_utils::AlipGaitParams gait_params;
   int nmodes;
@@ -30,7 +26,8 @@ struct alip_s2s_mpfc_params {
   drake::solvers::SolverOptions solver_options;
   double umax = 25.0;
   double ankle_torque_regularization = 1.0;
-  AlipTrackingCostType tracking_cost_type = kVelocity;
+  alip_utils::AlipTrackingCostType tracking_cost_type =
+      alip_utils::AlipTrackingCostType::kVelocity;
 };
 
 struct alip_s2s_mpfc_params_io {
@@ -109,26 +106,11 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
   params_out.umax = params_io.max_ankle_torque;
   params_out.ankle_torque_regularization = params_io.ankle_torque_regularization;
 
-  DRAKE_DEMAND(params_io.reset_discretization_method == "ZOH" ||
-      params_io.reset_discretization_method == "FOH" ||
-      params_io.reset_discretization_method == "SPLIT");
+  params_out.tracking_cost_type =
+      alip_utils::alip_tracking_cost_type(params_io.cost_type);
 
-  DRAKE_DEMAND(params_io.cost_type == "velocity" or
-               params_io.cost_type == "gait");
-
-  if (params_io.cost_type == "gait") {
-    params_out.tracking_cost_type = kGait;
-  }
-
-  alip_utils::ResetDiscretization
-      reset_disc = alip_utils::ResetDiscretization::kZOH;
-  if (params_io.reset_discretization_method == "FOH") {
-    reset_disc = alip_utils::ResetDiscretization::kFOH;
-  }
-  if (params_io.reset_discretization_method == "SPLIT") {
-    reset_disc = alip_utils::ResetDiscretization::kSPLIT;
-  }
-  params_out.gait_params.reset_discretization_method = reset_disc;
+  params_out.gait_params.reset_discretization_method =
+      alip_utils::reset_discretization(params_io.reset_discretization_method);
 
   params_out.com_pos_bound =
       Eigen::Vector2d::Map(params_io.com_vel_bound.data());

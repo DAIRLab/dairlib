@@ -15,16 +15,47 @@ DRAKE_COMMIT = "v1.28.0"
 
 DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2fe"
 
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+#DRAKE_CHECKSUM = "0" * 64
+
+# Load an environment variable.
+load("//:environ.bzl", "drake_repository")
+load("//:environ.bzl", "inekf_repository")
+
+drake_repository(name = "drake_path")
+
+inekf_repository(name = "inekf_path")
+
+load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
+
+# The WORKSPACE file does not permit `if` statements, so we handle the local
+# option by toying with the repository names.  The selected repository is named
+# "@drake", the other is named "@drake_ignored".
+(_http_drake_repo_name, _local_drake_repo_name) = (
+    "drake_ignored" if DAIRLIB_LOCAL_DRAKE_PATH else "drake",
+    "drake" if DAIRLIB_LOCAL_DRAKE_PATH else "drake_ignored",
+)
+
 # Maybe download Drake.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "drake",
+    name = _http_drake_repo_name,
     sha256 = DRAKE_CHECKSUM,
     strip_prefix = "drake-{}".format(DRAKE_COMMIT.strip("v")),
     urls = [x.format(DRAKE_COMMIT) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
+)
+
+# Maybe use a local checkout of Drake.
+print("Using DAIRLIB_LOCAL_DRAKE_PATH={}".format(DAIRLIB_LOCAL_DRAKE_PATH)) if DAIRLIB_LOCAL_DRAKE_PATH else None  # noqa
+
+local_repository(
+    name = _local_drake_repo_name,
+    path = DAIRLIB_LOCAL_DRAKE_PATH,
 )
 
 # Reference external software libraries and tools per Drake's defaults.  Some
@@ -42,14 +73,10 @@ load("@dairlib//tools/workspace/fcc_qp:repository.bzl", "fcc_qp_repository")
 
 fcc_qp_repository(name = "fcc_qp")
 
-#load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
-
-#pydrake_repository(name = "pydrake_pegged")
-
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "7083e567d6ccf99b4f36ac37beaeb21d80fb2f85fe277674e75c903f71843938"
+ELEVATION_MAPPING_CHECKSUM = "0500dfbb8a9c6d847b677a38bfe9d1d9b1e56fa6fd1672ab39cae66903893087"
 
 http_archive(
     name = "elevation_mapping",
@@ -89,39 +116,13 @@ load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
 
 setup_pcl()
 
-# Prebuilt ROS workspace
-new_local_repository(
-    name = "ros",
-    build_file = "tools/workspace/ros/ros.bazel",
-    path = "tools/workspace/ros/bundle_ws/install",
-)
+load("//tools/workspace:os.bzl", "os_repository")
 
-http_archive(
-    name = "acd2d",
-    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
-    strip_prefix = "acd2d-master",
-    urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
-)
+os_repository(name = "os_type")
 
-# Other catkin packages from source
-# TODO: generate this automatically from rosinstall_generator
+load("//tools/workspace:perception.bzl", "add_perception_repositories")
 
-http_archive(
-    name = "genmsg_repo",
-    build_file = "@//tools/workspace/ros/bazel:genmsg.BUILD",
-    sha256 = "d7627a2df169e4e8208347d9215e47c723a015b67ef3ed8cda8b61b6cfbf94d2",
-    strip_prefix = "genmsg-0.5.8",
-    urls = ["https://github.com/ros/genmsg/archive/0.5.8.tar.gz"],
-)
-
-http_archive(
-    name = "genpy_repo",
-    build_file = "@//tools/workspace/ros/bazel:genpy.BUILD",
-    sha256 = "35e5cd2032f52a1f77190df5c31c02134dc460bfeda3f28b5a860a95309342b9",
-    strip_prefix = "genpy-0.6.5",
-    urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
-)
+add_perception_repositories()
 
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use

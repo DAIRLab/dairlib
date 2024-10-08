@@ -1,0 +1,118 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "test_segmentation_on_log",
+    srcs = ["test_segmentation_on_log.py"],
+    deps = [
+        ":segmentation_criteria",
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "terrain_segmentation_test",
+    srcs = ["terrain_segmentation_test.py"],
+    deps = [
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+    ],
+)
+
+py_binary(
+    name = "elevation_mapping_and_terrain_decomposition",
+    srcs = ["elevation_mapping_and_terrain_decomposition.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_library(
+    name = "terrain_segmentation_system",
+    srcs = ["terrain_segmentation_system.py"],
+    deps = [
+        ":segmentation_criteria",
+        "//bindings/grid_map",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "segmentation_criteria",
+    srcs = ["segmentation_criteria.py"],
+    deps = [
+        ":utils_py"
+    ],
+)
+
+py_library(
+    name = "convex_terrain_decomposition_system",
+    srcs = ["convex_terrain_decomposition_system.py"],
+    deps = [
+        "//bindings/grid_map",
+        "//bindings/pydairlib/geometry",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+pybind_py_library(
+    name = "utils_py",
+    cc_deps = [
+        "@eigen"
+    ],
+    cc_so_name = "segmentation_utils",
+    cc_srcs = ["utils_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+PY_LIBRARIES = [
+    ":segmentation_criteria",
+    ":utils_py",
+    ":terrain_segmentation_system",
+    ":convex_terrain_decomposition_system",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "terrain_segmentation",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

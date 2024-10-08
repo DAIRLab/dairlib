@@ -38,7 +38,7 @@ void CassieFixedPointSolver(
   Eigen::AngleAxisd roll_angle(0, Eigen::Vector3d::UnitX());
   Eigen::Quaternion<double> quat = yaw_angle * pitch_angle * roll_angle;
   Eigen::Matrix3d rotation_mat = quat.matrix();
-  rotation_mat = rotation_mat.transpose();
+  rotation_mat.transposeInPlace();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 

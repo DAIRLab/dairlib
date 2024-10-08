@@ -244,4 +244,61 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
   return {x0, x1};
 }
 
+
+std::vector<Eigen::Vector2d> MakeP2Orbit(const AlipGaitParams& gait_params) {
+  double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
+  Vector2d u0 = Vector2d::Zero();
+  u0(0) = gait_params.desired_velocity(0) * (
+      gait_params.single_stance_duration +
+          gait_params.double_stance_duration
+  );
+  u0(1) = gait_params.stance_width * s + gait_params.desired_velocity(1) * (
+      gait_params.single_stance_duration +
+          gait_params.double_stance_duration
+  );
+  Vector2d u1 = u0;
+  u1(1) = - 2 * (s * gait_params.stance_width);
+  return {u0, u1};
+}
+
+void MakeAlipStepToStepCostMatrices(
+    const alip_utils::AlipGaitParams& gait_params,
+    const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,
+    Eigen::Matrix4d& Q_proj,
+    Eigen::Matrix4d& Q_proj_f,
+    Eigen::Matrix<double, 4, 2>& g_proj_p1,
+    Eigen::Matrix<double, 4, 2>& g_proj_p2,
+    Eigen::Matrix4d& p2o_premul,
+    Eigen::Matrix4d& projection_to_p2o_complement,
+    Eigen::Matrix<double, 4, 2>& p2o_orthogonal_complement,
+    Eigen::Matrix<double, 4, 2>& p2o_basis) {
+
+  const auto[A, B] = AlipStepToStepDynamics(
+      gait_params.height,
+      gait_params.mass,
+      gait_params.single_stance_duration,
+      gait_params.double_stance_duration,
+      gait_params.reset_discretization_method
+  );
+
+  p2o_premul = (Matrix4d::Identity() - A * A).inverse();
+  p2o_basis = p2o_premul * (A* B - B);
+  p2o_orthogonal_complement = Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
+      p2o_basis.transpose()
+  ).kernel();
+
+  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
+  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
+
+  Matrix4d bases_in_R4 = Matrix4d::Zero();
+  bases_in_R4.leftCols<2>() = p2o_orthogonal_complement;
+  bases_in_R4.rightCols<2>() = p2o_basis;
+
+  projection_to_p2o_complement = bases_in_R4 * projection_in_basis_coords * bases_in_R4.inverse();
+  Q_proj = projection_to_p2o_complement.transpose() * Q * projection_to_p2o_complement;
+  Q_proj_f = projection_to_p2o_complement.transpose() * Qf * projection_to_p2o_complement;
+  g_proj_p1 = p2o_premul * B;
+  g_proj_p2 = A * p2o_premul * B;
+}
+
 }

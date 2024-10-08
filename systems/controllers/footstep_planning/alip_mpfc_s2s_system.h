@@ -18,7 +18,6 @@ using alip_utils::PointOnFramed;
 class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
  public:
 
-  // TODO (@Brian-Acosta) : Move stance durations to gains struct
   Alips2sMPFCSystem(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
@@ -26,6 +25,20 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<int> post_left_right_fsm_states,
       std::vector<PointOnFramed> left_right_foot,
       const alip_s2s_mpfc_params& mpfc_params);
+
+  Alips2sMPFCSystem(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* plant_context,
+      std::vector<int> left_right_stance_fsm_states,
+      std::vector<int> post_left_right_fsm_states,
+      std::vector<PointOnFramed> left_right_foot,
+      const std::string& params_yaml,
+      const std::string& solver_params_yaml
+  ) : Alips2sMPFCSystem(
+      plant, plant_context, left_right_stance_fsm_states,
+      post_left_right_fsm_states, left_right_foot,
+      MakeAlipS2SMPFCParamsFromYaml(
+          params_yaml, solver_params_yaml, plant, *plant_context)){};
 
   void MakeDrivenByStandaloneSimulator(double update_period) {
     DeclareInitializationUnrestrictedUpdateEvent(
@@ -56,6 +69,13 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(fsm_output_port_);
   }
 
+  static lcmt_alip_s2s_mpfc_debug empty_debug_message() {
+    return lcmt_alip_s2s_mpfc_debug{};
+  }
+
+  static lcmt_alip_mpc_output empty_output_message() {
+    return lcmt_alip_mpc_output{};
+  }
  private:
 
   // System callbacks

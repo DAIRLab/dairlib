@@ -76,9 +76,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  AddCassieMultibody(&plant, nullptr, true /*floating base*/,
+  auto instance = AddCassieMultibody(&plant, nullptr, true /*floating base*/,
                      "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
+  AddRealSenseInertia(plant, instance);
   plant.Finalize();
 
   auto plant_context = plant.CreateDefaultContext();

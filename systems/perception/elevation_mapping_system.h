@@ -168,8 +168,19 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
+  drake::systems::EventStatus UpdateStateBuffer(
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state) const;
+
   void CopyGridMap(const drake::systems::Context<double>& context,
                    grid_map::GridMap* grid_map) const;
+
+  void SetDefaultState(const drake::systems::Context<double>& context,
+                       drake::systems::State<double>* state) const final;
+
+  drake::systems::EventStatus Initialize(
+      const drake::systems::Context<double>&,
+      drake::systems::State<double>* state) const;
 
   // multibody
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -193,6 +204,8 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   // states
   drake::systems::AbstractStateIndex elevation_map_state_index_;
   drake::systems::AbstractStateIndex motion_updater_state_index_;
+  drake::systems::AbstractStateIndex state_buffer_index_;
+
   std::map<std::string,
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;
 

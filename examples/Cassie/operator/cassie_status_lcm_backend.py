@@ -68,7 +68,7 @@ class StatusSubscriber:
     def __init__(self, lc: lcm.LCM, channel: str):
         self.lc = lc
         self.channel = channel
-        self.status_text = ''
+        self.status_text = 'Waiting for Cassie...'
         self.subscription = self.lc.subscribe(
             channel,
             self.status_msg_callback

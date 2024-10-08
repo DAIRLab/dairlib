@@ -37,7 +37,8 @@ DEFINE_string(stepping_stone_yaml, "",
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
-using drake::geometry::DrakeVisualizer;
+using drake::geometry::Meshcat;
+using drake::geometry::MeshcatVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -116,7 +117,9 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
+
+  auto meshcat = std::make_shared<Meshcat>();
+  MeshcatVisualizer<double>::AddToBuilder(&builder, scene_graph, meshcat);
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 

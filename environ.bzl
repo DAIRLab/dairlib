@@ -50,21 +50,15 @@ def _impl(repository_ctx):
         executable = False,
     )
 
-def environ_repository(name = None, vars = []):
-    """Provide specific environment variables for use in a WORKSPACE file.
-    The `vars` are the environment variables to provide.
-
-    Example:
-        environ_repository(name = "foo", vars = ["BAR", "BAZ"])
-        load("@foo//:environ.bzl", "BAR", "BAZ")
-        print(BAR)
-    """
-    rule = repository_rule(
-        implementation = _impl,
-        attrs = {
-            "_vars": attr.string_list(default = vars),
-        },
-        local = True,
-        environ = vars,
-    )
-    rule(name = name)
+drake_repository = repository_rule(
+    implementation = _impl,
+    environ = ["DAIRLIB_LOCAL_DRAKE_PATH"],
+    local = True,
+    attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_DRAKE_PATH"])},
+)
+inekf_repository = repository_rule(
+    implementation = _impl,
+    environ = ["DAIRLIB_LOCAL_INEKF_PATH"],
+    local = True,
+    attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_INEKF_PATH"])},
+)

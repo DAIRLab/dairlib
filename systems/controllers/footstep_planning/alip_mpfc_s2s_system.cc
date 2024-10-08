@@ -115,8 +115,8 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
-      get_value<ConvexPolygonSet>();
+  auto foothold_set = this->EvalAbstractInput(
+      context, foothold_input_port_)->get_value<ConvexPolygonSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
@@ -197,13 +197,16 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       footholds_idx_
   );
 
-  if (!foothold_set.empty()) {
+  if (not foothold_set.empty()) {
     footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, 1.8);
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }
 
   if (footholds_filt.empty()) {
+    if (not foothold_set.empty()) {
+      std::cerr << "WARNING: Pruning QP eliminated all potential footholds!\n";
+    }
     footholds_filt = prev_footholds;
   }
 
@@ -272,7 +275,7 @@ void Alips2sMPFCSystem::CopyMpcOutput(
       double height = grid_map.atPosition(
           "interpolated",
           next_footstep_in_world.head<2>(),
-          grid_map::InterpolationMethods::INTER_LINEAR);
+          grid_map::InterpolationMethods::INTER_NEAREST);
       height -= mpc_sol.pp.front().z();
       mpc_output->next_footstep_in_stance_frame[2] = height;
     }

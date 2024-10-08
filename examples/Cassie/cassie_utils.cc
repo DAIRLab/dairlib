@@ -20,9 +20,11 @@ using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
-using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::RevoluteSpring;
+using drake::multibody::SpatialInertia;
+using drake::multibody::RotationalInertia;
 using drake::systems::sensors::Accelerometer;
 using drake::systems::sensors::Gyroscope;
 using Eigen::Vector3d;
@@ -116,6 +118,20 @@ drake::math::RigidTransformd CassieTransformFootToToeFrame() {
   };
 }
 
+void AddRealSenseInertia(MultibodyPlant<double>& plant,
+                         drake::multibody::ModelInstanceIndex instance) {
+  auto camera_inertia_about_com =
+      RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
+          0.04, 0.04, 0.04, 0, 0, 0);
+  auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
+      1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
+  plant.AddRigidBody("camera_inertia", instance, camera_inertia);
+  plant.WeldFrames(
+      plant.GetBodyByName("pelvis").body_frame(),
+      plant.GetBodyByName("camera_inertia").body_frame()
+  );
+}
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
@@ -123,7 +139,7 @@ const drake::multibody::ModelInstanceIndex
 AddCassieMultibody(MultibodyPlant<double>* plant,
                    SceneGraph<double>* scene_graph, bool floating_base,
                   std::string filename, bool add_leaf_springs,
-                  bool add_loop_closure, bool add_reflected_inertia) {
+                  bool add_loop_closure) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   auto model_instance_idxs = parser.AddModels(full_name);
@@ -201,15 +217,15 @@ AddCassieMultibody(MultibodyPlant<double>* plant,
       "hip_yaw_right_motor", "hip_pitch_left_motor", "hip_pitch_right_motor",
       "knee_left_motor",     "knee_right_motor",     "toe_left_motor",
       "toe_right_motor"};
-  if (add_reflected_inertia) {
-    for (int i = 0; i < rotor_inertias.size(); ++i) {
-      auto& joint_actuator = plant->get_mutable_joint_actuator(
-          drake::multibody::JointActuatorIndex(i));
-      joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
-      joint_actuator.set_default_gear_ratio(gear_ratios(i));
-      DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
-    }
+
+  for (int i = 0; i < rotor_inertias.size(); ++i) {
+    auto& joint_actuator = plant->get_mutable_joint_actuator(
+        drake::multibody::JointActuatorIndex(i));
+    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+    joint_actuator.set_default_gear_ratio(gear_ratios(i));
+    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
   }
+
   return model_instance_idxs.front();
 }
 

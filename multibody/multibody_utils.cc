@@ -276,10 +276,24 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     name_to_index_map[name + "_x"] = start + 4;
     name_to_index_map[name + "_y"] = start + 5;
     name_to_index_map[name + "_z"] = start + 6;
+
     for (int i = 0; i < 7; i++) {
       index_set.insert(start + i);
     }
   }
+  if (floating_bodies.size() == 1){
+    const auto& body = plant.get_body(*floating_bodies.begin());
+    int start = body.floating_positions_start();
+    std::string name = "base";
+    name_to_index_map[name + "_qw"] = start;
+    name_to_index_map[name + "_qx"] = start + 1;
+    name_to_index_map[name + "_qy"] = start + 2;
+    name_to_index_map[name + "_qz"] = start + 3;
+    name_to_index_map[name + "_x"] = start + 4;
+    name_to_index_map[name + "_y"] = start + 5;
+    name_to_index_map[name + "_z"] = start + 6;
+  }
+
 
   for (int i = 0; i < plant.num_positions(); ++i) {
     // if index has not already been captured, throw an error
@@ -342,6 +356,13 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant,
     for (int i = 0; i < 7; i++) {
       index_set.insert(start + i);
     }
+    name_to_index_map["base_qw"] = start;
+    name_to_index_map["base_qx"] = start + 1;
+    name_to_index_map["base_qy"] = start + 2;
+    name_to_index_map["base_qz"] = start + 3;
+    name_to_index_map["base_x"] = start + 4;
+    name_to_index_map["base_y"] = start + 5;
+    name_to_index_map["base_z"] = start + 6;
   }
   // if index has not already been captured, throw an error
   DRAKE_THROW_UNLESS(plant.num_positions(model_instance) == index_set.size());
@@ -401,6 +422,17 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
     for (int i = 0; i < 6; i++) {
       index_set.insert(start + i);
     }
+  }
+  if (floating_bodies.size() == 1){
+    const auto& body = plant.get_body(*floating_bodies.begin());
+    int start = body.floating_velocities_start_in_v();
+    std::string name = "base";
+    name_to_index_map[name + "_wx"] = start;
+    name_to_index_map[name + "_wy"] = start + 1;
+    name_to_index_map[name + "_wz"] = start + 2;
+    name_to_index_map[name + "_vx"] = start + 3;
+    name_to_index_map[name + "_vy"] = start + 4;
+    name_to_index_map[name + "_vz"] = start + 5;
   }
 
   for (int i = 0; i < plant.num_velocities(); ++i) {
@@ -467,6 +499,12 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
     for (int i = 0; i < 6; i++) {
       index_set.insert(start + i);
     }
+    name_to_index_map["base_wx"] = start;
+    name_to_index_map["base_wy"] = start + 1;
+    name_to_index_map["base_wz"] = start + 2;
+    name_to_index_map["base_vx"] = start + 3;
+    name_to_index_map["base_vy"] = start + 4;
+    name_to_index_map["base_vz"] = start + 5;
   }
 
   // if index has not already been captured, throw an error
@@ -512,13 +550,13 @@ template <typename T>
 vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<T>& plant) {
   map<string, int> pos_map = MakeNameToPositionsMap(plant);
   map<string, int> vel_map = MakeNameToVelocitiesMap(plant);
-  vector<string> state_names(pos_map.size() + vel_map.size());
+  vector<string> state_names(plant.num_positions() + plant.num_velocities());
 
   for (const auto& name_index_pair : pos_map) {
     state_names[name_index_pair.second] = name_index_pair.first;
   }
   for (const auto& name_index_pair : vel_map) {
-    state_names[name_index_pair.second + pos_map.size()] =
+    state_names[name_index_pair.second + plant.num_positions()] =
         name_index_pair.first;
   }
   return state_names;
@@ -696,21 +734,21 @@ Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
   // clang-format off
   Eigen::MatrixXd ret(4,3);
   ret <<  -q(1), -q(2), -q(3),
-      q(0),  q(3), -q(2),
-      -q(3),  q(0),  q(1),
-      q(2), -q(1),  q(0);
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
   ret *= 0.5;
   // clang-format on
   return ret;
 }
 
-Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
-                                const Eigen::MatrixXd& Jwrtqdot) {
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
   //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
   //                   [      0      , I]
   DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
 
-  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() - 1);
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
   ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
       Jwrtqdot.rightCols(q.size() - 4);
   return ret;

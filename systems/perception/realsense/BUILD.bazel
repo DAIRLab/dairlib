@@ -1,0 +1,52 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+add_lint_tests()
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "rs_interface_test",
+    srcs = ["test/test_rs_interface.cc"],
+    deps = [
+        ":rs_interface",
+        ":realsense_point_cloud_subscriber",
+    ],
+)
+
+cc_library(
+    name = "realsense_point_cloud_subscriber",
+    srcs = ["realsense_point_cloud_subscriber.cc"],
+    hdrs = ["realsense_point_cloud_subscriber.h"],
+    deps = [
+        ":rs_interface",
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
+    name = "realsense_image_pair_subscriber",
+    srcs = ["realsense_image_pair_subscriber.cc"],
+    hdrs = ["realsense_image_pair_subscriber.h"],
+    deps = [
+        ":rs_interface",
+        "//systems/perception:image_pair",
+        "@drake//:drake_shared_library",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
+    name = "rs_interface",
+    srcs = ["single_rs_interface.cc"],
+    hdrs = ["single_rs_interface.h"],
+    deps = [
+        "@drake//common:essential",
+        "@drake//common:scoped_singleton",
+        "@realsense2",
+    ],
+)

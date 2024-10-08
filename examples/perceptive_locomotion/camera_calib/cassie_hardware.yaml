@@ -4,7 +4,7 @@ rotation: # Rotation of the camera depth_optical_frame in the pelvis frame
    -0.0018405885207775966, 0.31083407409087144, -0.9504624088400657]
 
 translation: # Translation of the camera base_link in the pelvis frame
-  [0.17235764682795382, 0.0003033661396976927, 0.1391062443662341]
+  [0.17252125771466637, -0.0586963070684195, 0.13921483908895996]
 
 # Calibration data file :
 # /media/brian/tb2/cassie_backup/logs/calibration/ros/calib_2024-01-17-17-06-20.bag

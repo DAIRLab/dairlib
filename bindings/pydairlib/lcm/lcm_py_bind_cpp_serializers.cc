@@ -8,6 +8,9 @@
 #include "dairlib/lcmt_osc_tracking_data.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_foothold_set.hpp"
+#include "dairlib/lcmt_grid_map.hpp"
+#include "dairlib/lcmt_landmark_array.hpp"
 #include "dairlib/lcmt_alip_mpc_output.hpp"
 
 #include "drake/bindings/pydrake/systems/lcm_pybind.h"
@@ -27,6 +30,9 @@ void BindCppSerializers() {
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_robot_input>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_saved_traj>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_alip_mpc_output>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_foothold_set>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_grid_map>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_landmark_array>("dairlib");
 }
 
 }  // namespace pydairlib

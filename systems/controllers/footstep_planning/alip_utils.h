@@ -11,6 +11,26 @@ namespace dairlib::systems::controllers::alip_utils {
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };
 enum class ResetDiscretization{ kZOH, kFOH, kSPLIT };
+enum class AlipTrackingCostType{ kVelocity, kGait };
+
+static inline AlipTrackingCostType alip_tracking_cost_type(const std::string& type) {
+  DRAKE_DEMAND(type == "velocity" or type == "gait");
+  if (type=="velocity") {
+    return AlipTrackingCostType::kVelocity;
+  }
+  return AlipTrackingCostType::kGait;
+}
+
+static inline ResetDiscretization reset_discretization(const std::string& type) {
+  DRAKE_DEMAND(type == "ZOH" or type == "FOH" or type == "SPLIT");
+  if (type == "FOH") {
+    return alip_utils::ResetDiscretization::kFOH;
+  }
+  if (type == "SPLIT") {
+    return alip_utils::ResetDiscretization::kSPLIT;
+  }
+  return alip_utils::ResetDiscretization::kZOH;
+}
 
 struct AlipGaitParams {
   double height;
@@ -113,6 +133,22 @@ MassNormalizedAlipStepToStepDynamics(
 
 std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);
+
+std::vector<Eigen::Vector2d>
+MakeP2Orbit(const alip_utils::AlipGaitParams& gait_params);
+
+
+void MakeAlipStepToStepCostMatrices(
+    const alip_utils::AlipGaitParams& gait_params,
+    const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,
+    Eigen::Matrix4d& Q_proj,
+    Eigen::Matrix4d& Q_proj_f,
+    Eigen::Matrix<double, 4, 2>& g_proj_p1,
+    Eigen::Matrix<double, 4, 2>& g_proj_p2,
+    Eigen::Matrix4d& p2o_premul,
+    Eigen::Matrix4d& projection_to_p2o_complement,
+    Eigen::Matrix<double, 4, 2>& p2o_orthogonal_complement,
+    Eigen::Matrix<double, 4, 2>& p2o_basis);
 
 
 }

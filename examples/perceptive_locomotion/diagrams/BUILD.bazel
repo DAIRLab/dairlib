@@ -3,11 +3,9 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "cassie_elevation_mapping_ros_diagram",
-    srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
-    hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
-    local_defines = ["DAIR_ROS_ON"],
-    tags = ["ros"],
+    name = "cassie_realsense_driver_diagram",
+    srcs = ["cassie_realsense_driver_diagram.cc"],
+    hdrs = ["cassie_realsense_driver_diagram.h"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/perceptive_locomotion:cassie_perception_utils",
@@ -17,10 +15,11 @@ cc_library(
         "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:perceptive_locomotion_preprocessor",
-        "//systems/perception/pointcloud:ros_point_cloud2_receiver",
-        "//systems/ros:dairlib_ros",
+        "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
+        "//systems/perception/realsense:realsense_image_pair_subscriber",
+        "//systems/perception/realsense:realsense_point_cloud_subscriber",
+        "//systems/perception/realsense:rs_interface",
         "@drake//:drake_shared_library",
-        "@ros",
     ],
 )
 
@@ -207,6 +206,7 @@ cc_library(
     name = "diagrams",
     deps = [
         ":alip_mpfc_diagram",
+        ":cassie_realsense_driver_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":mpfc_output_from_footstep",

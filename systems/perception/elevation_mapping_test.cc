@@ -14,8 +14,6 @@
 namespace dairlib {
 namespace perception {
 
-
-
 bool test_passed () {
 
   elevation_mapping_params params{

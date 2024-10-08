@@ -20,6 +20,36 @@
 namespace dairlib {
 namespace geometry {
 
+/*!
+ * Convenience struct to represent a polygon as a list of facets
+ * for fast halfspace intersections.
+ */
+struct facet {
+  Eigen::Vector2d a_;
+  double b_;
+  Eigen::Vector2d v0_;
+  Eigen::Vector2d v1_;
+
+  bool redundant(Eigen::Vector2d a,  double b) {
+    return (a.dot(v0_) > b and a.dot(v1_) > b);
+  }
+
+  bool intersects(Eigen::Vector2d a, double b) {
+    return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+  }
+
+  // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
+  static facet intersect(facet f0, facet f1, Eigen::Vector2d a, double b) {
+    assert(f0.intersects(a, b) and f0.intersects(a, b));
+    Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
+    A.row(0) = f0.a_.transpose();
+    A.row(1) = a.transpose();
+    Eigen::Vector2d v0 = A.inverse() * Eigen::Vector2d(f0.b_, b);
+    A.row(0) = f1.a_.transpose();
+    Eigen::Vector2d v1 = A.inverse() * Eigen::Vector2d(f1.b_, b);
+    return {a, b, v0, v1};
+  }
+};
 
 /*!
  * Decomposes every 2D polygon in terrain, represented as the pair
@@ -38,24 +68,15 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
  * the resulting components as lists of vertices.
  */
 std::vector<Eigen::MatrixXd> GetAcdComponents(
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>> planar_region);
-
-std::vector<Eigen::MatrixXd> Acd(const Eigen::MatrixXd &verts,
-                                 double concavity_threshold);
-
+    const std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>& planar_region,
+    double concavity_thresh=0.25);
 
 ConvexPolygon MakeInscribedConvexPolygon(
     const Eigen::MatrixXd &verts,
-    const drake::geometry::optimization::VPolytope &convex_hull,
-    const Eigen::Isometry3d &X_WP);
+    const drake::geometry::optimization::VPolytope &convex_hull);
 
-ConvexPolygon MakeFootholdFromConvexPolytope(
-    const drake::geometry::optimization::VPolytope &convex_poly2d,
-    const Eigen::Isometry3d &plane_pose);
-
-ConvexPolygon MakeFootholdFromConvexPolytope(
-    const Eigen::MatrixXd &convex_poly2d,
-    const Eigen::Isometry3d &plane_pose);
+ConvexPolygon MakeFootholdFromConvexPolygon(
+    const Eigen::MatrixXd &vertices);
 
 Eigen::VectorXd centroid(const Eigen::MatrixXd &verts);
 
@@ -86,8 +107,6 @@ inline bool is_degenerate(const Eigen::MatrixXd &verts) {
 
 bool ValidateHoles(const Eigen::MatrixXd &boundary,
                    const std::vector<Eigen::MatrixXd> &holes);
-
-Eigen::MatrixXd CleanOutline(const Eigen::MatrixXd &verts);
 
 acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd &verts,
                            acd2d::cd_databuffer &buf,

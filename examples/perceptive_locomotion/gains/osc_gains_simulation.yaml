@@ -54,13 +54,13 @@ footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.22
 final_foot_height: 0.02
-final_foot_velocity_z: 1.0
+final_foot_velocity_z: 0.5
 
 # LIPM trajectory
 lipm_height: 0.78
 
 # OSC gains
-mu: 1.0
+mu: 0.8
 
 w_accel: 0.0
 w_soft_constraint: 80000

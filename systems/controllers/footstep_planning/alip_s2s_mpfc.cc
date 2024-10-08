@@ -161,24 +161,13 @@ void AlipS2SMPFC::MakeMPCCosts() {
   ).evaluator();
 
   // build cost matrices
-  p2o_premul_ = (Matrix4d::Identity() - A_ * A_).inverse();
-  p2o_basis_ = p2o_premul_ * (A_* B_ - B_);
-  p2o_orthogonal_complement_ = Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
-          p2o_basis_.transpose()
-  ).kernel();
-
-  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
-  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
-
-  Matrix4d bases_in_R4 = Matrix4d::Zero();
-  bases_in_R4.leftCols<2>() = p2o_orthogonal_complement_;
-  bases_in_R4.rightCols<2>() = p2o_basis_;
-
-  projection_to_p2o_complement_ = bases_in_R4 * projection_in_basis_coords * bases_in_R4.inverse();
-  Q_proj_ = projection_to_p2o_complement_.transpose() * params_.Q * projection_to_p2o_complement_;
-  Q_proj_f_ = projection_to_p2o_complement_.transpose() * params_.Qf * projection_to_p2o_complement_;
-  g_proj_p1_ = p2o_premul_ * B_;
-  g_proj_p2_ = A_ * p2o_premul_ * B_;
+  alip_utils::MakeAlipStepToStepCostMatrices(
+      params_.gait_params, params_.Q, params_.Qf,
+      Q_proj_, Q_proj_f_,
+      g_proj_p1_, g_proj_p2_,
+      p2o_premul_, projection_to_p2o_complement_,
+      p2o_orthogonal_complement_, p2o_basis_
+  );
 }
 
 void AlipS2SMPFC::MakeInputConstraints() {
@@ -249,9 +238,14 @@ void AlipS2SMPFC::MakeInputConstraints() {
 
 void AlipS2SMPFC::MakeStateConstraints() {
   Vector4d state_bound;
+
+  Eigen::Matrix2d flipper = Eigen::Matrix2d::Zero();
+  flipper(0, 1) = 1;
+  flipper(1, 0) = 1;
+
   state_bound.head<2>() = params_.com_pos_bound;
   state_bound.tail<2>() = params_.gait_params.mass *
-      params_.gait_params.height * params_.com_vel_bound;
+      params_.gait_params.height * flipper * params_.com_vel_bound;
 
   Matrix4d Ad_inv = CalcAd(
       params_.gait_params.height,
@@ -400,7 +394,7 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
   AlipGaitParams gait_params = params_.gait_params;
   gait_params.desired_velocity = vdes;
   gait_params.initial_stance_foot = stance;
-  const auto ud = MakeP2Orbit(gait_params);
+  const auto ud = alip_utils::MakeP2Orbit(gait_params);
 
   Matrix<double, 2, 4> r;
   r.leftCols<2>() = -Matrix2d::Identity();
@@ -419,7 +413,8 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 }
 
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
-  if (params_.tracking_cost_type == kVelocity) {
+  if (params_.tracking_cost_type ==
+      alip_utils::AlipTrackingCostType::kVelocity) {
     UpdateTrackingCostVelocity(vdes);
     UpdateTerminalCostVelocity(vdes);
   } else {
@@ -480,24 +475,6 @@ void AlipS2SMPFC::UpdateTimeRegularization(double t) {
       2 * params_.time_regularization * MatrixXd::Identity(1,1),
       -2 * params_.time_regularization * VectorXd::Constant(1, t)
   );
-}
-
-std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(
-    AlipGaitParams gait_params) {
-
-  double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
-  Vector2d u0 = Vector2d::Zero();
-  u0(0) = gait_params.desired_velocity(0) * (
-      gait_params.single_stance_duration +
-      gait_params.double_stance_duration
-  );
-  u0(1) = gait_params.stance_width * s + gait_params.desired_velocity(1) * (
-      gait_params.single_stance_duration +
-      gait_params.double_stance_duration
-  );
-  Vector2d u1 = u0;
-  u1(1) = - 2 * (s * gait_params.stance_width);
-  return {u0, u1};
 }
 
 }

@@ -31,6 +31,7 @@ PY_LIBRARIES = [
     "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
     "//bindings/pydairlib/systems",
+    "//bindings/pydairlib/perceptive_locomotion",
 ]
 
 # Package roll-up (for Bazel dependencies).

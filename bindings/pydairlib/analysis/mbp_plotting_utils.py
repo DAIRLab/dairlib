@@ -534,8 +534,8 @@ def plot_qp_solve_time(osc_debug, time_slice):
         ['qp_solve_time'],
         {},
         {},
-        {'xlabel': 'Timestamp',
-         'ylabel': 'Solve Time ',
+        {'xlabel': 'Timestamp (s)',
+         'ylabel': 'Solve Time (s)',
          'title': 'OSC QP Solve Time'}, ps)
     return ps
 

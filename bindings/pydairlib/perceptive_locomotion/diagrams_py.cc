@@ -12,6 +12,7 @@
 #include "examples/perceptive_locomotion/diagrams/rl_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/radio_receiver_module.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_rl.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_realsense_driver_diagram.h"
 
 namespace py = pybind11;
 
@@ -28,6 +29,7 @@ using perceptive_locomotion::AlipMPFCDiagram;
 using perceptive_locomotion::MpfcOutputFromFootstep;
 using perceptive_locomotion::RadioReceiverModule;
 using perceptive_locomotion::MpfcOutputFromRL;
+using perceptive_locomotion::CassieRealSenseDriverDiagram;
 
 using multibody::SquareSteppingStoneList;
 
@@ -266,7 +268,17 @@ PYBIND11_MODULE(diagrams, m) {
       m, "MpfcOutputFromRL")
       .def(py::init<>());
 
-}
+  py::class_<CassieRealSenseDriverDiagram, drake::systems::Diagram<double>>(
+        m, "CassieRealSenseDriverDiagram")
+        .def(py::init<const std::string&>(), py::arg("points_channel"))
+        .def("InitializeElevationMap", &CassieRealSenseDriverDiagram::InitializeElevationMap)
+        .def("lcm", &CassieRealSenseDriverDiagram::lcm, py_rvp::reference_internal)
+        .def("plant", &CassieRealSenseDriverDiagram::plant, py_rvp::reference_internal)
+        .def("get_input_port_state", &CassieRealSenseDriverDiagram::get_input_port_state, py_rvp::reference_internal)
+        .def("get_input_port_contact", &CassieRealSenseDriverDiagram::get_input_port_contact, py_rvp::reference_internal)
+        .def("start_rs", &CassieRealSenseDriverDiagram::start_rs)
+        .def("stop_rs", &CassieRealSenseDriverDiagram::stop_rs);
+  }
 
 
 }

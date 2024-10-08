@@ -58,6 +58,10 @@ class OptionsTrackingData : public OscTrackingData {
   // State must be added to the tracking data already
   void AddJointAndStateToIgnoreInJacobian(int joint_vel_idx, int fsm_state);
 
+  const multibody::ViewFrame<double>* view_frame() const {
+    return view_frame_.get();
+  }
+
  protected:
   std::shared_ptr<drake::trajectories::Trajectory<double>>
       ff_accel_multiplier_traj_;
@@ -71,7 +75,7 @@ class OptionsTrackingData : public OscTrackingData {
   Eigen::VectorXd yddot_cmd_ub_;
 
   std::set<int> idx_zero_feedforward_accel_ = {};
-  std::shared_ptr<multibody::ViewFrame<double>> view_frame_;
+  std::shared_ptr<multibody::ViewFrame<double>> view_frame_ = nullptr;
   bool with_view_frame_ = false;
   bool is_rotational_tracking_data_ = false;
 

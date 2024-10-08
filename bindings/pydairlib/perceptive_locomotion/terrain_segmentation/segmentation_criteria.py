@@ -14,7 +14,7 @@ def curvature_criterion(
 
     # User specified parameters:
     laplacian_blur = 0.045
-    scaling = 5.0
+    scaling = 4.5
 
     # Calculated parameters
     blur_sigma = int(laplacian_blur / resolution + 0.5)

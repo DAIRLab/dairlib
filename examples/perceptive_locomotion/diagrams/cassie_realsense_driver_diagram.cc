@@ -31,7 +31,7 @@ using drake::lcmt_point_cloud;
 
 
 CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& params_yaml) {
-  ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel::ALL);
+//   ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel::ALL);
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   const std::string feat_params = "examples/perceptive_locomotion/feature_tracking_node_params.yaml";
 

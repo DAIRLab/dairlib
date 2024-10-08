@@ -195,7 +195,8 @@ def main():
         diagram=diagram,
         lcm_parser=elevation_mapping,
         input_channel=cassie_state_channel,
-        is_forced_publish=True
+        is_forced_publish=True, 
+        queue_size=100
     )
 
     robot_state = driven_loop.WaitForFirstState(plant)

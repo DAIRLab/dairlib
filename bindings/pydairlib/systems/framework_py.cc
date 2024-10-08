@@ -25,9 +25,9 @@ py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
     .def(py::init<drake::lcm::DrakeLcm*,
                   std::unique_ptr<drake::systems::Diagram<double>>,
                   const drake::systems::System<double>*,
-                  const std::string&, bool>(), py::arg("drake_lcm"),
+                  const std::string&, bool, int>(), py::arg("drake_lcm"),
                   py::arg("diagram"), py::arg("lcm_parser"),
-                  py::arg("input_channel"),  py::arg("is_forced_publish"))
+                  py::arg("input_channel"),  py::arg("is_forced_publish"), py::arg("queue_size")=1)
     .def("Simulate", &LcmOutputDrivenLoop::Simulate,
          py::arg("end_time") = std::numeric_limits<double>::infinity())
     .def("get_diagram_mutable_context",

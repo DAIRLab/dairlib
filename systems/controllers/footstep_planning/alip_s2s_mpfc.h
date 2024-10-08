@@ -61,7 +61,8 @@ class AlipS2SMPFC {
       double t, double tmin, double tmax,
       const Eigen::Vector2d& vdes,
       alip_utils::Stance stance,
-      const geometry::ConvexPolygonSet& footholds
+      const geometry::ConvexPolygonSet& footholds,
+      const Eigen::Vector3d& p_prev_stance
   );
 
   const alip_utils::AlipGaitParams& gait_params() const {
@@ -93,6 +94,7 @@ class AlipS2SMPFC {
   void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTimeRegularization(double t);
+  void UpdateTrustRegionConstraint(double t, const Eigen::Vector3d& p);
 
   void ValidateParams() const {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
@@ -143,6 +145,7 @@ class AlipS2SMPFC {
   vector<Binding<LinearConstraint>> workspace_c_{};
   vector<Binding<LinearConstraint>> no_crossover_c_{};
   vector<Binding<LinearConstraint>> reachability_c_{};
+  std::shared_ptr<LinearConstraint> trust_region_ = nullptr;
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 

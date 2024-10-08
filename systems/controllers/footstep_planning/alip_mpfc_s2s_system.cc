@@ -210,9 +210,19 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
     footholds_filt = prev_footholds;
   }
 
+
+  const auto& prev_mpc_sol =
+      context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
+  // TODO (@Brian-Acosta) set the default state instead of this hack
+  Vector3d footstep_in_stance_frame = Vector3d::Zero();
+  if (prev_mpc_sol.pp.size() > 0) {
+    footstep_in_stance_frame = prev_mpc_sol.pp.at(1) - prev_mpc_sol.pp.at(0);
+  }
+
   const auto mpc_solution = trajopt_.Solve(
       x, p_b, tnom_remaining, tmin_remaining,
-      tmax_remaining, vdes, stance, footholds_filt
+      tmax_remaining, vdes, stance, footholds_filt,
+      footstep_in_stance_frame
   );
 
   // Update discrete states

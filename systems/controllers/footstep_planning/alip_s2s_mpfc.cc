@@ -50,7 +50,8 @@ AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
 
 alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     const Vector4d &x,const Vector3d &p, double t, double tmin, double tmax,
-    const Vector2d& vdes, Stance stance, const ConvexPolygonSet& footholds) {
+    const Vector2d& vdes, Stance stance, const ConvexPolygonSet& footholds,
+    const Vector3d& p_prev_stance) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -60,6 +61,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateInputCost(vdes, stance);
   UpdateTrackingCost(vdes, stance);
   UpdateTimeRegularization(t);
+  UpdateTrustRegionConstraint(t, p_prev_stance);
 
   auto solver_start = std::chrono::steady_clock::now();
 
@@ -234,6 +236,14 @@ void AlipS2SMPFC::MakeInputConstraints() {
       stack(mu_)
   ).evaluator();
 
+  MatrixXd A_trust = MatrixXd::Zero(3, 6);
+  A_trust.leftCols<3>().setIdentity();
+  A_trust.rightCols<3>().setIdentity();
+  A_trust.rightCols<3>() *= -1;
+  trust_region_ = prog_->AddLinearConstraint(
+      A_trust, -Vector3d::Constant(kInfinity), Vector3d::Constant(kInfinity),
+      {pp_.at(1), pp_.at(0)}
+  ).evaluator();
 }
 
 void AlipS2SMPFC::MakeStateConstraints() {
@@ -469,6 +479,14 @@ void AlipS2SMPFC::UpdateTerminalCostGait(const Eigen::Vector2d &vdes,
       2* params_.Qf, -2 * params_.Qf * xd, 0, true);
 
 }
+
+void AlipS2SMPFC::UpdateTrustRegionConstraint(double t, const Vector3d& p) {
+  double bound_size = t <= params_.tmin ? std::max(t, 0.04) : kInfinity;
+  Vector3d bound = Vector3d::Constant(bound_size);
+  trust_region_->UpdateLowerBound(p - bound);
+  trust_region_->UpdateUpperBound(p + bound);
+};
+
 
 void AlipS2SMPFC::UpdateTimeRegularization(double t) {
   time_regularization_->UpdateCoefficients(

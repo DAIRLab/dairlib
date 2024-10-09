@@ -17,6 +17,7 @@ using systems::PlantVisualizer;
 
 PYBIND11_MODULE(plant_visualizer, m) {
   m.doc() = "Binding plant visualizer utility";
+  py::module::import("pydrake.systems.framework");
 
   py::class_<PlantVisualizer, drake::systems::Diagram<double>>(
       m, "PlantVisualizer")

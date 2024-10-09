@@ -23,6 +23,7 @@ PYBIND11_MODULE(convex_polygon, m) {
 m.doc() = "Binding geometry utils";
 
 using py_rvp = py::return_value_policy;
+py::module::import("pydrake.systems.framework");
 
 py::class_<ConvexPolygon>(m, "ConvexPolygon")
     .def(py::init<>())

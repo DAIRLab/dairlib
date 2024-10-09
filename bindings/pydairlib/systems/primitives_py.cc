@@ -40,6 +40,7 @@ constexpr auto overload_cast_explicit = overload_cast_impl<Return, Args...>{};
 
 PYBIND11_MODULE(primitives, m) {
   m.doc() = "Binding robot lcm systems";
+  py::module::import("pydrake.systems.framework");
 
   using drake::multibody::MultibodyPlant;
 

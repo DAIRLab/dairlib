@@ -33,6 +33,8 @@ PYBIND11_MODULE(diagrams, m) {
             "use in python simulations";
 
   using py_rvp = py::return_value_policy;
+  py::module::import("pydrake.systems.framework");
+
 
   py::enum_<MpfcOscDiagramInputType>(m, "MpfcOscDiagramInputType")
       .value("kFootstepCommand", MpfcOscDiagramInputType::kFootstepCommand)

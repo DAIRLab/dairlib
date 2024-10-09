@@ -20,6 +20,7 @@ using Eigen::VectorXd;
 using py_rvp = py::return_value_policy;
 
 PYBIND11_MODULE(framework, m) {
+py::module::import("pydrake.systems.framework");
 
 py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
     .def(py::init<drake::lcm::DrakeLcm*,

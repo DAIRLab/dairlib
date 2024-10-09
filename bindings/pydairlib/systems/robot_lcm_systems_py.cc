@@ -18,6 +18,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
 
   using drake::multibody::MultibodyPlant;
   using systems::RobotOutputSender;
+  py::module::import("pydrake.systems.framework");
 
   py::class_<systems::RobotOutputReceiver, drake::systems::LeafSystem<double>>(
       m, "RobotOutputReceiver")

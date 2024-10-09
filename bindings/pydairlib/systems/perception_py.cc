@@ -23,6 +23,7 @@ using perception::PlaneSegSystem;
 
 PYBIND11_MODULE(perception, m) {
   m.doc() = "Binding camera utilities";
+  py::module::import("pydrake.systems.framework");
 
   py::class_<GridMapVisualizer, drake::systems::LeafSystem<double>>(
       m, "GridMapVisualizer")

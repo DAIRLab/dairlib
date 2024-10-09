@@ -159,8 +159,7 @@ PYBIND11_MODULE(diagrams, m) {
            &HikingSimDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_depth_camera_info",
-           &HikingSimDiagram::get_depth_camera_info,
-           py_rvp::reference_internal)
+           &HikingSimDiagram::get_depth_camera_info)
       .def("AddDrakeVisualizer",
            &HikingSimDiagram::AddDrakeVisualizer,
            py_rvp::reference_internal)
@@ -168,6 +167,7 @@ PYBIND11_MODULE(diagrams, m) {
            &HikingSimDiagram::SetPlantInitialConditionFromIK)
       .def("SetPlantInitialCondition",
            &HikingSimDiagram::SetPlantInitialCondition);
+
 
   py::class_<PerceptionModuleDiagram, drake::systems::Diagram<double>>(
       m, "PerceptionModuleDiagram")

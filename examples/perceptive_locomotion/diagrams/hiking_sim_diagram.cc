@@ -45,7 +45,8 @@ using drake::perception::DepthImageToPointCloud;
 HikingSimDiagram::HikingSimDiagram(
     const std::variant<std::string, SquareSteppingStoneList>& terrain,
     const std::string& camera_pose_yaml)
-    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
+    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf"),
+      depth_camera_info_(424, 240, 2){
 
 
   // magic numbers:
@@ -97,9 +98,12 @@ HikingSimDiagram::HikingSimDiagram(
 
   // camera model
   const auto cam_transform = camera::ReadCameraPoseFromYaml(camera_pose_yaml);
-  const auto& [color_camera, depth_camera] = camera::MakeDairD455CameraModel(
+  const auto [color_camera, depth_camera] = camera::MakeDairD455CameraModel(
       renderer_name, camera::D455ImageSize::k424x240
   );
+
+  depth_camera_info_ = depth_camera.core().intrinsics();
+
   const auto parent_body_id = plant_->GetBodyFrameIdIfExists(
       plant_->GetFrameByName("pelvis").body().index()
   );

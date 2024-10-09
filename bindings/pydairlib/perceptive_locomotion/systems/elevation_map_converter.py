@@ -139,7 +139,6 @@ class ElevationMappingConverter(LeafSystem):
             urdf,
             True,
             False,
-            True
         )
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()

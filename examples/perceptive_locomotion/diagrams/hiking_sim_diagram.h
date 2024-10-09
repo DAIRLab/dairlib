@@ -62,11 +62,9 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
       double height
   ) const;
 
-  const drake::systems::sensors::CameraInfo&
-  get_depth_camera_info(std::string sensor_name) {
-    return GetDowncastSubsystemByName<drake::systems::sensors::RgbdSensor>(
-        sensor_name
-    ).depth_camera_info();
+  drake::systems::sensors::CameraInfo
+  get_depth_camera_info(std::string sensor_name) const {
+    return depth_camera_info_;
   }
 
   void SetPlantInitialCondition(
@@ -80,6 +78,8 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
 
   const std::string urdf_;
 
+
+
   drake::multibody::MultibodyPlant<double> *plant_;
   drake::geometry::SceneGraph<double> *scene_graph_;
 
@@ -92,6 +92,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_lcm_radio_;
   drake::systems::OutputPortIndex output_port_scene_graph_query_;
   drake::systems::OutputPortIndex output_port_depth_image_;
+  drake::systems::sensors::CameraInfo depth_camera_info_;
 };
 
 }

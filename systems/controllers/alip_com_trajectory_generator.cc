@@ -169,6 +169,8 @@ void AlipComTrajectoryGenerator::CalcComTrajFromCurrent(
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
+  DRAKE_DEMAND(exp_pp_traj != nullptr);
+
   // read in slope parameters
   Vector2d kx_ky = is_ss ?
                    EvalVectorInput(context, slope_params_port_)->get_value() :

@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.28.0"
+DRAKE_COMMIT = "a2f0bbd0181cb3d16f9613a453b84ee09b3b1af8"
 
-DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2fe"
+DRAKE_CHECKSUM = "73eed6895f604d8fee55f834022ac23668442df41c2fbc1e5577f9e26ea1bfdb"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -136,7 +136,6 @@ INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
 
-
 # Maybe download InEKF
 http_archive(
     name = "inekf",
@@ -146,7 +145,6 @@ http_archive(
         "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
     ]],
 )
-
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.
@@ -203,3 +201,30 @@ http_archive(
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
 )
+
+## For some reason, this is needed for the clion bazel plugin to work on
+# clion 2024.1.3:
+http_archive(
+    name = "rules_java",
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+    ],
+)
+
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "02f7456e589471dcfc73f1b9ca7f2c2ea5ca4aea999674abea9aebe818700b6e",
+    url = "https://github.com/bazelbuild/apple_support/releases/download/1.17.0/apple_support.1.17.0.tar.gz",
+)
+
+load(
+    "@build_bazel_apple_support//lib:repositories.bzl",
+    "apple_support_dependencies",
+)
+
+apple_support_dependencies()
+
+#load("@bazel_features//:deps.bzl", "bazel_features_deps")
+#
+#bazel_features_deps()

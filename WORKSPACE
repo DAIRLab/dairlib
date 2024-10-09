@@ -227,6 +227,7 @@ http_archive(
     ],
 )
 
+# Apple support
 http_archive(
     name = "build_bazel_apple_support",
     sha256 = "02f7456e589471dcfc73f1b9ca7f2c2ea5ca4aea999674abea9aebe818700b6e",

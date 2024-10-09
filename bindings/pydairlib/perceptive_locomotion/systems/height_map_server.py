@@ -138,8 +138,7 @@ class HeightMapServer(LeafSystem):
             True,
             urdf,
             True,
-            False,
-            True
+            False
         )
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()

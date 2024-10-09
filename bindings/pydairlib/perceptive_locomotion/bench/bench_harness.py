@@ -99,9 +99,8 @@ class BenchEnvOptions:
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
 
-    controller_input_type: MpfcOscDiagramInputType = \
-        MpfcOscDiagramInputType.kFootstepCommand
-        # MpfcOscDiagramInputType.kLcmtAlipMpcOutput
+    controller_input_type: MpfcOscDiagramInputType = (
+        MpfcOscDiagramInputType.kLcmtAlipMpcOutput)
 
     simulate_perception: bool = False
     visualize: bool = False
@@ -210,6 +209,7 @@ class BenchHarness(Diagram):
             self.grid_map_visualizer = GridMapVisualizer(
                 self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
             )
+            builder.AddSystem(self.grid_map_visualizer)
             builder.Connect(
                 self.perception_module.get_output_port_state(),
                 self.plant_visualizer.get_input_port()
@@ -330,7 +330,6 @@ class BenchHarness(Diagram):
             )
         else:
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
-        if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
             self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context)
 

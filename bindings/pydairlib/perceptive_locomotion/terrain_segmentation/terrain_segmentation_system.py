@@ -40,7 +40,7 @@ def clopen(img: np.ndarray):
 
 class TerrainSegmentationSystem(LeafSystem):
 
-    def __init__(self, safety_callbacks, profiling=None):
+    def __init__(self, safety_callbacks, profiling=None, update_period=-1):
         super().__init__()
         self.set_name("S3")
 
@@ -66,6 +66,11 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
+        if update_period > 0:
+            self.DeclarePeriodicUnrestrictedUpdateEvent(
+                update_period, 0,
+                self.UpdateTerrainSegmentation,
+            )
         self.safety_hysteresis = 0.6
         self.kernel_length = 0.17
         self.erosion_kernel_length = self.kernel_length / 1.33

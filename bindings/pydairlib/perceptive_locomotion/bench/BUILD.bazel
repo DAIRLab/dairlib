@@ -35,6 +35,7 @@ py_binary(
     ],
     deps = [
         ":bench_harness",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "@drake//bindings/pydrake",
     ],

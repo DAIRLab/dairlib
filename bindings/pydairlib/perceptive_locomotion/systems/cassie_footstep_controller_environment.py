@@ -123,8 +123,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             True,
             params.urdf,
             True,
-            False,
-            True
+            False
         )
         self.controller_plant.Finalize()
         self.nq = self.controller_plant.num_positions() # 23

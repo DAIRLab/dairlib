@@ -13,7 +13,7 @@ class TimeSeriesBuffer {
   explicit TimeSeriesBuffer() = default;
 
   void put(uint64_t utime, const T& state) {
-    assert(timestamps_[head] < utime);
+    assert(timestamps_[head_] <= utime);
 
     // silently reject out of order entries
     if (timestamps_[head_] >= utime) {

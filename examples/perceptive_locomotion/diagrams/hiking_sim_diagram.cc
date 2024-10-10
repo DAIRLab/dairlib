@@ -135,7 +135,7 @@ HikingSimDiagram::HikingSimDiagram(
       cassie_motor.get_output_port(), state_sender->get_input_port_effort()
   );
   builder.Connect(
-      plant_->get_geometry_poses_output_port(),
+      plant_->get_geometry_pose_output_port(),
       scene_graph_->get_source_pose_port(plant_->get_source_id().value())
   );
   builder.Connect(

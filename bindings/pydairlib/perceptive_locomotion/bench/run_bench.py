@@ -98,13 +98,13 @@ def main():
     -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
     v = np.zeros((22,))
 
-    for _ in range(5):
-        context = diagram.CreateDefaultContext()
-        env.initialize_state(context, diagram, q, v)
-        simulator.reset_context(context)
-        simulator.Initialize()
-        simulator.set_target_realtime_rate(0.001)
-        simulator.AdvanceTo(1.0)
+    context = diagram.CreateDefaultContext()
+    env.initialize_state(context, diagram, q, v)
+    simulator.reset_context(context)
+    simulator.Initialize()
+    input('waiting')
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(10.0)
 
 
 if __name__ == '__main__':

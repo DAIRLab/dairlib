@@ -664,6 +664,8 @@ void OperationalSpaceControl::SolveQp(
       throw std::runtime_error("unrecognized solver option");
   }
 
+  assert(not result.GetSolution().hasNaN());
+
   if (result.is_success()) {
     // Extract solutions
     sol->dv_sol_ = result.GetSolution(id_qp_.dv());

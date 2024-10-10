@@ -136,15 +136,31 @@ INEKF_COMMIT = "bazel-opt"
 
 INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
 
-# Maybe download InEKF
+# The WORKSPACE file does not permit `if` statements, so we handle the local
+# option by toying with the repository names.  The selected repository is named
+# "@inekf", the other is named "@inekf_ignored".
+(_http_inekf_repo_name, _local_inekf_repo_name) = (
+    "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
+    "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
+)
+
 http_archive(
-    name = "inekf",
+    name = _http_inekf_repo_name,
     sha256 = INEKF_CHECKSUM,
     strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
     urls = [x.format(INEKF_COMMIT) for x in [
         "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
     ]],
 )
+
+# Maybe use a local checkout of InEKF.
+print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
+
+local_repository(
+    name = _local_inekf_repo_name,
+    path = DAIRLIB_LOCAL_INEKF_PATH,
+)
+
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.

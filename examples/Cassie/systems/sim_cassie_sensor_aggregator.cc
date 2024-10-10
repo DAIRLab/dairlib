@@ -29,15 +29,10 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
       this->DeclareVectorInputPort(
               "x", BasicVector<double>(num_positions_ + num_velocities_))
           .get_index();
-  acce_input_port_ =
-      this->DeclareVectorInputPort("imu_acceleration", BasicVector<double>(3))
-          .get_index();
-  gyro_input_port_ =
-      this->DeclareVectorInputPort("gyro", BasicVector<double>(3)).get_index();
-  radio_input_port_ =
-      this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<lcmt_radio_out>{})
-          .get_index();
+  acce_input_port_ = DeclareVectorInputPort("imu_acceleration", 3).get_index();
+  gyro_input_port_ = DeclareVectorInputPort("gyro", 3).get_index();
+  radio_input_port_ = DeclareAbstractInputPort(
+      "lcmt_radio_out", drake::Value<lcmt_radio_out>{}).get_index();
 
   this->DeclareAbstractOutputPort("lcmt_cassie_out",
                                   &SimCassieSensorAggregator::Aggregate);

@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from os import path
-from typing import Dict, Union, Type
+from typing import Dict, Union, Type, List
 
 import numpy as np
 
 # need to import pydrake first to avoid unknown base class errors
 from pydrake.systems.all import (
     State,
+    Value,
     Diagram,
     Context,
     Simulator,
@@ -17,7 +18,10 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
+    ConstantValueSource
 )
+
+from pydrake.multibody.all import ExternallyAppliedSpatialForce_
 
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
@@ -141,7 +145,7 @@ class BenchHarness(Diagram):
             params.terrain,
             params.rgdb_extrinsics_yaml
         )
-        self.radio_source = ConstantVectorSource(np.zeros(18, ))
+        self.radio_source = ConstantVectorSource(np.zeros(18,))
 
         builder.AddSystem(self.controller)
         builder.AddSystem(self.cassie_sim)

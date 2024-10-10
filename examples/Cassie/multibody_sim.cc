@@ -165,7 +165,7 @@ DEFINE_string(contact_solver, "SAP",
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
-      plant.get_geometry_poses_output_port(),
+      plant.get_geometry_pose_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());

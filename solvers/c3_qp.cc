@@ -69,10 +69,8 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
 
   VectorXd cost_linear = -delta_c.transpose() * New_U;
 
-  //  prog.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
   prog.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
 
-  //  prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(n_lambda_), ln_, 1);
   prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(n_lambda_), ln_, 1);
 
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);

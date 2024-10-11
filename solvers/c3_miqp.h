@@ -30,6 +30,8 @@ class C3MIQP final : public C3 {
 
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
+
+  const int M_;
 };
 
 }  // namespace solvers

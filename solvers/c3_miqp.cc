@@ -11,7 +11,7 @@ using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options) {}
+    : C3(LCS, costs, xdesired, options), M_(options.M) {}
 
 VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
@@ -69,7 +69,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 1000;  // big M variable
   double coeff[n_x_ + n_lambda_ + n_u_];
   double coeff2[n_x_ + n_lambda_ + n_u_];
 
@@ -83,7 +82,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
     lambda_expr.addTerms(coeff, delta_k, n_x_ + n_lambda_ + n_u_);
     model.addConstr(lambda_expr >= 0);
-    model.addConstr(lambda_expr <= M * (1 - binary[i]));
+    model.addConstr(lambda_expr <= M_ * (1 - binary[i]));
 
     GRBLinExpr activation_expr = 0;
 
@@ -94,7 +93,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
     activation_expr.addTerms(coeff2, delta_k, n_x_ + n_lambda_ + n_u_);
     model.addConstr(activation_expr + c(i) >= 0);
-    model.addConstr(activation_expr + c(i) <= M * binary[i]);
+    model.addConstr(activation_expr + c(i) <= M_ * binary[i]);
   }
 
   model.optimize();

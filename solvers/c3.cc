@@ -301,12 +301,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                              const vector<VectorXd>& WD, int admm_iteration,
                              bool is_final_solve) {
-  for (auto& constraint : constraints_) {
-    prog_.RemoveConstraint(constraint);
-  }
-  constraints_.clear();
-  constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
-
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;

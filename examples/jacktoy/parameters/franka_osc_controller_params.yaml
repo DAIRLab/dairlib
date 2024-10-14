@@ -16,22 +16,25 @@ p_franka_to_platform: [0, 0, -0.0145]
 
 #### C3 sanity checking good starting configurations ####
 # neutral_position: [0.4, 0.4, 0.05]    # 1) topple from behind and slide
-# neutral_position: [0.43, 0.3, 0.12]   # 2) topple from the top
+neutral_position: [0.43, 0.35, 0.12]   # 2) topple from the top
 # neutral_position: [0.4, 0.4, 0.05]    # 3) One topple and a significant yaw
 # neutral_position: [0.4, 0.4, 0.05]    # 4) 2 topples and distance error
 # neutral_position: [0.4, 0.4, 0.05]    # 5) Balancing on blue and green prongs at almost half a topple
 # neutral_position: [0.43, 0.28, 0.12]  #0.39, 0.33, 0.12]    # 6) 2 topples starting at position goal
 # neutral_position: [0.43, 0.28, 0.12]  #0.39, 0.33, 0.12]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
-neutral_position: [0.410, 0.33, 0.13]  #0.39, 0.33, 0.12]    # 8) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+# neutral_position: [0.410, 0.33, 0.13]  #0.39, 0.33, 0.12]    # 8) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+# neutral_position: [0.4, 0.4, 0.05]    # 9) Configuration used to sanity check target angular velocities
+# neutral_position: [0.33, 0.25, 0.043]    # 10) topple from the back to achive same goal pose as scenario 2.
+# neutral_position: [0.43, 0.30, 0.12]   # 11) topple from the top
 #^^# C3 sanity checking good starting configurations #^^#
 
 # neutral_position: [0.31, 0.4, 0.15]
 #neutral_position: [0.38, 0.46, 0.10]
 # EE in a far off position beyond c3 target
 # neutral_position: [0.50, -0.50, 0.10]
-x_scale: 0.2
-y_scale: 0.2
-z_scale: 0.2
+x_scale: 0.1
+y_scale: 0.1
+z_scale: 0.1
 
 w_input: 0.00
 w_input_reg: 0.0

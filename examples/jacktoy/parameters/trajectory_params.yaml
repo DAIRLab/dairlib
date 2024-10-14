@@ -45,6 +45,9 @@ fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 10) topple from the back to achive same goal pose as scenario 2.
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 11) topple from the top of back prong
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 #^^# C3 sanity checking good starting configurations #^^#
 
 

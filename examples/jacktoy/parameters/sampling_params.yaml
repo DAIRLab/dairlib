@@ -52,7 +52,7 @@ use_more_contacts_to_compute_cost: false
 cost_switching_threshold_distance: 0.25
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 100000000 #100000000 #3000000
+c3_to_repos_hysteresis: 200000 #100000000 #3000000
 finished_reposition_cost: 1000000000
-repos_to_c3_hysteresis: 100000000
+repos_to_c3_hysteresis: 200000
 hysteresis_between_repos_targets: 60000000000000

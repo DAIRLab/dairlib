@@ -46,11 +46,11 @@ resolve_contacts_to_list: [[1,3],
                            [1,4]]
 N: 5
 use_predicted_x0: false   # unused for sampling-based c3 controller
-use_predicted_x0_c3: false
+use_predicted_x0_c3: true
 use_predicted_x0_repos: true
 at_least_predict_first_planned_trajectory_knot: false
 
-solve_time_filter_alpha: 0.0
+solve_time_filter_alpha: 0.95
 # Workspace Limits
 world_x_limits: [0.25, 0.65]
 world_y_limits: [-0.45, 0.45]
@@ -130,7 +130,7 @@ qp_projection_scaling: 1
 #            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0.01, 0.01, 0.01,        # end effector position
            0.1, 0.1, 0.1, 0.1,              # object orientation
-           0.2, 0.2, 0.2,    # object position
+           2, 2, 2,    # object position
            0.05, 0.05, 0.05,              # end effector linear velocity
            50000, 50000, 50000,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity

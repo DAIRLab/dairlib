@@ -107,6 +107,11 @@ DEFINE_string(landmark_channel, "", "lcm channel for receiving EKF landmarks");
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
+
+DEFINE_bool(publish_cassie_output, false,
+            "whether to publish cassie_output over LCM"
+            "for debugging the state estimator later");
+
 void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
                         const drake::multibody::MultibodyPlant<double>& plant,
                         const drake::systems::Diagram<double>& diagram,
@@ -233,6 +238,13 @@ int do_main(int argc, char* argv[]) {
           FLAGS_pub_rate));
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
+
+  if (FLAGS_publish_cassie_output) {
+    auto fast_output_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT_DISPATCHER", lcm, {TriggerType::kForced}));
+    builder.Connect(*output_sender, *fast_output_pub);
+  }
 
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;

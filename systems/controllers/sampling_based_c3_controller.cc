@@ -740,7 +740,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 void SamplingC3Controller::ClampEndEffectorAcceleration(
   drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
-  float approximate_loop_dt = 0.05;
+  float approximate_loop_dt = std::min(0.1,filtered_solve_time_);
   float nominal_acceleration = 10;
         x_lcs_curr[0] = std::clamp(
           x_pred_curr_plan_[0], 
@@ -827,6 +827,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   if(is_doing_c3_){
     if (filtered_solve_time_ < 2*c3_options_.planning_dt && 
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
+      std::cerr << "Using first planned trajectory knot as predicted state for c3." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
     } else if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
       int last_passed_index = filtered_solve_time_ / c3_options_.planning_dt;
@@ -989,6 +990,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   if(!is_doing_c3_){
     if (filtered_solve_time_ < c3_options_.planning_dt && 
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
+      std::cerr << "Using first planned trajectory knot as predicted state for repos." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
     } else
     if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {

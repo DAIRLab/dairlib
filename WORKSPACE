@@ -133,7 +133,7 @@ add_perception_repositories()
 # Choose a revision of InEKF to use.
 INEKF_COMMIT = "bazel-opt"
 
-INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
+INEKF_CHECKSUM = "4624cb0af1fe42004282141706b05514dfb40997b49aee5602e5df40afd1ea67"
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named

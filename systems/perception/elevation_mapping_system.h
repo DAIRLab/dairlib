@@ -37,6 +37,7 @@ struct elevation_mapping_params {
   double resolution;
   double initialization_offset;
   double initialization_radius;
+  double pitch_bias;
   Eigen::Vector3d point_cloud_bias;
 };
 
@@ -53,6 +54,7 @@ struct elevation_mapping_params_io {
   double resolution;
   double initialization_offset;
   double initialization_radius;
+  double pitch_bias;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -68,6 +70,7 @@ struct elevation_mapping_params_io {
     a->Visit(DRAKE_NVP(initialization_offset));
     a->Visit(DRAKE_NVP(initialization_radius));
     a->Visit(DRAKE_NVP(point_cloud_bias));
+    a->Visit(DRAKE_NVP(pitch_bias));
   }
 
   static elevation_mapping_params ReadElevationMappingParamsFromYaml(
@@ -106,6 +109,7 @@ struct elevation_mapping_params_io {
     params_out.initialization_offset = params_io.initialization_offset;
     params_out.initialization_radius = params_io.initialization_radius;
     params_out.point_cloud_bias = Eigen::Vector3d::Map(params_io.point_cloud_bias.data());
+    params_out.pitch_bias = params_io.pitch_bias;
 
     for (const auto& [k, v] : params_io.contact_frames) {
       DRAKE_DEMAND(params_io.contact_points.count(k) == 1);

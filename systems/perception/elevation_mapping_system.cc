@@ -43,12 +43,19 @@ ElevationMappingSystem::ElevationMappingSystem(
     track_point_(params.track_point),
     params_(params) {
 
+  double pitch_offset = params.sensor_poses.size() > 1 ?
+    0 : params.pitch_bias * M_PI / 180.0;
+  auto X_offset = RigidTransformd(
+    RotationMatrixd::MakeXRotation(pitch_offset), Vector3d::Zero());
+
   // configure sensors
   drake::Vector1d prev_time_model_vector{-1};
   for (const auto& pose_param : params.sensor_poses) {
     DRAKE_DEMAND(plant_.HasBodyNamed(pose_param.sensor_parent_body_));
     DRAKE_DEMAND(sensor_poses_.count(pose_param.sensor_name_) == 0);
-    sensor_poses_.insert({pose_param.sensor_name_, pose_param});
+    auto pose_param_temp = pose_param;
+    pose_param_temp.sensor_pose_in_parent_body_ = pose_param.sensor_pose_in_parent_body_ * X_offset;
+    sensor_poses_.insert({pose_param.sensor_name_, pose_param_temp});
     input_ports_pcl_.insert({pose_param.sensor_name_, DeclareAbstractInputPort(
         "Point_cloud_" + pose_param.sensor_name_,
         drake::Value<PointCloudType::Ptr>()).get_index()

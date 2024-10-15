@@ -5,7 +5,7 @@ height: 0.85
 single_stance_duration: 0.3
 double_stance_duration: 0.1
 soft_constraint_cost: 1000
-time_regularization: 60
+time_regularization: 100
 stance_width: 0.18
 max_ankle_torque: 22
 ankle_torque_regularization: 0.2

@@ -62,6 +62,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateTrackingCost(vdes, stance);
   UpdateTimeRegularization(t);
   UpdateTrustRegionConstraint(t, p_prev_stance);
+  UpdateCapturabilityConstraint(stance);
 
   auto solver_start = std::chrono::steady_clock::now();
 
@@ -139,7 +140,7 @@ void AlipS2SMPFC::MakeMPCCosts() {
     input_cost_.push_back(
         prog_->AddQuadraticCost(
             Matrix4d::Identity(), Vector4d::Zero(),
-            {pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}
+            {pp_.at(0).head<2>(), pp_.at(i+1).head<2>()}
         ));
     soft_constraint_cost_.push_back(
         prog_->AddQuadraticCost(
@@ -281,8 +282,9 @@ void AlipS2SMPFC::MakeStateConstraints() {
 
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     workspace_c_.push_back(
-        prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
-    );
+        prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)}));
+//    capturability_c_.push_back(prog_->AddLinearConstraint(
+//        MatrixXd::Zero(2, 4), Vector2d::Zero(), Vector2d::Zero(), xx_.at(i+1)));
     //std::cout << workspace_c_.at(i).ToLatex() << std::endl;
   }
 }
@@ -360,11 +362,24 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
   double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
   for (auto& c : no_crossover_c_) {
     c.evaluator()->UpdateCoefficients(
-        Eigen::RowVector2d(-s, s),
-        VectorXd::Constant(1, -kInfinity),
-        VectorXd::Constant(1, -0.04)
+        Eigen::RowVector2d(s, -s),
+        VectorXd::Constant(1, 0.04),
+        VectorXd::Constant(1, kInfinity)
     );
     s *= -1.0;
+  }
+}
+
+void AlipS2SMPFC::UpdateCapturabilityConstraint(alip_utils::Stance stance) {
+  Matrix<double, 2, 4> A = alip_utils::CalcStateToCapturePointMatrix(gait_params());
+  // reminder - the first constraint is on the next state
+  double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
+  Vector2d lb(-0.8, 0.01);
+  Vector2d ub(0.8, 0.75);
+  for (auto& c : capturability_c_) {
+    A.row(1) *= s;
+    c.evaluator()->UpdateCoefficients(A, lb, ub);
+    s = -s;
   }
 }
 
@@ -413,8 +428,10 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 
   Matrix4d Q = 2 * r.transpose() * R * r;
 
+  Vector2d p = Vector2d::Zero();
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    Vector4d b = - 2 * r.transpose() * R * ud[i % 2];
+    p += ud[i % 2];
+    Vector4d b = - 2 * r.transpose() * R * p;
     input_cost_.at(i).evaluator()->UpdateCoefficients(
         Q, b, 0, true // we know it's convex
     );

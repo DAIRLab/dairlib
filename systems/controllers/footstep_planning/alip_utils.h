@@ -137,6 +137,8 @@ std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
 std::vector<Eigen::Vector2d>
 MakeP2Orbit(const alip_utils::AlipGaitParams& gait_params);
 
+Eigen::Matrix<double, 2, 4>
+CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params);
 
 void MakeAlipStepToStepCostMatrices(
     const alip_utils::AlipGaitParams& gait_params,

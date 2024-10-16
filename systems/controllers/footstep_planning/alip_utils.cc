@@ -261,6 +261,18 @@ std::vector<Eigen::Vector2d> MakeP2Orbit(const AlipGaitParams& gait_params) {
   return {u0, u1};
 }
 
+Eigen::Matrix<double, 2, 4>
+CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params) {
+  Matrix<double, 2, 4> ret;
+  double xc = 1.0 /  (gait_params.mass * sqrt(9.81 * gait_params.height));
+  ret.setZero();
+  ret(0, 0) = 1;
+  ret(0, 3) = xc;
+  ret(1, 1) = 1;
+  ret(1, 2) = -xc;
+  return ret;
+}
+
 void MakeAlipStepToStepCostMatrices(
     const alip_utils::AlipGaitParams& gait_params,
     const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,

@@ -264,7 +264,8 @@ std::vector<Eigen::Vector2d> MakeP2Orbit(const AlipGaitParams& gait_params) {
 Eigen::Matrix<double, 2, 4>
 CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params) {
   Matrix<double, 2, 4> ret;
-  double xc = 1.0 /  (gait_params.mass * sqrt(9.81 * gait_params.height));
+  double omega = sqrt(9.81 / gait_params.height);
+  double xc = 1.0 / (gait_params.mass * gait_params.height * omega);
   ret.setZero();
   ret(0, 0) = 1;
   ret(0, 3) = xc;

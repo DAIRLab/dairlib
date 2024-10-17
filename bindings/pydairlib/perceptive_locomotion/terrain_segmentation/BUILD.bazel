@@ -61,6 +61,14 @@ py_library(
 )
 
 py_library(
+    name = "map_reset_monior",
+    srcs = ["map_reset_monitor.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ]
+)
+
+py_library(
     name = "segmentation_criteria",
     srcs = ["segmentation_criteria.py"],
     deps = [

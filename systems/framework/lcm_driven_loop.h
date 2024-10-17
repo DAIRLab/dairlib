@@ -396,6 +396,10 @@ class LcmDrivenLoop {
     }
   };
 
+  void set_monitor(std::function<drake::systems::EventStatus(const drake::systems::Context<double>&)> monitor) {
+    simulator_->set_monitor(std::move(monitor));
+  }
+
  private:
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;

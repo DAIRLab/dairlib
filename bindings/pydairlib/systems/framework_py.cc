@@ -3,6 +3,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "drake/bindings/pydrake/common/wrap_pybind.h"
+
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
@@ -18,6 +20,9 @@ namespace pydairlib {
 using LcmOutputDrivenLoop = systems::LcmDrivenLoop<dairlib::lcmt_robot_output>;
 using Eigen::VectorXd;
 using py_rvp = py::return_value_policy;
+
+using MonitorCallback =
+    std::function<std::optional<drake::systems::EventStatus>(const drake::systems::Context<double>&)>;
 
 PYBIND11_MODULE(framework, m) {
 py::module::import("pydrake.systems.framework");
@@ -58,7 +63,16 @@ py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
       output.SetVelocities(velocities);
 
       return output.GetState();
-    });
+    }).def(
+        "set_monitor",
+        drake::pydrake::WrapCallbacks(
+            [](LcmOutputDrivenLoop* self, MonitorCallback monitor) {
+              self->set_monitor(
+                [monitor](const drake::systems::Context<double> &context) {
+                  return monitor(context).value_or(drake::systems::EventStatus::DidNothing());
+                });
+            })
+    );
 
 py::class_<systems::TimestampedVector<double>,
            drake::systems::BasicVector<double>>(m, "TimestampedVector")

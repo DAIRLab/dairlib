@@ -99,6 +99,8 @@ pybind_py_library(
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake:pydrake_pybind",
+        "@drake//bindings/pydrake/common:wrap_pybind",
     ],
     cc_so_name = "framework",
     cc_srcs = ["framework_py.cc"],

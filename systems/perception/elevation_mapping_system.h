@@ -3,6 +3,7 @@
 // dairlib
 #include "camera_utils.h"
 #include "common/find_resource.h"
+#include "dairlib/lcmt_contact.hpp"
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
@@ -180,6 +181,13 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   void SetDefaultState(const drake::systems::Context<double>& context,
                        drake::systems::State<double>* state) const final;
+
+  double CalcMapOffsetFromContactState(
+      lcmt_contact contact_msg, const grid_map::GridMap& map) const;
+
+  std::map<std::string, elevation_mapping::PointCloudType::Ptr>
+  CollectNewPointClouds(const drake::systems::Context<double>&,
+                        drake::systems::State<double>*) const;
 
   drake::systems::EventStatus Initialize(
       const drake::systems::Context<double>&,

@@ -95,8 +95,6 @@ class TerrainSegmentationSystem(LeafSystem):
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         raw_safety[np.isnan(elevation)] = 0
 
-
-
         return raw_safety
 
     def get_kernel_size(self, resolution: float, length=None) -> Tuple[int, int]:

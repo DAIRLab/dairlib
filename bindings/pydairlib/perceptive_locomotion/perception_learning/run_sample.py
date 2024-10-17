@@ -237,12 +237,12 @@ def run_play(sim_params, model_path=None):
 
     #model_path = 'RPPO_mirror_noise.zip'
     #model_path = 'RPPO_003_1.zip'
-    model_path = 'latest_model.zip'
+    model_path = 'new5_log.zip'
     #model_path = 'logs/rl_model_6720000_steps.zip'
     
-    #model = RecurrentPPO.load(model_path, env, verbose=1)
-    model = RecurrentPPO(CustomActorCriticPolicy, env)
-    model.set_parameters(model_path)
+    model = RecurrentPPO.load(model_path, env, verbose=1)
+    # model = RecurrentPPO(CustomActorCriticPolicy, env)
+    # model.set_parameters(model_path)
     
     obs, _ = env.reset()
     input("Start..")
@@ -253,6 +253,7 @@ def run_play(sim_params, model_path=None):
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
+        action = action / np.array([2, 2, 4])
         print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
@@ -324,8 +325,8 @@ def _main(model_path=None):
         entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv")  # noqa
 
     #sample(sim_params)
-    #run_play(sim_params, model_path=None)
-    load_without_dependencies(sim_params)
+    run_play(sim_params, model_path=None)
+    #load_without_dependencies(sim_params)
 
 if __name__ == '__main__':
 

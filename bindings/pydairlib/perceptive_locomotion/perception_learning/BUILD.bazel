@@ -27,11 +27,10 @@ py_library(
 py_binary(
     name = "run_rl_for_real",
     srcs = ["run_rl_for_real.py"],
-    tags = ["ros"],
     deps = [
         ":RLsystem",
         "//bindings/pydairlib/lcm",
-        "//bindings/pydairlib/perceptive_locomotion:ros_diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",

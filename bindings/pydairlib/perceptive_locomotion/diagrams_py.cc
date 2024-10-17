@@ -276,6 +276,8 @@ PYBIND11_MODULE(diagrams, m) {
         .def("plant", &CassieRealSenseDriverDiagram::plant, py_rvp::reference_internal)
         .def("get_input_port_state", &CassieRealSenseDriverDiagram::get_input_port_state, py_rvp::reference_internal)
         .def("get_input_port_contact", &CassieRealSenseDriverDiagram::get_input_port_contact, py_rvp::reference_internal)
+        .def("get_output_port_state", &CassieRealSenseDriverDiagram::get_output_port_state, py_rvp::reference_internal)
+        .def("get_output_port_grid_map", &CassieRealSenseDriverDiagram::get_output_port_grid_map, py_rvp::reference_internal)
         .def("start_rs", &CassieRealSenseDriverDiagram::start_rs)
         .def("stop_rs", &CassieRealSenseDriverDiagram::stop_rs);
   }

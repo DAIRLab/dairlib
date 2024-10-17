@@ -111,9 +111,9 @@ class fsm_info:
     prev_switch_time: int
     next_switch_time: int
 
-class ResidualBlock_noNorm(nn.Module):
+class ResidualBlock_(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
-        super(ResidualBlock_noNorm, self).__init__()
+        super(ResidualBlock_, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.relu = nn.LeakyReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -141,7 +141,7 @@ class CustomNetwork(nn.Module):
         self.vector_state_actor = 6+16
         self.vector_state_critic = 6+23
         self.height_map_size = 64
-        ResidualBlock = ResidualBlock_noNorm
+        ResidualBlock = ResidualBlock_
 
         n_input_channels = 3
 
@@ -472,7 +472,6 @@ class RLSystem(LeafSystem):
         
         adverserial_offset = np.zeros(2,)
 
-
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
         )
@@ -494,7 +493,7 @@ class RLSystem(LeafSystem):
         self.lstm_states = lstm_states
 
         self.episode_starts = np.zeros((1,), dtype=bool)
-
+        actions = actions / np.array([2, 2, 4])
         out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
         # print(actions)
         output.set_value(out)
@@ -519,7 +518,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder.AddSystem(sim_env)
     footstep_zoh = ZeroOrderHold(0.025, 6)
 
-    rl_system = RLSystem(model_path='test', hidden_size=64)
+    rl_system = RLSystem(model_path='collision_penalty', hidden_size=128)
     
     builder.AddSystem(rl_system)
     builder.Connect(
@@ -584,22 +583,24 @@ def run(sim_env, rl_system, diagram, plot=False):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/ic_new.npz'
+            'tmp/ic.npz'
         )
     )
     
-    datapoint = ic_generator.random()
-    
-    v_des_theta = 0.35
-    v_des_norm = 0.8
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.0, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    print(datapoint['desired_velocity'])
+    # datapoint = ic_generator.random()
+    datapoint = ic_generator.choose(0)
 
+    v_x = 0.8
+    v_y = 0.4
+    vx = np.random.uniform(-v_x, v_x)
+    vy = np.random.uniform(-v_y, v_y)
+    datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+
+    datapoint['desired_velocity'] = np.array([0.4, 0.]).flatten()
+    print(datapoint['desired_velocity'])
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
-    
+
     # timing aliases
     t_ss = rl_system.params.single_stance_duration
     t_ds = rl_system.params.double_stance_duration
@@ -612,7 +613,7 @@ def run(sim_env, rl_system, diagram, plot=False):
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
-    t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
+    t_init = datapoint['stance'] * t_s2s + t_ds + datapoint['phase'] # + t_eps
 
     print(f't_init: {t_init}')
     context.SetTime(t_init)

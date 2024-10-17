@@ -3,9 +3,11 @@ from os import path
 from typing import Dict, Union, Type
 from matplotlib.cm import ScalarMappable
 
+import noise
 import numpy as np
 import math
 from scipy.spatial.transform import Rotation
+from scipy.ndimage import sobel, binary_dilation
 
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
@@ -26,8 +28,9 @@ from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions, HeightMapQueryObject
 from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
     import ElevationMappingConverter, ElevationMapOptions, ElevationMapQueryObject
-from pydairlib.multibody import SquareSteppingStoneList, ReExpressWorldVector3InBodyYawFrame
+from pydairlib.multibody import SquareSteppingStoneList, ReExpressWorldVector3InBodyYawFrame, ReExpressBodyYawVector3InWorldFrame
 
+import pydrake.geometry
 from pydrake.systems.analysis import SimulatorStatus
 from pydrake.geometry import Rgba
 from pydrake.common.cpp_param import List
@@ -62,14 +65,21 @@ from pydrake.systems.all import (
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 class ObservationPublisher(LeafSystem):
-    def __init__(self, noise=False, simulate_perception=True):
+    def __init__(self, noise=False, simulate_perception=True, terrain='else'):
         LeafSystem.__init__(self)
         self.ns = 4
         self.noise = noise
         self.simulate_perception = simulate_perception
         
+        if 'flat/' in terrain or '/flat.yaml' in terrain:
+            self.terrain = 'flat'
+        else:
+            self.terrain = 'else'
+
         self.init_ = 0
         self.episode_noise = None
+        self.rbase = 0
+        self.grid = np.zeros((64, 64))
         
         if self.simulate_perception:
             self.height = 64
@@ -128,7 +138,7 @@ class ObservationPublisher(LeafSystem):
     def calculate_obs(self, context: Context, output):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         ud = xd_ud.value()[4:]
-        
+
         if self.simulate_perception:
             # Ground truth height map for Critic
             gt_hmap_query = self.EvalAbstractInput(
@@ -151,12 +161,10 @@ class ObservationPublisher(LeafSystem):
         ).get_value()
         
         if self.noise:
-            if self.init_ == 0:
-                #self.camera_episode_noise = np.random.uniform(low=-0.03, high=0.03)
-                self.camera_episode_noise = np.random.uniform(low=-0.05, high=0.05)
+            if self.init_ == 0 or context.get_time() < 0.562:
+                self.camera_episode_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
             # X, Y offset : Shifts the camera
-            #camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
-            camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
         else:
             adverserial_offset = np.zeros(2,)
@@ -175,48 +183,54 @@ class ObservationPublisher(LeafSystem):
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
-        
+
         joint_angle = states[7:23] # Only joint angles (reject pelvis)
         joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
         gt_joint_angle = gt_states[:23]
 
         if self.noise:
-            if self.init_ == 0:
+            if self.init_ == 0 or context.get_time() < 0.562:
                 # Offset for hmap per episode
-                # self.episode_noise = np.random.uniform(low=-0.03, high=0.03)
-                self.episode_noise = np.random.uniform(low=-0.05, high=0.05)
+                self.episode_noise = np.random.uniform(low=-0.02, high=0.02)
                 self.init_ += 1
             
             # Offset for hmap per step
-            # height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
-            # step_noise = np.random.uniform(low=-0.01, high=0.01)
-            height_noise = np.random.uniform(low=-0.03, high=0.03, size=(self.height,self.height))
-            step_noise = np.random.uniform(low=-0.02, high=0.02)
-            hmap[-1] += height_noise + self.episode_noise + step_noise
-            hmap_grid_world[-1] += height_noise + self.episode_noise + step_noise
-
-            # alip_noise_com = max(abs(alip[:2]))*0.1
-            # alip_noise_ang = max(abs(alip[:-2]))*0.1
-
-            alip_noise_com = max(abs(alip[:2]))*0.15
-            alip_noise_ang = max(abs(alip[:-2]))*0.15
-
-            # alip_noise_com = max(abs(alip[:2]))*0.2
-            # alip_noise_ang = max(abs(alip[:-2]))*0.2
-
-            alipxy_noise = np.random.uniform(low=-alip_noise_com, high=alip_noise_com, size=(2,))
-            aliplxly_noise = np.random.uniform(low=-alip_noise_ang, high=alip_noise_ang, size=(2,)) # 20%
+            height_noise = np.random.uniform(low=-0.015, high=0.015, size=(self.height,self.height))
             
-            # vdes_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
-            # angle_noise = np.random.uniform(low=-0.03, high=0.03, size=(16,))
+            unoise = np.random.normal(0, 0.2, (64, 64))
+            y, x = np.indices((64, 64))
+            distance_from_center = np.sqrt((x - 32) ** 2 + (y - 32) ** 2)
+            max_distance = np.sqrt(32**2 + 32**2)
+            distance_from_center_normalized = distance_from_center / max_distance
+            weight_mask = distance_from_center_normalized**6
+            weighted_noise = unoise * weight_mask
+            hmap[-1] += weighted_noise
+            hmap_grid_world[-1] += weighted_noise
 
-            vdes_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
-            angle_noise = np.random.uniform(low=-0.05, high=0.05, size=(16,))
+            hmap[-1] += self.episode_noise + height_noise
+            hmap_grid_world[-1] += self.episode_noise + height_noise
 
-            alip = alip + np.hstack((alipxy_noise, aliplxly_noise))
-            vdes = vdes + vdes_noise
-            joint_angle = joint_angle + angle_noise
+            if self.terrain == 'flat':
+                scale = np.random.uniform(10., 30.) # 10.0  # Scale controls how zoomed in/out the noise is
+                octaves = 6 # Controls the number of noise layers
+                persistence = np.random.uniform(.25, .75) #0.5  # Controls the amplitude of each octave
+                lacunarity = np.random.uniform(1.75, 2.25) #2.   # Controls the frequency of each octave
+                min_height = -0.03
+                max_height = 0.03
+                
+                for i in range(64):
+                    for j in range(64):
+                        x = i / scale
+                        y = j / scale
+                        self.grid[i, j] = noise.pnoise2(x, y, octaves=octaves, 
+                                    persistence=persistence, lacunarity=lacunarity, repeatx=64, repeaty=64, base=self.rbase)
+                min_value = np.min(self.grid)
+                max_value = np.max(self.grid)
 
+                # Normalize the grid values to the range [-0.04, 0.04]
+                scaled_grid = min_height + (self.grid - min_value) / (max_value - min_value) * (max_height - min_height)
+                hmap[-1] += scaled_grid
+                hmap_grid_world[-1] += scaled_grid
 
         # Plot depth map with noise
         hmap_query.plot_surface(
@@ -226,7 +240,8 @@ class ObservationPublisher(LeafSystem):
         hmap = hmap.reshape(-1)
         gt_hmap = gt_hmap.reshape(-1)
 
-        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # 24621
+        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # JOINT 24621
+        # out = np.hstack((hmap, alip, vdes, gt_joint_angle, gt_hmap)) # ALIP
         output.set_value(out)
 
 class RewardSystem(LeafSystem):

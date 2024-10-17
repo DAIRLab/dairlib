@@ -38,7 +38,7 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
 
-model_path = "pbody" #pbody #pbody_new #atlas_new
+model_path = "collision_penalty"
 model_hz = 40.0
 model_hidden_size = 128
 points_topic = "/camera/depth/color/points"

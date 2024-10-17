@@ -36,6 +36,14 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
     return get_input_port(input_port_contact_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_state() const {
+    return get_output_port(output_port_state_);
+  }
+  
+  const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
+    return get_output_port(output_port_grid_map_);
+  }
+
   drake::lcm::DrakeLcm* lcm() {return &lcm_local_;}
 
   const drake::multibody::MultibodyPlant<double>& plant() {
@@ -68,6 +76,7 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_robot_state_;
   drake::systems::InputPortIndex input_port_contact_;
   drake::systems::OutputPortIndex output_port_grid_map_;
+  drake::systems::OutputPortIndex output_port_state_;
 
 
 };

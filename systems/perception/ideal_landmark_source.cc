@@ -12,13 +12,13 @@ using Eigen::Matrix3Xd;
 using drake::systems::Context;
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::BodyFrame;
+using drake::multibody::RigidBodyFrame;
 
 using systems::OutputVector;
 
 IdealLandmarkSource::IdealLandmarkSource(
     const MultibodyPlant<double> &plant, Context<double> *context,
-    const BodyFrame<double>& landmark_frame) :
+    const RigidBodyFrame<double>& landmark_frame) :
     plant_(plant), landmark_frame_(landmark_frame), context_(context) {
 
   DRAKE_DEMAND(&(landmark_frame.GetParentPlant()) == &plant);

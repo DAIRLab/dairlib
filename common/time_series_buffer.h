@@ -6,6 +6,10 @@ namespace dairlib {
 template <typename T, size_t BufSize>
 class TimeSeriesBuffer {
  public:
+  // need this line to avoid runtime warnings when storing TimeSeriesBuffer in
+  // a drake Context
+  using NonTypeTemplateParameter = std::integral_constant<size_t, BufSize>;
+
   explicit TimeSeriesBuffer() = default;
 
   void put(uint64_t utime, const T& state) {

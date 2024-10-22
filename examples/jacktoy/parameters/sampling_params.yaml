@@ -45,14 +45,14 @@ use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 2
-use_more_contacts_to_compute_cost: false
+use_more_contacts_to_compute_cost: true
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
 ####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
 cost_switching_threshold_distance: 0.25
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 200000 #100000000 #3000000
+c3_to_repos_hysteresis: 300000 #100000000 #3000000
 finished_reposition_cost: 1000000000
 repos_to_c3_hysteresis: 200000
 hysteresis_between_repos_targets: 60000000000000

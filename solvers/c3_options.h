@@ -37,6 +37,9 @@ struct C3Options {
   double w_G;
   double w_U;
 
+  bool use_quaternion_dependent_cost;
+  double q_quaternion_dependent_weight;
+
   std::vector<double> q_vector;
   std::vector<double> q_vector_position_and_orientation;
   std::vector<double> r_vector;
@@ -117,6 +120,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
+    a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
+    a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(q_vector_position_and_orientation));
     a->Visit(DRAKE_NVP(r_vector));

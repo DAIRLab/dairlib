@@ -102,6 +102,10 @@ w_G: 0.18
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
+# If this is true, the portion of the Q matrix corresponding to the quaternions will be set based on the current and desired quaternion.
+use_quaternion_dependent_cost: false
+q_quaternion_dependent_weight: 1
+
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity 
 # constraints also approaches 0. 
 qp_projection_alpha: 0.01

@@ -9,6 +9,7 @@
 #include "multibody/multibody_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "quaternion_error_hessian.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
@@ -504,11 +505,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // clear the Q_ values and replace with costs for position and orientation.
     Q_.clear();
     double discount_factor = 1;
-    for (int i = 0; i < N_; ++i) {
+    for (int i = 0; i < N_+1; ++i) {
       Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
       discount_factor *= c3_options_.gamma;
     }
-    Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+  }
+  if(c3_options_.use_quaternion_dependent_cost){
+    std::cout << "Using quaternion dependent cost." << std::endl;
+    Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
+    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
+    Eigen::MatrixXd Q_quaternion_dependent_cost = 
+      hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
+    double discount_factor = 1;
+    for (int i = 0; i < N_+1; ++i) {
+      Q_[i].block(3,3,4,4) = discount_factor *
+        c3_options_.q_quaternion_dependent_weight * Q_quaternion_dependent_cost;
+      discount_factor *= c3_options_.gamma;
+    }
   }
 
   if (verbose_) {

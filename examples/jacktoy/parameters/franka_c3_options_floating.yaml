@@ -105,6 +105,10 @@ w_G: 0.25
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
+# If this is true, the portion of the Q matrix corresponding to the quaternions will be set based on the current and desired quaternion.
+use_quaternion_dependent_cost: false
+q_quaternion_dependent_weight: 1
+
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity 
 # constraints also approaches 0. 
 qp_projection_alpha: 0.01
@@ -130,7 +134,7 @@ qp_projection_scaling: 1
 #            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [0.01, 0.01, 0.01,        # end effector position
            0.1, 0.1, 0.1, 0.1,              # object orientation
-           2, 2, 2,    # object position
+           3, 3, 3,    # object position
            0.05, 0.05, 0.05,              # end effector linear velocity
            50000, 50000, 50000,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity

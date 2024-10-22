@@ -18,11 +18,11 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
-fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
-# fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
+fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
+fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
 # fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
 # fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]

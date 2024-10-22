@@ -20,3 +20,4 @@ class MapResetMonitor:
 
     def monitor(self, root_context):
         segmenter_context = self._segmenter.GetMyContextFromRoot(root_context)
+

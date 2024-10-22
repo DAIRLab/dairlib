@@ -344,6 +344,22 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   return drake::systems::EventStatus::Succeeded();
 }
 
+void ElevationMappingSystem::ReInitialize(
+    Context<double>* root_context, const GridMap &init_map, std::string layer) const {
+
+  Context<double>& context = this->GetMyMutableContextFromRoot(root_context);
+
+  auto& map = context.get_mutable_abstract_state<ElevationMap>(
+      elevation_map_state_index_);
+
+  GridMap tmp_map_in(init_map);
+  tmp_map_in["elevation"] = tmp_map_in[layer];
+
+  GridMap tmp_map_out = map.getRawGridMap();
+  tmp_map_out.addDataFrom(tmp_map_in, false, true, false, {"elevation"});
+  map.setRawGridMap(tmp_map_out);
+}
+
 void ElevationMappingSystem::InitializeFlatTerrain(
     const VectorXd& robot_state,
     std::vector<std::pair<const Eigen::Vector3d,

@@ -32,6 +32,16 @@ cc_library(
 )
 
 cc_library(
+    name = "terrain_segmentation_monitor",
+    srcs = ["terrain_segmentation_monitor.cc"],
+    hdrs = ["terrain_segmentation_monitor.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
+    ],
+)
+
+cc_library(
     name = "image_pair",
     hdrs = ["image_pair.h"],
     deps = ["@opencv"],

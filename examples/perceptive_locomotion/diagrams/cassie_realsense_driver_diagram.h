@@ -27,6 +27,10 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   void InitializeElevationMap(const Eigen::VectorXd& robot_state,
                               drake::systems::Context<double>* root_context) const;
 
+  void ReInitilizeElevationMap(drake::systems::Context<double>* root_context,
+                               const grid_map::GridMap& init_map,
+                               std::string layer) const;
+
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_robot_state_);
   }

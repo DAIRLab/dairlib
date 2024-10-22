@@ -166,6 +166,15 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
                 const drake::multibody::Frame<double>&>> contacts,
       drake::systems::Context<double>&) const;
 
+
+  /*!
+ * Re-initalize the elevation map to match the specified layer of init_map
+ * @param context
+ * @param layer
+ */
+  void ReInitialize(drake::systems::Context<double>* root_context,
+                    const grid_map::GridMap& init_map, std::string layer) const;
+
  private:
 
   drake::systems::EventStatus ElevationMapUpdateEvent(

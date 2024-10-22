@@ -134,5 +134,11 @@ void CassieRealSenseDriverDiagram::InitializeElevationMap(
 
 }
 
+void CassieRealSenseDriverDiagram::ReInitilizeElevationMap(
+    drake::systems::Context<double>* root_context,
+    const grid_map::GridMap& init_map, std::string layer) const {
+  elevation_mapping_system_->ReInitialize(root_context, init_map, layer);
+}
+
 }
 }

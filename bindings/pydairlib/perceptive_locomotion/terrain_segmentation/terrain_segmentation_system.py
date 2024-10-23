@@ -162,6 +162,8 @@ class TerrainSegmentationSystem(LeafSystem):
             self.get_kernel_size(elevation_map.getResolution()),
             normalize=True)
 
+        smoothed = clopen(smoothed)
+
         segmented_map['interpolated'][:] = smoothed
         final_safety_score = self.cleanup_and_add_hysteresis(
             raw_safety_score, prev_segmentation, elevation_map.getResolution()

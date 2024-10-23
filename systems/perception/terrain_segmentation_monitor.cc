@@ -1,4 +1,9 @@
+
 #include "terrain_segmentation_monitor.h"
+
+#include <iostream>
+#include <ostream>
+
 #include "common/time_series_buffer.h"
 #include "common/eigen_utils.h"
 
@@ -70,11 +75,18 @@ bool TerrainSegmentationMonitor::NeedsMinValidAreaReset(
     return false;
   }
   const auto& recent_map = buf_ptr->get(1e6 * context.get_time());
-  const Eigen::MatrixXf& seg = recent_map.get("segmentation");
-  double nan_count = seg.array().isNaN().count();
-  double area = seg.cols() * seg.cols();
-  return (nan_count / area) < (1.0 - area_threshold);
+  const Eigen::MatrixXf& elevation = recent_map.get("elevation");
+  double nan_count = elevation.array().isNaN().count();
+  double area = elevation.rows() * elevation.cols();
+  return (nan_count / area) > (1.0 - area_threshold);
 }
+
+void TerrainSegmentationMonitor::Reset(drake::systems::Context<double>& context) {
+  auto& buf_ptr =
+      context.get_mutable_abstract_state<BufferType>(map_history_index_);
+  buf_ptr->reset();
+}
+
 
 drake::systems::EventStatus TerrainSegmentationMonitor::DiscreteVariableUpdate(
     const Context<double> &context, State<double> *state) const {

@@ -53,8 +53,9 @@ PYBIND11_MODULE(perception, m) {
   py::class_<TerrainSegmentationMonitor, drake::systems::LeafSystem<double>>(
       m, "TerrainSegmentationMonitor")
       .def(py::init<terrain_segmentation_reset_params>(), py::arg("params"))
+      .def("Reset", &TerrainSegmentationMonitor::Reset)
       .def("NeedsIoUReset", &TerrainSegmentationMonitor::NeedsIoUReset)
-      .def("NeedsMinValidAreaAreaReset", &TerrainSegmentationMonitor::NeedsMinValidAreaReset)
+      .def("NeedsMinValidAreaReset", &TerrainSegmentationMonitor::NeedsMinValidAreaReset)
       .def("GetMapForReInitialization", &TerrainSegmentationMonitor::GetMapForReInitialization);
 
   py::class_<terrain_segmentation_reset_params>(

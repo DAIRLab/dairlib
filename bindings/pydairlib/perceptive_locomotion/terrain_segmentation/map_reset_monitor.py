@@ -32,6 +32,7 @@ class MapResetMonitor:
             gridmap = self._monitor.GetMapForReInitialization(monitor_context)
             self._mapper.ReInitializeElevationMap(
                 root_context, gridmap, "interpolated")
+            self._monitor.Reset(monitor_context)
             return EventStatus.Succeeded()
 
         return EventStatus.DidNothing()

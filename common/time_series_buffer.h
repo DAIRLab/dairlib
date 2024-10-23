@@ -29,6 +29,12 @@ class TimeSeriesBuffer {
     }
   }
 
+  void fill(const T& item) {
+    for(auto& state: state_history_) {
+      state = item;
+    }
+  }
+
   void reset() {
     head_ = 0;
     size_ = 0;

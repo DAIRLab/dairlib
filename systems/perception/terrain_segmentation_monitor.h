@@ -20,13 +20,13 @@ class TerrainSegmentationMonitor : public drake::systems::LeafSystem<double> {
 
   TerrainSegmentationMonitor(terrain_segmentation_reset_params params);
 
-
-
   bool NeedsIoUReset(const drake::systems::Context<double>& context) const;
   bool NeedsMinValidAreaReset(const drake::systems::Context<double>& context) const;
 
   grid_map::GridMap GetMapForReInitialization(
       const drake::systems::Context<double>& context) const;
+
+  void Reset(drake::systems::Context<double>& context);
 
  private:
 

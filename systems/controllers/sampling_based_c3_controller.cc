@@ -516,10 +516,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
     Eigen::MatrixXd Q_quaternion_dependent_cost = 
       hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
+    Eigen::MatrixXd Q_quaternion_dependent_regularizer =
+      quat_desired * quat_desired.transpose();
+    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows()
+              == Q_quaternion_dependent_cost.cols()
+              == Q_quaternion_dependent_regularizer.rows()
+              == Q_quaternion_dependent_regularizer.cols()
+              == 4);
     double discount_factor = 1;
     for (int i = 0; i < N_+1; ++i) {
-      Q_[i].block(3,3,4,4) = discount_factor *
-        c3_options_.q_quaternion_dependent_weight * Q_quaternion_dependent_cost;
+      Q_[i].block(3,3,4,4) = discount_factor * (
+        c3_options_.q_quaternion_dependent_weight * Q_quaternion_dependent_cost
+        + c3_options_.q_quaternion_dependent_regularizer_weight
+          * Q_quaternion_dependent_regularizer);
       discount_factor *= c3_options_.gamma;
     }
   }

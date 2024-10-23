@@ -39,6 +39,7 @@ struct C3Options {
 
   bool use_quaternion_dependent_cost;
   double q_quaternion_dependent_weight;
+  double q_quaternion_dependent_regularizer_weight;
 
   std::vector<double> q_vector;
   std::vector<double> q_vector_position_and_orientation;
@@ -122,6 +123,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_U));
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));
+    a->Visit(DRAKE_NVP(q_quaternion_dependent_regularizer_weight));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(q_vector_position_and_orientation));
     a->Visit(DRAKE_NVP(r_vector));

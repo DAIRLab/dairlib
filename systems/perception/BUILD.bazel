@@ -36,6 +36,8 @@ cc_library(
     srcs = ["terrain_segmentation_monitor.cc"],
     hdrs = ["terrain_segmentation_monitor.h"],
     deps = [
+        "//common:eigen_utils",
+        "//common:time_series_buffer",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],

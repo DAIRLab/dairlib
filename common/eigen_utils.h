@@ -69,3 +69,22 @@ inline std::vector<Matrix<Scalar, n, 1>> unstack(const VectorX<Scalar>& v) {
   }
   return out;
 }
+
+template <typename Scalar>
+double MatrixIoU(const Eigen::MatrixX<Scalar>& matrix1,
+                 const Eigen::MatrixX<Scalar>& matrix2) {
+
+  DRAKE_DEMAND(
+      matrix1.rows() == matrix2.rows() and matrix1.cols() == matrix2.cols());
+
+  // Convert matrices to binary (1.0 or 0.0) if they aren't already
+  Eigen::MatrixXf binary1 = (matrix1.array() > 0.5f).template cast<float>();
+  Eigen::MatrixXf binary2 = (matrix2.array() > 0.5f).template cast<float>();
+  float intersection = (binary1.array() * binary2.array()).sum();
+  float union_sum = binary1.array().sum() + binary2.array().sum() - intersection;
+
+  if (union_sum == 0) {
+    return 0.0;
+  }
+  return intersection / union_sum;
+}

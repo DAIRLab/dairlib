@@ -196,7 +196,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
         ));
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
-    for (int j = 0; j < kMaxFootholds; ++j) {
+    for (size_t j = 0; j < kMaxFootholds; ++j) {
       tmp.push_back(
           LinearBigMConstraint(
               *prog_,
@@ -370,7 +370,7 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
 
 void AlipS2SMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
   const auto& polys = footholds.polygons();
-  int n = std::min(kMaxFootholds, footholds.size());
+  size_t n = std::min(kMaxFootholds, footholds.size());
 
   RowVectorXd choice_constraint = RowVectorXd::Zero(kMaxFootholds);
   choice_constraint.leftCols(n) = RowVectorXd::Ones(n);
@@ -381,20 +381,20 @@ void AlipS2SMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
   );
 
   for (auto& c : footstep_c_) {
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       const auto& [A, b] = polys.at(i).GetConstraintMatrices();
       c.at(i).UpdateCoefficients(A, b);
     }
-    for (int i = n; i < kMaxFootholds; ++i) {
+    for (size_t i = n; i < kMaxFootholds; ++i) {
       c.at(i).deactivate();
     }
   }
   for (auto& c : footstep_c_eq_) {
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       const auto& [A, b] = polys.at(i).GetEqualityConstraintMatrices();
       c.at(i).UpdateCoefficients(A, b);
     }
-    for (int i = n; i < kMaxFootholds; ++i) {
+    for (size_t i = n; i < kMaxFootholds; ++i) {
       c.at(i).deactivate();
     }
   }

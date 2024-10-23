@@ -42,6 +42,7 @@ py_binary(
     deps = [
         ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
+        ":map_reset_monitor",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
@@ -61,7 +62,7 @@ py_library(
 )
 
 py_library(
-    name = "map_reset_monior",
+    name = "map_reset_monitor",
     srcs = ["map_reset_monitor.py"],
     deps = [
         "@drake//bindings/pydrake",

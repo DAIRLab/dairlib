@@ -60,6 +60,9 @@ class TerrainSegmentationSystem(LeafSystem):
                 )
             )
         )
+        self.DeclareStateOutputPort(
+            "safe_terrain", self.segmentation_state_idx
+        )
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )

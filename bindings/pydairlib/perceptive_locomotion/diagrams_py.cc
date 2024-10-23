@@ -181,6 +181,7 @@ PYBIND11_MODULE(diagrams, m) {
         m, "CassieRealSenseDriverDiagram")
         .def(py::init<const std::string&>(), py::arg("points_channel"))
         .def("InitializeElevationMap", &CassieRealSenseDriverDiagram::InitializeElevationMap)
+        .def("ReInitializeElevationMap", &CassieRealSenseDriverDiagram::ReInitilizeElevationMap)
         .def("lcm", &CassieRealSenseDriverDiagram::lcm, py_rvp::reference_internal)
         .def("plant", &CassieRealSenseDriverDiagram::plant, py_rvp::reference_internal)
         .def("get_input_port_state", &CassieRealSenseDriverDiagram::get_input_port_state, py_rvp::reference_internal)

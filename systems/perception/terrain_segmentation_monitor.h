@@ -6,12 +6,19 @@
 namespace dairlib {
 namespace perception {
 
+struct terrain_segmentation_reset_params {
+  double update_period = 30.0;
+  double iou_threshold = 0.7;
+  double area_threshold = 0.55;
+  size_t lookback_size = 10;
+};
+
 class TerrainSegmentationMonitor : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(TerrainSegmentationMonitor);
   static constexpr size_t kMaxBufferLen = 15;
 
-  TerrainSegmentationMonitor(double update_period, size_t lookback_size);
+  TerrainSegmentationMonitor(terrain_segmentation_reset_params params);
 
 
 

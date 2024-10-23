@@ -15,16 +15,24 @@ using grid_map::GridMap;
 using BufferType = std::shared_ptr<
     TimeSeriesBuffer<GridMap, TerrainSegmentationMonitor::kMaxBufferLen>>;
 
-TerrainSegmentationMonitor::TerrainSegmentationMonitor(
-    double update_period, size_t lookback_size) {
-  DRAKE_DEMAND(lookback_size <= kMaxBufferLen);
+TerrainSegmentationMonitor::TerrainSegmentationMonitor(terrain_segmentation_reset_params params) {
+  DRAKE_DEMAND(params.lookback_size <= kMaxBufferLen);
+  DRAKE_DEMAND(params.lookback_size > 0);
+  DRAKE_DEMAND(params.iou_threshold >= 0 and params.iou_threshold <= 1);
+  DRAKE_DEMAND(params.area_threshold >= 0 and params.area_threshold <= 1);
 
-  lookback_ = update_period * lookback_size;
+  iou_threshold_ = params.iou_threshold;
+  area_threshold = params.area_threshold;
+
+  lookback_ = params.update_period * params.lookback_size;
 
   map_history_index_ = DeclareAbstractState(Value<BufferType>{nullptr});
 
   DeclarePeriodicUnrestrictedUpdateEvent(
-      update_period, 0, &TerrainSegmentationMonitor::DiscreteVariableUpdate);
+      params.update_period, 0, &TerrainSegmentationMonitor::DiscreteVariableUpdate);
+
+  input_port_grid_map_ = DeclareAbstractInputPort(
+      "grid_map", Value<GridMap>()).get_index();
 }
 
 grid_map::GridMap TerrainSegmentationMonitor::GetMapForReInitialization(

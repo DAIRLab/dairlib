@@ -251,7 +251,6 @@ void CassieStateEstimator::solveFourbarLinkage(
 
     Vector3d sol_1_wrt_heel_base(x_sol_1, y_sol_1, 0);
     Vector3d sol_2_wrt_heel_base(x_sol_2, y_sol_2, 0);
-    Vector3d sol_1_cross_sol_2 = sol_1_wrt_heel_base.cross(sol_2_wrt_heel_base);
 
     // Pick the only physically feasible solution from the two intersections
     // We pick it by checking the x component of the solutions. The correct one
@@ -503,12 +502,7 @@ void CassieStateEstimator::DoKinematicUpdate(
     inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
     measured_kinematics.push_back(front_frame);
   }
-  auto corr_start = std::chrono::high_resolution_clock::now();
   ekf.CorrectKinematics(measured_kinematics);
-  auto corr_end = std::chrono::high_resolution_clock::now();
-//  std::cout << "Correct Kinematics took "
-//            << std::chrono::duration_cast<std::chrono::microseconds>(
-//                corr_end - corr_start).count() << " us\n";
 }
 
 void CassieStateEstimator::DoLandmarkUpdate(
@@ -642,12 +636,12 @@ EventStatus CassieStateEstimator::Update(
     }
     state->get_mutable_abstract_state<lcmt_landmark_array>(
         prev_landmarks_idx_) = landmarks;
-  } else if (fmod(context.get_time(), 1.0) < 0.001){
+  } else if (fmod(context.get_time(), 2.0) < 0.001 and context.get_time() > 5.0){
     // fake gps update every 1 sec to limit the global position covariance
     inekf::ExternalPositionMeasurement gps_measurement{
         ekf_state.getPosition(),
         Vector3d::Zero(),
-        0.001 * Matrix3d::Identity()
+        0.01 * Matrix3d::Identity()
     };
     ekf.CorrectExternalPositionMeasurement(gps_measurement);
   }

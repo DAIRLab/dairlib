@@ -121,6 +121,8 @@ class TerrainSegmentationSystem(LeafSystem):
         raw_map = elevation_map["elevation"]
         mask = np.zeros_like(raw_map, dtype=np.uint8)
         mask[np.isnan(raw_map)] = 255
+        if not elevation_map.exists("elevation_inpainted"):
+            elevation_map.add("elevation_inpainted")
         elevation_map["elevation_inpainted"][:] = cv2.inpaint(
             raw_map, mask, 1, flags=cv2.INPAINT_NS)
 

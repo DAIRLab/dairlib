@@ -117,6 +117,18 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         return cv2.erode(final_safety_score, erosion_kernel)
 
+    def inpaint(self, elevation_map: GridMap):
+        raw_map = elevation_map["elevation"]
+        mask = np.zeros_like(raw_map, dtype=np.uint8)
+        mask[np.isnan(raw_map)] = 255
+        elevation_map["elevation_inpainted"][:] = cv2.inpaint(
+            raw_map, mask, 1, flags=cv2.INPAINT_NS)
+
+        InpaintWithMinimumValues(
+            elevation_map, "elevation_inpainted", "elevation_inpainted"
+        )
+
+
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
 
@@ -127,9 +139,7 @@ class TerrainSegmentationSystem(LeafSystem):
         ).get_value()
         elevation_map.convertToDefaultStartIndex()
 
-        InpaintWithMinimumValues(
-            elevation_map, "elevation", "elevation_inpainted"
-        )
+        self.inpaint(elevation_map)
 
         # get previous segmentation
         segmented_map = state.get_mutable_abstract_state(

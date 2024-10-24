@@ -349,7 +349,7 @@ def visualize(logfile):
             state_channel: lcmt_robot_output
         },
         start_time=0,
-        duration=-1,
+        duration=30,
         data_processing_callback=process_grid_maps
     )
 
@@ -366,7 +366,7 @@ def visualize(logfile):
         )
         diagram.ForcedPublish(context)
         end = time.time()
-        print(end - start)
+        # print(end - start)
         for i in range(states_per_gm):
             lcm_interface.Publish(
                 state_channel,
@@ -380,9 +380,9 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    # visualize(args.logfile)
+    visualize(args.logfile)
     # run_segmentation_profiling(args.logfile)
-    profile_full_pipeline(args.logfile)
+    # profile_full_pipeline(args.logfile)
 
 if __name__ == '__main__':
     main()

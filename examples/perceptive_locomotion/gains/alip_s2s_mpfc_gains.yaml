@@ -6,7 +6,7 @@ single_stance_duration: 0.3
 double_stance_duration: 0.1
 soft_constraint_cost: 1000
 time_regularization: 100
-stance_width: 0.18
+stance_width: 0.22
 max_ankle_torque: 22
 ankle_torque_regularization: 0.2
 reset_discretization_method: 'SPLIT'
@@ -24,6 +24,6 @@ Q: [ 1, 0, 0, 0,
      0, 1, 0, 0,
      0, 0, 0.02, 0,
      0, 0, 0, 0.02]
-R: [ 2.0, 0, 0,
-     0, 2.0, 0,
+R: [ 5.0, 0, 0,
+     0, 5.0, 0,
      0, 0, 4 ]

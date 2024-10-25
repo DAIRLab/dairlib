@@ -9,7 +9,7 @@ import yaml
 def main(log_type):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
+    logdir = f"/mnt/data2/sharanya/logs/{year}/{curr_date}"
     dair = f"{os.getenv('HOME')}/workspace/dairlib/"
 
     if not os.path.isdir(logdir):

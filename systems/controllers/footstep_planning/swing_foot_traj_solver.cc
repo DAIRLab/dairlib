@@ -191,8 +191,6 @@ SwingFootTrajSolver::ConvertSolutionToTrajectory(
     coeffs.row(i).leftCols(sol.rows()) = sol.transpose();
   }
 
-
-
   auto time_scaling = PiecewisePolynomial<double>::FirstOrderHold(
       Eigen::Vector2d(t_start, t_end),
       Eigen::RowVector2d(-1, 1)

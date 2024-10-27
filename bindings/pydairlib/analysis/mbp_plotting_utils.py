@@ -347,6 +347,18 @@ def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, titl
     return ps
 
 
+def plot_motor_power(robot_output, u_names, plant, time_slice):
+    B = plant.MakeActuationMatrix()
+    w = robot_output['v'] @ B
+    p = w * robot_output['u']
+    data = {
+        't_x': robot_output['t_x'],
+        'p': p
+    }
+    return plot_q_or_v_or_u(data, 'p', u_names, slice(len(u_names)),
+                     time_slice, ylabel='Motor Power', title='Motor Power')
+
+
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
                             time_slice, ylabel='Position',
@@ -401,6 +413,30 @@ def plot_commanded_efforts(robot_input, u_names, time_slice):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
                       time_slice, ylabel='Efforts (Nm)',
                       title='Commanded Joint Efforts')
+
+
+def plot_measured_vs_commanded_efforts_by_name(
+        robot_output, robot_input, u_names, u_map):
+    u_slice = [u_map[name] for name in u_names]
+
+    u_names_measured = [name + '_measured' for name in u_names]
+    u_names_commaned = [name + '_commanded' for name in u_names]
+    ps = plot_q_or_v_or_u(
+        robot_output,
+        'u',
+        u_names_measured,
+        u_slice, slice(robot_output['t_x'].size),
+        ylabel='Efforts (Nm)', title='Select Joint Efforts')
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
+        slice(robot_input['t_u'].size),
+        ['u'],  # key to plot
+        {'u': u_slice},  # slice of key to plot
+        {'u': u_names_commaned},  # legend entries
+        {}, ps)
+    return ps
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,

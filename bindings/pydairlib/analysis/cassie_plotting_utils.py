@@ -10,6 +10,7 @@ import drake
 
 # dairlib python binding imports
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
+from pydairlib.common import plot_styler, plotting_utils
 
 # drake imports
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
@@ -92,6 +93,50 @@ def get_timestamp_of_first_liftoff(lcmlog: lcm.EventLog, channel_x : str,
 
     return (timestamp - log_start_time) * 1e-6
 
+
+def load_cassie_out(data, channel):
+    t = []
+    battery_current = []
+    battery_voltage = []
+
+    for msg in data[channel]:
+        t.append(msg.utime * 1e-6)
+        battery_current.append(msg.pelvis.battery.current)
+        battery_voltage.append(sum(msg.pelvis.battery.voltage))
+
+    return {
+        't_out': t,
+        'battery_current': battery_current,
+        'battery_voltage': battery_voltage
+    }
+
+
+def plot_battery_current(cassie_out, ps=None):
+    ps = plot_styler.PlotStyler() if ps is None else ps
+    plotting_utils.make_plot_of_entire_series(
+        cassie_out,
+        't_out',
+        {'battery_current': ['current']},
+        {'xlabel': 'Time',
+         'ylabel': 'Battery Current',
+         'title': 'Battery Current'},
+        ps
+    )
+    return ps
+
+
+def plot_battery_voltage(cassie_out, ps=None):
+    ps = plot_styler.PlotStyler() if ps is None else ps
+    plotting_utils.make_plot_of_entire_series(
+        cassie_out,
+        't_out',
+        {'battery_voltage': []},
+        {'xlabel': 'Time',
+         'ylabel': 'Battery Voltage',
+         'title': 'Battery Voltage'},
+        ps
+    )
+    return ps
 
 def get_toe_frames_and_points(plant):
     front_contact_pt = np.array((-0.0457, 0.112, 0))

@@ -327,7 +327,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, context.get(), true,
-      systems::controllers::OscSolverChoice::kFCCQP);
+      systems::controllers::OscSolverChoice::kFastOSQP);
 
   // Cost
   int n_v = plant.num_velocities();
@@ -525,7 +525,7 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  if (gains.W_com(0,0) == 0){
+  if (gains.W_com(0,0) == 0) {
     double w_ankle_tracking = 10;
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_left_motor", left_stance_state, w_ankle_tracking);

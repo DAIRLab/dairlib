@@ -13,6 +13,8 @@ class CassiePlotConfig():
         self.channel_x = data['channel_x']
         self.channel_u = data['channel_u']
         self.channel_osc = data['channel_osc']
+        self.channel_cassie_out = data['channel_cassie_out']
+        self.plot_battery_voltage = data['plot_battery_voltage']
         self.use_archived_lcmtypes = data['use_archived_lcmtypes']
         self.use_floating_base = data['use_floating_base']
         self.use_springs = data['use_springs']
@@ -37,6 +39,9 @@ class CassiePlotConfig():
         self.act_names = \
             data['special_efforts_to_plot'] if \
             data['special_efforts_to_plot'] else []
+        self.act_names_to_validate = \
+            data['efforts_to_plot_measured_vs_commanded'] if \
+            data['efforts_to_plot_measured_vs_commanded'] else []
         if data['foot_positions_to_plot']:
             self.foot_positions_to_plot = data['foot_positions_to_plot']
             self.foot_xyz_to_plot = data['foot_xyz_to_plot']

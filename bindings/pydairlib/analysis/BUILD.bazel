@@ -113,6 +113,8 @@ py_library(
         "@lcm//:lcm-python",
     ],
     deps = [
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/common:plotting_utils",
         "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/multibody:kinematic_py",

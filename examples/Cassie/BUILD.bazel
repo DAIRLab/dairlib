@@ -304,6 +304,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers:linear_controller",
         "//systems/controllers:pd_config_lcm",
+        "//systems/filters:notch_filter",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

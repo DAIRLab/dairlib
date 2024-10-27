@@ -14,6 +14,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
+#include "systems/filters/notch_filter.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -122,6 +123,9 @@ int do_main(int argc, char* argv[]) {
           FLAGS_pub_rate));
   builder.Connect(*state_sub, *state_receiver);
 
+  auto notch_filter = builder.AddSystem<systems::NotchFilter>(
+      plant.num_actuators(), 45, 55, 11); // 45-55 Hz stop-band with 11 taps
+
   double input_supervisor_update_period = 1.0 / 1000.0;
 
   // Get input limits
@@ -136,7 +140,8 @@ int do_main(int argc, char* argv[]) {
       input_supervisor_update_period, input_limit, FLAGS_supervisor_N);
   builder.Connect(state_receiver->get_output_port(0),
                   input_supervisor->get_input_port_state());
-  builder.Connect(command_receiver->get_output_port(0),
+  builder.Connect(*command_receiver, *notch_filter);
+  builder.Connect(notch_filter->get_output_port(0),
                   input_supervisor->get_input_port_command());
   builder.Connect(controller_switch_sub->get_output_port(),
                   input_supervisor->get_input_port_controller_switch());

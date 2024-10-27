@@ -32,6 +32,17 @@ cc_library(
 )
 
 cc_library(
+    name = "notch_filter",
+    srcs = ["notch_filter.cc"],
+    hdrs = ["notch_filter.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@boost//:math",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "floating_base_velocity_filter",
     hdrs = ["floating_base_velocity_filter.h"],
     deps = [

@@ -32,6 +32,10 @@ struct SamplingC3SamplingParams {
   double finished_reposition_cost;
   double repos_to_c3_hysteresis;
   double hysteresis_between_repos_targets;
+  bool use_relative_hysteresis;
+  double c3_to_repos_cost_fraction;
+  double repos_to_c3_cost_fraction;
+  double repos_to_repos_cost_fraction;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -56,5 +60,9 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(finished_reposition_cost));
     a->Visit(DRAKE_NVP(repos_to_c3_hysteresis));
     a->Visit(DRAKE_NVP(hysteresis_between_repos_targets));
+    a->Visit(DRAKE_NVP(use_relative_hysteresis));
+    a->Visit(DRAKE_NVP(c3_to_repos_cost_fraction));
+    a->Visit(DRAKE_NVP(repos_to_c3_cost_fraction));
+    a->Visit(DRAKE_NVP(repos_to_repos_cost_fraction));
   }
 };

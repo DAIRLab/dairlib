@@ -625,8 +625,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   else{
     // If there is no other sample, then set the best sample to the current
     // location and set the cost to a high value to ensure that the c3 is chosen.
-    best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
+    // Use absolute or relative hyseteresis based on the flag.
+    if (!sampling_params_.use_relative_hysteresis){
+      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
                                   + sampling_params_.c3_to_repos_hysteresis + 99;
+    }
+    else{
+      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
+        + (sampling_params_.c3_to_repos_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX] + 99;
+    }
   }
 
   if (verbose_) {
@@ -640,9 +647,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
-    // hysteresis.
-    if (all_sample_costs_[CURRENT_LOCATION_INDEX] > 
-        best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis) {
+    // hysteresis. Use absolute hysteresis values or percentage based hysteresis
+    // based on the flag.
+    if ((all_sample_costs_[CURRENT_LOCATION_INDEX] > 
+         best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis &&
+         !sampling_params_.use_relative_hysteresis) || 
+        (sampling_params_.use_relative_hysteresis && 
+         all_sample_costs_[CURRENT_LOCATION_INDEX] > best_additional_sample_cost + (sampling_params_.c3_to_repos_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX]))
+    {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
     }
@@ -654,11 +666,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // target. If the cost of the current repositioning target is better than
       // the current best sample by the hysteresis amount, then we continue 
       // pursuing the previous repositioning target.
-      if(all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
-        sampling_params_.hysteresis_between_repos_targets){
-          best_sample_index_ = CURRENT_REPOSITION_INDEX;
-          best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
-          finished_reposition_flag_ = false;
+      if ((all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
+           sampling_params_.hysteresis_between_repos_targets && 
+           !sampling_params_.use_relative_hysteresis) ||
+          (sampling_params_.use_relative_hysteresis && 
+           all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + (sampling_params_.repos_to_repos_cost_fraction)*all_sample_costs_[CURRENT_REPOSITION_INDEX]))
+      {
+        best_sample_index_ = CURRENT_REPOSITION_INDEX;
+        best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
+        finished_reposition_flag_ = false;
       }
       // Controller will switch to pursuing a new sample from its previous
       // repositioning target only if the cost of switching to that new sample
@@ -667,12 +683,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repos_to_repos hysteresis value here before the comparison to the
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
-        best_additional_sample_cost += sampling_params_.hysteresis_between_repos_targets;
+        if(!sampling_params_.use_relative_hysteresis){
+          best_additional_sample_cost += sampling_params_.hysteresis_between_repos_targets;
+        }
+        else{
+          best_additional_sample_cost += (sampling_params_.repos_to_repos_cost_fraction)*all_sample_costs_[CURRENT_REPOSITION_INDEX];
+        }
       }
     }
-    if (best_additional_sample_cost > 
-        all_sample_costs_[CURRENT_LOCATION_INDEX] + 
-        sampling_params_.repos_to_c3_hysteresis) {
+    if ((best_additional_sample_cost > all_sample_costs_[CURRENT_LOCATION_INDEX] + 
+         sampling_params_.repos_to_c3_hysteresis &&
+         !sampling_params_.use_relative_hysteresis) ||
+        (sampling_params_.use_relative_hysteresis &&
+         best_additional_sample_cost > all_sample_costs_[CURRENT_LOCATION_INDEX] + (sampling_params_.repos_to_c3_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX])) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
     }

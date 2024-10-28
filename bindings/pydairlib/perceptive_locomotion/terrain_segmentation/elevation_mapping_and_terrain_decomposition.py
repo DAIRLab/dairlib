@@ -64,6 +64,7 @@ elevation_mapping_params_sim = (
     ".yaml"
 )
 
+monitor = False
 
 def stop(sig, _):
     print(f'caught signal {sig}, shutting down')
@@ -88,8 +89,6 @@ def main():
     )
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
-    network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
-
     contact_subscriber = LcmSubscriberSystem.Make(
         channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
         lcm_type=lcmt_contact,
@@ -105,14 +104,6 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    foothold_publisher_network = LcmPublisherSystem.Make(
-        channel="NETWORK_FOOTHOLDS_PROCESSED",
-        lcm_type=lcmt_foothold_set,
-        lcm=network_lcm,
-        publish_triggers={TriggerType.kPeriodic},
-        publish_period=1.0 / 5.0,
-        use_cpp_serializer=True
-    )
     elevation_map_sender = GridMapSender()
     elevation_map_publisher_local = LcmPublisherSystem.Make(
         channel="CASSIE_ELEVATION_MAP",
@@ -120,22 +111,6 @@ def main():
         lcm=elevation_mapping.lcm(),
         publish_triggers={TriggerType.kPeriodic},
         publish_period=1.0 / 30.0,
-        use_cpp_serializer=True
-    )
-    # landmark_pub = LcmPublisherSystem.Make(
-    #     channel="CASSIE_EKF_LANDMARKS",
-    #     lcm_type=lcmt_landmark_array,
-    #     lcm=network_lcm,
-    #     publish_triggers={TriggerType.kPeriodic},
-    #     publish_period=1.0 / 30.0,
-    #     use_cpp_serializer=True
-    # )
-    elevation_map_publisher_network = LcmPublisherSystem.Make(
-        channel="NETWORK_CASSIE_ELEVATION_MAP",
-        lcm_type=lcmt_grid_map,
-        lcm=network_lcm,
-        publish_triggers={TriggerType.kPeriodic},
-        publish_period=1.0 / 5.0,
         use_cpp_serializer=True
     )
 
@@ -153,13 +128,16 @@ def main():
     builder.AddSystem(convex_decomposition)
     builder.AddSystem(contact_subscriber)
     builder.AddSystem(foothold_publisher_local)
-    builder.AddSystem(foothold_publisher_network)
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
-    # builder.AddSystem(landmark_pub)
-    builder.AddSystem(elevation_map_publisher_network)
-    builder.AddSystem(monitor_system)
+
+    if monitor:
+        builder.AddSystem(monitor_system)
+        builder.Connect(
+            terrain_segmentation.get_output_port(),
+            monitor_system.get_input_port()
+        )
 
     builder.Connect(
         contact_subscriber.get_output_port(),
@@ -182,28 +160,13 @@ def main():
         foothold_publisher_local.get_input_port()
     )
     builder.Connect(
-        foothold_sender.get_output_port(),
-        foothold_publisher_network.get_input_port()
-    )
-    builder.Connect(
         terrain_segmentation.get_output_port(),
         elevation_map_sender.get_input_port()
     )
-    builder.Connect(
-        terrain_segmentation.get_output_port(),
-        monitor_system.get_input_port()
-    )
+    
     builder.Connect(
         elevation_map_sender.get_output_port(),
         elevation_map_publisher_local.get_input_port()
-    )
-    # builder.Connect(
-    #     elevation_mapping.get_output_port_landmarks(),
-    #     landmark_pub.get_input_port()
-    # )
-    builder.Connect(
-        elevation_map_sender.get_output_port(),
-        elevation_map_publisher_network.get_input_port()
     )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(
@@ -220,12 +183,12 @@ def main():
         queue_size=100
     )
 
-    reset_monitor = MapResetMonitor(
-        monitor=monitor_system,
-        mapper=elevation_mapping
-    )
-
-    driven_loop.set_monitor(reset_monitor.monitor)
+    if monitor:
+        reset_monitor = MapResetMonitor(
+            monitor=monitor_system,
+            mapper=elevation_mapping
+        )
+        driven_loop.set_monitor(reset_monitor.monitor)
 
     robot_state = driven_loop.WaitForFirstState(plant)
     elevation_mapping.InitializeElevationMap(

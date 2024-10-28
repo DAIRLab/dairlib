@@ -31,10 +31,7 @@ PelvisPitchTrajGenerator::PelvisPitchTrajGenerator(
       pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(plant.num_positions(),
-                                          plant.num_velocities(),
-                                          plant.num_actuators()))
-      .get_index();
+      "x, u, t", OutputVector<double>(plant)).get_index();
   des_pitch_port_ =
       this->DeclareVectorInputPort("pelvis_pitch", 1).get_index();
   // Provide an instance to allocate the memory first (for the output)
@@ -59,7 +56,7 @@ drake::systems::EventStatus PelvisPitchTrajGenerator::PitchFilterUpdate(
   double des_pitch = EvalVectorInput(context, des_pitch_port_)->get_value()(0);
   double dt = t - t_prev;
   if (dt < 0.1) {
-    double tau = 1.0;
+    double tau = 5.0;
     double alpha = dt / (tau + dt);
     des_pitch = alpha * des_pitch + (1.0 - alpha) * prev_pitch;
   }

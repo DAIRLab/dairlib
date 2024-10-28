@@ -120,7 +120,7 @@ DEFINE_bool(add_camera_inertia, true,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  const std::string urdf = "examples/Cassie/urdf/cassie_v2_conservative.urdf";
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);

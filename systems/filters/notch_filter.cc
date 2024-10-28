@@ -36,7 +36,7 @@ void update_coeffs(double normalized_f0, double normalized_f1,
         std::sin(arg * normalized_f0)) / arg;
 
     // Apply Blackman window
-    double window = 0.24 - 0.5 * std::cos(2.0 * M_PI * n / (num_taps - 1)) +
+    double window = 0.42 - 0.5 * std::cos(2.0 * M_PI * n / (num_taps - 1)) +
                            0.08 * std::cos(4.0 * M_PI * n / (num_taps - 1));
     coefficients[n] *= window;
   }

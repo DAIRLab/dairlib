@@ -80,11 +80,14 @@ EventStatus AlipComTrajectoryGenerator::UnrestrictedUpdate(
   auto fsm_state = static_cast<int>(
       this->EvalVectorInput(context, fsm_port_)->value()(0));
 
+  double alpha = 0.25;
   // in single stance, save the current slope parameters to use during double
   // stance
   if (fsm_state <= 1) {
+    Vector2d slope = EvalVectorInput(context, slope_params_port_)->get_value();
+    Vector2d prev_slope = state->get_discrete_state(prev_slope_idx_).get_value();
     state->get_mutable_discrete_state(prev_slope_idx_).get_mutable_value() =
-        EvalVectorInput(context, slope_params_port_)->get_value();
+        alpha * slope + (1.0 - alpha) * prev_slope;
   }
 
   return EventStatus::Succeeded();
@@ -92,7 +95,7 @@ EventStatus AlipComTrajectoryGenerator::UnrestrictedUpdate(
 
 ExponentialPlusPiecewisePolynomial<double>
 AlipComTrajectoryGenerator::ConstructAlipComTraj(
-    const Vector3d& stance_foot_pos, const Vector4d& x_alip,
+    const Vector3d& stance_foot_pos, const Vector3d& com_pos, const Vector4d& x_alip,
     const Vector2d& kx_ky, double start_time, double end_time) const {
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
@@ -104,6 +107,16 @@ AlipComTrajectoryGenerator::ConstructAlipComTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double height = stance_foot_pos(2) + desired_com_height_;
+
+  // clip the desired height to limit error
+  Vector3d com_rel = com_pos - stance_foot_pos;
+  double height_error = com_rel(2) - kx_ky.dot(com_rel.head<2>()) - desired_com_height_;
+  double max_height_error = 0.075;
+  if (fabs(height_error) > max_height_error) {
+    double offset = max_height_error - height_error;
+    height += offset;
+  }
+
   Y(2, 0) = height;
   Y(2, 1) = height;
 
@@ -164,18 +177,18 @@ void AlipComTrajectoryGenerator::CalcComTrajFromCurrent(
       plant_, *context_, "pelvis", L.head(2));
   stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
       plant_, *context_, "pelvis", stance_foot_pos);
+  CoM = multibody::ReExpressWorldVector3InBodyYawFrame(
+      plant_, *context_, "pelvis", CoM);
 
   // Assign traj
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
   // read in slope parameters
-  Vector2d kx_ky = is_ss ?
-                   EvalVectorInput(context, slope_params_port_)->get_value() :
-                   context.get_discrete_state(prev_slope_idx_).get_value();
+  Vector2d kx_ky = context.get_discrete_state(prev_slope_idx_).get_value();
 
   *exp_pp_traj = ConstructAlipComTraj(
-      stance_foot_pos, x_alip, kx_ky, t, end_time);
+      stance_foot_pos, CoM, x_alip, kx_ky, t, end_time);
 }
 
 

@@ -60,6 +60,6 @@ hysteresis_between_repos_targets: 60000000000000
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
 # repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
 use_relative_hysteresis: true
-c3_to_repos_cost_fraction: 0.2
+c3_to_repos_cost_fraction: 0.18
 repos_to_c3_cost_fraction: 0.2
 repos_to_repos_cost_fraction: 0.3

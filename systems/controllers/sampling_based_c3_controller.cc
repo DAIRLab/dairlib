@@ -511,7 +511,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
   if(c3_options_.use_quaternion_dependent_cost && crossed_cost_switching_threshold_){
-    std::cout << "Using quaternion dependent cost." << std::endl;
     Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
     Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
     Eigen::MatrixXd Q_quaternion_dependent_cost = 

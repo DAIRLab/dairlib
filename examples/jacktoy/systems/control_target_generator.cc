@@ -296,7 +296,9 @@ void TargetGenerator::CalcObjectVelocityTarget(
 
   // Get current orientation
   const VectorX<double> &q = object_state->GetPositions().head(4);
-  Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+  Eigen::VectorXd normalized_q = q / q.norm();
+  Eigen::Quaterniond y_quat(normalized_q(0), normalized_q(1), normalized_q(2),
+                            normalized_q(3));
 
   // Compute the error.
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());

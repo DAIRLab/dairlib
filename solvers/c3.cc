@@ -424,7 +424,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
 
     // Set the PD gains for the emulated tracking controller.
     Eigen::MatrixXd Kp = Eigen::MatrixXd::Identity(3,3);
-    Eigen::MatrixXd Kd = Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kd = 0.2*Eigen::MatrixXd::Identity(3,3);
 
     XX_new[0] = zfin_[0].segment(0, n_);
     std::cout<<"XX_new[0]: "<<XX_new[0].transpose()<<std::endl;

@@ -257,6 +257,9 @@ int do_main(int argc, char* argv[]) {
   auto dynamically_feasible_trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_plan_channel, lcm));
+  auto dynamically_feasible_trajectory_sub_actor_curr = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, lcm));
 
   auto trajectory_sub_actor_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -374,6 +377,12 @@ int do_main(int argc, char* argv[]) {
                     object_pose_drawer_curr->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_pose_drawer_curr->get_input_port_trajectory());
+
+    auto dynamically_feasible_actor_pose_drawer_curr_actor = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, "dynamically_feasible_curr_plan_actor", FindResourceOrThrow(sim_params.visualizer_df_curr_sample_end_effector_model),
+        "ee_position_target", "end_effector_orientation_target", 6, false);
+    builder.Connect(dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
+                    dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
 
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "dynamically_feasible_curr_plan", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),

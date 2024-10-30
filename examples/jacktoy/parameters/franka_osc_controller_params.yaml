@@ -15,8 +15,8 @@ p_franka_to_platform: [0, 0, -0.0145]
 
 
 #### C3 sanity checking good starting configurations ####
-neutral_position: [0.4, 0.4, 0.05]    # 1) topple from behind and slide
-# neutral_position: [0.43, 0.35, 0.12]   # 2) topple from the top
+# neutral_position: [0.45, 0.35, 0.05]    # 1) topple from behind and slide
+# neutral_position: [0.43, 0.19, 0.12]   # 2) topple from the top
 # neutral_position: [0.4, 0.4, 0.05]    # 3) One topple and a significant yaw
 # neutral_position: [0.4, 0.4, 0.05]    # 4) 2 topples and distance error
 # neutral_position: [0.4, 0.4, 0.05]    # 5) Balancing on blue and green prongs at almost half a topple
@@ -26,7 +26,7 @@ neutral_position: [0.4, 0.4, 0.05]    # 1) topple from behind and slide
 # neutral_position: [0.4, 0.4, 0.05]    # 9) Configuration used to sanity check target angular velocities
 # neutral_position: [0.33, 0.25, 0.043]    # 10) topple from the back to achive same goal pose as scenario 2.
 # neutral_position: [0.43, 0.30, 0.12]   # 11) topple from the top
-# neutral_position: [0.4, 0.4, 0.05]    # 12) yaw only
+neutral_position: [0.42, 0.33, 0.07]    # 12) yaw only
 #^^# C3 sanity checking good starting configurations #^^#
 
 # neutral_position: [0.31, 0.4, 0.15]

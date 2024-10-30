@@ -1259,28 +1259,29 @@ void SamplingC3Controller::OutputIsC3Mode(
 void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan(
     const drake::systems::Context<double>& context,
     std::vector<Eigen::VectorXd>* dynamically_feasible_curr_plan) const {
-    std::vector<Eigen::VectorXd> obj_pose = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(7));
+    std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   // Extract object pose only from the dynamically feasible plan for each time step.
   for(int i = 0; i < N_ + 1; i++){
-    obj_pose[i] << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7);
+    dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i];
   }
-  std::vector<Eigen::VectorXd> object_pose = std::vector<Eigen::VectorXd>(
-    obj_pose.begin(), obj_pose.end());
+  std::vector<Eigen::VectorXd> dynamically_feasible_ee_object_pose = std::vector<Eigen::VectorXd>(
+    dynamically_feasible_traj.begin(), dynamically_feasible_traj.end());
   // Output dynamically feasible current plan.
-  *dynamically_feasible_curr_plan = object_pose;
+  *dynamically_feasible_curr_plan = dynamically_feasible_ee_object_pose;
 }
+
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlan(
     const drake::systems::Context<double>& context,
     std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const { 
-    std::vector<Eigen::VectorXd> obj_pose = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(7));
+    std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   // Extract object pose only from the dynamically feasible plan for each time step.
   for(int i = 0; i < N_ + 1; i++){
-    obj_pose[i] << all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i].segment(3,7);
+    dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i];
   }
-  std::vector<Eigen::VectorXd> object_pose = std::vector<Eigen::VectorXd>(
-    obj_pose.begin(), obj_pose.end());
+  std::vector<Eigen::VectorXd> dynamically_feasible_ee_object_pose = std::vector<Eigen::VectorXd>(
+    dynamically_feasible_traj.begin(), dynamically_feasible_traj.end());
   // Output dynamically feasible current plan.
-  *dynamically_feasible_best_plan = object_pose;
+  *dynamically_feasible_best_plan = dynamically_feasible_ee_object_pose;
 }
 
 // Output port handlers for sample-related ports

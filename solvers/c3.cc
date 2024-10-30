@@ -423,15 +423,15 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     }
 
     // Set the PD gains for the emulated tracking controller.
-    Eigen::MatrixXd Kp = Eigen::MatrixXd::Identity(3,3);
-    Eigen::MatrixXd Kd = 0.2*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kp = options_.Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kd = options_.Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
 
     XX_new[0] = zfin_[0].segment(0, n_);
-    std::cout<<"XX_new[0]: "<<XX_new[0].transpose()<<std::endl;
+    // std::cout<<"XX_new[0]: "<<XX_new[0].transpose()<<std::endl;
     // This will just be the original u from zfin_[0] for the first time step.
 
     for (int i = 0; i < N_; i++){
-      UU_new[i] = UU[i] + 
+      UU_new[i] = //UU[i] + 
         Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
         Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         if(LCS_for_cost_computation_){
@@ -440,7 +440,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
         else{
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
         }
-      std::cout<<"XX_new["<<i+1<<"]: "<<XX_new[i+1].transpose()<<std::endl;
+      // std::cout<<"XX_new["<<i+1<<"]: "<<XX_new[i+1].transpose()<<std::endl;
     }
     // Replace the original state and control sequences with the new ones for 
     // the cost calculation.

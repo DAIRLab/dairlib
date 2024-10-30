@@ -37,6 +37,10 @@ struct C3Options {
   double w_G;
   double w_U;
 
+  // Parameters used for cost computation function
+  double Kp_for_cost_type_3;
+  double Kd_for_cost_type_3;
+
   bool use_quaternion_dependent_cost;
   double q_quaternion_dependent_weight;
   double q_quaternion_dependent_regularizer_fraction;
@@ -121,6 +125,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
+    a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
+    a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_regularizer_fraction));

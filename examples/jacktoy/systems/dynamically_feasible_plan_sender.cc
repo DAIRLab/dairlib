@@ -20,11 +20,51 @@ DynamicallyFeasiblePlanSender::DynamicallyFeasiblePlanSender(std::string name) {
           drake::Value<std::vector<Eigen::VectorXd>>{dynamically_feasible_plan})
       .get_index();
 
+  dynamically_feasible_plan_actor_output_port_ = this->DeclareAbstractOutputPort(
+          "dynamically_feasible_plan_actor_output",
+          dairlib::lcmt_timestamped_saved_traj(),
+          &DynamicallyFeasiblePlanSender::OutputDynamicallyFeasiblePlanActor)
+      .get_index();
+
   dynamically_feasible_plan_output_port_ = this->DeclareAbstractOutputPort(
           "dynamically_feasible_plan_output",
           dairlib::lcmt_timestamped_saved_traj(),
           &DynamicallyFeasiblePlanSender::OutputDynamicallyFeasiblePlan)
       .get_index();
+}
+
+void DynamicallyFeasiblePlanSender::OutputDynamicallyFeasiblePlanActor(
+        const drake::systems::Context<double>& context,
+        dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+  
+	// Evaluate input port to get the dynamically feasible plan
+  const auto dynamically_feasible_plan =
+      *this->EvalInputValue<std::vector<Eigen::VectorXd>>(
+                                context, dynamically_feasible_plan_input_port_
+                                );
+
+  // Create a matrix containing the dynamically feasible plan including position and orientation
+  // TODO: Change the 3 to read the number of states from the dynamically_feasible_plan
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, dynamically_feasible_plan.size());
+	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_plan.size());
+	for (int i = 0; i < dynamically_feasible_plan.size(); i++) {
+		knots.col(i) = dynamically_feasible_plan[i].head(3);
+		timestamps(i) = i;
+	}
+
+  LcmTrajectory::Trajectory ee_traj;
+  // position trajectory
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
+  position_samples = knots.bottomRows(3);
+  ee_traj.traj_name = "ee_position_target";
+  ee_traj.datatypes = std::vector<std::string>(position_samples.rows(), "double");
+  ee_traj.datapoints = position_samples;
+  ee_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory lcm_traj({ee_traj}, {"ee_position_target"},
+                         "ee_target", "ee_target", false);
+
+  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_traj->utime = context.get_time() * 1e6;
 }
 
 void DynamicallyFeasiblePlanSender::OutputDynamicallyFeasiblePlan(
@@ -42,7 +82,7 @@ void DynamicallyFeasiblePlanSender::OutputDynamicallyFeasiblePlan(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(7, dynamically_feasible_plan.size());
 	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_plan.size());
 	for (int i = 0; i < dynamically_feasible_plan.size(); i++) {
-		knots.col(i) = dynamically_feasible_plan[i];
+		knots.col(i) = dynamically_feasible_plan[i].segment(3, 7);
 		timestamps(i) = i;
 	}
 

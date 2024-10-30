@@ -18,16 +18,25 @@ class DynamicallyFeasiblePlanSender: public drake::systems::LeafSystem<double> {
   }
 
   // Output port
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_plan_actor() const {
+    return this->get_output_port(dynamically_feasible_plan_actor_output_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_plan() const {
     return this->get_output_port(dynamically_feasible_plan_output_port_);
   }
 
  private:
+  void OutputDynamicallyFeasiblePlanActor(
+        const drake::systems::Context<double>& context,
+        dairlib::lcmt_timestamped_saved_traj* output_traj) const;
+
   void OutputDynamicallyFeasiblePlan(
         const drake::systems::Context<double>& context,
         dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
   drake::systems::InputPortIndex dynamically_feasible_plan_input_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_plan_actor_output_port_;
   drake::systems::OutputPortIndex dynamically_feasible_plan_output_port_;
 };
 

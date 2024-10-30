@@ -506,9 +506,17 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_curr_actor_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto dynamically_feasible_curr_plan_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_best_actor_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_actor_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto dynamically_feasible_best_plan_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -608,10 +616,14 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
                   dynamically_feasible_curr_plan_sender->get_input_port());
   builder.Connect(controller->get_output_port_dynamically_feasible_best_plan(),
                   dynamically_feasible_best_plan_sender->get_input_port());
-  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port(),
+  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port_dynamically_feasible_plan(),
                   dynamically_feasible_curr_plan_publisher->get_input_port());
-  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port(),
+  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port_dynamically_feasible_plan_actor(),
+                  dynamically_feasible_curr_actor_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port_dynamically_feasible_plan(),
                   dynamically_feasible_best_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port_dynamically_feasible_plan_actor(),
+                  dynamically_feasible_best_actor_plan_publisher->get_input_port());
 
   // ACTUAL AND TARGET LCS_STATE CONNECTIONS
   builder.Connect(target_state_mux->get_output_port(),

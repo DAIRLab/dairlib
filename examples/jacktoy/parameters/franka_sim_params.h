@@ -43,6 +43,7 @@ struct FrankaSimParams {
 
   bool visualize_execution_plan;
 
+  std::string visualizer_df_curr_sample_end_effector_model;
   std::string visualizer_curr_sample_end_effector_model;
   std::string visualizer_curr_sample_traj_jack_model;
   bool visualize_pose_trace_curr;
@@ -95,6 +96,7 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(visualize_execution_plan));
 
+    a->Visit(DRAKE_NVP(visualizer_df_curr_sample_end_effector_model));
     a->Visit(DRAKE_NVP(visualizer_curr_sample_end_effector_model));
     a->Visit(DRAKE_NVP(visualizer_curr_sample_traj_jack_model));
     a->Visit(DRAKE_NVP(visualize_pose_trace_curr));

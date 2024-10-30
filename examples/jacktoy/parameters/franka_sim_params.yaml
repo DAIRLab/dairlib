@@ -57,6 +57,7 @@ visualize_sample_locations: true
 visualize_execution_plan: true
 
 visualizer_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_curr_traj_visualization_model.urdf
+visualizer_df_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_green_visualization_model.urdf
 visualizer_curr_sample_traj_jack_model: examples/jacktoy/urdf/jack_curr_traj_visualization_model.sdf
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: false

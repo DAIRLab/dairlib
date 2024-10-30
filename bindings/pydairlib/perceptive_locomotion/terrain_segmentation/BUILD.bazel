@@ -15,6 +15,23 @@ py_binary(
     name = "test_segmentation_on_log",
     srcs = ["test_segmentation_on_log.py"],
     deps = [
+        ":perception_analysis_utils",
+        ":segmentation_criteria",
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "results",
+    srcs = ["results.py"],
+    deps = [
+        ":perception_analysis_utils",
         ":segmentation_criteria",
         ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
@@ -58,6 +75,14 @@ py_library(
         ":segmentation_criteria",
         "//bindings/grid_map",
         "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "perception_analysis_utils",
+    srcs = ["perception_analysis_utils.py"],
+    deps = [
+        "//bindings/grid_map",
     ],
 )
 

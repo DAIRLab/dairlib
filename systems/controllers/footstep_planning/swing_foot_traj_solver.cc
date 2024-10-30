@@ -122,7 +122,14 @@ Eigen::Vector3d SwingFootTrajSolver::CalcDesiredMidpoint(
   double disp_yaw = atan2(pos_T(1), pos_T(0));
   Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
   Vector3d n = n_planar.cross(pos_T).normalized();
-  clearance = clearance + 0.5 * clearance * (1.0 - n(2));
+
+  // Stepping less than the length of the foot, probably means we aren't
+  // worried about obstacles
+  if (pos_T.norm() < 0.15) {
+    n = Vector3d::UnitZ();
+  }
+
+  clearance += 0.8 * std::min(fabs(pos_T(2)), clearance);
   Vector3d des_mid_point = initial_pos + 0.5 * pos_T + clearance * n;
   return des_mid_point;
 }

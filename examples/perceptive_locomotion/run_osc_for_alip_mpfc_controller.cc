@@ -327,7 +327,7 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, context.get(), true,
-      systems::controllers::OscSolverChoice::kFastOSQP);
+      systems::controllers::OscSolverChoice::kFCCQP);
 
   // Cost
   int n_v = plant.num_velocities();

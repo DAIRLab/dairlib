@@ -28,7 +28,7 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
 
   cont_slack_ = prog_.NewContinuousVariables(9, "e");
 
-  Eigen::MatrixXd cont_cost = 10 * Eigen::MatrixXd::Identity(9,9);
+  Eigen::MatrixXd cont_cost = 100 * Eigen::MatrixXd::Identity(9,9);
   cont_cost.block<3,3>(0,0) *= 1000;
   cont_cost.block<3,3>(3,3) *= 10;
 
@@ -71,14 +71,14 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
 
   // update constraints
   std::array<Vector3d, 3> end_vals = {
-      target,
-      z_vel_final_scaled * Vector3d::UnitZ(),
+      target + Vector3d(0, 0, z_pos_final_offset),
+      Vector3d(0, 0, z_vel_final_scaled),
       Vector3d::Zero()
   };
   for (int deriv = 0; deriv < 3; ++deriv) {
     double scale = pow(2 / (t_end - t_start), -deriv);
     Vector3d prev_vals = scale * prev_traj.EvalDerivative(prev_time, deriv);
-    for (int dim = 0; dim< 3; ++dim) {
+    for (int dim = 0; dim < 3; ++dim) {
       splines_[dim].UpdateDerivativeSoftConstraint(
           "continuity", tk, deriv, prev_vals(dim));
       splines_[dim].UpdateDerivativeConstraint(

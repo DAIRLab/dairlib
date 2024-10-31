@@ -334,7 +334,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
 // Or, use the zfin_ trajectory if cost_type is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const{
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
@@ -429,11 +429,18 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     XX_new[0] = zfin_[0].segment(0, n_);
     // std::cout<<"XX_new[0]: "<<XX_new[0].transpose()<<std::endl;
     // This will just be the original u from zfin_[0] for the first time step.
-
+    // if the radio input is true, then the u will only emulate position tracking 
+    // using the PD controller.
     for (int i = 0; i < N_; i++){
-      UU_new[i] = //UU[i] + 
-        Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
-        Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+        if(force_tracking_disabled){
+          UU_new[i] =  Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
+                       Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+        }
+        else{
+          UU_new[i] = UU[i] + 
+            Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
+            Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+        }
         if(LCS_for_cost_computation_){
           XX_new[i+1] = LCS_for_cost_computation_->Simulate(XX_new[i], UU_new[i]);
         }

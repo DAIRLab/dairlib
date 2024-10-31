@@ -585,8 +585,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object->SetOsqpSolverOptions(solver_options_);
       test_c3_object->Solve(test_state, deltas.at(i), ws.at(i), verbose_);
       // Get the state solution and calculate the cost.
+      // This is taking in the xbox input to change the way we calculate cost type 3 based on if force tracking is on
+      // or off.
       auto cost_trajectory_pair = test_c3_object->CalcCost(
-        sampling_params_.cost_type);
+        sampling_params_.cost_type, radio_out->channel[11]);
       double c3_cost = cost_trajectory_pair.first;
       all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 

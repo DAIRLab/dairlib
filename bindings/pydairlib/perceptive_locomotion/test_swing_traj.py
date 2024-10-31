@@ -169,11 +169,12 @@ def multi_spline_figure(save_video=True):
         dp = rng.uniform(low=-0.005, high=0.005, size=(3,))
         dp[-1] = rng.uniform(low=-0.005, high=0.005)
         s = time.time()
+        shift_t = rng.uniform(low=0.03, high=0.03)
         traj = solver.AdaptSwingFootTraj(
             prev_traj=prev_traj,
             prev_time=start_time + i * dt,
             t_start=start_time,
-            t_end=start_time + t,
+            t_end=start_time + t + shift_t,
             swing_foot_clearance=h,
             z_vel_final=0,
             z_pos_final_offset=0,

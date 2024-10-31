@@ -74,10 +74,11 @@ void LegendreCoefficientVariables::AddRunningCostOnDerivativeSquared(
   DRAKE_DEMAND(not my_costs_.contains(name));
   DRAKE_DEMAND(derivative_order >= 1);
   DRAKE_DEMAND(scale >= 0);
+  Eigen::MatrixXd Q =  MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
+      degree_, derivative_order);
+  Q = scale * (Q + 1e-6 * Eigen::MatrixXd::Identity(Q.rows(), Q.cols()));
   my_costs_[name] = prog.AddQuadraticCost(
-      scale * MakeCostMatrixForMinimizingPathDerivativeSquaredWithLegendreBasis(
-          degree_, derivative_order),
-      VectorXd::Zero(degree_ + 1), c_).evaluator();
+      Q, VectorXd::Zero(degree_ + 1), c_).evaluator();
 }
 
 }

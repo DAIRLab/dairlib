@@ -30,9 +30,9 @@ using drake::geometry::SceneGraph;
 using drake::geometry::Meshcat;
 using drake::geometry::MeshcatVisualizer;
 
+using drake::systems::State;
 using drake::systems::Context;
 using drake::systems::EventStatus;
-using drake::systems::DiscreteValues;
 using drake::systems::ConstantVectorSource;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
@@ -50,7 +50,10 @@ MeshcatCameraManager::MeshcatCameraManager(const drake::multibody::MultibodyPlan
 
   input_port_cam_pos_ = DeclareVectorInputPort("cam_pos", 3).get_index();
 
-  DeclarePerStepDiscreteUpdateEvent(&MeshcatCameraManager::UpdateMeshcat);
+  prev_time_index_ = DeclareAbstractState(drake::Value<double>(0));
+
+  DeclarePeriodicUnrestrictedUpdateEvent(
+      1.0/30.0, 0.0, &MeshcatCameraManager::UpdateMeshcat);
 
   meshcat_->Delete("/Background");
 
@@ -58,10 +61,20 @@ MeshcatCameraManager::MeshcatCameraManager(const drake::multibody::MultibodyPlan
 
 drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
     const Context<double> &context,
-    DiscreteValues<double> *discrete_state) const {
+    State<double> *state) const {
 
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, input_port_state_));
+
+  double prev_time = state->get_abstract_state<double>(prev_time_index_);
+
+  if (prev_time == robot_output->get_timestamp()) {
+    return EventStatus::DidNothing();
+  }
+
+  state->get_mutable_abstract_state<double>(prev_time_index_) =
+      robot_output->get_timestamp();
+
   Vector3d cam_pos_local =
       EvalVectorInput(context, input_port_cam_pos_)->get_value();
 
@@ -86,11 +99,6 @@ drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
       RigidTransformd(
           RotationMatrixd{}, body_pos_in_world + Vector3d(-2.0, 0.0, 2.0)));
 
-  meshcat_->SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", true);
-  meshcat_->SetProperty("/Lights/SpotLight/<object>", "castShadow", true);
-  meshcat_->SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0);
-  meshcat_->SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0);
-
   return EventStatus::Succeeded();
 }
 
@@ -105,8 +113,6 @@ PlantVisualizer::PlantVisualizer(
   Parser parser(&plant_, &scene_graph);
   parser.AddModels(FindResourceOrThrow(urdf));
   plant_.Finalize();
-
-
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       OutputVector<double>(plant_).size(), 0, plant_.num_positions()
@@ -135,6 +141,10 @@ PlantVisualizer::PlantVisualizer(
         Vector3d(0, -2.5, 0.1)
     );
 
+    meshcat_->SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", true);
+    meshcat_->SetProperty("/Lights/SpotLight/<object>", "castShadow", true);
+    meshcat_->SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0);
+    meshcat_->SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0);
 
     builder.ConnectInput("x, u, t", cam_manager->get_input_port_state());
     builder.Connect(

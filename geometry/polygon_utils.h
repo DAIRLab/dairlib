@@ -68,7 +68,7 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
  * the resulting components as lists of vertices.
  */
 std::vector<Eigen::MatrixXd> GetAcdComponents(
-    const std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>& planar_region,
+    const std::vector<std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>>& terrain,
     double concavity_thresh=0.25);
 
 ConvexPolygon MakeInscribedConvexPolygon(

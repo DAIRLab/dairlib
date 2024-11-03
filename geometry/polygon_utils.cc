@@ -292,29 +292,46 @@ ConvexPolygon MakeInscribedConvexPolygon(
 }
 
 std::vector<MatrixXd> GetAcdComponents(
-    const std::pair<MatrixXd, std::vector<MatrixXd>>& planar_region,
+    const std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>>& terrain,
     double convexity_thresh) {
-  std::unique_ptr<acd2d::IConcavityMeasure> measure =
-      std::make_unique<acd2d::StraightLineMeasurement>();
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::StraightLineMeasurement>();
   acd2d::cd_2d cd;
-
-  acd2d::cd_polygon poly;
-  if (ValidateHoles(planar_region.first, planar_region.second)) {
-    poly = MakeAcdPolygon(planar_region, cd.buf());
-  } else {
-    poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
-  }
-  cd.addPolygon(poly);
-
-  std::vector<MatrixXd> polylist;
-  for (const auto& poly_out : cd.getDoneList()) {
-    auto poly_eigen = Acd2d2Eigen(poly_out.front());
-    // Only push back valid polygons (3 or more vertices)
-    if (poly_eigen.cols() > 2) {
-      polylist.push_back(poly_eigen);
+  for (const auto& planar_region : terrain) {
+    if (is_degenerate(planar_region.first)) {
+      continue;
     }
+    double area = PolygonArea(planar_region.first);
+    if (area < 0.05) {
+      continue;
+    }
+
+    acd2d::cd_polygon poly;
+    if (ValidateHoles(planar_region.first, planar_region.second)) {
+      poly = MakeAcdPolygon(planar_region, cd.buf());
+    } else {
+      poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
+    }
+    cd.addPolygon(poly);
   }
-  return polylist;
+
+  try {
+    cd.maybe_decomposeAll(convexity_thresh, measure.get());
+  } catch (const std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return {};
+  }
+
+  std::vector<MatrixXd> out;
+
+  for (const auto& poly_out : cd.getDoneList()) {
+    MatrixXd verts = Acd2d2Eigen(poly_out.front());
+    if (verts.cols() < 3) {
+      continue;
+    }
+    out.push_back(verts);
+  }
+
+  return out;
 }
 
 std::vector<ConvexPolygon> ProcessTerrain2d(

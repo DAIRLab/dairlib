@@ -20,7 +20,7 @@ PYBIND11_MODULE(polygon_utils, m) {
         py::arg("convexity_threshold"))
    .def("GetAcdComponents",
         &geometry::GetAcdComponents,
-        py::arg("planar_region"),
+        py::arg("terrain"),
         py::arg("concavity_thresh"));
 
 

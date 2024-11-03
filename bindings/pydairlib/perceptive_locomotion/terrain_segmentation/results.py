@@ -119,15 +119,43 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     meshcat.Flush()
     capture.grab(os.path.join(save_folder, 'convex_polygons_meshcat.png'))
 
+    utils.save_matrix_plot('Elevation Map', grid_map['elevation'], save_folder)
+    utils.save_matrix_plot('Segmentation', grid_map['segmentation'], save_folder)
     utils.setup_plots()
     for name, data in segmentation.safety_scores.items():
         title = (name.replace('_', ' ') + ' score').title()
         utils.save_matrix_plot(title, data, save_folder)
 
-    utils.save_matrix_plot('Elevation Map', grid_map['elevation'], save_folder)
-    utils.save_matrix_plot('Segmentation', grid_map['segmentation'], save_folder)
-
+    save_decomposition_debug_plots(decomposition.debug_info, save_folder)
     print('done')
+
+
+def despine(ax):
+    for _, spine in ax.spines.items():
+        spine.set_visible(False)
+
+
+def save_decomposition_debug_plots(debug_info, save_folder):
+    fig, ax = plt.subplots(figsize=(8, 8))
+    plot_polygons_with_holes(debug_info['unprocessed_polygons'])
+
+    despine(ax)
+    limits = utils.do_perception_fig_layout_and_save(
+        ax, fig, 'Non-Convex Polygons', save_folder)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    for c in debug_info['acd_components']:
+        plot_polygon(c)
+    despine(ax)
+    utils.do_perception_fig_layout_and_save(
+        ax, fig, 'Approximate Convex Decomposition', save_folder, limits)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    despine(ax)
+    for c in debug_info['convex_polygons']:
+        plot_polygon(c.GetVertices()[:2, :])
+    utils.do_perception_fig_layout_and_save(
+        ax, fig, 'Convex Polygons', save_folder, limits)
 
 
 def profile_segmentation(system, grid_maps):
@@ -239,8 +267,8 @@ def run_segmentation_profiling(logfile):
 
 
 def run_pipeline_figure_script(logfile):
-    example_idx = 30
-    grid_maps = get_grid_maps_from_log(logfile, start_time=20, duration=5)
+    example_idx = 0
+    grid_maps = get_grid_maps_from_log(logfile, start_time=0, duration=1)
     make_pipeline_figures_from_map(grid_maps[example_idx], '../terrain_seg_figures')
 
 

@@ -49,13 +49,24 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
 def save_matrix_plot(title: str, data: np.ndarray, folder: str) -> None:
     fig, ax = plt.subplots(figsize=(8, 8))
     im = ax.imshow(data, cmap='viridis')
+    return do_perception_fig_layout_and_save(ax, fig, title, folder)
+
+
+def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=None):
     ax.set_xticks([])
     ax.set_yticks([])
+    if limits is not None:
+        plt.xlim(limits['x'])
+        plt.ylim(limits['y'])
+    ax.set_aspect('equal')
+
     plt.title(title)
 
     filename = (title.replace(' ', '_') + '.png').lower()
     plt.savefig(os.path.join(folder, filename), dpi=300, bbox_inches='tight')
+    new_limits = {'x': plt.xlim(), 'y': plt.ylim()}
     plt.close(fig)
+    return new_limits
 
 
 def setup_plots():

@@ -68,6 +68,21 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "lcm_elevation_mapping_and_terrain_decomposition",
+    srcs = ["lcm_elevation_mapping_and_terrain_decomposition.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        ":convex_terrain_decomposition_system",
+        ":map_reset_monitor",
+        ":terrain_segmentation_system",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
 py_library(
     name = "terrain_segmentation_system",
     srcs = ["terrain_segmentation_system.py"],

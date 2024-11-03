@@ -52,14 +52,14 @@ state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 
 
-def get_grid_maps_from_log(logfile: str):
+def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     log = lcm.EventLog(logfile, "r")
     grid_maps, _ = get_log_data(
         log,
         {
             elevation_map_channel: lcmt_grid_map,
             state_channel: lcmt_robot_output
-        }, 20, 5,
+        }, start_time, duration,
         utils.process_grid_maps,
         elevation_map_channel,
         state_channel,
@@ -69,7 +69,6 @@ def get_grid_maps_from_log(logfile: str):
 
 def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
 
-    # Turn on debug to save intermediate computations
     segmentation = TerrainSegmentationSystem({
         'curvature_criterion': seg_criteria.curvature_criterion,
         'variance_criterion': seg_criteria.variance_criterion,
@@ -119,6 +118,14 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     poly_vis.DrawPolygons(convex_polygons)
     meshcat.Flush()
     capture.grab(os.path.join(save_folder, 'convex_polygons_meshcat.png'))
+
+    utils.setup_plots()
+    for name, data in segmentation.safety_scores.items():
+        title = (name.replace('_', ' ') + ' score').title()
+        utils.save_matrix_plot(title, data, save_folder)
+
+    utils.save_matrix_plot('Elevation Map', grid_map['elevation'], save_folder)
+    utils.save_matrix_plot('Segmentation', grid_map['segmentation'], save_folder)
 
     print('done')
 
@@ -233,7 +240,7 @@ def run_segmentation_profiling(logfile):
 
 def run_pipeline_figure_script(logfile):
     example_idx = 30
-    grid_maps = get_grid_maps_from_log(logfile)
+    grid_maps = get_grid_maps_from_log(logfile, start_time=20, duration=5)
     make_pipeline_figures_from_map(grid_maps[example_idx], '../terrain_seg_figures')
 
 

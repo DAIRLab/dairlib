@@ -1,6 +1,8 @@
+import os
 import numpy as np
 from grid_map import GridMap
 import matplotlib
+from matplotlib import pyplot as plt
 
 
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
@@ -42,6 +44,18 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
             data = np.array(layer.data).transpose()  # convert to column major
             grid_maps[i][layer.name][:] = data
     return grid_maps, robot_output_msgs
+
+
+def save_matrix_plot(title: str, data: np.ndarray, folder: str) -> None:
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(data, cmap='viridis')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.title(title)
+
+    filename = (title.replace(' ', '_') + '.png').lower()
+    plt.savefig(os.path.join(folder, filename), dpi=300, bbox_inches='tight')
+    plt.close(fig)
 
 
 def setup_plots():

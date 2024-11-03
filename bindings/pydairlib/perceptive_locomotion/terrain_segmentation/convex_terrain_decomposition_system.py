@@ -157,6 +157,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         if self.debug:
             self.debug_info['unprocessed_polygons'] = polygons
+            self.debug_info['segmentation'] = safe_terrain_image
 
         if self.profiling:
             self.profiling['decomposition'].append(end_convexity - start)

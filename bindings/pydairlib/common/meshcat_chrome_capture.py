@@ -27,6 +27,8 @@ class MeshcatChromeCapture:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
+        options.add_argument('--force-device-scale-factor=2')
+        options.add_argument('--high-spi-support=1')
         self.url = meshcat.web_url()
 
         self._silent = silent
@@ -36,6 +38,12 @@ class MeshcatChromeCapture:
         self._driver.get(self.url)
         self._set_pretty_lighting()
         self._remove_meshcat_panels()
+        self._clear_drake_defaults()
+
+    def _clear_drake_defaults(self):
+        self._meshcat.SetProperty("/Background", "visible", False)
+        self._meshcat.Delete("/Grid")
+        self._meshcat.Delete("/Axes")
 
     def _set_pretty_lighting(self):
         self._meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
@@ -44,7 +52,7 @@ class MeshcatChromeCapture:
         self._meshcat.SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0)
 
     def _remove_meshcat_panels(self):
-        assert(self._driver.current_url == self._meshcat.web_url())
+        assert(self._driver.current_url.strip('/') == self._meshcat.web_url().strip('/'))
         wait = WebDriverWait(self._driver, 10)
         _ = wait.until(EC.presence_of_element_located((By.ID, "stats-plot")))
 
@@ -95,7 +103,7 @@ class MeshcatChromeCapture:
         self._meshcat.SetTransform(
             "/Lights/SpotLight/<object>",
             RigidTransform(
-                RotationMatrix(), point_of_interest + np.array([0.0, -5.0, 1.0])))
+                RotationMatrix(), point_of_interest + np.array([-5.0, 0.0, 1.0])))
         self._meshcat.SetTransform(
             "/Lights/PointLightPositiveX/<object>",
             RigidTransform(

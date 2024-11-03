@@ -59,7 +59,7 @@ def get_grid_maps_from_log(logfile: str):
         {
             elevation_map_channel: lcmt_grid_map,
             state_channel: lcmt_robot_output
-        }, 0, 5,
+        }, 20, 5,
         utils.process_grid_maps,
         elevation_map_channel,
         state_channel,
@@ -91,7 +91,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     # Do the convex decomposition
     decomposition.get_input_port().FixValue(
         decomposition_context,
-        segmentation.get_output_port().Eval(segmentation_context)
+        grid_map
     )
     convex_polygons = decomposition.get_output_port().Eval(decomposition_context)
 
@@ -99,15 +99,15 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
 
     map_vis = GridMapVisualizer(meshcat, 1, [])
     poly_vis = ConvexPolygonVisualizer(meshcat, 1)
-    capture = MeshcatChromeCapture(meshcat=meshcat, window_size=(1080, 720))
+    capture = MeshcatChromeCapture(meshcat=meshcat, window_size=(1080, 1080))
 
     center = grid_map.getPosition()
     height = grid_map.atPosition("interpolated", center)
     poi = np.zeros((3,))
     poi[:2] = center.ravel()
-    poi[2] = height
+    poi[2] = height - 0.25
 
-    capture.look_at(poi, np.array([-2, 2, 1]))
+    capture.look_at(poi, np.array([0, -2.2, 1.7]))
 
     for layer in grid_map.getLayers():
         meshcat.Delete()
@@ -232,7 +232,7 @@ def run_segmentation_profiling(logfile):
 
 
 def run_pipeline_figure_script(logfile):
-    example_idx = 60
+    example_idx = 30
     grid_maps = get_grid_maps_from_log(logfile)
     make_pipeline_figures_from_map(grid_maps[example_idx], '../terrain_seg_figures')
 

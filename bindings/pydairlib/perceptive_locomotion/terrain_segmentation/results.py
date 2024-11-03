@@ -96,16 +96,10 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     convex_polygons = decomposition.get_output_port().Eval(decomposition_context)
 
     meshcat = Meshcat()
-    meshcat.Delete()
-    meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
-    meshcat.SetProperty("/Lights/SpotLight/<object>", "castShadow", True)
-    meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0)
-    meshcat.SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0)
 
     map_vis = GridMapVisualizer(meshcat, 1, [])
     poly_vis = ConvexPolygonVisualizer(meshcat, 1)
-
-    capture = MeshcatChromeCapture(url=meshcat.web_url(), window_size=(1080, 720))
+    capture = MeshcatChromeCapture(meshcat=meshcat, window_size=(1080, 720))
 
     center = grid_map.getPosition()
     height = grid_map.atPosition("interpolated", center)
@@ -113,7 +107,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     poi[:2] = center.ravel()
     poi[2] = height
 
-    capture.look_at(meshcat, poi, np.array([-2, 2, 1]))
+    capture.look_at(poi, np.array([-2, 2, 1]))
 
     for layer in grid_map.getLayers():
         meshcat.Delete()

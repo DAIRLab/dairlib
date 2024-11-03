@@ -5,50 +5,73 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from pydrake.all import RotationMatrix, RigidTransform
+from pydrake.all import RotationMatrix, RigidTransform, Meshcat
+
+from typing import Tuple
 
 
 class MeshcatChromeCapture:
-    def __init__(self, url, window_size):
+    """
+    Helper class for generating clean screenshots of drake Meshcat scenes.
+    The workflow looks like this:
+
+        meshcat = Meshcat()
+        capture = MeshcatChromeCapture(meshcat, (1080, 720))
+
+        # setup the scene here
+
+        capture.grab('filename.png')
+
+    """
+    def __init__(self, meshcat: Meshcat, window_size: Tuple[int, int], silent: bool = False):
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
-        self.driver = webdriver.Chrome(options=options)
-        self.driver.set_window_size(window_size[0], window_size[1])
-        self.url = url
-        self.driver.get(url)
-        self.remove_meshcat_panels()
+        self.url = meshcat.web_url()
 
-    def remove_meshcat_panels(self):
-        # Wait for the stats panel to be present
-        wait = WebDriverWait(self.driver, 10)
-        stats_panel = wait.until(EC.presence_of_element_located((By.ID, "stats-plot")))
+        self._silent = silent
+        self._meshcat = meshcat
+        self._driver = webdriver.Chrome(options=options)
+        self._driver.set_window_size(window_size[0], window_size[1])
+        self._driver.get(self.url)
+        self._set_pretty_lighting()
+        self._remove_meshcat_panels()
+
+    def _set_pretty_lighting(self):
+        self._meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
+        self._meshcat.SetProperty("/Lights/SpotLight/<object>", "castShadow", True)
+        self._meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0)
+        self._meshcat.SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0)
+
+    def _remove_meshcat_panels(self):
+        assert(self._driver.current_url == self._meshcat.web_url())
+        wait = WebDriverWait(self._driver, 10)
+        _ = wait.until(EC.presence_of_element_located((By.ID, "stats-plot")))
 
         # remove the real time rate panel
-        self.driver.execute_script("""
+        self._driver.execute_script("""
             var element = document.getElementById('stats-plot');
             if (element) {
                 element.remove();
             }
         """)
 
-        # remove the controls GUI -
-        # Three.JS is often used in tandem with Dat.GUI (https://sbcode.net/threejs/dat-gui/),
+        # remove the controls GUI
+        # The control panel is made with Dat.GUI (https://sbcode.net/threejs/dat-gui/),
         # so I asked an LLM for a script to hide Dat.GUI elements
-        self.driver.execute_script("""
-            // Remove by class name (most common)
+        #
+        # Maybe need updated for future meshcat versions
+        self._driver.execute_script("""
             var datGuis = document.getElementsByClassName('dg main');
             while(datGuis.length > 0) {
                 datGuis[0].remove();
             }
             
-            // Alternative: remove by container ID if it exists
             var datContainer = document.getElementById('dat-gui-container');
             if (datContainer) {
                 datContainer.remove();
             }
             
-            // Hide any remaining Dat.GUI elements
             var datElements = document.querySelectorAll('.dg');
             datElements.forEach(function(element) {
                 element.style.display = 'none';
@@ -56,28 +79,28 @@ class MeshcatChromeCapture:
         """)
 
     def __del__(self):
-        self.driver.quit()
+        self._driver.quit()
 
     def grab(self, save_file_name: str) -> None:
-        print(f'saving page to {save_file_name}')
-        self.driver.save_screenshot(save_file_name)
+        self._driver.save_screenshot(save_file_name)
+        if not self._silent:
+            print(f'saved page to {save_file_name}')
 
-    @staticmethod
-    def look_at(meshcat, point_of_interest, cam_pos_local):
+    def look_at(self, point_of_interest, cam_pos_local):
         # point the camera at the poit of interest
-        meshcat.SetCameraPose(
+        self._meshcat.SetCameraPose(
             point_of_interest + cam_pos_local, point_of_interest)
 
         # Set the lighting positions
-        meshcat.SetTransform(
+        self._meshcat.SetTransform(
             "/Lights/SpotLight/<object>",
             RigidTransform(
                 RotationMatrix(), point_of_interest + np.array([0.0, -5.0, 1.0])))
-        meshcat.SetTransform(
+        self._meshcat.SetTransform(
             "/Lights/PointLightPositiveX/<object>",
             RigidTransform(
                 RotationMatrix(), point_of_interest + np.array([2.0, 0.0, 2.0])))
-        meshcat.SetTransform(
+        self._meshcat.SetTransform(
             "/Lights/PointLightNegativeX/<object>",
             RigidTransform(
                 RotationMatrix(), point_of_interest + np.array([-2.0, 0.0, 2.0])))

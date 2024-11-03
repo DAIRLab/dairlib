@@ -35,6 +35,8 @@ class ConvexPolygonVisualizer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(polygon_input_port_);
   }
 
+  void DrawPolygons(geometry::ConvexPolygonSet& polygons) const;
+
  private:
   /*!
    * @brief Returns a meshcat path for the foothold visualizations
@@ -44,7 +46,7 @@ class ConvexPolygonVisualizer : public drake::systems::LeafSystem<double> {
     return "/dairlib_convex_polygon_meshes/" + std::to_string(i);
   }
 
-  void DrawPolygons(geometry::ConvexPolygonSet& polygons,
+  void DrawPolygonsInternal(geometry::ConvexPolygonSet& polygons,
                      int n_prev_polygons,
                      const std::string& prefix="") const;
 

@@ -14,17 +14,9 @@ from pydrake.systems.all import (
 )
 
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
-
-try:
-    from pydairlib.geometry.polygon_utils import ProcessTerrain2d
-except ImportError:
-    print('ERROR: when built against ros, you need to source the ros environment before '
-          'importing from polygon_utils, or python may not be able to find some necessary libraries. '
-          'Please source ros and try again')
-    exit(0)
+from pydairlib.geometry.polygon_utils import ProcessTerrain2d
 
 import matplotlib.pyplot as plt
-import pydairlib.perceptive_locomotion.terrain_segmentation.whittling_solver as whittling_solver
 
 
 def plot_polygon(verts, linestyle='solid', color='color'):
@@ -108,6 +100,8 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             }
         )
         self.profiling = profiling
+        self.debug = False
+        self.debug_info = {}
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
@@ -160,6 +154,9 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         end_plane_fitting = time.time()
         out.set_value(ConvexPolygonSet(convex_polygons))
+
+        if self.debug:
+            self.debug_info['unprocessed_polygons'] = polygons
 
         if self.profiling:
             self.profiling['decomposition'].append(end_convexity - start)

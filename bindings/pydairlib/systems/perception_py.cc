@@ -32,7 +32,8 @@ PYBIND11_MODULE(perception, m) {
       m, "GridMapVisualizer")
       .def(py::init<std::shared_ptr<drake::geometry::Meshcat>, double,
           const std::vector<std::string>&>(),
-          py::arg("meshcat"), py::arg("update_rate"), py::arg("layers"));
+          py::arg("meshcat"), py::arg("update_rate"), py::arg("layers"))
+      .def("DrawGridMap", &GridMapVisualizer::DrawGridMap);
 
   py::class_<PlaneSegmentationSystem, drake::systems::LeafSystem<double>>(
       m, "PlaneSegmentationSystem")

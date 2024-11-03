@@ -73,6 +73,8 @@ class TerrainSegmentationSystem(LeafSystem):
 
         self.safety_criterion_callbacks = safety_callbacks
         self.profiling = profiling
+        self.debug = False
+        self.safety_scores = {}
 
     def get_raw_safety_score(
             self, elevation: np.ndarray, elevation_inpainted: np.ndarray,
@@ -91,9 +93,15 @@ class TerrainSegmentationSystem(LeafSystem):
             if self.profiling:
                 self.profiling['seg_callbacks'][i].append(end - start)
             i += 1
+            if self.debug:
+                self.safety_scores[name] = callback(
+                    elevation_inpainted, kernel, resolution)
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         raw_safety[np.isnan(elevation)] = 0
+
+        if self.debug:
+            self.safety_scores['combined'] = raw_safety
 
         return raw_safety
 
@@ -129,7 +137,6 @@ class TerrainSegmentationSystem(LeafSystem):
         InpaintWithMinimumValues(
             elevation_map, "elevation_inpainted", "elevation_inpainted"
         )
-
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing

@@ -32,6 +32,7 @@ pybind_py_library(
         "//geometry:convex_polygon",
         "//geometry:convex_polygon_lcm_systems",
         "//geometry:convex_polygon_set",
+        "//geometry:convex_polygon_visualizer",
         "@drake//:drake_shared_library",
         "@drake//bindings/pydrake/common:value_pybind",
     ],

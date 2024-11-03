@@ -18,6 +18,9 @@ from pydrake.systems.all import (
     LcmPublisherSystem,
     TriggerType,
 )
+
+from pydrake.geometry import Meshcat
+
 from pydrake.all import DrakeLcm
 
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
@@ -33,7 +36,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
     convex_terrain_decomposition_system import \
-    ConvexTerrainDecompositionSystem
+    ConvexTerrainDecompositionSystem, plot_polygon, plot_polygons_with_holes
 
 from pydairlib.perceptive_locomotion.terrain_segmentation import perception_analysis_utils as utils
 
@@ -63,6 +66,36 @@ def get_grid_maps_from_log(logfile: str):
         state_channel,
     )
     return grid_maps
+
+
+def make_pipeline_figures_from_map(grid_map: GridMap):
+
+    # Turn on debug to save intermediate computations
+    segmentation = TerrainSegmentationSystem({
+        'curvature_criterion': seg_criteria.curvature_criterion,
+        'variance_criterion': seg_criteria.variance_criterion,
+    })
+    decomposition = ConvexTerrainDecompositionSystem()
+    segmentation.debug = True
+    decomposition.debug = True
+    segmentation_context = segmentation.CreateDefaultContext()
+    decomposition_context = decomposition.CreateDefaultContext()
+
+    # Do the segmentation
+    segmentation.get_input_port().FixValue(
+        segmentation_context, grid_map
+    )
+    segmentation.UpdateTerrainSegmentation(
+        segmentation_context, segmentation_context.get_mutable_state()
+    )
+
+    # Do the convex decomposition
+    decomposition.get_input_port().FixValue(
+        decomposition_context,
+        segmentation.get_output_port().Eval(segmentation_context)
+    )
+    convex_polygons = decomposition.get_output_port().Eval(decomposition_context)
+    print('done')
 
 
 def profile_segmentation(system, grid_maps):
@@ -124,32 +157,6 @@ def animate_segmentations(results):
     plt.show()
 
 
-def run_segmentation_profiling(logfile):
-    grid_maps = get_grid_maps_from_log(logfile)
-    plane_segmentation = PlaneSegmentationSystem(
-        'systems/perception/ethz_plane_segmentation/params.yaml'
-    )
-    s3 = TerrainSegmentationSystem(
-        {
-            'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
-            'inclination_criterion': seg_criteria.inclination_criterion
-        }
-    )
-
-    results = [
-        profile_segmentation(plane_segmentation, deepcopy(grid_maps)),
-        profile_segmentation(s3, deepcopy(grid_maps))
-    ]
-
-    utils.setup_plots()
-
-    plot_segmentation_run_time_results(results, 'Run Time', '../test1.svg')
-    plot_iou_results(results, 'Frame-to-Frame IoU', '../test2.svg')
-
-    plt.show()
-
-
 def plot_segmentation_run_time_results(results, title, savefile):
     fig = plt.figure()
     plt.title(title)
@@ -174,11 +181,43 @@ def plot_iou_results(results, title, savefile):
     plt.savefig(savefile)
 
 
+def run_segmentation_profiling(logfile):
+    grid_maps = get_grid_maps_from_log(logfile)
+    plane_segmentation = PlaneSegmentationSystem(
+        'systems/perception/ethz_plane_segmentation/params.yaml'
+    )
+    s3 = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'variance_criterion': seg_criteria.variance_criterion,
+        }
+    )
+
+    results = [
+        profile_segmentation(plane_segmentation, deepcopy(grid_maps)),
+        profile_segmentation(s3, deepcopy(grid_maps))
+    ]
+
+    utils.setup_plots()
+
+    plot_segmentation_run_time_results(results, 'Run Time', '../test1.svg')
+    plot_iou_results(results, 'Frame-to-Frame IoU', '../test2.svg')
+
+    plt.show()
+
+
+def run_pipeline_figure_script(logfile):
+    example_idx = 60
+    grid_maps = get_grid_maps_from_log(logfile)
+    make_pipeline_figures_from_map(grid_maps[example_idx])
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    run_segmentation_profiling(args.logfile)
+    run_pipeline_figure_script(args.logfile)
+    # run_segmentation_profiling(args.logfile)
     # profile_full_pipeline(args.logfile)
 
 

@@ -15,10 +15,14 @@ class GridMapVisualizer : public drake::systems::LeafSystem<double> {
                     double update_period_sec,
                     std::vector<std::string> layers = {});
 
+  void DrawGridMap(const grid_map::GridMap& map,
+                   const std::vector<std::string>& layers) const;
+
  private:
   drake::systems::EventStatus UpdateVisualization(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
+
   mutable std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::vector<std::string> layers_;
 

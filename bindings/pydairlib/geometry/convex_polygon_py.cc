@@ -5,6 +5,7 @@
 
 #include "geometry/convex_polygon.h"
 #include "geometry/convex_polygon_set.h"
+#include "geometry/convex_polygon_visualizer.h"
 #include "geometry/convex_polygon_lcm_systems.h"
 
 #include "drake/bindings/pydrake/common/value_pybind.h"
@@ -18,6 +19,7 @@ namespace pydairlib {
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
 using geometry::ConvexPolygonSender;
+using geometry::ConvexPolygonVisualizer;
 
 PYBIND11_MODULE(convex_polygon, m) {
 m.doc() = "Binding geometry utils";
@@ -50,8 +52,14 @@ py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def("size", &ConvexPolygonSet::size)
     .def("polygons", &ConvexPolygonSet::polygons, py_rvp::copy);
 
-py::class_<ConvexPolygonSender, drake::systems::LeafSystem<double>>(m, "ConvexPolygonSender").def(py::init<>());
+py::class_<ConvexPolygonSender, drake::systems::LeafSystem<double>>(
+    m, "ConvexPolygonSender").def(py::init<>());
 
+py::class_<ConvexPolygonVisualizer, drake::systems::LeafSystem<double>>(
+    m, "ConvexPolygonVisualizer")
+    .def(py::init<std::shared_ptr<drake::geometry::Meshcat>, double>(),
+         py::arg("meshcat"), py::arg("update_period"))
+    .def("DrawPolygons", &ConvexPolygonVisualizer::DrawPolygons);
   drake::pydrake::AddValueInstantiation<ConvexPolygon>(m);
   drake::pydrake::AddValueInstantiation<ConvexPolygonSet>(m);
 

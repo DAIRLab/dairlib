@@ -35,6 +35,14 @@ py_library(
 )
 
 py_library(
+    name = "chrome_capture",
+    srcs = ["chrome_capture.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
     name = "plotting_utils",
     srcs = ["plotting_utils.py"],
     deps = [],
@@ -59,6 +67,7 @@ PY_LIBRARIES = [
     ":common_py",
     ":plot_styler",
     ":plotting_utils",
+    ":chrome_capture",
 ]
 
 # Package roll-up (for Bazel dependencies).

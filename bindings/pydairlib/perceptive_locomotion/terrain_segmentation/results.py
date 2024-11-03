@@ -1,3 +1,4 @@
+import os
 import time
 import timeit
 from time import sleep
@@ -21,13 +22,12 @@ from pydrake.systems.all import (
 
 from pydrake.geometry import Meshcat
 
-from pydrake.all import DrakeLcm
-
-import pydairlib.lcm  # needed for cpp serialization of lcm messages
-
 from grid_map import GridMap
 
-from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
+from pydairlib.systems.perception import \
+    PlaneSegmentationSystem, GridMapVisualizer
+
+from pydairlib.geometry import ConvexPolygonVisualizer
 
 from pydairlib.analysis.process_lcm_log import get_log_data
 
@@ -40,11 +40,10 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.perceptive_locomotion.terrain_segmentation import perception_analysis_utils as utils
 
-from pydairlib.geometry.convex_polygon import ConvexPolygonSender
-
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
+from pydairlib.common import ChromeCapture
 
 from argparse import ArgumentParser
 
@@ -68,7 +67,7 @@ def get_grid_maps_from_log(logfile: str):
     return grid_maps
 
 
-def make_pipeline_figures_from_map(grid_map: GridMap):
+def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
 
     # Turn on debug to save intermediate computations
     segmentation = TerrainSegmentationSystem({
@@ -95,6 +94,38 @@ def make_pipeline_figures_from_map(grid_map: GridMap):
         segmentation.get_output_port().Eval(segmentation_context)
     )
     convex_polygons = decomposition.get_output_port().Eval(decomposition_context)
+
+    meshcat = Meshcat()
+    meshcat.Delete()
+    meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
+    meshcat.SetProperty("/Lights/SpotLight/<object>", "castShadow", True)
+    meshcat.SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0)
+    meshcat.SetProperty("/Lights/SpotLight/<object>", "intensity", 40.0)
+
+    map_vis = GridMapVisualizer(meshcat, 1, [])
+    poly_vis = ConvexPolygonVisualizer(meshcat, 1)
+
+    capture = ChromeCapture(url='http://localhost:7001', window_size=(1080, 720))
+
+    center = grid_map.getPosition()
+    height = grid_map.atPosition("interpolated", center)
+    poi = np.zeros((3,))
+    poi[:2] = center.ravel()
+    poi[2] = height
+
+    capture.look_at(meshcat, poi, np.array([-2, 2, 1]))
+
+    for layer in grid_map.getLayers():
+        meshcat.Delete()
+        map_vis.DrawGridMap(grid_map, [layer])
+        meshcat.Flush()
+        capture.grab(os.path.join(save_folder, f'{layer}_meshcat.png'))
+
+    meshcat.Delete()
+    poly_vis.DrawPolygons(convex_polygons)
+    meshcat.Flush()
+    capture.grab(os.path.join(save_folder, 'convex_polygons_meshcat.png'))
+
     print('done')
 
 
@@ -209,7 +240,7 @@ def run_segmentation_profiling(logfile):
 def run_pipeline_figure_script(logfile):
     example_idx = 60
     grid_maps = get_grid_maps_from_log(logfile)
-    make_pipeline_figures_from_map(grid_maps[example_idx])
+    make_pipeline_figures_from_map(grid_maps[example_idx], '../terrain_seg_figures')
 
 
 def main():

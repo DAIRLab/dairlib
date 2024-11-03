@@ -15,9 +15,9 @@ py_binary(
     name = "test_segmentation_on_log",
     srcs = ["test_segmentation_on_log.py"],
     deps = [
+        ":convex_terrain_decomposition_system",
         ":perception_analysis_utils",
         ":segmentation_criteria",
-        ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
@@ -31,12 +31,13 @@ py_binary(
     name = "results",
     srcs = ["results.py"],
     deps = [
+        ":convex_terrain_decomposition_system",
         ":perception_analysis_utils",
         ":segmentation_criteria",
-        ":convex_terrain_decomposition_system",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/common:chrome_capture",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/systems",
         "//lcmtypes:lcmtypes_robot_py",
@@ -58,8 +59,8 @@ py_binary(
     data = ["@lcm//:lcm-python"],
     deps = [
         ":convex_terrain_decomposition_system",
-        ":terrain_segmentation_system",
         ":map_reset_monitor",
+        ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
@@ -71,8 +72,8 @@ py_library(
     name = "terrain_segmentation_system",
     srcs = ["terrain_segmentation_system.py"],
     deps = [
-        ":vision_utils",
         ":segmentation_criteria",
+        ":vision_utils",
         "//bindings/grid_map",
         "@drake//bindings/pydrake",
     ],
@@ -91,17 +92,16 @@ py_library(
     srcs = ["map_reset_monitor.py"],
     deps = [
         "@drake//bindings/pydrake",
-    ]
+    ],
 )
 
 py_library(
     name = "segmentation_criteria",
     srcs = ["segmentation_criteria.py"],
     deps = [
-        ":utils_py"
+        ":utils_py",
     ],
 )
-
 
 py_library(
     name = "whittling_solver",
@@ -143,7 +143,7 @@ py_library(
 pybind_py_library(
     name = "utils_py",
     cc_deps = [
-        "@eigen"
+        "@eigen",
     ],
     cc_so_name = "segmentation_utils",
     cc_srcs = ["utils_py.cc"],

@@ -43,7 +43,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation import perception_anal
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
-from pydairlib.common import ChromeCapture
+from pydairlib.common import MeshcatChromeCapture
 
 from argparse import ArgumentParser
 
@@ -105,7 +105,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     map_vis = GridMapVisualizer(meshcat, 1, [])
     poly_vis = ConvexPolygonVisualizer(meshcat, 1)
 
-    capture = ChromeCapture(url='http://localhost:7001', window_size=(1080, 720))
+    capture = MeshcatChromeCapture(url=meshcat.web_url(), window_size=(1080, 720))
 
     center = grid_map.getPosition()
     height = grid_map.atPosition("interpolated", center)

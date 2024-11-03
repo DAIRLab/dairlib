@@ -45,8 +45,8 @@ void ConvexPolygonVisualizer::DrawPolygons(ConvexPolygonSet &polygons) const {
 void ConvexPolygonVisualizer::DrawPolygonsInternal(ConvexPolygonSet& foothold_set,
                                             int n_prev,
                                             const std::string& prefix) const {
-  drake::geometry::Rgba green(0, 0, 1, 0.5);
-  drake::geometry::Rgba black(0, 0, 0, 0);
+  drake::geometry::Rgba green(0, 1, 0, 0.75);
+  drake::geometry::Rgba black(0, 0, 0, 1);
 
   for (int i = 0; i < foothold_set.size(); i++) {
     auto polygon = foothold_set.polygons().at(i);

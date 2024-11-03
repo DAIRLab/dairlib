@@ -35,8 +35,8 @@ py_library(
 )
 
 py_library(
-    name = "chrome_capture",
-    srcs = ["chrome_capture.py"],
+    name = "meshcat_chrome_capture",
+    srcs = ["meshcat_chrome_capture.py"],
     deps = [
         "@drake//bindings/pydrake",
     ],
@@ -67,7 +67,7 @@ PY_LIBRARIES = [
     ":common_py",
     ":plot_styler",
     ":plotting_utils",
-    ":chrome_capture",
+    ":meshcat_chrome_capture",
 ]
 
 # Package roll-up (for Bazel dependencies).

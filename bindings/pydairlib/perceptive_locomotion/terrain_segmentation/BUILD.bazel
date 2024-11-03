@@ -37,7 +37,7 @@ py_binary(
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
-        "//bindings/pydairlib/common:chrome_capture",
+        "//bindings/pydairlib/common:meshcat_chrome_capture",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/systems",
         "//lcmtypes:lcmtypes_robot_py",

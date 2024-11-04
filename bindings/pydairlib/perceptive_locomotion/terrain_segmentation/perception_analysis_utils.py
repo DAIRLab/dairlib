@@ -4,6 +4,9 @@ from grid_map import GridMap
 import matplotlib
 from matplotlib import pyplot as plt
 
+from pydairlib.analysis.mbp_plotting_utils import process_state_channel
+from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
+
 
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     # move frame0 to remove any pixels which the maps do not have in common
@@ -25,6 +28,9 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     map_msgs = data_dict[elevation_map_channel]
     robot_output_msgs = data_dict[state_channel]
 
+    plant, _ = make_plant_and_context()
+    robot_output = process_state_channel(robot_output_msgs, plant)
+
     layers = map_msgs[0].layer_names
     grid_maps = [GridMap(layers) for _ in range(len(map_msgs))]
     for i, msg in enumerate(map_msgs):
@@ -43,7 +49,7 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
         for layer in msg.layers:
             data = np.array(layer.data).transpose()  # convert to column major
             grid_maps[i][layer.name][:] = data
-    return grid_maps, robot_output_msgs
+    return grid_maps, robot_output
 
 
 def save_matrix_plot(title: str, data: np.ndarray, folder: str) -> None:
@@ -77,7 +83,7 @@ def setup_plots():
     matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 1
-    matplotlib.rcParams['axes.titlesize'] = 20
+    matplotlib.rcParams['axes.titlesize'] = 40
     matplotlib.rcParams['xtick.major.size'] = 15
     matplotlib.rcParams['xtick.major.width'] = 1
     matplotlib.rcParams['xtick.minor.size'] = 7

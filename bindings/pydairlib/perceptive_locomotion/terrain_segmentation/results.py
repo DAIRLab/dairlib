@@ -24,7 +24,9 @@ from pydrake.geometry import Meshcat
 
 from grid_map import GridMap
 
-from pydairlib.systems.perception import \
+from pydairlib.multibody import MultiposeVisualizer
+
+from pydairlib.systems import \
     PlaneSegmentationSystem, GridMapVisualizer
 
 from pydairlib.geometry import ConvexPolygonVisualizer
@@ -54,7 +56,7 @@ elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 
 def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     log = lcm.EventLog(logfile, "r")
-    grid_maps, _ = get_log_data(
+    grid_maps, robot_output = get_log_data(
         log,
         {
             elevation_map_channel: lcmt_grid_map,
@@ -64,10 +66,10 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
         elevation_map_channel,
         state_channel,
     )
-    return grid_maps
+    return grid_maps, robot_output
 
 
-def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
+def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):
 
     segmentation = TerrainSegmentationSystem({
         'curvature_criterion': seg_criteria.curvature_criterion,
@@ -94,11 +96,17 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     )
     convex_polygons = decomposition.get_output_port().Eval(decomposition_context)
 
-    meshcat = Meshcat()
+    plant_vis = MultiposeVisualizer(
+        "examples/Cassie/urdf/cassie_v2_shells.urdf", 1, "")
+    meshcat = plant_vis.GetMeshcat()
 
     map_vis = GridMapVisualizer(meshcat, 1, [])
     poly_vis = ConvexPolygonVisualizer(meshcat, 1)
     capture = MeshcatChromeCapture(meshcat=meshcat, window_size=(1080, 1080))
+    plant_vis.DrawPoses(q)
+
+    # wait for plant to load
+    sleep(5)
 
     center = grid_map.getPosition()
     height = grid_map.atPosition("interpolated", center)
@@ -106,22 +114,22 @@ def make_pipeline_figures_from_map(grid_map: GridMap, save_folder: str=''):
     poi[:2] = center.ravel()
     poi[2] = height - 0.25
 
-    capture.look_at(poi, np.array([0, -2.2, 1.7]))
+    capture.look_at(poi, np.array([0, -2.0, 1.5]))
 
     for layer in grid_map.getLayers():
-        meshcat.Delete()
         map_vis.DrawGridMap(grid_map, [layer])
         meshcat.Flush()
         capture.grab(os.path.join(save_folder, f'{layer}_meshcat.png'))
+        sleep(0.5)
+        meshcat.Delete(f'grid_map_{layer}')
 
-    meshcat.Delete()
     poly_vis.DrawPolygons(convex_polygons)
     meshcat.Flush()
     capture.grab(os.path.join(save_folder, 'convex_polygons_meshcat.png'))
 
+    utils.setup_plots()
     utils.save_matrix_plot('Elevation Map', grid_map['elevation'], save_folder)
     utils.save_matrix_plot('Segmentation', grid_map['segmentation'], save_folder)
-    utils.setup_plots()
     for name, data in segmentation.safety_scores.items():
         title = (name.replace('_', ' ') + ' score').title()
         utils.save_matrix_plot(title, data, save_folder)
@@ -148,7 +156,7 @@ def save_decomposition_debug_plots(debug_info, save_folder):
         plot_polygon(c)
     despine(ax)
     utils.do_perception_fig_layout_and_save(
-        ax, fig, 'Approximate Convex Decomposition', save_folder, limits)
+        ax, fig, 'Approximate Convex\nDecomposition', save_folder, limits)
 
     fig, ax = plt.subplots(figsize=(8, 8))
     despine(ax)
@@ -242,7 +250,7 @@ def plot_iou_results(results, title, savefile):
 
 
 def run_segmentation_profiling(logfile):
-    grid_maps = get_grid_maps_from_log(logfile)
+    grid_maps, robot_outputs = get_grid_maps_from_log(logfile)
     plane_segmentation = PlaneSegmentationSystem(
         'systems/perception/ethz_plane_segmentation/params.yaml'
     )
@@ -268,8 +276,10 @@ def run_segmentation_profiling(logfile):
 
 def run_pipeline_figure_script(logfile):
     example_idx = 0
-    grid_maps = get_grid_maps_from_log(logfile, start_time=0, duration=1)
-    make_pipeline_figures_from_map(grid_maps[example_idx], '../terrain_seg_figures')
+    grid_maps, robot_output = get_grid_maps_from_log(logfile, start_time=0, duration=1)
+    q = robot_output['q'][0]
+    make_pipeline_figures_from_map(
+        grid_maps[example_idx], q, '../terrain_seg_figures')
 
 
 def main():

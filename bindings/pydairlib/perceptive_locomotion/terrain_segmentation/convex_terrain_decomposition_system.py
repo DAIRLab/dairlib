@@ -23,7 +23,7 @@ def plot_polygon(verts, linestyle='solid', color='black'):
     # plot a polygon (for debugging)
     assert(verts.shape[0] == 2)
     tmp = np.vstack((verts.T, verts[:, 0]))
-    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, color=color)
+    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, linewidth=2.5, color=color)
 
 
 def plot_polygon_with_holes(poly):

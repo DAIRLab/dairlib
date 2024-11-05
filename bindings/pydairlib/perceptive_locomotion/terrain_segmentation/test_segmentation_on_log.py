@@ -82,7 +82,6 @@ def build_diagram(mode: str, lcm: DrakeLcm, profiling=None) -> Diagram:
         if mode == 'planar' else TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
             'inclination_criterion': seg_criteria.inclination_criterion
         },
         profiling
@@ -371,7 +370,7 @@ def profile_full_pipeline(logfile):
 
 def visualize(logfile):
     lcm_interface = DrakeLcm()
-    diagram = build_plane_seg_diagram(lcm_interface)
+    diagram = build_diagram('convex', lcm_interface)
 
     log = lcm.EventLog(logfile, "r")
     grid_maps, robot_output = get_log_data(
@@ -381,7 +380,7 @@ def visualize(logfile):
             state_channel: lcmt_robot_output
         },
         start_time=0,
-        duration=30,
+        duration=-1,
         data_processing_callback=process_grid_maps
     )
 

@@ -38,7 +38,7 @@ from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
 
-model_path = "collision_penalty"
+model_path = "domain" #"domain" #LQR_train
 model_hz = 40.0
 model_hidden_size = 128
 points_topic = "/camera/depth/color/points"
@@ -102,18 +102,18 @@ def main():
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
 
-    # # contact based drift correction
-    # contact_subscriber = LcmSubscriberSystem.Make(
-    #     channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
-    #     lcm_type=lcmt_contact,
-    #     lcm=elevation_mapping.lcm(),
-    #     use_cpp_serializer=True
-    # )
-    # builder.AddSystem(contact_subscriber)
-    # builder.Connect(
-    #         contact_subscriber.get_output_port(),
-    #         elevation_mapping.get_input_port_contact()
-    # )
+    # contact based drift correction
+    contact_subscriber = LcmSubscriberSystem.Make(
+        channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
+        lcm_type=lcmt_contact,
+        lcm=elevation_mapping.lcm(),
+        use_cpp_serializer=True
+    )
+    builder.AddSystem(contact_subscriber)
+    builder.Connect(
+            contact_subscriber.get_output_port(),
+            elevation_mapping.get_input_port_contact()
+    )
     builder.Connect(
         elevation_map_sender.get_output_port(),
         elevation_map_publisher_local.get_input_port()

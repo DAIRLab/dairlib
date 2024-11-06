@@ -243,7 +243,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_hidden_size: int = 64,
+        lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         optimizer_class= th.optim.Adam,
         optimizer_kwargs = {'weight_decay': 1e-4, 'epsilon': 1e-5},
@@ -372,6 +372,8 @@ class RLSystem(LeafSystem):
                 }
             ).get_index()
             }
+        # self.save = np.empty((500, 12310))
+        # self.time_step = 0
 
     def calc_fsm_port(self, context: Context, fsm: BasicVector):
         states = self.EvalVectorInput(
@@ -445,7 +447,7 @@ class RLSystem(LeafSystem):
 
     def calculate_actions(self, context: Context, output: BasicVector):
 
-        t_start = time.time()
+        # t_start = time.time()
         vdes = self.EvalVectorInput(context, self.input_port_indices['desired_velocity']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         t = states[-1]
@@ -488,14 +490,22 @@ class RLSystem(LeafSystem):
         hmap = hmap.reshape(-1)
 
         obs = np.hstack((hmap, alip, vdes, joint_angle, self.empty)) # 24621
+        
+        # self.save[self.time_step] = obs[:12310]
+        # print(self.time_step)
+        # if self.time_step == 499:
+        #     print('save')
+        #     np.save('log4.npy',self.save)
 
+        # self.time_step += 1
         actions, lstm_states = self.model.predict(obs, state=self.lstm_states, episode_start=self.episode_starts, deterministic=True)
         self.lstm_states = lstm_states
 
         self.episode_starts = np.zeros((1,), dtype=bool)
         actions = actions / np.array([2, 2, 4])
+        # print(f'{alip} | {np.round(joint_angle, 2)} | {actions}')
         out = np.concatenate([actions, [fsm.fsm_state, fsm.prev_switch_time, fsm.next_switch_time]])
-        # print(actions)
+
         output.set_value(out)
         # t_end = time.time()
 
@@ -518,7 +528,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder.AddSystem(sim_env)
     footstep_zoh = ZeroOrderHold(0.025, 6)
 
-    rl_system = RLSystem(model_path='collision_penalty', hidden_size=128)
+    rl_system = RLSystem(model_path='terminate', hidden_size=128)
     
     builder.AddSystem(rl_system)
     builder.Connect(

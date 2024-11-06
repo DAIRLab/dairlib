@@ -51,8 +51,8 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
 
   point_cloud_subscriber_ = builder.AddSystem<
       RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>>(&realsense_);
-  image_pair_subscriber_ =
-      builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
+//   image_pair_subscriber_ =
+//       builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
 
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);

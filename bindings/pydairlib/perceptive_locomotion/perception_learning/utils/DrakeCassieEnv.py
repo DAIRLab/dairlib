@@ -240,6 +240,7 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
 def simulate_init(sim_params):
     rand = np.random.randint(1, 21)
+    rand = 17
     if rand in [1,2,3,4,5,6,7]:
         rand = np.random.randint(0, 1000)
         terrain_yaml = f'params/stair/dustair_{rand}.yaml'
@@ -287,7 +288,7 @@ def simulate_init(sim_params):
     simulator.Initialize()
 
     def monitor(context):
-        time_limit = 10
+        time_limit = 100
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)

@@ -73,7 +73,7 @@ class ResidualBlock_noNorm(nn.Module):
         return out
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
+    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
         super(CustomNetwork, self).__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
@@ -139,8 +139,8 @@ class CustomNetwork(nn.Module):
             nn.Linear(256, 64),
         )
 
-        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=64, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=64, num_layers=2, batch_first=False)
+        self.actor_combined_lstm = nn.LSTM(input_size=self.vector_state_actor + 64, hidden_size=128, num_layers=2, batch_first=False)
+        self.critic_combined_lstm = nn.LSTM(input_size=self.vector_state_critic + 64, hidden_size=128, num_layers=2, batch_first=False)
 
     def forward(self, observations: th.Tensor):
         actor_combined_features = self.multihead_actor(observations)
@@ -172,7 +172,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        lstm_hidden_size: int = 64,
+        lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         optimizer_class= th.optim.Adam,
         optimizer_kwargs = {'weight_decay': 1e-4, 'epsilon': 1e-5},
@@ -184,7 +184,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
             observation_space,
             action_space,
             lr_schedule,
-            lstm_hidden_size = 64,
+            lstm_hidden_size = 128,
             n_lstm_layers = 2,
             *args,
             **kwargs,
@@ -229,7 +229,7 @@ def run_play(sim_params, model_path=None):
                     )
     # rate = 1.0
     # env.simulator.set_target_realtime_rate(rate)
-    max_steps = 3e4
+    max_steps = 1000#3e4
     
     lstm=True
     lstm_states = None
@@ -237,7 +237,7 @@ def run_play(sim_params, model_path=None):
 
     #model_path = 'RPPO_mirror_noise.zip'
     #model_path = 'RPPO_003_1.zip'
-    model_path = 'new5_log.zip'
+    model_path = 'terminate.zip'
     #model_path = 'logs/rl_model_6720000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
@@ -248,9 +248,14 @@ def run_play(sim_params, model_path=None):
     input("Start..")
     total_reward = 0
     model.policy.eval()
+
+    observe = np.load('save.npy')
+    observe[:, 2*64*64:3*64*64] = np.zeros((1000,64*64))
+    empty = np.empty((1000, 12311))
+    observe = np.hstack((observe, empty))
     for i in range(int(max_steps)):
         if lstm:
-            action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+            action, lstm_states = model.predict(observe[i], state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
         action = action / np.array([2, 2, 4])
@@ -260,13 +265,13 @@ def run_play(sim_params, model_path=None):
             episode_starts = terminated
             
         total_reward += reward
-        if terminated or truncated:
-            print(total_reward)
-            if lstm:
-                lstm_states = None
-                episode_starts = np.ones((1,), dtype=bool)
-            obs, _ = env.reset()
-            total_reward = 0
+        # if terminated or truncated:
+        #     print(total_reward)
+        #     if lstm:
+        #         lstm_states = None
+        #         episode_starts = np.ones((1,), dtype=bool)
+        #     obs, _ = env.reset()
+        #     total_reward = 0
 
 def load_without_dependencies(sim_params):
     sim_params.visualize = True
@@ -292,7 +297,7 @@ def load_without_dependencies(sim_params):
                                     dtype=np.float32)
     model = CustomActorCriticPolicy(observation_space,action_space,get_schedule_fn(1.))
 
-    model.load_state_dict(th.load('test')) # Save policy through -> th.save(model.policy.state_dict(), 'test')
+    model.load_state_dict(th.load('terminate')) # Save policy through -> th.save(model.policy.state_dict(), 'test')
 
     obs, _ = env.reset()
     input("Start..")
@@ -302,7 +307,8 @@ def load_without_dependencies(sim_params):
     #obs = np.load('observation.npy')
     for i in range(int(max_steps)):
         action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
-        # print(action)
+        action = action / np.array([2, 2, 4])
+        print(action)
         # input("==")
         obs, reward, terminated, truncated, info = env.step(action)
         episode_starts = terminated

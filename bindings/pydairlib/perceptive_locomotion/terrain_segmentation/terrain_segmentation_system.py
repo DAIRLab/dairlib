@@ -178,7 +178,7 @@ class TerrainSegmentationSystem(LeafSystem):
             elevation_map.getResolution()
         )
 
-        smoothed = cv2.medianFilter(elevation_map['elevation_inpainted'], 5)
+        smoothed = cv2.medianBlur(elevation_map['elevation_inpainted'], 5)
         smoothed = cv2.boxFilter(
             smoothed, -1, self.get_kernel_size(elevation_map.getResolution()),
             normalize=True)

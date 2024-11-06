@@ -98,7 +98,10 @@ class TerrainSegmentationSystem(LeafSystem):
                     elevation_inpainted, kernel, resolution)
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
-        raw_safety[np.isnan(elevation)] = 0
+        
+        # To assume that terrain with no information is safe, keep this commented out. 
+        # To assume that unseen terrain is unsafe, uncomment.
+        # raw_safety[np.isnan(elevation)] = 0
 
         if self.debug:
             self.safety_scores['combined'] = raw_safety
@@ -195,7 +198,7 @@ class TerrainSegmentationSystem(LeafSystem):
 
         segmented_map['segmentation'][:] = safe
 
-        safe_elevation = np.copy(elevation_map['elevation'])
+        safe_elevation = np.copy(elevation_map['elevation_inpainted'])
         safe_elevation[~(safe > 0)] = np.nan
         segmented_map['segmented_elevation'][:] = safe_elevation
 

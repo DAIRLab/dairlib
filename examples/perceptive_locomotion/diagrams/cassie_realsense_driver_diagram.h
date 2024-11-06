@@ -44,10 +44,6 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
     return get_output_port(output_port_grid_map_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_landmarks() const {
-    return get_output_port(output_port_landmarks_);
-  }
-
   drake::lcm::DrakeLcm* lcm() {return &lcm_local_;}
 
   const drake::multibody::MultibodyPlant<double>& plant() {
@@ -69,8 +65,6 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   // realsense
   rs2_systems::SingleRSInterface realsense_{};
   perception::RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>* point_cloud_subscriber_;
-  perception::RealsenseImagePairSubscriber* image_pair_subscriber_;
-
 
   // elevation_mapping
   std::shared_ptr<perception::PerceptiveLocomotionPreprocessor> sensor_processor_;
@@ -80,7 +74,6 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_robot_state_;
   drake::systems::InputPortIndex input_port_contact_;
   drake::systems::OutputPortIndex output_port_grid_map_;
-  drake::systems::OutputPortIndex output_port_landmarks_;
 
 
 };

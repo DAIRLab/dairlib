@@ -2,7 +2,7 @@ import signal
 import sys
 
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
-    lcmt_contact, lcmt_landmark_array
+    lcmt_contact
 
 from pydrake.systems.all import (
     Diagram,
@@ -65,6 +65,7 @@ elevation_mapping_params_sim = (
 )
 
 monitor = False
+
 
 def stop(sig, _):
     print(f'caught signal {sig}, shutting down')
@@ -173,7 +174,6 @@ def main():
         diagram,
         '../elevation_mapping_and_convex_decomposition'
     )
-
     driven_loop = LcmOutputDrivenLoop(
         drake_lcm=elevation_mapping.lcm(),
         diagram=diagram,

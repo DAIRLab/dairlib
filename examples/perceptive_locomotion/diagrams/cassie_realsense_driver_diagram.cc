@@ -57,16 +57,6 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
 
   point_cloud_subscriber_ = builder.AddSystem<
       RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>>(&realsense_);
-  image_pair_subscriber_ =
-      builder.AddSystem<RealsenseImagePairSubscriber>(&realsense_);
-
-  auto feature_tracker = builder.AddSystem<FeatureTracker>(feat_params);
-
-  Eigen::MatrixXd mask = feature_tracker->get_empty_mask();
-  for (size_t i = 0; i < mask.rows() / 4; ++i) {
-    mask.row(i).setOnes();
-  }
-  feature_tracker->SetMask(mask);
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
   base_cov_dummy.resize(36,1);
@@ -90,7 +80,6 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       cov_source->get_output_port(),
       elevation_mapping_system_->get_input_port_covariance()
   );
-  builder.Connect(*image_pair_subscriber_, *feature_tracker);
 
   input_port_robot_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcmt_robot_output"
@@ -106,10 +95,6 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       elevation_mapping_system_->get_output_port_grid_map(),
       "elevation_grid_map"
   );
-   output_port_landmarks_ = builder.ExportOutput(
-       feature_tracker->get_output_port(),
-       "lcmt_landmark_array"
-   );
 
   builder.BuildInto(this);
   this->set_name("elevation_mapping_ros_diagram");

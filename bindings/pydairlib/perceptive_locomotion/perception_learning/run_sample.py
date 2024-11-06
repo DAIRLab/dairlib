@@ -235,7 +235,7 @@ def run_play(sim_params, model_path=None):
 
     #model_path = 'RPPO_mirror_noise.zip'
     #model_path = 'RPPO_003_1.zip'
-    model_path = 'rl_model_10260000_steps.zip'
+    model_path = 'domain_collision_new.zip'
     #model_path = 'logs/rl_model_6720000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)

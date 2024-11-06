@@ -111,8 +111,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         self.shared_lstm = shared_lstm # Do not share LSTM
         self.enable_critic_lstm = enable_critic_lstm # True
 
-        self.lstm_actor = self.mlp_extractor.actor_combined_lstm
-        self.lstm_critic = self.mlp_extractor.critic_combined_lstm
+        # self.lstm_actor = self.mlp_extractor.actor_combined_lstm
+        # self.lstm_critic = self.mlp_extractor.critic_combined_lstm
 
         # For the predict() method, to initialize hidden states
         # (n_lstm_layers, batch_size, lstm_hidden_size)
@@ -259,7 +259,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         """
         Get the current policy distribution given the observations.
 
-        :param obs: Observation.
+        :param obs: Observation.self.policy.lstm_actor
         :param lstm_states: The last hidden and memory states for the LSTM.
         :param episode_starts: Whether the observations correspond to new episodes
             or not (we reset the lstm states in that case).

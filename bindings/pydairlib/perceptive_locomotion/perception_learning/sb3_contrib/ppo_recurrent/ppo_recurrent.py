@@ -156,7 +156,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
 
         # We assume that LSTM for the actor and the critic
         # have the same architecture
-        lstm = self.policy.lstm_actor
+        lstm = self.policy.mlp_extractor.actor_combined_lstm
 
         if not isinstance(self.policy, RecurrentActorCriticPolicy):
             raise ValueError("Policy must subclass RecurrentActorCriticPolicy")

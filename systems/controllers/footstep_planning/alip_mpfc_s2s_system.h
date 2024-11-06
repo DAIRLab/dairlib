@@ -96,6 +96,10 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
                          lcmt_alip_s2s_mpfc_debug* mpc_debug) const;
 
+  Eigen::Vector4d HandleAlipKalmanFilter(
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state,
+      Eigen::Vector4d raw_alip_state, bool is_mode_switch, double timestamp) const;
 
   // FSM helper functions
   int curr_fsm(int fsm_idx) const {
@@ -129,6 +133,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   // abstract states
   drake::systems::AbstractStateIndex mpc_solution_idx_;
   drake::systems::AbstractStateIndex footholds_idx_;
+  drake::systems::AbstractStateIndex alip_state_estimator_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;

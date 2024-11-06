@@ -23,6 +23,7 @@ cc_library(
         ":alip_s2s_mpfc",
         "//lcm:lcm_trajectory_saver",
         "//systems/framework:vector",
+        "//systems/filters:s2s_kalman_filter",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],

@@ -3,6 +3,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/s2s_kalman_filter.h"
 
 #include "grid_map_core/grid_map_core.hpp"
 
@@ -76,6 +77,22 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       drake::Value<ConvexPolygonSet>(ConvexPolygonSet::MakeFlatGround())
   );
 
+  MatrixXd A = alip_utils::CalcA(mpfc_params.gait_params.height,
+                                 mpfc_params.gait_params.mass);
+  MatrixXd B = -MatrixXd::Identity(4,2);
+  MatrixXd C = MatrixXd::Identity(4,4);
+  MatrixXd G = MatrixXd::Identity(4,4);
+  MatrixXd Q = 0.1 * Eigen::Matrix4d::Identity();
+  MatrixXd R = 0.01 * MatrixXd::Identity(4, 4);
+  R.bottomRightCorner<2,2>() *= 100;
+
+  S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
+  S2SKalmanFilter filter = S2SKalmanFilter(filter_data);
+  std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter =
+      {filter, filter_data};
+
+  alip_state_estimator_idx_ = DeclareAbstractState(
+      drake::Value<std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(model_filter));
 
   // State Update
   this->DeclareForcedUnrestrictedUpdateEvent(
@@ -101,6 +118,21 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   ).get_index();
   fsm_output_port_ = DeclareVectorOutputPort(
       "fsm", 1, &Alips2sMPFCSystem::CopyFsmOutput).get_index();
+}
+
+Eigen::Vector4d Alips2sMPFCSystem::HandleAlipKalmanFilter(
+    const Context<double>& context, State<double>* state,
+    Vector4d raw_alip_state, bool is_mode_switch, double timestamp) const {
+  auto& [filter, filter_data] = state->get_mutable_abstract_state<
+          std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(alip_state_estimator_idx_);
+  if (is_mode_switch) {
+    Vector4d x = filter.x();
+    x.head<2>() = raw_alip_state.head<2>();
+    filter.Initialize(timestamp, x, MatrixXd::Identity(4, 4));
+  } else {
+    filter.Update(filter_data, Vector2d::Zero(), raw_alip_state, timestamp);
+  }
+  return filter.x();
 }
 
 drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
@@ -187,6 +219,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
   x.tail<2>() = L_b.head<2>();
 
+  x = HandleAlipKalmanFilter(context, state, x, t_prev_impact == t, t);
 
   VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
   init_alip_state_and_stance_pos.head<4>() = x;

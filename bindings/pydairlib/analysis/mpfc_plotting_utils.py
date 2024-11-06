@@ -45,7 +45,7 @@ def process_alip_mpfc_debug_data(data):
         'fsm': fsm,
         'solve_time': solve_time,
         'optimizer_time': optimizer_time,
-        'initial_state': initial_state,
+        'initial_alip_state': initial_state,
         'initial_stance_foot': initial_stance_foot,
         'desired_velocity': desired_velocity,
         'nominal_first_stance_time': nominal_first_stance_time,

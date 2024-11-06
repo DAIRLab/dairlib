@@ -16,7 +16,6 @@ import dairlib
 mpfc_channels = {
     "ALIP_S2S_MPFC_DEBUG": dairlib.lcmt_alip_s2s_mpfc_debug,
     "NETWORK_CASSIE_CONTACT_DISPATCHER": dairlib.lcmt_contact,
-    "S2S_MPFC_DEBUG": dairlib.lcmt_cf_mpfc_solution
 }
 
 
@@ -37,8 +36,8 @@ def main():
 
     _ = mpfc_plots.plot_solve_time(mpfc_debug_data)
     _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
-    _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
-    # _ = mpfc_plots.plot_initial_alip_state(mpfc_debug_data)
+    # _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
+    _ = mpfc_plots.plot_initial_alip_state(mpfc_debug_data)
     # _ = mpfc_plots.plot_input_solutions(mpfc_debug_data)
     _ = mpfc_plots.plot_timing_solution(mpfc_debug_data)
     # _ = mpfc_plots.plot_contact(contact_data, mpfc_debug_data)

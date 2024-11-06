@@ -83,13 +83,13 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    #model_path = 'new5_log1.zip'
+    model_path = 'domain_collision_new.zip' # 'LQR_82.zip'
     #model_path = 'ethan/rl_model_1050000_steps.zip'
-    model_path = 'logs/rl_model_5880000_steps.zip'
+    #model_path = 'logs/rl_model_9240000_steps.zip'
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
     #model.save('pbody')
-    #th.save(model.policy.state_dict(), 'atlas_new')
+    th.save(model.policy.state_dict(), 'LQR_train')
     obs, _ = env.reset()
     # print("Parameter sizes:")
     # total_params = 0
@@ -107,6 +107,8 @@ def run_play(sim_params, model_path=None):
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
+        # print(obs[64*64*3 : 64*64*3+4])
+        # if action[2] > 0.2:
         print(action)
 
         # scaling_factor = np.array([2, 2, 4])

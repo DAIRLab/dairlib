@@ -7,6 +7,9 @@ from typing import Dict, Tuple
 import argparse
 import multiprocessing
 from pydrake.geometry import Rgba
+from pydrake.multibody.tree import BodyIndex, JointIndex, RevoluteJoint, PrismaticJoint
+from pydrake.math import RotationMatrix
+from pydrake.common.eigen_geometry import Quaternion
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -128,14 +131,36 @@ def check_termination(sim_env, diagram_context, time) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
-    return z1 < 0.2 or z2 < 0.2 or left_angle > .8 or right_angle > .8
+    
+    # scene_graph = sim_env.get_output_port_by_name('scene_graph').Eval(sim_context)
+    # front_contact_pt = np.array((-0.0457, 0.112, 0))
+    # rear_contact_pt = np.array((0.088, 0, 0))
+    # toe_axis = front_contact_pt - rear_contact_pt
+    # toe_axis /= np.linalg.norm(toe_axis)
+    # collision = 0.
+
+    # left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
+    # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+    # for left_distances in left_distances:
+    #     if left_distances.distance <= -0.01:
+    #         print("Left")
+    #         return True
+
+    # right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
+    # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+    # for right_distance in distances:
+    #     if right_distance.distance <= -0.01:
+    #         print("Right")
+    #         return True
+
+    return z1 < 0.2 or z2 < 0.2 #or (track_error > 0.4 and time > 2.)
 
 def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/ic_new.npz'
+            'tmp/ic.npz'
         )
     )
     
@@ -152,10 +177,25 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     vx = np.random.uniform(0.0, v_x)
     vy = np.random.uniform(-v_y, v_y)
     datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+    datapoint['desired_velocity'] = np.array([0.6, 0.]).flatten()
     print(datapoint['desired_velocity'])
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
     
+    rand = np.random.randint(1,4)
+    rand = 1
+    if rand in [1,2]:
+        yaw = 0.0 # Upstair
+        rand = np.random.randint(-6,7)
+        rand = 0
+        pos = np.random.uniform(low=.9, high=1.2)
+        datapoint['q'][4:6] = np.array([rand*15 + pos, 0])
+    else:
+        yaw = math.pi # Downstair
+        rand = np.random.randint(-6,7)
+        pos = np.random.uniform(low=-1.2, high=-.9)
+        datapoint['q'][4:6] = np.array([rand*15 + pos, 0])
+
     # timing aliases
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
@@ -168,8 +208,20 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
-    t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
+    t_init = datapoint['stance'] * t_s2s + t_eps + t_ds + datapoint['phase']
     context.SetTime(t_init)
+
+    quat = datapoint['q'][:4]
+    quat = quat / np.linalg.norm(quat)
+    R_WP = RotationMatrix(Quaternion(quat))
+
+    wRp = RotationMatrix.MakeZRotation(yaw) @ R_WP
+    q_pelvis = wRp.ToQuaternion().wxyz()
+    w_pelvis = wRp @ datapoint['v'][:3]
+    v_pelvis = wRp @ datapoint['v'][3:6]
+    datapoint['q'][:4] = q_pelvis
+    datapoint['v'][:3] = w_pelvis
+    datapoint['v'][3:6] = v_pelvis
 
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(
@@ -181,45 +233,22 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         value=datapoint['desired_velocity']
     )
 
-    ### Flip initial conditions ###
-    # from pydrake.math import RigidTransform, RotationMatrix
-    
-    # simulator.reset_context(context)
-    # x = np.concatenate((datapoint['q'], datapoint['v']))
-    # print(x)
-    
-    # xnew = np.zeros((45))
-    # plant = sim_env.cassie_sim.get_plant()
-    # plant_context = plant.GetMyContextFromRoot(context)
-    # R_WB = plant.EvalBodyPoseInWorld(context=plant_context,
-    #         body=plant.GetBodyByName("pelvis")).rotation().matrix()
-    # #Construct a matrix R, which reflects 3d vectors across the x-z plane of the pelvis
-    # n = np.array([[0], [1], [0]])
-    # R = np.eye(3) - 2 * n @ n.T
-    # new_R_WB = R @ R_WB
-    # new_R_WB[:, 1] *= -1
-    # q = RotationMatrix(new_R_WB).ToQuaternion().wxyz()
-    # # Assign the transformed state
-    # xnew[0:4] = q
-    # xnew[7:23] = x[7:23]
-    # xnew[29:45] = x[29:45]
-    # xnew[4:7] = R @ x[4:7]
-    # xnew[26:29] = R @ x[26:29]
-    # xnew[23:26] = R @ x[23:26]
-    # print(xnew)
-
-    # xnew[7:15], xnew[15:23] = xnew[15:23], xnew[7:15].copy()
-    # xnew[7:9] = -xnew[7:9]
-    # xnew[15:17] = -xnew[15:17]
-    # xnew[29:37], xnew[37:45] = xnew[37:45], xnew[29:37].copy()
-    # xnew[29:31] = -xnew[29:31]
-    # xnew[37:39] = -xnew[37:39]
-
-    # print(xnew)
-    # input("=====")
-
     plant = sim_env.cassie_sim.get_plant()
     plant_context = plant.GetMyContextFromRoot(context)
+
+    for body_index in range(23):
+        body = plant.get_body(BodyIndex(body_index+1))
+        mass = body.get_mass(plant.CreateDefaultContext())
+        rand = np.random.uniform(low=.7, high=1.3)
+        body.SetMass(plant_context, mass * rand)
+
+    for joint_index in range(plant.num_joints()):
+        joint = plant.get_joint(JointIndex(joint_index))
+        if isinstance(joint, (RevoluteJoint, PrismaticJoint)):
+            damping_value = joint.default_damping()
+            random_damping_factor = np.random.uniform(0.5, 2.5)
+            new_damping = random_damping_factor * damping_value
+            joint.SetDamping(plant_context, new_damping)
 
     simulator.reset_context(context)
     ALIPtmp = []
@@ -234,7 +263,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
     from scipy.spatial.transform import Rotation as R
 
-    for i in range(1, 401): # 20 seconds
+    for i in range(1, 401): # 10 seconds
         if check_termination(sim_env, context, time):
             terminate = True
             break
@@ -250,7 +279,8 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             xd = xd_ud[:4]
             ud = xd_ud[4:]
             x = controller.get_output_port_by_name('x').Eval(controller_context)
-            
+            print(footstep)
+            #print(ud)
             #sim_context = sim_env.GetMyMutableContextFromRoot(diagram_context)
             track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
             # yaw = sim_env.get_output_port_by_name('pelvis_yaw').Eval(sim_context)
@@ -283,19 +313,19 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
             # Plot depth image
             if plot:
-                # grid_world = dmap_query.calc_height_map_world_frame(
-                #     np.array([ud[0], ud[1], 0])
-                # )
-                # dmap_query.plot_surface(
-                #     "dmap", grid_world[0], grid_world[1],
-                #     grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
-                
-                grid_world = hmap_query.calc_height_map_world_frame(
+                grid_world = dmap_query.calc_height_map_world_frame(
                     np.array([ud[0], ud[1], 0])
                 )
-                hmap_query.plot_surface(
-                    "hmap", grid_world[0], grid_world[1],
-                    grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
+                dmap_query.plot_surface(
+                    "dmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+                
+                # grid_world = hmap_query.calc_height_map_world_frame(
+                #     np.array([ud[0], ud[1], 0])
+                # )
+                # hmap_query.plot_surface(
+                #     "hmap", grid_world[0], grid_world[1],
+                #     grid_world[2], rgba = Rgba(0.95, 0.5, 0.5, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -370,15 +400,20 @@ def main():
     for i in range(100):
         if random_terrain:
             #rand = np.random.randint(1, 2)
-            rand = 2
+            rand = 1
 
             if rand == 1:
                 # Terrain without blocks
                 rand = np.random.randint(1, 8)
+                rand = 7
                 if rand in [1, 2, 3]:
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/stair/dustair_{rand}.yaml'
+                elif rand in [4, 5]:
                     terrain = 'params/stair_curriculum.yaml'
-                elif rand in [4, 5, 6]:
-                    terrain = 'params/wavy_terrain.yaml'
+                elif rand in [6,7]:
+                    rand = np.random.randint(0, 1000)
+                    terrain = f'params/easy_stair/dustair_{rand}.yaml'
                 else:
                     terrain = 'params/flat.yaml'
             
@@ -398,7 +433,7 @@ def main():
         #terrain = 'params/flat/flat_0.yaml'
         # terrain = 'params/flat.yaml'
         # terrain = 'params/stair_curriculum.yaml'
-        terrain = 'params/new_stair20_25/dustair_0.yaml'
+        # terrain = 'params/new_stair20_25/dustair_0.yaml'
         os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         #sim_params.terrain = 'terrain/stair_0.yaml'

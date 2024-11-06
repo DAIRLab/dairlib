@@ -152,26 +152,33 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # sum up the grid values, add select the minimum value index
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
-        
 
-        # Plot heat map!!
-        #color_mappable = ScalarMappable(cmap='jet')
-        #colors = color_mappable.to_rgba(residual_grid)
+        ## Plot heat map!!
+        # color_mappable = ScalarMappable(cmap='jet')
+        # colors = color_mappable.to_rgba(residual_grid)
 
-        #hmap_query.plot_colored_surface(
+        # hmap_query.plot_colored_surface(
         #    "residual", residual_grid_world[0], residual_grid_world[1],
         #    residual_grid_world[2], colors[:, :, 0], colors[:, :, 1], colors[:, :, 2]
-        #)
+        # )
 
         # For Terrain
-        #hmap_query.plot_surface(
+        # hmap_query.plot_surface(
         #    "residual", residual_grid_world[0], residual_grid_world[1],
         #    residual_grid_world[2], rgba = Rgba(0.004,0.122,0.357,1.0))
+        
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape
         )
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
+        # footstep_command = np.zeros((3,))
+        # u = ud - self.K @ (x - xd)
+        # footstep_command[:2] = u
+        # x_index = np.argmin((hmap[0][0] - u[0])**2)
+        # y_index = np.argmin((hmap[1,:,0] - u[1])**2)
+        # z = hmap[-1, y_index, x_index]
+        # footstep_command[-1] = z
         # footstep_command = np.append(footstep_command, 0.1) #
         footstep.set_value(footstep_command)

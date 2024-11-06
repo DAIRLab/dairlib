@@ -317,7 +317,7 @@ def _run_training(config, args):
             )
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        model_path = 'new5_log1.zip' # x/logs2/rl_model_1728000_steps
+        model_path = 'LQR_new1.zip' # x/logs2/rl_model_1728000_steps
 
         # model = RecurrentPPO(policy_type, env, learning_rate = linear_schedule(1e-4), max_grad_norm = 0.5, #linear_schedule(1e-5)
         #                 clip_range = 0.2, ent_coef=0.01, target_kl = 0.02, vf_coef=0.5,
@@ -325,10 +325,10 @@ def _run_training(config, args):
         #                 batch_size=64, seed=42, verbose=1,
         #                 tensorboard_log=tensorboard_log)
 
-        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(4e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
-                        clip_range = 0.05, ent_coef=0.025, target_kl = 0.005, vf_coef=0.3, clip_range_vf=None,
+        model = RecurrentPPO.load(model_path, env, learning_rate = linear_schedule(5e-6), max_grad_norm = 0.5, # linear_schedule(3e-6)
+                        clip_range = 0.05, ent_coef=0.01, target_kl = 0.01, vf_coef=0.4, clip_range_vf=None,
                         n_steps=int(128), n_epochs=5,
-                        batch_size=128, seed=212, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
+                        batch_size=128, seed=10, init_cnn_weights=False, # init_cnn_weights: Initialize critic CNN with Actor CNN
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
@@ -345,7 +345,7 @@ def _run_training(config, args):
         eval_env,
         best_model_save_path=log_dir+f'eval_logs/test',
         log_path=log_dir+f'eval_logs/test',
-        eval_freq=eval_freq,
+        eval_freq=eval_freq*2,
         n_eval_episodes=3,
         deterministic=True,
         render=False)

@@ -316,6 +316,6 @@ class ElevationMappingConverter(LeafSystem):
         filled_map = griddata(coordinates, values, (grid_x, grid_y), method='nearest') # Interpolate using linear, nearest or cubic
 
         heightmap = median_filter(filled_map, size=3)
-        heightmap = np.nan_to_num(heightmap, nan=-1)
+        heightmap = np.nan_to_num(heightmap, nan=0)
         
         return heightmap

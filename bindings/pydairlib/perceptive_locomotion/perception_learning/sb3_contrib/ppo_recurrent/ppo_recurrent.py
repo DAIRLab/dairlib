@@ -400,6 +400,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
             multi_losses = []
         if self.mirror:
             mirror_losses = []
+        height_losses = []
 
         continue_training = True
 
@@ -434,6 +435,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
                         rollout_data.lstm_states,
                         rollout_data.episode_starts,
                     )
+
+                actions_grad, _, _, _ = self.policy.forward(rollout_data.observations, rollout_data.lstm_states, rollout_data.episode_starts)
 
                 values = values.flatten()
                 # Normalize advantage
@@ -484,11 +487,29 @@ class RecurrentPPO(OnPolicyAlgorithm):
                 else:
                     loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
                     # loss = self.ent_coef * entropy_loss + value_loss
-                    
+
+                    # gt_hmap = rollout_data.observations[:, -64*64:].reshape(-1, 64, 64)
+                    # ygt_hmap = rollout_data.observations[:, -2*64*64:-64*64].reshape(-1, 64, 64)
+                    # xgt_hmap = rollout_data.observations[:, -3*64*64:-2*64*64].reshape(-1, 64, 64)
+
+                    # x_index = (xgt_hmap[:, 0] - (actions[:, 0] / 2).view(-1, 1))**2
+                    # x_index = th.argmin(x_index, dim=1)
+
+                    # y_index = (ygt_hmap[:, :, 1] - (actions[:, 1] / 2).view(-1, 1))**2
+                    # y_index = th.argmin(y_index, dim=1)
+
+                    # z = gt_hmap[:, y_index, x_index] * 4
+                    # height_loss = th.mean(((actions_grad[:, 2] - z)**2)[mask])
+                    # height_losses.append(2 * height_loss.item())
+                    # loss += 2 * height_loss
+                    # print(actions_grad[:, 2])
+                    # print(z)
+                    # print(th.mean(((actions_grad[:, 2] - z)**2)[mask]))
+
                 if self.mirror:
                     mirror_actions = rollout_data.mirror_actions
                     mirror_actions[:, 1] = -mirror_actions[:, 1] # y
-                    mirror_loss = th.mean(((actions - mirror_actions)**2)[mask])
+                    mirror_loss = th.mean(((actions_grad - mirror_actions)**2)[mask])
 
                     mirror_losses.append(2 * mirror_loss.item())
                     loss += 2 * mirror_loss
@@ -533,6 +554,7 @@ class RecurrentPPO(OnPolicyAlgorithm):
             self.logger.record("train/multi_loss", np.mean(multi_losses))
         if self.mirror:
             self.logger.record("train/mirror_loss", np.mean(mirror_losses))
+        # self.logger.record("train/height_loss", np.mean(height_losses))
         self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
         self.logger.record("train/clip_fraction", np.mean(clip_fractions))
         self.logger.record("train/loss", loss.item())

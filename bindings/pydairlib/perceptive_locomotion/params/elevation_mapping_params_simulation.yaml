@@ -14,7 +14,9 @@ map_length: [2.0, 2.0]
 resolution: 0.025
 contact_frames: {}
 contact_points: {}
-# To use drift correction examples/perceptive_locomotion/diagrams/perception_module_diagram.cc
+# To use drift correction cooment out contact_frames and contact_points above
+# And connect state_estimator_->get_contact_output_port() to elevation_mapping_system_->get_input_port_contact()
+# in examples/perceptive_locomotion/diagrams/perception_module_diagram.cc
 # contact_frames: { left: "toe_left", right: "toe_right" }
 # contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}
 initialization_radius: 1.0

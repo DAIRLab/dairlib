@@ -404,7 +404,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Up phase
                 elif start_flat < x_center <= end_x:
-                    z_dim = round(np.random.uniform(0.15, 0.4), 5) # test
+                    z_dim = round(np.random.uniform(0.15, 0.25), 5) # test
                     #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
                     #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
                     #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
@@ -422,7 +422,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(.3, .7), 5) if x_center >= start_flat else 0.5 # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(1., 1.4), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center + avg_x_dim, 5)
 
@@ -443,7 +443,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Down phase
                 elif -end_x < x_center <= -start_flat:
-                    z_dim = round(np.random.uniform(0.15, 0.4), 5) # test
+                    z_dim = round(np.random.uniform(0.15, 0.25), 5) # test
                     #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
                     #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
                     #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
@@ -461,7 +461,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(.3, .7), 5) if x_center <= -start_flat else 0.5 # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(1., 1.4), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center - avg_x_dim, 5)
                 if x_center > start_flat:
@@ -551,10 +551,12 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Up phase
                 elif start_flat < x_center <= end_x:
-                    #z_dim = round(np.random.uniform(0.075, 0.125), 5) # just slope
+                    # z_dim = round(np.random.uniform(0.075, 0.125), 5) # just slope
+                    # z_center = round(z_center + z_dim / 2, 5)
+                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
+
                     z_dim = round(np.random.uniform(0.075, 0.10), 5) # slope on staircase
-                    z_center = round(z_center + z_dim / 2, 5)# + for upstair | - for downstair
-                    #tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
+                    z_center = round(z_center - z_dim / 2, 5)# + for upstair | - for downstair
                     tilt_angle = np.random.uniform(low=0.08, high=0.11) # slope on staircase
                     tilt_vector = normalize([tilt_angle, 0.0, 1.0])
                     normal = tilt_vector.tolist()
@@ -592,10 +594,12 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Down phase
                 elif -end_x < x_center <= -start_flat:
-                    #z_dim = round(np.random.uniform(0.15, 0.225), 5) # just slope
+                    # z_dim = round(np.random.uniform(0.15, 0.225), 5) # just slope
+                    # z_center = round(z_center - z_dim / 2, 5) # just slope
+                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
+                    
                     z_dim = round(np.random.uniform(0.075, 0.11), 5)# slope on staircase
-                    z_center = round(z_center - z_dim / 2, 5) # - for upstair | + for downstair
-                    #tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
+                    z_center = round(z_center + z_dim / 2, 5) # - for upstair | + for downstair
                     tilt_angle = np.random.uniform(low=0.08, high=0.11) # slope on staircase
                     tilt_vector = normalize([tilt_angle, 0.0, 1.0])
                     normal = tilt_vector.tolist()
@@ -664,7 +668,7 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 cube[0][0] = cube[0][0] + j * (15)
                 big_cubes.append(cube)
 
-        output_file_name = f'terrain/stair_{i+500}.yaml'
+        output_file_name = f'terrain/stair_{i}.yaml'
 
         with open(output_file_name, 'w') as outfile:
             outfile.write("stones:\n")
@@ -875,12 +879,14 @@ if __name__ == '__main__':
     # file_path = './terrain/rand_stair_0.yaml'
     # plot_terrain(file_path=file_path)
     
-    down_flat_up(num_blocks=1, start_x=0., end_x=7., initial_y_dim=10.,y_increment=0.0, start_flat=1.0, Gaussian=False)
+    #down_flat_up(num_blocks=1, start_x=0., end_x=7., initial_y_dim=10.,y_increment=0.0, start_flat=1.0, Gaussian=False)
     #file_path = './terrain/dustair_0.yaml'
     #plot_terrain(file_path=file_path)
     
-    #down_flat_up_tilt(num_blocks=500,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=1., Gaussian=False)
-    #down_flat_up_slope(num_blocks=1,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=0.5, Gaussian=False)
+    down_flat_up_tilt(num_blocks=500,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=1., Gaussian=False)
+    
+    # XXX
+    # down_flat_up_slope(num_blocks=1,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=0.5, Gaussian=False)
 
     #staircase(start_x=-10, end_x=10., initial_y_dim = 21., y_increment=0.)
     #flat_stair(start_x=-3.5, end_x=30., initial_y_dim=15., y_increment=0.3, flat_terrain=4.0)

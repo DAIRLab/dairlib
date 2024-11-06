@@ -131,9 +131,13 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.osqp_options_yaml,
             params.controller_input_type
         )
+
+        terrain_friction = np.random.uniform(0.4, 1.2)
+
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
-            params.rgdb_extrinsics_yaml
+            params.rgdb_extrinsics_yaml,
+            terrain_friction
         )
         self.radio_source = ConstantVectorSource(np.zeros(18, ))
 
@@ -312,6 +316,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
             ),
+            'scene_graph': builder.ExportOutput(
+                self.cassie_sim.get_output_port_scene_graph_query(),
+                'scene_graph'
+            ),
             'gt_x_u_t': builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),
                 'gt_x_u_t'
@@ -391,7 +399,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 context,
                 np.zeros((3,)),
                 0.15,
-                1.01
+                0.95
             )
         else:
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)

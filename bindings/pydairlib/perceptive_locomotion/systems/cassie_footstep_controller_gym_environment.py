@@ -86,14 +86,10 @@ class ObservationPublisher(LeafSystem):
         else:
             self.height = 64
 
-        #self.color_mappable = ScalarMappable(cmap='jet')
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
                 "xd_ud", 6
             ).get_index(),
-            # 'x_xd' : self.DeclareVectorInputPort(
-            #     "x_xd", self.ns
-            # ).get_index(),
             'x' : self.DeclareVectorInputPort(
                 "x", self.ns
             ).get_index(),
@@ -166,6 +162,7 @@ class ObservationPublisher(LeafSystem):
             # X, Y offset : Shifts the camera
             camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
+            # adverserial_offset = np.zeros(2,)
         else:
             adverserial_offset = np.zeros(2,)
         
@@ -199,24 +196,24 @@ class ObservationPublisher(LeafSystem):
             # Offset for hmap per step
             height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
             
-            unoise = np.random.normal(0, 0.15, (64, 64))
-            y, x = np.indices((64, 64))
-            distance_from_center = np.sqrt((x - 32) ** 2 + (y - 32) ** 2)
-            max_distance = np.sqrt(32**2 + 32**2)
-            distance_from_center_normalized = distance_from_center / max_distance
-            weight_mask = distance_from_center_normalized**6
-            weighted_noise = unoise * weight_mask
-            hmap[-1] += weighted_noise
+            # unoise = np.random.normal(0, 0.2, (64, 64))
+            # y, x = np.indices((64, 64))
+            # distance_from_center = np.sqrt((x - 32) ** 2 + (y - 32) ** 2)
+            # max_distance = np.sqrt(32**2 + 32**2)
+            # distance_from_center_normalized = distance_from_center / max_distance
+            # weight_mask = distance_from_center_normalized**6
+            # weighted_noise = unoise * weight_mask
+            # hmap[-1] += weighted_noise
             # hmap_grid_world[-1] += weighted_noise
 
-            hmap[-1] += self.episode_noise + height_noise
+            # hmap[-1] += self.episode_noise + height_noise
             # hmap_grid_world[-1] += self.episode_noise + height_noise
 
-            alip_noise_comx = abs(alip[0])*0.15 # 0.1, 0.15, 0.2
-            alip_noise_comy = abs(alip[1])*0.15
-            alip_noise_angx = abs(alip[2])*0.15
-            alip_noise_angy = abs(alip[3])*0.15
-
+            alip_noise_comx = 0.01#abs(alip[0])*0.15 # 0.1, 0.15, 0.2
+            alip_noise_comy = 0.01#abs(alip[1])*0.15
+            alip_noise_angx = 0.01#abs(alip[2])*0.15
+            alip_noise_angy = 0.01#abs(alip[3])*0.15
+            
             alipxy_noisex = np.random.uniform(low=-alip_noise_comx, high=alip_noise_comx, size=(1,))
             alipxy_noisey = np.random.uniform(low=-alip_noise_comy, high=alip_noise_comy, size=(1,))
             
@@ -224,119 +221,39 @@ class ObservationPublisher(LeafSystem):
             aliplxly_noisey = np.random.uniform(low=-alip_noise_angy, high=alip_noise_angy, size=(1,))
             alip = alip + np.hstack((alipxy_noisex, alipxy_noisey, aliplxly_noisex, aliplxly_noisey))
 
-            # if self.terrain == 'dustair':
-            #     rand = np.random.random_sample()
-            #     if rand < 0.1:
-            #         height = np.min(hmap[-1])
-            #         x1 = np.random.randint(4, 16)
-            #         x2 = np.random.randint(48, 60)
-            #         for x in range(64):
-            #             for y in range(64):
-            #                 if x < x1:
-            #                     hmap[-1][x, y] = height
-            #                     # hmap_grid_world[-1][x, y] = height
-            #                 elif x >= x2:
-            #                     hmap[-1][x, y] = height
-            #                     # hmap_grid_world[-1][x, y] = height
+            angle_noise = np.random.uniform(low=-0.005, high=0.005, size=(16,))
+            joint_angle = joint_angle + angle_noise
 
-            # rand = np.random.random_sample()
-            # if rand < 0.2:
-            #     n = np.random.randint(1, 4) # n cones
-            #     for _ in range(n):
-            #         rand = np.random.uniform(0, 1)
-            #         if rand >= 0.5:
-            #             rand = np.random.uniform(0, 1)
-            #             if rand >= 0.5:
-            #                 x = np.random.randint(48, 63)
-            #             else:
-            #                 x = np.random.randint(0, 16)
-            #             y = np.random.randint(0, 63)
-            #         else:
-            #             rand = np.random.uniform(0, 1)
-            #             if rand >= 0.5:
-            #                 y = np.random.randint(48, 63)
-            #             else:
-            #                 y = np.random.randint(0, 16)
-            #             x = np.random.randint(0, 63)
+
+            # if self.terrain == 'flat':
+            # scale = np.random.uniform(10., 30.) # 10.0  # Scale controls how zoomed in/out the noise is
+            # octaves = 6 # Controls the number of noise layers
+            # persistence = np.random.uniform(.25, .75) #0.5  # Controls the amplitude of each octave
+            # lacunarity = np.random.uniform(1.75, 2.25) #2.   # Controls the frequency of each octave
+            # min_height = -0.03
+            # max_height = 0.03
             
-            #         bump_radius = np.random.randint(1, 3)
-            #         bump_height = np.random.uniform(-1., 1.)
-            #         for i in range(max(0, x - bump_radius), min(64, x + bump_radius)):
-            #             for j in range(max(0, y - bump_radius), min(64, y + bump_radius)):
-            #                 distance = np.sqrt((i - x)**2 + (j - y)**2)
-            #                 if distance < bump_radius:
-                                # hmap[-1][i, j] += bump_height * np.exp(-distance**2 / (2 * (bump_radius / 2)**2))
-                                # hmap_grid_world[-1][i, j] += bump_height * np.exp(-distance**2 / (2 * (bump_radius / 2)**2))
+            # for i in range(64):
+            #     for j in range(64):
+            #         x = i / scale
+            #         y = j / scale
+            #         self.grid[i, j] = noise.pnoise2(x, y, octaves=octaves, 
+            #                     persistence=persistence, lacunarity=lacunarity, repeatx=64, repeaty=64, base=self.rbase)
+            # min_value = np.min(self.grid)
+            # max_value = np.max(self.grid)
 
-            if self.terrain == 'flat':
-                scale = np.random.uniform(10., 30.) # 10.0  # Scale controls how zoomed in/out the noise is
-                octaves = 6 # Controls the number of noise layers
-                persistence = np.random.uniform(.25, .75) #0.5  # Controls the amplitude of each octave
-                lacunarity = np.random.uniform(1.75, 2.25) #2.   # Controls the frequency of each octave
-                min_height = -0.03
-                max_height = 0.03
-                
-                for i in range(64):
-                    for j in range(64):
-                        x = i / scale
-                        y = j / scale
-                        self.grid[i, j] = noise.pnoise2(x, y, octaves=octaves, 
-                                    persistence=persistence, lacunarity=lacunarity, repeatx=64, repeaty=64, base=self.rbase)
-                min_value = np.min(self.grid)
-                max_value = np.max(self.grid)
-
-                # Normalize the grid values to the range [-0.04, 0.04]
-                scaled_grid = min_height + (self.grid - min_value) / (max_value - min_value) * (max_height - min_height)
-                hmap[-1] += scaled_grid
-                # hmap_grid_world[-1] += scaled_grid
-            
-            # rand = np.random.random_sample()
-            # if rand < 0.2:
-            #     n = np.random.randint(1, 4) # n
-            #     for _ in range(n):
-            #         rand = np.random.uniform(0, 1)
-            #         if rand >= 0.5:
-            #             rand = np.random.uniform(0, 1)
-            #             if rand >= 0.5:
-            #                 x = np.random.randint(55, 63)
-            #             else:
-            #                 x = np.random.randint(0, 10)
-            #             y = np.random.randint(0, 63)
-            #         else:
-            #             rand = np.random.uniform(0, 1)
-            #             if rand >= 0.5:
-            #                 y = np.random.randint(55, 63)
-            #             else:
-            #                 y = np.random.randint(0, 10)
-            #             x = np.random.randint(0, 63)
-
-            #         radius = np.random.randint(2, 6)
-            #         height = np.random.uniform(0., 1.)
-            #         for i in range(max(0, x - radius), min(64, x + radius)):
-            #             for j in range(max(0, y - radius), min(64, y + radius)):
-            #                 hmap[-1][i, j] -= height
-            #                 hmap_grid_world[-1][i, j] -= height
-            
-            # Cone noise
-            # rand = np.random.random_sample()
-            # if rand < 0.1:
-            #     x = np.random.randint(0, 63)
-            #     y = np.random.randint(40, 63)
-        
-            #     bump_radius = np.random.randint(1, 3)
-            #     bump_height = np.random.uniform(-1., 1.)
-            #     for i in range(max(0, x - bump_radius), min(64, x + bump_radius)):
-            #         for j in range(max(0, y - bump_radius), min(64, y + bump_radius)):
-            #             distance = np.sqrt((i - x)**2 + (j - y)**2)
-            #             if distance < bump_radius:
-            #                 hmap[-1][i, j] += bump_height * np.exp(-distance**2 / (2 * (bump_radius / 2)**2))
-            #                 # hmap_grid_world[-1][i, j] += bump_height * np.exp(-distance**2 / (2 * (bump_radius / 2)**2))
+            # # Normalize the grid values to the range [-0.04, 0.04]
+            # scaled_grid = min_height + (self.grid - min_value) / (max_value - min_value) * (max_height - min_height)
+            # hmap[-1] += scaled_grid
+            # hmap_grid_world[-1] += scaled_grid
 
         # Plot depth map with noise
         hmap_query.plot_surface(
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
+        # np.save("height.npy", gt_hmap)
+        # np.save("elevation.npy", hmap)
         # print(np.max(gt_hmap[-1]))
         # print(np.min(gt_hmap[-1]))
         # print("====")
@@ -483,36 +400,32 @@ class RewardSystem(LeafSystem):
         collision = 0.
         # clearance_contact_pt = front_contact_pt - rear_contact_pt
 
-        # self.set_collision_check_point_in_toe_frame(dist_in_front=0.05, dist_above=0.03)
+        left_toe_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        left_toe_direction = left_toe_rotation @ (front_contact_pt - rear_contact_pt)
+        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
 
-        if fsm == 1 or fsm == 4:
-            left_toe_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-            left_toe_direction = left_toe_rotation @ (front_contact_pt - rear_contact_pt)
-            left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
-
-            left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (left_toe_rotation @ toe_axis) * 0.12
-            left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
-            for distances in left_distances:
-                if distances.distance <= 0.:
-                    collision = 1.
-                    # print("Left Penetration or contact detected!")
-                    # print(f"Distance: {distances.distance}")
-        else:
-            right_toe_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-            right_toe_direction = right_toe_rotation @ (front_contact_pt - rear_contact_pt)
-            right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
-            
-            right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (right_toe_rotation @ toe_axis) * 0.12
-            distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
-            for signed_distance in distances:
-                if signed_distance.distance <= 0.:
-                    collision = 1.
-                    # print("Right Penetration or contact detected!")
-                    # print(f"Distance: {signed_distance.distance}")
+        left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (left_toe_rotation @ toe_axis) * 0.12
+        left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+        for distances in left_distances:
+            if distances.distance <= 0.:
+                collision = 1.
+                # print("Left Penetration or contact detected!")
+                # print(f"Distance: {distances.distance}")
+        
+        right_toe_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        right_toe_direction = right_toe_rotation @ (front_contact_pt - rear_contact_pt)
+        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+        
+        right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (right_toe_rotation @ toe_axis) * 0.12
+        distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+        for signed_distance in distances:
+            if signed_distance.distance <= 0.:
+                collision = 1.
+                # print("Right Penetration or contact detected!")
+                # print(f"Distance: {signed_distance.distance}")
 
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
-        # velocity_reward = np.exp(-3*np.linalg.norm(vdes[:2] - bf_vel[:2]))
         vx_reward = np.exp(-2*np.linalg.norm(vdes[0] - bf_vel[0]))
         vy_reward = np.exp(-2*np.linalg.norm(vdes[1] - bf_vel[1]))
 
@@ -559,7 +472,7 @@ class RewardSystem(LeafSystem):
             z_reward = np.exp(-4*np.linalg.norm(footstep_command[-1] - z))
             # np.save("elevation.npy", gt_hmap)
 
-            edges = self.detect_edges_with_dilation(gt_hmap[-1], threshold=0.07, dilation_iterations=1)
+            edges = self.detect_edges_with_dilation(gt_hmap[-1], threshold=0.05, dilation_iterations=1)
             if edges[y_index, x_index]:
                 edge_penalty = 1.
                 # print("edge")
@@ -589,10 +502,10 @@ class RewardSystem(LeafSystem):
         if self.terrain == 'flat':
             z = 0.
             z_reward = np.exp(-4*np.linalg.norm(footstep_command[-1] - z))
-            reward = 0.3125 * vx_reward + 0.1875 * vy_reward + 0.125 * angular_reward + 0.25 * z_reward + 0.0625 * action_reward \
+            reward = 0.3125 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
                    + 0.0625 * ud_reward  - track_penalty - edge_penalty - collision
         else:
-            reward = 0.3125 * vx_reward + 0.1875 * vy_reward + 0.125 * angular_reward + 0.25 * z_reward + 0.0625 * action_reward \
+            reward = 0.3125 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
                    + 0.0625 * ud_reward - track_penalty - v_penalty - edge_penalty - collision
             # reward = 0.375 * vx_reward + 0.125 * vy_reward + 0.0625 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
             #        + 0.0625 * ud_reward - track_penalty - (left_penalty + right_penalty) - v_penalty # + 0.125 * LQRreward + 0.0625 * ud_reward 
@@ -740,20 +653,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.controller_input_type
         )
 
-        # rand = np.random.randint(1, 4)
-        # if rand == 1:
-        #     terrain_friction=0.5
-        # elif rand == 2:
-        #     terrain_friction=0.8
-        # else:
-        #     terrain_friction=1.1
-        #print(terrain_friction)
-        #terrain_friction = np.random.normal(0.8, 0.25)
-        terrain_friction = np.random.uniform(0.5, 1.2)
-        # if terrain_friction < 0.4:
-        #     terrain_friction = 0.4
-        # elif terrain_friction > 1.2:
-        #     terrain_friction = 1.2
+        terrain_friction = np.random.uniform(0.4, 1.2)
+
         print(terrain_friction)
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -766,11 +667,11 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
 
-        self.dist = False
+        self.dist = True
 
         if self.dist:
-            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=50.0, \
-            force_y=50.0, force_z=15.0, period=1, duration=0.3))
+            self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=10.0, \
+            force_y=10.0, force_z=5.0, period=1, duration=0.3))
             zoh_ = ZeroOrderHold(1.0/30.0, Value([self.disturbance.get_model_value()]))
             builder.AddSystem(zoh_)
             builder.Connect(
@@ -1066,7 +967,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(noise=False, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
+        obs_pub = ObservationPublisher(noise=True, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd

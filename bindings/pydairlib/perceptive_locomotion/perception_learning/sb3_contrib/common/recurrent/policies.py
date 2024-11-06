@@ -201,6 +201,9 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
                 ),
             )
             lstm_output += [hidden]
+            # print(episode_start)
+            # if lstm_states.item()[0][0][0][0][0] == 0:
+            #     print(lstm_states.item())
         # Sequence to batch
         # (sequence length, n_seq, lstm_out_dim) -> (batch_size, lstm_out_dim)
         lstm_output = th.flatten(th.cat(lstm_output).transpose(0, 1), start_dim=0, end_dim=1)

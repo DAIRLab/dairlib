@@ -107,7 +107,8 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         try:
             verts3d = polygon.GetVertices().squeeze().transpose()
         except RuntimeError:
-            import pdb; pdb.set_trace()
+            print("error getting vertices")
+            return None, None
 
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
@@ -117,7 +118,9 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         try:
             plane = Plane.best_fit(verts3d)
         except ValueError:
-            import pdb; pdb.set_trace()
+            print("error fitting plane to points:")
+            print(verts3d)
+            return None, None
 
         return plane.normal, plane.point
 
@@ -147,12 +150,15 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                 self.profiling['num_polygons'].append(0)
             return
 
+        valid_polys = []
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
-            polygon.SetPlane(normal, point)
+            if normal is not None:
+                polygon.SetPlane(normal, point)
+                valid_polys.append(polygon)
 
         end_plane_fitting = time.time()
-        out.set_value(ConvexPolygonSet(convex_polygons))
+        out.set_value(ConvexPolygonSet(valid_polys))
 
         if self.debug:
             self.debug_info['unprocessed_polygons'] = polygons

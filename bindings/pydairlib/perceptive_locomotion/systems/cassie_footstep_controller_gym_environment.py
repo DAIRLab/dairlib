@@ -222,7 +222,7 @@ class ObservationPublisher(LeafSystem):
         hmap_query.plot_surface(
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
-
+        hmap[-1] = 0.
         hmap = hmap.reshape(-1)
         gt_hmap = gt_hmap.reshape(-1)
 
@@ -633,20 +633,20 @@ class CassieFootstepControllerEnvironment(Diagram):
             builder.AddSystem(self.plant_visualizer)
             self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
-            # if params.simulate_perception:
-                # Visualize depth sensor grid map
-                # self.grid_map_visualizer = GridMapVisualizer(
-                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
-                # )
-                # builder.AddSystem(self.grid_map_visualizer)
+            if params.simulate_perception:
+                ##Visualize depth sensor grid map
+                self.grid_map_visualizer = GridMapVisualizer(
+                   self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
+                )
+                builder.AddSystem(self.grid_map_visualizer)
             #     builder.Connect(
             #         self.perception_module.get_output_port_state(),
             #         self.plant_visualizer.get_input_port()
             #     )
-                # builder.Connect(
-                #    self.perception_module.get_output_port_elevation_map(),
-                #    self.grid_map_visualizer.get_input_port()
-                # )
+                builder.Connect(
+                   self.perception_module.get_output_port_elevation_map(),
+                   self.grid_map_visualizer.get_input_port()
+                )
             # else:
             builder.Connect(
                 self.cassie_sim.get_output_port_state(),
@@ -808,7 +808,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(noise=True, simulate_perception=self.params.simulate_perception)
+        obs_pub = ObservationPublisher(noise=False, simulate_perception=self.params.simulate_perception)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd

@@ -14,6 +14,9 @@ workspace(name = "dairlib")
 DRAKE_COMMIT = "417cc3ffc5cc2d6453245458c4b59dba535ad713"
 
 DRAKE_CHECKSUM = "165d59237dbe77045569e24368b0901524a1a349d066853431c86f94e184a5c1"
+#DRAKE_COMMIT = "v1.34.0"
+
+#DRAKE_CHECKSUM = "0b57df077192a9480b799320c1edee3cc524d5e9b97aaa6861de09681542175f"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

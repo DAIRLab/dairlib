@@ -106,7 +106,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    #DrawAndSaveDiagramGraph(diagram, '../CassieEnv_dist')
+    DrawAndSaveDiagramGraph(diagram, '../CassieEnv_dist')
     return sim_env, controller, diagram#, cost_logger
 
 
@@ -137,7 +137,7 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     else:
         v_norm = np.random.uniform(0.0, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([.4, 0.]).flatten()
+    datapoint['desired_velocity'] = np.array([.4, 0.]).flatten()
     print(datapoint['desired_velocity'])
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -223,6 +223,7 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
 def simulate_init(sim_params):
     rand = np.random.randint(1, 16)
+    rand = 11
     if rand in [1,2,3,4,5,6]:
         rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/du_stair/dustair_{rand}.yaml'
@@ -241,8 +242,8 @@ def simulate_init(sim_params):
     # terrain_yaml = 'params/flat.yaml'
     # terrain = 'no_obs'
     print(terrain_yaml)
-    sim_params.terrain = 'terrain/params/normal_stair/dustair_0.yaml'
-    terrain = 'stair'
+    # sim_params.terrain = 'terrain/params/normal_stair/dustair_0.yaml'
+    # terrain = 'stair'
     #sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
@@ -254,9 +255,9 @@ def simulate_init(sim_params):
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
-        # sim_context = sim_env.GetMyMutableContextFromRoot(context)
+        sim_context = sim_env.GetMyMutableContextFromRoot(context)
         # track_error = sim_env.get_output_port_by_name('swing_ft_tracking_error').Eval(sim_context)
-        
+        #print(sim_env.get_output_port_by_name('state').Eval(sim_context))
         # if center of mas is 20cm 
         left_toe_pos = plant.CalcPointsPositions(
             plant_context, plant.GetBodyByName("toe_left").body_frame(),
@@ -311,7 +312,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                     dtype=np.float32)
 
     # Time_step to match walking
-    time_step = 0.03
+    time_step = 0.025
     
     env = DrakeGymEnv(
         simulator=simulator,

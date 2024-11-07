@@ -80,7 +80,7 @@ def main():
         env.get_input_port_by_name("command")
     )
 
-    vdes_source = builder.AddSystem(ConstantVectorSource(np.array([0.0, 0.0])))
+    vdes_source = builder.AddSystem(ConstantVectorSource(np.array([0.4, 0.0])))
 
     builder.Connect(
         vdes_source.get_output_port(),

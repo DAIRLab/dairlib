@@ -228,7 +228,7 @@ class BenchHarness(Diagram):
 
         builder.BuildInto(self)
 
-        DrawAndSaveDiagramGraph(self, '../cassie_footstep_controller.pdf')
+        # DrawAndSaveDiagramGraph(self, '../cassie_footstep_controller.pdf')
 
     def export_inputs(self, builder: DiagramBuilder) -> Dict[
         str, InputPortIndex]:

@@ -251,7 +251,8 @@ def run_play(sim_params, model_path=None):
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
-        
+        #print(obs[3*64*64:3*64*64+6])
+        print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
             episode_starts = terminated

@@ -439,18 +439,22 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
 
+    // TODO: Update the mus to read from the yaml file.
     if(sampling_params_.use_more_contacts_to_compute_cost){
       // Create an LCS object with all contact pairs resolved.
       // Preprocessing the contact pairs
+      if(verbose_){
+        std::cout << "Using more contacts to compute cost." << std::endl;
+      }
       vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
       resolved_contact_pairs_for_cost_simulation = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_,
-        {3,3},
+        {3,6},
         c3_options_.num_friction_directions,
         6, verbose_);
       solvers::LCS lcs_object_sample_for_cost_simulation = solvers::LCSFactory::LinearizePlantToLCS(
         plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs_for_cost_simulation,
-        c3_options_.num_friction_directions, {0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615}, 
+        c3_options_.num_friction_directions, {0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615}, 
         c3_options_.planning_dt, N_, contact_model_);
       lcs_objects_with_more_contacts_for_cost_simulation.push_back(lcs_object_sample_for_cost_simulation);
     }
@@ -588,7 +592,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // This is taking in the xbox input to change the way we calculate cost type 3 based on if force tracking is on
       // or off.
       auto cost_trajectory_pair = test_c3_object->CalcCost(
-        sampling_params_.cost_type, radio_out->channel[11]);
+        sampling_params_.cost_type, radio_out->channel[11], verbose_);
       double c3_cost = cost_trajectory_pair.first;
       all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
@@ -764,7 +768,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   if (verbose_) {
-    std::cout << "Dynamically feasible current plan: " << std::endl;
+    std::cout << "Dynamically feasible object current plan: " << std::endl;
     for (int i=0; i<N_+1; i++){
       std::cout << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7).transpose() << std::endl;
     }

@@ -334,7 +334,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
 // Or, use the zfin_ trajectory if cost_type is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled) const{
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool verbose) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
@@ -409,6 +409,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
     // Set the UU and XX values to the z_fin values first for the emulated PD 
     // controller to have for error computation in place of all 0s.
+    if(verbose){
+      std::cout<<"\nCOMPUTING COST TYPE 3"<<std::endl;
+    }
     for (int i = 0; i < N_; i++){
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
@@ -442,7 +445,11 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
             Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         }
         if(LCS_for_cost_computation_){
-          XX_new[i+1] = LCS_for_cost_computation_->Simulate(XX_new[i], UU_new[i]);
+
+          if(verbose){
+            std::cout<<"simulated step "<<i+1<<std::endl;
+          }
+          XX_new[i+1] = LCS_for_cost_computation_->Simulate(XX_new[i], UU_new[i], verbose);
         }
         else{
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);

@@ -131,7 +131,7 @@ LcmPoseDrawer::LcmPoseDrawer(
 
   Eigen::VectorXd alpha_scale;
   if (add_transparency) {
-    alpha_scale = 1.0 * VectorXd::LinSpaced(N_, 0, 0.4);
+    alpha_scale = 1.0 * VectorXd::LinSpaced(N_, 0.5, 0.1);
   } else {
     alpha_scale = 1.0 * VectorXd::Ones(N_);
   }

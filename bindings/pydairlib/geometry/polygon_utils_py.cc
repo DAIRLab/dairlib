@@ -21,6 +21,9 @@ PYBIND11_MODULE(polygon_utils, m) {
         &geometry::ProcessTerrain2d,
         py::arg("terrain"),
         py::arg("convexity_threshold"))
+   .def("MakeFootholdFromConvexPolygon",
+        &geometry::MakeFootholdFromConvexPolygon,
+        py::arg("convex_poly2d"))
    .def("GetAcdComponents",
         &geometry::GetAcdComponents,
         py::arg("planar_region"),

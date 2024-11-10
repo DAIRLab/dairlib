@@ -16,7 +16,7 @@ from pydrake.systems.all import (
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 try:
-    from pydairlib.geometry.polygon_utils import ProcessTerrain2d
+    from pydairlib.geometry.polygon_utils import ProcessTerrain2d, MakeFootholdFromConvexPolygon
 except ImportError:
     print('ERROR: when built against ros, you need to source the ros environment before '
           'importing from polygon_utils, or python may not be able to find some necessary libraries. '
@@ -108,6 +108,14 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         )
         self.profiling = profiling
 
+    def big_flat_polygon(self):
+        poly = ConvexPolygon()
+        poly.SetPlane(np.array([0., 0., 1.]), np.array([0., 0., 0.]))
+        for n in [np.array([1., 0., 0.]), np.array([1., 0., 0.]),
+                np.array([1., 0., 0.]), np.array([1., 0., 0.])]:
+            poly.AddFace(n, 1000 * n)
+            return ConvexPolygonSet([poly])
+
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
         try:
@@ -139,26 +147,40 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         polygons = get_polygons_by_contour_extraction(
             safe_terrain_image, grid
         )
-
+        valid_polys = []
         if not polygons:
+            # poly = np.array([[-0.9875,0.8375,0.8375,0.80272953,-0.9875],[-0.9875,-0.9875,0.63162693,0.9875,0.9875]])
+            # poly = MakeFootholdFromConvexPolygon(poly)
+            # print(poly.GetVertices())
+            # valid_polys.append(poly)
+            # out.set_value(ConvexPolygonSet(valid_polys))
+            # out.set_value(self.big_flat_polygon())
+            print("No Polygons")
             return
 
         convex_polygons = ProcessTerrain2d(polygons, 0.25)
         end_convexity = time.time()
 
         if not convex_polygons:
+            print("No Convex Polygons")
             if self.profiling:
                 self.profiling['decomposition'].append(end_convexity - start)
                 self.profiling['plane_fitting'].append(0)
                 self.profiling['num_polygons'].append(0)
             return
 
+        # valid_polys = []
         for polygon in convex_polygons:
+            # print(polygon.GetVertices())
+            # print("=========================")
             normal, point = self.get_plane(grid, polygon)
-            polygon.SetPlane(normal, point)
+            if normal is not None:
+                polygon.SetPlane(normal, point)
+                valid_polys.append(polygon)
 
         end_plane_fitting = time.time()
-        out.set_value(ConvexPolygonSet(convex_polygons))
+        out.set_value(ConvexPolygonSet(valid_polys))
+        #print(valid_polys.GetVertices())
 
         if self.profiling:
             self.profiling['decomposition'].append(end_convexity - start)

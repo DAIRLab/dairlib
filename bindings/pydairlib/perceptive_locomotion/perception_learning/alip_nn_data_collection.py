@@ -129,6 +129,26 @@ def check_termination(sim_env, diagram_context, time) -> bool:
 
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
+
+    scene_graph = sim_env.get_output_port_by_name('scene_graph').Eval(sim_context)
+    front_contact_pt = np.array((-0.0457, 0.112, 0))
+    rear_contact_pt = np.array((0.088, 0, 0))
+    toe_axis = front_contact_pt - rear_contact_pt
+    toe_axis /= np.linalg.norm(toe_axis)
+    collision = 0.
+
+    left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
+    left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+    for left_distances in left_distances:
+        if left_distances.distance <= -0.011:
+            return True
+
+    right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
+    distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+    for right_distance in distances:
+        if right_distance.distance <= -0.011:
+            return True
+            
     return z1 < 0.2 or z2 < 0.2
 
 def run(sim_env, controller, diagram, simulate_perception=False, plot=False):

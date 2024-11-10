@@ -76,6 +76,7 @@ cc_library(
     hdrs = ["cassie_state_estimator.h"],
     deps = [
         ":cassie_utils",
+        "//common:time_series_buffer",
         "//examples/Cassie:cassie_state_estimator_settings",
         "//examples/Cassie/datatypes:cassie_names",
         "//examples/Cassie/datatypes:cassie_out_t",

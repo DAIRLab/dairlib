@@ -289,7 +289,7 @@ class DrakeGymEnv(gym.Env):
             self._setup()
         
         if seed is None:
-            seed = 0
+            seed = 42
         context = self.reset_handler(self.simulator, self.terrain, seed, self.generator)
 
         observation = self.observation_port.Eval(context).astype(np.float32)

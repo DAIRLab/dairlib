@@ -30,7 +30,7 @@ from pydairlib.perceptive_locomotion.diagrams import (
     MpfcOscDiagram,
     MpfcOscDiagramInputType,
     PerceptionModuleDiagram,
-    NonRenderPerceptionModuleDiagram,
+    # NonRenderPerceptionModuleDiagram,
 )
 
 from pydairlib.systems.footstep_planning import Stance
@@ -84,7 +84,7 @@ class InitialConditionsServer:
 @dataclass
 class BenchEnvOptions:
     terrain: Union[str, SquareSteppingStoneList] = path.join(
-        params_folder, 'terrain.yaml'
+        params_folder, 'terrain.yaml' # 'stair_curriculum.yaml'
     )
     rgdb_extrinsics_yaml: str = path.join(
         params_folder, 'rgbd_extrinsics.yaml'
@@ -141,9 +141,13 @@ class BenchHarness(Diagram):
             params.osqp_options_yaml,
             params.controller_input_type
         )
+
+        terrain_friction = 0.8 
+
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
-            params.rgdb_extrinsics_yaml
+            params.rgdb_extrinsics_yaml,
+            terrain_friction
         )
         self.radio_source = ConstantVectorSource(np.zeros(18,))
 
@@ -172,9 +176,13 @@ class BenchHarness(Diagram):
             self.cassie_sim.get_output_port_cassie_out(),
             self.perception_module.get_input_port_cassie_out()
         )
+        # builder.Connect(
+        #     self.perception_module.get_output_port_robot_output(),
+        #     self.controller.get_input_port_state()
+        # )
         builder.Connect(
-            self.perception_module.get_output_port_robot_output(),
-            self.controller.get_input_port_state()
+                self.cassie_sim.get_output_port_state_lcm(),
+                self.controller.get_input_port_state(),
         )
 
         elevation_options = ElevationMapOptions()
@@ -281,7 +289,11 @@ class BenchHarness(Diagram):
             ), 'elevation_map': builder.ExportOutput(
                 self.perception_module.get_output_port_elevation_map(),
                 'elevation_map'
-            )
+            ),
+            'scene_graph': builder.ExportOutput(
+                self.cassie_sim.get_output_port_scene_graph_query(),
+                'scene_graph'
+            ),
         }
         return output_port_indices
 

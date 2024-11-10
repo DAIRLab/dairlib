@@ -20,6 +20,7 @@ using Eigen::VectorXd;
 
 using drake::Value;
 using drake::AbstractValue;
+using drake::math::RigidTransformd;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::MathematicalProgram;
@@ -506,8 +507,23 @@ void CassieStateEstimator::DoKinematicUpdate(
 void CassieStateEstimator::DoLandmarkUpdate(
     const lcmt_landmark_array &landmarks, inekf::InEKF &ekf) const {
   inekf::vectorLandmarks landmark_vector;
+
+  drake::math::RigidTransformd X_CP{};
+  if (not state_history_.empty()) {
+    // 500 us compensation for filter time
+    const auto& prev_robot_state = state_history_.get(landmarks.utime);
+    const auto& curr_robot_state = ekf.getState();
+
+    // X_CP = X_CW * X_WP = X_WC^-1 * X_WP
+    drake::math::RotationMatrixd R_WC(curr_robot_state.getRotation());
+    drake::math::RotationMatrixd R_WP(prev_robot_state.getRotation());
+    drake::math::RigidTransformd X_WC(R_WC, curr_robot_state.getPosition());
+    drake::math::RigidTransformd X_WP(R_WP, prev_robot_state.getPosition());
+    X_CP = X_WC.inverse() * X_WP;
+  }
+
   for (const auto& landmark: landmarks.landmarks) {
-    Vector3d landmark_pos = Vector3d::Map(landmark.position) - imu_pos_;
+    Vector3d landmark_pos = X_CP * (Vector3d::Map(landmark.position) - imu_pos_);
     landmark_vector.push_back(inekf::Landmark(landmark.id, landmark_pos));
   }
   ekf.CorrectLandmarks(landmark_vector);
@@ -614,8 +630,13 @@ EventStatus CassieStateEstimator::Update(
     if (landmarks.utime > 0 and landmarks.utime > prev_landmarks.utime) {
       DoLandmarkUpdate(landmarks, ekf);
     }
+    state->get_mutable_abstract_state<lcmt_landmark_array>(
+        prev_landmarks_idx_) = landmarks;
   }
 
+  // Save the EKF state to history buffer for later use if needed
+  uint64_t stamp = context.get_time() * 1e6;
+  state_history_.put(stamp, ekf.getState());
 
   // Step 5 - Assign values to floating base state (pelvis)
   // We get the angular velocity directly from the IMU without filtering

@@ -87,50 +87,11 @@ PYBIND11_MODULE(diagrams, m) {
       .def("SetSwingFootPositionAtLiftoff",
            &MpfcOscDiagram::SetSwingFootPositionAtLiftoff);
 
-  py::class_<RLOscDiagram, drake::systems::Diagram<double>>(
-      m, "RLOscDiagram")
-      .def(py::init<drake::multibody::MultibodyPlant<double>&,
-           const std::string&, const std::string&, const std::string&>(),
-           py::arg("plant"),
-           py::arg("osc_gains_filename"),
-           py::arg("mpc_gains_filename"),
-           py::arg("osqp_settings_filename"))
-      .def("get_input_port_state",
-           &RLOscDiagram::get_input_port_state,
-           py_rvp::reference_internal)
-      .def("get_input_port_rl",
-           &RLOscDiagram::get_input_port_rl,
-           py_rvp::reference_internal)
-      .def("get_input_port_radio",
-           &RLOscDiagram::get_input_port_radio,
-           py_rvp::reference_internal)
-      .def("get_output_port_actuation",
-           &RLOscDiagram::get_output_port_actuation,
-           py_rvp::reference_internal)
-      .def("get_output_port_fsm",
-           &RLOscDiagram::get_output_port_fsm,
-           py_rvp::reference_internal)
-      .def("get_output_port_alip",
-           &RLOscDiagram::get_output_port_alip,
-           py_rvp::reference_internal)
-      .def("get_output_port_switching_time",
-           &RLOscDiagram::get_output_port_switching_time,
-           py_rvp::reference_internal)
-      .def("get_output_port_swing_ft_tracking_error",
-           &RLOscDiagram::get_output_port_swing_ft_tracking_error,
-           py_rvp::reference_internal)
-      .def("get_output_port_pelvis_yaw",
-           &RLOscDiagram::get_output_port_pelvis_yaw,
-           py_rvp::reference_internal)
-      .def("get_plant", &RLOscDiagram::get_plant, py_rvp::reference_internal)
-      .def("SetSwingFootPositionAtLiftoff",
-           &RLOscDiagram::SetSwingFootPositionAtLiftoff);
-
   py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
       m, "HikingSimDiagram")
       .def(py::init<const std::variant<std::string, SquareSteppingStoneList>&,
-                    const std::string&>(),
-           py::arg("tarrain_yaml"), py::arg("camera_pose_yaml"))
+                    const std::string&, double>(),
+           py::arg("terrain_yaml"), py::arg("camera_pose_yaml"), py::arg("terrain_friction") = 0.8)
       .def("get_input_port_actuation",
            &HikingSimDiagram::get_input_port_actuation,
            py_rvp::reference_internal)
@@ -152,6 +113,9 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_output_port_lcm_radio",
            &HikingSimDiagram::get_output_port_lcm_radio,
            py_rvp::reference_internal)
+      .def("get_output_port_scene_graph_query",
+           &HikingSimDiagram::get_output_port_scene_graph_query,
+           py_rvp::reference_internal)
       .def("get_output_port_depth_image",
            &HikingSimDiagram::get_output_port_depth_image,
            py_rvp::reference_internal)
@@ -159,7 +123,8 @@ PYBIND11_MODULE(diagrams, m) {
            &HikingSimDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_depth_camera_info",
-           &HikingSimDiagram::get_depth_camera_info)
+           &HikingSimDiagram::get_depth_camera_info,
+           py_rvp::reference_internal)
       .def("AddDrakeVisualizer",
            &HikingSimDiagram::AddDrakeVisualizer,
            py_rvp::reference_internal)
@@ -167,7 +132,6 @@ PYBIND11_MODULE(diagrams, m) {
            &HikingSimDiagram::SetPlantInitialConditionFromIK)
       .def("SetPlantInitialCondition",
            &HikingSimDiagram::SetPlantInitialCondition);
-
 
   py::class_<PerceptionModuleDiagram, drake::systems::Diagram<double>>(
       m, "PerceptionModuleDiagram")
@@ -250,35 +214,8 @@ PYBIND11_MODULE(diagrams, m) {
            &AlipMPFCDiagram::get_output_port_mpc_output,
            py_rvp::reference_internal);
 
-  py::class_<RadioReceiverModule, drake::systems::Diagram<double>>(
-      m, "RadioReceiverModule")
-      .def(py::init<const std::string&, drake::lcm::DrakeLcmInterface*>(),
-          py::arg("cassie_out_channel"), py::arg("lcm"));
 
-  py::class_<MpfcOutputFromFootstep, drake::systems::LeafSystem<double>>(
-      m, "MpfcOutputFromFootstep")
-      .def(py::init<double, double, const drake::multibody::MultibodyPlant<double>&>(),
-          py::arg("T_ss"), py::arg("T_ds"), py::arg("plant"))
-      .def("get_input_port_state", &MpfcOutputFromFootstep::get_input_port_state,
-           py_rvp::reference_internal)
-      .def("get_input_port_footstep", &MpfcOutputFromFootstep::get_input_port_footstep,
-           py_rvp::reference_internal);
-
-  py::class_<MpfcOutputFromRL, drake::systems::LeafSystem<double>>(
-      m, "MpfcOutputFromRL")
-      .def(py::init<>());
-
-  py::class_<CassieRealSenseDriverDiagram, drake::systems::Diagram<double>>(
-        m, "CassieRealSenseDriverDiagram")
-        .def(py::init<const std::string&>(), py::arg("points_channel"))
-        .def("InitializeElevationMap", &CassieRealSenseDriverDiagram::InitializeElevationMap)
-        .def("lcm", &CassieRealSenseDriverDiagram::lcm, py_rvp::reference_internal)
-        .def("plant", &CassieRealSenseDriverDiagram::plant, py_rvp::reference_internal)
-        .def("get_input_port_state", &CassieRealSenseDriverDiagram::get_input_port_state, py_rvp::reference_internal)
-        .def("get_input_port_contact", &CassieRealSenseDriverDiagram::get_input_port_contact, py_rvp::reference_internal)
-        .def("start_rs", &CassieRealSenseDriverDiagram::start_rs)
-        .def("stop_rs", &CassieRealSenseDriverDiagram::stop_rs);
-  }
+}
 
 
 }

@@ -227,7 +227,7 @@ def run_play(sim_params, model_path=None):
                     )
     # rate = 1.0
     # env.simulator.set_target_realtime_rate(rate)
-    max_steps = 3e4
+    max_steps = 399*100 # 39900
     
     lstm=True
     lstm_states = None
@@ -252,14 +252,14 @@ def run_play(sim_params, model_path=None):
         else:
             action, states = model.predict(obs, deterministic=True)
         #print(obs[3*64*64:3*64*64+6])
-        print(action)
+        #print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
             episode_starts = terminated
             
         total_reward += reward
         if terminated or truncated:
-            print(total_reward)
+            # print(total_reward)
             if lstm:
                 lstm_states = None
                 episode_starts = np.ones((1,), dtype=bool)

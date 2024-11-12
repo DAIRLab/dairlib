@@ -117,8 +117,9 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     //                  2: lateral_vel (left joystick left/right)
 
     // Side dial sets the scale
-    double vel_scale_trans_sagittal =
-        (radio_out->channel[6] + 1.0) * vel_scale_trans_sagittal_;
+    double side_dial = std::clamp(radio_out->channel[6] + 1.0, 0.25, 2.0);
+    double vel_scale_trans_sagittal = side_dial * vel_scale_trans_sagittal_;
+    
     // approximately 1KHz sampling rate - no need to be too precise
     double a = .001 / (stick_filter_dt_ + .001);
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);

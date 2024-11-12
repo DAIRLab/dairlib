@@ -328,7 +328,7 @@ void AlipS2SMPFC::UpdateInitialConditions(
   Matrix4d Ad = CalcAd(
       params_.gait_params.height, params_.gait_params.mass, t);
   Vector4d Bd = alip_utils::CalcBd(
-      params_.gait_params.height, params_.gait_params.mass, tmin);
+      params_.gait_params.height, params_.gait_params.mass, t);
   Eigen::Matrix<double, 4, 5> A_t = Eigen::Matrix<double, 4, 5>::Zero();
 
   // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)
@@ -349,10 +349,10 @@ void AlipS2SMPFC::UpdateInitialConditions(
       Eigen::VectorXd::Constant(1, tmax)
   );
   ankle_torque_bounds_->UpdateLowerBound(
-      Eigen::VectorXd::Constant(1, -params_.umax * t)
+      Eigen::VectorXd::Constant(1, -params_.umax)
   );
   ankle_torque_bounds_->UpdateUpperBound(
-      Eigen::VectorXd::Constant(1, params_.umax * t)
+      Eigen::VectorXd::Constant(1, params_.umax)
   );
 }
 

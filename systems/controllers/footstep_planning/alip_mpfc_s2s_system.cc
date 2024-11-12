@@ -453,7 +453,7 @@ void Alips2sMPFCSystem::CopyAnkleTorque(
       context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
 
   double t_sol = std::clamp(mpc_sol.t_sol, 0.001, trajopt_.params().tmax);
-  double u_sol = std::clamp(mpc_sol.u_sol / t_sol, -trajopt_.params().umax, trajopt_.params().umax);
+  double u_sol = std::clamp(mpc_sol.u_sol, -trajopt_.params().umax, trajopt_.params().umax);
 
   LcmTrajectory::Trajectory input_traj;
   input_traj.traj_name = "input_traj";

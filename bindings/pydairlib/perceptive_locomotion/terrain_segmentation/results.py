@@ -138,12 +138,12 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
     print('done')
 
 
-def despine(ax):
-    for _, spine in ax.spines.items():
-        spine.set_visible(False)
-
-
 def save_decomposition_debug_plots(debug_info, save_folder):
+
+    def despine(ax):
+        for _, spine in ax.spines.items():
+            spine.set_visible(False)
+
     fig, ax = plt.subplots(figsize=(8, 8))
     plot_polygons_with_holes(debug_info['unprocessed_polygons'])
 
@@ -234,7 +234,8 @@ def plot_segmentation_run_time_results(results, title, savefile):
     plt.ylabel('Segmentation Run Time (s)')
     plt.legend([r['name'] for r in results])
     fig.tight_layout()
-    plt.savefig(savefile)
+    if savefile:
+        plt.savefig(savefile)
 
 
 def plot_iou_results(results, title, savefile):
@@ -246,7 +247,8 @@ def plot_iou_results(results, title, savefile):
     plt.xlabel('Frame Number')
     plt.ylabel('IOU  with Next Frame')
     fig.tight_layout()
-    plt.savefig(savefile)
+    if savefile:
+        plt.savefig(savefile)
 
 
 def run_segmentation_profiling(logfile):
@@ -268,8 +270,8 @@ def run_segmentation_profiling(logfile):
 
     utils.setup_plots()
 
-    plot_segmentation_run_time_results(results, 'Run Time', '../test1.svg')
-    plot_iou_results(results, 'Frame-to-Frame IoU', '../test2.svg')
+    plot_segmentation_run_time_results(results, 'Run Time', None)
+    plot_iou_results(results, 'Frame-to-Frame IoU', None)
 
     plt.show()
 

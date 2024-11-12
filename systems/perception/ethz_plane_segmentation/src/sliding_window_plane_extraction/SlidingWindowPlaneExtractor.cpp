@@ -68,13 +68,12 @@ void SlidingWindowPlaneExtractor::runExtraction(const grid_map::GridMap& map, co
 
   // Run
   runSlidingWindowDetector();
-  if (not parameters_.skip_plane_extraction) {
-    runSegmentation();
-    extractPlaneParametersFromLabeledImage();
-    // Get classification from segmentation to account for unassigned points.
-    binaryImagePatch_ = segmentedPlanesMap_.labeledImage > 0;
-    binaryImagePatch_.setTo(1, binaryImagePatch_ == 255);
-  }
+  runSegmentation();
+  extractPlaneParametersFromLabeledImage();
+
+  // Get classification from segmentation to account for unassigned points.
+  binaryImagePatch_ = segmentedPlanesMap_.labeledImage > 0;
+  binaryImagePatch_.setTo(1, binaryImagePatch_ == 255);
 }
 
 std::pair<Eigen::Vector3d, double> SlidingWindowPlaneExtractor::computeNormalAndErrorForWindow(const Eigen::MatrixXf& windowData) const {
@@ -117,6 +116,7 @@ void SlidingWindowPlaneExtractor::runSlidingWindowDetector() {
   grid_map::SlidingWindowIterator window_iterator(*map_, elevationLayer_, grid_map::SlidingWindowIterator::EdgeHandling::EMPTY,
                                                   parameters_.kernel_size);
   const int kernelMiddle = (parameters_.kernel_size - 1) / 2;
+
   for (; !window_iterator.isPastEnd(); ++window_iterator) {
     grid_map::Index index = *window_iterator;
     Eigen::MatrixXf window_data = window_iterator.getData();
@@ -133,6 +133,7 @@ void SlidingWindowPlaneExtractor::runSlidingWindowDetector() {
       binaryImagePatch_.at<bool>(index.x(), index.y()) = isLocallyPlanar(n, meanSquaredError);
     }
   }
+
   // opening filter
   if (parameters_.planarity_opening_filter > 0) {
     const int openingKernelSize = 2 * parameters_.planarity_opening_filter + 1;
@@ -283,12 +284,12 @@ bool SlidingWindowPlaneExtractor::isGloballyPlanar(const Eigen::Vector3d& normal
 
   for (const auto& pointWithNormal : pointsWithNormal) {
     const double normalDotPoint = normalVectorPlane.x() * pointWithNormal.first.x() + normalVectorPlane.y() * pointWithNormal.first.y() +
-                                  normalVectorPlane.z() * pointWithNormal.first.z();
+        normalVectorPlane.z() * pointWithNormal.first.z();
     const double distanceError = std::abs(normalDotPoint - normalDotSupportvector);
 
     const double dotProductNormals = normalVectorPlane.x() * pointWithNormal.second.x() +
-                                     normalVectorPlane.y() * pointWithNormal.second.y() +
-                                     normalVectorPlane.z() * pointWithNormal.second.z();
+        normalVectorPlane.y() * pointWithNormal.second.y() +
+        normalVectorPlane.z() * pointWithNormal.second.z();
 
     if (distanceError > parameters_.global_plane_fit_distance_error_threshold || dotProductNormals < dotProductThreshold) {
       return false;

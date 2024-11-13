@@ -38,6 +38,7 @@ py_binary(
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/common:meshcat_chrome_capture",
+        "//bindings/pydairlib/common:meshcat_video_writer",
         "//bindings/pydairlib/multibody",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/systems",

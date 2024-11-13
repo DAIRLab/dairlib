@@ -43,6 +43,15 @@ py_library(
 )
 
 py_library(
+    name = "meshcat_video_writer",
+    srcs = ["meshcat_video_writer.py"],
+    deps = [
+        ":meshcat_chrome_capture",
+        "@drake//bindings/pydrake"
+    ],
+)
+
+py_library(
     name = "plotting_utils",
     srcs = ["plotting_utils.py"],
     deps = [],
@@ -68,6 +77,7 @@ PY_LIBRARIES = [
     ":plot_styler",
     ":plotting_utils",
     ":meshcat_chrome_capture",
+    ":meshcat_video_writer",
 ]
 
 # Package roll-up (for Bazel dependencies).

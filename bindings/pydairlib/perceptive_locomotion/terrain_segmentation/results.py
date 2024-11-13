@@ -45,7 +45,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation import perception_anal
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
-from pydairlib.common import MeshcatChromeCapture
+from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
 
 from argparse import ArgumentParser
 

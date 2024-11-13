@@ -19,6 +19,7 @@ namespace pydairlib {
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
 using geometry::ConvexPolygonSender;
+using geometry::ConvexPolygonReceiver;
 using geometry::ConvexPolygonVisualizer;
 
 PYBIND11_MODULE(convex_polygon, m) {
@@ -54,6 +55,8 @@ py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
 
 py::class_<ConvexPolygonSender, drake::systems::LeafSystem<double>>(
     m, "ConvexPolygonSender").def(py::init<>());
+  py::class_<ConvexPolygonReceiver, drake::systems::LeafSystem<double>>(
+      m, "ConvexPolygonReceiver").def(py::init<>());
 
 py::class_<ConvexPolygonVisualizer, drake::systems::LeafSystem<double>>(
     m, "ConvexPolygonVisualizer")

@@ -1,6 +1,41 @@
+import os
+import tempfile
+import subprocess
+from time import sleep
+
 from pydairlib.common.meshcat_chrome_capture import MeshcatChromeCapture
 from pydrake.systems.all import Diagram, Simulator
+from pydairlib.lcm.log_playback import LcmLogPlayback
 
 
-def write_meshcat_video_from_log(diagram, lcm_log, meshcat):
-    capture = MeshcatChromeCapture(meshcat, window_size=(1080, 1440))
+def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
+                                 channel_to_port_map, video_out_path):
+    capture = MeshcatChromeCapture(meshcat, window_size=(1440, 1080))
+
+    # wait for plant to load
+    sleep(5)
+    playback = LcmLogPlayback(
+        lcm_log, diagram, channel_to_type_map, channel_to_port_map)
+
+    dt = 1.0/30.0
+    t = dt
+    frame = 0
+    with tempfile.TemporaryDirectory() as temp_dir:
+        while not playback.finished():
+            playback.advance(t)
+            # save screenshot
+            frame_filename = os.path.join(temp_dir, f"frame_{frame:06d}.png")
+            capture.grab(frame_filename)
+            frame += 1
+            t += dt
+
+    subprocess.run([
+        'ffmpeg',
+        '-framerate',
+        '30',
+        '-i',
+        os.path.join(temp_dir, f"frame_%06d.png"),
+        '-c:v',
+        'libx264',
+        video_out_path
+    ], check=True)

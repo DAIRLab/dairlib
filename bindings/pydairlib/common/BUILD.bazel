@@ -47,6 +47,7 @@ py_library(
     srcs = ["meshcat_video_writer.py"],
     deps = [
         ":meshcat_chrome_capture",
+        "//bindings/pydairlib/lcm:log_playback",
         "@drake//bindings/pydrake"
     ],
 )

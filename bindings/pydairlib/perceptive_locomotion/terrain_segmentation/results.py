@@ -26,10 +26,14 @@ from grid_map import GridMap
 
 from pydairlib.multibody import MultiposeVisualizer
 
-from pydairlib.systems import \
-    PlaneSegmentationSystem, GridMapVisualizer
-
-from pydairlib.geometry import ConvexPolygonVisualizer
+from pydairlib.systems import (
+    PlaneSegmentationSystem,
+    GridMapVisualizer,
+    GridMapReceiver,
+    PlantVisualizer,
+    RobotOutputReceiver
+)
+from pydairlib.geometry import ConvexPolygonVisualizer, ConvexPolygonReceiver
 
 from pydairlib.analysis.process_lcm_log import get_log_data
 
@@ -67,6 +71,49 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
         state_channel,
     )
     return grid_maps, robot_output
+
+
+def write_perception_video(logfile: str):
+    urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
+    update_period = 1.0 / 30.01
+    plant_visualizer = PlantVisualizer(urdf, "pelvis")
+    meshcat = plant_visualizer.get_meshcat()
+
+    visualizers = {
+        "state": plant_visualizer,
+        "grid_map": GridMapVisualizer(meshcat, update_period, ["segmented_elevation"]),
+        "polygons": ConvexPolygonVisualizer(meshcat, update_period)
+    }
+    receivers = {
+        "state": RobotOutputReceiver(visualizers["state"].get_plant()),
+        "grid_map": GridMapReceiver(),
+        "polygons": ConvexPolygonReceiver()
+    }
+
+    builder = DiagramBuilder()
+    for k in visualizers.keys():
+        builder.AddSystem(visualizers[k])
+        builder.AddSystem(receivers[k])
+        builder.Connect(
+            receivers[k].get_output_port(), visualizers[k].get_input_port())
+
+    diagram = builder.Build()
+
+    types = {
+        'NETWORK_CASSIE_STATE_DISPATCHER': lcmt_robot_output,
+        'CASSIE_ELEVATION_MAP': lcmt_grid_map,
+        'FOOTHOLDS_PROCESSED': lcmt_foothold_set
+    }
+
+    ports = {
+        'NETWORK_CASSIE_STATE_DISPATCHER': receivers['state'].get_input_port(),
+        'CASSIE_ELEVATION_MAP': receivers['grid_map'].get_input_port(),
+        'FOOTHOLDS_PROCESSED': receivers['polygons'].get_input_port()
+    }
+
+    lcm_log = lcm.EventLog(logfile)
+    write_meshcat_video_from_log(
+        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4')
 
 
 def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):
@@ -311,8 +358,9 @@ def main():
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
     # run_pipeline_figure_script(args.logfile)
-    run_segmentation_profiling(args.logfile)
+    # run_segmentation_profiling(args.logfile)
     # profile_full_pipeline(args.logfile)
+    write_perception_video(args.logfile)
 
 
 if __name__ == '__main__':

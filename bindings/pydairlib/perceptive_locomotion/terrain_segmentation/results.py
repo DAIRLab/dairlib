@@ -251,22 +251,34 @@ def plot_iou_results(results, title, savefile):
         plt.savefig(savefile)
 
 
+def make_plane_segmentation_systems(params_folder):
+    yamls = ['no_ransac_no_preprocessing', 'no_ransac_with_preprocessing',
+             'ransac_no_preprocessing', 'ransac_and_preprocessing']
+    system_names = ['EM_cupy' + y for y in yamls]
+
+    systems = []
+    for y, n in zip(yamls, system_names):
+        systems.append(
+            PlaneSegmentationSystem(os.path.join(params_folder, f'{y}.yaml'))
+        )
+        systems[-1].set_name(n)
+
+    return systems
+
+
 def run_segmentation_profiling(logfile):
     grid_maps, robot_outputs = get_grid_maps_from_log(logfile)
-    plane_segmentation = PlaneSegmentationSystem(
-        'systems/perception/ethz_plane_segmentation/params.yaml'
-    )
+    params_folder = 'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentaion_results_params/'
+    plane_segmentation_ablation_systems = make_plane_segmentation_systems(params_folder)
     s3 = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
         }
     )
 
-    results = [
-        profile_segmentation(plane_segmentation, deepcopy(grid_maps)),
-        profile_segmentation(s3, deepcopy(grid_maps))
-    ]
+    results = [profile_segmentation(s, deepcopy(grid_maps)) for s in plane_segmentation_ablation_systems]
+    results.append(profile_segmentation(s3, deepcopy(grid_maps)))
 
     utils.setup_plots()
 
@@ -288,8 +300,8 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    run_pipeline_figure_script(args.logfile)
-    # run_segmentation_profiling(args.logfile)
+    # run_pipeline_figure_script(args.logfile)
+    run_segmentation_profiling(args.logfile)
     # profile_full_pipeline(args.logfile)
 
 

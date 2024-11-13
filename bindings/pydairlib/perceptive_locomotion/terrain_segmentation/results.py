@@ -2,8 +2,8 @@ import os
 import time
 import timeit
 from time import sleep
-from typing import List
 from copy import deepcopy
+from multiprocessing import Pool
 
 import lcm
 import numpy as np
@@ -232,6 +232,8 @@ def plot_segmentation_run_time_results(results, title, savefile):
         plt.plot(r['runtime'])
     plt.xlabel('Frame Number')
     plt.ylabel('Segmentation Run Time (s)')
+    plt.yscale('log')
+    plt.ylim([1e-3, 5e-1])
     plt.legend([r['name'] for r in results])
     fig.tight_layout()
     if savefile:
@@ -251,25 +253,28 @@ def plot_iou_results(results, title, savefile):
         plt.savefig(savefile)
 
 
-def make_plane_segmentation_systems(params_folder):
-    yamls = ['no_ransac_no_preprocessing', 'no_ransac_with_preprocessing',
-             'ransac_no_preprocessing', 'ransac_and_preprocessing']
-    system_names = ['EM_cupy' + y for y in yamls]
+def make_plane_segmentation_system_info(params_folder):
+    yamls = [
+        os.path.join(params_folder, f'{y}.yaml') for y in
+        ['no_ransac_no_preprocessing', 'no_ransac_with_preprocessing', 'ransac_no_preprocessing', 'ransac_and_preprocessing']
+    ]
+    configs = ['XX', 'PX', 'XR', 'PR']
+    system_names = ['EM_cupy_' + config for config in configs]
+    return zip(yamls, system_names)
 
-    systems = []
-    for y, n in zip(yamls, system_names):
-        systems.append(
-            PlaneSegmentationSystem(os.path.join(params_folder, f'{y}.yaml'))
-        )
-        systems[-1].set_name(n)
 
-    return systems
+def profile_worker_wrapper(args):
+    sys_info, grid_maps = args
+    grid_maps_copy = deepcopy(grid_maps)
+    params, name = sys_info
+    system = PlaneSegmentationSystem(params)
+    system.set_name(name)
+    return profile_segmentation(system, grid_maps_copy)
 
 
 def run_segmentation_profiling(logfile):
-    grid_maps, robot_outputs = get_grid_maps_from_log(logfile)
-    params_folder = 'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentaion_results_params/'
-    plane_segmentation_ablation_systems = make_plane_segmentation_systems(params_folder)
+    grid_maps, robot_outputs = get_grid_maps_from_log(logfile, duration=80)
+    params_folder = 'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
     s3 = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
@@ -277,7 +282,12 @@ def run_segmentation_profiling(logfile):
         }
     )
 
-    results = [profile_segmentation(s, deepcopy(grid_maps)) for s in plane_segmentation_ablation_systems]
+    args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
+    num_processes = len(args)
+    # Create a process pool and map the function across all systems
+    with Pool(processes=num_processes) as pool:
+        results = pool.map(profile_worker_wrapper, args)
+
     results.append(profile_segmentation(s3, deepcopy(grid_maps)))
 
     utils.setup_plots()

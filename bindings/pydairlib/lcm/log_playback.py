@@ -18,6 +18,8 @@ class LcmLogPlayback:
             c: False for c in self._channels
         }
         for channel in self._channels:
+            # TODO (@Brian-Acosta) may want to move this elsewhere to support python
+            #  or cpp serializers based on the message type
             self._serializers[channel] = _Serializer_[channel_to_type_map[channel]]()
             self._values[channel] = self._serializers[channel].CreateDefaultValue()
         self._start_timestamp = 0

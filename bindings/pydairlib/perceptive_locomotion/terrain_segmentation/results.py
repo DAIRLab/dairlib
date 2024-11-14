@@ -113,7 +113,7 @@ def write_perception_video(logfile: str):
 
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4')
+        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4', duration=30.0)
 
 
 def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):

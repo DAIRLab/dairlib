@@ -13,14 +13,17 @@ class LcmLogPlayback:
         self._channels = channel_to_type_map.keys()
         self._context = self._diagram.CreateDefaultContext()
         self._serializers = {}
+        self._values = {}
         self._connected = {
             c: False for c in self._channels
         }
         for channel in self._channels:
-            self._serializers[channel] = _Serializer_[channel_to_type_map[channel]]
+            self._serializers[channel] = _Serializer_[channel_to_type_map[channel]]()
+            self._values[channel] = self._serializers[channel].CreateDefaultValue()
         self._start_timestamp = 0
         self._sim = Simulator(self._diagram, self._context)
         self._finished = False
+        self.reset()
 
     def advance(self, t: float):
         assert self._channels
@@ -29,13 +32,13 @@ class LcmLogPlayback:
 
         while event and (event.timestamp - self._start_timestamp) < t * 1e6:
             event = self._lcm_log.read_next_event()
+            if event is None:
+                self._finished = True
+                return
             if event.channel in self._channels:
                 system = self._channel_to_port_map[event.channel].get_system()
                 context = system.GetMyMutableContextFromRoot(self._sim.get_mutable_context())
                 msg_val = self._serializers[event.channel].CreateDefaultValue()
-
-                print(f'fixing port to {event.channel} message')
-
                 self._serializers[event.channel].Deserialize(event.data, msg_val)
                 self._channel_to_port_map[event.channel].FixValue(context, msg_val)
                 self._connected[event.channel] = True

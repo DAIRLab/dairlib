@@ -9,7 +9,7 @@ from pydairlib.lcm.log_playback import LcmLogPlayback
 
 
 def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
-                                 channel_to_port_map, video_out_path):
+                                 channel_to_port_map, video_out_path, duration=-1):
     capture = MeshcatChromeCapture(meshcat, window_size=(1440, 1080))
 
     # wait for plant to load
@@ -21,7 +21,7 @@ def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
     t = dt
     frame = 0
     with tempfile.TemporaryDirectory() as temp_dir:
-        while not playback.finished():
+        while not playback.finished() and (duration < 0 or frame * dt <= duration):
             playback.advance(t)
             # save screenshot
             frame_filename = os.path.join(temp_dir, f"frame_{frame:06d}.png")
@@ -29,13 +29,12 @@ def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
             frame += 1
             t += dt
 
-    subprocess.run([
-        'ffmpeg',
-        '-framerate',
-        '30',
-        '-i',
-        os.path.join(temp_dir, f"frame_%06d.png"),
-        '-c:v',
-        'libx264',
-        video_out_path
-    ], check=True)
+        subprocess.run([
+            'ffmpeg',
+            '-framerate',
+            '30',
+            '-i',
+            os.path.join(temp_dir, f"frame_%06d.png"),
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+            video_out_path
+        ], check=True)

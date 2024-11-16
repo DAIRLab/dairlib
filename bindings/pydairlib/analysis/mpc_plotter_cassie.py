@@ -30,7 +30,7 @@ def main():
     log_mpc = lcm.EventLog(filename_mpc, "r")
 
     mpfc_debug_data = get_log_data(
-        log_mpc, mpfc_channels, 0, -1, mpfc_plots.alip_mpfc_debug_callback,
+        log_mpc, mpfc_channels, 5, 2.5, mpfc_plots.alip_mpfc_debug_callback,
         "ALIP_S2S_MPFC_DEBUG"
     )
 

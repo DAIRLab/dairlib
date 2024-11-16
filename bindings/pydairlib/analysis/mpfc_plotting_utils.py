@@ -176,7 +176,7 @@ def plot_initial_alip_state(mpc_data, time_slice=None):
         {'initial_alip_state': ['x', 'y', 'Lx', 'Ly']},
         {'xlabel': 'Time (s)',
          'ylabel': 'Initial Alip State',
-         'title': 'Initial ALip State'},
+         'title': 'Initial Alip State'},
         ps
     )
     add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)

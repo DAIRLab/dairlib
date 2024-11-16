@@ -354,7 +354,12 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     } else {
       poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
     }
-    cd.addPolygon(poly);
+    try {
+      cd.addPolygon(poly);
+    } catch (const std::exception& e) {
+      std::cout << e.what() << std::endl;
+      return {};
+    }
   }
 
   try {

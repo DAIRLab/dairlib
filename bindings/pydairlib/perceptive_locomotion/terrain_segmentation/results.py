@@ -1,6 +1,7 @@
 import os
 import time
-import timeit
+import glob
+import subprocess
 from time import sleep
 from copy import deepcopy
 from multiprocessing import Pool
@@ -11,6 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import to_rgba
+import seaborn as sns
 from dairlib import lcmt_grid_map, lcmt_foothold_set, lcmt_robot_output
 
 from pydrake.systems.all import (
@@ -53,6 +55,8 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
 from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
 
 from argparse import ArgumentParser
+
+import yaml
 
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
@@ -276,13 +280,20 @@ def animate_segmentations(results):
 def plot_segmentation_run_time_results(results, title, savefile):
     fig = plt.figure()
     plt.title(title)
-    for r in results:
-        plt.plot(r['runtime'])
-    plt.xlabel('Frame Number')
-    plt.ylabel('Segmentation Run Time (s)')
-    plt.yscale('log')
-    plt.ylim([1e-3, 5e-1])
+
+    edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
+
+    for i, r in enumerate(results):
+        alpha = 0.75 * (1.0 - float(i) / len(results))
+        sns.histplot(data=r['runtime'], bins=edges, element='step', alpha=alpha)
+
+    if title == 'Grass':
+        plt.xlabel('Segmentation Run Time (s)')
+    else:
+        plt.xticks([], [])
+
     plt.legend([r['name'] for r in results])
+    plt.gca().set_xscale('log')
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -290,18 +301,19 @@ def plot_segmentation_run_time_results(results, title, savefile):
 
 def plot_iou_results(results, title, savefile):
     fig = plt.figure()
-    #results = [results[0], results[1], results[0]]
-    linestyles = ['-', '-.', '--']
-    colors = ['blue', 'red', 'green']
-    facecolrs = ['blue', 'orange', 'green']
-    bins = np.histogram(np.hstack([r['iou'] for r in results]), bins=20)[1]
-    plot_ordered_histograms(
-        [r['iou'] for r in results],
-        [r['name'] for r in results],
-        'IoU With Previous Frame',
-        'Number of Frames',
-        title
-    )
+    plt.title(title)
+    # results = reversed(results)
+
+    edges = np.linspace(0, 1, 21)
+    for i, r in enumerate(results):
+        alpha = 0.75 * (1.0 - float(i) / len(results))
+        sns.histplot(data=r['iou'], bins=edges, element='step', alpha=alpha)
+
+    if title == 'Grass':
+        plt.xlabel('IoU With Previous Segmentation')
+    else:
+        plt.xticks([], [])
+    plt.legend([r['name'] for r in results])
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -326,15 +338,18 @@ def profile_worker_wrapper(args):
     return profile_segmentation(system, grid_maps_copy)
 
 
-def run_segmentation_profiling(logfile):
-    grid_maps, robot_outputs = get_grid_maps_from_log(logfile, duration=40)
-    params_folder = 'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
+def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None):
+    print(f'Generating profiling results for {env_name}')
+    grid_maps, robot_outputs = get_grid_maps_from_log(logfile, duration=duration)
+    params_folder = \
+        'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
     s3 = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
             'inclination_criterion': seg_criteria.inclination_criterion,
         }
     )
+    s3.set_name('S3 (Ours)')
 
     args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
     num_processes = len(args)
@@ -346,11 +361,36 @@ def run_segmentation_profiling(logfile):
 
     utils.setup_plots()
 
-    np.savez('../cached_results_for_plot_testing_2.npz', results=results)
-    plot_segmentation_run_time_results(results, 'Run Time', None)
-    plot_iou_results(results, 'Frame-to-Frame IoU', None)
+    run_time_save = save_prefix + '_run_time.svg' if save_prefix is not None else None
+    iou_save = save_prefix + '_iou.svg' if save_prefix is not None else None
+    plot_segmentation_run_time_results(results, env_name, run_time_save)
+    plot_iou_results(results, env_name, iou_save)
 
-    plt.show()
+    if save_prefix is None:
+        plt.show()
+
+
+def make_all_results_figures(logfolder, savefolder):
+    with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
+        config = yaml.safe_load(stream)
+
+    for env, env_config in config.items():
+        run_segmentation_profiling(
+            logfile=os.path.join(logfolder, env_config['log']),
+            duration=env_config['duration'],
+            env_name=env,
+            save_prefix=savefolder + env.replace(' ', '_')
+        )
+
+    crop_perception_results_svgs(savefolder)
+
+
+def crop_perception_results_svgs(savefolder):
+    current = os.getcwd()
+    os.chdir(savefolder)
+    files = glob.glob('*.svg')
+    for f in files:
+        subprocess.run(['inkscape', '--export-type=svg', '--export-id=axes_1', f, '-o', f])
 
 
 def run_pipeline_figure_script(logfile):
@@ -361,65 +401,9 @@ def run_pipeline_figure_script(logfile):
         grid_maps[example_idx], q, '../terrain_seg_figures')
 
 
-def plot_ordered_histograms(data_list, labels, xlabel, ylabel, title, bins=20, alpha=1.0, colors=None):
-    """
-    Plot multiple histograms with bars ordered by height within each bin.
-
-    Parameters:
-    data_list: List of arrays containing the data for each histogram
-    labels: List of labels for each dataset
-    bins: Number of bins or array of bin edges
-    alpha: Transparency of bars
-    colors: List of colors for each histogram (optional)
-    """
-    # Set default colors if none provided
-    if colors is None:
-        colors = plt.cm.viridis(np.linspace(0, 1, len(data_list)))
-
-    # Calculate bin edges using the combined range of all datasets
-    all_data = np.concatenate(data_list)
-    bin_edges = np.histogram_bin_edges(all_data, bins=bins)
-
-    # Calculate histograms for all datasets
-    hists = []
-    for data in data_list:
-        hist, _ = np.histogram(data, bins=bin_edges)
-        hists.append(hist)
-
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Width of bars
-    width = (bin_edges[1] - bin_edges[0])
-
-    # Plot histograms bin by bin
-    for bin_idx in range(len(bin_edges) - 1):
-        # Get heights for this bin from all histograms
-        heights = [hist[bin_idx] for hist in hists]
-        # Sort indices by height
-        sorted_indices = np.argsort(heights)
-        sorted_indices = reversed(sorted_indices)
-
-        # Plot bars in order of height (Highest to lowest)
-        x = bin_edges[bin_idx]
-        for idx in sorted_indices:
-            if heights[idx] > 0:  # Only plot if there's data
-                ax.bar(x, heights[idx], width,
-                       alpha=alpha,
-                       color=colors[idx],
-                       label=labels[idx] if bin_idx == 0 else "")
-
-    # Customize plot
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend()
-
-    return fig, ax
-
 def test_iou_plot():
     utils.setup_plots()
-    data = np.load('../cached_results_for_plot_testing.npz', allow_pickle=True)
+    data = np.load('../cached_results_for_plot_testing_2.npz', allow_pickle=True)
     results = data['results']
     plot_iou_results(results, 'Frame-to-Frame IoU', None)
     plt.show()
@@ -427,13 +411,18 @@ def test_iou_plot():
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--logfile', type=str)
+    parser.add_argument('--logfolder', type=str)
     args = parser.parse_args()
     # run_pipeline_figure_script(args.logfile)
-    # run_segmentation_profiling(args.logfile)
+
+    make_all_results_figures(
+        args.logfolder,
+        '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    )
+
     # profile_full_pipeline(args.logfile)
     # write_perception_video(args.logfile)
-    test_iou_plot()
+    # test_iou_plot()
 
 
 if __name__ == '__main__':

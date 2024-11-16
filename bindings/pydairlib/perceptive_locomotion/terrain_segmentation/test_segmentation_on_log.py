@@ -87,6 +87,8 @@ def build_diagram(mode: str, lcm: DrakeLcm, profiling=None) -> Diagram:
         profiling
     )
 
+    if mode != 'planar':
+        terrain_segmentation.safety_hysteresis = 0.4
     convex_decomposition = ConvexTerrainDecompositionSystem(profiling)
     foothold_sender = ConvexPolygonSender()
 

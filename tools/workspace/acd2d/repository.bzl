@@ -12,8 +12,8 @@ def acd2d_repository(
         upgrade_advice = """
             Update checksum to update to latest version
         """,
-        commit = "2eb86381ad560b1d02142db943630dc196720a46",
-        sha256 = "a9610404e1b6c375fc98ee838c654aa1d94511a4765b5104ab7f8164872eaecf",  # noqa
+        commit = "fc853459457a7d55115816db290a042c0fe67b87",
+        sha256 = "b78335d5f1a55f15061a8fac0306f66d2001b04a9df41f4ea3c2d820d0c1fffc",  # noqa
         build_file = "//tools/workspace/acd2d:package.BUILD.bazel",
         mirrors = mirrors,
     )

@@ -1,11 +1,11 @@
 nmodes: 3
-tmin: 0.27
+tmin: 0.28
 tmax: 0.33
 height: 0.85
 single_stance_duration: 0.30
 double_stance_duration: 0.1
 soft_constraint_cost: 1000
-time_regularization: 100
+time_regularization: 500
 stance_width: 0.2
 max_ankle_torque: 22
 ankle_torque_regularization: 0.01
@@ -22,8 +22,8 @@ Qf:
      0, 0, 0, 1.0  ]
 Q: [ 0.0001, 0, 0, 0,
      0, 0.0001, 0, 0,
-     0, 0, 0.001, 0,
-     0, 0, 0, 0.001]
+     0, 0, 0.0001, 0,
+     0, 0, 0, 0.0001]
 R: [ 25.0, 0, 0,
      0, 25.0, 0,
      0, 0, 4 ]

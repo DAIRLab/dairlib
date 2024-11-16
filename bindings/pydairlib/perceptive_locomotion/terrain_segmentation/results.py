@@ -125,7 +125,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
 
     segmentation = TerrainSegmentationSystem({
         'curvature_criterion': seg_criteria.curvature_criterion,
-        'variance_criterion': seg_criteria.variance_criterion,
+        'inclination_criterion': seg_criteria.inclination_criterion,
     })
     decomposition = ConvexTerrainDecompositionSystem()
     segmentation.debug = True

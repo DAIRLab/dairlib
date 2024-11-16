@@ -9,7 +9,7 @@ import pydairlib.perceptive_locomotion.terrain_segmentation.segmentation_utils a
 
 
 def curvature_criterion(
-        elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
+        denoised_and_inpainted_map: np.ndarray, ksize: Tuple[int, int],
         resolution: float) -> np.ndarray:
 
     # User specified parameters:
@@ -20,8 +20,7 @@ def curvature_criterion(
     blur_sigma = int(laplacian_blur / resolution + 0.5)
 
     # Calc criterion
-    median = cv2.medianBlur(elevation_inpainted, 5)
-    curvature = gaussian_laplace(median, sigma=blur_sigma)
+    curvature = gaussian_laplace(denoised_and_inpainted_map, sigma=blur_sigma)
     below_edges = np.maximum(curvature, np.zeros_like(curvature))
     second_order_safety_score = np.exp((-scaling / resolution) * below_edges)
 
@@ -57,10 +56,9 @@ def variance_criterion(
 
 
 def inclination_criterion(
-        elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
+        denoised_and_inpainted_map: np.ndarray, ksize: Tuple[int, int],
         resolution: float) -> np.ndarray:
 
-    median = cv2.medianBlur(elevation_inpainted, 5)
     inclination, _ = \
-        utils.CalculateNormalsAndSquaredError(median, ksize[0], resolution)
+        utils.CalculateNormalsAndSquaredError(denoised_and_inpainted_map, ksize[0], resolution)
     return np.power(inclination, 2)

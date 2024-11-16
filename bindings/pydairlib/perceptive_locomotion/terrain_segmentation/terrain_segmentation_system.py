@@ -77,17 +77,17 @@ class TerrainSegmentationSystem(LeafSystem):
         self.safety_scores = {}
 
     def get_raw_safety_score(
-            self, elevation: np.ndarray, elevation_inpainted: np.ndarray,
+            self, elevation: np.ndarray, denoised_and_inpainted_map: np.ndarray,
             resolution: float) -> np.ndarray:
 
-        raw_safety = np.ones_like(elevation_inpainted)
+        raw_safety = np.ones_like(denoised_and_inpainted_map)
         kernel = self.get_kernel_size(resolution)
 
         i = 0
         for name, callback in self.safety_criterion_callbacks.items():
             start = time.time()
             raw_safety = raw_safety * callback(
-                elevation_inpainted, kernel, resolution
+                denoised_and_inpainted_map, kernel, resolution
             )
             end = time.time()
             if self.profiling:
@@ -95,7 +95,7 @@ class TerrainSegmentationSystem(LeafSystem):
             i += 1
             if self.debug:
                 self.safety_scores[name] = callback(
-                    elevation_inpainted, kernel, resolution)
+                    denoised_and_inpainted_map, kernel, resolution)
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         
@@ -172,16 +172,22 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
+
+        denoised_and_inpainted_map = cv2.medianBlur(
+            elevation_map['elevation_inpainted'], 5)
+
         raw_safety_score = self.get_raw_safety_score(
             elevation_map['elevation'],
-            elevation_map['elevation_inpainted'],
+            denoised_and_inpainted_map,
             elevation_map.getResolution()
         )
 
-        smoothed = cv2.medianBlur(elevation_map['elevation_inpainted'], 5)
         smoothed = cv2.boxFilter(
-            smoothed, -1, self.get_kernel_size(elevation_map.getResolution()),
-            normalize=True)
+            denoised_and_inpainted_map,
+            -1,
+            self.get_kernel_size(elevation_map.getResolution()),
+            normalize=True
+        )
 
         segmented_map['interpolated'][:] = smoothed
         final_safety_score = self.cleanup_and_add_hysteresis(

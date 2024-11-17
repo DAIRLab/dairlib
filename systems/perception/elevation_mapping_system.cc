@@ -206,7 +206,7 @@ double ElevationMappingSystem::CalcMapOffsetFromContactState(
       ) * contact.second;
       try {
 
-        double sub_map_length = 3.0 * map.getResolution();
+        double sub_map_length = 4.0 * map.getResolution();
         grid_map::Position center_sub_map = stance_pos.head<2>();
         grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
         bool success;
@@ -304,7 +304,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
   // 4. If contact information is provided, update the map using contact points
   //    as a reference
-  if (has_contacts()) {
+  if (has_contacts() and get_input_port_contact().HasValue(context)) {
     const auto& contact_msg = EvalAbstractInput(
         context, input_port_contact_)->get_value<lcmt_contact>();
     double map_offset =
@@ -362,9 +362,6 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
-
-  // TODO (@Brian-Acosta) decide how to go about fusing if needed
-  //  map.fuseAll();
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -406,7 +403,6 @@ void ElevationMappingSystem::InitializeFlatTerrain(
   float half_len = static_cast<float>(params_.initialization_radius);
 
   for (const auto& contact : contacts) {
-
     Vector3d point_pos;
     plant_.CalcPointsPositions(
         *context_, contact.second, contact.first, plant_.world_frame(),

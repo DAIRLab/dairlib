@@ -38,3 +38,14 @@ py_binary(
         "@drake//bindings/pydrake",
     ],
 )
+
+py_binary(
+    name = "adjust_camera_pose",
+    srcs = ["adjust_camera_pose.py"],
+    deps = [
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "@drake//bindings/pydrake",
+    ],
+)

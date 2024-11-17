@@ -43,7 +43,7 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
 
-points_topic = "DRAKE_POINT_CLOUD"
+points_topic = "CASSIE_DEPTH"
 cassie_state_channel = "CASSIE_STATE_DISPATCHER"
 
 elevation_mapping_params = (

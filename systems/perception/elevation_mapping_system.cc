@@ -2,8 +2,12 @@
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
+#include "systems/perception/pointcloud/point_cloud_conversions.h"
 #include "systems/framework/output_vector.h"
 #include "common/time_series_buffer.h"
+
+#include <drake/lcmt_point_cloud.hpp>
+#include <lcm/lcm-cpp.hpp>
 
 namespace dairlib {
 namespace perception {
@@ -21,6 +25,7 @@ using drake::systems::EventStatus;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::MultibodyPlant;
+using drake::perception::PointCloudToLcm;
 
 using grid_map::GridMap;
 using elevation_mapping::ElevationMap;
@@ -126,6 +131,12 @@ ElevationMappingSystem::ElevationMappingSystem(
   }
   DeclarePerStepUnrestrictedUpdateEvent(
       &ElevationMappingSystem::UpdateStateBuffer);
+
+  if (publish_debug_clouds_) {
+    pc_debug_sender_ = std::make_unique<PointCloudToLcm>(
+        params.sensor_poses.front().sensor_name_);
+    pc_debug_context_ = pc_debug_sender_->CreateDefaultContext();
+  }
 }
 
 void ElevationMappingSystem::SetDefaultState(const Context<double> &context,
@@ -326,6 +337,19 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         plant_.GetBodyByName(sensor_poses_.at(name).sensor_parent_body_)
     );
     const auto& X_PS =  sensor_poses_.at(name).sensor_pose_in_parent_body_;
+
+    if (publish_debug_clouds_) {
+      PointCloudType::Ptr pc_filtered(new PointCloudType);
+      auto pre = dynamic_cast<PerceptiveLocomotionPreprocessor*>(sensor_preprocessors_.at(name).get());
+      pre->RunPreprocessorForDebug(cloud, pc_filtered, X_PS, X_WP);
+      drake::perception::PointCloud drake_cloud;
+      AssignFields<elevation_mapping::PointCloudType::PointType>(pc_filtered, drake_cloud);
+      pc_debug_context_->SetTime(1e-6 * cloud->header.stamp);
+      pc_debug_sender_->get_input_port().FixValue(pc_debug_context_.get(), drake_cloud);
+      drake::lcmt_point_cloud msg = pc_debug_sender_->get_output_port().Eval<drake::lcmt_point_cloud>(*pc_debug_context_);
+      lcm::LCM lcm;
+      lcm.publish("CALIBRATION_PC", &msg);
+    }
 
     // apply preprocessor
     sensor_preprocessors_.at(name)->process(

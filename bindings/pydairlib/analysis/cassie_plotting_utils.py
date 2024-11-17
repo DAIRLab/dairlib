@@ -138,6 +138,7 @@ def plot_battery_voltage(cassie_out, ps=None):
     )
     return ps
 
+
 def get_toe_frames_and_points(plant):
     front_contact_pt = np.array((-0.0457, 0.112, 0))
     rear_contact_pt = np.array((0.088, 0, 0))

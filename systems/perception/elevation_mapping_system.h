@@ -9,6 +9,7 @@
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
 
 // Drake
+#include "drake/perception/point_cloud_to_lcm.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -231,6 +232,12 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   std::map<std::string,
            std::shared_ptr<elevation_mapping::SensorProcessorBase>> sensor_preprocessors_;
+
+  const bool publish_debug_clouds_ = false;
+  std::unique_ptr<drake::perception::PointCloudToLcm> pc_debug_sender_ = nullptr;
+  std::unique_ptr<drake::systems::Context<double>> pc_debug_context_ = nullptr;
+
+
 };
 
 }

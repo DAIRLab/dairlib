@@ -347,7 +347,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
       pc_debug_context_->SetTime(1e-6 * cloud->header.stamp);
       pc_debug_sender_->get_input_port().FixValue(pc_debug_context_.get(), drake_cloud);
       drake::lcmt_point_cloud msg = pc_debug_sender_->get_output_port().Eval<drake::lcmt_point_cloud>(*pc_debug_context_);
-      lcm::LCM lcm;
+      lcm::LCM lcm("udpm://239.255.76.67:7667?ttl=0");
       lcm.publish("CALIBRATION_PC", &msg);
     }
 

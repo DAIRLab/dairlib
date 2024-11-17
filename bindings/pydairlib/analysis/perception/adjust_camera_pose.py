@@ -4,6 +4,7 @@ import lcm
 import numpy as np
 
 from drake import lcmt_point_cloud, lcmt_point_cloud_field
+from dairlib import lcmt_robot_output
 
 from pydrake.perception import (
     BaseField,
@@ -181,9 +182,11 @@ def solve_calibration(data):
     total_points = 0
     for t in data['t']:
         cloud = data['cloud'][t]
-        print(f'Adding cloud at t = {t} with {cloud.size()} points')
-        total_points += cloud.size()
-        pelvis_xyz_homogenous = np.vstack([R @ cloud.xyzs() + p, np.ones((1, cloud.size()))])
+        print(f'Adding cloud at t = {t} with {cloud.size() / 100} points')
+        total_points += cloud.size() / 100
+        cloud_xyzs = cloud.xyzs()
+        cloud_xyzs = cloud_xyzs[:, :100:-1]
+        pelvis_xyz_homogenous = np.vstack([R @ cloud_xyzs + p, np.ones((1, cloud_xyzs.shape[1]))])
         world_z = data['pelvis_pose'][t].GetAsMatrix34()[-1, :] @ pelvis_xyz_homogenous
         prog.AddQuadraticCost(np.sum((world_z - data['foot_height'][t])**2))
 
@@ -212,16 +215,18 @@ def solve_calibration(data):
 def main():
     logfile = sys.argv[1]
 
-    state_channel = 'CASSIE_STATE_DISPATCHER'
+    state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
     pc_channel = 'CALIBRATION_PC'
 
     log = lcm.EventLog(logfile, "r")
-    lcm_channels = cassie_default_channels
-    lcm_channels[pc_channel] = lcmt_point_cloud
+    lcm_channels = {
+        state_channel: lcmt_robot_output, 
+        pc_channel: lcmt_point_cloud
+    }
     data = get_log_data(
         log,
         lcm_channels,
-        0, 5,
+        0, 0.30,
         process_lcm_data,
         state_channel,
         pc_channel

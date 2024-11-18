@@ -82,7 +82,7 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     return grid_maps, robot_output
 
 
-def write_perception_meshcat_video(logfile: str):
+def write_perception_meshcat_video(logfile: str, duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
     plant_visualizer = PlantVisualizer(urdf, "pelvis")
@@ -447,9 +447,12 @@ def test_iou_plot():
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--logfolder', type=str)
+    parser.add_argument('--logfolder', type=str, default='')
+    parser.add_argument('--logfile', type=str, default='')
+
     args = parser.parse_args()
-    make_all_segmentation_videos(args.logfolder)
+
+    # make_all_segmentation_videos(args.logfolder)
 
     # run_pipeline_figure_script(args.logfile)
 
@@ -458,7 +461,7 @@ def main():
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     # )
     # profile_full_pipeline(args.logfile)
-    # write_perception_meshcat_video(args.logfile)
+    write_perception_meshcat_video(args.logfile, duration=60.0)
     # test_iou_plot()
 
 

@@ -195,7 +195,7 @@ int DoMain(int argc, char* argv[]) {
       context_w_spr.get(),
       2.0,  // rotational velocity command scaling
       0.5,  // sagittal velocity command scaling
-      -0.5, // lateral vel scaling
+      -0.9, // lateral vel scaling
       0.5   // stick filter time constant
   );
 

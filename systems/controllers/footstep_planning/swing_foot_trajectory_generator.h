@@ -8,7 +8,6 @@
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace systems {

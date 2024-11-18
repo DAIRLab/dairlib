@@ -1,5 +1,8 @@
 import os
 import numpy as np
+import tempfile
+import subprocess
+from PIL import Image
 from grid_map import GridMap
 import matplotlib
 from matplotlib import pyplot as plt
@@ -22,6 +25,23 @@ def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
         return 0
 
     return float(intersection.sum()) / float(union.sum())
+
+
+def write_arrays_to_video(sequence, video_out_path):
+    with tempfile.TemporaryDirectory() as folder:
+        for frame, data in enumerate(sequence):
+            im = Image.fromarray(data)
+            frame_filename = os.path.join(folder, f"frame_{frame:06d}.png")
+            im.save(frame_filename)
+            subprocess.run([
+                'ffmpeg',
+                '-framerate',
+                '30',
+                '-i',
+                os.path.join(folder, f"frame_%06d.png"),
+                '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+                video_out_path
+            ], check=True)
 
 
 def process_grid_maps(data_dict, elevation_map_channel, state_channel):

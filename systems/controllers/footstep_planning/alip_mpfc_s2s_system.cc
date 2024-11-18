@@ -84,7 +84,8 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   MatrixXd G = MatrixXd::Identity(4,4);
   MatrixXd Q = 0.1 * Eigen::Matrix4d::Identity();
   MatrixXd R = 0.01 * MatrixXd::Identity(4, 4);
-  R.bottomRightCorner<2,2>() *= 100;
+  R(2,2) = 1;
+  R(3,3) = 0.2;
 
   S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
   S2SKalmanFilter filter = S2SKalmanFilter(filter_data);

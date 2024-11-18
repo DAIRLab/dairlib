@@ -7,6 +7,8 @@ from copy import deepcopy
 from multiprocessing import Pool
 
 import lcm
+from PIL import Image
+import tempfile
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -78,7 +80,7 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     return grid_maps, robot_output
 
 
-def write_perception_video(logfile: str):
+def write_perception_meshcat_video(logfile: str):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
     plant_visualizer = PlantVisualizer(urdf, "pelvis")
@@ -337,10 +339,8 @@ def profile_worker_wrapper(args):
     system.set_name(name)
     return profile_segmentation(system, grid_maps_copy)
 
-
-def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None):
-    print(f'Generating profiling results for {env_name}')
-    grid_maps, robot_outputs = get_grid_maps_from_log(logfile, duration=duration)
+def get_segmentation_results(logfile, duration):
+    grid_maps, _ = get_grid_maps_from_log(logfile, duration=duration)
     params_folder = \
         'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
     s3 = TerrainSegmentationSystem(
@@ -359,6 +359,21 @@ def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None)
 
     results.append(profile_segmentation(s3, deepcopy(grid_maps)))
 
+    return results
+
+
+def make_segmentation_videos(logfile, duration, env_name=''):
+    results = get_segmentation_results(logfile, duration)
+    for r in results:
+        utils.write_arrays_to_video(
+            [255.0 * s for s in r['segmentations']],
+            f'../{env_name}_{r["name"]}_segmentation.mp4'
+        )
+
+
+def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None):
+    print(f'Generating profiling results for {env_name}')
+    results = get_segmentation_results(logfile, duration)
     utils.setup_plots()
 
     run_time_save = save_prefix + '_run_time.svg' if save_prefix is not None else None
@@ -415,13 +430,12 @@ def main():
     args = parser.parse_args()
     # run_pipeline_figure_script(args.logfile)
 
-    make_all_results_figures(
-        args.logfolder,
-        '../manuscripts/perceptive_walking_tro/figures/perception_results/'
-    )
-
+    # make_all_results_figures(
+    #     args.logfolder,
+    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    # )
     # profile_full_pipeline(args.logfile)
-    # write_perception_video(args.logfile)
+    # write_perception_meshcat_video(args.logfile)
     # test_iou_plot()
 
 

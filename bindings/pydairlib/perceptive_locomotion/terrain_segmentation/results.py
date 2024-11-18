@@ -6,6 +6,8 @@ from time import sleep
 from copy import deepcopy
 from multiprocessing import Pool
 
+import cv2
+
 import lcm
 from PIL import Image
 import tempfile
@@ -239,7 +241,11 @@ def profile_segmentation(system, grid_maps):
         except RuntimeError:
             import pdb; pdb.set_trace()
 
-        segmentations.append(process_grid_maps[-1]['segmentation'])
+        seg = process_grid_maps[-1]['segmentation']
+
+        # make binary (0 to 1)
+        seg = seg / np.maximum(1.0, seg.max())
+        segmentations.append(seg)
         end = time.time()
         runtime.append(end - start)
 
@@ -339,8 +345,9 @@ def profile_worker_wrapper(args):
     system.set_name(name)
     return profile_segmentation(system, grid_maps_copy)
 
-def get_segmentation_results(logfile, duration):
-    grid_maps, _ = get_grid_maps_from_log(logfile, duration=duration)
+
+def get_segmentation_results(logfile, duration, start_time=0):
+    grid_maps, _ = get_grid_maps_from_log(logfile, start_time=start_time, duration=duration)
     params_folder = \
         'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
     s3 = TerrainSegmentationSystem(
@@ -354,20 +361,34 @@ def get_segmentation_results(logfile, duration):
     args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
     num_processes = len(args)
     # Create a process pool and map the function across all systems
-    with Pool(processes=num_processes) as pool:
-        results = pool.map(profile_worker_wrapper, args)
+    results = [profile_worker_wrapper(arg) for arg in args]
+    # with Pool(processes=num_processes) as pool:
+    #     results = pool.map(profile_worker_wrapper, args)
 
     results.append(profile_segmentation(s3, deepcopy(grid_maps)))
 
     return results
 
 
-def make_segmentation_videos(logfile, duration, env_name=''):
-    results = get_segmentation_results(logfile, duration)
+def make_segmentation_videos(logfile, start_time, duration, env_name=''):
+    results = get_segmentation_results(logfile, start_time=start_time, duration=duration)
     for r in results:
         utils.write_arrays_to_video(
-            [255.0 * s for s in r['segmentations']],
-            f'../{env_name}_{r["name"]}_segmentation.mp4'
+            [cv2.resize(255 * s.astype(np.uint8), (300, 300), cv2.INTER_NEAREST_EXACT) for s in r['segmentations']],
+            f'../segmentation_videos/{env_name}_{r["name"]}_segmentation.mp4'
+        )
+
+
+def make_all_segmentation_videos(logfolder):
+    with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
+        config = yaml.safe_load(stream)
+
+    for env, env_config in config.items():
+        make_segmentation_videos(
+            logfile=os.path.join(logfolder, env_config['log']),
+            start_time=env_config['start'],
+            duration=env_config['duration'],
+            env_name=env
         )
 
 
@@ -428,6 +449,8 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfolder', type=str)
     args = parser.parse_args()
+    make_all_segmentation_videos(args.logfolder)
+
     # run_pipeline_figure_script(args.logfile)
 
     # make_all_results_figures(

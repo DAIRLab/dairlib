@@ -33,15 +33,15 @@ def write_arrays_to_video(sequence, video_out_path):
             im = Image.fromarray(data)
             frame_filename = os.path.join(folder, f"frame_{frame:06d}.png")
             im.save(frame_filename)
-            subprocess.run([
-                'ffmpeg',
-                '-framerate',
-                '30',
-                '-i',
-                os.path.join(folder, f"frame_%06d.png"),
-                '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-                video_out_path
-            ], check=True)
+        subprocess.run([
+            'ffmpeg',
+            '-framerate',
+            '30',
+            '-i',
+            os.path.join(folder, f"frame_%06d.png"),
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+            video_out_path
+        ], check=True)
 
 
 def process_grid_maps(data_dict, elevation_map_channel, state_channel):

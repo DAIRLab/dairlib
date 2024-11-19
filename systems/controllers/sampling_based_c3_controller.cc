@@ -1034,7 +1034,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     Eigen::Vector3d v4 = v3.cross(v1).normalized();
 
     // Ensure the traversed arc stays above the ground.
-    if (v4[2] < 0.5) {
+    if (v4(2) < -0.5 && travel_angle > M_PI_2) {
       v4 = -v4;
       travel_angle = 2*M_PI - travel_angle;
     }
@@ -1045,7 +1045,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // desired travel distance.
     double dtheta = sampling_params_.reposition_speed*c3_options_.planning_dt /
       sampling_params_.spherical_repositioning_radius;
-    double step_size = sampling_params_.reposition_speed*c3_options_.planning_dt;
+    double step_size = sampling_params_.reposition_speed*
+      c3_options_.planning_dt;
 
     knots.col(0) = x_lcs;
     int i = 1;
@@ -1076,16 +1077,17 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
     // Handle the last leg:  straight line from waypoint2 to goal EE location.
     int leg2_i = i;
-    double dstep = (dtheta0 + (i-leg1_i)*dtheta - travel_angle)/dtheta * step_size;
+    double dstep = (dtheta0 + (i-leg1_i)*dtheta - travel_angle)/dtheta *
+      step_size;
     double dist_wp2_to_goal = (waypoint2 - best_sample_location).norm();
     while ((dstep + (i-leg2_i)*step_size < dist_wp2_to_goal) && (i < N_)) {
       Eigen::Vector3d straight_line_point = waypoint2 +
         (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*
         (best_sample_location - waypoint2);
+
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = straight_line_point;
       knots.col(i) = next_lcs_state;
-
       i++;
     }
 
@@ -1094,7 +1096,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       Eigen::Vector3d x_lcs_goal = x_lcs;
       x_lcs_goal.head(3) = best_sample_location;
       knots.col(j) = x_lcs_goal;
-      finished_reposition_flag_ = true;
+      if (j == 1 && !is_doing_c3_) {
+        finished_reposition_flag_ = true;
+      }
     }
   }
 

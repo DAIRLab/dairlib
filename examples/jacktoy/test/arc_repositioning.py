@@ -7,13 +7,13 @@ import numpy as np
 
 # Parameters.
 use_straight_line_traj_within_angle = 0.3
-reposition_speed = 1
+reposition_speed = 0.1
 spherical_repositioning_radius = 0.17
-N_ = 400
+N_ = 100
 planning_dt = 0.05
 
 # Make up some locations.
-TEST_I = 2
+TEST_I = 0
 current_ee_locations = [
     np.array([-0.03, -0.06, 0.02]),
     np.array([0.05, 0.0, 0.02]),
@@ -33,8 +33,10 @@ current_ee_location = current_ee_locations[TEST_I]
 best_sample_location = best_sample_locations[TEST_I]
 current_object_location = current_object_locations[TEST_I]
 
-print(f'Dist from curr to object: {np.linalg.norm(current_ee_location - current_object_location)}')
-print(f'Dist from goal to object: {np.linalg.norm(best_sample_location - current_object_location)}')
+print(f'Dist from curr to object: ' + \
+      f'{np.linalg.norm(current_ee_location - current_object_location)}')
+print(f'Dist from goal to object: ' + \
+      f'{np.linalg.norm(best_sample_location - current_object_location)}')
 
 # Start the computation.
 curr_to_goal_vec = best_sample_location - current_ee_location
@@ -51,6 +53,7 @@ total_travel_time = travel_distance / reposition_speed
 
 knots = np.zeros((3, N_))
 finished_reposition_flag_ = False
+finished_i = N_
 
 # Do straight line if within some tight angle of the goal.
 if travel_angle < use_straight_line_traj_within_angle:
@@ -61,6 +64,7 @@ if travel_angle < use_straight_line_traj_within_angle:
         if i*planning_dt >= total_travel_time and not finished_reposition_flag_:
             print(f'Finished with straight line trajectory in {i} steps.')
             finished_reposition_flag_ = True
+            finished_i = i
 
 # Otherwise do the straight line to an arc to a straight line.
 else:
@@ -71,7 +75,7 @@ else:
     v4 = np.cross(v3, v1) / np.linalg.norm(np.cross(v3, v1))
 
     # Ensure the traversed arc stays above the ground.
-    if v4[2] < -0.5:
+    if v4[2] < -0.5 & travel_angle > np.pi/2:
         v4 = -v4
         travel_angle = 2*np.pi - travel_angle
         print(f'Flipping the travel direction -- travel angle: {travel_angle}')
@@ -103,8 +107,8 @@ else:
     dstep = (dtheta0 + (i-leg1_i)*dtheta - travel_angle)/dtheta * step_size
     dist_wp2_to_goal = np.linalg.norm(waypoint2 - best_sample_location)
     while (dstep + (i-leg2_i)*step_size < dist_wp2_to_goal) & (i < N_):
-        knots[:, i] = waypoint2 + (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*(
-            best_sample_location - waypoint2)
+        knots[:, i] = waypoint2 + (dstep + (i-leg2_i)*step_size) / \
+            dist_wp2_to_goal * (best_sample_location - waypoint2)
         i += 1
 
     # Fill in the rest of the knots with the goal EE location.
@@ -113,23 +117,27 @@ else:
         if not finished_reposition_flag_:
             finished_reposition_flag_ = True
             print(f'Made it to the end via arc in {j} steps.')
+            finished_i = j
 
 
 # Make a 3D plot.
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-# Make axis aspect ratio equal.
 ax.set_aspect('equal')
 ax.plot([current_object_location[0]],
         [current_object_location[1]],
-        [current_object_location[2]], 'b*', label='Current Object')
+        [current_object_location[2]], 'b*', markersize=10,
+        label='Current Object')
 ax.plot([current_ee_location[0]],
         [current_ee_location[1]],
-        [current_ee_location[2]], 'k*', label='Current EE')
+        [current_ee_location[2]], 'r*', markersize=10, label='Current EE')
 ax.plot([best_sample_location[0]],
         [best_sample_location[1]],
-        [best_sample_location[2]], 'g*', label='Best Sample')
-ax.plot(knots[0, :], knots[1, :], knots[2, :], 'r.', label='EE Trajectory')
+        [best_sample_location[2]], 'g*', markersize=10, label='Best Sample')
+scatter = ax.scatter(knots[0, :], knots[1, :], knots[2, :],
+                     c=np.arange(knots.shape[1]), cmap='plasma', vmin=0,
+                     vmax=finished_i, label='EE Trajectory')
+plt.colorbar(scatter)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')

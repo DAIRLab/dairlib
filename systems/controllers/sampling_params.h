@@ -26,7 +26,7 @@ struct SamplingC3SamplingParams {
   double reposition_speed;
   double use_straight_line_traj_under;
   double use_straight_line_traj_within_angle;
-  double use_spherical_repositioning;
+  bool use_spherical_repositioning;
   int cost_type;
   bool use_more_contacts_to_compute_cost;
   double cost_switching_threshold_distance;

@@ -1054,8 +1054,11 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // waypoint1.
     double dist_to_wp1 = (current_ee_location - waypoint1).norm();
     while ((i*step_size < dist_to_wp1) && (i < N_)) {
+      Eigen::Vector3d straight_line_point = current_ee_location +
+        i*step_size/dist_to_wp1 * (waypoint1 - current_ee_location);
+
       VectorXd next_lcs_state = x_lcs;
-      next_lcs_state.head(3) = current_ee_location + i*step_size*v1;
+      next_lcs_state.head(3) = straight_line_point;
       knots.col(i) = next_lcs_state;
       i++;
     }

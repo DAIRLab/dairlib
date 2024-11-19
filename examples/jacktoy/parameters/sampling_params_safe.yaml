@@ -15,12 +15,12 @@ fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
 sampling_radius: 0.12
 
 # Height of sampling circle; used for circle perimeter (0, 1).
-sampling_height: 0.069
+sampling_height: 0.04
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
-min_angle_from_vertical: 0  #0.785
-max_angle_from_vertical: 1.65 #Equivalent to 104deg
+min_angle_from_vertical: 0.5  #0.785
+max_angle_from_vertical: 1.75 #1.75 rad = 100.26 deg
 
 # Number of additional samples to consider in each mode (repositioning or C3).
 # In repositioning mode, we automatically store the current location and the 
@@ -35,6 +35,8 @@ num_additional_samples_c3: 2
 # Repositioning parameters.
 spline_width: 0.17
 reposition_speed: 0.30    # m/s
+use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
+                                    # uses a straight line instead of spline
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
@@ -43,19 +45,21 @@ reposition_speed: 0.30    # m/s
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 2
-use_more_contacts_to_compute_cost: false
+use_more_contacts_to_compute_cost: true
+####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
+####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
+####### sampling_params.
 cost_switching_threshold_distance: 0.15
-
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 1000
+c3_to_repos_hysteresis: 2000 #100000000 #3000000
 finished_reposition_cost: 1000000000
-repos_to_c3_hysteresis: 1000
-hysteresis_between_repos_targets: 10000000
+repos_to_c3_hysteresis: 3000
+hysteresis_between_repos_targets: 60000000000000
 
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
 # repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
-use_relative_hysteresis: false
-c3_to_repos_cost_fraction: 0.2
-repos_to_c3_cost_fraction: 0.2
+use_relative_hysteresis: true
+c3_to_repos_cost_fraction: 0.28
+repos_to_c3_cost_fraction: 0.18
 repos_to_repos_cost_fraction: 0.3

@@ -53,6 +53,9 @@ fixed_target_position: [0.4, 0.15, 0.031971466]    # 12) yaw only
 fixed_target_orientation: [-0.4379764, 0.7895742, -0.4070009, -0.14003317]
 #^^# C3 sanity checking good starting configurations #^^#
 
+# fixed_target_position: [0.2, 0, 0.031971466]    # 13) position target close to base
+# fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+
 
 
 

@@ -167,28 +167,93 @@ def H_with_manual_edits(q_np, r_np):
     return H
 
 
+def quaternion_multiplication(q, r):
+    q_w, q_x, q_y, q_z = q
+    r_w, r_x, r_y, r_z = r
+    return np.array([
+        q_w*r_w - q_x*r_x - q_y*r_y - q_z*r_z,
+        q_w*r_x + q_x*r_w + q_y*r_z - q_z*r_y,
+        q_w*r_y - q_x*r_z + q_y*r_w + q_z*r_x,
+        q_w*r_z + q_x*r_y - q_y*r_x + q_z*r_w])
+
+def quaternion_inverse(q):
+    q_w, q_x, q_y, q_z = q
+    return np.array([q_w, -q_x, -q_y, -q_z])
+
 # Perform tests to ensure the simplified version is correct and faster to
 # evaluate.
-original_durations = []
+# Test 1) Random quaternions.
+# original_durations = []
+# simplified_durations = []
+# for _ in range(20):
+#     q_np = np.random.rand(4)
+#     r_np = np.random.rand(4)
+#     r_np = r_np / np.linalg.norm(r_np)  # Ensure the desired quaternion is unit
+#                                         # length.
+
+#     # Time the original.
+#     start = time.time()
+#     H_original = np.array(H_from_symbolic(q_np, r_np), dtype=np.float64)
+#     original_durations.append(time.time() - start)
+
+#     # Time the simplified version.
+#     start = time.time()
+#     H_simplified = H_with_manual_edits(q_np, r_np)
+#     simplified_durations.append(time.time() - start)
+
+#     # Compare.
+#     print(f'Error: {np.linalg.norm(H_original - H_simplified):.10f},', end=' ')
+#     print(f'Duration: {original_durations[-1]*1e6:.2f} µs versus ' + \
+#           f'{simplified_durations[-1]*1e6:.2f} µs,', end=' ')
+#     print(f'Determinant: {np.linalg.det(H_original):.2f}')
+
+
+# Test 2) Random target quaternion with current quaternion that's within a
+# lookahead angle of it.
 simplified_durations = []
+LOOKAHEAD = np.deg2rad(40)
 for _ in range(20):
-    q_np = np.random.rand(4)
     r_np = np.random.rand(4)
     r_np = r_np / np.linalg.norm(r_np)  # Ensure the desired quaternion is unit
                                         # length.
+    # Get current quaternion that's within a lookahead angle of the target.
+    angle = np.random.rand() * LOOKAHEAD
+    # angle = LOOKAHEAD
+    axis = np.random.rand(3)
+    axis = axis / np.linalg.norm(axis)
+    q_rel = np.array([np.cos(angle/2), *np.sin(angle/2)*axis])
+    q_np = quaternion_multiplication(r_np, q_rel)
 
-    # Time the original.
-    start = time.time()
-    H_original = np.array(H_from_symbolic(q_np, r_np), dtype=np.float64)
-    original_durations.append(time.time() - start)
+    # # Double check the angle between the two quaternions.
+    # rel_quat = quaternion_multiplication(quaternion_inverse(r_np), q_np)
+    # actual_angle = 2 * np.arccos(rel_quat[0])
+    # print(f'Expected angle: {angle}, actual angle: {actual_angle}')
+    # breakpoint()
 
     # Time the simplified version.
     start = time.time()
     H_simplified = H_with_manual_edits(q_np, r_np)
     simplified_durations.append(time.time() - start)
 
+    # Regularizer.
+    reg = r_np.reshape(4,1) @ r_np.reshape(1,4)
+
     # Compare.
-    print(f'Error: {np.linalg.norm(H_original - H_simplified):.10f},', end=' ')
-    print(f'Duration: {original_durations[-1]*1e6:.2f} µs versus ' + \
-          f'{simplified_durations[-1]*1e6:.2f} µs,', end=' ')
-    print(f'Determinant: {np.linalg.det(H_original):.2f}')
+    print(f'Duration: {simplified_durations[-1]*1e6:.2f} µs,', end=' ')
+    print(f'Determinant: {np.linalg.det(H_simplified):.2f}')
+
+    # Find the minimum weight of the regularizer to get a PSD hessian.
+    det = np.linalg.det(H_simplified)
+
+    orig = min(np.linalg.eigvals(H_simplified))
+    reg1 = min(np.linalg.eigvals(H_simplified + (2*angle+0.1)*reg))
+    reg2 = min(np.linalg.eigvals(H_simplified + (2*angle)*reg))
+    reg3 = min(np.linalg.eigvals(H_simplified + reg))
+    reg4 = min(np.linalg.eigvals(H_simplified + angle*reg))
+    reg5 = min(np.linalg.eigvals(H_simplified + np.max([0, -orig])*np.eye(4)))
+
+    print(f'Angle: {np.rad2deg(angle):1f}, Minimum eigenvalues: {orig:.2f},' + \
+          f' {reg1:.2f}, {reg2:.2f}, {reg3:.2f}, {reg4:.2f}, {reg5:.2f}')
+    breakpoint()
+
+

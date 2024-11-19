@@ -2,10 +2,16 @@ import argparse
 import os
 from lcm import EventLog
 import dairlib
+from pydrake.trajectories import PiecewiseQuaternionSlerp
+from pydrake.common.eigen_geometry import Quaternion
+from pydrake.common.eigen_geometry import AngleAxis
+from pydrake.math import RotationMatrix
 import matplotlib.pyplot as plt
 import numpy as np
 
-def process_lcm_log(log_file_path, target_channels_and_message_types):
+
+def process_lcm_log(log_file_path, target_channels_and_message_types,
+                    start_time=0.0, end_time=9999999999999):
     # Open the LCM log file
     log_file = EventLog(log_file_path, 'r')
     
@@ -16,41 +22,59 @@ def process_lcm_log(log_file_path, target_channels_and_message_types):
     osc_debug_msg_utimes = {}
 
     # Read through the log file
-    event = log_file.read_next_event()
-    initial_timestamp = event.timestamp
+    first_event = log_file.read_next_event()
+    initial_utimestamp = first_event.timestamp
     # DELETE TEMPORARY: Set the initial timestamp to 0
-    # initial_timestamp = 0
+    # initial_utimestamp = 0
     # get the initial message's utime
-    if event.channel in target_channels_and_message_types:
-            msg_type = target_channels_and_message_types[event.channel].decode(event.data)
-            initial_utime = msg_type.utime
-            # DELETE TEMPORARY: Set the initial utime to 0
-            # initial_utime = 0
+    if first_event.channel in target_channels_and_message_types:
+        msg_contents = target_channels_and_message_types[event.channel].decode(event.data)
+        initial_utime = msg_contents.utime
+        # DELETE TEMPORARY: Set the initial utime to 0
+        # initial_utime = 0
     else:
         initial_utime = 0
 
+    print("start time is: ", start_time)
+    print("end time is: ", end_time)
+    event = log_file.seek_to_timestamp(initial_utimestamp + int(start_time*1e6))
+    event = log_file.read_next_event()
+
+    c3_actual_times = []
+    c3_actual_states = []
+
+    c3_target_times = []
+    c3_target_states = []
+
+    c3_final_target_times = []
+    c3_final_target_states = []
+
     while event is not None:
         # Check if the message is from the target channel
-        adjusted_timestamp = event.timestamp - initial_timestamp
+        adjusted_event_timestamp = (event.timestamp - initial_utimestamp) * 1e-6
+        if adjusted_event_timestamp > end_time:
+            break
+
         if event.channel in target_channels_and_message_types:
-            msg_type = target_channels_and_message_types[event.channel].decode(event.data)
-            adjusted_utime = (msg_type.utime - initial_utime)*1e-6
+            msg_contents = target_channels_and_message_types[event.channel].decode(event.data)
+            # adjusted_msg_timestamp = (msg_contents.utime - initial_utime)*1e-6
+            adjusted_msg_timestamp = (msg_contents.utime)*1e-6
 
             # Process FRANKA_STATE_SIMULATION and OBJECT_STATE_SIMULATION messages
             if event.channel == "FRANKA_STATE_SIMULATION":
-                franka_utimes[adjusted_utime] = adjusted_timestamp
+                franka_utimes[adjusted_msg_timestamp] = adjusted_msg_timestamp
             elif event.channel == "OBJECT_STATE_SIMULATION":
-                object_utimes[adjusted_utime] = adjusted_timestamp
+                object_utimes[adjusted_msg_timestamp] = adjusted_msg_timestamp
             elif event.channel == "TRACKING_TRAJECTORY_ACTOR":
-                tracking_msg_utimes[adjusted_utime] = adjusted_timestamp
+                tracking_msg_utimes[adjusted_msg_timestamp] = adjusted_msg_timestamp
             elif event.channel == "OSC_DEBUG_FRANKA":
-                osc_debug_msg_utimes[adjusted_utime] = adjusted_timestamp
+                osc_debug_msg_utimes[adjusted_msg_timestamp] = adjusted_msg_timestamp
 
             # Process TRACKING_TRAJECTORY_ACTOR messages
             # elif event.channel == "TRACKING_TRAJECTORY_ACTOR":
-            #     tracking_msg_utime = adjusted_utime
-            #     timestamp = adjusted_timestamp
-            #     tracking_msg_utimes[adjusted_utime] = adjusted_timestamp
+            #     tracking_msg_utime = adjusted_msg_timestamp
+            #     timestamp = adjusted_msg_timestamp
+            #     tracking_msg_utimes[adjusted_msg_timestamp] = adjusted_msg_timestamp
 
             #     if tracking_msg_utime in franka_utimes:
             #         print(f"\tReceived FRANKA_STATE_SIMULATION message at: {franka_utimes[tracking_msg_utime]*1e-6}, utime: {tracking_msg_utime*1e-6}\n"
@@ -70,10 +94,23 @@ def process_lcm_log(log_file_path, target_channels_and_message_types):
             #         print(f"\t\tReceived TRACKING_TRAJECTORY_ACTOR message at : {timestamp*1e-6}, utime: {tracking_msg_utime*1e-6}")
             #         # print(f"\tReceived TRACKING_TRAJECTORY_ACTOR message at : {timestamp}, utime: {tracking_msg_utime}")
            
-            # # Process C3_DEBUG_CURR messages
-            # elif event.channel == "C3_ACTUAL":
-            #     c3_actual_msg_utime = adjusted_utime
-            #     timestamp = adjusted_timestamp
+            # Process C3_DEBUG_CURR messages
+            elif event.channel == "C3_ACTUAL":
+                c3_actual_times.append(adjusted_msg_timestamp)
+                c3_actual_states.append(msg_contents.state)
+                print(f"Received C3_ACTUAL message at : {adjusted_msg_timestamp}")
+
+            elif event.channel == "C3_TARGET":
+                c3_target_times.append(adjusted_msg_timestamp)
+                c3_target_states.append(msg_contents.state)
+                print(f"Received C3_TARGET message at : {adjusted_msg_timestamp}")
+
+            elif event.channel == "C3_FINAL_TARGET":
+                c3_final_target_times.append(adjusted_msg_timestamp)
+                c3_final_target_states.append(msg_contents.state)
+                print(f"Received C3_FINAL_TARGET message at : {adjusted_msg_timestamp}")
+                # if(c3_actual_states != [] and c3_target_states != []):
+                #     break
 
             #     if c3_actual_msg_utime in franka_utimes:
             #         ## print(f"Received FRANKA_STATE_SIMULATION message at: {franka_utimes[c3_actual_msg_utime]*1e-6}, utime: {c3_actual_msg_utime*1e-6}\n"
@@ -93,8 +130,8 @@ def process_lcm_log(log_file_path, target_channels_and_message_types):
 
             # # Process C3_DEBUG_CURR messages
             # elif event.channel == "C3_DEBUG_CURR":
-            #     c3_debug_msg_utime = adjusted_utime
-            #     timestamp = adjusted_timestamp
+            #     c3_debug_msg_utime = adjusted_msg_timestamp
+            #     timestamp = adjusted_msg_timestamp
 
             #     if c3_debug_msg_utime in franka_utimes:
             #        # # print(f"Received FRANKA_STATE_SIMULATION message at: {franka_utimes[c3_debug_msg_utime]*1e-6}, utime: {c3_debug_msg_utime*1e-6}\n"
@@ -113,20 +150,119 @@ def process_lcm_log(log_file_path, target_channels_and_message_types):
             
             # # Process OSC_DEBUG_FRANKA messages
             # elif event.channel == "OSC_DEBUG_FRANKA":
-            #     osc_debug_msg_utime = adjusted_utime
-            #     timestamp = adjusted_timestamp
+            #     osc_debug_msg_utime = adjusted_msg_timestamp
+            #     timestamp = adjusted_msg_timestamp
             #     if osc_debug_msg_utime in tracking_msg_utimes:
             #         print(f"Received OSC_DEBUG_FRANKA message at : {timestamp*1e-6}, utime: {osc_debug_msg_utime*1e-6}")
                 
 
         event = log_file.read_next_event()
 
+    print("Finished processing log file.")
+
+    assert c3_target_times == c3_actual_times == c3_final_target_times
+    c3_actual_states = np.array(c3_actual_states)
+    c3_final_target_states = np.array(c3_final_target_states)
+    c3_target_states = np.array(c3_target_states)
+
+    # Loop through the data.
+    target_quats = []
+    angle_diffs = []
+    for i in range(len(c3_actual_states)):
+        t = c3_actual_times[i]
+
+        wxyz_actual = c3_actual_states[i, 3:7]
+        wxyz_final = c3_final_target_states[i, 3:7]
+
+        wxyz_actual = wxyz_actual / np.linalg.norm(wxyz_actual)
+        wxyz_final = wxyz_final / np.linalg.norm(wxyz_final)
+
+        actual_quat = Quaternion(wxyz=wxyz_actual)
+        final_quat = Quaternion(wxyz=wxyz_final)
+
+        quat_slerp = PiecewiseQuaternionSlerp([0,1], [actual_quat, final_quat])
+        radian_lookahead = 0.698
+        radian_total = AngleAxis(final_quat.multiply(actual_quat.inverse()))
+        angle_diffs.append(radian_total.angle())
+        lookahead_fraction = min(radian_lookahead/radian_total.angle(), 1.0)
+
+        target_quat_2 = quat_slerp.orientation(lookahead_fraction)
+        target_quats.append(target_quat_2.wxyz())
+
+    target_quats = np.array(target_quats)
+
+    # Plot the quaternions.
+    fig, axs = plt.subplots(5, 1, figsize=(10, 10), sharex='all')
+    axs[0].plot(c3_actual_times, c3_actual_states[:, 3], label='w')
+    axs[0].plot(c3_actual_times, c3_actual_states[:, 4], label='x')
+    axs[0].plot(c3_actual_times, c3_actual_states[:, 5], label='y')
+    axs[0].plot(c3_actual_times, c3_actual_states[:, 6], label='z')
+    axs[1].plot(c3_actual_times, c3_final_target_states[:, 3], label='w')
+    axs[1].plot(c3_actual_times, c3_final_target_states[:, 4], label='x')
+    axs[1].plot(c3_actual_times, c3_final_target_states[:, 5], label='y')
+    axs[1].plot(c3_actual_times, c3_final_target_states[:, 6], label='z')
+    axs[2].plot(c3_actual_times, c3_target_states[:, 3], label='w')
+    axs[2].plot(c3_actual_times, c3_target_states[:, 4], label='x')
+    axs[2].plot(c3_actual_times, c3_target_states[:, 5], label='y')
+    axs[2].plot(c3_actual_times, c3_target_states[:, 6], label='z')
+    axs[3].plot(c3_actual_times, target_quats[:, 0], label='w')
+    axs[3].plot(c3_actual_times, target_quats[:, 1], label='x')
+    axs[3].plot(c3_actual_times, target_quats[:, 2], label='y')
+    axs[3].plot(c3_actual_times, target_quats[:, 3], label='z')
+    plt.legend()
+    axs[4].plot(c3_actual_times, angle_diffs, label='Angle Diff')
+    axs[4].axhline(y=np.pi, color='r', linestyle='--', label='pi')
+    axs[0].set_title('C3 Actual States')
+    axs[1].set_title('C3 Final Target States')
+    axs[2].set_title('C3 Target States')
+    axs[2].set_title('Reconstructed Targets')
+    fig.suptitle('Quaternion Trajectories')
+    plt.legend()
+    plt.show()
+
+    '''
+    prev_quat = c3_actual_states[0][3:7]
+    prev_quat = prev_quat / np.linalg.norm(prev_quat)
+    prev_quat = Quaternion(prev_quat)
+
+    for i in range(len(c3_actual_states)):
+        y_quat = c3_actual_states[i][3:7]
+        # print("y_quat extracted ", y_quat)
+        y_quat = y_quat / np.linalg.norm(y_quat)
+        y_quat = Quaternion(y_quat)
+
+        # compute angle axis diff between current and previous quaternion
+        change_in_current_quat = AngleAxis(y_quat.multiply(prev_quat.inverse()))
+        print("change_in_current_quat ", change_in_current_quat.angle())
+        print("change in axis ", change_in_current_quat.axis())
+
+
+        print("y_quat normalized ", y_quat.w(), y_quat.x(), y_quat.y(), y_quat.z())
+
+        y_quat_des = c3_target_states[i][3:7]
+        y_quat_des = y_quat_des / np.linalg.norm(y_quat_des)
+        y_quat_des = Quaternion(y_quat_des)
+        print("y_quat_des normalized ", y_quat_des.w(), y_quat_des.x(), y_quat_des.y(), y_quat_des.z())
+
+        y_quat_final = c3_final_target_states[i][3:7]
+        y_quat_final = y_quat_final / np.linalg.norm(y_quat_final)
+        y_quat_final = Quaternion(y_quat_final)
+        print("y_quat_final normalized ", y_quat_final.w(), y_quat_final.x(), y_quat_final.y(), y_quat_final.z())
+
+        orientation_traj = PiecewiseQuaternionSlerp([0,1], [y_quat, y_quat_des])
+        angle_axis_diff = AngleAxis(y_quat_des.multiply(y_quat.inverse()))
+        lookahead_fraction = min(0.698/angle_axis_diff.angle(), 1.0)
+        y_quat_lookahead = orientation_traj.orientation(lookahead_fraction)
+        print("y_quat_lookahead ", y_quat_lookahead.w(), y_quat_lookahead.x(), y_quat_lookahead.y(), y_quat_lookahead.z(), "\n")
+
+
     # plot_utimes(franka_utimes, object_utimes, tracking_msg_utimes, osc_debug_msg_utimes)
 
     # TODO: Make the function definition be more general. But this should work
-    plot_utime_differences(franka_utimes, tracking_msg_utimes)
+    # plot_utime_differences(franka_utimes, tracking_msg_utimes)
     # plot_utime_differences(osc_debug_msg_utimes, tracking_msg_utimes)
-    plot_controller_freq(tracking_msg_utimes)
+    # plot_controller_freq(tracking_msg_utimes)
+    '''
 
 def plot_controller_freq(tracking_msg_utimes):
     # Sort tracking utimes
@@ -220,13 +356,20 @@ def plot_utime_differences(osc_utimes_dict, tracking_utimes_dict):
     plt.grid(True)
     plt.show()
 
+
 if __name__ == "__main__":
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Process an LCM log file.')
     parser.add_argument('log_folder', type=str, help='Path to the folder containing the log file')
+    parser.add_argument('start_time', type=float, default=0.0, help='Start time into the log to begin parsing')
+    # optional end time argument
+    parser.add_argument('end_time', type=float, default=9999999999999, help='End time into the log to stop parsing')
     
+
     args = parser.parse_args()
     log_folder = args.log_folder
+    start_time = args.start_time
+    end_time = args.end_time
 
     # Turn the folder into a file path
     log_number = log_folder.split("/")[-1][:6]  # Extract the last part of the folder name
@@ -240,8 +383,11 @@ if __name__ == "__main__":
         "OBJECT_STATE_SIMULATION": dairlib.lcmt_object_state,
         "C3_DEBUG_CURR": dairlib.lcmt_c3_output,
         "C3_ACTUAL": dairlib.lcmt_c3_state,
-        "OSC_DEBUG_FRANKA": dairlib.lcmt_osc_output
+        "OSC_DEBUG_FRANKA": dairlib.lcmt_osc_output,
+        "C3_TARGET": dairlib.lcmt_c3_state,
+        "C3_FINAL_TARGET": dairlib.lcmt_c3_state,
     }
     
     # Call the function and get the data and timestamps
-    process_lcm_log(log_filepath, target_channels_and_message_types)
+    process_lcm_log(log_filepath, target_channels_and_message_types,
+                    start_time=start_time, end_time=end_time)

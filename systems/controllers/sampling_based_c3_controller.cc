@@ -1056,6 +1056,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     while ((i*step_size < dist_to_wp1) && (i < N_)) {
       Eigen::Vector3d straight_line_point = current_ee_location +
         i*step_size/dist_to_wp1 * (waypoint1 - current_ee_location);
+      if (straight_line_point[2] < c3_options_.ee_z_state_min) {
+        straight_line_point[2] = c3_options_.ee_z_state_min;
+      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = straight_line_point;
@@ -1071,6 +1074,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
         sampling_params_.spherical_repositioning_radius *
         (std::cos(dtheta0 + (i - leg1_i)*dtheta)*v1 +
          std::sin(dtheta0 + (i - leg1_i)*dtheta)*v4 );
+      if (arc_point[2] < c3_options_.ee_z_state_min) {
+        arc_point[2] = c3_options_.ee_z_state_min;
+      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = arc_point;
@@ -1087,6 +1093,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       Eigen::Vector3d straight_line_point = waypoint2 +
         (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*
         (best_sample_location - waypoint2);
+      if (straight_line_point[2] < c3_options_.ee_z_state_min) {
+        straight_line_point[2] = c3_options_.ee_z_state_min;
+      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = straight_line_point;

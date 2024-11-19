@@ -671,11 +671,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // target. If the cost of the current repositioning target is better than
       // the current best sample by the hysteresis amount, then we continue 
       // pursuing the previous repositioning target.
-      if ((all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
+      if ((all_sample_costs_[CURRENT_REPOSITION_INDEX] <
+           all_sample_costs_[best_sample_index_] +
            sampling_params_.hysteresis_between_repos_targets && 
            !sampling_params_.use_relative_hysteresis) ||
           (sampling_params_.use_relative_hysteresis && 
-           all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + (sampling_params_.repos_to_repos_cost_fraction)*all_sample_costs_[CURRENT_REPOSITION_INDEX]))
+           all_sample_costs_[CURRENT_REPOSITION_INDEX] <
+           all_sample_costs_[best_sample_index_] +
+           sampling_params_.repos_to_repos_cost_fraction*
+           all_sample_costs_[CURRENT_REPOSITION_INDEX]))
       {
         best_sample_index_ = CURRENT_REPOSITION_INDEX;
         best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
@@ -689,18 +693,25 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
         if(!sampling_params_.use_relative_hysteresis){
-          best_additional_sample_cost += sampling_params_.hysteresis_between_repos_targets;
+          best_additional_sample_cost +=
+            sampling_params_.hysteresis_between_repos_targets;
         }
         else{
-          best_additional_sample_cost += (sampling_params_.repos_to_repos_cost_fraction)*all_sample_costs_[CURRENT_REPOSITION_INDEX];
+          best_additional_sample_cost +=
+            sampling_params_.repos_to_repos_cost_fraction*
+            all_sample_costs_[CURRENT_REPOSITION_INDEX];
         }
       }
     }
-    if ((best_additional_sample_cost > all_sample_costs_[CURRENT_LOCATION_INDEX] + 
+    if ((best_additional_sample_cost >
+         all_sample_costs_[CURRENT_LOCATION_INDEX] +
          sampling_params_.repos_to_c3_hysteresis &&
          !sampling_params_.use_relative_hysteresis) ||
         (sampling_params_.use_relative_hysteresis &&
-         best_additional_sample_cost > all_sample_costs_[CURRENT_LOCATION_INDEX] + (sampling_params_.repos_to_c3_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX])) {
+         best_additional_sample_cost >
+         all_sample_costs_[CURRENT_LOCATION_INDEX] +
+         sampling_params_.repos_to_c3_cost_fraction*
+         all_sample_costs_[CURRENT_LOCATION_INDEX])) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
     }
@@ -959,19 +970,32 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   Vector3d curr_to_goal_vec = best_sample_location - current_ee_location;
 
+  // Get two unit vectors in the plane of the arc between the current and goal
+  // ee locations.
+  Eigen::Vector3d v1 = (current_ee_location - current_object_location).normalized();
+  Eigen::Vector3d v2 = (best_sample_location - current_object_location).normalized();
+  double travel_angle = std::acos(v1.dot(v2));
+
   // Read the time from the t_context i/p for setting timestamps.
   double t = t_context;
 
   // Setting up matrices to set up LCMTrajectory object.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
+  for (int i = 0; i < N_; i++) {
+    timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
+  }
 
   // Compute total estimated travel time for spline.
   double travel_distance = curr_to_goal_vec.norm();
   double total_travel_time = travel_distance/sampling_params_.reposition_speed;
 
-  // Use a straight line trajectory if close to the target.
-  if (travel_distance < sampling_params_.use_straight_line_traj_under) {
+  // Use a straight line trajectory if close to the target (where "close"
+  // depends on whether using spline or arc trajectory type).
+  if ((travel_distance < sampling_params_.use_straight_line_traj_under &&
+      !sampling_params_.use_spherical_repositioning) ||
+      (sampling_params_.use_spherical_repositioning &&
+       travel_angle < sampling_params_.use_straight_line_traj_within_angle)) {
     Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
     times[0] = 0;
     // Ensure the times used to define PiecewisePolynomial are increasing.
@@ -989,7 +1013,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     for (int i = 0; i < N_; i++) {
       double t_line = std::min((i)*c3_options_.planning_dt, total_travel_time);
       knots.col(i) = trajectory.value(t_line);
-      timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
 
       if (i == 1 && t_line == total_travel_time && !is_doing_c3_){
         // If it can get there in one step, then set finished_reposition_flag_ to
@@ -998,8 +1021,85 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       }
     }
   }
-  // Use a spline trajectory if further from the target (to avoid hitting the jack).
-  else{
+
+  // Otherwise, uphold a spherical arc repositioning trajectory.
+  else if (sampling_params_.use_spherical_repositioning) {
+    // Get the two waypoints as the ends of the arc trajectory.
+    Eigen::Vector3d waypoint1 = current_object_location +
+      v1 * sampling_params_.spherical_repositioning_radius;
+    Eigen::Vector3d waypoint2 = current_object_location +
+      v2 * sampling_params_.spherical_repositioning_radius;
+
+    Eigen::Vector3d v3 = v1.cross(v2).normalized();
+    Eigen::Vector3d v4 = v3.cross(v1).normalized();
+
+    // Ensure the traversed arc stays above the ground.
+    if (v4[2] < 0.5) {
+      v4 = -v4;
+      travel_angle = 2*M_PI - travel_angle;
+    }
+
+    // The arc is defined by the equation:
+    // x = x_c + r*cos(theta)*v1 + r*sin(theta)*v4
+    // ...where theta should be [0, travel_angle] and r*dtheta should be the
+    // desired travel distance.
+    double dtheta = sampling_params_.reposition_speed*c3_options_.planning_dt /
+      sampling_params_.spherical_repositioning_radius;
+    double step_size = sampling_params_.reposition_speed*c3_options_.planning_dt;
+
+    knots.col(0) = x_lcs;
+    int i = 1;
+    // Handle the first leg:  straight line from current EE location to
+    // waypoint1.
+    double dist_to_wp1 = (current_ee_location - waypoint1).norm();
+    while ((i*step_size < dist_to_wp1) && (i < N_)) {
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = current_ee_location + i*step_size*v1;
+      knots.col(i) = next_lcs_state;
+      i++;
+    }
+
+    // Handle the second leg:  arc from waypoint1 to waypoint2.
+    int leg1_i = i;
+    double dtheta0 = (i*step_size - dist_to_wp1)/step_size * dtheta;
+    while ((dtheta0 + (i - leg1_i)*dtheta < travel_angle) && (i < N_)) {
+      Eigen::Vector3d arc_point = current_object_location +
+        sampling_params_.spherical_repositioning_radius *
+        (std::cos(dtheta0 + (i - leg1_i)*dtheta)*v1 +
+         std::sin(dtheta0 + (i - leg1_i)*dtheta)*v4 );
+
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = arc_point;
+      knots.col(i) = next_lcs_state;
+      i++;
+    }
+
+    // Handle the last leg:  straight line from waypoint2 to goal EE location.
+    int leg2_i = i;
+    double dstep = (dtheta0 + (i-leg1_i)*dtheta - travel_angle)/dtheta * step_size;
+    double dist_wp2_to_goal = (waypoint2 - best_sample_location).norm();
+    while ((dstep + (i-leg2_i)*step_size < dist_wp2_to_goal) && (i < N_)) {
+      Eigen::Vector3d straight_line_point = waypoint2 +
+        (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*
+        (best_sample_location - waypoint2);
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = straight_line_point;
+      knots.col(i) = next_lcs_state;
+
+      i++;
+    }
+
+    // Fill in the rest of the knots with the goal EE location.
+    for (int j = i; j < N_; j++) {
+      Eigen::Vector3d x_lcs_goal = x_lcs;
+      x_lcs_goal.head(3) = best_sample_location;
+      knots.col(j) = x_lcs_goal;
+      finished_reposition_flag_ = true;
+    }
+  }
+
+  // Use a spline trajectory.
+  else {
     // Compute spline waypoints.
     Vector3d p0 = current_ee_location;
     Vector3d p3 = best_sample_location;
@@ -1019,7 +1119,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
         // If it can get there in one step, then set finished_reposition_flag_ to
         // true.
         finished_reposition_flag_ = true;
-        std::cout<<"WARNING! Using spline but finished repositioning in one step."<<std::endl;
+        std::cout<<
+          "WARNING! Using spline but finished repositioning in one step."
+          <<std::endl;
       }
       // Don't overshoot the end of the spline.
       t_spline = std::min(1.0, t_spline);
@@ -1041,10 +1143,11 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       }
 
       knots.col(i) = next_lcs_state;
-      timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
     }
   }
 
+  // Set predicted end effector state in preparation for next control loop, if
+  // currently in repositioning mode.
   if(!is_doing_c3_){
     if (filtered_solve_time_ < c3_options_.planning_dt && 
         c3_options_.at_least_predict_first_planned_trajectory_knot) {

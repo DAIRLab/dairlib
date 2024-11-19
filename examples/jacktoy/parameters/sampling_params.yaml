@@ -34,9 +34,14 @@ num_additional_samples_c3: 2
 
 # Repositioning parameters.
 spline_width: 0.17
+spherical_repositioning_radius: 0.17
 reposition_speed: 0.10    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
+use_spherical_repositioning: true   # alternative is a spline
+use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
+                                          # repositioning uses a straight line
+                                          # instead of the spherical arc
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.

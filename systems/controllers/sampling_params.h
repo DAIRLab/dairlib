@@ -22,8 +22,11 @@ struct SamplingC3SamplingParams {
   int num_additional_samples_repos;
   int num_additional_samples_c3;
   double spline_width;
+  double spherical_repositioning_radius;
   double reposition_speed;
   double use_straight_line_traj_under;
+  double use_straight_line_traj_within_angle;
+  double use_spherical_repositioning;
   int cost_type;
   bool use_more_contacts_to_compute_cost;
   double cost_switching_threshold_distance;
@@ -50,8 +53,11 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(spline_width));
+    a->Visit(DRAKE_NVP(spherical_repositioning_radius));
     a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
+    a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
+    a->Visit(DRAKE_NVP(use_spherical_repositioning));
     a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));

@@ -177,7 +177,11 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(
+        plant, plant_context.get(),
+        controller_params.neutral_position,
+        controller_params.teleop_neutral_position,
+        controller_params.end_effector_name);
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());
@@ -311,6 +315,8 @@ int DoMain(int argc, char* argv[]) {
       end_effector_orientation_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_position_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
+  builder.Connect(state_receiver->get_output_port(0),
+                  end_effector_trajectory->get_input_port_state());
   builder.Connect(
       end_effector_orientation_receiver->get_output_port(0),
       end_effector_orientation_trajectory->get_input_port_trajectory());

@@ -83,8 +83,10 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (radio_out->channel[11] || radio_out->channel[14] || trajectory_input.value(0).isZero()) {
-    *casted_traj = drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
+  if (radio_out->channel[11] || radio_out->channel[14] ||
+      trajectory_input.value(0).isZero()) {
+    *casted_traj = drake::trajectories::PiecewisePolynomial<double>(
+      Vector3d::Zero());
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]){
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<

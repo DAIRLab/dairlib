@@ -281,6 +281,8 @@ SamplingC3Controller::SamplingC3Controller(
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
+  x_from_last_control_loop_ = VectorXd::Zero(n_x_);
+  x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
@@ -346,21 +348,75 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // state.
   // Only use predicted state for c3 if use_predicted_x0_c3 is true and is_doing_c3_.
   // Only use predicted state for repositioning if use_predicted_x0_repos is true and !is_doing_c3_.
-  if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
-    ClampEndEffectorAcceleration(x_lcs_curr);
-    if(verbose_){
-      std::cout << "x_lcs_curr after clamping in C3 mode: " << x_lcs_curr.transpose() << std::endl;
+  Eigen::Vector3d curr_ee = x_lcs_curr.head(3);
+  Eigen::Vector3d last_ee = x_from_last_control_loop_.head(3);
+  Eigen::Vector3d pred_ee = x_pred_from_last_control_loop_.head(3);
+  // Store the current actual state before applying prediction in preparation
+  // for next control loop.
+  x_from_last_control_loop_ = x_lcs_curr;
+  if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() &&
+      c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
+    // First detect if we should use predicted state or not:  x_pred reset
+    // mechanism is used if the prediction from last control loop is further
+    // from the current state than last state was.
+    if (((curr_ee - last_ee).norm() < (curr_ee - pred_ee).norm()) &&
+        (curr_ee - pred_ee).norm() > 0.01 &&
+        !x_pred_from_last_control_loop_.isZero() &&
+        c3_options_.use_predicted_x0_reset_mechanism) {
+      // Skip using the predicted state.
+      std::cout << "RESET x_pred in C3 mode" << std::endl;
+      // if(verbose_){
+        std::cout << "Skipped using x_pred since curr_ee-last_ee is " <<
+          (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
+          (curr_ee-pred_ee).norm() << std::endl;
+      if(verbose_){
+        std::cout << "x_lcs_curr without clamping: " <<
+          x_lcs_curr.transpose() << std::endl;
+      }
+    }
+    else {
+      // Do the clamping.
+      ClampEndEffectorAcceleration(x_lcs_curr);
+      if(verbose_){
+        std::cout << "x_lcs_curr after clamping in C3 mode: " <<
+          x_lcs_curr.transpose() << std::endl;
+      }
     }
   }
-  else if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() && c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
-    ClampEndEffectorAcceleration(x_lcs_curr);
-    if(verbose_){
-      std::cout << "x_lcs_curr after clamping in repositioning mode: " << x_lcs_curr.transpose() << std::endl;
+  else if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() &&
+           c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
+    // First detect if we should use predicted state or not:  x_pred reset
+    // mechanism is used if the prediction from last control loop is further
+    // from the current state than last state was.
+    if (((curr_ee - last_ee).norm() < (curr_ee - pred_ee).norm()) &&
+        (curr_ee - pred_ee).norm() > 0.01 &&
+        !x_pred_from_last_control_loop_.isZero() &&
+        c3_options_.use_predicted_x0_reset_mechanism) {
+      // Skip using the predicted state.
+      std::cout << "RESET x_pred in repositioning mode" << std::endl;
+      // if(verbose_){
+        std::cout << "Skipped using x_pred since curr_ee-last_ee is " <<
+          (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
+          (curr_ee-pred_ee).norm() << std::endl;
+      if(verbose_){
+        std::cout << "x_lcs_curr without clamping: " <<
+          x_lcs_curr.transpose() << std::endl;
+      }
+    }
+    else {
+      // Do the clamping.
+      ClampEndEffectorAcceleration(x_lcs_curr);
+      if(verbose_){
+        std::cout << "x_lcs_curr after clamping in repositioning mode: " <<
+          x_lcs_curr.transpose() << std::endl;
+      }
     }
   }
   else if (verbose_) {
     std::cout << "Not clamping x_lcs_curr." << std::endl;
   }
+  // Store the predicted actual state in preparation for next control loop.
+  x_pred_from_last_control_loop_ = x_lcs_curr;
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x_curr->get_timestamp();

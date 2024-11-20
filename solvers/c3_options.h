@@ -19,6 +19,7 @@ struct C3Options {
   bool use_predicted_x0_c3;
   bool use_predicted_x0_repos;
   bool at_least_predict_first_planned_trajectory_knot;
+  bool use_predicted_x0_reset_mechanism;
   double solve_time_filter_alpha;
 
   std::vector<double> world_x_limits;
@@ -100,6 +101,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
     a->Visit(DRAKE_NVP(use_predicted_x0_repos));
     a->Visit(DRAKE_NVP(at_least_predict_first_planned_trajectory_knot));
+    a->Visit(DRAKE_NVP(use_predicted_x0_reset_mechanism));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
 
     a->Visit(DRAKE_NVP(world_x_limits));

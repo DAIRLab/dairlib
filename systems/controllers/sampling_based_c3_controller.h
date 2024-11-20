@@ -284,6 +284,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // C3 solutions for current location.
   mutable std::shared_ptr<solvers::C3> c3_curr_plan_;
   mutable Eigen::VectorXd x_pred_curr_plan_;
+  mutable Eigen::VectorXd x_from_last_control_loop_;
+  mutable Eigen::VectorXd x_pred_from_last_control_loop_;
   // TODO: these are currently unused but may be useful if implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
   mutable std::vector<Eigen::VectorXd> delta_curr_plan_;

@@ -332,7 +332,7 @@ def make_plane_segmentation_system_info(params_folder):
         os.path.join(params_folder, f'{y}.yaml') for y in
         ['ransac_and_preprocessing', 'no_ransac_with_preprocessing']
     ]
-    configs = ['_PR', '']
+    configs = ['', '_NR']
     system_names = ['EM_cupy' + config for config in configs]
     return zip(yamls, system_names)
 
@@ -456,12 +456,12 @@ def main():
 
     # run_pipeline_figure_script(args.logfile)
 
-    # make_all_results_figures(
-    #     args.logfolder,
-    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
-    # )
+    make_all_results_figures(
+        args.logfolder,
+        '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    )
     # profile_full_pipeline(args.logfile)
-    write_perception_meshcat_video(args.logfile, duration=60.0)
+    # write_perception_meshcat_video(args.logfile, duration=60.0)
     # test_iou_plot()
 
 

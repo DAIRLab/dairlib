@@ -59,7 +59,7 @@ def main():
     latching_switch_a = 1
     latching_switch_b = 1
     latching_switch_x = 0
-    latching_switch_y = 1
+    latching_switch_y = 0
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
@@ -85,7 +85,7 @@ def main():
                     print("Force Tracking Status: " + str(not latching_switch_x))
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
-                    print("Ready to Reset Status: " + str(latching_switch_y))
+                    print("Force C3 Mode Status: " + str(latching_switch_y))
 
 
         # Send LCM message

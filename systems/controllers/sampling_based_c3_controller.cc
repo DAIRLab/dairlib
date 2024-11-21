@@ -364,9 +364,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         !x_pred_from_last_control_loop_.isZero() &&
         c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
-      std::cout << "RESET x_pred in C3 mode" << std::endl;
+      std::cout << "RESET x_pred in C3 mode. ";
       // if(verbose_){
-        std::cout << "Skipped using x_pred since curr_ee-last_ee is " <<
+        std::cout << "curr_ee-last_ee is " <<
           (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
           (curr_ee-pred_ee).norm() << std::endl;
       if(verbose_){
@@ -393,9 +393,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         !x_pred_from_last_control_loop_.isZero() &&
         c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
-      std::cout << "RESET x_pred in repositioning mode" << std::endl;
+      std::cout << "RESET x_pred in repositioning mode. ";
       // if(verbose_){
-        std::cout << "Skipped using x_pred since curr_ee-last_ee is " <<
+        std::cout << "curr_ee-last_ee is " <<
           (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
           (curr_ee-pred_ee).norm() << std::endl;
       if(verbose_){
@@ -714,7 +714,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
          best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis &&
          !sampling_params_.use_relative_hysteresis) || 
         (sampling_params_.use_relative_hysteresis && 
-         all_sample_costs_[CURRENT_LOCATION_INDEX] > best_additional_sample_cost + (sampling_params_.c3_to_repos_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX]))
+         all_sample_costs_[CURRENT_LOCATION_INDEX] > best_additional_sample_cost +
+         (sampling_params_.c3_to_repos_cost_fraction)*
+         all_sample_costs_[CURRENT_LOCATION_INDEX]) &&
+        !radio_out->channel[12])
     {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
@@ -770,6 +773,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
          all_sample_costs_[CURRENT_LOCATION_INDEX])) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
+    }
+
+    // Xbox controller override to force staying in C3 mode.
+    if (radio_out->channel[12]) {
+      std::cout << "Forcing into C3 mode" << std::endl;
+      is_doing_c3_ = true;
     }
   }
 

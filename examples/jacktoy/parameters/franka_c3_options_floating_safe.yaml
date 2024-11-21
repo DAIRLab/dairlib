@@ -52,6 +52,7 @@ use_predicted_x0: false   # unused for sampling-based c3 controller
 use_predicted_x0_c3: false
 use_predicted_x0_repos: false
 at_least_predict_first_planned_trajectory_knot: false
+use_predicted_x0_reset_mechanism: true
 
 solve_time_filter_alpha: 0.95
 # Workspace Limits
@@ -138,12 +139,21 @@ qp_projection_scaling: 1
 #            0.1, 0.1, 0.1,              # end effector linear velocity
 #            2.5, 2.5, 2.5,                 # object angular velocity
 #            1, 1, 1]           # object linear velocity
-q_vector_position_and_orientation: [0.01, 0.01, 0.01,        # end effector position
+q_vector_position_and_orientation: [
+           0.01, 0.01, 0.01,        # end effector position
            0.1, 0.1, 0.1, 0.1,              # object orientation
-           0.1, 0.1, 0.1,    # object position
-           0.05, 0.05, 0.05,              # end effector linear velocity
+           150, 150, 150,    # object position
+           2.0, 2.0, 2.0,              # end effector linear velocity
            0.1, 0.1, 0.1,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity
+
+# q_vector_position_and_orientation: [
+#            0.01, 0.01, 0.01,        # end effector position
+#            0.1, 0.1, 0.1, 0.1,              # object orientation
+#            150, 150, 150,    # object position
+#            2.0, 2.0, 2.0,              # end effector linear velocity
+#            0.1, 0.1, 0.1,                 # object angular velocity
+#            0.05, 0.05, 0.05]           # object linear velocity
 
 # POSITION GOAL GAINS
 q_vector: [0.01, 0.01, 0.01,        # end effector position

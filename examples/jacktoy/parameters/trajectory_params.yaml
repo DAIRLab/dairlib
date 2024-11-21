@@ -24,13 +24,13 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
 # fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
-# fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
-# fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
+fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) Balancing on blue and green prongs at almost half a topple
 # fixed_target_orientation: [ -0.15288758, 0.40935087, 0.827526, -0.35267374]
 
-# fixed_target_position: [0.4, 0.3, 0.031971466]    # 6) 2 topples starting at position goal
+# fixed_target_position: [0.4, 0.1, 0.031971466]    # 6) 2 topples starting near position goal
 # fixed_target_orientation: [-0.45213515, -0.5030703, 0.7321868, 0.08386412]
 
 # fixed_target_position: [0.55, 0.3, 0.031971466]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
@@ -49,12 +49,15 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 11) topple from the top of back prong
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-fixed_target_position: [0.4, 0.15, 0.031971466]    # 12) yaw only
-fixed_target_orientation: [-0.4379764, 0.7895742, -0.4070009, -0.14003317]
-#^^# C3 sanity checking good starting configurations #^^#
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 12) yaw only
+# fixed_target_orientation: [-0.4379764, 0.7895742, -0.4070009, -0.14003317]
 
 # fixed_target_position: [0.2, 0, 0.031971466]    # 13) position target close to base
 # fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+
+# fixed_target_position: [0.4, 0.09, 0.031971466]    # 14) position wrong, orientation right
+# fixed_target_orientation: [0.0572597, 0.544881, 0.70131284, -0.4561384]
+#^^# C3 sanity checking good starting configurations #^^#
 
 
 
@@ -75,8 +78,8 @@ end_point_y: -0.35            # y coordinate of end point of straight line.
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead, the lookahead step size 
 ####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
-lookahead_step_size: 0.17      # lookahead size for adaptive straight line and fixed goal with lookahead.
-lookahead_angle: 3.14        # lookahead angle for adaptive straight line and fixed goal with lookahead
+lookahead_step_size: 0.15      # lookahead size for adaptive straight line and fixed goal with lookahead.
+lookahead_angle: 2  #3.14        # lookahead angle for adaptive straight line and fixed goal with lookahead
                               # 0.785 is 45 degrees, 0.698 is 40 degrees .
 angle_err_to_vel_factor: 0    # factor for converting an angular error to angular velocity command.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.

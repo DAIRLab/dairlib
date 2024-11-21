@@ -66,7 +66,7 @@ ee_z_state_min: 0.01
 
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
-g_x: [100, 100, 100, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x: [500, 500, 500, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma: [[1, 1, 1, 1],
           [1, 1, 1, 1, 1, 1]]
 g_lambda_n: [[1, 1, 1, 1],
@@ -131,17 +131,11 @@ qp_projection_scaling: 1
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
 # ORIENTATION GOAL GAINS
-# q_vector_position_and_orientation: [0, 0, 0,        # end effector position
-#            3000, 3000, 3000, 3000,              # object orientation
-#            200, 200, 200,    # object position
-#            0.1, 0.1, 0.1,              # end effector linear velocity
-#            2.5, 2.5, 2.5,                 # object angular velocity
-#            1, 1, 1]           # object linear velocity
 q_vector_position_and_orientation: [
            0.01, 0.01, 0.01,        # end effector position
            0.1, 0.1, 0.1, 0.1,              # object orientation
-           150, 150, 150,    # object position
-           1.0, 1.0, 1.0,              # end effector linear velocity
+           120, 120, 120,    # object position
+           5, 5, 5,              # end effector linear velocity
            0.1, 0.1, 0.1,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity
 

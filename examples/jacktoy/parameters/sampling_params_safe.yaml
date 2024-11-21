@@ -34,9 +34,14 @@ num_additional_samples_c3: 2
 
 # Repositioning parameters.
 spline_width: 0.17
-reposition_speed: 0.30    # m/s
+spherical_repositioning_radius: 0.17
+reposition_speed: 0.10    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
+use_spherical_repositioning: true   # alternative is a spline
+use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
+                                          # repositioning uses a straight line
+                                          # instead of the spherical arc
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
@@ -52,9 +57,9 @@ use_more_contacts_to_compute_cost: true
 cost_switching_threshold_distance: 0.15
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 2000 #100000000 #3000000
+c3_to_repos_hysteresis: 300000 #100000000 #3000000
 finished_reposition_cost: 1000000000
-repos_to_c3_hysteresis: 3000
+repos_to_c3_hysteresis: 200000
 hysteresis_between_repos_targets: 60000000000000
 
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 

@@ -108,3 +108,10 @@ def setup_plots():
     matplotlib.rcParams['xtick.major.width'] = 1
     matplotlib.rcParams['xtick.minor.size'] = 7
     matplotlib.rcParams['xtick.minor.width'] = 1
+    colors = ["#011f5b",
+              "#9f642d",
+              "#af0000",
+              "#b99aa0",
+              "#666666",
+              "#5583ab"]
+    plt.rcParams['axes.prop_cycle'] = plt.cycler(color=colors)

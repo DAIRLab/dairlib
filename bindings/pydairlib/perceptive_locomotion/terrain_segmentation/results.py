@@ -5,7 +5,7 @@ import subprocess
 from time import sleep
 from copy import deepcopy
 from multiprocessing import Pool
-
+from functools import partial
 import cv2
 
 import lcm
@@ -292,16 +292,18 @@ def plot_segmentation_run_time_results(results, title, savefile):
     edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
 
     for i, r in enumerate(results):
-        alpha = 0.75 * (1.0 - float(i) / len(results))
-        sns.histplot(data=r['runtime'], bins=edges, element='step', alpha=alpha)
+        alpha = 0.8 * (1.0 - float(i) / len(results))
+        sns.histplot(data=r['runtime'], bins=edges, element='step', alpha=alpha, stat='proportion')
 
+    plt.gca().set_xscale('log')
     if title == 'Grass':
         plt.xlabel('Segmentation Run Time (s)')
     else:
         plt.xticks([], [])
+        plt.minorticks_off()
 
-    plt.legend([r['name'] for r in results])
-    plt.gca().set_xscale('log')
+    if title == 'Lab':
+        plt.legend([r['name'] for r in results])
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -314,14 +316,16 @@ def plot_iou_results(results, title, savefile):
 
     edges = np.linspace(0, 1, 21)
     for i, r in enumerate(results):
-        alpha = 0.75 * (1.0 - float(i) / len(results))
-        sns.histplot(data=r['iou'], bins=edges, element='step', alpha=alpha)
+        alpha = 0.8 * (1.0 - float(i) / len(results))
+        sns.histplot(data=r['iou'], bins=edges, element='step', alpha=alpha, stat='proportion')
 
     if title == 'Grass':
         plt.xlabel('IoU With Previous Segmentation')
     else:
         plt.xticks([], [])
-    plt.legend([r['name'] for r in results])
+        
+    if title == 'Lab':
+        plt.legend([r['name'] for r in results])
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -359,12 +363,7 @@ def get_segmentation_results(logfile, duration, start_time=0):
     s3.set_name('S3 (Ours)')
 
     args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
-    num_processes = len(args)
-    # Create a process pool and map the function across all systems
     results = [profile_worker_wrapper(arg) for arg in args]
-    # with Pool(processes=num_processes) as pool:
-    #     results = pool.map(profile_worker_wrapper, args)
-
     results.append(profile_segmentation(s3, deepcopy(grid_maps)))
 
     return results
@@ -377,6 +376,26 @@ def make_segmentation_videos(logfile, start_time, duration, env_name=''):
             [cv2.resize(255 * s.astype(np.uint8), (300, 300), cv2.INTER_NEAREST_EXACT) for s in r['segmentations']],
             f'../segmentation_videos/{env_name}_{r["name"]}_segmentation.mp4'
         )
+
+
+def results_runner(env_config, logfolder):
+    results = get_segmentation_results(
+        logfile=os.path.join(logfolder, env_config['log']),
+        start_time=env_config['start'],
+        duration=env_config['duration']
+    )
+    return results
+
+
+def save_all_results(logfolder):
+    runner = partial(results_runner, logfolder=logfolder)
+    with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
+        config = yaml.safe_load(stream)
+    with Pool(4) as pool:
+        results = pool.map(runner, config.values())
+
+    data = dict(zip(config.keys(), results))
+    np.savez(os.path.join(logfolder, 'processed_results.npz'), data=data)
 
 
 def make_all_segmentation_videos(logfolder):
@@ -392,9 +411,8 @@ def make_all_segmentation_videos(logfolder):
         )
 
 
-def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None):
+def plot_segmentation_profiling(results, env_name='', save_prefix=None):
     print(f'Generating profiling results for {env_name}')
-    results = get_segmentation_results(logfile, duration)
     utils.setup_plots()
 
     run_time_save = save_prefix + '_run_time.svg' if save_prefix is not None else None
@@ -407,17 +425,14 @@ def run_segmentation_profiling(logfile, duration, env_name='', save_prefix=None)
 
 
 def make_all_results_figures(logfolder, savefolder):
-    with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
-        config = yaml.safe_load(stream)
-
-    for env, env_config in config.items():
-        run_segmentation_profiling(
-            logfile=os.path.join(logfolder, env_config['log']),
-            duration=env_config['duration'],
+    all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
+    data = all_results['data'].item()
+    for env, results in data.items():
+        plot_segmentation_profiling(
+            results,
             env_name=env,
             save_prefix=savefolder + env.replace(' ', '_')
         )
-
     crop_perception_results_svgs(savefolder)
 
 
@@ -437,14 +452,6 @@ def run_pipeline_figure_script(logfile):
         grid_maps[example_idx], q, '../terrain_seg_figures')
 
 
-def test_iou_plot():
-    utils.setup_plots()
-    data = np.load('../cached_results_for_plot_testing_2.npz', allow_pickle=True)
-    results = data['results']
-    plot_iou_results(results, 'Frame-to-Frame IoU', None)
-    plt.show()
-
-
 def main():
     parser = ArgumentParser()
     parser.add_argument('--logfolder', type=str, default='')
@@ -460,6 +467,7 @@ def main():
         args.logfolder,
         '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     )
+    # save_all_results(args.logfolder)
     # profile_full_pipeline(args.logfile)
     # write_perception_meshcat_video(args.logfile, duration=60.0)
     # test_iou_plot()

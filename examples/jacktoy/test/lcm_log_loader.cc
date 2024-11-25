@@ -17,6 +17,16 @@
 #include "solvers/lcs_factory_preprocessor.h"
 #include "solvers/lcs_factory.h"
 
+// Uncomment this line to output cost information for evenly spaced samples.
+#define DO_SAMPLE_VISUALIZATIONS
+
+// Sample grid locations.
+#define N_VERTICAL 2
+#define N_HORIZONTAL 4
+
+#define N_Q 10
+#define N_V 9
+
 
 namespace dairlib {
 
@@ -30,6 +40,21 @@ using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 using solvers::LCSFactory;
 using solvers::LCSFactoryPreProcessor;
+
+
+// Declare function that will generate samples around jack location.
+std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>> 
+  GenerateEvenlySpacedSamples(
+    const Eigen::VectorXd& x_lcs,
+    const SamplingC3SamplingParams& sampling_params,
+    const int& num_vertical, const int& num_horizontal
+  );
+
+// Declare helper function that will print a vector of Eigen::VectorXd in a
+// Python-friendly format to define a numpy array.
+void PythonFriendlyVectorOfVectorXdPrint(
+  char* name, std::vector<Eigen::VectorXd> some_vector);
+
 
 int DoMain(int argc,  char* argv[]) {
   if (argc != 3) {
@@ -120,19 +145,24 @@ int DoMain(int argc,  char* argv[]) {
   const lcm::LogEvent* event;
 
   // Read the log until the first C3_ACTUAL message after the start time.
-  // Prepare to grab the actual LCS state and the desired LCS state.
-  Eigen::VectorXf x_lcs_actual = Eigen::VectorXf::Zero(19);
-  Eigen::VectorXf x_lcs_desired = Eigen::VectorXf::Zero(19);
-  Eigen::VectorXf x_lcs_final_desired = Eigen::VectorXf::Zero(19);
-  Eigen::MatrixXf dyn_feas_curr_plan_obj_pos = Eigen::MatrixXf::Zero(3, c3_options.N+1);
-  Eigen::MatrixXf dyn_feas_curr_plan_ee_pos = Eigen::MatrixXf::Zero(3, c3_options.N+1);
-  Eigen::MatrixXf dyn_feas_curr_plan_obj_orientation = Eigen::MatrixXf::Zero(4, c3_options.N+1);
+  // Prepare to grab all desired message information.
+  std::set<std::string> channels_to_check = {
+    "C3_ACTUAL", "C3_TARGET", "C3_FINAL_TARGET",
+    "DYNAMICALLY_FEASIBLE_CURR_PLAN", "DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN",
+    "C3_DEBUG_CURR"};
 
-  Eigen::MatrixXf u_sol = Eigen::MatrixXf::Zero(3, c3_options.N);
-  Eigen::MatrixXf x_sol = Eigen::MatrixXf::Zero(19, c3_options.N);
-  Eigen::MatrixXf lambda_sol = Eigen::MatrixXf::Zero(16, c3_options.N);
-  Eigen::MatrixXf w_sol = Eigen::MatrixXf::Zero(38, c3_options.N);
-  Eigen::MatrixXf delta_sol = Eigen::MatrixXf::Zero(38, c3_options.N);
+  Eigen::VectorXd x_lcs_actual = Eigen::VectorXd::Zero(19);
+  Eigen::VectorXd x_lcs_desired = Eigen::VectorXd::Zero(19);
+  Eigen::VectorXd x_lcs_final_desired = Eigen::VectorXd::Zero(19);
+  Eigen::MatrixXd dyn_feas_curr_plan_obj_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
+  Eigen::MatrixXd dyn_feas_curr_plan_ee_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
+  Eigen::MatrixXd dyn_feas_curr_plan_obj_orientation = Eigen::MatrixXd::Zero(4, c3_options.N+1);
+
+  Eigen::MatrixXd u_sol = Eigen::MatrixXd::Zero(3, c3_options.N);
+  Eigen::MatrixXd x_sol = Eigen::MatrixXd::Zero(19, c3_options.N);
+  Eigen::MatrixXd lambda_sol = Eigen::MatrixXd::Zero(16, c3_options.N);
+  Eigen::MatrixXd w_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
+  Eigen::MatrixXd delta_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
 
   while ((event = log_file.readNextEvent()) != nullptr) {
     // Offset the time stamp by the initial time for better readability.
@@ -146,15 +176,7 @@ int DoMain(int argc,  char* argv[]) {
             (message.utime)/1e6 << " and event timestamp " <<
             adjusted_utimestamp/1e6 << std::endl;
           for (int i=0; i<19; i++) {
-            x_lcs_actual(i) = message.state[i];
-          }
-          if ((x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
-              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
-            break;
+            x_lcs_actual(i) = static_cast<double>(message.state[i]);
           }
         } else {
           std::cerr << "Failed to decode C3_ACTUAL message" << std::endl;
@@ -169,15 +191,7 @@ int DoMain(int argc,  char* argv[]) {
             (message.utime)/1e6 << " and event timestamp " <<
             adjusted_utimestamp/1e6 << std::endl;
           for (int i=0; i<19; i++) {
-            x_lcs_desired(i) = message.state[i];
-          }
-          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
-              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
-            break;
+            x_lcs_desired(i) = static_cast<double>(message.state[i]);
           }
         } else {
           std::cerr << "Failed to decode C3_TARGET message" << std::endl;
@@ -192,15 +206,7 @@ int DoMain(int argc,  char* argv[]) {
             (message.utime)/1e6 << " and event timestamp " <<
             adjusted_utimestamp/1e6 << std::endl;
           for (int i=0; i<19; i++) {
-            x_lcs_final_desired(i) = message.state[i];
-          }
-          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
-              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
-            break;
+            x_lcs_final_desired(i) = static_cast<double>(message.state[i]);
           }
         } else {
           std::cerr << "Failed to decode C3_FINAL_TARGET message" << std::endl;
@@ -226,13 +232,6 @@ int DoMain(int argc,  char* argv[]) {
                 message.saved_traj.trajectories[1].datapoints[i][j];
             }
           }
-          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
-            break;
-          }
         } else {
           std::cerr << "Failed to decode DYNAMICALLY_FEASIBLE_CURR_PLAN " <<
             "message" << std::endl;
@@ -252,14 +251,6 @@ int DoMain(int argc,  char* argv[]) {
                 message.saved_traj.trajectories[0].datapoints[i][j];
             }
           }
-          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1)) &&
-              (u_sol != Eigen::MatrixXf::Zero(3, c3_options.N))) {
-            break;
-          }
         } else {
           std::cerr << "Failed to decode DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN"
             << " message" << std::endl;
@@ -273,42 +264,47 @@ int DoMain(int argc,  char* argv[]) {
           std::cout << "Received C3_DEBUG_CURR message in seconds utime: " <<
             (message.utime)/1e6 << " and event timestamp " <<
             adjusted_utimestamp/1e6 << std::endl;
-          for (int i=0; i<3; i++) {
-            for (int j=0; j<c3_options.N+1; j++) {
-              u_sol(i,j) = message.c3_solution.u_sol[i][j];
+          for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < c3_options.N; j++) {
+              u_sol(i,j) = static_cast<double>(message.c3_solution.u_sol[i][j]);
             }
           }
           for(int i = 0; i < 19; i++){
             for(int j = 0; j < c3_options.N; j++){
-              x_sol(i,j) = message.c3_solution.x_sol[i][j];
+              x_sol(i,j) = static_cast<double>(message.c3_solution.x_sol[i][j]);
             }
           }
           for(int i = 0; i < 16; i++){
             for(int j = 0; j < c3_options.N; j++){
-              lambda_sol(i,j) = message.c3_solution.lambda_sol[i][j];
+              lambda_sol(i,j) = static_cast<double>(message.c3_solution.lambda_sol[i][j]);
             }
           }
           for(int i = 0; i < 38; i++){
             for(int j = 0; j < c3_options.N; j++){
-              w_sol(i,j) = message.c3_intermediates.w_sol[i][j];
+              w_sol(i,j) = static_cast<double>(message.c3_intermediates.w_sol[i][j]);
             }
           }
           for(int i = 0; i < 38; i++){
             for(int j = 0; j < c3_options.N; j++){
-              delta_sol(i,j) = message.c3_intermediates.delta_sol[i][j];
+              delta_sol(i,j) = static_cast<double>(message.c3_intermediates.delta_sol[i][j]);
             }
-          }
-          if ((x_lcs_actual != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_desired != Eigen::VectorXf::Zero(19)) &&
-              (x_lcs_final_desired != Eigen::VectorXf::Zero(19)) &&
-              (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXf::Zero(3, c3_options.N+1)) &&
-              (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXf::Zero(4, c3_options.N+1))) {
-            break;
           }
         } else {
           std::cerr << "Failed to decode C3_DEBUG_CURR message" << std::endl;
         }
+      }
+    }
+  
+    // Break out of loop if we have one message for every desired channel.
+    if (channels_to_check.find(event->channel) != channels_to_check.end()) {
+      if ((x_lcs_actual != Eigen::VectorXd::Zero(19)) &&
+          (x_lcs_desired != Eigen::VectorXd::Zero(19)) &&
+          (x_lcs_final_desired != Eigen::VectorXd::Zero(19)) &&
+          (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXd::Zero(3, c3_options.N+1)) &&
+          (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXd::Zero(3, c3_options.N+1)) &&
+          (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXd::Zero(4, c3_options.N+1)) &&
+          (u_sol != Eigen::MatrixXd::Zero(3, c3_options.N))) {
+        break;
       }
     }
   }
@@ -323,20 +319,16 @@ int DoMain(int argc,  char* argv[]) {
       more_msgs_to_print--;
     }
   }
+  std::cout<<""<<std::endl;
 
   // Create the plant for the LCS.
   DiagramBuilder<double> plant_builder;
-  // This function initializes a MultibodyPlant with a specified time step,
-  // ensures that the builder is valid, and then passes the newly created
-  // Multibodyplant to an overloaded definition of AddMultibodyPlantSceneGraph
-  // that takes in the plant and a scene graph and adds it to the diagram.
-  // This overloaded function then returns a tuple of pointers to the plant and
-  // the scene graph.
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
 
   Parser parser_for_lcs(&plant_for_lcs);
   parser_for_lcs.SetAutoRenaming(true);
+
   // Load simple model of end effector (just a sphere) for the lcs plant.
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
   parser_for_lcs.AddModels(controller_params.jack_model);
@@ -467,11 +459,16 @@ int DoMain(int argc,  char* argv[]) {
     *plant_diagram, "examples/jacktoy/test/franka_c3_plant_in_log_loader");
 
   // Create the controller.  The last bool argument is the verbose flag.
+  bool verbose = true;
+  #ifdef DO_SAMPLE_VISUALIZATIONS
+    verbose = false;
+    c3_options.use_predicted_x0_c3 = false;
+  #endif
   DiagramBuilder<double> builder;
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
     plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
     plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
-    sampling_params, true);
+    sampling_params, verbose);
   auto controller_context = controller->CreateDefaultContext();
 
   auto owned_diagram = builder.Build();
@@ -480,36 +477,168 @@ int DoMain(int argc,  char* argv[]) {
   DrawAndSaveDiagramGraph(
     *owned_diagram, "examples/jacktoy/test/franka_c3_controller_in_log_loader");
 
-  // Set plant states, fix input port values.
-  plant_for_lcs.SetPositionsAndVelocities(
-    &plant_for_lcs_context, x_lcs_actual.cast<double>());
+  // Fix static input ports.
   controller->get_input_port_radio().FixValue(
     controller_context.get(), drake::Value<dairlib::lcmt_radio_out>{});
-  controller->get_input_port_lcs_state().FixValue(
-    controller_context.get(),
-    TimestampedVector<double>(x_lcs_actual.cast<double>()));
   controller->get_input_port_target().FixValue(
-    controller_context.get(), x_lcs_desired.cast<double>());
+    controller_context.get(), x_lcs_desired);
   controller->get_input_port_final_target().FixValue(
-    controller_context.get(), x_lcs_final_desired.cast<double>());
+    controller_context.get(), x_lcs_final_desired);
 
-  // Do forced publish.
-  auto discrete_state = controller->AllocateDiscreteVariables();
-  controller->CalcForcedDiscreteVariableUpdate(
-    *controller_context, discrete_state.get());
-  controller->ForcedPublish(*controller_context);
+  std::vector<Eigen::VectorXd> x_lcs_actuals;
+  x_lcs_actuals.push_back(x_lcs_actual);
 
-  // Grab the C3 solution.
-  auto c3_solution = dairlib::C3Output::C3Solution();
-  c3_solution.x_sol_ = Eigen::MatrixXf::Zero(19, 5);
-  c3_solution.lambda_sol_ = Eigen::MatrixXf::Zero(16, 5);
-  c3_solution.u_sol_ = Eigen::MatrixXf::Zero(3, 5);
-  c3_solution.time_vector_ = Eigen::VectorXf::Zero(5);
-  controller->OutputC3SolutionCurrPlan(*controller_context, &c3_solution);
+  #ifdef DO_SAMPLE_VISUALIZATIONS
+    std::cout<<"DO_SAMPLE_VISUALIZATIONS"<<std::endl;
+
+    // Generate evenly spaced samples around the jack location.
+    auto [x_lcs_samples, angles] = GenerateEvenlySpacedSamples(
+      x_lcs_actual, sampling_params, N_VERTICAL, N_HORIZONTAL);
+
+    x_lcs_actuals.clear();
+    x_lcs_actuals = x_lcs_samples;
+
+    // Prepare to print out the costs.
+    Eigen::VectorXd costs = Eigen::VectorXd::Zero(angles.size());
+  #endif
+
+  for (int i = 0; i < x_lcs_actuals.size(); i++) {
+    Eigen::VectorXd x_lcs_actual_i = x_lcs_actuals[i];
+
+    // Set plant states, fix input port values.
+    plant_for_lcs.SetPositionsAndVelocities(
+      &plant_for_lcs_context, x_lcs_actual_i);
+    controller->get_input_port_lcs_state().FixValue(
+      controller_context.get(), TimestampedVector<double>(x_lcs_actual_i));
+
+    // Do forced publish.
+    auto discrete_state = controller->AllocateDiscreteVariables();
+    controller->CalcForcedDiscreteVariableUpdate(
+      *controller_context, discrete_state.get());
+    controller->ForcedPublish(*controller_context);
+
+    #ifdef DO_SAMPLE_VISUALIZATIONS
+      // Get the cost of the sample by querying the sample costs output port.
+      auto sample_costs = controller->get_output_port_all_sample_costs(
+        ).Eval<std::vector<double>>(*controller_context);
+      costs(i) = sample_costs[0];
+    #endif
+  }
+  #ifdef DO_SAMPLE_VISUALIZATIONS
+    // Print out values like positions and costs so the output can be copied
+    // cleanly into a python script.
+    PythonFriendlyVectorOfVectorXdPrint("x_lcs_samples", x_lcs_samples);
+    PythonFriendlyVectorOfVectorXdPrint("costs", {costs});
+    PythonFriendlyVectorOfVectorXdPrint("x_lcs_desired", {x_lcs_desired});
+
+    std::cout << "ee_urdf = op.join(DAIRLIB_DIR, '" <<
+      controller_params.end_effector_simple_model << "')" << std::endl;
+    std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" <<
+      sim_params.jack_model << "'.replace('.sdf', '.urdf'))" << std::endl;
+  #endif
 
   std::cout << "Finished ForcedPublish" << std::endl;
+
+  // TODO this example uses a public output function which should really be
+  // private.  Update this example and make function private.
+  // Example of how to grab the C3 solution.
+  // auto c3_solution = dairlib::C3Output::C3Solution();
+  // c3_solution.x_sol_ = Eigen::MatrixXd::Zero(19, 5);
+  // c3_solution.lambda_sol_ = Eigen::MatrixXd::Zero(16, 5);
+  // c3_solution.u_sol_ = Eigen::MatrixXd::Zero(3, 5);
+  // c3_solution.time_vector_ = Eigen::VectorXd::Zero(5);
+  // controller->OutputC3SolutionCurrPlan(*controller_context, &c3_solution);
+
   return 0;
 }
+
+
+/* Define function that will generate samples around jack location.
+
+  Args:
+    x_lcs_actual
+    sampling_params
+    num_vertical
+    num_horizontal
+
+  Returns:
+    - A std::vector of x_lcs samples
+    - A std::vector of 2D (theta, elevation_theta) positions from which the
+      samples were derived.
+*/
+std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>> 
+  GenerateEvenlySpacedSamples(
+    const Eigen::VectorXd& x_lcs,
+    const SamplingC3SamplingParams& sampling_params,
+    const int& num_vertical, const int& num_horizontal
+  ) {
+  // Grab sampling parameters.
+  double sampling_radius = sampling_params.sampling_radius;
+  double min_angle_from_vertical = sampling_params.min_angle_from_vertical;
+  double max_angle_from_vertical = sampling_params.max_angle_from_vertical;
+
+  // Pull out the q and v from the LCS state.  The end effector location and
+  // velocity of this state will be changed for the sample.
+  Eigen::VectorXd q = x_lcs.head(N_Q);
+  Eigen::VectorXd v = x_lcs.tail(N_V);
+
+  // Center the sampling circle on the current ball location.
+  Eigen::Vector3d object_xyz = q.tail(3);
+  double x_samplec = object_xyz[0];
+  double y_samplec = object_xyz[1];
+  double z_samplec = object_xyz[2];
+
+  // Prepare to store samples and (theta, elevation_theta) angles.
+  std::vector<Eigen::VectorXd> x_lcs_samples;
+  std::vector<Eigen::Vector2d> angles;
+
+  // Double for loop over the number of vertical and horizontal samples.
+  for (int i = 0; i < num_vertical; i++) {
+    double elevation_theta = min_angle_from_vertical +
+      i * (max_angle_from_vertical - min_angle_from_vertical)/(num_vertical-1);
+    for (int j = 0; j < num_horizontal; j++) {
+      double theta = j * 2*M_PI/num_horizontal;
+
+      // Update the hypothetical state's end effector location to the tested
+      // sample location.
+      Eigen::VectorXd q_ee = Eigen::VectorXd::Zero(3);
+      q_ee[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
+      q_ee[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
+      q_ee[2] = z_samplec + sampling_radius * cos(elevation_theta);
+
+      Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(N_Q + N_V);
+      candidate_state << q_ee, x_lcs.segment(3, N_Q - 3), v;
+
+      // Store the sample and the angle pair.
+      x_lcs_samples.push_back(candidate_state);
+      Eigen::Vector2d angle_pair;
+      angle_pair << theta, elevation_theta;
+      angles.push_back(angle_pair);
+    }
+  }
+  return std::make_pair(x_lcs_samples, angles);
+}
+
+void PythonFriendlyVectorOfVectorXdPrint(
+  char* name, std::vector<Eigen::VectorXd> some_vector) {
+  std::cout << name << " = np.array(";
+  if (some_vector.size() > 1) {
+    std::cout << "[";
+  }
+  for (const auto& some_element : some_vector) {
+    std::cout << "\n\t[";
+    for (int i = 0; i < some_element.size(); i++) {
+      std::cout << some_element(i) << ", ";
+    }
+    std::cout << "], ";
+  }
+  if (some_vector.size() > 1) {
+    std::cout << "]";
+  }
+  std::cout << ")" << std::endl;
+}
+
+
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

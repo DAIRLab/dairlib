@@ -279,6 +279,11 @@ class RewardSystem(LeafSystem):
         self.stance_change = 1
         self.scaling_factor = np.array([2, 2, 4])
 
+        self.MSE = []
+        self.DES = []
+        self.TRUE = []
+        self.t = 0
+
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
                 "xd_ud[x,y]", 6
@@ -499,6 +504,22 @@ class RewardSystem(LeafSystem):
         else:
             v_penalty = 0.
 
+        self.MSE.append(((vdes[0] - bf_vel[0])**2))
+        self.t += 1
+        self.DES.append(vdes[0])
+        self.TRUE.append(bf_vel[0])
+
+        if self.t == 399 * 200:
+            MSE = np.asarray(self.MSE)
+            print(np.mean(MSE))
+        #     np.save("RL_mse_flat.npy", MSE)
+        #     print(self.t)
+
+        #     DES = np.asarray(self.DES)
+        #     TRUE = np.asarray(self.TRUE)
+        #     np.save("RL_des_flat.npy", DES)
+        #     np.save("RL_true_flat.npy", TRUE)
+
         if self.terrain == 'flat':
             z = 0.
             z_reward = np.exp(-4*np.linalg.norm(footstep_command[-1] - z))
@@ -652,7 +673,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.controller_input_type
         )
 
-        terrain_friction = 0.8 #np.random.uniform(0.4, 1.2)
+        terrain_friction = 0.4 #np.random.uniform(0.4, 1.2)
 
         # print(terrain_friction)
         self.cassie_sim = HikingSimDiagram(

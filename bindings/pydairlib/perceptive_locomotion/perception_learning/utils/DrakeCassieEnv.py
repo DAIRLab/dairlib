@@ -71,7 +71,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
     
-    freq = np.random.uniform(low=0.001, high=0.025)
+    freq = np.random.uniform(low=0.001, high=0.01)
     footstep_zoh = ZeroOrderHold(freq, 3)
     builder.AddSystem(footstep_zoh)
     builder.Connect(
@@ -87,7 +87,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 def reset_handler(simulator, terrain, seed, drake_rng):
-    #np.random.seed(seed)
+    np.random.seed()
     # Get controller from context or simulator
     diagram = simulator.get_system()
     context = diagram.CreateDefaultContext()
@@ -191,10 +191,30 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
     
     v = np.zeros((22,))
+
+    down = False
+    if down:
+        yaw = math.pi
+        quat = q[:4]
+        quat = quat / np.linalg.norm(quat)
+        R_WP = RotationMatrix(Quaternion(quat))
+
+        wRp = RotationMatrix.MakeZRotation(yaw) @ R_WP
+        q_pelvis = wRp.ToQuaternion().wxyz()
+        w_pelvis = wRp @ v[:3]
+        v_pelvis = wRp @ v[3:6]
+        q[:4] = q_pelvis
+        v[:3] = w_pelvis
+        v[3:6] = v_pelvis
+
     sim_env.initialize_state(context, diagram, q, v)
 
-    xvdes = np.random.uniform(0, 0.8)
-    des_velocity = np.array([xvdes, 0.]).flatten()
+    # xvdes = np.random.uniform(0.2, 0.8)
+    # des_velocity = np.array([xvdes, 0.]).flatten()
+    xvdes = np.random.uniform(0, 0.4)
+    #yvdes = np.random.uniform(-0.2, 0.2)
+    yvdes = 0.
+    des_velocity = np.array([xvdes, yvdes]).flatten()
     print(des_velocity)
     # sim_env.controller.SetSwingFootPositionAtLiftoff(
     #     context,
@@ -210,13 +230,14 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
 def simulate_init(sim_params):
     rand = np.random.randint(1, 16)
-    rand = 1
+    rand = 7
     if rand in [1,2,3,4,5,6]:
         rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/stair/dustair_{rand}.yaml'
         terrain = 'stair'
     elif rand in [7,8,9,10]:
         rand = np.random.randint(0, 1000)
+        rand = 501
         terrain_yaml = f'params/slope/stair_{rand}.yaml'
         terrain = 'stair'
     elif rand in [11]:
@@ -228,14 +249,21 @@ def simulate_init(sim_params):
         terrain = 'flat'
     # terrain_yaml = 'params/flat.yaml'
     # terrain = 'no_obs'
-    print(terrain_yaml)
-    # sim_params.terrain = 'terrain/params/normal_stair/dustair_0.yaml'
-    # terrain = 'stair'
+    # print(terrain_yaml)
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope20.yaml')
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope/stair_1.yaml')
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_curriculum.yaml')
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/easy_dustair_0.yaml')
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/normal_dustair_0.yaml')
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/reg_dustair_0.yaml')
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_1.yaml')
+    
+    #terrain = 'stair'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
-    
+
     def monitor(context):
         time_limit = 10
 
@@ -270,12 +298,15 @@ def simulate_init(sim_params):
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
         if context.get_time() > time_limit:
+            print("Max time limit")
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
         
         if z1 < 0.2:
+            print("Left Toe Exceeded")
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
+            print("Right Toe Exceeded")
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         scene_graph = sim_env.get_output_port_by_name('scene_graph').Eval(sim_context)
@@ -285,20 +316,23 @@ def simulate_init(sim_params):
         toe_axis /= np.linalg.norm(toe_axis)
         collision = 0.
 
-        left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
-        left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
-        for distances in left_distances:
-            if distances.distance <= -0.011:
-                return EventStatus.ReachedTermination(diagram, "Left Collision")
+        # left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
+        # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+        # for distances in left_distances:
+        #     if distances.distance <= -0.012:
+        #         print("Left Collision")
+        #         return EventStatus.ReachedTermination(diagram, "Left Collision")
 
-        right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
-        distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
-        for signed_distance in distances:
-            if signed_distance.distance <= -0.011:
-                return EventStatus.ReachedTermination(diagram, "Right Collision")
+        # right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
+        # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+        # for signed_distance in distances:
+        #     if signed_distance.distance <= -0.012:
+        #         print("Right Collision")
+        #         return EventStatus.ReachedTermination(diagram, "Right Collision")
 
-        if track_error > 0.6 and (context.get_time() > 1.):
-            return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
+        # if track_error > 0.6 and (context.get_time() > 1.):
+        #     print("Track Error")
+        #     return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
 
         return EventStatus.Succeeded()
 

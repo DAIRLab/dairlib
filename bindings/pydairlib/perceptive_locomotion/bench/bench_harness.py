@@ -84,7 +84,7 @@ class InitialConditionsServer:
 @dataclass
 class BenchEnvOptions:
     terrain: Union[str, SquareSteppingStoneList] = path.join(
-        params_folder, 'terrain.yaml' # 'stair_curriculum.yaml'
+        params_folder, 'stair_501.yaml'#stair_1.yaml (slope) #'terrain.yaml' # 'stair_curriculum.yaml' # 'easy_dustair_0.yaml' # 'normal_dustair_0.yaml' # 'reg_dustair_0.yaml'
     )
     rgdb_extrinsics_yaml: str = path.join(
         params_folder, 'rgbd_extrinsics.yaml'
@@ -142,7 +142,7 @@ class BenchHarness(Diagram):
             params.controller_input_type
         )
 
-        terrain_friction = 0.8 
+        terrain_friction = 1.1
 
         self.cassie_sim = HikingSimDiagram(
             params.terrain,

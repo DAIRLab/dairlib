@@ -109,6 +109,7 @@ class DrakeGymEnv(gym.Env):
           ``env.spec``.  See the docs for ``gym.Env`` for more details.
         """
         super().__init__()
+        #np.random.seed(5)
         if isinstance(simulator, Simulator):
             self.simulator = simulator
             self.make_simulator = None

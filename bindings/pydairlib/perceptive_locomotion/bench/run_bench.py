@@ -69,8 +69,9 @@ def run(env, controller, diagram):
     sim_context = env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
 
-    xvdes = 0.8#np.random.uniform(0, 0.8)
-    vdes_source = np.array([xvdes, 0.]).flatten()
+    xvdes = np.random.uniform(-0.8, 0.8)
+    yvdes = 0.#np.random.uniform(-0.4, 0.4)
+    vdes_source = np.array([xvdes, yvdes]).flatten()
     print(vdes_source)
     controller.get_input_port_vdes().FixValue(
         context = controller_context,
@@ -89,7 +90,7 @@ def run(env, controller, diagram):
 
 def main():
     opts = BenchEnvOptions()
-    opts.visualize = True
+    opts.visualize = False
     opts.meshcat = Meshcat()
 
     env = BenchHarness(opts)
@@ -120,20 +121,24 @@ def main():
     # simulator = Simulator(diagram)
     # context = diagram.CreateDefaultContext()
     # controller_context = controller.GetMyMutableContextFromRoot(context)
-    np.random.seed(2)
+    # np.random.seed()
     MSE = []
     DES = []
     TRUE = []
     simulator = Simulator(diagram)
-
-    for i in range(20):
+    print("Friction: 1.1 slopy stair")
+    for i in range(200):
         # simulator = Simulator(diagram)
         context = diagram.CreateDefaultContext()
         controller_context = controller.GetMyMutableContextFromRoot(context)
         sim_context = env.GetMyMutableContextFromRoot(context)
 
-        xvdes = 0.8#np.random.uniform(0, 0.8)
-        vdes_source = np.array([xvdes, 0.]).flatten()
+        # xvdes = np.random.uniform(0.2, 0.8)
+        # vdes_source = np.array([xvdes, 0.]).flatten()
+        xvdes = np.random.uniform(0., 0.4)
+        #yvdes = np.random.uniform(-0.2, 0.2)
+        yvdes = 0.
+        vdes_source = np.array([xvdes, yvdes]).flatten()
         print(vdes_source)
         controller.get_input_port_vdes().FixValue(
             context = controller_context,
@@ -194,9 +199,11 @@ def main():
             #     return EventStatus.ReachedTermination(diagram, "Max Time Limit")
             
             if z1 < 0.2:
+                print("Left Toe Exceeded")
                 return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
             if z2 < 0.2:
+                print("Right Toe Exceeded")
                 return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
             scene_graph = env.get_output_port_by_name('scene_graph').Eval(sim_context)
@@ -205,28 +212,30 @@ def main():
             toe_axis = front_contact_pt - rear_contact_pt
             toe_axis /= np.linalg.norm(toe_axis)
             collision = 0.
-
             left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
             left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
             for distances in left_distances:
-                if distances.distance <= -0.0:
+                if distances.distance <= -0.012:
+                    print("Left Collision")
                     return EventStatus.ReachedTermination(diagram, "Left Collision")
 
             right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
             distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
             for signed_distance in distances:
-                if signed_distance.distance <= -0.0:
+                if signed_distance.distance <= -0.012:
+                    print("Right Collision")
                     return EventStatus.ReachedTermination(diagram, "Right Collision")
 
-            if track_error > 0.55 and (context.get_time() > 1.):
-                return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
+            # if track_error > 0.6 and (context.get_time() > 1.):
+            #     print("Track Error")
+            #     return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
 
             return EventStatus.Succeeded()
 
         simulator.set_monitor(monitor)
 
-        for i in range(400):
-            t_init += 0.25
+        for i in range(500):
+            t_init += 0.025
             # if check_termination(env, context):
             #     terminate = True
             #     print('terminate')
@@ -249,10 +258,10 @@ def main():
             DES.append(xvdes)
             TRUE.append(bf_vel[0])
             if (status.reason() == SimulatorStatus.ReturnReason.kReachedTerminationCondition):
-                print(status.reason())
-                print(context.get_time())
+                # print(status.reason())
+                # print(context.get_time())
                 break
-
+    
     DES = np.asarray(DES)
     TRUE = np.asarray(TRUE)
     
@@ -261,9 +270,9 @@ def main():
     
     MSE = np.asarray(MSE)
     print(np.mean(MSE))
-    np.save('MPC_mse.npy', MSE)
-    np.save('MPC_des.npy', DES)
-    np.save('MPC_true.npy', TRUE)
+    # np.save('MPC_flat.npy', MSE)
+    # np.save('MPC_flat.npy', DES)
+    # np.save('MPC_flat.npy', TRUE)
 
 if __name__ == '__main__':
     main()

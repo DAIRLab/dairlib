@@ -483,25 +483,25 @@ def make_all_results_figures(logfolder, savefolder):
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
     data = all_results['data'].item()
-    N = 20
-    fig = plt.figure(figsize=(15, N))
-    gs = fig.add_gridspec(N, 15)
+    N = 14
 
     envs = ['Lab', 'Brick Steps', 'Grass']
 
-    for i in range(N):
-        for j in range(9):
-            env = j // 3
-            seg = data[envs[env]][j % 3]['segmentations'][300 + 10*i]
-            name = data[envs[env]][j % 3]['name']
-            ax = fig.add_subplot(gs[i, j + (j+6) // 3])
-            if i == 0:
-                ax.set_title(name)
-            ax.imshow(seg, cmap='gray')
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-    fig.tight_layout()
+    for env in envs:
+        fig = plt.figure(figsize=(4, N+1))
+        gs = fig.add_gridspec(N+1, 4)
+        plt.title(f'{env} Segmentations')
+        for i in range(1, N):
+            for j in range(3):
+                seg = data[env][j]['segmentations'][300 + 30*i]
+                name = data[env][j]['name']
+                ax = fig.add_subplot(gs[i, j + 1])
+                if i == 1:
+                    ax.set_title(name)
+                ax.imshow(seg, cmap='gray')
+                ax.set_xticks([])
+                ax.set_yticks([])
+        fig.tight_layout()
     plt.show()
 
 

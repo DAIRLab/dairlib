@@ -194,15 +194,14 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
     print('done')
 
 
+def despine(ax):
+    for _, spine in ax.spines.items():
+        spine.set_visible(False)
+
+
 def save_decomposition_debug_plots(debug_info, save_folder):
-
-    def despine(ax):
-        for _, spine in ax.spines.items():
-            spine.set_visible(False)
-
     fig, ax = plt.subplots(figsize=(8, 8))
     plot_polygons_with_holes(debug_info['unprocessed_polygons'])
-
     despine(ax)
     limits = utils.do_perception_fig_layout_and_save(
         ax, fig, 'Non-Convex Polygons', save_folder)
@@ -436,6 +435,31 @@ def make_all_results_figures(logfolder, savefolder):
     crop_perception_results_svgs(savefolder)
 
 
+def make_segmentation_tiles(logfolder, savefolder):
+    all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
+    data = all_results['data'].item()
+    N = 20
+    fig = plt.figure(figsize=(15, N))
+    gs = fig.add_gridspec(N, 15)
+
+    envs = ['Lab', 'Brick Steps', 'Grass']
+
+    for i in range(N):
+        for j in range(9):
+            env = j // 3
+            seg = data[envs[env]][j % 3]['segmentations'][300 + 10*i]
+            name = data[envs[env]][j % 3]['name']
+            ax = fig.add_subplot(gs[i, j + (j+6) // 3])
+            if i == 0:
+                ax.set_title(name)
+            ax.imshow(seg, cmap='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+    fig.tight_layout()
+    plt.show()
+
+
 def crop_perception_results_svgs(savefolder):
     current = os.getcwd()
     os.chdir(savefolder)
@@ -462,11 +486,14 @@ def main():
     # make_all_segmentation_videos(args.logfolder)
 
     # run_pipeline_figure_script(args.logfile)
-
-    make_all_results_figures(
+    make_segmentation_tiles(
         args.logfolder,
         '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     )
+    # make_all_results_figures(
+    #     args.logfolder,
+    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    # )
     # save_all_results(args.logfolder)
     # profile_full_pipeline(args.logfile)
     # write_perception_meshcat_video(args.logfile, duration=60.0)

@@ -1,5 +1,10 @@
 #include <lcm/lcm-cpp.hpp>
 #include <iostream>
+#include <fstream>
+#include <cstdio>
+#include <string>
+#include <unistd.h>
+#include <limits.h>
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_object_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -21,8 +26,8 @@
 #define DO_SAMPLE_VISUALIZATIONS
 
 // Sample grid locations.
-#define N_VERTICAL 2
-#define N_HORIZONTAL 4
+#define N_VERTICAL 30
+#define N_HORIZONTAL 150
 
 #define N_Q 10
 #define N_V 9
@@ -53,6 +58,11 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>>
 // Declare helper function that will print a vector of Eigen::VectorXd in a
 // Python-friendly format to define a numpy array.
 void PythonFriendlyVectorOfVectorXdPrint(
+  char* name, std::vector<Eigen::VectorXd> some_vector);
+
+// Declare helper function that will write a vector of Eigen::VectorXd to a txt
+// file such that it can be loaded from a python file via np.loadtxt.
+void PythonFriendlyVectorOfVectorXdToFile(
   char* name, std::vector<Eigen::VectorXd> some_vector);
 
 
@@ -522,16 +532,26 @@ int DoMain(int argc,  char* argv[]) {
       auto sample_costs = controller->get_output_port_all_sample_costs(
         ).Eval<std::vector<double>>(*controller_context);
       costs(i) = sample_costs[0];
+      if (i % 10 == 0) {
+        std::cout << "Finished " << i << " of " << x_lcs_actuals.size() <<
+          " samples." << std::endl;
+      }
     #endif
   }
   #ifdef DO_SAMPLE_VISUALIZATIONS
-    // Print out values like positions and costs so the output can be copied
-    // cleanly into a python script.
-    PythonFriendlyVectorOfVectorXdPrint("x_lcs_samples", x_lcs_samples);
-    PythonFriendlyVectorOfVectorXdPrint("costs", {costs});
-    PythonFriendlyVectorOfVectorXdPrint("x_lcs_desired", {x_lcs_desired});
+    // Write values like positions and costs to files which can be loaded with
+    // np.loadtxt() cleanly from a python script.  If the outputs are small
+    // enough, can swap the file writing for printing to the console via
+    // PythonFriendlyVectorOfVectorXdPrint.
+    PythonFriendlyVectorOfVectorXdToFile("x_lcs_samples", x_lcs_samples);
+    PythonFriendlyVectorOfVectorXdToFile("costs", {costs});
+    PythonFriendlyVectorOfVectorXdToFile("x_lcs_desired", {x_lcs_desired});
+    PythonFriendlyVectorOfVectorXdToFile(
+      "p_world_to_franka", {sim_params.p_world_to_franka});
+    PythonFriendlyVectorOfVectorXdToFile(
+      "p_franka_to_ground", {sim_params.p_franka_to_ground});
 
-    std::cout << "ee_urdf = op.join(DAIRLIB_DIR, '" <<
+    std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '" <<
       controller_params.end_effector_simple_model << "')" << std::endl;
     std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" <<
       sim_params.jack_model << "'.replace('.sdf', '.urdf'))" << std::endl;
@@ -636,6 +656,37 @@ void PythonFriendlyVectorOfVectorXdPrint(
     std::cout << "]";
   }
   std::cout << ")" << std::endl;
+}
+
+void PythonFriendlyVectorOfVectorXdToFile(
+  char* name, std::vector<Eigen::VectorXd> some_vector) {
+  // Get the current file's path so can write files to its contained tmp/
+  // directory.
+  char result[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+  std::string exe_path = std::string(result, count);
+
+  std::string filename = exe_path.substr(0, exe_path.find_last_of("/"));
+  filename += "/";
+  filename += name;
+  filename += ".txt";
+
+  // Remove the file if it already exists.
+  std::remove(filename.c_str());
+  std::ofstream file(filename);
+
+  if (!file) {
+    std::cerr << "Erorr: Could not create " << filename << std::endl;
+  }
+  std::cout << "Writing to " << filename << std::endl;
+
+  for (const auto& some_element : some_vector) {
+    for (int i = 0; i < some_element.size(); i++) {
+      file << some_element(i) << " ";
+    }
+    file << "\n";
+  }
+  file.close();
 }
 
 

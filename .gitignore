@@ -16,3 +16,5 @@ a.out
 venv/
 *.svg
 /test/
+drake_env/
+tmp/

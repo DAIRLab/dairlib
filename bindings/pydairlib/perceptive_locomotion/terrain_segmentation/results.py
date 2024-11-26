@@ -323,7 +323,7 @@ def plot_iou_results(results, title, savefile):
         plt.xlabel('IoU With Previous Segmentation')
     else:
         plt.xticks([], [])
-        
+
     if title == 'Lab':
         plt.legend([r['name'] for r in results])
     fig.tight_layout()

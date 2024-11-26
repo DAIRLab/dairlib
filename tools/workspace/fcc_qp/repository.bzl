@@ -13,7 +13,7 @@ def fcc_qp_repository(
             Update commit to upgrade fcc_qp
         """,
         commit = "main",
-        sha256 = "36b6ac15f63331d37da4ca756436c7d635f815c2f338082f50715ed50618f417",  # noqa
+        sha256 = "fab02f537838adcc72a17970937867e923d830abc8ec77fbdd681992c5c309d8",  # noqa
         build_file = "//tools/workspace/fcc_qp:package.BUILD.bazel",
         mirrors = mirrors,
     )

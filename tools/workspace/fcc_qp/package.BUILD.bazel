@@ -4,7 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "fcc_qp",
-    srcs = glob(["src/fcc_qp.cpp"]),
+    srcs = glob(["src/fcc_qp.cpp", "src/constraint_utils.cpp"]),
     hdrs = glob(["src/*.hpp"]),
     strip_include_prefix = "src",
     visibility = ["//visibility:public"],

@@ -46,7 +46,7 @@ x_lcs_desired[7:9] -= jack_xy
 
 # ==== Paste below the output from LCM log loader ==== #
 ee_urdf = op.join(DAIRLIB_DIR, 'examples/jacktoy/urdf/end_effector_simple_model.urdf')
-jack_urdf = op.join(DAIRLIB_DIR, 'examples/jacktoy/urdf/jack.sdf'.replace('.sdf', '.urdf'))
+jack_urdf = op.join(DAIRLIB_DIR, 'examples/jacktoy/urdf/jack.sdf')
 # ==== Paste above the output from LCM log loader ==== #
 
 
@@ -71,7 +71,7 @@ plant.RegisterAsSourceForSceneGraph(scene_graph)
 urdf_path = jack_urdf
 Parser(plant).AddModels(ee_urdf)
 Parser(plant).AddModels(jack_urdf)
-Parser(plant).AddModels(jack_urdf.replace('jack.urdf', 'ground.urdf'))
+Parser(plant).AddModels(jack_urdf.replace('jack.sdf', 'ground.urdf'))
 
 p_world_to_ground = p_world_to_franka + p_franka_to_ground
 X_W_Ground = RigidTransform(RotationMatrix(), p_world_to_ground)
@@ -86,7 +86,7 @@ plant.AddFrame(
 
 # Add some triads for the goal and current configuration.
 AddFrameTriadIllustration(
-    plant=plant, scene_graph=scene_graph, body=plant.GetBodyByName("capsule_2"),
+    plant=plant, scene_graph=scene_graph, body=plant.GetBodyByName("capsule_1"),
     length=0.1, radius=0.005, opacity=1.0)
 AddFrameTriadIllustration(
     plant=plant, scene_graph=scene_graph, frame=plant.GetFrameByName("goal"),

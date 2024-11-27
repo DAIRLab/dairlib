@@ -554,7 +554,7 @@ int DoMain(int argc,  char* argv[]) {
     std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '" <<
       controller_params.end_effector_simple_model << "')" << std::endl;
     std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" <<
-      sim_params.jack_model << "'.replace('.sdf', '.urdf'))" << std::endl;
+      sim_params.jack_model << "')" << std::endl;
   #endif
 
   std::cout << "Finished ForcedPublish" << std::endl;

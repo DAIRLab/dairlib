@@ -20,7 +20,7 @@ sampling_height: 0.04
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
 min_angle_from_vertical: 0.5  #0.785
-max_angle_from_vertical: 1.75 #1.75 rad = 100.26 deg
+max_angle_from_vertical: 1.9 #1.75 rad = 100.26 deg   #1.9 rad is 110 deg
 
 # Number of additional samples to consider in each mode (repositioning or C3).
 # In repositioning mode, we automatically store the current location and the 
@@ -51,6 +51,11 @@ use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 3
 use_more_contacts_to_compute_cost: true
+
+# Number of control loops to wait while C3 doesn't do anything beneficial before
+# switching to repositioning.
+num_control_loops_to_wait: 10
+
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
 ####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
@@ -65,6 +70,6 @@ hysteresis_between_repos_targets: 60000000000000
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
 # repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
 use_relative_hysteresis: true
-c3_to_repos_cost_fraction: 0.35
-repos_to_c3_cost_fraction: 0.2
-repos_to_repos_cost_fraction: 0.33
+c3_to_repos_cost_fraction: 0.4  #0.35
+repos_to_c3_cost_fraction: 0.3  #0.2
+repos_to_repos_cost_fraction: 0.15  #0.33

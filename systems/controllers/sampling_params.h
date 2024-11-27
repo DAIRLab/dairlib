@@ -29,6 +29,7 @@ struct SamplingC3SamplingParams {
   bool use_spherical_repositioning;
   int cost_type;
   bool use_more_contacts_to_compute_cost;
+  int num_control_loops_to_wait;
   double cost_switching_threshold_distance;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
@@ -60,6 +61,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(use_spherical_repositioning));
     a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));
+    a->Visit(DRAKE_NVP(num_control_loops_to_wait));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));

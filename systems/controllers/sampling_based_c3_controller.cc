@@ -283,6 +283,8 @@ SamplingC3Controller::SamplingC3Controller(
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
+  lowest_cost_steps_ago_ = 0;
+  lowest_cost_ = std::numeric_limits<double>::infinity();
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
@@ -558,6 +560,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.cost_switching_threshold_distance){
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
+
+      // If also in C3 mode, reset the lowest cost seen in this mode.
+      if (is_doing_c3_){
+        lowest_cost_ = std::numeric_limits<double>::infinity();
+        lowest_cost_steps_ago_ = 0;
+      }
     }
   }
 
@@ -707,10 +715,29 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
+    // Update the lowest cost seen in this mode.
+    if (all_sample_costs_[CURRENT_LOCATION_INDEX] < lowest_cost_) {
+      lowest_cost_ = all_sample_costs_[CURRENT_LOCATION_INDEX];
+      lowest_cost_steps_ago_ = 0;
+    }
+    else {
+      lowest_cost_steps_ago_++;
+    }
+
+    // Switch to repositioning if the lowest seen cost while in C3 mode was
+    // too many control loops ago.
+    if ((lowest_cost_steps_ago_ > sampling_params_.num_control_loops_to_wait) &&
+        (sampling_params_.num_additional_samples_c3 > 0)) {
+      is_doing_c3_ = false;
+      finished_reposition_flag_ = false;
+      std::cout << "Switching to repositioning after spending too long " <<
+        "not making progress in C3" << std::endl;
+    }
+
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis. Use absolute hysteresis values or percentage based hysteresis
     // based on the flag.
-    if ((all_sample_costs_[CURRENT_LOCATION_INDEX] > 
+    else if ((all_sample_costs_[CURRENT_LOCATION_INDEX] > 
          best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis &&
          !sampling_params_.use_relative_hysteresis) || 
         (sampling_params_.use_relative_hysteresis && 
@@ -721,6 +748,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
+      std::cout << "Switching to repositioning because found good sample" <<
+        std::endl;
     }
   }
   else { // Currently repositioning.
@@ -773,12 +802,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
          all_sample_costs_[CURRENT_LOCATION_INDEX])) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
+
+      // Reset the lowest cost seen in this mode.
+      std::cout << "Switching to C3, resetting lowest seen cost" << std::endl;
+      lowest_cost_ = std::numeric_limits<double>::infinity();
+      lowest_cost_steps_ago_ = 0;
     }
 
     // Xbox controller override to force staying in C3 mode.
     if (radio_out->channel[12]) {
       std::cout << "Forcing into C3 mode" << std::endl;
       is_doing_c3_ = true;
+
+      // Reset the lowest cost seen in this mode.
+      lowest_cost_ = std::numeric_limits<double>::infinity();
+      lowest_cost_steps_ago_ = 0;
     }
   }
 

@@ -660,14 +660,8 @@ void PythonFriendlyVectorOfVectorXdPrint(
 
 void PythonFriendlyVectorOfVectorXdToFile(
   char* name, std::vector<Eigen::VectorXd> some_vector) {
-  // Get the current file's path so can write files to its contained tmp/
-  // directory.
-  char result[PATH_MAX];
-  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-  std::string exe_path = std::string(result, count);
-
-  std::string filename = exe_path.substr(0, exe_path.find_last_of("/"));
-  filename += "/";
+  std::string filename = "/home/sharanya/workspace/dairlib/examples/jacktoy/test";
+  filename += "/tmp/";
   filename += name;
   filename += ".txt";
 

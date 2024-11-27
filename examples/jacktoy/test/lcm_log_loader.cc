@@ -559,15 +559,15 @@ int DoMain(int argc,  char* argv[]) {
 
   std::cout << "Finished ForcedPublish" << std::endl;
 
-  // TODO this example uses a public output function which should really be
-  // private.  Update this example and make function private.
-  // Example of how to grab the C3 solution.
-  // auto c3_solution = dairlib::C3Output::C3Solution();
-  // c3_solution.x_sol_ = Eigen::MatrixXd::Zero(19, 5);
-  // c3_solution.lambda_sol_ = Eigen::MatrixXd::Zero(16, 5);
-  // c3_solution.u_sol_ = Eigen::MatrixXd::Zero(3, 5);
-  // c3_solution.time_vector_ = Eigen::VectorXd::Zero(5);
-  // controller->OutputC3SolutionCurrPlan(*controller_context, &c3_solution);
+  // Example of getting the C3 solution by evaluating the output port.
+  // auto c3_solution = controller->get_output_port_c3_solution_curr_plan(
+  //   ).Eval<C3Output::C3Solution>(*controller_context);
+  // std::cout << "\nc3_solution.x_sol_ = " << c3_solution.x_sol_ << std::endl;
+  // std::cout << "\nc3_solution.lambda_sol_ = " << c3_solution.lambda_sol_
+  //   << std::endl;
+  // std::cout << "\nc3_solution.u_sol_ = " << c3_solution.u_sol_ << std::endl;
+  // std::cout << "\nc3_solution.time_vector_ = " << c3_solution.time_vector_
+  //   << std::endl;
 
   return 0;
 }

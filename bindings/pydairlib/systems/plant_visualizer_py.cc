@@ -21,7 +21,7 @@ PYBIND11_MODULE(plant_visualizer, m) {
 
   py::class_<PlantVisualizer, drake::systems::Diagram<double>>(
       m, "PlantVisualizer")
-      .def(py::init<const std::string&, const std::string&>(), py::arg("urdf"), py::arg("track_frame")="")
+      .def(py::init<const std::string&, const std::string&, Eigen::Vector3d>(), py::arg("urdf"), py::arg("track_frame")="", py::arg("cam_pos_local")=Eigen::Vector3d(0, -2.5, 0.1))
       .def("get_meshcat", &PlantVisualizer::get_meshcat, py_rvp::reference_internal)
       .def("get_plant", &PlantVisualizer::get_plant, py_rvp::reference_internal);
 }

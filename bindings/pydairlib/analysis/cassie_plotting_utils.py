@@ -16,7 +16,7 @@ from pydairlib.common import plot_styler, plotting_utils
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
 
-cassie_urdf = "examples/Cassie/urdf/cassie_v2.urdf"
+cassie_urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
 cassie_urdf_no_springs = "examples/Cassie/urdf/cassie_fixed_springs.urdf"
 cassie_default_channels = \
     {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,

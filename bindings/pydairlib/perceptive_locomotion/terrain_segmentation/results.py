@@ -72,6 +72,7 @@ from pydairlib.perceptive_locomotion.systems import AlipMPFCMeshcatVisualizer
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
+terrain_channel = 'FOOTHOLDS_PROCESSED'
 
 
 def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
@@ -89,8 +90,42 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     return grid_maps, robot_output
 
 
-def write_mpfc_debug_video(logfile: str, duration=60):
-    pass
+def write_mpfc_debug_video(logfile: str, duration=-1):
+    urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
+
+    theta = -np.pi
+    r = 1.7
+    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([np.cos(theta), np.sin(theta), 0.5]))
+    meshcat = plant_visualizer.get_meshcat()
+    mpc_visualizer = AlipMPFCMeshcatVisualizer(meshcat, plant_visualizer.get_plant())
+    state_receiver = RobotOutputReceiver(plant_visualizer.get_plant())
+
+    builder = DiagramBuilder()
+    builder.AddSystem(plant_visualizer)
+    builder.AddSystem(mpc_visualizer)
+    builder.AddSystem(state_receiver)
+
+    builder.Connect(state_receiver.get_output_port(),
+                    plant_visualizer.get_input_port())
+    builder.Connect(state_receiver.get_output_port(),
+                    mpc_visualizer.get_input_port_state())
+
+    diagram = builder.Build()
+
+    types = {
+        state_channel: lcmt_robot_output,
+        terrain_channel: lcmt_foothold_set,
+        mpfc_debug_channel: lcmt_alip_s2s_mpfc_debug
+    }
+    ports = {
+        state_channel: state_receiver.get_input_port(),
+        terrain_channel: mpc_visualizer.get_input_port_terrain(),
+        mpfc_debug_channel: mpc_visualizer.get_input_port_mpc()
+    }
+    lcm_log = lcm.EventLog(logfile)
+    write_meshcat_video_from_log(
+        diagram, lcm_log, meshcat, types, ports, '../mpc_debug_video_test.mp4', duration=duration)
+
 
 def write_perception_meshcat_video(logfile: str, duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
@@ -104,7 +139,7 @@ def write_perception_meshcat_video(logfile: str, duration=60):
         "polygons": ConvexPolygonVisualizer(meshcat, update_period)
     }
     receivers = {
-        "state": RobotOutputReceiver(visualizers["state"].get_plant()),
+        "state": RobotOutputReceiver(plant_visualizer.get_plant()),
         "grid_map": GridMapReceiver(),
         "polygons": ConvexPolygonReceiver()
     }
@@ -507,6 +542,7 @@ def main():
     # save_all_results(args.logfolder)
     # profile_full_pipeline(args.logfile)
     # write_perception_meshcat_video(args.logfile, duration=60.0)
+    write_mpfc_debug_video(args.logfile, -1)
     # test_iou_plot()
 
 

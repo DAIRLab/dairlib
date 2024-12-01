@@ -47,7 +47,8 @@ class PlantVisualizer : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PlantVisualizer);
   explicit PlantVisualizer(const std::string& urdf,
-                           const std::string& body_to_track="");
+                           const std::string& body_to_track="",
+                           Eigen::Vector3d cam_pos_local=Eigen::Vector3d(0, -2.5, 0.1));
 
   std::shared_ptr<drake::geometry::Meshcat> get_meshcat() {
     return meshcat_;

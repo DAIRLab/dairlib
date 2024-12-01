@@ -104,7 +104,7 @@ drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
 
 
 PlantVisualizer::PlantVisualizer(
-    const std::string& urdf, const std::string& body_to_track) : plant_(0.0) {
+    const std::string& urdf, const std::string& body_to_track, Vector3d cam_pos_local) : plant_(0.0) {
 
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
@@ -138,7 +138,7 @@ PlantVisualizer::PlantVisualizer(
   if (not body_to_track.empty()) {
     auto cam_manager = builder.AddSystem<MeshcatCameraManager>(plant_, frame, meshcat_);
     auto cam_position = builder.AddSystem<ConstantVectorSource<double>>(
-        Vector3d(0, -2.5, 0.1)
+        cam_pos_local
     );
 
     meshcat_->SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", true);

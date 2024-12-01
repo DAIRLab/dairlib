@@ -36,6 +36,7 @@ py_binary(
         ":segmentation_criteria",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
+        "//bindings/pydairlib/perceptive_locomotion/systems",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/common:meshcat_chrome_capture",
         "//bindings/pydairlib/common:meshcat_video_writer",

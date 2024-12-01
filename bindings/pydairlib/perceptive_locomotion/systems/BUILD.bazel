@@ -68,6 +68,22 @@ py_binary(
     ],
 )
 
+pybind_py_library(
+    name = "systems_py",
+    cc_deps = [
+        "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "systems",
+    cc_srcs = ["systems_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+
 PACKAGE_INFO = get_pybind_package_info("//bindings")
 
 py_library(
@@ -84,7 +100,8 @@ py_library(
 PY_LIBRARIES = [
     ":cassie_footstep_controller_environment",
     ":alip_lqr",
-    ":alip_mpfc"
+    ":alip_mpfc",
+    ":systems_py"
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -3,9 +3,9 @@ import tempfile
 import subprocess
 from time import sleep
 
-from pydairlib.common.meshcat_chrome_capture import MeshcatChromeCapture
 from pydrake.systems.all import Diagram, Simulator
 from pydairlib.lcm.log_playback import LcmLogPlayback
+from pydairlib.common.meshcat_chrome_capture import MeshcatChromeCapture
 
 
 def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,

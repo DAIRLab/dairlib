@@ -1,24 +1,34 @@
+# standard library imports
 import os
 import time
 import glob
 import subprocess
 from time import sleep
 from copy import deepcopy
-from multiprocessing import Pool
 from functools import partial
-import cv2
+from multiprocessing import Pool
+from argparse import ArgumentParser
 
+# installed
+import cv2
 import lcm
-from PIL import Image
-import tempfile
+import yaml
 import numpy as np
-import matplotlib
+
+# Plotting
+import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib.colors import to_rgba
-import seaborn as sns
-from dairlib import lcmt_grid_map, lcmt_foothold_set, lcmt_robot_output
 
+# lcmtypes
+from dairlib import(
+    lcmt_grid_map,
+    lcmt_foothold_set,
+    lcmt_robot_output,
+    lcmt_alip_s2s_mpfc_debug
+)
+
+# pydrake
 from pydrake.systems.all import (
     Diagram,
     Context,
@@ -26,12 +36,16 @@ from pydrake.systems.all import (
     LcmPublisherSystem,
     TriggerType,
 )
-
 from pydrake.geometry import Meshcat
 
+
+# Grid Map
 from grid_map import GridMap
 
+
+# pydairlib
 from pydairlib.multibody import MultiposeVisualizer
+from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
 
 from pydairlib.systems import (
     PlaneSegmentationSystem,
@@ -44,27 +58,20 @@ from pydairlib.geometry import ConvexPolygonVisualizer, ConvexPolygonReceiver
 
 from pydairlib.analysis.process_lcm_log import get_log_data
 
-from pydairlib.perceptive_locomotion.terrain_segmentation. \
-    terrain_segmentation_system import TerrainSegmentationSystem
-
-from pydairlib.perceptive_locomotion.terrain_segmentation. \
-    convex_terrain_decomposition_system import \
-    ConvexTerrainDecompositionSystem, plot_polygon, plot_polygons_with_holes
-
-from pydairlib.perceptive_locomotion.terrain_segmentation import perception_analysis_utils as utils
-
-import pydairlib.perceptive_locomotion.terrain_segmentation. \
+from pydairlib.perceptive_locomotion.terrain_segmentation import (
+    ConvexTerrainDecompositionSystem,
+    TerrainSegmentationSystem,
+    plot_polygons_with_holes,
+    plot_polygon,
+    perception_analysis_utils as utils,
     segmentation_criteria as seg_criteria
+)
 
-from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
-
-from argparse import ArgumentParser
-
-import yaml
-
+from pydairlib.perceptive_locomotion.systems import AlipMPFCMeshcatVisualizer
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
+mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 
 
 def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
@@ -81,6 +88,9 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
     )
     return grid_maps, robot_output
 
+
+def write_mpfc_debug_video(logfile: str, duration=60):
+    pass
 
 def write_perception_meshcat_video(logfile: str, duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
@@ -122,7 +132,7 @@ def write_perception_meshcat_video(logfile: str, duration=60):
 
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4', duration=30.0)
+        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4', duration=duration)
 
 
 def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):
@@ -486,10 +496,10 @@ def main():
     # make_all_segmentation_videos(args.logfolder)
 
     # run_pipeline_figure_script(args.logfile)
-    make_segmentation_tiles(
-        args.logfolder,
-        '../manuscripts/perceptive_walking_tro/figures/perception_results/'
-    )
+    # make_segmentation_tiles(
+    #     args.logfolder,
+    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    # )
     # make_all_results_figures(
     #     args.logfolder,
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'

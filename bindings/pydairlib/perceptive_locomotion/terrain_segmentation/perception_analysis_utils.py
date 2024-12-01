@@ -1,10 +1,10 @@
 import os
-import numpy as np
 import tempfile
 import subprocess
+import matplotlib
+import numpy as np
 from PIL import Image
 from grid_map import GridMap
-import matplotlib
 from matplotlib import pyplot as plt
 
 from pydairlib.analysis.mbp_plotting_utils import process_state_channel

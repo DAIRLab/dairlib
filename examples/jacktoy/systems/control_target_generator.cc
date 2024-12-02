@@ -32,12 +32,12 @@ TargetGenerator::TargetGenerator(
               "x_object", StateVector<double>(object_plant.num_positions(),
                                               object_plant.num_velocities()))
           .get_index();
-  end_effector_target_port_ =
-      this->DeclareVectorOutputPort(
-              "end_effector_target", BasicVector<double>(3),
-              &TargetGenerator::CalcEndEffectorTarget)
-          .get_index();
+
   // OUTPUT PORTS
+  end_effector_target_port_ = this->DeclareVectorOutputPort(
+                              "end_effector_target", BasicVector<double>(3),
+                              &TargetGenerator::CalcEndEffectorTarget)
+                          .get_index();
   object_target_port_ = this->DeclareVectorOutputPort(
                               "object_target", BasicVector<double>(7),
                               &TargetGenerator::CalcObjectTarget)
@@ -53,7 +53,8 @@ TargetGenerator::TargetGenerator(
 
   C3Options c3_options;
   FrankaC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>("examples/jacktoy/parameters/franka_c3_controller_params.yaml");
+      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
+        "examples/jacktoy/parameters/franka_c3_controller_params.yaml");
 
   int safety_mode_index = controller_params.run_in_safe_mode ? 0 : 1;
   std::string safety_mode_name = controller_params.run_in_safe_mode ? "safe" : "normal";
@@ -62,18 +63,28 @@ TargetGenerator::TargetGenerator(
 }
 
 void TargetGenerator::SetRemoteControlParameters(
-    const int& trajectory_type, const bool& use_changing_final_goal_position,
-    const bool& use_changing_final_goal_orientation, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position, 
-    const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, 
-    const double& start_point_y, const double& end_point_x, const double& end_point_y, const double& lookahead_step_size,
-    const double& lookahead_angle, const double& angle_err_to_vel_factor, const double& max_step_size, const double& ee_goal_height,
-    const double& object_half_width) {
+    const int& trajectory_type,
+    const bool& use_changing_final_goal,
+    const double& traj_radius,
+    const double& x_c, const double& y_c, const double& lead_angle,
+    const Eigen::VectorXd& target_object_position,
+    const Eigen::VectorXd& target_object_orientation,
+    const double& step_size, const double& start_point_x,
+    const double& start_point_y,
+    const double& end_point_x,
+    const double& end_point_y,
+    const double& lookahead_step_size,
+    const double& lookahead_angle,
+    const double& angle_err_to_vel_factor,
+    const double& max_step_size,
+    const double& ee_goal_height,
+    const double& object_half_width,
+    const double& position_success_threshold,
+    const double& orientation_success_threshold) {
   // Set the target parameters
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
-  use_changing_final_goal_position_ = use_changing_final_goal_position;
-  use_changing_final_goal_orientation_ = use_changing_final_goal_position;
+  use_changing_final_goal_ = use_changing_final_goal;
   traj_radius_ = traj_radius;
   x_c_ = x_c;
   y_c_ = y_c; 
@@ -91,17 +102,16 @@ void TargetGenerator::SetRemoteControlParameters(
   max_step_size_ = max_step_size;
   ee_goal_height_ = ee_goal_height;
   object_half_width_ = object_half_width;
+  position_success_threshold_ = position_success_threshold;
+  orientation_success_threshold_ = orientation_success_threshold;
 }
 
 void TargetGenerator::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
-  // const auto& radio_out =
-  //     this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-
   // Evaluate input port for object state
   const StateVector<double>* object_state =
-      (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
+    (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
   // End effector position needs to be right above the object
   VectorXd end_effector_position = object_state->GetPositions().tail(3);
@@ -117,31 +127,46 @@ void TargetGenerator::CalcObjectTarget(
   const StateVector<double>* object_state =
       (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
-  // Get object position
+  // Get current object states.
   VectorXd obj_curr_position = object_state->GetPositions().tail(3);
+  VectorXd obj_curr_quat = object_state->GetPositions().head(4);
 
+  // Prepare to set target object states.
   VectorXd target_obj_state = VectorXd::Zero(7);
   VectorXd target_obj_position = VectorXd::Zero(3);
   VectorXd target_obj_orientation = VectorXd::Zero(4);
 
-  // TODO: @Sharanya, pick back up here. 
-  // Default to the target object orientation.
-  if(!use_changing_final_goal_orientation_){
-    target_obj_orientation = target_final_object_orientation_;
-  }
-  else{
-    // Come up with a way to generate valid orientation targets with 1, 2 and 3 
-    // prongs.
-    std::cout<<"Trying to change final orientation."<<std::endl;
+  // Define quaternion objects for current and desired orientations.
+  Eigen::Quaterniond curr_quat(obj_curr_quat(0), obj_curr_quat(1),
+                               obj_curr_quat(2), obj_curr_quat(3));
+  Eigen::Quaterniond des_quat(target_final_object_orientation_[0],
+                              target_final_object_orientation_[1],
+                              target_final_object_orientation_[2],
+                              target_final_object_orientation_[3]);
+  // Compute the orientation difference.
+  Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+
+  // Handle changing goal if success criteria are met for both position and
+  // orientation.
+  if (use_changing_final_goal_) {
+    // Check if success has been met.
+    double object_position_error = (obj_curr_position -
+      target_final_object_position_).norm();
+    double object_angular_error = angle_axis_diff.angle();
+
+    if ((object_position_error < position_success_threshold_) &&
+        (object_angular_error < orientation_success_threshold_)) {
+      std::cout << "\nMet pose goal!\n" << std::endl;
+
+      // Reset the target object orientation and position.
+      // TODO put in something valid.
+      target_final_object_position_(0) += 0.1;
+      // target_final_object_orientation_ = VectorXd::Zero(4);
+    }
+
   }
 
-  if(use_changing_final_goal_position_){
-    // Check if the object is within a tolerance of the target position or 
-    // has not moved for a certain amount of time.
-    // If so, generate a new target position.
-    // If not, keep the target position the same.
-    std::cout<<"Trying to change final goal."<<std::endl;
-  }
+  target_obj_orientation = target_final_object_orientation_;
 
   // Adaptive circular trajectory for traj_type = 1
   if (trajectory_type_ == 1){
@@ -266,7 +291,6 @@ void TargetGenerator::CalcObjectTarget(
     Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
     target_obj_orientation = y_quat_lookahead;
   }
-
   else if(trajectory_type_ == 0){
         // Throw an error.
     std::cerr << ("Trajectory type 0 - Time Based Path : Currently unimplemented") << std::endl;
@@ -306,14 +330,6 @@ void TargetGenerator::CalcObjectVelocityTarget(
   // Generate spherically interpolated trajectory.
     auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
     {0, 1}, {y_quat, y_quat_des});
-    // std::cout<<"Angular velocity 0" << orientation_trajectory.angular_velocity(0)<<std::endl;
-    // std::cout<<"Angular velocity 0.1" << orientation_trajectory.angular_velocity(0.1)<<std::endl;
-    // std::cout<<"Angular velocity 0.2" << orientation_trajectory.angular_velocity(0.2)<<std::endl;
-    // std::cout<<"Angular velocity 0.4" << orientation_trajectory.angular_velocity(0.4)<<std::endl;
-    // std::cout<<"Angular velocity 0.5" << orientation_trajectory.angular_velocity(0.5)<<std::endl;
-    // std::cout<<"Angular velocity 0.7" << orientation_trajectory.angular_velocity(0.7)<<std::endl;
-    // std::cout<<"Angular velocity 0.9" << orientation_trajectory.angular_velocity(0.9)<<std::endl;
-    // std::cout<<"Angular velocity 1" << orientation_trajectory.angular_velocity(1)<<std::endl;
 
   // Evaluate the trajectory at the lookahead time.
   // Scale time based on lookahead angle.
@@ -325,10 +341,7 @@ void TargetGenerator::CalcObjectVelocityTarget(
   VectorXd angle_error = angle_axis_diff_to_lookahead.angle() * angle_axis_diff_to_lookahead.axis();
   angle_error *= angle_err_to_vel_factor_;
 
-  // std::cout<<"Angle error: "<<angle_error<<std::endl;
-
   VectorXd target_obj_velocity = VectorXd::Zero(6);
-  // target_obj_velocity << orientation_trajectory.angular_velocity(lookahead_fraction) * angle_err_to_vel_factor_, VectorXd::Zero(3);
   target_obj_velocity << angle_error, VectorXd::Zero(3);
   target->SetFromVector(target_obj_velocity);
 }

@@ -1,10 +1,14 @@
 # Trajectory generation parameters
 trajectory_type: 4       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path, 4 to use a fixed goal but with a lookahead
-use_changing_final_goal_position: false
-use_changing_final_goal_orientation: false
+use_changing_final_goal: true
 final_goal_position_tolerance: [0.01, 0.01, 0.01]  # 1cm error in each direction
 final_goal_orientation_tolerance: [0.01, 0.01, 0.01, 0.01]  # 0.01 rad is about 0.57 degrees #THIS IS CURRENTLY UNUSED
 final_goal_time_tolerance: 45 # in seconds
+
+# Thresholds for position and orientation for reaching a goal successfully.
+position_success_threshold: 0.01
+orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
+
 # Adaptive circular path parameters
 traj_radius: 0.2
 x_c: 0.35
@@ -21,11 +25,11 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
-# fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
+fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
+fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
-fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
-fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
+# fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
+# fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) Balancing on blue and green prongs at almost half a topple
 # fixed_target_orientation: [ -0.15288758, 0.40935087, 0.827526, -0.35267374]

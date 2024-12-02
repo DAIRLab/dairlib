@@ -44,22 +44,37 @@ class TargetGenerator
     return this->get_output_port(object_final_target_port_);
   }
 
-  void SetRemoteControlParameters(const int& trajectory_type, const bool& use_changing_final_goal_position,
-    const bool& use_changing_final_goal_orientation, const double& traj_radius,
-    const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& target_object_position,
-     const Eigen::VectorXd& target_object_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
-    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size,
-    const double& lookahead_angle, const double& angle_err_to_vel_factor,
-    const double& max_step_size, const double& ee_goal_height, const double& object_half_width);
+  void SetRemoteControlParameters(
+    const int& trajectory_type,
+    const bool& use_changing_final_goal,
+    const double& traj_radius,
+    const double& x_c,
+    const double& y_c,
+    const double& lead_angle,
+    const Eigen::VectorXd& target_object_position,
+    const Eigen::VectorXd& target_object_orientation,
+    const double& step_size,
+    const double& start_point_x,
+    const double& start_point_y,
+    const double& end_point_x,
+    const double& end_point_y,
+    const double& lookahead_step_size,
+    const double& lookahead_angle,
+    const double& angle_err_to_vel_factor,
+    const double& max_step_size,
+    const double& ee_goal_height,
+    const double& object_half_width,
+    const double& position_success_threshold,
+    const double& orientation_success_threshold);
 
  private:
   void CalcEndEffectorTarget(const drake::systems::Context<double>& context,
                              drake::systems::BasicVector<double>* target) const;
   void CalcObjectTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
-   void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
-                      drake::systems::BasicVector<double>* target) const;
-   void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
+  void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
+                    drake::systems::BasicVector<double>* target) const;
+  void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -73,14 +88,13 @@ class TargetGenerator
   drake::systems::OutputPortIndex object_final_target_port_;
 
   int trajectory_type_;
-  bool use_changing_final_goal_position_;
-  bool use_changing_final_goal_orientation_;
+  bool use_changing_final_goal_;
   double traj_radius_;
   double x_c_;
   double y_c_;
   double lead_angle_;
-  Eigen::VectorXd target_final_object_position_;
-  Eigen::VectorXd target_final_object_orientation_;
+  mutable Eigen::VectorXd target_final_object_position_;
+  mutable Eigen::VectorXd target_final_object_orientation_;
   double step_size_;
   double start_point_x_;
   double start_point_y_;
@@ -92,6 +106,8 @@ class TargetGenerator
   double max_step_size_;
   double ee_goal_height_;
   double object_half_width_;
+  double position_success_threshold_;
+  double orientation_success_threshold_;
 };
 
 }  // namespace systems

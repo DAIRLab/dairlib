@@ -316,6 +316,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<double> all_sample_costs_;
   mutable std::vector<double> curr_and_best_sample_cost_;
 
+  // To detect if the final goal has been updated.
+  mutable Eigen::VectorXd x_final_target_;
+
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;
   mutable bool finished_reposition_flag_ = false;

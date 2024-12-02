@@ -325,17 +325,26 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       plant_jack);  // This system generates the target for the end effector and
                     // the object.
   control_target->SetRemoteControlParameters(
-      trajectory_params.trajectory_type, trajectory_params.use_changing_final_goal_position,
-      trajectory_params.use_changing_final_goal_orientation, trajectory_params.traj_radius,
+      trajectory_params.trajectory_type,
+      trajectory_params.use_changing_final_goal,
+      trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
-      trajectory_params.lead_angle, trajectory_params.fixed_target_position,
-      trajectory_params.fixed_target_orientation, trajectory_params.step_size,
-      trajectory_params.start_point_x, trajectory_params.start_point_y,
-      trajectory_params.end_point_x, trajectory_params.end_point_y,
-      trajectory_params.lookahead_step_size, trajectory_params.lookahead_angle,
+      trajectory_params.lead_angle,
+      trajectory_params.fixed_target_position,
+      trajectory_params.fixed_target_orientation,
+      trajectory_params.step_size,
+      trajectory_params.start_point_x,
+      trajectory_params.start_point_y,
+      trajectory_params.end_point_x,
+      trajectory_params.end_point_y,
+      trajectory_params.lookahead_step_size,
+      trajectory_params.lookahead_angle,
       trajectory_params.angle_err_to_vel_factor,
-      trajectory_params.max_step_size, trajectory_params.ee_goal_height,
-      trajectory_params.object_half_width);
+      trajectory_params.max_step_size,
+      trajectory_params.ee_goal_height,
+      trajectory_params.object_half_width,
+      trajectory_params.position_success_threshold,
+      trajectory_params.orientation_success_threshold);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);

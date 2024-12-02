@@ -283,6 +283,7 @@ SamplingC3Controller::SamplingC3Controller(
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
+  x_final_target_ = VectorXd::Zero(n_x_);
   lowest_cost_steps_ago_ = 0;
   lowest_cost_ = std::numeric_limits<double>::infinity();
 
@@ -366,12 +367,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         !x_pred_from_last_control_loop_.isZero() &&
         c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
-      std::cout << "RESET x_pred in C3 mode. ";
-      // if(verbose_){
+      if(verbose_){
+        std::cout << "RESET x_pred in C3 mode. ";
         std::cout << "curr_ee-last_ee is " <<
           (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
           (curr_ee-pred_ee).norm() << std::endl;
-      if(verbose_){
         std::cout << "x_lcs_curr without clamping: " <<
           x_lcs_curr.transpose() << std::endl;
       }
@@ -395,12 +395,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         !x_pred_from_last_control_loop_.isZero() &&
         c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
-      std::cout << "RESET x_pred in repositioning mode. ";
-      // if(verbose_){
+      if(verbose_){
+        std::cout << "RESET x_pred in repositioning mode. ";
         std::cout << "curr_ee-last_ee is " <<
           (curr_ee-last_ee).norm() << " and curr_ee-pred_ee is " <<
           (curr_ee-pred_ee).norm() << std::endl;
-      if(verbose_){
         std::cout << "x_lcs_curr without clamping: " <<
           x_lcs_curr.transpose() << std::endl;
       }
@@ -552,10 +551,28 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<std::vector<Eigen::VectorXd>> ws(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
   
+  // Detect if the final target has changed, in which case return to caring only
+  // about position until the switching threshold has been crossed again.
+  // Exclude the EE goal from the comparison, since that always changes to be
+  // above the current jack location.
+  if (!x_final_target_.segment(3, n_x_-3).isApprox(
+        x_lcs_final_des.value().segment(3, n_x_-3), 1e-5)) {
+    std::cout << "Detected goal change!" << std::endl;
+    // if (verbose_) {
+      std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
+      std::cout << "  New goal:  " << x_lcs_final_des.value().transpose() <<
+        std::endl;
+      std::cout << "  --> Error:  " <<
+        (x_final_target_.segment(3, n_x_-3) -
+         x_lcs_final_des.value().segment(3, n_x_-3)).norm() << std::endl;
+    // }
+    crossed_cost_switching_threshold_ = false;
+    x_final_target_ = x_lcs_final_des.value();
+  }
+
   // if object is within a fixed radius of the desired location, 
   // change crossed_cost_switching_threshold_ to true.
-  if (!crossed_cost_switching_threshold_){
-    // std::cout<<"current object location: "<<x_lcs_curr.segment(7,2).transpose()<<std::endl;
+  if (!crossed_cost_switching_threshold_) {
     if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() < 
         sampling_params_.cost_switching_threshold_distance){
       crossed_cost_switching_threshold_ = true;
@@ -569,7 +586,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-  if(crossed_cost_switching_threshold_){
+  if (crossed_cost_switching_threshold_) {
     // clear the Q_ values and replace with costs for position and orientation.
     Q_.clear();
     double discount_factor = 1;
@@ -578,13 +595,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       discount_factor *= c3_options_.gamma;
     }
   }
-  if(c3_options_.use_quaternion_dependent_cost && crossed_cost_switching_threshold_){
+
+  if (c3_options_.use_quaternion_dependent_cost &&
+      crossed_cost_switching_threshold_) {
     Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
     Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
     Eigen::MatrixXd Q_quaternion_dependent_cost = 
       hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
     
-    // Get the eigenvalues of the hessian.
+    // Get the eigenvalues of the hessian to regularize so the Q matrix is
+    // always PSD.
     double min_eigval = Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
     Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 = 
       std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4,4);

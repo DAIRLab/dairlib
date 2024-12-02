@@ -6,8 +6,7 @@
 
 struct SamplingC3TrajectoryParams {
   int trajectory_type;
-  bool use_changing_final_goal_position;
-  bool use_changing_final_goal_orientation;
+  bool use_changing_final_goal;
   Eigen::VectorXd final_goal_position_tolerance;
   Eigen::VectorXd final_goal_orientation_tolerance;
   double final_goal_time_tolerance;
@@ -28,12 +27,13 @@ struct SamplingC3TrajectoryParams {
   double max_step_size;
   double ee_goal_height;
   double object_half_width;
+  double position_success_threshold;
+  double orientation_success_threshold;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(trajectory_type));
-    a->Visit(DRAKE_NVP(use_changing_final_goal_position));
-    a->Visit(DRAKE_NVP(use_changing_final_goal_orientation));
+    a->Visit(DRAKE_NVP(use_changing_final_goal));
     a->Visit(DRAKE_NVP(final_goal_position_tolerance));
     a->Visit(DRAKE_NVP(final_goal_orientation_tolerance));
     a->Visit(DRAKE_NVP(final_goal_time_tolerance));
@@ -54,5 +54,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(max_step_size));
     a->Visit(DRAKE_NVP(ee_goal_height));
     a->Visit(DRAKE_NVP(object_half_width));
+    a->Visit(DRAKE_NVP(position_success_threshold));
+    a->Visit(DRAKE_NVP(orientation_success_threshold));
   }
 };

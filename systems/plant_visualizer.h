@@ -41,6 +41,7 @@ class MeshcatCameraManager : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_cam_pos_;
   drake::systems::AbstractStateIndex prev_time_index_;
+  drake::systems::DiscreteStateIndex prev_track_frame_pos_;
 };
 
 class PlantVisualizer : public drake::systems::Diagram<double> {

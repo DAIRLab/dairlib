@@ -50,8 +50,8 @@ MeshcatCameraManager::MeshcatCameraManager(const drake::multibody::MultibodyPlan
 
   input_port_cam_pos_ = DeclareVectorInputPort("cam_pos", 3).get_index();
 
-  prev_time_index_ = DeclareAbstractState(drake::Value<double>(0));
-
+  prev_time_index_ = DeclareAbstractState(drake::Value<double>(-1.0));
+  prev_track_frame_pos_ = DeclareDiscreteState(3);
   DeclarePeriodicUnrestrictedUpdateEvent(
       1.0/30.0, 0.0, &MeshcatCameraManager::UpdateMeshcat);
 
@@ -67,13 +67,13 @@ drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
       EvalVectorInput(context, input_port_state_));
 
   double prev_time = state->get_abstract_state<double>(prev_time_index_);
+  Vector3d prev_pos = state->get_discrete_state(prev_track_frame_pos_).get_value();
 
   if (prev_time == robot_output->get_timestamp()) {
     return EventStatus::DidNothing();
   }
 
-  state->get_mutable_abstract_state<double>(prev_time_index_) =
-      robot_output->get_timestamp();
+
 
   Vector3d cam_pos_local =
       EvalVectorInput(context, input_port_cam_pos_)->get_value();
@@ -83,9 +83,16 @@ drake::systems::EventStatus MeshcatCameraManager::UpdateMeshcat(
   Vector3d body_pos_in_world = camera_track_frame_.CalcPoseInWorld(
       *plant_context_).translation() - 0.4 * Vector3d::UnitZ();
 
-  meshcat_->SetCameraPose(body_pos_in_world + cam_pos_local, body_pos_in_world);
+  if (prev_time > 0) {
+    body_pos_in_world = 0.5 * body_pos_in_world + 0.5 * prev_pos;
+  }
 
-  // Set the lighting positions
+  state->get_mutable_abstract_state<double>(prev_time_index_) =
+      robot_output->get_timestamp();
+  state->get_mutable_discrete_state(prev_track_frame_pos_).get_mutable_value() =
+      body_pos_in_world;
+
+  meshcat_->SetCameraPose(body_pos_in_world + cam_pos_local, body_pos_in_world);
   meshcat_->SetTransform(
       "/Lights/SpotLight/<object>",
       RigidTransformd(

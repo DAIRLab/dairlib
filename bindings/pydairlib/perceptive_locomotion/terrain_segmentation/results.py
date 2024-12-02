@@ -43,7 +43,6 @@ from pydrake.geometry import Meshcat
 # Grid Map
 from grid_map import GridMap
 
-
 # pydairlib
 from pydairlib.multibody import MultiposeVisualizer
 from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
@@ -94,9 +93,9 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
 def write_mpfc_debug_video(logfile: str, duration=-1):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
 
-    theta = -np.pi
+    theta = -2 * np.pi / 3
     r = 1.7
-    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([np.cos(theta), np.sin(theta), 0.5]))
+    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([r * np.cos(theta), r * np.sin(theta), 0.25]))
     meshcat = plant_visualizer.get_meshcat()
     mpc_visualizer = AlipMPFCMeshcatVisualizer(meshcat, plant_visualizer.get_plant())
     state_receiver = RobotOutputReceiver(plant_visualizer.get_plant())
@@ -131,18 +130,18 @@ def write_mpfc_debug_video(logfile: str, duration=-1):
 def write_perception_meshcat_video(logfile: str, duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
-    plant_visualizer = PlantVisualizer(urdf, "pelvis")
+    theta = -2 * np.pi / 3
+    r = 1.7
+    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([r * np.cos(theta), r * np.sin(theta), 0.25]))
     meshcat = plant_visualizer.get_meshcat()
 
     visualizers = {
         "state": plant_visualizer,
         "grid_map": GridMapVisualizer(meshcat, update_period, ["segmented_elevation"]),
-        "polygons": ConvexPolygonVisualizer(meshcat, update_period)
     }
     receivers = {
         "state": RobotOutputReceiver(plant_visualizer.get_plant()),
         "grid_map": GridMapReceiver(),
-        "polygons": ConvexPolygonReceiver()
     }
 
     builder = DiagramBuilder()
@@ -157,13 +156,11 @@ def write_perception_meshcat_video(logfile: str, duration=60):
     types = {
         'NETWORK_CASSIE_STATE_DISPATCHER': lcmt_robot_output,
         'CASSIE_ELEVATION_MAP': lcmt_grid_map,
-        'FOOTHOLDS_PROCESSED': lcmt_foothold_set
     }
 
     ports = {
         'NETWORK_CASSIE_STATE_DISPATCHER': receivers['state'].get_input_port(),
         'CASSIE_ELEVATION_MAP': receivers['grid_map'].get_input_port(),
-        'FOOTHOLDS_PROCESSED': receivers['polygons'].get_input_port()
     }
 
     lcm_log = lcm.EventLog(logfile)
@@ -556,8 +553,8 @@ def main():
     # )
     #
     # profile_full_pipeline(args.logfile)
-    # write_perception_meshcat_video(args.logfile, duration=60.0)
-    write_mpfc_debug_video(args.logfile, -1)
+    write_perception_meshcat_video(args.logfile, duration=60.0)
+    # write_mpfc_debug_video(args.logfile, 60)
     # test_iou_plot()
 
 

@@ -16,6 +16,7 @@ import yaml
 import numpy as np
 
 # Plotting
+import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -302,7 +303,8 @@ def profile_segmentation(system, grid_maps):
         'name': system.get_name(),
         'iou': iou,
         'runtime': runtime,
-        'segmentations': segmentations
+        'segmentations': segmentations,
+        'grid_maps': grid_maps
     }
 
 
@@ -483,25 +485,37 @@ def make_all_results_figures(logfolder, savefolder):
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
     data = all_results['data'].item()
-    N = 14
-
+    N = 16
+    offset = 1050
+    interval = 30
     envs = ['Lab', 'Brick Steps', 'Grass']
-
+    utils.setup_plots()
+    matplotlib.rcParams['axes.titlesize'] = 12
     for env in envs:
-        fig = plt.figure(figsize=(4, N+1))
-        gs = fig.add_gridspec(N+1, 4)
-        plt.title(f'{env} Segmentations')
-        for i in range(1, N):
+        fig = plt.figure(figsize=(4, N))
+        gs = fig.add_gridspec(N, 4)
+        plt.suptitle(f'{env}')
+        for i in range(N):
+            grid_map = data[env][0]['grid_maps'][offset + interval * i]
+            ax = fig.add_subplot(gs[i, 0])
+            if i == 0:
+                ax.set_title('Elevation')
+            ax.imshow(grid_map['elevation'])
+            ax.set_xticks([])
+            ax.set_yticks([])
+            if env == 'Lab':
+                ax.set_ylabel('\\textbf{' + f't = {(offset + interval * i)/30}' + '}', fontsize=12)
             for j in range(3):
-                seg = data[env][j]['segmentations'][300 + 30*i]
+                seg = data[env][j]['segmentations'][offset + + interval * i]
                 name = data[env][j]['name']
                 ax = fig.add_subplot(gs[i, j + 1])
-                if i == 1:
+                if i == 0:
                     ax.set_title(name)
                 ax.imshow(seg, cmap='gray')
                 ax.set_xticks([])
                 ax.set_yticks([])
-        fig.tight_layout()
+        fig.tight_layout(pad=1.01)
+        plt.savefig(os.path.join(savefolder, f'{env.replace(" ", "_")}_segmentation_tiles.svg'))
     plt.show()
 
 
@@ -531,6 +545,7 @@ def main():
     # make_all_segmentation_videos(args.logfolder)
 
     # run_pipeline_figure_script(args.logfile)
+    # save_all_results(args.logfolder)
     # make_segmentation_tiles(
     #     args.logfolder,
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
@@ -539,7 +554,7 @@ def main():
     #     args.logfolder,
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     # )
-    # save_all_results(args.logfolder)
+    #
     # profile_full_pipeline(args.logfile)
     # write_perception_meshcat_video(args.logfile, duration=60.0)
     write_mpfc_debug_video(args.logfile, -1)

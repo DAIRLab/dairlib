@@ -279,6 +279,14 @@ SamplingC3Controller::SamplingC3Controller(
     &SamplingC3Controller::OutputCurrAndBestSampleCost
   ).get_index();
 
+  // This port publishes best_progress_steps_agp_, lowest_cost_,
+  // lowest_pos_and_rot_current_cost_, lowest_position_error_, and
+  // lowest_orientation_error_ over lcm in that order.
+  additional_costs_port_ = this->DeclareAbstractOutputPort(
+    "additional_costs", std::vector<double>(5, -1), 
+    &SamplingC3Controller::OutputAdditionalCosts
+  ).get_index();
+
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
@@ -1688,6 +1696,24 @@ void SamplingC3Controller::OutputCurrAndBestSampleCost(
     const drake::systems::Context<double>& context,
     std::vector<double>* curr_and_best_sample_cost) const {
   *curr_and_best_sample_cost = curr_and_best_sample_cost_;
+}
+
+void SamplingC3Controller::OutputAdditionalCosts(
+    const drake::systems::Context<double>& context,
+    std::vector<double>* additional_costs) const {
+  // additional costs output is ordered as follows:
+  // int to double - best_progress_steps_ago_, 
+  // double - lowest_cost_, 
+  // double - lowest_pos_and_rot_current_cost_, 
+  // double - lowest_position_error_, 
+  // double - lowest_orientation_error_
+    std::vector<double> vec;
+    vec.push_back(best_progress_steps_ago_);
+    vec.push_back(lowest_cost_);
+    vec.push_back(lowest_pos_and_rot_current_cost_);
+    vec.push_back(lowest_position_error_);
+    vec.push_back(lowest_orientation_error_);
+    *additional_costs = vec;
 }
 
 } // namespace systems 

@@ -24,6 +24,7 @@
 #include "examples/jacktoy/systems/sample_location_sender.h"
 #include "examples/jacktoy/systems/dynamically_feasible_plan_sender.h"
 #include "examples/jacktoy/systems/sample_cost_sender.h"
+#include "examples/jacktoy/systems/additional_costs_sender.h"
 #include "examples/jacktoy/systems/is_c3_mode_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -492,6 +493,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     builder.AddSystem<systems::SampleCostSender>();
   auto curr_and_best_sample_costs_sender = 
     builder.AddSystem<systems::SampleCostSender>("curr_and_best_sample_costs_sender");
+  auto additional_costs_sender = 
+    builder.AddSystem<systems::AdditionalCostsSender>("additional_costs_sender : best_progress_steps_ago_, lowest_cost_, lowest_pos_and_rot_current_cost_, lowest_position_error_, lowest_orientation_error_");
   auto is_c3_mode_sender = 
     builder.AddSystem<systems::IsC3ModeSender>();
 
@@ -507,6 +510,10 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   auto curr_and_best_sample_costs_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto additional_costs_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.additional_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto is_c3_mode_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -675,12 +682,16 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
                   is_c3_mode_sender->get_input_port());
   builder.Connect(controller->get_output_port_curr_and_best_sample_costs(),
                   curr_and_best_sample_costs_sender->get_input_port());
+  builder.Connect(controller->get_output_port_additional_costs(),
+                  additional_costs_sender->get_input_port());
   builder.Connect(sample_locations_sender->get_output_port(),
                   sample_locations_publisher->get_input_port());
   builder.Connect(sample_costs_sender->get_output_port(),
                   sample_costs_publisher->get_input_port());
   builder.Connect(curr_and_best_sample_costs_sender->get_output_port(),
                   curr_and_best_sample_costs_publisher->get_input_port());
+  builder.Connect(additional_costs_sender->get_output_port(),
+                  additional_costs_publisher->get_input_port());
   builder.Connect(is_c3_mode_sender->get_output_port(),
                   is_c3_mode_publisher->get_input_port());
 

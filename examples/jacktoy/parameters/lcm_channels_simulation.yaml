@@ -35,5 +35,5 @@ dynamically_feasible_best_actor_plan_channel: DYNAMICALLY_FEASIBLE_BEST_ACTOR_PL
 dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN          # lcmt_timestamped_saved_traj
 curr_and_best_sample_costs_channel: CURR_AND_BEST_SAMPLE_COSTS          # lcmt_timestamped_saved_traj
 is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
-
+additional_costs_channel: ADDITIONAL_COSTS          # basic vector of doubles
 radio_channel: RADIO

@@ -15,6 +15,7 @@ cc_library(
         ":is_c3_mode_sender",
         ":tracking_trajectory_generator",
         ":sample_cost_sender",
+        ":additional_costs_sender",
         ":sample_location_sender",
         ":dynamically_feasible_plan_sender",
         ":c3_mode_visualizer",
@@ -197,6 +198,24 @@ cc_library(
     ],
     hdrs = [
         "sample_cost_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+cc_library(
+    name = "additional_costs_sender",
+    srcs = [
+        "additional_costs_sender.cc",
+    ],
+    hdrs = [
+        "additional_costs_sender.h",
     ],
     deps = [
         ":franka_kinematics",

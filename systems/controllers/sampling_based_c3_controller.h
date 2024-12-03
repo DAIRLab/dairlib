@@ -136,6 +136,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(curr_and_best_sample_costs_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_additional_costs() 
+      const {
+    return this->get_output_port(additional_costs_port_);
+  }
 
   // The solver options need not be done twice i.e. one for each c3 solution 
   // object.
@@ -220,6 +224,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::vector<double>* curr_and_best_sample_cost) const;
 
+  void OutputAdditionalCosts(
+    const drake::systems::Context<double>& context,
+    std::vector<double>* additional_costs) const;
+
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;
   drake::systems::InputPortIndex target_input_port_;
@@ -244,6 +252,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
   drake::systems::OutputPortIndex curr_and_best_sample_costs_port_;
+  // Additional cost related ports
+  drake::systems::OutputPortIndex additional_costs_port_;
 
   // This plant_ has been made 'not const' so that the context can be updated.
   drake::multibody::MultibodyPlant<double>& plant_;

@@ -16,32 +16,12 @@ py_binary(
     srcs = ["test_segmentation_on_log.py"],
     deps = [
         ":convex_terrain_decomposition_system",
-        ":perception_analysis_utils",
         ":segmentation_criteria",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/lcm",
-        "//bindings/pydairlib/systems",
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
-    name = "results",
-    srcs = ["results.py"],
-    deps = [
-        ":convex_terrain_decomposition_system",
-        ":perception_analysis_utils",
-        ":segmentation_criteria",
-        ":terrain_segmentation_system",
-        "//bindings/grid_map",
-        "//bindings/pydairlib/perceptive_locomotion/systems",
-        "//bindings/pydairlib/analysis:process_lcm_log",
-        "//bindings/pydairlib/common:meshcat_chrome_capture",
-        "//bindings/pydairlib/common:meshcat_video_writer",
-        "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/perceptive_locomotion/results:perception_analysis_utils",
         "//bindings/pydairlib/systems",
         "//lcmtypes:lcmtypes_robot_py",
     ],
@@ -94,16 +74,6 @@ py_library(
         ":vision_utils",
         "//bindings/grid_map",
         "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "perception_analysis_utils",
-    srcs = ["perception_analysis_utils.py"],
-    deps = [
-        "//bindings/grid_map",
-        "//bindings/pydairlib/analysis:mbp_plotting_utils",
-        "//bindings/pydairlib/analysis:cassie_plotting_utils",
     ],
 )
 

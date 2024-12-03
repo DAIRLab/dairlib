@@ -1,14 +1,136 @@
 import os
+import lcm
+import time
 import tempfile
 import subprocess
 import matplotlib
 import numpy as np
 from PIL import Image
+from copy import deepcopy
 from grid_map import GridMap
 from matplotlib import pyplot as plt
-
 from pydairlib.analysis.mbp_plotting_utils import process_state_channel
 from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
+
+# lcmtypes
+from dairlib import(
+    lcmt_grid_map,
+    lcmt_foothold_set,
+    lcmt_robot_output,
+    lcmt_alip_s2s_mpfc_debug
+)
+
+from pydairlib.systems import (
+    PlaneSegmentationSystem
+)
+
+from pydairlib.perceptive_locomotion.terrain_segmentation import (
+    ConvexTerrainDecompositionSystem,
+    TerrainSegmentationSystem,
+    plot_polygons_with_holes,
+    plot_polygon,
+    segmentation_criteria as seg_criteria
+)
+
+from pydairlib.analysis.process_lcm_log import get_log_data
+
+state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
+elevation_map_channel = 'CASSIE_ELEVATION_MAP'
+mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
+terrain_channel = 'FOOTHOLDS_PROCESSED'
+
+
+def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
+    log = lcm.EventLog(logfile, "r")
+    grid_maps, robot_output = get_log_data(
+        log,
+        {
+            elevation_map_channel: lcmt_grid_map,
+            state_channel: lcmt_robot_output
+        }, start_time, duration,
+        process_grid_maps,
+        elevation_map_channel,
+        state_channel,
+    )
+    return grid_maps, robot_output
+
+
+def profile_worker_wrapper(args):
+    sys_info, grid_maps = args
+    grid_maps_copy = deepcopy(grid_maps)
+    params, name = sys_info
+    system = PlaneSegmentationSystem(params)
+    system.set_name(name)
+    return profile_segmentation(system, grid_maps_copy)
+
+
+def profile_segmentation(system, grid_maps):
+    runtime = []
+    iou = []
+
+    context = system.CreateDefaultContext()
+    process_grid_maps = []
+    segmentations = []
+    for map in grid_maps:
+        system.get_input_port().FixValue(context, map)
+        start = time.time()
+        system.CalcForcedUnrestrictedUpdate(
+            context,
+            context.get_mutable_state()
+        )
+        try:
+            process_grid_maps.append(deepcopy(system.get_output_port().Eval(context)))
+        except RuntimeError:
+            import pdb; pdb.set_trace()
+
+        seg = process_grid_maps[-1]['segmentation']
+
+        # make binary (0 to 1)
+        seg = seg / np.maximum(1.0, seg.max())
+        segmentations.append(seg)
+        end = time.time()
+        runtime.append(end - start)
+
+    for i in range(len(process_grid_maps) - 1):
+        iou.append(
+            safe_terrain_iou(process_grid_maps[i], process_grid_maps[i+1])
+        )
+
+    return {
+        'name': system.get_name(),
+        'iou': iou,
+        'runtime': runtime,
+        'segmentations': segmentations,
+        'grid_maps': grid_maps
+    }
+
+
+def run_segmentation_comparison_on_log(logfile, duration, start_time=0):
+    grid_maps, _ = get_grid_maps_from_log(logfile, start_time=start_time, duration=duration)
+    params_folder = \
+        'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
+    s3 = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
+        }
+    )
+    s3.set_name('S3 (Ours)')
+
+    def make_plane_segmentation_system_info(params_folder):
+        yamls = [
+            os.path.join(params_folder, f'{y}.yaml') for y in
+            ['ransac_and_preprocessing', 'no_ransac_with_preprocessing']
+        ]
+        configs = ['', '_NR']
+        system_names = ['EM_cupy' + config for config in configs]
+        return zip(yamls, system_names)
+
+    args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
+    results = [profile_worker_wrapper(arg) for arg in args]
+    results.append(profile_segmentation(s3, deepcopy(grid_maps)))
+
+    return results
 
 
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):

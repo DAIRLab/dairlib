@@ -56,38 +56,21 @@ from pydairlib.systems import (
 )
 from pydairlib.geometry import ConvexPolygonVisualizer, ConvexPolygonReceiver
 
-from pydairlib.analysis.process_lcm_log import get_log_data
-
 from pydairlib.perceptive_locomotion.terrain_segmentation import (
     ConvexTerrainDecompositionSystem,
     TerrainSegmentationSystem,
     plot_polygons_with_holes,
     plot_polygon,
-    perception_analysis_utils as utils,
     segmentation_criteria as seg_criteria
 )
 
+from pydairlib.perceptive_locomotion.results import perception_analysis_utils as utils
 from pydairlib.perceptive_locomotion.systems import AlipMPFCMeshcatVisualizer
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
-
-
-def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
-    log = lcm.EventLog(logfile, "r")
-    grid_maps, robot_output = get_log_data(
-        log,
-        {
-            elevation_map_channel: lcmt_grid_map,
-            state_channel: lcmt_robot_output
-        }, start_time, duration,
-        utils.process_grid_maps,
-        elevation_map_channel,
-        state_channel,
-    )
-    return grid_maps, robot_output
 
 
 def write_mpfc_debug_video(logfile: str, duration=-1):
@@ -237,12 +220,11 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
     print('done')
 
 
-def despine(ax):
-    for _, spine in ax.spines.items():
-        spine.set_visible(False)
-
-
 def save_decomposition_debug_plots(debug_info, save_folder):
+    def despine(_ax):
+        for _, spine in _ax.spines.items():
+            spine.set_visible(False)
+
     fig, ax = plt.subplots(figsize=(8, 8))
     plot_polygons_with_holes(debug_info['unprocessed_polygons'])
     despine(ax)
@@ -264,89 +246,33 @@ def save_decomposition_debug_plots(debug_info, save_folder):
         ax, fig, 'Convex Polygons', save_folder, limits)
 
 
-def profile_segmentation(system, grid_maps):
-    runtime = []
-    iou = []
-
-    context = system.CreateDefaultContext()
-    process_grid_maps = []
-    segmentations = []
-    for map in grid_maps:
-        system.get_input_port().FixValue(context, map)
-        start = time.time()
-        system.CalcForcedUnrestrictedUpdate(
-            context,
-            context.get_mutable_state()
-        )
-        try:
-            process_grid_maps.append(deepcopy(system.get_output_port().Eval(context)))
-        except RuntimeError:
-            import pdb; pdb.set_trace()
-
-        seg = process_grid_maps[-1]['segmentation']
-
-        # make binary (0 to 1)
-        seg = seg / np.maximum(1.0, seg.max())
-        segmentations.append(seg)
-        end = time.time()
-        runtime.append(end - start)
-
-    for i in range(len(process_grid_maps) - 1):
-        iou.append(
-            utils.safe_terrain_iou(process_grid_maps[i], process_grid_maps[i+1])
-        )
-
-    return {
-        'name': system.get_name(),
-        'iou': iou,
-        'runtime': runtime,
-        'segmentations': segmentations,
-        'grid_maps': grid_maps
-    }
-
-
-def animate_segmentations(results):
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-
-    ax1.set_title(results[0]['name'])
-    ax2.set_title(results[1]['name'])
-    imdata = np.zeros_like(results[0]['segmentations'][0])
-
-    # Display the initial frame using imshow
-    img1 = ax1.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
-    img2 = ax2.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
-
-    def anim_callback(i):
-        img1.set_array(results[0]['segmentations'][i])
-        img2.set_array(results[1]['segmentations'][i])
-        return [img1, img2]
-
-    animation = FuncAnimation(
-        fig, anim_callback, frames=range(len(results[0]['segmentations'])), blit=False, interval=50
-    )
-
-    plt.show()
-
-
-def plot_segmentation_run_time_results(results, title, savefile):
-    fig = plt.figure()
+def make_hist_figure(results, title, key, edges, log_x_axis=False):
     plt.title(title)
-
-    edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
-
     for i, r in enumerate(results):
         alpha = 0.8 * (1.0 - float(i) / len(results))
-        sns.histplot(data=r['runtime'], bins=edges, element='step', alpha=alpha, stat='proportion')
+        sns.histplot(
+            data=r[key],
+            bins=edges,
+            element='step',
+            alpha=alpha,
+            stat='proportion'
+        )
 
-    plt.gca().set_xscale('log')
+    if log_x_axis:
+        plt.gca().set_xscale('log')
+    if title == 'Lab':
+        plt.legend([r['name'] for r in results])
     if title == 'Grass':
         plt.xlabel('Segmentation Run Time (s)')
     else:
         plt.xticks([], [])
         plt.minorticks_off()
 
-    if title == 'Lab':
-        plt.legend([r['name'] for r in results])
+
+def plot_segmentation_run_time_results(results, title, savefile):
+    fig = plt.figure()
+    edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
+    make_hist_figure(results, title, 'runtime', edges, log_x_axis=True)
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -354,66 +280,19 @@ def plot_segmentation_run_time_results(results, title, savefile):
 
 def plot_iou_results(results, title, savefile):
     fig = plt.figure()
-    plt.title(title)
-    # results = reversed(results)
-
     edges = np.linspace(0, 1, 21)
-    for i, r in enumerate(results):
-        alpha = 0.8 * (1.0 - float(i) / len(results))
-        sns.histplot(data=r['iou'], bins=edges, element='step', alpha=alpha, stat='proportion')
-
-    if title == 'Grass':
-        plt.xlabel('IoU With Previous Segmentation')
-    else:
-        plt.xticks([], [])
-
-    if title == 'Lab':
-        plt.legend([r['name'] for r in results])
+    make_hist_figure(results, title, 'iou', edges)
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
 
 
-def make_plane_segmentation_system_info(params_folder):
-    yamls = [
-        os.path.join(params_folder, f'{y}.yaml') for y in
-        ['ransac_and_preprocessing', 'no_ransac_with_preprocessing']
-    ]
-    configs = ['', '_NR']
-    system_names = ['EM_cupy' + config for config in configs]
-    return zip(yamls, system_names)
-
-
-def profile_worker_wrapper(args):
-    sys_info, grid_maps = args
-    grid_maps_copy = deepcopy(grid_maps)
-    params, name = sys_info
-    system = PlaneSegmentationSystem(params)
-    system.set_name(name)
-    return profile_segmentation(system, grid_maps_copy)
-
-
-def get_segmentation_results(logfile, duration, start_time=0):
-    grid_maps, _ = get_grid_maps_from_log(logfile, start_time=start_time, duration=duration)
-    params_folder = \
-        'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
-    s3 = TerrainSegmentationSystem(
-        {
-            'curvature_criterion': seg_criteria.curvature_criterion,
-            'inclination_criterion': seg_criteria.inclination_criterion,
-        }
-    )
-    s3.set_name('S3 (Ours)')
-
-    args = [(sys_info, grid_maps) for sys_info in make_plane_segmentation_system_info(params_folder)]
-    results = [profile_worker_wrapper(arg) for arg in args]
-    results.append(profile_segmentation(s3, deepcopy(grid_maps)))
-
-    return results
-
-
 def make_segmentation_videos(logfile, start_time, duration, env_name=''):
-    results = get_segmentation_results(logfile, start_time=start_time, duration=duration)
+    results = utils.run_segmentation_comparison_on_log(
+        logfile,
+        start_time=start_time,
+        duration=duration
+    )
     for r in results:
         utils.write_arrays_to_video(
             [cv2.resize(255 * s.astype(np.uint8), (300, 300), cv2.INTER_NEAREST_EXACT) for s in r['segmentations']],
@@ -421,8 +300,8 @@ def make_segmentation_videos(logfile, start_time, duration, env_name=''):
         )
 
 
-def results_runner(env_config, logfolder):
-    results = get_segmentation_results(
+def segmentation_comparison_results_runner(env_config, logfolder):
+    results = utils.run_segmentation_comparison_on_log(
         logfile=os.path.join(logfolder, env_config['log']),
         start_time=env_config['start'],
         duration=env_config['duration']
@@ -431,7 +310,7 @@ def results_runner(env_config, logfolder):
 
 
 def save_all_results(logfolder):
-    runner = partial(results_runner, logfolder=logfolder)
+    runner = partial(segmentation_comparison_results_runner, logfolder=logfolder)
     with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
         config = yaml.safe_load(stream)
     with Pool(4) as pool:
@@ -526,7 +405,11 @@ def crop_perception_results_svgs(savefolder):
 
 def run_pipeline_figure_script(logfile):
     example_idx = 0
-    grid_maps, robot_output = get_grid_maps_from_log(logfile, start_time=0, duration=1)
+    grid_maps, robot_output = utils.get_grid_maps_from_log(
+        logfile,
+        start_time=0,
+        duration=1
+    )
     q = robot_output['q'][0]
     make_pipeline_figures_from_map(
         grid_maps[example_idx], q, '../terrain_seg_figures')
@@ -553,7 +436,7 @@ def main():
     # )
     #
     # profile_full_pipeline(args.logfile)
-    write_perception_meshcat_video(args.logfile, duration=60.0)
+    # write_perception_meshcat_video(args.logfile, duration=60.0)
     # write_mpfc_debug_video(args.logfile, 60)
     # test_iou_plot()
 

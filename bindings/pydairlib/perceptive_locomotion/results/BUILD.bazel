@@ -1,0 +1,59 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "perception_results",
+    srcs = ["perception_results.py"],
+    deps = [
+        "//bindings/grid_map",
+        ":perception_analysis_utils",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/common:meshcat_chrome_capture",
+        "//bindings/pydairlib/common:meshcat_video_writer",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_library(
+    name = "perception_analysis_utils",
+    srcs = ["perception_analysis_utils.py"],
+    deps = [
+        "//bindings/grid_map",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+    ],
+)
+
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+PY_LIBRARIES = [
+    ":perception_analysis_utils"
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "results",
+    imports = PACKAGE_INFO.py_imports,
+)
+
+

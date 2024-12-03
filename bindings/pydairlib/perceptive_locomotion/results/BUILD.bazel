@@ -31,6 +31,18 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "mpfc_results",
+    srcs = ["mpfc_results.py"],
+    deps = [
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:mpfc_plotting_utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_library(
     name = "perception_analysis_utils",
     srcs = ["perception_analysis_utils.py"],
@@ -41,6 +53,7 @@ py_library(
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
         "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )
 

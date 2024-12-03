@@ -19,7 +19,6 @@ import numpy as np
 import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 # lcmtypes
 from dairlib import(

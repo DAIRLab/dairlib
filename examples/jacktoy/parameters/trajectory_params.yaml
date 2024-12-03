@@ -25,8 +25,8 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
-fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
-fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
+# fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
 # fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
 # fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
@@ -61,6 +61,12 @@ fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
 # fixed_target_position: [0.4, 0.09, 0.031971466]    # 14) position wrong, orientation right
 # fixed_target_orientation: [0.0572597, 0.544881, 0.70131284, -0.4561384]
+
+# fixed_target_position: [0.6, 0, 0.031971466]    # 15) Varying position targets for testing
+# fixed_target_orientation: [ -0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+fixed_target_position: [0.4, 0.3, 0.031971466]    # 16) jack begins on the far left of the franka and the goal is to move the jack back towards the right side.                      
+fixed_target_orientation: [ -0.42418233, 0.33692512, 0.821965, -0.17753652] # Remember to change the q_init_object sim params for this test case.
 #^^# C3 sanity checking good starting configurations #^^#
 
 

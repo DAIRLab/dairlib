@@ -22,6 +22,7 @@ mu: [[0.3, 0.3, 0.3, 0.3],                    # num_contacts_index 0
 dt: 100    # This is not used for the sampling_based controller that uses 
            # planning and execution dt instead. This param is being left in 
            #  for compatibility with other c3 controllers.
+planning_dt_position_tracking: 0.1
 planning_dt: 0.05
 execution_dt: 0.1   # unused
 num_friction_directions: 2
@@ -140,12 +141,52 @@ q_vector_position_and_orientation: [
            0.05, 0.05, 0.05]           # object linear velocity
 
 # POSITION GOAL GAINS
+
+gamma_position_tracking: 1.0  # discount factor on MPC costs
+# Penalty on matching projected variables
+g_x_position_tracking: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_gamma_position_tracking: [[1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1]]
+g_lambda_n_position_tracking: [[1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1]]
+g_lambda_t_position_tracking: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_position_tracking: [[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+           [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]]
+g_u_position_tracking: [0.1,0.1,0.1]
+
+# Penalty on matching the QP variables
+u_x_position_tracking: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+u_gamma_position_tracking: [[1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1]]
+u_lambda_n_position_tracking: [[1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1]]
+u_lambda_t_position_tracking: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+# u_lambda is not used for the QP projection. It gets overwritten by alpha*F.
+u_lambda_position_tracking: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+            [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]]
+u_u_position_tracking: [30, 30, 30]
+
+# matrix scaling
+w_Q_position_tracking: 25
+w_R_position_tracking: 1
+# Penalty on all decision variables, assuming scalar
+w_G_position_tracking: 0.16
+# Penalty on all decision variables, assuming scalar
+w_U_position_tracking: 0.25
 q_vector: [0.01, 0.01, 0.01,        # end effector position
-           0.1, 0.1, 0.1, 0.1,             # object orientation
-           50, 50, 50,    # object position
-           0.05, 0.05, 0.05,              # end effector linear velocity
-           0.1, 0.1, 0.1,                 # object angular velocity
-           5, 5, 5]           # object linear velocity
+           0.1, 0.1, 0.1, 0.1,              # object orientation
+           1500, 1500, 1500,    # object position
+           0.1, 0.1, 0.1,              # end effector linear velocity
+           0.01, 0.01, 0.01,                 # object angular velocity
+           1, 1, 1]           # object linear velocity
 
 # Penalty on all decision variables
 # g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

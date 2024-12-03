@@ -46,18 +46,20 @@ struct C3Options {
   double q_quaternion_dependent_weight;
   double q_quaternion_dependent_regularizer_fraction;
 
-  std::vector<double> q_vector;
   std::vector<double> q_vector_position_and_orientation;
-  std::vector<double> r_vector;
-  std::vector<double> g_vector;
+  std::vector<double> r_vector;           // This is common for both position and pose tracking            
+
+
+  std::vector<double> g_vector;  
   std::vector<double> g_x;
   std::vector<std::vector<double>> g_gamma;
   std::vector<std::vector<double>> g_lambda_n;
   std::vector<std::vector<double>> g_lambda_t;
   std::vector<std::vector<double>> g_lambda;
-
   std::vector<double> g_u;
-  std::vector<double> u_vector;
+  
+         
+  std::vector<double> u_vector; 
   std::vector<double> u_x;
   std::vector<std::vector<double>> u_gamma;
   std::vector<std::vector<double>> u_lambda_n;
@@ -65,12 +67,38 @@ struct C3Options {
   std::vector<std::vector<double>> u_lambda;
   std::vector<double> u_u;
 
+
+  std::vector<double> g_vector_position_tracking;  
+  std::vector<double> q_vector;
+  double gamma_position_tracking;
+  double w_Q_position_tracking;
+  double w_R_position_tracking;
+  double w_G_position_tracking;
+  double w_U_position_tracking;
+
+  std::vector<double> g_x_position_tracking;
+  std::vector<std::vector<double>> g_gamma_position_tracking;
+  std::vector<std::vector<double>> g_lambda_n_position_tracking;
+  std::vector<std::vector<double>> g_lambda_t_position_tracking;
+  std::vector<std::vector<double>> g_lambda_position_tracking;
+  std::vector<double> g_u_position_tracking;
+
+
+  std::vector<double> u_vector_position_tracking; 
+  std::vector<double> u_x_position_tracking;
+  std::vector<std::vector<double>> u_gamma_position_tracking;
+  std::vector<std::vector<double>> u_lambda_n_position_tracking;
+  std::vector<std::vector<double>> u_lambda_t_position_tracking;
+  std::vector<std::vector<double>> u_lambda_position_tracking;
+  std::vector<double> u_u_position_tracking;
+
   double qp_projection_alpha;
   double qp_projection_scaling;
 
   std::vector<std::vector<double>> mu;
   double dt;                    // dt for everything if not using sampling-based
                                 // C3 controller.
+  double planning_dt_position_tracking;           // dt for planning when comparing samples. Used for position tracking.
   double planning_dt;           // dt for planning when comparing samples.
   double execution_dt;          // dt for execution after comparing samples.
   int num_friction_directions;
@@ -82,6 +110,8 @@ struct C3Options {
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
   Eigen::MatrixXd U;
+  Eigen::MatrixXd G_position_tracking;
+  Eigen::MatrixXd U_position_tracking;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -114,6 +144,7 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
+    a->Visit(DRAKE_NVP(planning_dt_position_tracking));
     a->Visit(DRAKE_NVP(planning_dt));
     a->Visit(DRAKE_NVP(execution_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
@@ -122,11 +153,18 @@ struct C3Options {
     a->Visit(DRAKE_NVP(resolve_contacts_to_list));
 
     a->Visit(DRAKE_NVP(N));
+
     a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
+    a->Visit(DRAKE_NVP(gamma_position_tracking));
+    a->Visit(DRAKE_NVP(w_Q_position_tracking));
+    a->Visit(DRAKE_NVP(w_R_position_tracking));
+    a->Visit(DRAKE_NVP(w_G_position_tracking));
+    a->Visit(DRAKE_NVP(w_U_position_tracking));
+
     a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
     a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
@@ -135,58 +173,103 @@ struct C3Options {
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(q_vector_position_and_orientation));
     a->Visit(DRAKE_NVP(r_vector));
+
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
+    a->Visit(DRAKE_NVP(g_x_position_tracking));
+    a->Visit(DRAKE_NVP(g_gamma_position_tracking));
+    a->Visit(DRAKE_NVP(g_lambda_n_position_tracking));
+    a->Visit(DRAKE_NVP(g_lambda_t_position_tracking));
+    a->Visit(DRAKE_NVP(g_lambda_position_tracking));
+    a->Visit(DRAKE_NVP(g_u_position_tracking));
+
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));
     a->Visit(DRAKE_NVP(u_lambda_t));
     a->Visit(DRAKE_NVP(u_lambda));
     a->Visit(DRAKE_NVP(u_u));
+    a->Visit(DRAKE_NVP(u_x_position_tracking));
+    a->Visit(DRAKE_NVP(u_gamma_position_tracking));
+    a->Visit(DRAKE_NVP(u_lambda_n_position_tracking));
+    a->Visit(DRAKE_NVP(u_lambda_t_position_tracking));
+    a->Visit(DRAKE_NVP(u_lambda_position_tracking));
+    a->Visit(DRAKE_NVP(u_u_position_tracking));
+
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
+    g_vector_position_tracking = std::vector<double>();
+    g_vector_position_tracking.insert(g_vector_position_tracking.end(), 
+                                      g_x_position_tracking.begin(), g_x_position_tracking.end());
+    
     if (contact_model == "stewart_and_trinkle") {
       g_vector.insert(g_vector.end(), g_gamma[num_contacts_index].begin(), g_gamma[num_contacts_index].end());
       g_vector.insert(g_vector.end(), g_lambda_n[num_contacts_index].begin(), g_lambda_n[num_contacts_index].end());
       g_vector.insert(g_vector.end(), g_lambda_t[num_contacts_index].begin(), g_lambda_t[num_contacts_index].end());
+
+      g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_gamma_position_tracking[num_contacts_index].begin(), g_gamma_position_tracking[num_contacts_index].end());
+      g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_n_position_tracking[num_contacts_index].begin(), g_lambda_n_position_tracking[num_contacts_index].end());
+      g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_t_position_tracking[num_contacts_index].begin(), g_lambda_t_position_tracking[num_contacts_index].end());
+
+      
     } else {
       g_vector.insert(g_vector.end(), g_lambda[num_contacts_index].begin(), g_lambda[num_contacts_index].end());
+      g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_lambda_position_tracking[num_contacts_index].begin(), g_lambda_position_tracking[num_contacts_index].end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
+    g_vector_position_tracking.insert(g_vector_position_tracking.end(), g_u_position_tracking.begin(), g_u_position_tracking.end());
+
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
+    u_vector_position_tracking = std::vector<double>();
+    u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_x_position_tracking.begin(), u_x_position_tracking.end());
     if (contact_model == "stewart_and_trinkle") {
       u_vector.insert(u_vector.end(), u_gamma[num_contacts_index].begin(), u_gamma[num_contacts_index].end());
       u_vector.insert(u_vector.end(), u_lambda_n[num_contacts_index].begin(), u_lambda_n[num_contacts_index].end());
       u_vector.insert(u_vector.end(), u_lambda_t[num_contacts_index].begin(), u_lambda_t[num_contacts_index].end());
+
+      u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_gamma_position_tracking[num_contacts_index].begin(), u_gamma_position_tracking[num_contacts_index].end());
+      u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_n_position_tracking[num_contacts_index].begin(), u_lambda_n_position_tracking[num_contacts_index].end());
+      u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_t_position_tracking[num_contacts_index].begin(), u_lambda_t_position_tracking[num_contacts_index].end());
     } else {
       u_vector.insert(u_vector.end(), u_lambda[num_contacts_index].begin(), u_lambda[num_contacts_index].end());
+      u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_lambda_position_tracking[num_contacts_index].begin(), u_lambda_position_tracking[num_contacts_index].end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
+    u_vector_position_tracking.insert(u_vector_position_tracking.end(), u_u_position_tracking.begin(), u_u_position_tracking.end());
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());
     Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector_position_and_orientation.data(), this->q_vector_position_and_orientation.size());
+
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
+
     Eigen::VectorXd g = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->g_vector.data(), this->g_vector.size());
+    Eigen::VectorXd g_position_tracking = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->g_vector_position_tracking.data(), this->g_vector_position_tracking.size());
+
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
+    Eigen::VectorXd u_position_tracking = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->u_vector_position_tracking.data(), this->u_vector_position_tracking.size());
 
     Q_position = w_Q * q.asDiagonal();
     Q_position_and_orientation = w_Q * q_position_and_orientation.asDiagonal();
     R = w_R * r.asDiagonal();
     G = w_G * g.asDiagonal();
+    G_position_tracking = w_G_position_tracking * g_position_tracking.asDiagonal();
     U = w_U * u.asDiagonal();
+    U_position_tracking = w_U_position_tracking * u_position_tracking.asDiagonal();
   }
 };

@@ -268,14 +268,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_x_;
   int n_lambda_;
   int n_u_;
-  double dt_;
+  mutable double dt_ = 0.1;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   mutable std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;
-  std::vector<Eigen::MatrixXd> G_;
-  std::vector<Eigen::MatrixXd> U_;
+  mutable std::vector<Eigen::MatrixXd> G_;
+  mutable std::vector<Eigen::MatrixXd> U_;
   int N_;
 
   // Keep track of current C3 execution's best seen cost.

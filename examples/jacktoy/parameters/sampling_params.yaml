@@ -73,3 +73,19 @@ use_relative_hysteresis: true
 c3_to_repos_cost_fraction: 0.4  #0.35
 repos_to_c3_cost_fraction: 0.3  #0.2
 repos_to_repos_cost_fraction: 0.15  #0.33
+
+
+# Number of control loops to wait while C3 doesn't do anything beneficial before
+# switching to repositioning.
+
+cost_type_position_tracking: 2
+num_control_loops_to_wait_position_tracking: 20
+
+
+c3_to_repos_hysteresis_position_tracking: 300000 #100000000 #3000000
+repos_to_c3_hysteresis_position_tracking: 200000
+hysteresis_between_repos_targets_position_tracking: 60000000000000
+
+c3_to_repos_cost_fraction_position_tracking: 0.4  #0.28
+repos_to_c3_cost_fraction_position_tracking: 0.5  #0.18
+repos_to_repos_cost_fraction_position_tracking: 0.1  #0.3

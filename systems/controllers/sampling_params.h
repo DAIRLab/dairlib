@@ -28,18 +28,26 @@ struct SamplingC3SamplingParams {
   double use_straight_line_traj_within_angle;
   bool use_spherical_repositioning;
   int cost_type;
+  int cost_type_position_tracking;
   bool use_more_contacts_to_compute_cost;
   int num_control_loops_to_wait;
+  int num_control_loops_to_wait_position_tracking;
   double cost_switching_threshold_distance;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
+  double c3_to_repos_hysteresis_position_tracking;
   double finished_reposition_cost;
   double repos_to_c3_hysteresis;
+  double repos_to_c3_hysteresis_position_tracking;
   double hysteresis_between_repos_targets;
+  double hysteresis_between_repos_targets_position_tracking;
   bool use_relative_hysteresis;
   double c3_to_repos_cost_fraction;
   double repos_to_c3_cost_fraction;
   double repos_to_repos_cost_fraction;
+  double c3_to_repos_cost_fraction_position_tracking;
+  double repos_to_c3_cost_fraction_position_tracking;
+  double repos_to_repos_cost_fraction_position_tracking;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -60,17 +68,25 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
     a->Visit(DRAKE_NVP(use_spherical_repositioning));
     a->Visit(DRAKE_NVP(cost_type));
+    a->Visit(DRAKE_NVP(cost_type_position_tracking));
     a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait));
+    a->Visit(DRAKE_NVP(num_control_loops_to_wait_position_tracking));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));
+    a->Visit(DRAKE_NVP(c3_to_repos_hysteresis_position_tracking));
     a->Visit(DRAKE_NVP(finished_reposition_cost));
     a->Visit(DRAKE_NVP(repos_to_c3_hysteresis));
+    a->Visit(DRAKE_NVP(repos_to_c3_hysteresis_position_tracking));
     a->Visit(DRAKE_NVP(hysteresis_between_repos_targets));
+    a->Visit(DRAKE_NVP(hysteresis_between_repos_targets_position_tracking));
     a->Visit(DRAKE_NVP(use_relative_hysteresis));
     a->Visit(DRAKE_NVP(c3_to_repos_cost_fraction));
     a->Visit(DRAKE_NVP(repos_to_c3_cost_fraction));
     a->Visit(DRAKE_NVP(repos_to_repos_cost_fraction));
+    a->Visit(DRAKE_NVP(c3_to_repos_cost_fraction_position_tracking));
+    a->Visit(DRAKE_NVP(repos_to_c3_cost_fraction_position_tracking));
+    a->Visit(DRAKE_NVP(repos_to_repos_cost_fraction_position_tracking));
   }
 };

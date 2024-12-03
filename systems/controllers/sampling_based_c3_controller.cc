@@ -286,6 +286,7 @@ SamplingC3Controller::SamplingC3Controller(
   x_final_target_ = VectorXd::Zero(n_x_);
   best_progress_steps_ago_ = 0;
   lowest_cost_ = std::numeric_limits<double>::infinity();
+  lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
   lowest_position_error_ = std::numeric_limits<double>::infinity();
   lowest_orientation_error_ = std::numeric_limits<double>::infinity();
 
@@ -604,6 +605,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // If also in C3 mode, reset the lowest cost seen in this mode.
       if (is_doing_c3_){
         lowest_cost_ = std::numeric_limits<double>::infinity();
+        lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
         lowest_position_error_ = std::numeric_limits<double>::infinity();
         lowest_orientation_error_ = std::numeric_limits<double>::infinity();
         best_progress_steps_ago_ = 0;
@@ -791,6 +793,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Update the lowest cost and position/orientation errors seen in this mode.
     bool updated_cost = false;
+    bool updated_curr_pos_and_rot_cost = false;
     bool updated_pos_or_rot = false;
 
     double pos_error = (x_lcs_curr.segment(7, 3) -
@@ -804,9 +807,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
     double rot_error = angle_axis_diff.angle();
 
+    Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(3,3,7,7);
+    Eigen::VectorXd pos_and_rot_error_vec = x_lcs_curr.segment(3, 7) -
+      x_lcs_final_des.get_value().segment(3, 7);
+    double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
+      Q_pos_and_rot * pos_and_rot_error_vec;
+
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] < lowest_cost_) {
       lowest_cost_ = all_sample_costs_[CURRENT_LOCATION_INDEX];
       updated_cost = true;
+    }
+    if (curr_pos_and_rot_cost < lowest_pos_and_rot_current_cost_) {
+      lowest_pos_and_rot_current_cost_ = curr_pos_and_rot_cost;
+      updated_curr_pos_and_rot_cost = true;
     }
     if (pos_error < lowest_position_error_) {
       lowest_position_error_ = pos_error;
@@ -820,8 +833,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Keep track of how many control loops have passed since the best seen
     // progress in this mode.
     if (((sampling_params_.track_c3_progress_via == C3_COST) && updated_cost) ||
-        ((sampling_params_.track_c3_progress_via == POSITION_AND_ORIENTATION_ERROR) &&
-         updated_pos_or_rot)) {
+        ((sampling_params_.track_c3_progress_via ==
+            CURRENT_POSITION_AND_ORIENTATION_COST) &&
+            updated_curr_pos_and_rot_cost) ||
+        ((sampling_params_.track_c3_progress_via ==
+            POSITION_OR_ORIENTATION_ERROR) &&
+            updated_pos_or_rot)) {
+      if (sampling_params_.track_c3_progress_via ==
+          CURRENT_POSITION_AND_ORIENTATION_COST) {
+        std::cout << "Updated lowest pos and rot cost: " <<
+          lowest_pos_and_rot_current_cost_ << std::endl;
+      }
       best_progress_steps_ago_ = 0;
     }
     else {
@@ -918,6 +940,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Reset the lowest cost seen in this mode.
       std::cout << "Switching to C3, resetting lowest seen cost" << std::endl;
       lowest_cost_ = std::numeric_limits<double>::infinity();
+      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
       lowest_position_error_ = std::numeric_limits<double>::infinity();
       lowest_orientation_error_ = std::numeric_limits<double>::infinity();
       best_progress_steps_ago_ = 0;
@@ -930,6 +953,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Reset the lowest cost seen in this mode.
       lowest_cost_ = std::numeric_limits<double>::infinity();
+      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
       lowest_position_error_ = std::numeric_limits<double>::infinity();
       lowest_orientation_error_ = std::numeric_limits<double>::infinity();
       best_progress_steps_ago_ = 0;

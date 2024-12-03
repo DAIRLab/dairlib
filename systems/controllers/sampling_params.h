@@ -11,7 +11,8 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         FIXED_SAMPLE };
 
 enum ProgressMetric { C3_COST,
-                      POSITION_AND_ORIENTATION_ERROR };
+                      CURRENT_POSITION_AND_ORIENTATION_COST,
+                      POSITION_OR_ORIENTATION_ERROR };
 
 struct SamplingC3SamplingParams {
   int control_loop_delay_ms;

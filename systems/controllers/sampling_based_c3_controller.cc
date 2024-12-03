@@ -493,8 +493,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
-  // These objects will be linearized the same as candidate_lcs_objects but will have all contact pairs resolved.
-  // These will not be used to solve c3 but will be used to compute more realistic costs.
+  // These objects will be linearized the same as candidate_lcs_objects but will
+  // have all contact pairs resolved.  These will not be used to solve c3 but
+  // will be used to compute more realistic costs.
   std::vector<solvers::LCS> lcs_objects_with_more_contacts_for_cost_simulation;
 
   for (int i = 0; i < num_total_samples; i++) {
@@ -510,34 +511,47 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       c3_options_.num_friction_directions,
       c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
 
-    // std::cout<<"THIS IS MU"<<c3_options_.mu[c3_options_.num_contacts_index].size()<<std::endl;
-    // std::cout<< "This is num_contacts"<<c3_options_.num_contacts[c3_options_.num_contacts_index]<<std::endl;
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], 
+      c3_options_.num_friction_directions,
+      c3_options_.mu[c3_options_.num_contacts_index],
       dt_, N_, contact_model_);
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
 
-    // TODO: Update the mus to read from the yaml file.
     if(sampling_params_.use_more_contacts_to_compute_cost){
-      // Create an LCS object with all contact pairs resolved.
-      // Preprocessing the contact pairs
+      // Create an LCS object with all contact pairs resolved.  In order, that
+      // is 3 EE-capsule contacts, and 6 ground-capsule_tip contacts.  Use the
+      // same friction coefficients as the current contact model.
+      // EE-jack is the first mu.
+      double mu_ee_jack = c3_options_.mu[c3_options_.num_contacts_index][0];
+      // Ground-jack is the last mu.
+      double mu_ground_jack = c3_options_.mu[c3_options_.num_contacts_index][
+        c3_options_.num_contacts[c3_options_.num_contacts_index]-1];
+
+      // Preprocessing the contact pairs.
       if(verbose_){
         std::cout << "Using more contacts to compute cost." << std::endl;
       }
       vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
-      resolved_contact_pairs_for_cost_simulation = LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_,
-        {3,6},
-        c3_options_.num_friction_directions,
-        6, verbose_);
-      solvers::LCS lcs_object_sample_for_cost_simulation = solvers::LCSFactory::LinearizePlantToLCS(
-        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs_for_cost_simulation,
-        c3_options_.num_friction_directions, {0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615}, 
-        dt_, N_, contact_model_);
-      lcs_objects_with_more_contacts_for_cost_simulation.push_back(lcs_object_sample_for_cost_simulation);
+      resolved_contact_pairs_for_cost_simulation =
+        LCSFactoryPreProcessor::PreProcessor(
+          plant_, *context_, contact_pairs_,
+          {3,6},
+          c3_options_.num_friction_directions,
+          6, verbose_);
+      solvers::LCS lcs_object_sample_for_cost_simulation =
+        solvers::LCSFactory::LinearizePlantToLCS(
+          plant_, *context_, plant_ad_, *context_ad_,
+          resolved_contact_pairs_for_cost_simulation,
+          c3_options_.num_friction_directions,
+          {mu_ee_jack, mu_ee_jack, mu_ee_jack,
+           mu_ground_jack, mu_ground_jack, mu_ground_jack,
+           mu_ground_jack, mu_ground_jack, mu_ground_jack},
+          dt_, N_, contact_model_);
+      lcs_objects_with_more_contacts_for_cost_simulation.push_back(
+        lcs_object_sample_for_cost_simulation);
     }
   }
   // Reset the context to the current lcs state. 
@@ -668,7 +682,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                               x_desired, c3_options_);
           if(sampling_params_.use_more_contacts_to_compute_cost){
             // Compute the cost using the lcs object with more contacts.
-            test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
+            test_c3_object->UpdateCostLCS(
+              lcs_objects_with_more_contacts_for_cost_simulation.at(i));
           }
 
         } else if (c3_options_.projection_type == "QP") {
@@ -677,7 +692,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                               x_desired, c3_options_);
           if(sampling_params_.use_more_contacts_to_compute_cost){
             // Compute the cost using the lcs object with more contacts.
-            test_c3_object->UpdateCostLCS(lcs_objects_with_more_contacts_for_cost_simulation.at(i));
+            test_c3_object->UpdateCostLCS(
+              lcs_objects_with_more_contacts_for_cost_simulation.at(i));
           }
         } else {
           std::cerr << ("Unknown projection type") << std::endl;

@@ -284,8 +284,10 @@ SamplingC3Controller::SamplingC3Controller(
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_final_target_ = VectorXd::Zero(n_x_);
-  lowest_cost_steps_ago_ = 0;
+  best_progress_steps_ago_ = 0;
   lowest_cost_ = std::numeric_limits<double>::infinity();
+  lowest_position_error_ = std::numeric_limits<double>::infinity();
+  lowest_orientation_error_ = std::numeric_limits<double>::infinity();
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
@@ -602,7 +604,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // If also in C3 mode, reset the lowest cost seen in this mode.
       if (is_doing_c3_){
         lowest_cost_ = std::numeric_limits<double>::infinity();
-        lowest_cost_steps_ago_ = 0;
+        lowest_position_error_ = std::numeric_limits<double>::infinity();
+        lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+        best_progress_steps_ago_ = 0;
       }
     }
   }
@@ -785,26 +789,56 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
-    // Update the lowest cost seen in this mode.
+    // Update the lowest cost and position/orientation errors seen in this mode.
+    bool updated_cost = false;
+    bool updated_pos_or_rot = false;
+
+    double pos_error = (x_lcs_curr.segment(7, 3) -
+      x_lcs_final_des.get_value().segment(7, 3)).norm();
+    Eigen::Quaterniond curr_quat(x_lcs_curr[3], x_lcs_curr[4], x_lcs_curr[5],
+                                 x_lcs_curr[6]);
+    Eigen::Quaterniond des_quat(x_lcs_final_des.get_value()[3],
+                                x_lcs_final_des.get_value()[4],
+                                x_lcs_final_des.get_value()[5],
+                                x_lcs_final_des.get_value()[6]);
+    Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+    double rot_error = angle_axis_diff.angle();
+
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] < lowest_cost_) {
       lowest_cost_ = all_sample_costs_[CURRENT_LOCATION_INDEX];
-      lowest_cost_steps_ago_ = 0;
+      updated_cost = true;
+    }
+    if (pos_error < lowest_position_error_) {
+      lowest_position_error_ = pos_error;
+      updated_pos_or_rot = true;
+    }
+    if (rot_error < lowest_orientation_error_) {
+      lowest_orientation_error_ = rot_error;
+      updated_pos_or_rot = true;
+    }
+
+    // Keep track of how many control loops have passed since the best seen
+    // progress in this mode.
+    if (((sampling_params_.track_c3_progress_via == C3_COST) && updated_cost) ||
+        ((sampling_params_.track_c3_progress_via == POSITION_AND_ORIENTATION_ERROR) &&
+         updated_pos_or_rot)) {
+      best_progress_steps_ago_ = 0;
     }
     else {
-      lowest_cost_steps_ago_++;
+      best_progress_steps_ago_++;
     }
 
     // Switch to repositioning if the lowest seen cost while in C3 mode was
     // too many control loops ago.
     int num_control_loops_to_wait;
-    if (!crossed_cost_switching_threshold_){
+    if (!crossed_cost_switching_threshold_) {
       num_control_loops_to_wait = sampling_params_.num_control_loops_to_wait_position_tracking;
     }
     else{
       num_control_loops_to_wait = sampling_params_.num_control_loops_to_wait;
     }
 
-    if ((lowest_cost_steps_ago_ > num_control_loops_to_wait) &&
+    if ((best_progress_steps_ago_ > num_control_loops_to_wait) &&
         (sampling_params_.num_additional_samples_c3 > 0)) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
@@ -884,7 +918,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Reset the lowest cost seen in this mode.
       std::cout << "Switching to C3, resetting lowest seen cost" << std::endl;
       lowest_cost_ = std::numeric_limits<double>::infinity();
-      lowest_cost_steps_ago_ = 0;
+      lowest_position_error_ = std::numeric_limits<double>::infinity();
+      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      best_progress_steps_ago_ = 0;
     }
 
     // Xbox controller override to force staying in C3 mode.
@@ -894,7 +930,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Reset the lowest cost seen in this mode.
       lowest_cost_ = std::numeric_limits<double>::infinity();
-      lowest_cost_steps_ago_ = 0;
+      lowest_position_error_ = std::numeric_limits<double>::infinity();
+      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      best_progress_steps_ago_ = 0;
     }
   }
 

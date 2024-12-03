@@ -279,8 +279,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int N_;
 
   // Keep track of current C3 execution's best seen cost.
-  mutable int lowest_cost_steps_ago_;
+  mutable int best_progress_steps_ago_;
   mutable double lowest_cost_;
+  mutable double lowest_position_error_;
+  mutable double lowest_orientation_error_;
 
   mutable double filtered_solve_time_ = 0;
 

@@ -312,7 +312,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  
 
   // Samples and associated costs.
-  // TODO: to be updated in ComputePlan
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>> all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();

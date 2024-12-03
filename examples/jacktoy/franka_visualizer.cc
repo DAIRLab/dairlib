@@ -113,7 +113,6 @@ int do_main(int argc, char* argv[]) {
   // All the urdfs have their origins at the world frame origin. We define all 
   // the offsets by welding the frames such that changing the offsets in 
   // the param file moves them to where we want in the world frame.
-  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -160,7 +159,6 @@ int do_main(int argc, char* argv[]) {
   // All the urdfs have their origins at the world frame origin. We define all 
   // the offsets by welding the frames such that changing the offsets in 
   // the param file moves them to where we want in the world frame.
-  // TODO: Do this in all the files.
 
   // Create a rigid transform from the world frame to the panda_link0 frame.
   // Franka base is 2.45cm above the ground.
@@ -368,7 +366,6 @@ int do_main(int argc, char* argv[]) {
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 5, true);
-    // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
@@ -395,7 +392,6 @@ int do_main(int argc, char* argv[]) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
-    // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
@@ -465,13 +461,6 @@ int do_main(int argc, char* argv[]) {
   }
 
 	if(sim_params.visualize_is_c3_mode){
-		// TODO: Create a system that will read either the lcmt_timestamped_saved_traj
-		// message containing the boolean value of whether the robot is in c3 mode
-		// (if that doesn't work, then use a subscriber system to read the boolean).
-		// This system will also take in the x_lcs output from the FK system and 
-		// output an LcmTrajectory which will contain one knot point - either at the 
-		// current end_effector location (if c3 mode) or at the base of the robot 
-		// (if repos mode).
 		auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
 		builder.Connect(is_c3_mode_sub->get_output_port(),
 										c3_mode_visualizer->get_input_port_is_c3_mode());

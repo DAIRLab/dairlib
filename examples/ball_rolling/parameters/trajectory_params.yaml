@@ -21,5 +21,5 @@ angle_err_to_vel_factor: 1    # factor for converting an angular error to angula
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters
-ee_goal_height: 0.06          # height of the end effector above the jack TODO: @bibit what do you think about this name?
+ee_goal_height: 0.06          # height of the end effector above the jack
 object_half_width: 0.0315     # half width of the object. Make sure to match with urdf of object.

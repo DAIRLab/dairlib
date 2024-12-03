@@ -613,7 +613,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-
   if (c3_options_.use_quaternion_dependent_cost &&
       crossed_cost_switching_threshold_) {
     Eigen::VectorXd quat = x_lcs_curr.segment(3,4);

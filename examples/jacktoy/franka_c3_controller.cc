@@ -123,7 +123,6 @@ int DoMain(int argc, char* argv[]) {
   // All the urdfs have their origins at the world frame origin. We define all 
   // the offsets by welding the frames such that changing the offsets in 
   // the param file moves them to where we want in the world frame.
-  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -461,10 +460,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
         plant_for_lcs, c3_options, "execution_trajectory_generator");
   exec_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
-//   auto mode_selector = builder.AddSystem<systems::ModeSelector>();
 
   // These systems publish the tracking output.
-  // TODO: Add c3 and repos trajectory publisher systems to publish over lcm.
   auto actor_c3_execution_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_trajectory_exec_actor_channel, &lcm,

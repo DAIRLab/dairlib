@@ -119,7 +119,6 @@ int DoMain(int argc, char* argv[]) {
   // All the urdfs have their origins at the world frame origin. We define all 
   // the offsets by welding the frames such that changing the offsets in 
   // the param file moves them to where we want in the world frame.
-  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -150,7 +149,6 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
   
-  // TODO: Figure out which channels to subscribe to.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(

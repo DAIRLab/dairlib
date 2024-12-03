@@ -343,8 +343,6 @@ int DoMain(int argc,  char* argv[]) {
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
   parser_for_lcs.AddModels(controller_params.jack_model);
   parser_for_lcs.AddModels(controller_params.ground_model);	
-  // TODO: The base link may change to the simple end effector model link name
-  // or might just be removed entirely.
 	RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Eigen::Vector3d p_world_to_ground = sim_params.p_world_to_franka +
                                       sim_params.p_franka_to_ground;

@@ -180,7 +180,7 @@ void TargetGenerator::CalcObjectTarget(
 
     target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
     target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);
-    target_obj_position(2) = object_half_width_;      // TODO: @bibit Should this be the same as the current position z or some fixed half width?
+    target_obj_position(2) = object_half_width_;
   }
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){

@@ -38,6 +38,7 @@ state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
+plotting_palette = ["#011f5b", "#9f642d", "#af0000", "#b99aa0", "#666666", "#5583ab"]
 
 
 def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
@@ -230,10 +231,4 @@ def setup_plots():
     matplotlib.rcParams['xtick.major.width'] = 1
     matplotlib.rcParams['xtick.minor.size'] = 7
     matplotlib.rcParams['xtick.minor.width'] = 1
-    colors = ["#011f5b",
-              "#9f642d",
-              "#af0000",
-              "#b99aa0",
-              "#666666",
-              "#5583ab"]
-    plt.rcParams['axes.prop_cycle'] = plt.cycler(color=colors)
+    plt.rcParams['axes.prop_cycle'] = plt.cycler(color=plotting_palette)

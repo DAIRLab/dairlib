@@ -303,11 +303,11 @@ void MakeAlipStepToStepCostMatrices(
   Matrix4d projection_in_basis_coords = Matrix4d::Zero();
   projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
 
-  Matrix4d bases_in_R4 = Matrix4d::Zero();
-  bases_in_R4.leftCols<2>() = p2o_orthogonal_complement;
-  bases_in_R4.rightCols<2>() = p2o_basis;
+  Matrix4d new_basis = Matrix4d::Zero();
+  new_basis.leftCols<2>() = p2o_orthogonal_complement;
+  new_basis.rightCols<2>() = p2o_basis;
 
-  projection_to_p2o_complement = bases_in_R4 * projection_in_basis_coords * bases_in_R4.inverse();
+  projection_to_p2o_complement = new_basis * projection_in_basis_coords * new_basis.inverse();
   Q_proj = projection_to_p2o_complement.transpose() * Q * projection_to_p2o_complement;
   Q_proj_f = projection_to_p2o_complement.transpose() * Qf * projection_to_p2o_complement;
   g_proj_p1 = p2o_premul * B;

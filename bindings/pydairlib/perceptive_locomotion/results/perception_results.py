@@ -63,7 +63,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation import (
     segmentation_criteria as seg_criteria
 )
 
-from pydairlib.perceptive_locomotion.results import perception_analysis_utils as utils
+from pydairlib.perceptive_locomotion.results import analysis_utils as utils
 from pydairlib.perceptive_locomotion.systems import AlipMPFCMeshcatVisualizer
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'

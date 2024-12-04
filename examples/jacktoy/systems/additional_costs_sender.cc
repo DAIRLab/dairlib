@@ -46,9 +46,7 @@ void AdditionalCostsSender::OutputAdditionalCosts(
     additional_costs_datapoints(0, i) = additional_costs_vector[i];
     timestamps(i) = context.get_time();
   }
-  std::cout<<"additional_costs_datapoints rows = "<<additional_costs_datapoints.rows()<<std::endl;
-  std::cout<<"additional_costs_datapoints cols = "<<additional_costs_datapoints.cols()<<std::endl;
-
+  
   LcmTrajectory::Trajectory additional_costs;
   additional_costs.traj_name = "additional_costs";
   additional_costs.datatypes = std::vector<std::string>(1, "double");

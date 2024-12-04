@@ -274,17 +274,29 @@ CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params) {
   return ret;
 }
 
-void MakeAlipStepToStepCostMatrices(
+
+namespace {
+
+Eigen::Matrix4d GetProjectionToBPerp(const Eigen::Matrix<double, 4, 2>& B) {
+  Eigen::Matrix<double, 4, 2> B_perp =
+      Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
+          B.transpose()).kernel();
+
+  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
+  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
+
+  Matrix4d new_basis = Matrix4d::Zero();
+  new_basis.leftCols<2>() = B_perp;
+  new_basis.rightCols<2>() = B;
+  return new_basis * projection_in_basis_coords * new_basis.inverse();
+}
+
+}
+
+void MakeProjectionToP2Orbit(
     const alip_utils::AlipGaitParams& gait_params,
-    const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,
-    Eigen::Matrix4d& Q_proj,
-    Eigen::Matrix4d& Q_proj_f,
-    Eigen::Matrix<double, 4, 2>& g_proj_p1,
-    Eigen::Matrix<double, 4, 2>& g_proj_p2,
-    Eigen::Matrix4d& p2o_premul,
-    Eigen::Matrix4d& projection_to_p2o_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_orthogonal_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_basis) {
+    Eigen::Matrix4d& PI_0, Eigen::Matrix4d& PI_1,
+    Eigen::Matrix<double, 4, 2>& g_0, Eigen::Matrix<double, 4, 2>& g_1) {
 
   const auto[A, B] = AlipStepToStepDynamics(
       gait_params.height,
@@ -293,25 +305,12 @@ void MakeAlipStepToStepCostMatrices(
       gait_params.double_stance_duration,
       gait_params.reset_discretization_method
   );
-
-  p2o_premul = (Matrix4d::Identity() - A * A).inverse();
-  p2o_basis = p2o_premul * (A* B - B);
-  p2o_orthogonal_complement = Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
-      p2o_basis.transpose()
-  ).kernel();
-
-  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
-  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
-
-  Matrix4d new_basis = Matrix4d::Zero();
-  new_basis.leftCols<2>() = p2o_orthogonal_complement;
-  new_basis.rightCols<2>() = p2o_basis;
-
-  projection_to_p2o_complement = new_basis * projection_in_basis_coords * new_basis.inverse();
-  Q_proj = projection_to_p2o_complement.transpose() * Q * projection_to_p2o_complement;
-  Q_proj_f = projection_to_p2o_complement.transpose() * Qf * projection_to_p2o_complement;
-  g_proj_p1 = p2o_premul * B;
-  g_proj_p2 = A * p2o_premul * B;
+  Matrix4d p2o_premul = (Matrix4d::Identity() - A * A).inverse();
+  Eigen::Matrix<double, 4, 2> p2o_basis = p2o_premul * (A * B - B);
+  PI_0 = GetProjectionToBPerp(p2o_basis);
+  PI_1 = GetProjectionToBPerp(A * p2o_basis + B);
+  g_0 = p2o_premul * B;
+  g_1 = A * g_0;
 }
 
 }

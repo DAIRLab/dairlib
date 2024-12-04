@@ -292,14 +292,6 @@ void CFMPFC::MakeMPCCosts() {
       MatrixXd::Identity(6, 6), Vector6d::Zero(), 0, xc_.back()
   ).evaluator();
 
-  // build cost matrices
-  alip_utils::MakeAlipStepToStepCostMatrices(
-      params_.gait_params, params_.Q, params_.Qf,
-      Q_proj_, Q_proj_f_,
-      g_proj_p1_, g_proj_p2_,
-      p2o_premul_, projection_to_p2o_complement_,
-      p2o_orthogonal_complement_, p2o_basis_
-  );
 }
 
 void CFMPFC::MakeFootstepConstraints() {
@@ -677,14 +669,8 @@ void CFMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
 }
 
 void CFMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
-  if (params_.tracking_cost_type ==
-      alip_utils::AlipTrackingCostType::kVelocity) {
-    UpdateTrackingCostVelocity(vdes);
-    UpdateTerminalCostVelocity(vdes);
-  } else {
-    UpdateTrackingCostGait(vdes, stance);
-    UpdateTerminalCostGait(vdes, stance);
-  }
+  UpdateTrackingCostGait(vdes, stance);
+  UpdateTerminalCostGait(vdes, stance);
 }
 
 
@@ -705,24 +691,6 @@ void CFMPFC::UpdateInputRateLimitConstraint(double t) {
     input_rate_constraints_.at(i).evaluator()->UpdateLowerBound(-delta);
     input_rate_constraints_.at(i).evaluator()->UpdateUpperBound(delta);
   }
-}
-
-void CFMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes) {
-  for (int i = 1; i < params_.nmodes - 1; ++i) {
-    const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
-        -2 * Q_proj_ * g_proj_p1_ : -2 * Q_proj_ * g_proj_p2_;
-    tracking_cost_.at(i-1).evaluator()->UpdateCoefficients(
-        2 * Q_proj_, vdes_mul * vdes, 0, true);
-  }
-}
-
-void CFMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes) {
-  const Matrix<double, 4, 2>& vdes_mul =
-      params_.nmodes % 2 == 0 ?
-          -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
-  Matrix4d Qf = 2 * Q_proj_f_;
-  Vector4d bf = vdes_mul * vdes;
-  terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
 }
 
 void CFMPFC::UpdateTrackingCostGait(const Vector2d &vdes, Stance stance) {

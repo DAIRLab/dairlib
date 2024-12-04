@@ -68,7 +68,7 @@ struct cf_mpfc_params {
   Eigen::MatrixXd Qc{};
   Eigen::MatrixXd Rc{};
   alip_utils::AlipTrackingCostType tracking_cost_type =
-      alip_utils::AlipTrackingCostType::kVelocity;
+      alip_utils::AlipTrackingCostType::kGait;
   drake::solvers::SolverOptions solver_options{};
 };
 
@@ -106,8 +106,6 @@ class CFMPFC {
   void UpdateFootstepCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
-  void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes);
-  void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
   void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdatePlanarCoMCosts(
@@ -122,6 +120,9 @@ class CFMPFC {
     DRAKE_DEMAND(params_.nknots >= 2);
     DRAKE_DEMAND(params_.gait_params.double_stance_duration > 0);
     DRAKE_DEMAND(params_.soft_constraint_cost >= 0);
+    if (params_.tracking_cost_type == alip_utils::AlipTrackingCostType::kVelocity) {
+      std::cout << "WARNING: this controller only supports gait-based costs for now.\n";
+    }
   }
 
   void Check() {
@@ -202,15 +203,6 @@ class CFMPFC {
   Eigen::Matrix<double, 4, 2> B_;
   Eigen::Matrix<double, 2, 4> lqr_K_;
   Eigen::Matrix4d lqr_S_;
-  Eigen::Matrix4d Q_proj_;
-  Eigen::Matrix4d Q_proj_f_;
-  Eigen::Matrix<double, 4, 2> g_proj_p1_;
-  Eigen::Matrix<double, 4, 2> g_proj_p2_;
-  Eigen::Matrix4d p2o_premul_;
-  Eigen::Matrix4d projection_to_p2o_complement_;
-  Eigen::Matrix<double, 4, 2> p2o_orthogonal_complement_;
-  Eigen::Matrix<double, 4, 2> p2o_basis_;
-
 };
 
 

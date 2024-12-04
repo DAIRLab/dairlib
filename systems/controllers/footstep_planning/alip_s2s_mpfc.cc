@@ -30,15 +30,6 @@ static constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
 AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
   ValidateParams();
-  const auto[A, B] = AlipStepToStepDynamics(
-      params_.gait_params.height,
-      params_.gait_params.mass,
-      params_.gait_params.single_stance_duration,
-      params_.gait_params.double_stance_duration,
-      params_.gait_params.reset_discretization_method
-  );
-  A_ = A;
-  B_ = B;
   MakeMPCVariables();
   MakeMPCCosts();
   MakeInputConstraints();
@@ -163,13 +154,10 @@ void AlipS2SMPFC::MakeMPCCosts() {
   ).evaluator();
 
   // build cost matrices
-  alip_utils::MakeAlipStepToStepCostMatrices(
-      params_.gait_params, params_.Q, params_.Qf,
-      Q_proj_, Q_proj_f_,
-      g_proj_p1_, g_proj_p2_,
-      p2o_premul_, projection_to_p2o_complement_,
-      p2o_orthogonal_complement_, p2o_basis_
-  );
+  alip_utils::MakeProjectionToP2Orbit(
+      params_.gait_params, PI_0_, PI_1_, g_0_, g_1_);
+  PIs_ = {PI_0_, PI_1_};
+  gs_ = {g_0_, g_1_};
 }
 
 void AlipS2SMPFC::MakeInputConstraints() {
@@ -290,11 +278,20 @@ void AlipS2SMPFC::MakeStateConstraints() {
 void AlipS2SMPFC::MakeDynamicsConstraint() {
   MatrixXd M(nx_ * (params_.nmodes - 1), (nx_ + np_) * params_.nmodes);
   M.setZero();
+
+  const auto[A, B] = AlipStepToStepDynamics(
+      params_.gait_params.height,
+      params_.gait_params.mass,
+      params_.gait_params.single_stance_duration,
+      params_.gait_params.double_stance_duration,
+      params_.gait_params.reset_discretization_method
+  );
+
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    M.block<4,4>(nx_ * i, nx_ * i) = A_;
+    M.block<4,4>(nx_ * i, nx_ * i) = A;
     M.block<4,4>(nx_ * i, nx_ * (i + 1)) = -Matrix4d::Identity();
-    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * (i+1)) = B_;
-    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = - B_;
+    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * (i+1)) = B;
+    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = - B;
   }
   dynamics_c_ = prog_->AddLinearEqualityConstraint(
       M, VectorXd::Zero(nx_ * (params_.nmodes - 1)), {stack(xx_), stack(pp_)}
@@ -425,30 +422,34 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
   if (params_.tracking_cost_type ==
       alip_utils::AlipTrackingCostType::kVelocity) {
-    UpdateTrackingCostVelocity(vdes);
-    UpdateTerminalCostVelocity(vdes);
+    UpdateTrackingCostVelocity(vdes, stance);
+    UpdateTerminalCostVelocity(vdes, stance);
   } else {
     UpdateTrackingCostGait(vdes, stance);
     UpdateTerminalCostGait(vdes, stance);
   }
 }
 
-void AlipS2SMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes) {
+void AlipS2SMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes, Stance stance) {
+  int start_period = stance == Stance::kLeft ? 0 : 1;
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
-        -2 * Q_proj_ * g_proj_p1_ : -2 * Q_proj_ * g_proj_p2_;
+    const Matrix4d& PI = PIs_.at((start_period + i) % 2);
+    const Matrix<double, 4, 2>& g = gs_.at((start_period + i) % 2);
+    Matrix4d Q = PI.transpose() * params_.Q * PI;
+    Vector4d q = -2 * Q * g * vdes;
     tracking_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * Q_proj_, vdes_mul * vdes, 0, true // we know it's convex
+        2 * Q, q, 0, true // we know it's convex
     );
   }
 }
 
-void AlipS2SMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes) {
-  const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
-      -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
-  Matrix4d Qf = 2 * Q_proj_f_;
-  Vector4d bf = vdes_mul * vdes;
-  terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
+void AlipS2SMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes, Stance stance) {
+  int final_period = stance == Stance::kLeft ? params_.nmodes - 1 : params_.nmodes;
+  const Matrix4d& PI = PIs_.at(final_period % 2);
+  const Matrix<double, 4, 2>& g = gs_.at((final_period) % 2);
+  Matrix4d Q = PI.transpose() * params_.Qf * PI;
+  Vector4d q = -2 * Q * g * vdes;
+  terminal_cost_->UpdateCoefficients(Q, q, 0, true);
 }
 
 void AlipS2SMPFC::UpdateTrackingCostGait(const Vector2d &vdes, Stance stance) {

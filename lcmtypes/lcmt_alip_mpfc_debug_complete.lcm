@@ -12,6 +12,7 @@ struct lcmt_alip_mpfc_debug_complete
     int32_t nx;
     int32_t np;
     int32_t nmodes;
+    int32_t nmodes_minus_1;
 
     // problem setup data
     double T_nominal;
@@ -25,8 +26,8 @@ struct lcmt_alip_mpfc_debug_complete
     double T;
     double pp[nmodes][np];
     double xx[nmodes][nx];
-    double ee[nmodes]; // soft constraint slack;
+    double ee[nmodes_minus_1]; // soft constraint slack;
     lcmt_foothold_set foothold_solution;
 
-    double min_foothold_margin;
+    double max_foothold_violation;
 }

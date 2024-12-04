@@ -389,6 +389,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->nx = 4;
   mpc_debug->np = 3;
   mpc_debug->nmodes = mpc_sol.xx.size();
+  mpc_debug->nmodes_minus_1 = mpc_sol.xx.size() - 1;
 
   mpc_debug->initial_state.reserve(4);
   Eigen::Map<Vector4d>(mpc_debug->initial_state.data(), 4) = ic.head<4>();
@@ -401,6 +402,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
 
   mpc_debug->pp.clear();
   mpc_debug->xx.clear();
+  mpc_debug->ee.clear();
 
   for (int i = 0; i < mpc_sol.xx.size() ; ++i) {
     vector<double> x(4);
@@ -411,10 +413,24 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
     mpc_debug->pp.push_back(p);
   }
 
+  for (const auto& e: mpc_sol.ee) {
+    mpc_debug->ee.push_back(e(0));
+  }
+
+  mpc_sol.input_footholds.CopyToLcm(&(mpc_debug->all_footholds));
+
   Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;
-  get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds).CopyToLcm(
-      &(mpc_debug->foothold_solution)
-  );
+  ConvexPolygonSet foothold_sol = get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds);
+  foothold_sol.CopyToLcm(&(mpc_debug->foothold_solution));
+
+  double max_foothold_violation = -std::numeric_limits<double>::infinity();
+  for (int i = 0; i < mpc_sol.pp.size() - 1; ++i) {
+    max_foothold_violation = std::max(
+        max_foothold_violation,
+        foothold_sol.polygons().at(i).Get2dViolation(mpc_sol.pp.at(i+1))
+    );
+  }
+  mpc_debug->max_foothold_violation = max_foothold_violation;
 }
 
 

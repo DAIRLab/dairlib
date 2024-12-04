@@ -344,7 +344,10 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       trajectory_params.ee_goal_height,
       trajectory_params.object_half_width,
       trajectory_params.position_success_threshold,
-      trajectory_params.orientation_success_threshold);
+      trajectory_params.orientation_success_threshold,
+      trajectory_params.random_goal_x_limits,
+      trajectory_params.random_goal_y_limits,
+      trajectory_params.resting_object_height);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -481,7 +484,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
           TriggerTypeSet({TriggerType::kForced})));
   
   // These systems send the dynamically feasible plans used to compute costs.
-  auto dynamically_feasible_curr_plan_sender = 
+  auto dynamically_feasible_curr_plan_sender =
     builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("curr");
   auto dynamically_feasible_best_plan_sender = 
     builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("best");
@@ -494,7 +497,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   auto curr_and_best_sample_costs_sender = 
     builder.AddSystem<systems::SampleCostSender>("curr_and_best_sample_costs_sender");
   auto additional_costs_sender = 
-    builder.AddSystem<systems::AdditionalCostsSender>("additional_costs_sender : best_progress_steps_ago_, lowest_cost_, lowest_pos_and_rot_current_cost_, lowest_position_error_, lowest_orientation_error_");
+    builder.AddSystem<systems::AdditionalCostsSender>(
+        "best_progress_steps_ago, lowest_cost, lowest_pos_and_rot_current_cost, lowest_position_error, lowest_orientation_error");
   auto is_c3_mode_sender = 
     builder.AddSystem<systems::IsC3ModeSender>();
 

@@ -7,6 +7,7 @@
 
 #include "dairlib/lcmt_radio_out.hpp"
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include <random>
 
 using dairlib::systems::StateVector;
 using drake::multibody::MultibodyPlant;
@@ -80,7 +81,10 @@ void TargetGenerator::SetRemoteControlParameters(
     const double& ee_goal_height,
     const double& object_half_width,
     const double& position_success_threshold,
-    const double& orientation_success_threshold) {
+    const double& orientation_success_threshold,
+    const Eigen::VectorXd& random_goal_x_limits,
+    const Eigen::VectorXd& random_goal_y_limits,
+    const double& resting_object_height) {
   // Set the target parameters
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
@@ -104,6 +108,9 @@ void TargetGenerator::SetRemoteControlParameters(
   object_half_width_ = object_half_width;
   position_success_threshold_ = position_success_threshold;
   orientation_success_threshold_ = orientation_success_threshold;
+  random_goal_x_limits_ = random_goal_x_limits;
+  random_goal_y_limits_ = random_goal_y_limits;
+  resting_object_height_ = resting_object_height;
 }
 
 void TargetGenerator::CalcEndEffectorTarget(
@@ -159,9 +166,8 @@ void TargetGenerator::CalcObjectTarget(
       std::cout << "\nMet pose goal!\n" << std::endl;
 
       // Reset the target object orientation and position.
-      // TODO put in something valid.
-      target_final_object_position_(0) += 0.1;
-      // target_final_object_orientation_ = VectorXd::Zero(4);
+      SetRandomizedTargetFinalObjectPosition();
+      SetRandomizedTargetFinalObjectOrientation();
     }
 
   }
@@ -306,7 +312,6 @@ void TargetGenerator::CalcObjectTarget(
   target->SetFromVector(target_obj_state);
 }
 
-
 void TargetGenerator::CalcObjectVelocityTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
@@ -353,6 +358,46 @@ void TargetGenerator::OutputObjectFinalTarget(
   VectorXd target_final_obj_state = VectorXd::Zero(7);
   target_final_obj_state << target_final_object_orientation_, target_final_object_position_; 
   target->SetFromVector(target_final_obj_state);
+}
+
+void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<double> x_dis(random_goal_x_limits_[0], random_goal_x_limits_[1]);
+  std::uniform_real_distribution<double> y_dis(random_goal_y_limits_[0], random_goal_y_limits_[1]);
+
+  Eigen::VectorXd target_final_object_position(3);
+  target_final_object_position_ << x_dis(gen), y_dis(gen), resting_object_height_;
+}
+
+void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
+
+  // Nominal orientations for the jack to be balanced on the ground.
+  std::vector<Eigen::Quaterniond> valid_orientations{QUAT_ALL_DOWN,
+                                                  QUAT_RED_DOWN,
+                                                  QUAT_GREEN_DOWN,
+                                                  QUAT_BLUE_DOWN,
+                                                  QUAT_ALL_UP,
+                                                  QUAT_RED_UP,
+                                                  QUAT_GREEN_UP,
+                                                  QUAT_BLUE_UP};
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> dis(0, valid_orientations.size()-1);
+  int random_index = dis(gen);
+
+  Eigen::Quaterniond quat_nominal = valid_orientations.at(random_index);
+
+  // Add random yaw in world frame.
+  std::uniform_real_distribution<double> yaw_dis(0, 2*PI);
+  Eigen::Quaterniond quat_world_yaw(Eigen::AngleAxisd(yaw_dis(gen), Eigen::Vector3d::UnitZ()));
+  // Apply world yaw rotation to nominal orientation.
+  Eigen::Quaterniond quat_final = quat_world_yaw * quat_nominal;
+
+
+  target_final_object_orientation_ << quat_final.w(), quat_final.x(), quat_final.y(), quat_final.z();
 }
 
 }  // namespace systems

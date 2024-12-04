@@ -1,6 +1,6 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
-#include <dairlib/lcmt_alip_s2s_mpfc_debug.hpp>
+#include <dairlib/lcmt_alip_mpfc_debug_complete.hpp>
 #include <dairlib/lcmt_alip_mpc_output.hpp>
 
 #include "alip_utils.h"
@@ -69,8 +69,8 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(fsm_output_port_);
   }
 
-  static lcmt_alip_s2s_mpfc_debug empty_debug_message() {
-    return lcmt_alip_s2s_mpfc_debug{};
+  static lcmt_alip_mpfc_debug_complete empty_debug_message() {
+    return lcmt_alip_mpfc_debug_complete{};
   }
 
   static lcmt_alip_mpc_output empty_output_message() {
@@ -94,7 +94,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context) const;
 
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
-                         lcmt_alip_s2s_mpfc_debug* mpc_debug) const;
+                         lcmt_alip_mpfc_debug_complete* mpc_debug) const;
 
   Eigen::Vector4d HandleAlipKalmanFilter(
       const drake::systems::Context<double>& context,

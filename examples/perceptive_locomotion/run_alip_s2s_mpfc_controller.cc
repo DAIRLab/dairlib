@@ -206,7 +206,7 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   auto mpc_debug_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
+      LcmPublisherSystem::Make<lcmt_alip_mpfc_debug_complete>(
           "ALIP_S2S_MPFC_DEBUG", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 

@@ -365,7 +365,7 @@ ConvexPolygonSet get_foothold_sequence(const vector<VectorXd>& binary_vars,
 }
 
 void Alips2sMPFCSystem::CopyMpcDebugToLcm(
-    const Context<double> &context, lcmt_alip_s2s_mpfc_debug *mpc_debug) const {
+    const Context<double> &context, lcmt_alip_mpfc_debug_complete *mpc_debug) const {
 
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
@@ -396,8 +396,8 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->initial_stance_foot.reserve(3);
   Eigen::Map<Vector3d>(mpc_debug->initial_stance_foot.data(), 3) = ic.tail<3>();
 
-  mpc_debug->nominal_first_stance_time = mpc_sol.t_nom;
-  mpc_debug->solution_first_stance_time = mpc_sol.t_sol;
+  mpc_debug->T_nominal = mpc_sol.t_nom;
+  mpc_debug->T = mpc_sol.t_sol;
 
   mpc_debug->pp.clear();
   mpc_debug->xx.clear();
@@ -413,7 +413,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
 
   Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;
   get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds).CopyToLcm(
-      &(mpc_debug->foothold_sequence)
+      &(mpc_debug->foothold_solution)
   );
 }
 

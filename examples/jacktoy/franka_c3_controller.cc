@@ -26,9 +26,9 @@
 #include "examples/jacktoy/systems/sample_cost_sender.h"
 #include "examples/jacktoy/systems/additional_costs_sender.h"
 #include "examples/jacktoy/systems/is_c3_mode_sender.h"
+#include "examples/jacktoy/systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
-// #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -380,9 +380,6 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   final_target_state_mux->get_input_port(3));
 
-  
-
-
   // Instantiating the sampling based c3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
@@ -501,6 +498,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
         "best_progress_steps_ago, lowest_cost, lowest_pos_and_rot_current_cost, lowest_position_error, lowest_orientation_error");
   auto is_c3_mode_sender = 
     builder.AddSystem<systems::IsC3ModeSender>();
+  auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
+    sampling_params.N_sample_buffer, 10);
 
   // These systems publish the sample locations and sample costs over LCM.
   auto sample_locations_publisher = builder.AddSystem(
@@ -538,6 +537,10 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   auto dynamically_feasible_best_plan_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto sample_buffer_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.sample_buffer_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
@@ -692,12 +695,18 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
                   sample_locations_publisher->get_input_port());
   builder.Connect(sample_costs_sender->get_output_port(),
                   sample_costs_publisher->get_input_port());
+  builder.Connect(sample_buffer_sender->get_output_port_sample_buffer(),
+                  sample_buffer_publisher->get_input_port());
   builder.Connect(curr_and_best_sample_costs_sender->get_output_port(),
                   curr_and_best_sample_costs_publisher->get_input_port());
   builder.Connect(additional_costs_sender->get_output_port(),
                   additional_costs_publisher->get_input_port());
   builder.Connect(is_c3_mode_sender->get_output_port(),
                   is_c3_mode_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_sample_buffer_configurations(),
+                  sample_buffer_sender->get_input_port_samples());
+  builder.Connect(controller->get_output_port_sample_buffer_costs(),
+                  sample_buffer_sender->get_input_port_sample_costs());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

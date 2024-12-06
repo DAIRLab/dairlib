@@ -287,6 +287,19 @@ SamplingC3Controller::SamplingC3Controller(
     &SamplingC3Controller::OutputAdditionalCosts
   ).get_index();
 
+  // Sample buffer related ouput ports.
+  sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+  sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+  sample_buffer_configurations_port_ = this->DeclareAbstractOutputPort(
+    "sample_buffer_configurations", sample_buffer_,
+    &SamplingC3Controller::OutputSampleBufferConfigurations
+  ).get_index();
+
+  sample_buffer_costs_port_ = this->DeclareAbstractOutputPort(
+    "sample_buffer_costs", sample_costs_buffer_,
+    &SamplingC3Controller::OutputSampleBufferCosts
+  ).get_index();
+
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
@@ -614,6 +627,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // }
     crossed_cost_switching_threshold_ = false;
     x_final_target_ = x_lcs_final_des.value();
+
+    // Reset the sample buffer now that the costs have changed.
+    sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+    sample_costs_buffer_ = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
   }
 
   // if object is within a fixed radius of the desired location, 
@@ -623,6 +640,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.cost_switching_threshold_distance){
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
+
+      // Reset the sample buffer now that the costs have changed.
+      sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+      sample_costs_buffer_ = -1 * VectorXd::Ones(
+        sampling_params_.N_sample_buffer);
 
       // If also in C3 mode, reset the lowest cost seen in this mode.
       if (is_doing_c3_){
@@ -812,6 +834,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "In C3 mode? " << is_doing_c3_ << std::endl;
   }
 
+  // Update the sample buffer.  Do this before switching modes since if in
+  // repositioning mode, don't add the repositioning target over and over again.
+  MaintainSampleBuffer(x_lcs_curr);
+
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Update the lowest cost and position/orientation errors seen in this mode.
@@ -862,11 +888,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         ((sampling_params_.track_c3_progress_via ==
             POSITION_OR_ORIENTATION_ERROR) &&
             updated_pos_or_rot)) {
-      if (sampling_params_.track_c3_progress_via ==
-          CURRENT_POSITION_AND_ORIENTATION_COST) {
-        std::cout << "Updated lowest pos and rot cost: " <<
-          lowest_pos_and_rot_current_cost_ << std::endl;
-      }
       best_progress_steps_ago_ = 0;
     }
     else {
@@ -1490,6 +1511,77 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
                          object_orientation_traj);
 }
 
+// Maintain the sample buffer:  prunes outdated samples and adds new.
+void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
+  // Determine if samples are outdated by comparing to the current jack position
+  // and orientation.
+  Vector3d jack_pos = x_lcs.segment(7, 3);
+  Eigen::Vector4d jack_quat = x_lcs.segment(3, 4).normalized();
+
+  MatrixXd buffer_xyzs = sample_buffer_.block(
+    0, 7, sampling_params_.N_sample_buffer, 3);
+  MatrixXd buffer_quats = sample_buffer_.block(
+    0, 3, sampling_params_.N_sample_buffer, 4);
+
+  // First, remove outdated samples that have moved too much from current jack
+  // configuration.
+  VectorXd quat_dots = (buffer_quats * jack_quat).array().abs();
+  VectorXd angles = (2.0 * quat_dots.array().acos());
+  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_rot = (
+    angles.array() < sampling_params_.ang_error_sample_retention);
+
+  MatrixXd pos_deltas = buffer_xyzs.rowwise() - jack_pos.transpose();
+  VectorXd distances = pos_deltas.rowwise().norm();
+  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_pos = (
+    distances.array() < sampling_params_.pos_error_sample_retention);
+
+  MatrixXd retained_samples = MatrixXd::Zero(
+    sampling_params_.N_sample_buffer, n_q_);
+  VectorXd retained_costs = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
+  int retained_count = 0;
+  for (int i = 0; i < sampling_params_.N_sample_buffer; i++) {
+    if (mask_satisfies_rot[i] && mask_satisfies_pos[i]) {
+      retained_samples.row(retained_count) = sample_buffer_.row(i);
+      retained_costs[retained_count] = sample_costs_buffer_[i];
+      retained_count++;
+    }
+    else if (sample_costs_buffer_[i] < 0) {
+      break;
+    }
+  }
+  sample_buffer_ = retained_samples;
+  sample_costs_buffer_ = retained_costs;
+
+  // Second, add the new samples stored in all_sample_locations_ and
+  // all_sample_costs_.  Don't re-add a currently pursued repositioning target,
+  // since that must have been added in a previous loop.
+  int num_new_samples =  all_sample_locations_.size();
+  int j = retained_count;
+  for (int i = retained_count; i < retained_count + num_new_samples; i++) {
+    if (i >= sampling_params_.N_sample_buffer) {
+      // std::cout << "WARNING: Sample buffer is full; skipping adding samples."
+      //   << std::endl;
+      break;
+    }
+    if (!is_doing_c3_ && i == retained_count + 1) {
+      // Skip the repositioning target if in repositioning mode.
+    }
+    else {
+      VectorXd new_config = x_lcs.segment(0, n_q_);
+      new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
+      new_config.segment(3, 4) = jack_quat;
+      sample_buffer_.row(j) = new_config;
+      sample_costs_buffer_[j] = all_sample_costs_[i - retained_count];
+      j++;
+    }
+  }
+
+  DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
+  DRAKE_ASSERT(sample_buffer_.rows() == n_q_);
+  DRAKE_ASSERT(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
+}
+
+
 // Output port handlers for current location
 void SamplingC3Controller::OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
@@ -1714,6 +1806,18 @@ void SamplingC3Controller::OutputAdditionalCosts(
     vec.push_back(lowest_position_error_);
     vec.push_back(lowest_orientation_error_);
     *additional_costs = vec;
+}
+
+void SamplingC3Controller::OutputSampleBufferConfigurations(
+  const drake::systems::Context<double>& context,
+  Eigen::MatrixXd* sample_buffer_configurations) const {
+    *sample_buffer_configurations = sample_buffer_;
+}
+
+void SamplingC3Controller::OutputSampleBufferCosts(
+  const drake::systems::Context<double>& context,
+  Eigen::VectorXd* sample_buffer_costs) const {
+    *sample_buffer_costs = sample_costs_buffer_;
 }
 
 } // namespace systems 

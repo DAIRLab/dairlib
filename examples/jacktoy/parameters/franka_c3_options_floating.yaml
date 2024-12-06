@@ -14,7 +14,7 @@ contact_model: 'anitescu'
 # The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
 # and capsule3_ground.
 # TODO: The friction values are currently hardcoded for the 6 contact lcs.
-mu: [[0.3, 0.3, 0.3, 0.3],                    # num_contacts_index 0
+mu: [[0.4165, 0.4165, 0.4165, 0.4165],                    # num_contacts_index 0
     [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615],     # num_contacts_index 1
     [0.4615, 1, 0.4615, 0.4615, 0.4615],                  # num_contacts_index 2
     [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615],  # num_contacts_index 3

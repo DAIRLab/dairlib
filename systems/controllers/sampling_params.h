@@ -31,6 +31,9 @@ struct SamplingC3SamplingParams {
   double use_straight_line_traj_under;
   double use_straight_line_traj_within_angle;
   bool use_spherical_repositioning;
+  int N_sample_buffer;
+  double pos_error_sample_retention;
+  double ang_error_sample_retention;
   int cost_type;
   int cost_type_position_tracking;
   bool use_more_contacts_to_compute_cost;
@@ -72,6 +75,9 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
     a->Visit(DRAKE_NVP(use_spherical_repositioning));
+    a->Visit(DRAKE_NVP(N_sample_buffer));
+    a->Visit(DRAKE_NVP(pos_error_sample_retention));
+    a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(cost_type_position_tracking));
     a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));

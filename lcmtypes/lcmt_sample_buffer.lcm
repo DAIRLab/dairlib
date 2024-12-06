@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_sample_buffer
+{
+  int64_t utime;
+  int32_t buffer_length;
+  int32_t num_configurations;
+
+  int32_t num_in_buffer;
+
+  float costs[buffer_length];
+  float configurations[buffer_length][num_configurations];
+}

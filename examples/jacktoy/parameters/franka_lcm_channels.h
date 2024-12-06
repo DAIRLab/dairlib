@@ -33,6 +33,7 @@ struct FrankaLcmChannels {
   std::string radio_channel;
 
   std::string sample_locations_channel;
+  std::string sample_buffer_channel;
   std::string dynamically_feasible_curr_actor_plan_channel;
   std::string dynamically_feasible_curr_plan_channel;
   std::string dynamically_feasible_best_actor_plan_channel;
@@ -73,6 +74,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(radio_channel));
 
     a->Visit(DRAKE_NVP(sample_locations_channel));
+    a->Visit(DRAKE_NVP(sample_buffer_channel));
     a->Visit(DRAKE_NVP(dynamically_feasible_curr_actor_plan_channel));
     a->Visit(DRAKE_NVP(dynamically_feasible_curr_plan_channel));
     a->Visit(DRAKE_NVP(dynamically_feasible_best_actor_plan_channel));

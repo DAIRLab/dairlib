@@ -108,6 +108,7 @@ cc_binary(
         ":franka_lcm_channels",
         "//common",
         "//examples/jacktoy/systems:franka_systems",
+        "//examples/jacktoy/systems:sample_buffer_sender",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",

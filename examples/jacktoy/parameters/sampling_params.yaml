@@ -43,6 +43,11 @@ use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc
 
+# More intelligent sampling parameters.
+N_sample_buffer: 100
+pos_error_sample_retention: 0.01
+ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
+
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
 # 1 means use z_fin from C3 solution for both ee and object positions to compute cost.

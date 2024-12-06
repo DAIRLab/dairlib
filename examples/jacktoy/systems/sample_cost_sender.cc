@@ -30,7 +30,7 @@ void SampleCostSender::OutputSampleCosts(
         const drake::systems::Context<double>& context,
         dairlib::lcmt_timestamped_saved_traj* output_costs) const {
   
-	// Evaluate input port to get the sample locations
+	// Evaluate input port to get the sample costs.
   const std::vector<double>& sample_cost_vector =
       *this->EvalInputValue<std::vector<double>>(
                                 context, sample_costs_input_port_

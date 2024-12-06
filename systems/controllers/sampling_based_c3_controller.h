@@ -140,6 +140,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(additional_costs_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_sample_buffer_configurations()
+      const {
+    return this->get_output_port(sample_buffer_configurations_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_sample_buffer_costs()
+      const {
+    return this->get_output_port(sample_buffer_costs_port_);
+  }
+
 
   // The solver options need not be done twice i.e. one for each c3 solution 
   // object.
@@ -159,10 +168,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void UpdateContext(Eigen::VectorXd lcs_state) const;
 
-  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs, const double& t_context) const;
+  void UpdateC3ExecutionTrajectory(
+    const Eigen::VectorXd& x_lcs, const double& t_context) const;
 
-  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs, const double& t_context) const;
+  void UpdateRepositioningExecutionTrajectory(
+    const Eigen::VectorXd& x_lcs, const double& t_context) const;
 
+  void MaintainSampleBuffer(const Eigen::VectorXd& x_lcs) const;
 
   void OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
@@ -228,6 +240,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::vector<double>* additional_costs) const;
 
+  void OutputSampleBufferConfigurations(
+    const drake::systems::Context<double>& context,
+    Eigen::MatrixXd* sample_buffer_configurations) const;
+
+  void OutputSampleBufferCosts(
+    const drake::systems::Context<double>& context,
+    Eigen::VectorXd* sample_buffer_costs) const;
+
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;
   drake::systems::InputPortIndex target_input_port_;
@@ -252,8 +272,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
   drake::systems::OutputPortIndex curr_and_best_sample_costs_port_;
-  // Additional cost related ports
   drake::systems::OutputPortIndex additional_costs_port_;
+  drake::systems::OutputPortIndex sample_buffer_configurations_port_;
+  drake::systems::OutputPortIndex sample_buffer_costs_port_;
 
   // This plant_ has been made 'not const' so that the context can be updated.
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -321,7 +342,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable LcmTrajectory repos_execution_lcm_traj_;
  
 
-  // Samples and associated costs.
+  // Samples and associated costs computed in current control loop.
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>> all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
@@ -330,6 +351,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;
+
+  // For more intelligent sampling.
+  mutable Eigen::MatrixXd sample_buffer_;       // (N_sample_buffer x n_q)
+  mutable Eigen::VectorXd sample_costs_buffer_;
 
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;

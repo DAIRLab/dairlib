@@ -39,6 +39,9 @@ state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 
+demo_trial_path = 'others/stairs_and_grass_11_16_24/'
+solve_time_results_config_path = 'solve_time_results_config.yaml'
+
 
 def process_mpc_data(data_dict):
     plant, _ = make_plant_and_context()
@@ -95,29 +98,29 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
 
 
 def vel_tracking_and_tiles(base_data_folder):
-    logpath = os.path.join(base_data_folder, 'others/stairs_and_grass/lcmlog-laptop-01')
-    video_path = os.path.join(base_data_folder, 'others/stairs_and_grass/IMG_9136.mov')
+    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
+    video_path = os.path.join(base_data_folder, demo_trial_path + 'IMG_9136.mov')
     robot_output, mpc_debug = load_log(logpath, 1, 100.5)
     velocity_tracking_plot(
         robot_output,
         mpc_debug,
         savefile='../manuscripts/perceptive_walking_tro/figures/velocity_tracking.svg'
     )
-    # extract_frames(
-    #     8.0,
-    #     108.0,
-    #     40,
-    #     video_path,
-    #     '../manuscripts/perceptive_walking_tro/figures/motion_tiles',
-    #     prefix='stairs_and_grass',
-    #     frame_edits='crop_square'
-    # )
+    extract_frames(
+        8.0,
+        108.0,
+        40,
+        video_path,
+        '../manuscripts/perceptive_walking_tro/figures/motion_tiles',
+        prefix='stairs_and_grass',
+        frame_edits='crop_square'
+    )
 
 
 def solve_time_series_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, 'others/stairs_and_grass/lcmlog-laptop-01')
+    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
     robot_output, mpc_debug = load_log(logpath, 1, 100.5)
     plt.plot(
         mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0],
@@ -150,7 +153,7 @@ def solve_time_series_plot(base_data_folder):
 def elevation_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, 'others/stairs_and_grass/lcmlog-laptop-01')
+    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
     robot_output, _ = load_log(logpath, 1, 100.5)
     plt.plot(
         robot_output['t_x'] - robot_output['t_x'][0],
@@ -169,14 +172,95 @@ def elevation_plot(base_data_folder):
         bbox_inches='tight'
     )
 
+
+def solve_time_proportions_plot(base_data_folder):
+    with open(os.path.join(base_data_folder, solve_time_results_config_path)) as stream:
+        config = yaml.safe_load(stream)
+    mpc_debugs = []
+    total_sec = 0
+    for log in config['logs']:
+        _, mpc_debug = load_log(
+            os.path.join(base_data_folder, log['file']),
+            log['start'],
+            log['duration']
+        )
+        total_sec += log['duration']
+        mpc_debugs.append(mpc_debug)
+
+    data = np.concatenate([d['optimizer_time'] for d in mpc_debugs])
+    utils.setup_plots()
+    fig = plt.figure(figsize=(11, 5))
+    sns.histplot(
+        data=data,
+        bins=10,
+        element='step',
+        stat='proportion'
+    )
+    plt.title('Solve Time Distribution')
+    plt.xlabel('Solve Time (s)')
+    plt.savefig(
+        '../manuscripts/perceptive_walking_tro/figures/solve_times.svg',
+        bbox_inches='tight'
+    )
+    numpy_stats_to_latex(
+        data,
+        'MPFC Solve Time',
+        '../manuscripts/perceptive_walking_tro/results/solve_time_stats.tex'
+    )
+
+
+def snake_case(text: str):
+    return text.lower().replace(' ', '_')
+
+
+def numpy_stats_to_latex(data, name, save_path=None):
+    # Compute statistical measures
+    stats = {
+        'N': np.size(data),
+        'Mean': np.mean(data),
+        'Median': np.median(data),
+        '99.9th Percentile': np.percentile(data, 99.9),
+        'Maximum': np.max(data)
+    }
+
+    # Create LaTeX table
+    latex_table = "\\begin{table}[h!]\n"
+    latex_table += "\\centering\n"
+    latex_table += "\\caption{" + name + " Summary Statistics}\n"
+    latex_table += "\\begin{tabular}{|c|c|}\n"
+    latex_table += "\\hline\n"
+    latex_table += "\\textbf{Statistic} & \\textbf{Value} \\\\\n"
+    latex_table += "\\hline\n"
+
+    # Add rows for each statistic
+    for stat, value in stats.items():
+        if stat == 'N':
+            latex_table += f"{stat} & {value} \\\\\n"
+        else:
+            latex_table += f"{stat} & {value:.4f} \\\\\n"
+
+    latex_table += "\\hline\n"
+    latex_table += ("\\end{tabular}\n")
+    latex_table += ("\\label{tab:" + snake_case(name) +"_stats}\n")
+    latex_table += "\\end{table}"
+
+    # Save to file if output path is provided
+    if save_path is not None:
+        with open(save_path, 'w') as f:
+            f.write(latex_table)
+        print(f"LaTeX table saved to {save_path}")
+    else:
+        print(latex_table)
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument('--data_root', type=str, default='')
-    parser.add_argument('--logfile', type=str, default='')
     args = parser.parse_args()
-    solve_time_series_plot(args.data_root)
-    vel_tracking_and_tiles(args.data_root)
-    elevation_plot(args.data_root)
+    solve_time_proportions_plot(args.data_root)
+    # solve_time_series_plot(args.data_root)
+    # vel_tracking_and_tiles(args.data_root)
+    # elevation_plot(args.data_root)
 
 
 if __name__ == '__main__':

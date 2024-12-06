@@ -82,7 +82,7 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
     plt.ylim([-0.75, 1.5])
     ax = plt.gca()
     ax.autoscale(enable=True, axis='x', tight=True)
-    plt.title('MPFC Velocity Tracking', fontsize=28)
+    plt.title('Velocity Tracking', fontsize=28)
     plt.xlabel('Time (s)')
     plt.ylabel('Pelvis Velocity (m/s)')
     plt.legend(ncol=4, fontsize=20, columnspacing=0.5)
@@ -103,27 +103,80 @@ def vel_tracking_and_tiles(base_data_folder):
         mpc_debug,
         savefile='../manuscripts/perceptive_walking_tro/figures/velocity_tracking.svg'
     )
-    extract_frames(
-        8.0,
-        108.0,
-        40,
-        video_path,
-        '../manuscripts/perceptive_walking_tro/figures/motion_tiles',
-        prefix='stairs_and_grass',
-        frame_edits='crop_square'
+    # extract_frames(
+    #     8.0,
+    #     108.0,
+    #     40,
+    #     video_path,
+    #     '../manuscripts/perceptive_walking_tro/figures/motion_tiles',
+    #     prefix='stairs_and_grass',
+    #     frame_edits='crop_square'
+    # )
+
+
+def solve_time_series_plot(base_data_folder):
+    utils.setup_plots()
+    fig = plt.figure(figsize=(8, 6))
+    logpath = os.path.join(base_data_folder, 'others/stairs_and_grass/lcmlog-laptop-01')
+    robot_output, mpc_debug = load_log(logpath, 1, 100.5)
+    plt.plot(
+        mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0],
+        mpc_debug['optimizer_time'],
+        label='Solve Time',
+        color=utils.plotting_palette[5]
+    )
+    plt.plot(
+        mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0],
+        0.01 * np.ones_like(mpc_debug['optimizer_time']),
+        color=utils.plotting_palette[0],
+        linestyle='--',
+        linewidth=2,
+        label='100 Hz.'
+    )
+    plt.title('MPFC Solve Times')
+    ax = plt.gca()
+    ax.autoscale(enable=True, axis='x', tight=True)
+    plt.ylim([0, 0.014])
+    plt.legend(fontsize=20, loc='upper left')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Solve Time (s)')
+    fig.tight_layout()
+    plt.savefig(
+        '../manuscripts/perceptive_walking_tro/figures/solve_time_series.svg',
+        bbox_inches='tight'
     )
 
 
-def solve_time_plot(mpc_debug):
-    pass
-
+def elevation_plot(base_data_folder):
+    utils.setup_plots()
+    fig = plt.figure(figsize=(8, 6))
+    logpath = os.path.join(base_data_folder, 'others/stairs_and_grass/lcmlog-laptop-01')
+    robot_output, _ = load_log(logpath, 1, 100.5)
+    plt.plot(
+        robot_output['t_x'] - robot_output['t_x'][0],
+        robot_output['q'][:, 6] - robot_output['q'][0, 6],
+        label='Pelvis Height',
+        color=utils.plotting_palette[5]
+    )
+    plt.title('Estimated Elevation Change')
+    ax = plt.gca()
+    ax.autoscale(enable=True, axis='x', tight=True)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Elevation Change (m)')
+    fig.tight_layout()
+    plt.savefig(
+        '../manuscripts/perceptive_walking_tro/figures/pelvis_height_series.svg',
+        bbox_inches='tight'
+    )
 
 def main():
     parser = ArgumentParser()
     parser.add_argument('--data_root', type=str, default='')
     parser.add_argument('--logfile', type=str, default='')
     args = parser.parse_args()
+    solve_time_series_plot(args.data_root)
     vel_tracking_and_tiles(args.data_root)
+    elevation_plot(args.data_root)
 
 
 if __name__ == '__main__':

@@ -84,6 +84,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const double& orientation_success_threshold,
     const Eigen::VectorXd& random_goal_x_limits,
     const Eigen::VectorXd& random_goal_y_limits,
+    const Eigen::VectorXd& random_goal_radius_limits,
     const double& resting_object_height) {
   // Set the target parameters
   // Create class variables for each parameter
@@ -110,6 +111,7 @@ void TargetGenerator::SetRemoteControlParameters(
   orientation_success_threshold_ = orientation_success_threshold;
   random_goal_x_limits_ = random_goal_x_limits;
   random_goal_y_limits_ = random_goal_y_limits;
+  random_goal_radius_limits_ = random_goal_radius_limits;
   resting_object_height_ = resting_object_height;
 }
 
@@ -361,14 +363,25 @@ void TargetGenerator::OutputObjectFinalTarget(
 }
 
 void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
-
+  // Obeys x and y limits (to stay on the table) as well as radius limits (to
+  // more closely match robot limits).
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<double> x_dis(random_goal_x_limits_[0], random_goal_x_limits_[1]);
-  std::uniform_real_distribution<double> y_dis(random_goal_y_limits_[0], random_goal_y_limits_[1]);
+  std::uniform_real_distribution<double> x_dis(
+    random_goal_x_limits_[0], random_goal_x_limits_[1]);
+  std::uniform_real_distribution<double> y_dis(
+    random_goal_y_limits_[0], random_goal_y_limits_[1]);
+
+  double x = x_dis(gen);
+  double y = y_dis(gen);
+  while ((sqrt(x*x + y*y) > random_goal_radius_limits_[1]) ||
+         (sqrt(x*x + y*y) < random_goal_radius_limits_[0])) {
+    x = x_dis(gen);
+    y = y_dis(gen);
+  }
 
   Eigen::VectorXd target_final_object_position(3);
-  target_final_object_position_ << x_dis(gen), y_dis(gen), resting_object_height_;
+  target_final_object_position_ << x, y, resting_object_height_;
 }
 
 void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {

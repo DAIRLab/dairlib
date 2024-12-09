@@ -347,6 +347,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       trajectory_params.orientation_success_threshold,
       trajectory_params.random_goal_x_limits,
       trajectory_params.random_goal_y_limits,
+      trajectory_params.random_goal_radius_limits,
       trajectory_params.resting_object_height);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =

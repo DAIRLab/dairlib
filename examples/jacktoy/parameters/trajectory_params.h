@@ -29,6 +29,7 @@ struct SamplingC3TrajectoryParams {
   double orientation_success_threshold;
   Eigen::VectorXd random_goal_x_limits;
   Eigen::VectorXd random_goal_y_limits;
+  Eigen::VectorXd random_goal_radius_limits;
   double resting_object_height;
 
   template <typename Archive>
@@ -57,6 +58,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(random_goal_x_limits));
     a->Visit(DRAKE_NVP(random_goal_y_limits));
+    a->Visit(DRAKE_NVP(random_goal_radius_limits));
     a->Visit(DRAKE_NVP(resting_object_height));
   }
 };

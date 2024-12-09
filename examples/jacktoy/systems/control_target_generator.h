@@ -80,6 +80,7 @@ class TargetGenerator
     const double& orientation_success_threshold,
     const Eigen::VectorXd& random_goal_x_limits,
     const Eigen::VectorXd& random_goal_y_limits,
+    const Eigen::VectorXd& random_goal_radius_limits,
     const double& resting_object_height);
 
  private:
@@ -127,6 +128,7 @@ class TargetGenerator
   double orientation_success_threshold_;
   Eigen::VectorXd random_goal_x_limits_;
   Eigen::VectorXd random_goal_y_limits_;
+  Eigen::VectorXd random_goal_radius_limits_;
   double resting_object_height_;
 };
 

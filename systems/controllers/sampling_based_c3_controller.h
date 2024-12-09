@@ -353,6 +353,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_final_target_;
 
   // For more intelligent sampling.
+  mutable int num_in_buffer_ = 0;
   mutable Eigen::MatrixXd sample_buffer_;       // (N_sample_buffer x n_q)
   mutable Eigen::VectorXd sample_costs_buffer_;
 

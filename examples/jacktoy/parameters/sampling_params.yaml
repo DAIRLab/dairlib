@@ -45,7 +45,7 @@ use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
 
 # More intelligent sampling parameters.
 N_sample_buffer: 100
-pos_error_sample_retention: 0.01
+pos_error_sample_retention: 0.005
 ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
 
 # Parameters for the cost function.
@@ -82,7 +82,7 @@ hysteresis_between_repos_targets: 60000000000000
 use_relative_hysteresis: true
 c3_to_repos_cost_fraction: 0.4  #0.35
 repos_to_c3_cost_fraction: 0.3  #0.2
-repos_to_repos_cost_fraction: 0.15  #0.33
+repos_to_repos_cost_fraction: 0.1  #0.33
 
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before

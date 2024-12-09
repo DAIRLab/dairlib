@@ -1552,29 +1552,58 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   sample_buffer_ = retained_samples;
   sample_costs_buffer_ = retained_costs;
 
-  // Second, add the new samples stored in all_sample_locations_ and
+  // Second, in preparation for adding new samples stored in
+  // all_sample_locations_, if the buffer is going to overflow, get rid of the
+  // oldest samples first.  NOTE:  Step 4 moves the lowest cost sample in the
+  // buffer to the end, so the best sample is usually excluded from this cut.
+  int num_to_add = all_sample_locations_.size();
+  if (!is_doing_c3_) {
+    num_to_add--;
+  }
+  if (retained_count + num_to_add > sampling_params_.N_sample_buffer) {
+    int shift_by = retained_count + num_to_add -
+      sampling_params_.N_sample_buffer;
+    retained_count -= shift_by;
+    sample_buffer_.block(0, 0, retained_count, n_q_) =
+      sample_buffer_.block(shift_by, 0, retained_count, n_q_);
+    sample_costs_buffer_.segment(0, retained_count) =
+      sample_costs_buffer_.segment(shift_by, retained_count);
+  }
+
+  // Third, add the new samples stored in all_sample_locations_ and
   // all_sample_costs_.  Don't re-add a currently pursued repositioning target,
   // since that must have been added in a previous loop.
-  int num_new_samples =  all_sample_locations_.size();
-  int j = retained_count;
-  for (int i = retained_count; i < retained_count + num_new_samples; i++) {
-    if (i >= sampling_params_.N_sample_buffer) {
-      // std::cout << "WARNING: Sample buffer is full; skipping adding samples."
-      //   << std::endl;
-      break;
-    }
+  int buffer_count = retained_count;
+  for (int i = retained_count;
+       i < retained_count + all_sample_locations_.size();
+       i++
+      ) {
+    DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
     if (!is_doing_c3_ && i == retained_count + 1) {
       // Skip the repositioning target if in repositioning mode.
     }
     else {
       VectorXd new_config = x_lcs.segment(0, n_q_);
       new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
+      // Ensure a normalized quaternion is written to the buffer.
       new_config.segment(3, 4) = jack_quat;
-      sample_buffer_.row(j) = new_config;
-      sample_costs_buffer_[j] = all_sample_costs_[i - retained_count];
-      j++;
+      sample_buffer_.row(buffer_count) = new_config;
+      sample_costs_buffer_[buffer_count] = all_sample_costs_[i-retained_count];
+      buffer_count++;
     }
   }
+  num_in_buffer_ = buffer_count;
+
+  // Lastly, ensure the lowest cost sample is at the end of the buffer.
+  VectorXd eligible_costs = sample_costs_buffer_.head(num_in_buffer_);
+  int lowest_cost_index;
+  double lowest_buffer_cost = eligible_costs.minCoeff(&lowest_cost_index);
+  VectorXd lowest_cost_sample = sample_buffer_.row(lowest_cost_index);
+  sample_buffer_.row(lowest_cost_index) = sample_buffer_.row(num_in_buffer_-1);
+  sample_costs_buffer_[lowest_cost_index] =
+    sample_costs_buffer_[num_in_buffer_-1];
+  sample_buffer_.row(num_in_buffer_-1) = lowest_cost_sample;
+  sample_costs_buffer_[num_in_buffer_-1] = lowest_buffer_cost;
 
   DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
   DRAKE_ASSERT(sample_buffer_.rows() == n_q_);

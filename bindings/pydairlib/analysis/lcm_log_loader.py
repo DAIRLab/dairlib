@@ -360,20 +360,24 @@ def plot_utime_differences(osc_utimes_dict, tracking_utimes_dict):
 if __name__ == "__main__":
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Process an LCM log file.')
-    parser.add_argument('log_folder', type=str, help='Path to the folder containing the log file')
-    parser.add_argument('start_time', type=float, default=0.0, help='Start time into the log to begin parsing')
+    parser.add_argument('log_folder', type=str,
+                        help='Path to the folder containing the log file')
+    parser.add_argument('start_time', type=float, default=0.0,
+                        help='Start time into the log to begin parsing')
     # optional end time argument
-    parser.add_argument('end_time', type=float, default=9999999999999, help='End time into the log to stop parsing')
-    
+    parser.add_argument('end_time', type=float, default=9999999999999,
+                        help='End time into the log to stop parsing')
 
     args = parser.parse_args()
     log_folder = args.log_folder
     start_time = args.start_time
     end_time = args.end_time
 
-    # Turn the folder into a file path
-    log_number = log_folder.split("/")[-1][:6]  # Extract the last part of the folder name
-    log_filepath = os.path.join(log_folder, f"simlog-{log_number}")  # Construct the log file path
+    # Turn the folder into a file path.
+    # Extract the last part of the folder name.
+    log_number = log_folder.split("/")[-1][:6]
+    # Construct the log file path.
+    log_filepath = os.path.join(log_folder, f"simlog-{log_number}")
     print(f"Parsing log at: {log_filepath}")
 
     # List of channels to care about.

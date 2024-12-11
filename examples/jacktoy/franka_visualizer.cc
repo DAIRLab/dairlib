@@ -304,9 +304,9 @@ int do_main(int argc, char* argv[]) {
     Vector3d workspace_center = {0.5 * (c3_options.world_x_limits[1] + c3_options.world_x_limits[0]),
                                  0.5 * (c3_options.world_y_limits[1] + c3_options.world_y_limits[0]),
                                  0.5 * (c3_options.world_z_limits[1] + c3_options.world_z_limits[0])};
-    meshcat->SetObject("c3_state/c3_workspace", drake::geometry::Box(width, depth, height),
+    meshcat->SetObject("c3_workspace", drake::geometry::Box(width, depth, height),
                        {0, 1, 0, 0.2});
-    meshcat->SetTransform("c3_state/c3_workspace", RigidTransformd(workspace_center));
+    meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
   }
 
   if (sim_params.visualize_execution_plan){
@@ -364,10 +364,12 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        meshcat, "plans/curr_planned",
+        FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 5, true);
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
+        meshcat, "plans/curr_planned",
+        FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -376,24 +378,30 @@ int do_main(int argc, char* argv[]) {
                     end_effector_pose_drawer_curr->get_input_port_trajectory());
 
     auto dynamically_feasible_actor_pose_drawer_curr_actor = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "dynamically_feasible_curr_plan_actor", FindResourceOrThrow(sim_params.visualizer_df_curr_sample_end_effector_model),
+        meshcat, "plans/dynamically_feasible_curr_plan_actor",
+        FindResourceOrThrow(sim_params.visualizer_df_curr_sample_end_effector_model),
         "ee_position_target", "end_effector_orientation_target", 6, false);
-    builder.Connect(dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
-                    dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
+    builder.Connect(
+        dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
+        dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
 
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "dynamically_feasible_curr_plan", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        meshcat, "plans/dynamically_feasible_curr_plan",
+        FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 6, true);
-    builder.Connect(dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
-                    dynamically_feasible_object_pose_drawer_curr->get_input_port_trajectory());
+    builder.Connect(
+        dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
+        dynamically_feasible_object_pose_drawer_curr->get_input_port_trajectory());
   }
 
   if (sim_params.visualize_pose_trace_best){
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        meshcat, "plans/best_planned",
+        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
+        meshcat, "plans/best_planned",
+        FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),
@@ -402,10 +410,12 @@ int do_main(int argc, char* argv[]) {
                     end_effector_pose_drawer_best->get_input_port_trajectory());
 
     auto dynamically_feasible_object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "dynamically_feasible_best_plan", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        meshcat, "plans/dynamically_feasible_best_plan",
+        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 6, false);
-    builder.Connect(dynamically_feasible_trajectory_sub_object_best->get_output_port(),
-                    dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
+    builder.Connect(
+        dynamically_feasible_trajectory_sub_object_best->get_output_port(),
+        dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
   }
 
   if (sim_params.visualize_sample_locations){

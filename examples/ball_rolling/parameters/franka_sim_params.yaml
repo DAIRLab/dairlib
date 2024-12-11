@@ -53,6 +53,7 @@ visualize_c3_state: true
 visualize_is_c3_mode: true
 
 visualize_sample_locations: false
+visualize_sample_buffer: false
 
 visualize_execution_plan: true
 

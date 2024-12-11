@@ -40,6 +40,7 @@ struct FrankaSimParams {
   bool visualize_c3_state;
   bool visualize_is_c3_mode;
   bool visualize_sample_locations;
+  bool visualize_sample_buffer;
 
   bool visualize_execution_plan;
 
@@ -93,6 +94,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(visualize_c3_state));
     a->Visit(DRAKE_NVP(visualize_is_c3_mode));
     a->Visit(DRAKE_NVP(visualize_sample_locations));
+    a->Visit(DRAKE_NVP(visualize_sample_buffer));
 
     a->Visit(DRAKE_NVP(visualize_execution_plan));
 

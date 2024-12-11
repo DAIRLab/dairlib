@@ -17,6 +17,7 @@ cc_library(
         ":sample_cost_sender",
         ":additional_costs_sender",
         ":sample_location_sender",
+        ":sample_buffer_to_point_cloud",
         ":dynamically_feasible_plan_sender",
         ":c3_mode_visualizer",
     ],
@@ -225,6 +226,25 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sample_buffer_to_point_cloud",
+    srcs = [
+        "sample_buffer_to_point_cloud.cc",
+    ],
+    hdrs = [
+        "sample_buffer_to_point_cloud.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//lcm:lcm_trajectory_saver",
+        "@lcm",
     ],
 )
 

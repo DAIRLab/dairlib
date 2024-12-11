@@ -2,6 +2,7 @@
 
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
@@ -27,8 +28,10 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_point_cloud_visualizer.h"
 #include "examples/jacktoy/systems/franka_kinematics.h"
 #include "examples/jacktoy/systems/c3_mode_visualizer.h"
+#include "examples/jacktoy/systems/sample_buffer_to_point_cloud.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -46,6 +49,7 @@ using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
+using drake::geometry::MeshcatPointCloudVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -278,6 +282,16 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, lcm));
 
+  // Subscribes to the lcmt_sample_buffer message containing the sample buffer.
+  auto sample_buffer_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.sample_buffer_channel, lcm));
+
+  // Subscribes to the sample costs message.
+  auto sample_costs_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.sample_costs_channel, lcm));
+
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
@@ -426,13 +440,35 @@ int do_main(int argc, char* argv[]) {
 		// The last argument "end_effector_orientation_target" is a dummy argument 
 		// here that is not used.
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "samples_", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+        meshcat, "samples_",
+        FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
         "sample_locations", "end_effector_orientation_target", 
         std::max(sampling_params.num_additional_samples_c3, 
             sampling_params.num_additional_samples_repos + 1) + 1, false);
 
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());
+  }
+
+  if (sim_params.visualize_sample_buffer) {
+    auto sample_buffer_to_point_cloud_converter =
+      builder.AddSystem<systems::PointCloudFromSampleBuffer>();
+    auto sample_buffer_point_cloud_visualizer =
+      builder.AddSystem<MeshcatPointCloudVisualizer>(meshcat, "sample_buffer");
+    sample_buffer_point_cloud_visualizer->set_point_size(0.02);
+
+    builder.Connect(
+      sample_buffer_sub->get_output_port(),
+      sample_buffer_to_point_cloud_converter->get_input_port_lcmt_sample_buffer()
+    );
+    builder.Connect(
+      sample_buffer_to_point_cloud_converter->get_output_port_sample_buffer_point_cloud(),
+      sample_buffer_point_cloud_visualizer->cloud_input_port()
+    );
+    builder.Connect(
+      sample_costs_sub->get_output_port(),
+      sample_buffer_to_point_cloud_converter->get_input_port_new_sample_costs()
+    );
   }
 
   if (sim_params.visualize_c3_state){

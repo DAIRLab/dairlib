@@ -1558,10 +1558,11 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   sample_costs_buffer_ = retained_costs;
 
   // Second, in preparation for adding new samples stored in
-  // all_sample_locations_, if the buffer is going to overflow, get rid of the
-  // oldest samples first.  NOTE:  Step 4 moves the lowest cost sample in the
-  // buffer to the end, so the best sample is usually excluded from this cut.
-  int num_to_add = all_sample_locations_.size();
+  // all_sample_locations_ (excluding the current location), if the buffer is
+  // going to overflow, get rid of the oldest samples first.  NOTE:  Step 4
+  // moves the lowest cost sample in the buffer to the end, so the best sample
+  // is usually excluded from this cut.
+  int num_to_add = all_sample_locations_.size() - 1;
   if (!is_doing_c3_) {
     num_to_add--;
   }
@@ -1576,15 +1577,17 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   }
 
   // Third, add the new samples stored in all_sample_locations_ and
-  // all_sample_costs_.  Don't re-add a currently pursued repositioning target,
-  // since that must have been added in a previous loop.
+  // all_sample_costs_.  Don't add the current location (so the sample buffer
+  // contains more broadly sampled locations) or a currently pursued
+  // repositioning target.
   int buffer_count = retained_count;
   for (int i = retained_count;
        i < retained_count + all_sample_locations_.size();
        i++
       ) {
     DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
-    if (!is_doing_c3_ && i == retained_count + 1) {
+    if ((i == retained_count) || (!is_doing_c3_ && i == retained_count + 1)) {
+      // Skip the current location.
       // Skip the repositioning target if in repositioning mode.
     }
     else {

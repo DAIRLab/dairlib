@@ -777,6 +777,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double repos_to_c3_cost_fraction;
   double repos_to_repos_cost_fraction;
 
+  // Set hysteresis values based on in position- or pose-tracking mode.
   if (!crossed_cost_switching_threshold_){
     // Use the position tracking hysteresis values.
     c3_to_repos_hysteresis = sampling_params_.c3_to_repos_hysteresis_position_tracking;
@@ -1325,6 +1326,13 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       v4 = -v4;
       travel_angle = 2*M_PI - travel_angle;
     }
+    // Prevent getting stuck if the EE is 180 degrees around from the target.
+    if (travel_angle > 0.9 * M_PI) {
+      Eigen::Vector3d almost_v4 = v1;
+      almost_v4(2) += 1;
+      v3 = v1.cross(almost_v4.normalized()).normalized();
+      v4 = v3.cross(v1).normalized();
+    }
 
     // The arc is defined by the equation:
     // x = x_c + r*cos(theta)*v1 + r*sin(theta)*v4
@@ -1332,8 +1340,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // desired travel distance.
     double dtheta = sampling_params_.reposition_speed*dt_ /
       sampling_params_.spherical_repositioning_radius;
-    double step_size = sampling_params_.reposition_speed*
-      dt_;
+    double step_size = sampling_params_.reposition_speed*dt_;
 
     knots.col(0) = x_lcs;
     int i = 1;
@@ -1343,9 +1350,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     while ((i*step_size < dist_to_wp1) && (i < N_)) {
       Eigen::Vector3d straight_line_point = current_ee_location +
         i*step_size/dist_to_wp1 * (waypoint1 - current_ee_location);
-      if (straight_line_point[2] < c3_options_.ee_z_state_min) {
-        straight_line_point[2] = c3_options_.ee_z_state_min;
-      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = straight_line_point;
@@ -1361,9 +1365,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
         sampling_params_.spherical_repositioning_radius *
         (std::cos(dtheta0 + (i - leg1_i)*dtheta)*v1 +
          std::sin(dtheta0 + (i - leg1_i)*dtheta)*v4 );
-      if (arc_point[2] < c3_options_.ee_z_state_min) {
-        arc_point[2] = c3_options_.ee_z_state_min;
-      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = arc_point;
@@ -1380,14 +1381,18 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       Eigen::Vector3d straight_line_point = waypoint2 +
         (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*
         (best_sample_location - waypoint2);
-      if (straight_line_point[2] < c3_options_.ee_z_state_min) {
-        straight_line_point[2] = c3_options_.ee_z_state_min;
-      }
 
       VectorXd next_lcs_state = x_lcs;
       next_lcs_state.head(3) = straight_line_point;
       knots.col(i) = next_lcs_state;
       i++;
+    }
+
+    // Enforce minimum z height for end effector, with a small buffer.
+    for (int j = 0; j < i; j++) {
+      if (knots(2, j) < c3_options_.ee_z_state_min + 0.005) {
+        knots(2, j) = c3_options_.ee_z_state_min + 0.005;
+      }
     }
 
     // Fill in the rest of the knots with the goal EE location.

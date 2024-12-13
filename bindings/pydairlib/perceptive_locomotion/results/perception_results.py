@@ -414,6 +414,56 @@ def run_pipeline_figure_script(logfile):
         grid_maps[example_idx], q, '../terrain_seg_figures')
 
 
+def make_full_profiling_plot(logfile):
+    results = utils.profile_full_perception_pipeline(logfile)
+
+    means = {}
+    stds = {}
+
+    labels = ['segmentation', 'decomposition', 'plane_fitting']
+    # Compute mean and std for each label
+    for label in labels:
+        # Group by num_polygons
+        grouped_values = {}
+        for num_poly, val in zip(results['num_polygons'], results[label]):
+            if num_poly not in grouped_values:
+                grouped_values[num_poly] = []
+            grouped_values[num_poly].append(val)
+
+        # Compute means and standard deviations for each num_polygons group
+        means[label] = [np.mean(grouped_values[num_poly]) for num_poly in sorted(grouped_values.keys())]
+        stds[label] = [np.std(grouped_values[num_poly]) for num_poly in sorted(grouped_values.keys())]
+
+    utils.setup_plots()
+    # Prepare the plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # X-axis values (sorted unique num_polygons)
+    x_values = sorted(set(results['num_polygons']))
+
+    # Keep track of the bottom of each stack for cumulative plotting
+    bottom = np.zeros(len(x_values))
+
+    # Plot each label as a segment with error bars
+    for label in labels:
+        # Plot the bar segment
+        ax.bar(x_values, means[label], bottom=bottom,
+               label=label, yerr=stds[label],
+               capsize=5, # adds caps to the error bars
+               alpha=0.7) # slight transparency
+
+        # Update the bottom for the next segment
+        bottom += means[label]
+
+    ax.set_xlabel('Number of Polygons')
+    ax.set_ylabel('Runtime (s)')
+    ax.set_title('Perception Stack Detailed Profiling')
+    ax.legend(title='Operation')
+
+    plt.tight_layout()
+    plt.show()
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument('--logfolder', type=str, default='')
@@ -421,8 +471,8 @@ def main():
 
     args = parser.parse_args()
 
+    make_full_profiling_plot(args.logfile)
     # make_all_segmentation_videos(args.logfolder)
-
     # run_pipeline_figure_script(args.logfile)
     # save_all_results(args.logfolder)
     # make_segmentation_tiles(

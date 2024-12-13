@@ -21,7 +21,8 @@ from dairlib import(
 )
 
 from pydairlib.systems import (
-    PlaneSegmentationSystem
+    PlaneSegmentationSystem,
+    GridMapSender
 )
 
 from pydairlib.perceptive_locomotion.terrain_segmentation import (
@@ -33,6 +34,19 @@ from pydairlib.perceptive_locomotion.terrain_segmentation import (
 )
 
 from pydairlib.analysis.process_lcm_log import get_log_data
+
+from pydrake.all import DrakeLcm
+
+from pydrake.systems.all import (
+    Diagram,
+    Context,
+    TriggerType,
+    DiagramBuilder,
+    LcmPublisherSystem,
+)
+
+from pydairlib.geometry.convex_polygon import ConvexPolygonSender
+
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
@@ -134,6 +148,104 @@ def run_segmentation_comparison_on_log(logfile, duration, start_time=0):
     return results
 
 
+def build_perception_diagram(lcm_interface: DrakeLcm, profiling=None) -> Diagram:
+
+    builder = DiagramBuilder()
+
+    terrain_segmentation = TerrainSegmentationSystem({
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion
+        }, profiling
+    )
+
+    convex_decomposition = ConvexTerrainDecompositionSystem(profiling)
+    foothold_sender = ConvexPolygonSender()
+
+    foothold_publisher = LcmPublisherSystem.Make(
+        channel="FOOTHOLDS_PROCESSED",
+        lcm_type=lcmt_foothold_set,
+        lcm=lcm_interface,
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
+    grid_map_sender = GridMapSender()
+    grid_map_publisher = LcmPublisherSystem.Make(
+        channel="CASSIE_ELEVATION_MAP",
+        lcm_type=lcmt_grid_map,
+        lcm=lcm_interface,
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
+
+    builder.AddSystem(terrain_segmentation)
+    builder.AddSystem(convex_decomposition)
+    builder.AddSystem(foothold_publisher)
+    builder.AddSystem(foothold_sender)
+    builder.AddSystem(grid_map_sender)
+    builder.AddSystem(grid_map_publisher)
+
+    builder.Connect(
+        terrain_segmentation.get_output_port(),
+        convex_decomposition.get_input_port()
+    )
+    builder.Connect(
+        convex_decomposition.get_output_port(),
+        foothold_sender.get_input_port()
+    )
+    builder.Connect(
+        foothold_sender.get_output_port(),
+        foothold_publisher.get_input_port()
+    )
+    builder.Connect(
+        terrain_segmentation.get_output_port(),
+        grid_map_sender.get_input_port()
+    )
+    builder.Connect(
+        grid_map_sender.get_output_port(),
+        grid_map_publisher.get_input_port()
+    )
+
+    builder.ExportInput(
+        terrain_segmentation.get_input_port(),
+        "grid_map"
+    )
+    diagram = builder.Build()
+    return diagram
+
+
+def profile_full_perception_pipeline(logfile):
+    profiling_results = {
+        'segmentation': [],
+        'seg_callbacks': [[], [], []],
+        'decomposition': [],
+        'total': [],
+        'plane_fitting': [],
+        'num_polygons': []
+    }
+
+    lcm_interface = DrakeLcm()
+    diagram = build_perception_diagram(lcm_interface, profiling=profiling_results)
+    context = diagram.CreateDefaultContext()
+
+    grid_maps, robot_output = get_grid_maps_from_log(logfile, 0, -1)
+
+    for map in grid_maps:
+        diagram.get_input_port().FixValue(context, map)
+        start = time.time()
+        diagram.CalcForcedUnrestrictedUpdate(
+            context,
+            context.get_mutable_state()
+        )
+        diagram.ForcedPublish(context)
+        end = time.time()
+        print(end - start)
+        profiling_results['total'].append(end - start)
+
+    return profiling_results
+
+
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     # move frame0 to remove any pixels which the maps do not have in common
     frame0.move(frame1.getPosition())
@@ -195,7 +307,7 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     return grid_maps, robot_output
 
 
-def save_matrix_plot(title: str, data: np.ndarray, folder: str) -> None:
+def save_matrix_plot(title: str, data: np.ndarray, folder: str):
     fig, ax = plt.subplots(figsize=(8, 8))
     im = ax.imshow(data, cmap='viridis')
     return do_perception_fig_layout_and_save(ax, fig, title, folder)

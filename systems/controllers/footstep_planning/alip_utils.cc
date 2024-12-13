@@ -305,11 +305,15 @@ void MakeProjectionToP2Orbit(
       gait_params.double_stance_duration,
       gait_params.reset_discretization_method
   );
+
+  double Ts2s = gait_params.single_stance_duration +
+                gait_params.double_stance_duration;
+
   Matrix4d p2o_premul = (Matrix4d::Identity() - A * A).inverse();
   Eigen::Matrix<double, 4, 2> p2o_basis = p2o_premul * (A * B - B);
   PI_0 = GetProjectionToBPerp(p2o_basis);
   PI_1 = GetProjectionToBPerp(A * p2o_basis + B);
-  g_0 = p2o_premul * B;
+  g_0 = Ts2s * p2o_premul * B;
   g_1 = A * g_0;
 }
 

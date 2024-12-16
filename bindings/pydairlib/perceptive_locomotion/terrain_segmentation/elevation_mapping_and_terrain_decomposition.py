@@ -2,7 +2,7 @@ import signal
 import sys
 
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
-    lcmt_contact
+    lcmt_contact, lcmt_profiling
 
 from pydrake.systems.all import (
     Diagram,
@@ -114,7 +114,14 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-
+    profiling_pub = LcmPublisherSystem.Make(
+        channel="ELEVATION_MAP_PROFILING",
+        lcm_type=lcmt_profiling,
+        lcm=elevation_mapping.lcm(),
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / 30.0,
+        use_cpp_serializer=True
+    )
     monitor_params = terrain_segmentation_reset_params(
         update_period=1.0/30.0,
         iou_threshold=0.7,
@@ -132,6 +139,7 @@ def main():
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
+    builder.AddSystem(profiling_pub)
 
     if monitor:
         builder.AddSystem(monitor_system)
@@ -147,6 +155,10 @@ def main():
     builder.Connect(
         elevation_mapping.get_output_port_grid_map(),
         terrain_segmentation.get_input_port()
+    )
+    builder.Connect(
+        elevation_mapping.get_output_port_profiling(),
+        profiling_pub.get_input_port()
     )
     builder.Connect(
         terrain_segmentation.get_output_port(),

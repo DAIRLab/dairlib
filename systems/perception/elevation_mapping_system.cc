@@ -1,4 +1,5 @@
 //dairlib
+#include "dairlib/lcmt_profiling.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
@@ -98,12 +99,17 @@ ElevationMappingSystem::ElevationMappingSystem(
   auto model_value_updater = drake::Value<RobotMotionMapUpdater>();
   elevation_map_state_index_ = DeclareAbstractState(model_value_map);
   motion_updater_state_index_ = DeclareAbstractState(model_value_updater);
+  profiling_info_index_ = DeclareAbstractState(drake::Value<lcmt_profiling>());
 
   state_buffer_index_ = DeclareAbstractState(
       drake::Value<std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(nullptr));
 
   output_port_elevation_map_ = DeclareStateOutputPort(
       "elevation_map", elevation_map_state_index_
+  ).get_index();
+
+  output_port_profiling_ = DeclareStateOutputPort(
+      "lcmt_profiling", profiling_info_index_
   ).get_index();
 
   output_port_grid_map_ = DeclareAbstractOutputPort(
@@ -270,6 +276,8 @@ ElevationMappingSystem::CollectNewPointClouds(
 drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     const Context<double>& context, State<double>* state) const {
 
+  auto start = std::chrono::high_resolution_clock::now();
+
   auto new_pointclouds = CollectNewPointClouds(context, state);
 
   if (new_pointclouds.empty()) {
@@ -316,7 +324,9 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
       std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
 
   // 5. add the point clouds to the map
+  int num_points = 0;
   for (const auto& [name, cloud] : new_pointclouds) {
+    num_points += cloud->size();
     // allocate data for processing
     Eigen::VectorXf measurement_variances;
     PointCloudType::Ptr pc_processed(new PointCloudType);
@@ -362,6 +372,15 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto& profiling = state->get_mutable_abstract_state<lcmt_profiling>(profiling_info_index_);
+
+  profiling.utime = 1e6 * context.get_time();
+  profiling.process_name = "elevation_mapping_point_cloud_update";
+  profiling.process_inputs = "points";
+  profiling.num_inputs = num_points;
+  profiling.process_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
   return drake::systems::EventStatus::Succeeded();
 }
 

@@ -153,6 +153,9 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_grid_map_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_profiling() const {
+    return get_output_port(output_port_profiling_);
+  }
   bool has_contacts() const {
     return (not contacts_.empty());
   }
@@ -221,11 +224,13 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   drake::systems::OutputPortIndex output_port_elevation_map_;
   drake::systems::OutputPortIndex output_port_grid_map_;
+  drake::systems::OutputPortIndex output_port_profiling_;
 
   // states
   drake::systems::AbstractStateIndex elevation_map_state_index_;
   drake::systems::AbstractStateIndex motion_updater_state_index_;
   drake::systems::AbstractStateIndex state_buffer_index_;
+  drake::systems::AbstractStateIndex profiling_info_index_;
 
   std::map<std::string,
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;

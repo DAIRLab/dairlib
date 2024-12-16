@@ -6,6 +6,7 @@ import subprocess
 import matplotlib
 import numpy as np
 from PIL import Image
+from typing import List
 from copy import deepcopy
 from grid_map import GridMap
 from matplotlib import pyplot as plt
@@ -53,6 +54,38 @@ elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 plotting_palette = ["#011f5b", "#9f642d", "#af0000", "#b99aa0", "#666666", "#5583ab"]
+
+
+def binary_search_closest(arr: List[float], target: float) -> int:
+    left, right = 0, len(arr) - 1
+
+    # Handle edge cases
+    if target <= arr[0]:
+        return 0
+    if target >= arr[-1]:
+        return len(arr) - 1
+
+    while left <= right:
+        mid = (left + right) // 2
+
+        # Perfect match
+        if arr[mid] == target:
+            return mid
+
+        if arr[mid] < target:
+            if mid + 1 < len(arr) and arr[mid + 1] > target:
+                # Choose the closer timestamp between mid and mid+1
+                if abs(target - arr[mid]) < abs(arr[mid + 1] - target):
+                    return mid
+                return mid + 1
+            left = mid + 1
+        else:
+            if mid - 1 >= 0 and arr[mid - 1] < target:
+                # Choose the closer timestamp between mid-1 and mid
+                if abs(target - arr[mid - 1]) < abs(arr[mid] - target):
+                    return mid - 1
+                return mid
+            right = mid - 1
 
 
 def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
@@ -328,6 +361,10 @@ def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=N
     new_limits = {'x': plt.xlim(), 'y': plt.ylim()}
     plt.close(fig)
     return new_limits
+
+
+def plot_elevation_map_with_robot(ax, map: GridMap, robot_position: np.ndarray, robot_yaw: float):
+    ax.imshow(map['elevation'])
 
 
 def setup_plots():

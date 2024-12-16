@@ -471,8 +471,8 @@ def main():
 
     args = parser.parse_args()
 
-    make_full_profiling_plot(args.logfile)
-    # make_all_segmentation_videos(args.logfolder)
+    # make_full_profiling_plot(args.logfile)
+    make_all_segmentation_videos(args.logfolder)
     # run_pipeline_figure_script(args.logfile)
     # save_all_results(args.logfolder)
     # make_segmentation_tiles(

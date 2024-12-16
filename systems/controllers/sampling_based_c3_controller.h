@@ -8,6 +8,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "dairlib/lcmt_sampling_controller_debug.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
 
@@ -136,9 +137,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(curr_and_best_sample_costs_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_additional_costs() 
+  const drake::systems::OutputPort<double>& get_output_port_debug()
       const {
-    return this->get_output_port(additional_costs_port_);
+    return this->get_output_port(debug_lcmt_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_sample_buffer_configurations()
       const {
@@ -236,9 +237,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::vector<double>* curr_and_best_sample_cost) const;
 
-  void OutputAdditionalCosts(
+  void OutputDebug(
     const drake::systems::Context<double>& context,
-    std::vector<double>* additional_costs) const;
+    dairlib::lcmt_sampling_controller_debug* debug_msg) const;
 
   void OutputSampleBufferConfigurations(
     const drake::systems::Context<double>& context,
@@ -272,7 +273,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
   drake::systems::OutputPortIndex curr_and_best_sample_costs_port_;
-  drake::systems::OutputPortIndex additional_costs_port_;
+  drake::systems::OutputPortIndex debug_lcmt_port_;
   drake::systems::OutputPortIndex sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex sample_buffer_costs_port_;
 
@@ -372,8 +373,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                      SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
                      SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 };
   const SampleIndex CURRENT_REPOSITION_INDEX = SAMPLE_INDEX_1;
-
   mutable SampleIndex best_sample_index_ = CURRENT_LOCATION_INDEX;
+
+  enum ModeSwitchReason {MODE_SWITCH_REASON_NONE,
+                         MODE_SWITCH_TO_C3_COST,
+                         MODE_SWITCH_TO_C3_REACHED_REPOS_GOAL,
+                         MODE_SWITCH_TO_REPOS_COST,
+                         MODE_SWITCH_TO_REPOS_UNPRODUCTIVE,
+                         MODE_SWITCH_TO_C3_XBOX};
+  mutable ModeSwitchReason mode_switch_reason_ = MODE_SWITCH_REASON_NONE;
+
+  enum PursuedTargetSource {TARGET_SOURCE_NONE,
+                            TARGET_SOURCE_PREVIOUS,
+                            TARGET_SOURCE_NEW_SAMPLE,
+                            TARGET_SOURCE_FROM_BUFFER};
+  mutable PursuedTargetSource pursued_target_source_ = TARGET_SOURCE_NONE;
 
 };
 

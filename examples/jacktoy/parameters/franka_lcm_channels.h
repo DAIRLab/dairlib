@@ -40,7 +40,7 @@ struct FrankaLcmChannels {
   std::string dynamically_feasible_best_plan_channel;
   std::string sample_costs_channel;
   std::string curr_and_best_sample_costs_channel;
-  std::string additional_costs_channel;
+  std::string sampling_controller_debug_channel;
   std::string is_c3_mode_channel;
 
   template <typename Archive>
@@ -81,7 +81,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(dynamically_feasible_best_plan_channel));
     a->Visit(DRAKE_NVP(sample_costs_channel));
     a->Visit(DRAKE_NVP(curr_and_best_sample_costs_channel));
-    a->Visit(DRAKE_NVP(additional_costs_channel));
+    a->Visit(DRAKE_NVP(sampling_controller_debug_channel));
     a->Visit(DRAKE_NVP(is_c3_mode_channel));
   }
 };

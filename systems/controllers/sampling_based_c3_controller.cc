@@ -279,12 +279,11 @@ SamplingC3Controller::SamplingC3Controller(
     &SamplingC3Controller::OutputCurrAndBestSampleCost
   ).get_index();
 
-  // This port publishes best_progress_steps_agp_, lowest_cost_,
-  // lowest_pos_and_rot_current_cost_, lowest_position_error_, and
-  // lowest_orientation_error_ over lcm in that order.
-  additional_costs_port_ = this->DeclareAbstractOutputPort(
-    "additional_costs", std::vector<double>(5, -1), 
-    &SamplingC3Controller::OutputAdditionalCosts
+  // A debug output port to publish information about the internals of the
+  // sampling-based controller.
+  debug_lcmt_port_ = this->DeclareAbstractOutputPort(
+    "sampling_controller_debug", dairlib::lcmt_sampling_controller_debug(),
+    &SamplingC3Controller::OutputDebug
   ).get_index();
 
   // Sample buffer related ouput ports.
@@ -840,7 +839,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   MaintainSampleBuffer(x_lcs_curr);
 
   // Determine whether to do C3 or reposition.
+  mode_switch_reason_ = MODE_SWITCH_REASON_NONE;
   if (is_doing_c3_ == true) { // Currently doing C3.
+    pursued_target_source_ = TARGET_SOURCE_NONE;
+
     // Update the lowest cost and position/orientation errors seen in this mode.
     bool updated_cost = false;
     bool updated_curr_pos_and_rot_cost = false;
@@ -909,6 +911,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         (sampling_params_.num_additional_samples_c3 > 0)) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
+      mode_switch_reason_ = MODE_SWITCH_TO_REPOS_UNPRODUCTIVE;
       std::cout << "Switching to repositioning after spending too long " <<
         "not making progress in C3" << std::endl;
     }
@@ -927,13 +930,27 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
+      mode_switch_reason_ = MODE_SWITCH_TO_REPOS_COST;
       std::cout << "Switching to repositioning because found good sample" <<
         std::endl;
     }
+
+    // Determine the source of the repositioning target.
+    if (!is_doing_c3_) {
+      if (best_sample_index_ > sampling_params_.num_additional_samples_c3) {
+        pursued_target_source_ = TARGET_SOURCE_FROM_BUFFER;
+      }
+      else {
+        pursued_target_source_ = TARGET_SOURCE_NEW_SAMPLE;
+      }
+    }
   }
   else { // Currently repositioning.
-    // Switch to C3 if the current sample is better, with hysteresis.
-    if(best_sample_index_ != CURRENT_REPOSITION_INDEX){
+    // First, apply hysteresis between repositioning targets.
+    if (best_sample_index_ == CURRENT_REPOSITION_INDEX) {
+      pursued_target_source_ = TARGET_SOURCE_PREVIOUS;
+    }
+    else {
       // This means that the best sample is not the current repositioning
       // target. If the cost of the current repositioning target is better than
       // the current best sample by the hysteresis amount, then we continue 
@@ -951,6 +968,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         best_sample_index_ = CURRENT_REPOSITION_INDEX;
         best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
         finished_reposition_flag_ = false;
+        pursued_target_source_ = TARGET_SOURCE_PREVIOUS;
       }
       // Controller will switch to pursuing a new sample from its previous
       // repositioning target only if the cost of switching to that new sample
@@ -959,6 +977,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repos_to_repos hysteresis value here before the comparison to the
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
+        pursued_target_source_ = TARGET_SOURCE_NEW_SAMPLE;
+
         if(!sampling_params_.use_relative_hysteresis){
           best_additional_sample_cost +=
             hysteresis_between_repos_targets;
@@ -970,6 +990,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         }
       }
     }
+
+    // Switch to C3 if the current sample is better, with hysteresis.
     if ((best_additional_sample_cost >
          all_sample_costs_[CURRENT_LOCATION_INDEX] +
          repos_to_c3_hysteresis &&
@@ -981,6 +1003,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
          all_sample_costs_[CURRENT_LOCATION_INDEX])) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
+      if (all_sample_costs_[CURRENT_REPOSITION_INDEX] >
+          sampling_params_.finished_reposition_cost) {
+        mode_switch_reason_ = MODE_SWITCH_TO_C3_REACHED_REPOS_GOAL;
+      }
+      else {
+        mode_switch_reason_ = MODE_SWITCH_TO_C3_COST;
+      }
+      pursued_target_source_ = TARGET_SOURCE_NONE;
 
       // Reset the lowest cost seen in this mode.
       std::cout << "Switching to C3, resetting lowest seen cost" << std::endl;
@@ -995,6 +1025,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     if (radio_out->channel[12]) {
       std::cout << "Forcing into C3 mode" << std::endl;
       is_doing_c3_ = true;
+      mode_switch_reason_ = MODE_SWITCH_TO_C3_XBOX;
+      pursued_target_source_ = TARGET_SOURCE_NONE;
 
       // Reset the lowest cost seen in this mode.
       lowest_cost_ = std::numeric_limits<double>::infinity();
@@ -1073,9 +1105,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-
   // Adding delay
-  std::this_thread::sleep_for(std::chrono::milliseconds(sampling_params_.control_loop_delay_ms));
+  std::this_thread::sleep_for(std::chrono::milliseconds(
+    sampling_params_.control_loop_delay_ms));
   // End of control loop cleanup.
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
@@ -1827,22 +1859,32 @@ void SamplingC3Controller::OutputCurrAndBestSampleCost(
   *curr_and_best_sample_cost = curr_and_best_sample_cost_;
 }
 
-void SamplingC3Controller::OutputAdditionalCosts(
-    const drake::systems::Context<double>& context,
-    std::vector<double>* additional_costs) const {
-  // additional costs output is ordered as follows:
-  // int to double - best_progress_steps_ago_, 
-  // double - lowest_cost_, 
-  // double - lowest_pos_and_rot_current_cost_, 
-  // double - lowest_position_error_, 
-  // double - lowest_orientation_error_
-    std::vector<double> vec;
-    vec.push_back(best_progress_steps_ago_);
-    vec.push_back(lowest_cost_);
-    vec.push_back(lowest_pos_and_rot_current_cost_);
-    vec.push_back(lowest_position_error_);
-    vec.push_back(lowest_orientation_error_);
-    *additional_costs = vec;
+void SamplingC3Controller::OutputDebug(
+  const drake::systems::Context<double>& context,
+  dairlib::lcmt_sampling_controller_debug* debug_msg) const
+{
+  debug_msg->utime = context.get_time() * 1e6;
+
+  debug_msg->is_c3_mode = is_doing_c3_;
+
+  // Redundant radio things included in debug message for convenience.
+  const auto& radio_out =
+    this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  debug_msg->is_teleop = radio_out->channel[14];          // 14 = teleop
+  debug_msg->is_force_tracking = !radio_out->channel[11]; // 11 = force tracking
+                                                          //      disabled
+  debug_msg->is_forced_into_c3 = radio_out->channel[12];  // 12 = forced into C3
+
+  debug_msg->in_pose_tracking_mode = crossed_cost_switching_threshold_;
+
+  debug_msg->mode_switch_reason = mode_switch_reason_;
+  debug_msg->source_of_pursued_target = pursued_target_source_;
+
+  debug_msg->best_progress_steps_ago = best_progress_steps_ago_;
+  debug_msg->lowest_cost = lowest_cost_;
+  debug_msg->lowest_pos_and_rot_current_cost = lowest_pos_and_rot_current_cost_;
+  debug_msg->lowest_position_error = lowest_position_error_;
+  debug_msg->lowest_orientation_error = lowest_orientation_error_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

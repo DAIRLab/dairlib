@@ -316,6 +316,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double lowest_pos_and_rot_current_cost_;
   mutable double lowest_position_error_;
   mutable double lowest_orientation_error_;
+  mutable double current_position_error_;
+  mutable double current_orientation_error_;
 
   mutable double filtered_solve_time_ = 0;
 

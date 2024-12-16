@@ -463,6 +463,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   DRAKE_DEMAND(lcs_x_curr->get_data()[2] <
                c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
 
+  // Compute the current position and orientation errors.
+  current_position_error_ = (x_lcs_curr.segment(7, 3) -
+    x_lcs_final_des.get_value().segment(7, 3)).norm();
+  Eigen::Quaterniond curr_quat(x_lcs_curr[3], x_lcs_curr[4], x_lcs_curr[5],
+                                x_lcs_curr[6]);
+  Eigen::Quaterniond des_quat(x_lcs_final_des.get_value()[3],
+                              x_lcs_final_des.get_value()[4],
+                              x_lcs_final_des.get_value()[5],
+                              x_lcs_final_des.get_value()[6]);
+  Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+  current_orientation_error_ = angle_axis_diff.angle();
   
   // Cost switching based on threshold to start using pose based cost.
   if (crossed_cost_switching_threshold_) {
@@ -848,17 +859,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     bool updated_curr_pos_and_rot_cost = false;
     bool updated_pos_or_rot = false;
 
-    double pos_error = (x_lcs_curr.segment(7, 3) -
-      x_lcs_final_des.get_value().segment(7, 3)).norm();
-    Eigen::Quaterniond curr_quat(x_lcs_curr[3], x_lcs_curr[4], x_lcs_curr[5],
-                                 x_lcs_curr[6]);
-    Eigen::Quaterniond des_quat(x_lcs_final_des.get_value()[3],
-                                x_lcs_final_des.get_value()[4],
-                                x_lcs_final_des.get_value()[5],
-                                x_lcs_final_des.get_value()[6]);
-    Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
-    double rot_error = angle_axis_diff.angle();
-
     Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(3,3,7,7);
     Eigen::VectorXd pos_and_rot_error_vec = x_lcs_curr.segment(3, 7) -
       x_lcs_final_des.get_value().segment(3, 7);
@@ -873,12 +873,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lowest_pos_and_rot_current_cost_ = curr_pos_and_rot_cost;
       updated_curr_pos_and_rot_cost = true;
     }
-    if (pos_error < lowest_position_error_) {
-      lowest_position_error_ = pos_error;
+    if (current_position_error_ < lowest_position_error_) {
+      lowest_position_error_ = current_position_error_;
       updated_pos_or_rot = true;
     }
-    if (rot_error < lowest_orientation_error_) {
-      lowest_orientation_error_ = rot_error;
+    if (current_orientation_error_ < lowest_orientation_error_) {
+      lowest_orientation_error_ = current_orientation_error_;
       updated_pos_or_rot = true;
     }
 
@@ -1885,6 +1885,9 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->lowest_pos_and_rot_current_cost = lowest_pos_and_rot_current_cost_;
   debug_msg->lowest_position_error = lowest_position_error_;
   debug_msg->lowest_orientation_error = lowest_orientation_error_;
+
+  debug_msg->current_pos_error = current_position_error_;
+  debug_msg->current_rot_error = current_orientation_error_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

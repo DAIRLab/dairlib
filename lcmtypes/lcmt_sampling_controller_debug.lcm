@@ -38,4 +38,7 @@ struct lcmt_sampling_controller_debug
   float lowest_pos_and_rot_current_cost;
   float lowest_position_error;
   float lowest_orientation_error;
+
+  float current_pos_error;
+  float current_rot_error;
 }

@@ -64,9 +64,6 @@ def plot_space_trajs(trajs, starts, npoints):
 
 def plot_time_trajs(trajs, starts, npoints, plot_name, dim=0, deriv=0):
     font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}
-    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
-    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
-    matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     matplotlib.rcParams['lines.markersize'] = 10
@@ -176,8 +173,8 @@ def multi_spline_figure(save_video=True):
             t_start=start_time,
             t_end=start_time + t + shift_t,
             swing_foot_clearance=h,
-            z_vel_final=0,
-            z_pos_final_offset=0,
+            z_vel_final=-0.9,
+            z_pos_final_offset=0.02,
             initial_pos=p0,
             footstep_target=p1 + dp,
         )

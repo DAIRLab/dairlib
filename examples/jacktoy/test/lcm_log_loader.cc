@@ -23,7 +23,7 @@
 #include "solvers/lcs_factory.h"
 
 // Uncomment this line to output cost information for evenly spaced samples.
-#define DO_SAMPLE_VISUALIZATIONS
+// #define DO_SAMPLE_VISUALIZATIONS
 
 // Sample grid locations.
 #define N_VERTICAL 30
@@ -159,7 +159,7 @@ int DoMain(int argc,  char* argv[]) {
   std::set<std::string> channels_to_check = {
     "C3_ACTUAL", "C3_TARGET", "C3_FINAL_TARGET",
     "DYNAMICALLY_FEASIBLE_CURR_PLAN", "DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN",
-    "C3_DEBUG_CURR"};
+    "C3_DEBUG_CURR", "IS_C3_MODE"};
 
   Eigen::VectorXd x_lcs_actual = Eigen::VectorXd::Zero(19);
   Eigen::VectorXd x_lcs_desired = Eigen::VectorXd::Zero(19);
@@ -173,6 +173,9 @@ int DoMain(int argc,  char* argv[]) {
   Eigen::MatrixXd lambda_sol = Eigen::MatrixXd::Zero(16, c3_options.N);
   Eigen::MatrixXd w_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
   Eigen::MatrixXd delta_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
+
+  bool is_c3_mode = false;
+  bool is_c3_mode_set = false;
 
   while ((event = log_file.readNextEvent()) != nullptr) {
     // Offset the time stamp by the initial time for better readability.
@@ -304,7 +307,21 @@ int DoMain(int argc,  char* argv[]) {
         }
       }
     }
-  
+    else if (event->channel == "IS_C3_MODE") {
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
+        dairlib::lcmt_timestamped_saved_traj message;
+        if (message.decode(event->data, 0, event->datalen) > 0) {
+          std::cout << "Received IS_C3_MODE message in " <<
+            "seconds utime: " << (message.utime)/1e6 << " and event " <<
+            "timestamp " << adjusted_utimestamp/1e6 << std::endl;
+          is_c3_mode = message.saved_traj.trajectories[0].datapoints[0][0];
+          is_c3_mode_set = true;
+        } else {
+          std::cerr << "Failed to decode IS_C3_MODE message" << std::endl;
+        }
+      }
+    }
+
     // Break out of loop if we have one message for every desired channel.
     if (channels_to_check.find(event->channel) != channels_to_check.end()) {
       if ((x_lcs_actual != Eigen::VectorXd::Zero(19)) &&
@@ -313,7 +330,8 @@ int DoMain(int argc,  char* argv[]) {
           (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXd::Zero(3, c3_options.N+1)) &&
           (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXd::Zero(3, c3_options.N+1)) &&
           (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXd::Zero(4, c3_options.N+1)) &&
-          (u_sol != Eigen::MatrixXd::Zero(3, c3_options.N))) {
+          (u_sol != Eigen::MatrixXd::Zero(3, c3_options.N)) &&
+          (is_c3_mode_set)) {
         break;
       }
     }

@@ -488,6 +488,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
   DRAKE_DEMAND(lcs_x_curr->get_data()[2] <
                c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(
+    std::pow(lcs_x_curr->get_data()[0], 2) +
+    std::pow(lcs_x_curr->get_data()[1], 2) >
+    std::pow(c3_options_.robot_radius_limits[0] +
+             c3_options_.workspace_margins, 2));
+  DRAKE_DEMAND(
+    std::pow(lcs_x_curr->get_data()[0], 2) +
+    std::pow(lcs_x_curr->get_data()[1], 2) <
+    std::pow(c3_options_.robot_radius_limits[1] -
+             c3_options_.workspace_margins, 2));
 
   // Compute the current position and orientation errors.
   current_position_error_ = (x_lcs_curr.segment(7, 3) -
@@ -992,7 +1002,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
 
     if ((best_progress_steps_ago_ > num_control_loops_to_wait) &&
-        (sampling_params_.num_additional_samples_c3 > 0)) {
+        (sampling_params_.num_additional_samples_c3 > 0) &&
+        (!radio_out->channel[12])) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
       mode_switch_reason_ = MODE_SWITCH_TO_REPOS_UNPRODUCTIVE;

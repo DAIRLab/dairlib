@@ -42,7 +42,7 @@ q_init_object: [-0.03809317, 0.53219632, 0.78316801, -0.31931779, 0.4, 0.2, 0.1]
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf
 visualizer_c3_mode_model: examples/jacktoy/urdf/c3_mode_visualization.urdf
-visualize_c3_workspace: false
+visualize_c3_workspace: true
 visualize_c3_state: true
 visualize_is_c3_mode: true
 

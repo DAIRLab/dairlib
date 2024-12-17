@@ -55,10 +55,11 @@ use_predicted_x0_reset_mechanism: true
 
 solve_time_filter_alpha: 0.95
 # Workspace Limits
-world_x_limits: [-1, 1] # [0.25, 0.65]
-world_y_limits: [-1, 1] # [-0.45, 0.45]
-world_z_limits: [-1, 1] # [0.0, 0.2]
-workspace_margins: 0.05
+world_x_limits: [0.15, 0.75]
+world_y_limits: [-0.55, 0.55]
+world_z_limits: [-0.03, 0.3]
+robot_radius_limits: [0.25, 0.75]
+workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
 

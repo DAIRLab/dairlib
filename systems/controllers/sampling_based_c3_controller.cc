@@ -983,8 +983,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         (sampling_params_.num_additional_samples_c3 > 0)) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
-      std::cout << "Repositioning after spending too long not making " <<
-        "progress in C3" << std::endl;
+      mode_switch_reason_ = MODE_SWITCH_TO_REPOS_UNPRODUCTIVE;
+      std::cout << "Repositioning after not making progress in C3" << std::endl;
 
       lowest_cost_ = std::numeric_limits<double>::infinity();
       lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();

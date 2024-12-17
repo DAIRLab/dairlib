@@ -500,7 +500,54 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                               x_lcs_final_des.get_value()[6]);
   Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
   current_orientation_error_ = angle_axis_diff.angle();
-  
+
+  // Detect if the final target has changed, in which case return to caring only
+  // about position until the switching threshold has been crossed again.
+  // Exclude the EE goal from the comparison, since that always changes to be
+  // above the current jack location.
+  if (!x_final_target_.segment(3, n_x_-3).isApprox(
+        x_lcs_final_des.value().segment(3, n_x_-3), 1e-5)) {
+    std::cout << "Detected goal change!" << std::endl;
+    // if (verbose_) {
+      std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
+      std::cout << "  New goal:  " << x_lcs_final_des.value().transpose() <<
+        std::endl;
+      std::cout << "  --> Error:  " <<
+        (x_final_target_.segment(3, n_x_-3) -
+         x_lcs_final_des.value().segment(3, n_x_-3)).norm() << std::endl;
+    // }
+    crossed_cost_switching_threshold_ = false;
+    x_final_target_ = x_lcs_final_des.value();
+
+    // Reset the sample buffer now that the costs have changed.
+    sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+    sample_costs_buffer_ = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
+  }
+
+  // If object is within a fixed radius of the desired location, enter pose
+  // tracking mode.
+  if (!crossed_cost_switching_threshold_) {
+    if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() <
+        sampling_params_.cost_switching_threshold_distance){
+      crossed_cost_switching_threshold_ = true;
+      std::cout << "Crossed cost switching threshold." << std::endl;
+
+      // Reset the sample buffer now that the costs have changed.
+      sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+      sample_costs_buffer_ = -1 * VectorXd::Ones(
+        sampling_params_.N_sample_buffer);
+
+      // If also in C3 mode, reset the lowest cost seen in this mode.
+      if (is_doing_c3_){
+        lowest_cost_ = std::numeric_limits<double>::infinity();
+        lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
+        lowest_position_error_ = std::numeric_limits<double>::infinity();
+        lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+        best_progress_steps_ago_ = 0;
+      }
+    }
+  }
+
   // Cost switching based on threshold to start using pose based cost.
   if (crossed_cost_switching_threshold_) {
     dt_ = c3_options_.planning_dt;
@@ -517,7 +564,61 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         U_.push_back(c3_options_.U);
       }
     }
+  }
+  else {
+    dt_ = c3_options_.planning_dt_position_tracking;
+    // clear the Q_ values and replace with costs for position only.
+    Q_.clear();
+    G_.clear();
+    U_.clear();
+    double discount_factor = 1;
+    for (int i = 0; i < N_+1; ++i) {
+      Q_.push_back(discount_factor * c3_options_.Q_position);
+      discount_factor *= c3_options_.gamma;
+      if(i < N_){
+        G_.push_back(c3_options_.G_position_tracking);
+        U_.push_back(c3_options_.U_position_tracking);
+      }
+    }
+  }
 
+  if (c3_options_.use_quaternion_dependent_cost &&
+      crossed_cost_switching_threshold_) {
+    Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
+    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
+    Eigen::MatrixXd Q_quaternion_dependent_cost =
+      hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
+
+    // Get the eigenvalues of the hessian to regularize so the Q matrix is
+    // always PSD.
+    double min_eigval = Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
+    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 =
+      std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4,4);
+
+    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
+      quat_desired * quat_desired.transpose();
+    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows()
+              == Q_quaternion_dependent_cost.cols()
+              == Q_quaternion_dependent_regularizer_part_2.rows()
+              == Q_quaternion_dependent_regularizer_part_2.cols()
+              == 4);
+    double discount_factor = 1;
+    for (int i = 0; i < N_+1; ++i) {
+      Q_[i].block(3,3,4,4) = discount_factor *
+        c3_options_.q_quaternion_dependent_weight * (
+          Q_quaternion_dependent_cost +
+            Q_quaternion_dependent_regularizer_part_1 +
+            c3_options_.q_quaternion_dependent_regularizer_fraction
+              * Q_quaternion_dependent_regularizer_part_2);
+      discount_factor *= c3_options_.gamma;
+    }
+  }
+
+  if (verbose_) {
+    std::cout << "Q_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << Q_[0] << std::endl;
+    std::cout << "R_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << R_[0] << std::endl;
   }
 
   // Generate multiple samples and include current location as first item.
@@ -536,7 +637,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
 
-  if(verbose_){
+  if (verbose_){
     std::cout << "num_total_samples: " << num_total_samples << std::endl;
   }
 
@@ -545,9 +646,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   for (int i = 0; i < num_total_samples; i++) {
     all_sample_locations_.push_back(candidate_states[i].head(3));
   }
-  // for (int i = num_total_samples; i < max_num_samples_ + 1; i++) {
-  //   all_sample_locations_[i] = Vector3d::Zero();
-  // }
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
@@ -578,7 +676,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
 
-    if(sampling_params_.use_more_contacts_to_compute_cost){
+    if (sampling_params_.use_more_contacts_to_compute_cost){
       // Create an LCS object with all contact pairs resolved.  In order, that
       // is 3 EE-capsule contacts, and 6 ground-capsule_tip contacts.  Use the
       // same friction coefficients as the current contact model.
@@ -651,92 +749,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<std::vector<Eigen::VectorXd>> ws(
     num_total_samples,
     std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
-
-  // Detect if the final target has changed, in which case return to caring only
-  // about position until the switching threshold has been crossed again.
-  // Exclude the EE goal from the comparison, since that always changes to be
-  // above the current jack location.
-  if (!x_final_target_.segment(3, n_x_-3).isApprox(
-        x_lcs_final_des.value().segment(3, n_x_-3), 1e-5)) {
-    std::cout << "Detected goal change!" << std::endl;
-    // if (verbose_) {
-      std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
-      std::cout << "  New goal:  " << x_lcs_final_des.value().transpose() <<
-        std::endl;
-      std::cout << "  --> Error:  " <<
-        (x_final_target_.segment(3, n_x_-3) -
-         x_lcs_final_des.value().segment(3, n_x_-3)).norm() << std::endl;
-    // }
-    crossed_cost_switching_threshold_ = false;
-    x_final_target_ = x_lcs_final_des.value();
-
-    // Reset the sample buffer now that the costs have changed.
-    sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
-  }
-
-  // if object is within a fixed radius of the desired location,
-  // change crossed_cost_switching_threshold_ to true.
-  if (!crossed_cost_switching_threshold_) {
-    if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() <
-        sampling_params_.cost_switching_threshold_distance){
-      crossed_cost_switching_threshold_ = true;
-      std::cout << "Crossed cost switching threshold." << std::endl;
-
-      // Reset the sample buffer now that the costs have changed.
-      sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-      sample_costs_buffer_ = -1 * VectorXd::Ones(
-        sampling_params_.N_sample_buffer);
-
-      // If also in C3 mode, reset the lowest cost seen in this mode.
-      if (is_doing_c3_){
-        lowest_cost_ = std::numeric_limits<double>::infinity();
-        lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-        lowest_position_error_ = std::numeric_limits<double>::infinity();
-        lowest_orientation_error_ = std::numeric_limits<double>::infinity();
-        best_progress_steps_ago_ = 0;
-      }
-    }
-  }
-
-  if (c3_options_.use_quaternion_dependent_cost &&
-      crossed_cost_switching_threshold_) {
-    Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
-    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
-    Eigen::MatrixXd Q_quaternion_dependent_cost =
-      hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
-
-    // Get the eigenvalues of the hessian to regularize so the Q matrix is
-    // always PSD.
-    double min_eigval = Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 =
-      std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4,4);
-
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
-      quat_desired * quat_desired.transpose();
-    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows()
-              == Q_quaternion_dependent_cost.cols()
-              == Q_quaternion_dependent_regularizer_part_2.rows()
-              == Q_quaternion_dependent_regularizer_part_2.cols()
-              == 4);
-    double discount_factor = 1;
-    for (int i = 0; i < N_+1; ++i) {
-      Q_[i].block(3,3,4,4) = discount_factor *
-        c3_options_.q_quaternion_dependent_weight * (
-          Q_quaternion_dependent_cost +
-            Q_quaternion_dependent_regularizer_part_1 +
-            c3_options_.q_quaternion_dependent_regularizer_fraction
-              * Q_quaternion_dependent_regularizer_part_2);
-      discount_factor *= c3_options_.gamma;
-    }
-  }
-
-  if (verbose_) {
-    std::cout << "Q_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
-    std::cout << Q_[0] << std::endl;
-    std::cout << "R_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
-    std::cout << R_[0] << std::endl;
-  }
 
   // Parallelize over computing C3 costs for each sample.
   #pragma omp parallel for num_threads(num_threads_to_use_)

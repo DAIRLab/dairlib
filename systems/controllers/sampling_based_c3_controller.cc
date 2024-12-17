@@ -110,11 +110,17 @@ SamplingC3Controller::SamplingC3Controller(
     c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
                                         x_desired_placeholder, c3_options_);
+    c3_buffer_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                        C3::CostMatrices(Q_, R_, G_, U_),
+                                        x_desired_placeholder, c3_options_);
   } else if (c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
     c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
+                                      C3::CostMatrices(Q_, R_, G_, U_),
+                                      x_desired_placeholder, c3_options_);
+    c3_buffer_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
   } else {
@@ -124,6 +130,7 @@ SamplingC3Controller::SamplingC3Controller(
 
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
+  c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
 
   // Set actor bounds
   for (int i : vector<int>({0})) {
@@ -133,6 +140,8 @@ SamplingC3Controller::SamplingC3Controller(
                                   c3_options_.world_x_limits[1], 1);
     c3_best_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
                                   c3_options_.world_x_limits[1], 1);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
+                                  c3_options_.world_x_limits[1], 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
@@ -140,6 +149,8 @@ SamplingC3Controller::SamplingC3Controller(
     c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
                                   c3_options_.world_y_limits[1], 1);
     c3_best_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
+                                  c3_options_.world_y_limits[1], 1);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
                                   c3_options_.world_y_limits[1], 1);
   }
   for (int i : vector<int>({2})) {
@@ -149,6 +160,8 @@ SamplingC3Controller::SamplingC3Controller(
                                   c3_options_.world_z_limits[1], 1);
     c3_best_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
                                   c3_options_.world_z_limits[1], 1);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
+                                  c3_options_.world_z_limits[1], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -157,6 +170,8 @@ SamplingC3Controller::SamplingC3Controller(
                                   c3_options_.u_horizontal_limits[1], 2);
     c3_best_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
                                   c3_options_.u_horizontal_limits[1], 2);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
+                                  c3_options_.u_horizontal_limits[1], 2);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -164,6 +179,8 @@ SamplingC3Controller::SamplingC3Controller(
     c3_curr_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
                                   c3_options_.u_vertical_limits[1], 2);
     c3_best_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
+                                  c3_options_.u_vertical_limits[1], 2);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
                                   c3_options_.u_vertical_limits[1], 2);
   }
 
@@ -193,12 +210,20 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
+
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
-  int num_samples = std::max(sampling_params_.num_additional_samples_repos + 1,
-                             sampling_params_.num_additional_samples_c3);
+  // Additionally add 1 to C3 if considering samples from the buffer.
+  int from_buffer = 0;
+  if (sampling_params_.consider_best_buffer_sample_when_leaving_c3) {
+    from_buffer = 1;
+  }
+  max_num_samples_ = std::max(
+    sampling_params_.num_additional_samples_repos + 1,
+    sampling_params_.num_additional_samples_c3 + from_buffer);
   // The +1 here is to account for the current location.
-  all_sample_locations_ = vector<Vector3d>(num_samples + 1, Vector3d::Zero());
+  all_sample_locations_ = vector<Vector3d>(max_num_samples_ + 1,
+                                           Vector3d::Zero());
   LcmTrajectory lcm_traj = LcmTrajectory();
 
   // Current location plan output ports.
@@ -231,16 +256,16 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Execution trajectory output ports.
   c3_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "c3_traj_execute", lcm_traj, 
+    "c3_traj_execute", lcm_traj,
     &SamplingC3Controller::OutputC3TrajExecute
   ).get_index();
   repos_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "repos_traj_execute", lcm_traj, 
+    "repos_traj_execute", lcm_traj,
     &SamplingC3Controller::OutputReposTrajExecute
   ).get_index();
   // NOTE: We reuse lcm_traj to set the right type for the port.
   traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "traj_execute", lcm_traj, 
+    "traj_execute", lcm_traj,
     &SamplingC3Controller::OutputTrajExecute
   ).get_index();
   is_c3_mode_port_ = this->DeclareVectorOutputPort(
@@ -248,34 +273,35 @@ SamplingC3Controller::SamplingC3Controller(
     &SamplingC3Controller::OutputIsC3Mode
   ).get_index();
 
-  // Output ports for dynamically feasible plans used for cost computation and 
+  // Output ports for dynamically feasible plans used for cost computation and
   // visualization.
   dynamically_feasible_curr_plan_port_ = this->DeclareAbstractOutputPort(
-    "dynamically_feasible_curr_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)), 
+    "dynamically_feasible_curr_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)),
     &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan
   ).get_index();
   dynamically_feasible_best_plan_port_ = this->DeclareAbstractOutputPort(
-    "dynamically_feasible_best_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)), 
+    "dynamically_feasible_best_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)),
     &SamplingC3Controller::OutputDynamicallyFeasibleBestPlan
   ).get_index();
-  
+
   // Sample location related output ports.
   // This port will output all samples except the current location.
-  // all_sample_locations_port_ does not include the current location. So 
+  // all_sample_locations_port_ does not include the current location. So
   // index 0 is the first sample.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_locations", vector<Vector3d>(num_samples + 1, Vector3d::Zero()), 
+    "all_sample_locations",
+    vector<Vector3d>(max_num_samples_ + 1, Vector3d::Zero()),
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   // all_sample_costs_port_ does include the current location. So index 0 is
   // the current location cost.
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_costs", std::vector<double>(num_samples + 1, -1), 
+    "all_sample_costs", std::vector<double>(max_num_samples_ + 1, -1),
     &SamplingC3Controller::OutputAllSampleCosts
   ).get_index();
 
   curr_and_best_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "current_and_best_sample_cost", std::vector<double>(2, -1), 
+    "current_and_best_sample_cost", std::vector<double>(2, -1),
     &SamplingC3Controller::OutputCurrAndBestSampleCost
   ).get_index();
 
@@ -370,8 +396,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "x_pred_curr_plan_: " << x_pred_curr_plan_.transpose() << std::endl;
   }
 
-  // If not tele-opping and if generating samples about a predicted lcs state, 
-  // clamp the predicted next state to be not too far away from the current 
+  // If not tele-opping and if generating samples about a predicted lcs state,
+  // clamp the predicted next state to be not too far away from the current
   // state.
   // Only use predicted state for c3 if use_predicted_x0_c3 is true and is_doing_c3_.
   // Only use predicted state for repositioning if use_predicted_x0_repos is true and !is_doing_c3_.
@@ -491,14 +517,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         U_.push_back(c3_options_.U);
       }
     }
-    
+
   }
 
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_);
-  
-  // Add the previous best repositioning target to the candidate states at the 
+
+  // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_){
     // Add the prev best repositioning target to the candidate states.
@@ -513,14 +539,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if(verbose_){
     std::cout << "num_total_samples: " << num_total_samples << std::endl;
   }
-  
+
   // Update the set of sample locations under consideration.
+  all_sample_locations_.clear();
   for (int i = 0; i < num_total_samples; i++) {
-    all_sample_locations_[i] = candidate_states[i].head(3);
+    all_sample_locations_.push_back(candidate_states[i].head(3));
   }
-  for (int i = num_total_samples; i < all_sample_locations_.size(); i++) {
-    all_sample_locations_[i] = Vector3d::Zero();
-  }
+  // for (int i = num_total_samples; i < max_num_samples_ + 1; i++) {
+  //   all_sample_locations_[i] = Vector3d::Zero();
+  // }
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
@@ -585,7 +612,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         lcs_object_sample_for_cost_simulation);
     }
   }
-  // Reset the context to the current lcs state. 
+  // Reset the context to the current lcs state.
   UpdateContext(x_lcs_curr);
 
   if (verbose_) {
@@ -612,14 +639,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Preparation for parallelization.
   // This size is adapting to the number of samples based on mode.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
-  all_sample_dynamically_feasible_plans_ = std::vector<std::vector<Eigen::VectorXd>>(
-    num_total_samples, std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
-  std::vector<std::shared_ptr<solvers::C3>> c3_objects(num_total_samples, nullptr);
-  std::vector<std::vector<Eigen::VectorXd>> deltas(num_total_samples, 
-                  std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
-  std::vector<std::vector<Eigen::VectorXd>> ws(num_total_samples, 
-                  std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
-  
+  all_sample_dynamically_feasible_plans_ =
+    std::vector<std::vector<Eigen::VectorXd>>(
+      num_total_samples,
+      std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
+  std::vector<std::shared_ptr<solvers::C3>> c3_objects(
+    num_total_samples, nullptr);
+  std::vector<std::vector<Eigen::VectorXd>> deltas(
+    num_total_samples,
+    std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
+  std::vector<std::vector<Eigen::VectorXd>> ws(
+    num_total_samples,
+    std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
+
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
   // Exclude the EE goal from the comparison, since that always changes to be
@@ -643,10 +675,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     sample_costs_buffer_ = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
   }
 
-  // if object is within a fixed radius of the desired location, 
+  // if object is within a fixed radius of the desired location,
   // change crossed_cost_switching_threshold_ to true.
   if (!crossed_cost_switching_threshold_) {
-    if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() < 
+    if ((x_lcs_curr.segment(7,2) - x_lcs_final_des.value().segment(7,2)).norm() <
         sampling_params_.cost_switching_threshold_distance){
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
@@ -671,13 +703,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       crossed_cost_switching_threshold_) {
     Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
     Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
-    Eigen::MatrixXd Q_quaternion_dependent_cost = 
+    Eigen::MatrixXd Q_quaternion_dependent_cost =
       hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
-    
+
     // Get the eigenvalues of the hessian to regularize so the Q matrix is
     // always PSD.
     double min_eigval = Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 = 
+    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 =
       std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4,4);
 
     Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
@@ -717,8 +749,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::shared_ptr<solvers::C3> test_c3_object;
 
       if (c3_options_.projection_type == "MIQP") {
-          test_c3_object = std::make_shared<C3MIQP>(test_system, 
-                                              C3::CostMatrices(Q_, R_, G_, U_), 
+          test_c3_object = std::make_shared<C3MIQP>(test_system,
+                                              C3::CostMatrices(Q_, R_, G_, U_),
                                               x_desired, c3_options_);
           if(sampling_params_.use_more_contacts_to_compute_cost){
             // Compute the cost using the lcs object with more contacts.
@@ -727,8 +759,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           }
 
         } else if (c3_options_.projection_type == "QP") {
-          test_c3_object = std::make_shared<C3QP>(test_system, 
-                                              C3::CostMatrices(Q_, R_, G_, U_), 
+          test_c3_object = std::make_shared<C3QP>(test_system,
+                                              C3::CostMatrices(Q_, R_, G_, U_),
                                               x_desired, c3_options_);
           if(sampling_params_.use_more_contacts_to_compute_cost){
             // Compute the cost using the lcs object with more contacts.
@@ -766,9 +798,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         c3_objects.at(i) = test_c3_object;
       }
       // Add travel cost.  Ignore differences in z.
-      double xy_travel_distance = (test_state.head(2) - 
+      double xy_travel_distance = (test_state.head(2) -
                                    x_lcs_curr.head(2)).norm();
-      all_sample_costs_[i] = c3_cost + 
+      all_sample_costs_[i] = c3_cost +
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
       if ((i==CURRENT_REPOSITION_INDEX) && (finished_reposition_flag_==true)) {
@@ -809,15 +841,59 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     repos_to_repos_cost_fraction = sampling_params_.repos_to_repos_cost_fraction;
   }
 
+  // Update the sample buffer.  Do this before switching modes since 1) if in
+  // repositioning mode, don't add the repositioning target over and over again,
+  // and 2) since the best sample in the buffer may be the best sample overall
+  // and could be considered as a repositioning target.
+  MaintainSampleBuffer(x_lcs_curr);
+  // Add the best from the buffer to the samples, but only if in C3 mode and
+  // only if the best in the buffer is distinct from the current set of samples.
+  if ((is_doing_c3_) &&
+      (sampling_params_.consider_best_buffer_sample_when_leaving_c3)) {
+    double lowest_buffer_cost = sample_costs_buffer_[num_in_buffer_-1];
+    Vector3d best_buffer_ee_sample =
+      sample_buffer_.row(num_in_buffer_-1).head(3);
+
+    double lowest_new_cost =
+      *std::min_element(all_sample_costs_.begin(),
+                        all_sample_costs_.end());
+    std::vector<double>::iterator it =
+      std::min_element(std::begin(all_sample_costs_),
+                       std::end(all_sample_costs_));
+    int lowest_new_cost_index = (SampleIndex)(
+      std::distance(std::begin(all_sample_costs_), it));
+    Vector3d best_new_ee_sample = all_sample_locations_[lowest_new_cost_index];
+
+    // If the best in the buffer is from the current set of samples, store the
+    // associated C3 object and dynamically feasible plan, but don't add to the
+    // set of samples to consider for repositioning.
+    if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
+        ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {
+      c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
+      dynamically_feasible_buffer_plan_ =
+        all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
+    }
+    // If the best in the buffer is distinct from the current set of samples,
+    // consider it for repositioning by adding it to the set of samples, costs,
+    // etc.
+    else {
+      all_sample_costs_.push_back(lowest_buffer_cost);
+      all_sample_locations_.push_back(best_buffer_ee_sample); // TODO problem?
+      c3_objects.push_back(c3_buffer_plan_);
+      all_sample_dynamically_feasible_plans_.push_back(
+        dynamically_feasible_buffer_plan_);
+    }
+  }
+
   // Review the cost results to determine the best sample.
   double best_additional_sample_cost;
   if (num_total_samples > 1) {
-    std::vector<double> additional_sample_cost_vector = 
+    std::vector<double> additional_sample_cost_vector =
       std::vector<double>(all_sample_costs_.begin()+1, all_sample_costs_.end());
-    best_additional_sample_cost = 
+    best_additional_sample_cost =
       *std::min_element(additional_sample_cost_vector.begin(),
                         additional_sample_cost_vector.end());
-    std::vector<double>::iterator it = 
+    std::vector<double>::iterator it =
       std::min_element(std::begin(additional_sample_cost_vector),
                        std::end(additional_sample_cost_vector));
     best_sample_index_ = (SampleIndex)(
@@ -828,11 +904,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // location and set the cost to a high value to ensure that the c3 is chosen.
     // Use absolute or relative hyseteresis based on the flag.
     if (!sampling_params_.use_relative_hysteresis){
-      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
+      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX]
                                   + c3_to_repos_hysteresis + 99;
     }
     else{
-      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
+      best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX]
         + (c3_to_repos_cost_fraction)*all_sample_costs_[CURRENT_LOCATION_INDEX] + 99;
     }
   }
@@ -844,10 +920,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
     std::cout << "In C3 mode? " << is_doing_c3_ << std::endl;
   }
-
-  // Update the sample buffer.  Do this before switching modes since if in
-  // repositioning mode, don't add the repositioning target over and over again.
-  MaintainSampleBuffer(x_lcs_curr);
 
   // Determine whether to do C3 or reposition.
   mode_switch_reason_ = MODE_SWITCH_REASON_NONE;
@@ -911,18 +983,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         (sampling_params_.num_additional_samples_c3 > 0)) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
-      mode_switch_reason_ = MODE_SWITCH_TO_REPOS_UNPRODUCTIVE;
-      std::cout << "Switching to repositioning after spending too long " <<
-        "not making progress in C3" << std::endl;
+      std::cout << "Repositioning after spending too long not making " <<
+        "progress in C3" << std::endl;
+
+      lowest_cost_ = std::numeric_limits<double>::infinity();
+      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
+      lowest_position_error_ = std::numeric_limits<double>::infinity();
+      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      best_progress_steps_ago_ = -1;
     }
 
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis. Use absolute hysteresis values or percentage based hysteresis
     // based on the flag.
-    else if ((all_sample_costs_[CURRENT_LOCATION_INDEX] > 
+    else if ((all_sample_costs_[CURRENT_LOCATION_INDEX] >
          best_additional_sample_cost + c3_to_repos_hysteresis &&
-         !sampling_params_.use_relative_hysteresis) || 
-        (sampling_params_.use_relative_hysteresis && 
+         !sampling_params_.use_relative_hysteresis) ||
+        (sampling_params_.use_relative_hysteresis &&
          all_sample_costs_[CURRENT_LOCATION_INDEX] > best_additional_sample_cost +
          (c3_to_repos_cost_fraction)*
          all_sample_costs_[CURRENT_LOCATION_INDEX]) &&
@@ -931,7 +1008,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
       mode_switch_reason_ = MODE_SWITCH_TO_REPOS_COST;
-      std::cout << "Switching to repositioning because found good sample" <<
+      std::cout << "Repositioning because found good sample" <<
         std::endl;
     }
 
@@ -953,13 +1030,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     else {
       // This means that the best sample is not the current repositioning
       // target. If the cost of the current repositioning target is better than
-      // the current best sample by the hysteresis amount, then we continue 
+      // the current best sample by the hysteresis amount, then we continue
       // pursuing the previous repositioning target.
       if ((all_sample_costs_[CURRENT_REPOSITION_INDEX] <
            all_sample_costs_[best_sample_index_] +
-           hysteresis_between_repos_targets && 
+           hysteresis_between_repos_targets &&
            !sampling_params_.use_relative_hysteresis) ||
-          (sampling_params_.use_relative_hysteresis && 
+          (sampling_params_.use_relative_hysteresis &&
            all_sample_costs_[CURRENT_REPOSITION_INDEX] <
            all_sample_costs_[best_sample_index_] +
            repos_to_repos_cost_fraction*
@@ -1006,14 +1083,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       if (all_sample_costs_[CURRENT_REPOSITION_INDEX] >
           sampling_params_.finished_reposition_cost) {
         mode_switch_reason_ = MODE_SWITCH_TO_C3_REACHED_REPOS_GOAL;
+        std::cout << "Switching to C3 because reached repositioning target" <<
+          std::endl;
       }
       else {
         mode_switch_reason_ = MODE_SWITCH_TO_C3_COST;
+        std::cout << "Switching to C3 because lower in cost" << std::endl;
       }
       pursued_target_source_ = TARGET_SOURCE_NONE;
 
       // Reset the lowest cost seen in this mode.
-      std::cout << "Switching to C3, resetting lowest seen cost" << std::endl;
       lowest_cost_ = std::numeric_limits<double>::infinity();
       lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
       lowest_position_error_ = std::numeric_limits<double>::infinity();
@@ -1050,22 +1129,26 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
   c3_best_plan_ = c3_objects.at(best_sample_index_);
-  // These aren't currently used anywhere but may be required when implementing 
-  // warm start.
-  delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
-  delta_best_plan_ = deltas.at(best_sample_index_);
-  w_curr_plan_ = ws.at(CURRENT_LOCATION_INDEX);
-  w_best_plan_ = ws.at(best_sample_index_);
+  // If doing warmstarting, will want to set the z, delta, and w vectors.
 
   // This is a redundant value used only for plotting and analysis.
   // update current and best sample costs.
   curr_and_best_sample_cost_ = {all_sample_costs_[CURRENT_LOCATION_INDEX],
                                 all_sample_costs_[best_sample_index_]};
 
+  // If a pursued repositioning target is from the buffer and not a new sample,
+  // remove it from the buffer.
+  if ((!is_doing_c3_) && (all_sample_costs_[best_sample_index_] ==
+      sample_costs_buffer_[num_in_buffer_-1])) {
+    sample_buffer_.row(num_in_buffer_-1) = VectorXd::Zero(n_q_);
+    sample_costs_buffer_[num_in_buffer_-1] = -1;
+    num_in_buffer_--;
+  }
+
   // Update the execution trajectories.  Both C3 and repositioning trajectories
   // are updated, but the is_doing_c3_ flag determines which one is used via the
   // downstream selector system.
-  // Grab the drake context time and pass it to the C3traj & Repostraj update 
+  // Grab the drake context time and pass it to the C3traj & Repostraj update
   // functions.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
@@ -1096,9 +1179,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       Eigen::VectorXd u = zs[i].tail(n_u_);
       std::cout<< "\t" << i << ": " <<lambda.dot(E*x + F*lambda + H*u + c)<<std::endl;
     }
-  }
 
-  if (verbose_) {
     std::cout << "Dynamically feasible object current plan: " << std::endl;
     for (int i=0; i<N_+1; i++){
       std::cout << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7).transpose() << std::endl;
@@ -1121,7 +1202,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
-  
+
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -1132,51 +1213,51 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
   float approximate_loop_dt = std::min(0.1,filtered_solve_time_);
   float nominal_acceleration = 10;
         x_lcs_curr[0] = std::clamp(
-          x_pred_curr_plan_[0], 
+          x_pred_curr_plan_[0],
           x_lcs_curr[0] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
           x_lcs_curr[0] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
         );
         x_lcs_curr[1] = std::clamp(
-          x_pred_curr_plan_[1], 
+          x_pred_curr_plan_[1],
           x_lcs_curr[1] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
           x_lcs_curr[1] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
         );
         x_lcs_curr[2] = std::clamp(
-          x_pred_curr_plan_[2], 
+          x_pred_curr_plan_[2],
           x_lcs_curr[2] - nominal_acceleration * approximate_loop_dt * approximate_loop_dt,
           x_lcs_curr[2] + nominal_acceleration * approximate_loop_dt * approximate_loop_dt
         );
         x_lcs_curr[n_q_ + 0] = std::clamp(
-          x_pred_curr_plan_[n_q_ + 0], 
+          x_pred_curr_plan_[n_q_ + 0],
           x_lcs_curr[n_q_ + 0] - nominal_acceleration * approximate_loop_dt,
           x_lcs_curr[n_q_ + 0] + nominal_acceleration * approximate_loop_dt
         );
         x_lcs_curr[n_q_ + 1] = std::clamp(
-          x_pred_curr_plan_[n_q_ + 1], 
+          x_pred_curr_plan_[n_q_ + 1],
           x_lcs_curr[n_q_ + 1] - nominal_acceleration * approximate_loop_dt,
           x_lcs_curr[n_q_ + 1] + nominal_acceleration * approximate_loop_dt
         );
         x_lcs_curr[n_q_ + 2] = std::clamp(
-          x_pred_curr_plan_[n_q_ + 2], 
+          x_pred_curr_plan_[n_q_ + 2],
           x_lcs_curr[n_q_ + 2] - nominal_acceleration * approximate_loop_dt,
           x_lcs_curr[n_q_ + 2] + nominal_acceleration * approximate_loop_dt
         );
   }
-  
+
 // Helper function to update context of a plant with a given state.
 void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state) const {
     // Update autodiff.
     VectorXd xu_test(n_q_ + n_v_ + n_u_);
-    
+
     // u here is set to a vector of 1000s -- TODO why?
     VectorXd test_u = 1000*VectorXd::Ones(n_u_);
 
-    // Update context with respect to positions and velocities associated with 
+    // Update context with respect to positions and velocities associated with
     // the candidate state.
     VectorXd test_q = lcs_state.head(n_q_);
     VectorXd test_v = lcs_state.tail(n_v_);
-    
-    xu_test << test_q, test_v, test_u;                   
+
+    xu_test << test_q, test_v, test_u;
     auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
 
     plant_ad_.SetPositionsAndVelocities(
@@ -1214,7 +1295,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   }
 
   if(is_doing_c3_){
-    if (filtered_solve_time_ < 2*dt_ && 
+    if (filtered_solve_time_ < 2*dt_ &&
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
       std::cerr << "Using first planned trajectory knot as predicted state for c3." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
@@ -1443,15 +1524,15 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // Compute spline waypoints.
     Vector3d p0 = current_ee_location;
     Vector3d p3 = best_sample_location;
-    Vector3d p1 = current_ee_location + 0.25*curr_to_goal_vec - 
+    Vector3d p1 = current_ee_location + 0.25*curr_to_goal_vec -
                   current_object_location;
     p1 = current_object_location + sampling_params_.spline_width*p1/p1.norm();
-    Vector3d p2 = current_ee_location + 0.75*curr_to_goal_vec - 
+    Vector3d p2 = current_ee_location + 0.75*curr_to_goal_vec -
                   current_object_location;
     p2 = current_object_location + sampling_params_.spline_width*p2/p2.norm();
 
     for (int i = 0; i < N_; i++) {
-      // This is a curve_fraction and is not in the units of time or distance. 
+      // This is a curve_fraction and is not in the units of time or distance.
       // When it is 0, it is the current location. When it is 1, it is the goal.
       double t_spline = (i)*dt_/total_travel_time;
 
@@ -1466,7 +1547,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       // Don't overshoot the end of the spline.
       t_spline = std::min(1.0, t_spline);
 
-      Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
+      Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) +
                             std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
                             std::pow(t_spline,3) * (-p0 + 3*p1 - 3*p2 + p3);
 
@@ -1489,7 +1570,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // Set predicted end effector state in preparation for next control loop, if
   // currently in repositioning mode.
   if(!is_doing_c3_){
-    if (filtered_solve_time_ < dt_ && 
+    if (filtered_solve_time_ < dt_ &&
         c3_options_.at_least_predict_first_planned_trajectory_knot) {
       std::cerr << "Using first planned trajectory knot as predicted state for repos." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
@@ -1514,7 +1595,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   ee_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.ClearTrajectories();
   repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
-  
+
   // Add end effector force target to LCM Trajectory.
   // In repositioning mode, the end effector should not exert forces.
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
@@ -1530,7 +1611,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(3, "double");
-  object_traj.datapoints = 
+  object_traj.datapoints =
     knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_));
   object_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
@@ -1694,7 +1775,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
                                                         lcs_state_input_port_);
 
   UpdateContext(lcs_x->get_data());
-  
+
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
@@ -1706,7 +1787,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, 
+      c3_options_.num_friction_directions,
       c3_options_.mu[c3_options_.num_contacts_index], dt_,
       c3_options_.N, contact_model_);
 }
@@ -1769,7 +1850,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, 
+      c3_options_.num_friction_directions,
       c3_options_.mu[c3_options_.num_contacts_index], dt_,
       c3_options_.N, contact_model_);
   // Revert the context.
@@ -1806,7 +1887,7 @@ void SamplingC3Controller::OutputIsC3Mode(
   is_c3_mode->SetFromVector(vec);
 }
 
-// Output port handler for Dynamically feasible trajectory used for cost 
+// Output port handler for Dynamically feasible trajectory used for cost
 // computation.
 void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan(
     const drake::systems::Context<double>& context,
@@ -1824,7 +1905,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan(
 
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlan(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const { 
+    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const {
     std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   // Extract object pose only from the dynamically feasible plan for each time step.
   for(int i = 0; i < N_ + 1; i++){
@@ -1843,6 +1924,9 @@ void SamplingC3Controller::OutputAllSampleLocations(
   // Output all sample locations including current location.
   std::vector<Eigen::Vector3d> sample_locations = std::vector<Eigen::Vector3d>(
     all_sample_locations_.begin(), all_sample_locations_.end());
+  while (sample_locations.size() < max_num_samples_ + 1) {
+    sample_locations.push_back(Vector3d::Zero());
+  }
 
   *all_sample_locations = sample_locations;
 }
@@ -1902,5 +1986,5 @@ void SamplingC3Controller::OutputSampleBufferCosts(
     *sample_buffer_costs = sample_costs_buffer_;
 }
 
-} // namespace systems 
+} // namespace systems
 } // namespace dairlib

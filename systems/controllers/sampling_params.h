@@ -25,6 +25,7 @@ struct SamplingC3SamplingParams {
   double sampling_height;
   int num_additional_samples_repos;
   int num_additional_samples_c3;
+  bool consider_best_buffer_sample_when_leaving_c3;
   double spline_width;
   double spherical_repositioning_radius;
   double reposition_speed;
@@ -69,6 +70,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(sampling_height));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
+    a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(spherical_repositioning_radius));
     a->Visit(DRAKE_NVP(reposition_speed));

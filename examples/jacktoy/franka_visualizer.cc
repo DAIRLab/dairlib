@@ -439,11 +439,15 @@ int do_main(int argc, char* argv[]) {
 		// lcmt_timestamped_traj with a trajectory by the name sample_locations.
 		// The last argument "end_effector_orientation_target" is a dummy argument 
 		// here that is not used.
+    int from_buffer = 0;
+    if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
+        from_buffer = 1;
+    }
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "samples_",
         FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
         "sample_locations", "end_effector_orientation_target", 
-        std::max(sampling_params.num_additional_samples_c3, 
+        std::max(sampling_params.num_additional_samples_c3 + from_buffer,
             sampling_params.num_additional_samples_repos + 1) + 1, false);
 
     builder.Connect(sample_location_sub->get_output_port(),

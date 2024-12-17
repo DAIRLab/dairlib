@@ -48,7 +48,7 @@ resolve_contacts_to_list: [[1,3],
                            [1,4]]
 N: 5
 use_predicted_x0: false   # unused for sampling-based c3 controller
-use_predicted_x0_c3: false
+use_predicted_x0_c3: true
 use_predicted_x0_repos: true
 at_least_predict_first_planned_trajectory_knot: false
 use_predicted_x0_reset_mechanism: true

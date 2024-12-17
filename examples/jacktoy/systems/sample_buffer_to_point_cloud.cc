@@ -58,8 +58,9 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
   Eigen::Matrix3Xf ee_samples;
   Eigen::Matrix3Xi rgbs;
 
-  // Check if it's too early to output.
-  if (sample_buffer_lcmt->utime < 1e-3) {
+  // Check if it's too early to output or if there are no samples in the buffer.
+  if ((sample_buffer_lcmt->utime < 1e-3) ||
+      (sample_buffer_lcmt->num_in_buffer < 1)) {
     ee_samples = Eigen::Matrix3Xf::Zero(3, 1);
     rgbs = Eigen::Matrix3Xi::Zero(3, 1);
   }
@@ -80,35 +81,40 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
     }
 
     // Normalize the costs to be between 0 and 1.
-    Eigen::VectorXf normalized_costs = (costs.array() - costs.minCoeff()) /
-      (costs.maxCoeff() - costs.minCoeff());
-
-    // Get the current sample cost.
-    auto lcm_traj = LcmTrajectory(new_sample_costs_traj_lcmt->saved_traj);
-    auto lcm_sample_costs_traj = lcm_traj.GetTrajectory("sample_costs");
-    Eigen::MatrixXd sample_costs = lcm_sample_costs_traj.datapoints.row(0);
-    double current_cost = sample_costs(0);
-
-    double normalized_current_cost = (current_cost - costs.minCoeff()) /
-      (costs.maxCoeff() - costs.minCoeff());
-
-    // Make the current cost the centered color.
-    Eigen::VectorXf scaled_costs = normalized_costs.array() - 
-      normalized_current_cost + 0.5;
-
-    // Apply the color map.
-    Eigen::MatrixXf differences =
-      (scaled_costs.replicate(1, n_colors_) -
-      color_floats_.transpose().replicate(n_in_buffer, 1)).cwiseAbs();
-    Eigen::VectorXi closest_color_indices(n_in_buffer);
-    for (int i = 0; i < n_in_buffer; i++) {
-      int idx;
-      differences.row(i).minCoeff(&idx);
-      closest_color_indices[i] = idx;
+    if (costs.maxCoeff() == costs.minCoeff()) {
+      rgbs = Eigen::Matrix3Xi::Zero(3, n_in_buffer);
     }
-    rgbs = Eigen::Matrix3Xi::Zero(3, n_in_buffer);
-    for (int i = 0; i < n_in_buffer; i++) {
-      rgbs.col(i) = RGBs_.row(closest_color_indices(i));
+    else {
+      Eigen::VectorXf normalized_costs = (costs.array() - costs.minCoeff()) /
+        (costs.maxCoeff() - costs.minCoeff());
+
+      // Get the current sample cost.
+      auto lcm_traj = LcmTrajectory(new_sample_costs_traj_lcmt->saved_traj);
+      auto lcm_sample_costs_traj = lcm_traj.GetTrajectory("sample_costs");
+      Eigen::MatrixXd sample_costs = lcm_sample_costs_traj.datapoints.row(0);
+      double current_cost = sample_costs(0);
+
+      double normalized_current_cost = (current_cost - costs.minCoeff()) /
+        (costs.maxCoeff() - costs.minCoeff());
+
+      // Make the current cost the centered color.
+      Eigen::VectorXf scaled_costs = normalized_costs.array() -
+        normalized_current_cost + 0.5;
+
+      // Apply the color map.
+      Eigen::MatrixXf differences =
+        (scaled_costs.replicate(1, n_colors_) -
+        color_floats_.transpose().replicate(n_in_buffer, 1)).cwiseAbs();
+      Eigen::VectorXi closest_color_indices(n_in_buffer);
+      for (int i = 0; i < n_in_buffer; i++) {
+        int idx;
+        differences.row(i).minCoeff(&idx);
+        closest_color_indices[i] = idx;
+      }
+      rgbs = Eigen::Matrix3Xi::Zero(3, n_in_buffer);
+      for (int i = 0; i < n_in_buffer; i++) {
+        rgbs.col(i) = RGBs_.row(closest_color_indices(i));
+      }
     }
   }
 

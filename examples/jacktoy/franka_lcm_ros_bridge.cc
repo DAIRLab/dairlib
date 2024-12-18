@@ -59,6 +59,9 @@ DEFINE_string(lcm_channels,
               "Filepath containing lcm channels");
 DEFINE_string(ros_channels, "systems/ros/parameters/franka_ros_channels.yaml",
               "Filepath containing ROS channels");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
+              "LCM URL with IP, port, and TTL settings");
 
 namespace dairlib {
 
@@ -75,7 +78,7 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "run_lcm_to_ros");
   ros::NodeHandle node_handle;
 
-  drake::lcm::DrakeLcm drake_lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
   DiagramBuilder<double> builder;
 
   MultibodyPlant<double> plant(0.0);

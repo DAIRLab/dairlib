@@ -51,14 +51,16 @@ using systems::controllers::JointSpaceTrackingData;
 DEFINE_string(osqp_settings,
               "examples/jacktoy/parameters/franka_osc_qp_settings.yaml",
               "Filepath containing qp settings");
-DEFINE_string(
-    controller_parameters,
-    "examples/jacktoy/parameters/franka_osc_controller_params.yaml",
-    "Controller settings such as channels. Attempting to minimize "
-    "number of gflags");
+DEFINE_string(controller_parameters,
+              "examples/jacktoy/parameters/franka_osc_controller_params.yaml",
+              "Controller settings such as channels. Attempting to minimize "
+              "number of gflags");
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
+              "LCM URL with IP, port, and TTL settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -81,26 +83,6 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-//   parser.AddModelsFromUrl(controller_params.franka_model);
-
-//   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-//   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-//                    X_WI);
-
-//   if (!controller_params.end_effector_name.empty()) {
-//     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-//         FindResourceOrThrow(controller_params.end_effector_model))[0];
-//     RigidTransform<double> T_EE_W =
-//         RigidTransform<double>(drake::math::RotationMatrix<double>(),
-//                                controller_params.tool_attachment_frame);
-//     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-//                      plant.GetFrameByName(controller_params.end_effector_name,
-//                                           end_effector_index),
-//                      T_EE_W);
-//   } else {
-//     std::cout << "OSC plant has been constructed with no end effector."
-//               << std::endl;
-//   }
 
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model))[0];
@@ -114,7 +96,6 @@ int DoMain(int argc, char* argv[]) {
   // All the urdfs have their origins at the world frame origin. We define all 
   // the offsets by welding the frames such that changing the offsets in 
   // the param file moves them to where we want in the world frame.
-  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -144,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto franka_command_pub =
@@ -171,7 +152,6 @@ int DoMain(int argc, char* argv[]) {
                     osc_debug_pub->get_input_port());
   }
   VectorXd target_position = VectorXd::Zero(7);
-//  target_position << -1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81;
   target_position << 2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08;
   auto joint_traj_generator =
       builder.AddSystem<JointTrajectoryGenerator>(plant, target_position);

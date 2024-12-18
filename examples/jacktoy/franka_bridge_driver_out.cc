@@ -38,8 +38,14 @@ using dairlib::systems::TimestampedVector;
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
-DEFINE_string(franka_driver_channels, "examples/jacktoy/parameters/franka_drake_lcm_driver_channels.yaml",
+DEFINE_string(franka_driver_channels,
+              "examples/jacktoy/parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
+// NOTE:  While most module's TTL is set to 0 by default, this one is set to 1
+// since it necessarily needs to communicate with the Franka.
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=1",
+              "LCM URL with IP, port, and TTL settings");
 
 namespace dairlib {
 
@@ -76,7 +82,7 @@ int DoMain(int argc, char* argv[]) {
   auto act_names = multibody::ExtractOrderedNamesFromMap(act_map);
 
   /* -------------------------------------------------------------------------------------------*/
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
 
   auto franka_state_pub =

@@ -63,6 +63,9 @@ DEFINE_string(controller_parameters,
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
+              "LCM URL with IP, port, and TTL settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -85,27 +88,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-//   parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
 
-//   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-//   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-//                    X_WI);
-
-//   if (!controller_params.end_effector_name.empty()) {
-//     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-//         FindResourceOrThrow(controller_params.end_effector_model))[0];
-//     RigidTransform<double> T_EE_W = RigidTransform<double>(
-//       drake::math::RotationMatrix<double>(
-//         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-//         controller_params.tool_attachment_frame);
-//     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-//                      plant.GetFrameByName("end_effector_base",
-//                                           end_effector_index),
-//                      T_EE_W);
-//   } else {
-//     std::cout << "OSC plant has been constructed with no end effector."
-//               << std::endl;
-//   }
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model))[0];
@@ -147,7 +130,7 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(

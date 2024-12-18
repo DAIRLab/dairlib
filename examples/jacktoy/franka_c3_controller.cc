@@ -68,10 +68,13 @@ DEFINE_string(trajectory_settings,
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
+              "LCM URL with IP, port, and TTL settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;

@@ -51,6 +51,9 @@ using Eigen::VectorXd;
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
+              "LCM URL with IP, port, and TTL settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -111,7 +114,7 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
 
-  drake::lcm::DrakeLcm drake_lcm;
+  drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   AddActuationRecieverAndStateSenderLcm(

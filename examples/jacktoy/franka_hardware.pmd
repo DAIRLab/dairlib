@@ -13,17 +13,17 @@ group "operator" {
     }
     cmd "record_video" {
         exec = "python3 record_video.py";
-        host = "localhost";
+        host = "franka_control";
     }
 }
 
 group "controllers (hardware)" {
     cmd "franka_c3" {
-        exec = "bazel-bin/examples/jacktoy/franka_c3_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/jacktoy/franka_c3_controller --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
         host = "localhost";
     }
     cmd "franka_osc" {
-        exec = "bazel-bin/examples/jacktoy/franka_osc_controller --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/jacktoy/franka_osc_controller --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/jacktoy/parameters/lcm_channels_hardware.yaml";
         host = "franka_control";
     }
 }
@@ -64,7 +64,7 @@ script "init_experiment" {
     start cmd "franka_driver_in";
     start cmd "torque_driver";
     start cmd "move_to_init";
-    wait ms 5000;
+    wait ms 10000;
     stop group "drivers";
 }
 
@@ -83,6 +83,7 @@ script "start_experiment" {
     wait ms 5000;
     stop cmd "move_to_init";
     start cmd "franka_osc";
+    start cmd "franka_c3";
 }
 
 script "start_operator_commands" {

@@ -194,9 +194,6 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm));
-//   auto box_state_sub =
-//       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-//           lcm_channel_params.box_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =

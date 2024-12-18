@@ -8,8 +8,14 @@
      <visual>
         <origin xyz="0 0 0" />
         <geometry>
-           <box size="0.3 0.3 0.029"/>
+           <box size="0.3 0.6 0.029"/>
         </geometry>
      </visual>
+     <collision>
+        <origin xyz="0 0 0" />
+        <geometry>
+           <box size="0.3 0.6 0.029"/>
+        </geometry>
+     </collision>
   </link>
 </robot>

@@ -111,7 +111,7 @@ AlipComTrajectoryGenerator::ConstructAlipComTraj(
   // clip the desired height to limit error
   Vector3d com_rel = com_pos - stance_foot_pos;
   double height_error = com_rel(2) - kx_ky.dot(com_rel.head<2>()) - desired_com_height_;
-  double max_height_error = 0.075;
+  double max_height_error = 0.025;
   if (fabs(height_error) > max_height_error) {
     double offset = max_height_error - height_error;
     height += offset;

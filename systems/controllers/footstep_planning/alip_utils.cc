@@ -51,6 +51,32 @@ void CalcAlipState(const MultibodyPlant<double> &plant,
   *stance_pos_p = stance_foot_pos;
 }
 
+
+namespace {
+
+double CurrentAngularMomentumFromPositions(double p0, double p1, const Matrix2d& A) {
+  return (A(1,0) - A(0,0) * A(1,1) / A(1, 0)) * p0 + A(1,1)*A(0,1) * p1;
+}
+
+}
+
+Vector4d CalcAlipStateBasedOnPositions(
+    const Eigen::Vector4d &x0, const Eigen::Vector4d& x1,
+    double com_z, double mass, double T) {
+  if (T <= 0) {
+    return x0;
+  }
+  Matrix4d A = CalcAd(com_z, mass, T);
+  Matrix2d Ay = A.block<2, 2>(1,1);
+  Matrix2d Ax;
+  Ax << A(0, 0), A(0,3), A(3,0), A(3,3);
+
+  Vector4d out = x1;
+  out(2) = CurrentAngularMomentumFromPositions(x0(1), x1(1), Ay);
+  out(3) = CurrentAngularMomentumFromPositions(x0(0), x1(0), Ax);
+  return out;
+}
+
 namespace {
 
 Matrix<double, 4, 2> CalcBdForResetMap(

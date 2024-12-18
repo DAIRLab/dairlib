@@ -1,0 +1,11 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "id_mpc_test",
+    srcs = ["id_mpc_test.cc"],
+    deps = [
+        "//systems/controllers/id_mpc",
+    ],
+)

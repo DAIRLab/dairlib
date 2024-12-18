@@ -5,11 +5,13 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "id_mpc",
     srcs = [
+        "constrained_dynamics_info.cc",
         "id_mpc.cc",
         "id_mpc_dynamics_constraint.cc",
     ],
     hdrs = glob(["*.h"]),
     deps = [
+        "//common:find_resource",
         "//multibody/kinematic",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",

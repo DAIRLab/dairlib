@@ -18,3 +18,5 @@ venv/
 /test/
 drake_env/
 tmp/
+MODULE.bazel
+MODULE.bazel.lock

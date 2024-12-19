@@ -48,7 +48,14 @@ class LcmLogPlayback:
         for channel in self._channels:
             if not self._connected[channel]:
                 return
-
+        self._diagram.CalcForcedUnrestrictedUpdate(
+            self._sim.get_mutable_context(),
+            self._sim.get_mutable_context().get_mutable_state()
+        )
+        self._diagram.CalcForcedDiscreteVariableUpdate(
+            self._sim.get_mutable_context(),
+            self._sim.get_mutable_context().get_mutable_discrete_state()
+        )
         self._sim.AdvanceTo(t)
 
         if not event:

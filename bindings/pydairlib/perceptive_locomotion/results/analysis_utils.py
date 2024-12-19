@@ -8,8 +8,10 @@ import numpy as np
 from PIL import Image
 from typing import List
 from copy import deepcopy
+import matplotlib.animation
 from grid_map import GridMap
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patches
+
 from pydairlib.analysis.mbp_plotting_utils import process_state_channel
 from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 
@@ -151,6 +153,32 @@ def profile_segmentation(system, grid_maps):
         'segmentations': segmentations,
         'grid_maps': grid_maps
     }
+
+
+def make_segmentation_systems():
+    params_folder = \
+        'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
+    s3 = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
+        }
+    )
+    s3.set_name('S3 (Ours)')
+
+    yamls = [
+        os.path.join(params_folder, f'{y}.yaml') for y in
+        ['ransac_and_preprocessing', 'no_ransac_with_preprocessing']
+    ]
+    configs = ['', '_NR']
+    system_names = ['EM_cupy' + config for config in configs]
+
+    systems = []
+    for params, name in zip (yamls, system_names):
+        systems.append(PlaneSegmentationSystem(params))
+        systems[-1].set_name(name)
+    systems.append(s3)
+    return systems
 
 
 def run_segmentation_comparison_on_log(logfile, duration, start_time=0):
@@ -361,6 +389,94 @@ def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=N
     new_limits = {'x': plt.xlim(), 'y': plt.ylim()}
     plt.close(fig)
     return new_limits
+
+
+def create_position_direction_animation(arrays, positions, directions, interval=500, save_path=None):
+    """
+    Create an animation of arrays with position and direction markers.
+
+    Parameters:
+    - arrays: List of 2D numpy arrays to display as images
+    - positions: List of (x, y) tuples for circle positions
+    - directions: List of (dx, dy) tuples for direction vectors
+    - interval: Time between frames in milliseconds (default 500)
+    - save_path: Optional path to save the animation (e.g., 'animation.gif')
+
+    Returns:
+    - Matplotlib animation object
+    """
+    # Validate input lengths
+    if not (len(arrays) == len(positions) == len(directions)):
+        raise ValueError("arrays, positions, and directions must have the same length")
+
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Determine global min and max for consistent color scaling
+    vmin = min(arr.min() for arr in arrays)
+    vmax = max(arr.max() for arr in arrays)
+
+    # Initialize the image and markers
+    im = ax.imshow(arrays[0], cmap='viridis', vmin=vmin, vmax=vmax)
+    plt.colorbar(im)
+
+    # Create circle and arrow for first position and direction
+    circle = plt.Circle(positions[0], radius=0.5, color='red', fill=False)
+    ax.add_artist(circle)
+
+    # Calculate arrow properties
+    arrow_scale = 1  # Adjust for longer/shorter arrows
+    dx, dy = directions[0]
+    arrow = patches.FancyArrowPatch(
+        positions[0],
+        (positions[0][0] + dx * arrow_scale, positions[0][1] + dy * arrow_scale),
+        mutation_scale=20,
+        color='red',
+        edgecolor='red'
+    )
+    ax.add_artist(arrow)
+
+    # Update function for animation
+    def update(frame):
+        # Update image
+        im.set_array(arrays[frame])
+
+        # Update circle position
+        circle.center = positions[frame]
+
+        # Update arrow
+        dx, dy = directions[frame]
+        new_arrow = patches.FancyArrowPatch(
+            positions[frame],
+            (positions[frame][0] + dx * arrow_scale, positions[frame][1] + dy * arrow_scale),
+            mutation_scale=20,
+            color='red',
+            edgecolor='red'
+        )
+
+        # Remove previous arrow and add new one
+        ax.collections.pop()
+        ax.add_artist(new_arrow)
+
+        return im, circle, new_arrow
+
+    # Create animation
+    anim = animation.FuncAnimation(
+        fig,
+        update,
+        frames=len(arrays),
+        interval=interval,
+        blit=False  # Set to False to ensure all artists update
+    )
+
+    # Save animation if path provided
+    if save_path:
+        anim.save(save_path, writer='pillow')
+
+    plt.tight_layout()
+    plt.show()
+
+    return anim
 
 
 def plot_elevation_map_with_robot(ax, map: GridMap, robot_position: np.ndarray, robot_yaw: float):

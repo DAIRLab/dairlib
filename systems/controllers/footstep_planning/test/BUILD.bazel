@@ -12,3 +12,11 @@ cc_binary(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "alip_utils_test",
+    srcs = ["alip_utils_test.cc"],
+    deps = [
+        "//systems/controllers/footstep_planning:alip_utils",
+    ],
+)

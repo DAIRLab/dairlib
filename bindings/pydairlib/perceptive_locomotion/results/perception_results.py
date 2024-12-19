@@ -30,6 +30,7 @@ from dairlib import(
 
 # pydrake
 from pydrake.systems.all import (
+    System,
     Diagram,
     Context,
     DiagramBuilder,
@@ -72,7 +73,7 @@ mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 
 
-def write_mpfc_debug_video(logfile: str, duration=-1):
+def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
 
     theta = -2 * np.pi / 3
@@ -106,10 +107,10 @@ def write_mpfc_debug_video(logfile: str, duration=-1):
     }
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, '../mpc_debug_video_test.mp4', duration=duration)
+        diagram, lcm_log, meshcat, types, ports, savefile, duration=duration)
 
 
-def write_perception_meshcat_video(logfile: str, duration=60):
+def write_segmented_elevation_meshcat_video(logfile: str, savefile: str, duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
     theta = -2 * np.pi / 3
@@ -147,7 +148,61 @@ def write_perception_meshcat_video(logfile: str, duration=60):
 
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, '../perception_video_test.mp4', duration=duration)
+        diagram, lcm_log, meshcat, types, ports, savefile, duration=duration)
+
+
+def write_segmentation_results_video(segmenter: System, logfile: str, savefile: str, duration=60):
+    urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
+    update_period = 1.0 / 30.01
+    theta = -np.pi
+    r = 0.2
+    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([r * np.cos(theta), r * np.sin(theta), 2.0]))
+    meshcat = plant_visualizer.get_meshcat()
+
+    visualizers = {
+        "state": plant_visualizer,
+        "grid_map": GridMapVisualizer(meshcat, update_period, ["segmented_elevation"]),
+    }
+    receivers = {
+        "state": RobotOutputReceiver(plant_visualizer.get_plant()),
+        "grid_map": GridMapReceiver(),
+    }
+
+    builder = DiagramBuilder()
+    builder.AddSystem(segmenter)
+    for key in ['state', 'grid_map']:
+        builder.AddSystem(visualizers[key])
+        builder.AddSystem(receivers[key])
+
+    builder.Connect(
+        receivers['state'].get_output_port(),
+        visualizers['state'].get_input_port()
+    )
+    builder.Connect(
+        receivers['grid_map'].get_output_port(),
+        segmenter.get_input_port()
+    )
+    builder.Connect(
+        segmenter.get_output_port(),
+        visualizers['grid_map'].get_input_port()
+    )
+    diagram = builder.Build()
+
+    types = {
+        'NETWORK_CASSIE_STATE_DISPATCHER': lcmt_robot_output,
+        'CASSIE_ELEVATION_MAP': lcmt_grid_map,
+    }
+
+    ports = {
+        'NETWORK_CASSIE_STATE_DISPATCHER': receivers['state'].get_input_port(),
+        'CASSIE_ELEVATION_MAP': receivers['grid_map'].get_input_port(),
+    }
+
+    lcm_log = lcm.EventLog(logfile)
+    write_meshcat_video_from_log(
+        diagram, lcm_log, meshcat, types, ports, savefile, duration=duration,
+        window_size=(1000, 1000)
+    )
 
 
 def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):
@@ -287,16 +342,10 @@ def plot_iou_results(results, title, savefile):
 
 
 def make_segmentation_videos(logfile, start_time, duration, env_name=''):
-    results = utils.run_segmentation_comparison_on_log(
-        logfile,
-        start_time=start_time,
-        duration=duration
-    )
-    for r in results:
-        utils.write_arrays_to_video(
-            [cv2.resize(255 * s.astype(np.uint8), (300, 300), cv2.INTER_NEAREST_EXACT) for s in r['segmentations']],
-            f'../segmentation_videos/{env_name}_{r["name"]}_segmentation.mp4'
-        )
+    systems = utils.make_segmentation_systems()
+    for s in systems:
+        savefile = f'../segmentation_videos/{env_name}_{s.get_name()}.mp4'
+        write_segmentation_results_video(s, logfile, savefile, duration)
 
 
 def segmentation_comparison_results_runner(env_config, logfolder):
@@ -485,7 +534,7 @@ def main():
     # )
     #
     # profile_full_pipeline(args.logfile)
-    # write_perception_meshcat_video(args.logfile, duration=60.0)
+    # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)
     # write_mpfc_debug_video(args.logfile, 60)
     # test_iou_plot()
 

@@ -1,12 +1,7 @@
-"""Script to visualize the costs of samples.  Requires the drake_env virtual
-environment located at dairlib/drake_env, i.e.:
+"""Script to visualize the 8 stable orientations of the jack.  Requires the
+drake_env virtual environment located at dairlib/drake_env, i.e.:
 
 source ~/workspace/dairlib/drake_env/bin/activate
-
-Visualizes the costs and configurations exported by lcm_log_loader.cc when the
-DO_SAMPLE_VISUALIZATIONS is #defined.  That log loading script writes files to
-the test/tmp directory.  This script loads those files and visualizes the
-information in meshcat.
 """
 
 import matplotlib.pyplot as plt
@@ -21,7 +16,6 @@ from pydrake.math import RigidTransform, RotationMatrix
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.tree import FixedOffsetFrame
-from pydrake.perception import BaseField, Fields, PointCloud
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.visualization._triad import AddFrameTriadIllustration
@@ -38,6 +32,8 @@ ground_urdf = op.join(DAIRLIB_DIR, 'examples/jacktoy/urdf/ground.urdf')
 
 
 # Compute the 8 quaternions.
+# The first is a composition of a 45 degree rotation and an additional rotation
+# to get all 3 jack capsules equally distanced from the ground.
 partial_rot_1 = Rot.from_euler('y', -np.pi/4)
 partial_rot_2 = Rot.from_euler('x', np.arctan(np.sqrt(2)/2))
 
@@ -124,7 +120,7 @@ sim.AdvanceTo(0)
 
 for i, (name, rot) in enumerate(rotations.items()):
     wxyz = rot.as_quat(scalar_first=True)
-    print(f'#define QUAT_{name.upper()} Eigen::Quaterniond({wxyz[0]}, {wxyz[1]}, {wxyz[2]}, {wxyz[3]})')
-
+    print(f'#define QUAT_{name.upper()} Eigen::Quaterniond({wxyz[0]}, ' + \
+          f'{wxyz[1]}, {wxyz[2]}, {wxyz[3]})')
 
 breakpoint()

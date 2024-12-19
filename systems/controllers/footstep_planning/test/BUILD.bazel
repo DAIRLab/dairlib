@@ -13,10 +13,12 @@ cc_binary(
     ],
 )
 
-cc_binary(
+cc_test(
     name = "alip_utils_test",
+    size = "small",
     srcs = ["alip_utils_test.cc"],
     deps = [
         "//systems/controllers/footstep_planning:alip_utils",
+        "@drake//common/test_utilities:eigen_matrix_compare",
     ],
 )

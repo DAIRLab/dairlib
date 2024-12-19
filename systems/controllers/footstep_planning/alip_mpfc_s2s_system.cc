@@ -129,7 +129,7 @@ Eigen::Vector4d Alips2sMPFCSystem::HandleAlipKalmanFilter(
   if (is_mode_switch) {
     Vector4d x = filter.x();
     x.head<2>() = raw_alip_state.head<2>();
-    filter.Initialize(timestamp, x, MatrixXd::Identity(4, 4));
+    filter.Initialize(timestamp, x);
   } else {
     filter.Update(filter_data, Vector2d::Zero(), raw_alip_state, timestamp);
   }

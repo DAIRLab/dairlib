@@ -69,6 +69,7 @@ script "init_experiment" {
 }
 
 script "start_experiment" {
+    restart cmd "xbox";
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
     stop cmd "torque_driver";
@@ -89,6 +90,7 @@ script "start_experiment" {
 script "start_operator_commands" {
     restart cmd "visualizer";
     restart cmd "xbox";
+    restart cmd "lcm-spy";
 }
 
 script "stop_experiment" {

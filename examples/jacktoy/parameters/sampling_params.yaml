@@ -19,7 +19,7 @@ sampling_height: 0.04
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
-min_angle_from_vertical: 0.5  #0.785
+min_angle_from_vertical: 0.2  #0.785
 max_angle_from_vertical: 1.9 #1.75 rad = 100.26 deg   #1.9 rad is 110 deg
 
 # Number of additional samples to consider in each mode (repositioning or C3).

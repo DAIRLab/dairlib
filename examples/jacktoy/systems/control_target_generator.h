@@ -10,14 +10,14 @@
 #define PI 3.14159265359
 
 // Nominal quaternions for the object.
-#define QUAT_ALL_DOWN Eigen::Quaterniond(0.0572597, 0.544881, 0.70131284, -0.4561384)
-#define QUAT_RED_DOWN Eigen::Quaterniond(-0.07147426, -0.35026577, 0.2979431, 0.88547164)
-#define QUAT_GREEN_DOWN Eigen::Quaterniond(-0.61355525, -0.01070382, 0.45985836, -0.64279854)
-#define QUAT_BLUE_DOWN Eigen::Quaterniond(0.34215894, 0.88709414, -0.04769839, 0.3072389)
-#define QUAT_ALL_UP Eigen::Quaterniond(-0.36863035, 0.16087885, 0.43073285, 0.80815524)
-#define QUAT_RED_UP Eigen::Quaterniond(-0.3697159, 0.87841034, 0.13167445, 0.2733237)
-#define QUAT_GREEN_UP Eigen::Quaterniond(0.38224292, 0.87133694, 0.17296787, -0.25562137)
-#define QUAT_BLUE_UP Eigen::Quaterniond(-0.44183248, 0.4439077, 0.12046596, -0.77094716)
+#define QUAT_ALL_UP Eigen::Quaterniond(0.8804762392171493, 0.27984814233312133, -0.3647051996310009, -0.11591689595929514)
+#define QUAT_RED_DOWN Eigen::Quaterniond(0.8804762392171495, 0.27984814233312133, 0.3647051996310008, 0.11591689595929511)
+#define QUAT_BLUE_UP Eigen::Quaterniond(0.7045563426109883, -0.06000300064686593, 0.45576803893928247, -0.540625096237162)
+#define QUAT_ALL_DOWN Eigen::Quaterniond(0.45576803893928264, -0.5406250962371619, 0.7045563426109882, -0.060003000646866145)
+#define QUAT_GREEN_UP Eigen::Quaterniond(0.36470519963100106, 0.11591689595929516, 0.8804762392171492, 0.27984814233312133)
+#define QUAT_BLUE_DOWN Eigen::Quaterniond(0.060003000646866235, 0.7045563426109882, 0.540625096237162, 0.4557680389392827)
+#define QUAT_RED_UP Eigen::Quaterniond(-0.2798481423331213, 0.8804762392171495, -0.11591689595929505, 0.3647051996310012)
+#define QUAT_GREEN_DOWN Eigen::Quaterniond(-0.8204732385702831, 0.42470820027786693, 0.1759198966061614, 0.3398511429799875)
 
 namespace dairlib {
 namespace systems {
@@ -59,6 +59,7 @@ class TargetGenerator
   void SetRemoteControlParameters(
     const int& trajectory_type,
     const bool& use_changing_final_goal,
+    const int& changing_final_goal_type,
     const double& traj_radius,
     const double& x_c,
     const double& y_c,
@@ -94,9 +95,7 @@ class TargetGenerator
                       drake::systems::BasicVector<double>* target) const;
   void SetRandomizedTargetFinalObjectPosition() const;
   void SetRandomizedTargetFinalObjectOrientation() const;
-  // drake::systems::EventStatus DiscreteVariableUpdate(
-  //     const drake::systems::Context<double>& context,
-  //     drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CycleThroughOrientationSequence() const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex object_state_port_;
@@ -130,6 +129,12 @@ class TargetGenerator
   Eigen::VectorXd random_goal_y_limits_;
   Eigen::VectorXd random_goal_radius_limits_;
   double resting_object_height_;
+
+  enum ChangingGoalType {CHANGING_GOAL_RANDOM,
+                         CHANGING_GOAL_ORIENTATION_SEQUENCE};
+  ChangingGoalType changing_goal_type_;
+
+  mutable int goal_counter_ = 1;
 };
 
 }  // namespace systems

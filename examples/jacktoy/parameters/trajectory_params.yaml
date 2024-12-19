@@ -1,14 +1,15 @@
 # Trajectory generation parameters
 trajectory_type: 4       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path, 4 to use a fixed goal but with a lookahead
 use_changing_final_goal: true
+changing_final_goal_type: 1  # 0 to randomize goal, 1 to cycle through orientations
 final_goal_time_tolerance: 45 # in seconds
 
 # Thresholds for position and orientation for reaching a goal successfully.
-position_success_threshold: 0.01
+position_success_threshold: 0.02
 orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
 
-random_goal_x_limits: [0.27, 0.5]
-random_goal_y_limits: [-0.35, 0.35]
+random_goal_x_limits: [0.35, 0.5]  #0.27, 0.5]
+random_goal_y_limits: [-0.35, 0.2]   # 0.35]
 random_goal_radius_limits: [0.3, 0.6]
 
 resting_object_height: 0.031971466           #currently being used by the goal randomization code.
@@ -23,6 +24,10 @@ lead_angle: 40
 
 
 # #### C3 sanity checking good starting configurations ####
+fixed_target_position: [0.5, 0.0, 0.031971466]    # 0) for orientation cycling
+fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
+                           -0.3647051996310009, -0.11591689595929514]
+
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
 # fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
 
@@ -32,8 +37,8 @@ lead_angle: 40
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
 # fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
 
-fixed_target_position: [0.4, -0.15, 0.031971466]    # 4) 2 topples and long distance error
-fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
+# fixed_target_position: [0.5, -0.15, 0.031971466]    # 4) 2 topples and long distance error
+# fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
 
 # fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) Balancing on blue and green prongs at almost half a topple
 # fixed_target_orientation: [ -0.15288758, 0.40935087, 0.827526, -0.35267374]

@@ -329,6 +329,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   control_target->SetRemoteControlParameters(
       trajectory_params.trajectory_type,
       trajectory_params.use_changing_final_goal,
+      trajectory_params.changing_final_goal_type,
       trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
       trajectory_params.lead_angle,

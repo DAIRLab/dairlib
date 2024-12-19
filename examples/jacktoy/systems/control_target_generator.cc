@@ -66,6 +66,7 @@ TargetGenerator::TargetGenerator(
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type,
     const bool& use_changing_final_goal,
+    const int& changing_final_goal_type,
     const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle,
     const Eigen::VectorXd& target_object_position,
@@ -90,6 +91,7 @@ void TargetGenerator::SetRemoteControlParameters(
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
   use_changing_final_goal_ = use_changing_final_goal;
+  changing_goal_type_ = static_cast<ChangingGoalType>(changing_final_goal_type);  // timestamps.cast<double>();
   traj_radius_ = traj_radius;
   x_c_ = x_c;
   y_c_ = y_c; 
@@ -168,8 +170,18 @@ void TargetGenerator::CalcObjectTarget(
       std::cout << "\nMet pose goal!\n" << std::endl;
 
       // Reset the target object orientation and position.
-      SetRandomizedTargetFinalObjectPosition();
-      SetRandomizedTargetFinalObjectOrientation();
+      if (changing_goal_type_ == CHANGING_GOAL_RANDOM) {
+        SetRandomizedTargetFinalObjectPosition();
+        SetRandomizedTargetFinalObjectOrientation();
+      }
+      else if (changing_goal_type_ == CHANGING_GOAL_ORIENTATION_SEQUENCE) {
+        // Set the next orientation in the sequence.
+        CycleThroughOrientationSequence();
+      }
+      else {
+        std::cerr << "Invalid changing goal type." << std::endl;
+      }
+      goal_counter_++;
     }
 
   }
@@ -387,14 +399,10 @@ void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
 void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
 
   // Nominal orientations for the jack to be balanced on the ground.
-  std::vector<Eigen::Quaterniond> valid_orientations{QUAT_ALL_DOWN,
-                                                  QUAT_RED_DOWN,
-                                                  QUAT_GREEN_DOWN,
-                                                  QUAT_BLUE_DOWN,
-                                                  QUAT_ALL_UP,
-                                                  QUAT_RED_UP,
-                                                  QUAT_GREEN_UP,
-                                                  QUAT_BLUE_UP};
+  std::vector<Eigen::Quaterniond> valid_orientations{
+    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
+    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN
+  };
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -405,12 +413,26 @@ void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
 
   // Add random yaw in world frame.
   std::uniform_real_distribution<double> yaw_dis(0, 2*PI);
-  Eigen::Quaterniond quat_world_yaw(Eigen::AngleAxisd(yaw_dis(gen), Eigen::Vector3d::UnitZ()));
+  Eigen::Quaterniond quat_world_yaw(
+    Eigen::AngleAxisd(yaw_dis(gen), Eigen::Vector3d::UnitZ()));
   // Apply world yaw rotation to nominal orientation.
   Eigen::Quaterniond quat_final = quat_world_yaw * quat_nominal;
 
 
-  target_final_object_orientation_ << quat_final.w(), quat_final.x(), quat_final.y(), quat_final.z();
+  target_final_object_orientation_ <<
+    quat_final.w(), quat_final.x(), quat_final.y(), quat_final.z();
+}
+
+void TargetGenerator::CycleThroughOrientationSequence() const {
+  // Nominal orientations for the jack to be balanced on the ground.
+  std::vector<Eigen::Quaterniond> valid_orientations{
+    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
+    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN
+  };
+
+  Eigen::Quaterniond next_quat = valid_orientations.at(goal_counter_ % 8);
+  target_final_object_orientation_ <<
+    next_quat.w(), next_quat.x(), next_quat.y(), next_quat.z();
 }
 
 }  // namespace systems

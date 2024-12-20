@@ -544,7 +544,7 @@ def main():
 
     args = parser.parse_args()
 
-    save_all_results(args.logfolder)
+    # save_all_results(args.logfolder)
     make_full_profiling_plot(
         args.logfile,
         os.path.join(

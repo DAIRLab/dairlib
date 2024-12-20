@@ -17,6 +17,7 @@ venv/
 *.svg
 /test/
 drake_env/
+cam_venv/
 tmp/
 MODULE.bazel
 MODULE.bazel.lock

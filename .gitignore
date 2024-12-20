@@ -20,3 +20,5 @@ drake_env/
 tmp/
 MODULE.bazel
 MODULE.bazel.lock
+
+/examples/jacktoy/camera_calibration/*-*-*_*-*-*/

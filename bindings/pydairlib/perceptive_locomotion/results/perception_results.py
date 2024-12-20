@@ -361,7 +361,9 @@ def save_all_results(logfolder):
     runner = partial(segmentation_comparison_results_runner, logfolder=logfolder)
     with open(os.path.join(logfolder, 'results_config.yaml')) as stream:
         config = yaml.safe_load(stream)
-    with Pool(4) as pool:
+    # make single threaded for evaluation to avoid threads
+    # influencing each others' performance
+    with Pool(1) as pool:
         results = pool.map(runner, config.values())
 
     data = dict(zip(config.keys(), results))
@@ -463,25 +465,15 @@ def run_pipeline_figure_script(logfile):
         grid_maps[example_idx], q, '../terrain_seg_figures')
 
 
-def make_full_profiling_plot(logfile):
+def make_full_profiling_plot(logfile, savefile):
+    mapping_results = utils.get_elevation_map_profiling(logfile)
     results = utils.profile_full_perception_pipeline(logfile)
+    worst_case = utils.get_worst_case_data_by_num_polygons([results])
 
-    means = {}
-    stds = {}
-
-    labels = ['segmentation', 'decomposition', 'plane_fitting']
-    # Compute mean and std for each label
-    for label in labels:
-        # Group by num_polygons
-        grouped_values = {}
-        for num_poly, val in zip(results['num_polygons'], results[label]):
-            if num_poly not in grouped_values:
-                grouped_values[num_poly] = []
-            grouped_values[num_poly].append(val)
-
-        # Compute means and standard deviations for each num_polygons group
-        means[label] = [np.mean(grouped_values[num_poly]) for num_poly in sorted(grouped_values.keys())]
-        stds[label] = [np.std(grouped_values[num_poly]) for num_poly in sorted(grouped_values.keys())]
+    data = {
+        'elevation_mapping':  np.max(mapping_results) * np.ones_like(worst_case['segmentation'])
+    }
+    data.update(worst_case)
 
     utils.setup_plots()
     # Prepare the plot
@@ -493,24 +485,56 @@ def make_full_profiling_plot(logfile):
     # Keep track of the bottom of each stack for cumulative plotting
     bottom = np.zeros(len(x_values))
 
+    merged = ['elevation_mapping', 'segmentation']
+
+    legend_labels = {
+        'segmentation': 'S3',
+        'elevation_mapping': 'Elevation Mapping',
+        'decomposition': 'Convex Decomposition',
+        'plane_fitting': 'Plane Fitting'
+    }
+
+    alpha=0.7
+
     # Plot each label as a segment with error bars
-    for label in labels:
-        # Plot the bar segment
-        ax.bar(x_values, means[label], bottom=bottom,
-               label=label, yerr=stds[label],
-               capsize=5, # adds caps to the error bars
-               alpha=0.7) # slight transparency
+    for label in data:
+        if label in merged:
+            width = x_values[-1] - x_values[0] + 1
+            center = 0.5 * (x_values[0] + x_values[-1])
+            ax.bar(
+                center,
+                np.max(data[label]),
+                width=width,
+                linewidth=0.5,
+                edgecolor='black',
+                bottom=bottom[0],
+                label=legend_labels[label],
+                alpha=alpha,
+            )
+            bottom += np.max(data[label])
+        else:
+            # Plot the bar segment
+            ax.bar(
+                x_values,
+                data[label],
+                width=1.0,
+                linewidth=0.5,
+                edgecolor='black',
+                bottom=bottom,
+                label=legend_labels[label],
+                alpha=alpha
+            )
 
-        # Update the bottom for the next segment
-        bottom += means[label]
+            # Update the bottom for the next segment
+            bottom += data[label]
 
-    ax.set_xlabel('Number of Polygons')
-    ax.set_ylabel('Runtime (s)')
+    ax.set_xlabel('Number of Resulting Polygons')
+    ax.set_ylabel('Worst Case Runtime (s)')
     ax.set_title('Perception Stack Detailed Profiling')
-    ax.legend(title='Operation')
+    ax.legend(title='Operation', framealpha=1, loc='lower right')
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(savefile)
 
 
 def main():
@@ -520,20 +544,26 @@ def main():
 
     args = parser.parse_args()
 
-    # make_full_profiling_plot(args.logfile)
-    make_all_segmentation_videos(args.logfolder)
+    save_all_results(args.logfolder)
+    make_full_profiling_plot(
+        args.logfile,
+        os.path.join(
+            args.logfolder,
+            'cassie_laptop_profiling_figures/detailed_profiling.svg'
+        )
+    )
+    # make_all_segmentation_videos(args.logfolder)
     # run_pipeline_figure_script(args.logfile)
-    # save_all_results(args.logfolder)
+    #
     # make_segmentation_tiles(
     #     args.logfolder,
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     # )
-    # make_all_results_figures(
-    #     args.logfolder,
-    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
-    # )
+    make_all_results_figures(
+        args.logfolder,
+        os.path.join(args.logfolder, 'cassie_laptop_profiling_figures/')
+    )
     #
-    # profile_full_pipeline(args.logfile)
     # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)
     # write_mpfc_debug_video(args.logfile, 60)
     # test_iou_plot()

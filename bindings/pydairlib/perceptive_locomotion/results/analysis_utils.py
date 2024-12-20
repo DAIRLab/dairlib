@@ -18,6 +18,7 @@ from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 # lcmtypes
 from dairlib import(
     lcmt_grid_map,
+    lcmt_profiling,
     lcmt_foothold_set,
     lcmt_robot_output,
     lcmt_alip_s2s_mpfc_debug
@@ -103,6 +104,26 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
         state_channel,
     )
     return grid_maps, robot_output
+
+
+def get_elevation_map_profiling(
+        logfile: str, start_time: float = 0, duration: float = -1):
+    channel = 'ELEVATION_MAP_PROFILING'
+
+    def process_profiling(data):
+        _times = [d.process_us * 1e-6 for d in data[channel]]
+        return np.array(_times)
+
+    log = lcm.EventLog(logfile, "r")
+    times = get_log_data(
+        log,
+        {
+            channel: lcmt_profiling
+        },
+        start_time, duration,
+        process_profiling
+    )
+    return times
 
 
 def profile_worker_wrapper(args):
@@ -305,6 +326,27 @@ def profile_full_perception_pipeline(logfile):
         profiling_results['total'].append(end - start)
 
     return profiling_results
+
+
+def get_worst_case_data_by_num_polygons(results):
+    data = {
+        'segmentation': {},
+        'decomposition': {},
+        'plane_fitting': {}
+    }
+
+    for r in results:
+        for key in data:
+            for n_poly, val in zip(r['num_polygons'], r[key]):
+                if n_poly not in data[key]:
+                    data[key][n_poly] = 0
+                data[key][n_poly] = np.maximum(val, data[key][n_poly])
+
+    for key in data:
+        nums = sorted(set(data[key].keys()))
+        data[key] = np.array([data[key][n] for n in nums])
+
+    return data
 
 
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):

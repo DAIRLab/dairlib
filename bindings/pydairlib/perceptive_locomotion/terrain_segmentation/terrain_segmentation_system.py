@@ -172,7 +172,6 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
-
         denoised_and_inpainted_map = cv2.medianBlur(
             elevation_map['elevation_inpainted'], 5)
 

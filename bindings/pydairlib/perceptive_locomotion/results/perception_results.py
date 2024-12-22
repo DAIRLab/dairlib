@@ -211,6 +211,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
         'curvature_criterion': seg_criteria.curvature_criterion,
         'inclination_criterion': seg_criteria.inclination_criterion,
     })
+    segmentation.safety_hysteresis = 0.0
     decomposition = ConvexTerrainDecompositionSystem()
     segmentation.debug = True
     decomposition.debug = True
@@ -224,6 +225,8 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
     segmentation.UpdateTerrainSegmentation(
         segmentation_context, segmentation_context.get_mutable_state()
     )
+
+    grid_map = segmentation.get_output_port().Eval(segmentation_context)
 
     # Do the convex decomposition
     decomposition.get_input_port().FixValue(

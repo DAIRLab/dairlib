@@ -1,6 +1,7 @@
 #include "constrained_dynamics_info.h"
 #include "common/find_resource.h"
 #include "multibody/kinematic/distance_evaluator.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/multibody/parsing/parser.h"
 
@@ -9,6 +10,10 @@ namespace dairlib::systems::controllers::id_mpc {
 using multibody::DistanceEvaluator;
 using multibody::WorldPointEvaluator;
 using multibody::KinematicEvaluatorSet;
+
+using Eigen::MatrixX;
+using drake::VectorX;
+using drake::systems::Context;
 
 using std::make_unique;
 
@@ -32,9 +37,13 @@ ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf) {
 void ConstrainedDynamicsInfo::AddContactPoint(
     std::string name, std::string body,
     const Eigen::Vector3d &point_in_body_frame,
-    std::vector<int> active_constraint_diretions) {
+    std::vector<int> active_constraint_diretions,
+    double friction_coefficient) {
   DRAKE_DEMAND(not contact_constraint_evaluators_.contains(name));
   DRAKE_DEMAND(plant_->HasBodyNamed(body));
+  DRAKE_DEMAND(not lambda_c_start_idxs_.contains(name));
+  DRAKE_DEMAND(not Jc_active_start_idxs_.contains(name));
+  DRAKE_DEMAND(not mu_map_.contains(name));
 
   contact_constraint_evaluators_.insert({
     name, make_unique<WorldPointEvaluator<double>>(
@@ -47,9 +56,11 @@ void ConstrainedDynamicsInfo::AddContactPoint(
           point_in_body_frame,
           plant_ad_->GetBodyByName(body).body_frame())});
 
+  lambda_c_start_idxs_.insert({name, nc_});
+  Jc_active_start_idxs_.insert({name, nc_active_});
+  mu_map_.insert({name, friction_coefficient});
   nc_ += contact_constraint_evaluators_.at(name)->num_full();
   nc_active_ += contact_constraint_evaluators_.at(name)->num_active();
-
 }
 
 void ConstrainedDynamicsInfo::AddDistanceConstraint(
@@ -78,6 +89,94 @@ void ConstrainedDynamicsInfo::AddDistanceConstraint(
       holonomic_constraint_ad_storage_.back().get());
 
   nh_ = holonomic_constraints_->count_full();
+}
+
+template <typename T>
+void ConstrainedDynamicsInfo::DoEvaluate(
+    const MultibodyPlant<T> &plant, const Context<T> &context,
+    const KinematicEvaluatorSet<T>* holonomic_constraints,
+    const ContactConstraintMap<T>& contact_constraint_evaluators,
+    const VectorX<T> &u, const VectorX<T> &lh, const VectorX<T> &lc,
+    const std::vector<std::string> &active_contacts,
+    DynamicsConstraintEvaluation<T> &eval) const {
+
+  eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cddot_ = VectorX<T>::Zero(nh_ + nc_active_);
+
+  MatrixX<T> Jh = MatrixX<T>::Zero(nh_, nv_);
+  VectorX<T> JhdotV = VectorX<T>::Zero(nh_);
+
+  if (holonomic_constraints != nullptr) {
+    eval.c_.head(nh_) = holonomic_constraints->EvalFull(context);
+    Jh = holonomic_constraints->EvalFullJacobian(context);
+    JhdotV = holonomic_constraints->EvalFullJacobianDotTimesV(context);
+  }
+
+  MatrixX<T> Jc_active = MatrixX<T>::Zero(nc_active_, nv_);
+  VectorX<T> Jc_active_dot_v = VectorX<T>::Zero(nc_active_);
+  MatrixX<T> Jc = MatrixX<T>::Zero(nc_, nv_);
+
+  for (const auto &c : active_contacts) {
+    DRAKE_DEMAND(contact_constraint_evaluators.count(c) > 0);
+    const auto &evaluator = contact_constraint_evaluators.at(c);
+    Jc.block(lambda_c_start_idxs_.at(c), 0, 3, nv_) =
+        evaluator->EvalFullJacobian(context);
+    int start = Jc_active_start_idxs_.at(c);
+    for (int i = 0; i < evaluator->num_active(); ++i) {
+      Jc_active.row(start + i) =
+          Jc.row(lambda_c_start_idxs_.at(c) + evaluator->active_inds().at(i));
+      Jc_active_dot_v.segment(start, evaluator->num_active()) =
+          evaluator->EvalActiveJacobianDotTimesV(context);
+    }
+  }
+
+  MatrixX<T> M(nv_, nv_);
+  VectorX<T> bias(nv_);
+  MatrixX<T> B = plant.MakeActuationMatrix();
+  VectorX<T> grav = plant.CalcGravityGeneralizedForces(context);
+
+  plant.CalcMassMatrix(context, &M);
+  plant.CalcBiasTerm(context, &bias);
+  bias = bias - grav;
+
+  eval.vdot_ =  M.llt().solve(
+      B * u + Jh.transpose() * lh + Jc.transpose() * lc - bias);
+
+  eval.cdot_.head(nh_) = Jh * plant.GetVelocities(context);
+  eval.cdot_.tail(nc_active_) = Jc_active * plant.GetVelocities(context);
+  eval.cddot_.head(nh_) = JhdotV + Jh * eval.vdot_;
+
+  eval.qdot_ = VectorX<T>::Zero(nq_);
+  plant.MapVelocityToQDot(
+      context, plant.GetVelocities(context), &eval.qdot_);
+}
+
+template<>
+ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<AutoDiffXd>
+ConstrainedDynamicsInfo::Evaluate(
+    const Context<AutoDiffXd> &context, const VectorX<AutoDiffXd> &u,
+    const VectorX<AutoDiffXd> &lh, const VectorX<AutoDiffXd> &lc,
+    const std::vector<std::string> &active_contacts) const {
+
+  ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<AutoDiffXd> eval;
+  DoEvaluate(*plant_ad_, context, holonomic_constraints_ad_.get(),
+             contact_constraint_evaluators_ad_, u, lh, lc, active_contacts,
+             eval);
+  return eval;
+}
+
+template<>
+ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<double>
+ConstrainedDynamicsInfo::Evaluate(
+    const Context<double> &context, const VectorX<double> &u,
+    const VectorX<double> &lh, const VectorX<double> &lc,
+    const std::vector<std::string> &active_contacts) const {
+  ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<double> eval;
+  DoEvaluate(*plant_, context, holonomic_constraints_.get(),
+             contact_constraint_evaluators_, u, lh, lc, active_contacts,
+             eval);
+  return eval;
 }
 
 }

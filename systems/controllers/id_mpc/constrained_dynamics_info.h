@@ -32,6 +32,17 @@ class ConstrainedDynamicsInfo {
     return *plant_ad_;
   }
 
+  int variable_count() const {
+    return nq_ + nv_ + nu_ + nh_ + nc_;
+  }
+
+  int nq() const { return nq_; }
+  int nv() const { return nv_; }
+  int nu() const { return nu_; }
+  int nh() const { return nq_; }
+  int nc() const { return nc_; }
+  int nc_active() const { return nc_active_; }
+
   /*!
    * Add a distance constraint between two points
    * @param body_A Name of the first body. The owned plant must have a body
@@ -55,9 +66,38 @@ class ConstrainedDynamicsInfo {
    */
   void AddContactPoint(std::string name, std::string body,
                        const Eigen::Vector3d& point_in_body_frame,
-                       std::vector<int> active_constraint_directions);
+                       std::vector<int> active_constraint_directions,
+                       double friction_coefficient);
+
+  template<typename T>
+  struct DynamicsConstraintEvaluation {
+    drake::VectorX<T> c_;
+    drake::VectorX<T> cdot_;
+    drake::VectorX<T> cddot_;
+    drake::VectorX<T> vdot_;
+    drake::VectorX<T> qdot_;
+  };
+
+  template<typename T>
+  DynamicsConstraintEvaluation<T> Evaluate(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& u, const drake::VectorX<T>& lh,
+      const drake::VectorX<T>& lc,
+      const std::vector<std::string>& active_contacts) const;
 
  private:
+
+  template<typename T>
+  void DoEvaluate(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const drake::systems::Context<T>& context,
+      const multibody::KinematicEvaluatorSet<T>* holonomic_constraints,
+      const ContactConstraintMap<T>& contact_constraint_evaluators,
+      const drake::VectorX<T>& u, const drake::VectorX<T>& lh,
+      const drake::VectorX<T>& lc,
+      const std::vector<std::string>& active_contacts,
+      DynamicsConstraintEvaluation<T>& eval) const;
+
   std::unique_ptr<drake::multibody::MultibodyPlant<AutoDiffXd>> plant_ad_;
   std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
 

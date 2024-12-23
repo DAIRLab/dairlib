@@ -12,12 +12,17 @@ int DoMain() {
       "toe_left_front",
       "toe_left",
       Vector3d(-0.0457, 0.112, 0),
-      {0, 1, 2}
+      {0, 1, 2},
+      0.8
   );
 
   dynamics_info.AddDistanceConstraint(
-      "thigh_left", Vector3d(0.0, 0.0, 0.045),
-      "heel_spring_left", Vector3d(.11877, -.01, 0.0), 0.5012);
+      "thigh_left",
+      Vector3d(0.0, 0.0, 0.045),
+      "heel_spring_left",
+      Vector3d(.11877, -.01, 0.0),
+      0.5012
+  );
 
   return 0;
 }

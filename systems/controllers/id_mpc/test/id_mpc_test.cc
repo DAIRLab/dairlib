@@ -32,12 +32,12 @@ int DoMain() {
 
   VectorXd vars = VectorXd::Zero(dynamics_info.variable_count());
 
-  vars.head(dynamics_info.nq()) << 1, VectorXd::Zero(6), -0.084017,  -0,
-  .00120735, 0,
-  .366012, -0,
-  .6305,
+  VectorXd q = VectorXd::Zero(dynamics_info.nq());
+  q << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
       0.00205363, 0.838878, 0.205351, 0.084017,  0.00120735, 0.366012,
       .6305, 0.00205363,  0.838878, 0.205351;
+
+  vars.head(dynamics_info.nq()) = q;
 
   auto results_double = dynamics_info.EvaluateDynamics<double>(
       context_double.get(), vars, {"toe_left_front"});

@@ -120,7 +120,7 @@ void ConstrainedDynamicsInfo::DoEvaluate(
     const ContactConstraintMap<T>& contact_constraint_evaluators,
     const VectorX<T> &u, const VectorX<T> &lh, const VectorX<T> &lc,
     const std::vector<std::string> &active_contacts,
-    DynamicsConstraintEvaluation<T> &eval) const {
+    DynamicsEvaluation<T> &eval) const {
 
   eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
   eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);
@@ -174,14 +174,48 @@ void ConstrainedDynamicsInfo::DoEvaluate(
       context, plant.GetVelocities(context), &eval.qdot_);
 }
 
+template <typename T>
+ConstrainedDynamicsInfo::DynamicsEvaluation<T>
+ConstrainedDynamicsInfo::EvaluateDynamics(
+    Context<T>* context, const VectorX<T> &all_vars,
+    const std::vector<std::string> &active_contacts) const {
+
+  SetPlantStateIfNew<T>(all_vars.head(nq_ + nv_), context);
+  return EvaluateDynamics<T>(
+      *context,
+      all_vars.segment(nq_ + nv_, nu_),
+      all_vars.segment(nq_ + nv_ + nu_, nh_),
+      all_vars.segment(nq_ + nv_ + nu_ + nh_, nc_),
+      active_contacts
+  );
+}
+
+template <typename T>
+void ConstrainedDynamicsInfo::EvaluateDynamicsConstraint(
+    Context<T>* context, const VectorX<T> &vars,
+    const VectorX<T> *result, const std::string &active_contacts) const {
+
+  *result = VectorX<T>::Zero(nq_ + nv_ +  3 * (nh_ + nc_active_));
+
+  auto evaluation = EvaluateDynamics<T>(context, vars, active_contacts);
+
+  int nc_total = nh_ + nc_active_;
+  result->head(nq_) = evaluation.qdot_;
+  result->segment(nq_, nv_) = evaluation.vdot_;
+  result->segment(nq_ + nv_, nc_total) = evaluation.c_;
+  result->segment(nq_ + nv_ + nc_total, nc_total) = evaluation.cdot_;
+  result->segment(nq_ + nv_ + 2 * nc_total, nc_total) = evaluation
+      .cddot_;
+}
+
 template<>
-ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<AutoDiffXd>
-ConstrainedDynamicsInfo::Evaluate(
+ConstrainedDynamicsInfo::DynamicsEvaluation<AutoDiffXd>
+ConstrainedDynamicsInfo::EvaluateDynamics(
     const Context<AutoDiffXd> &context, const VectorX<AutoDiffXd> &u,
     const VectorX<AutoDiffXd> &lh, const VectorX<AutoDiffXd> &lc,
     const std::vector<std::string> &active_contacts) const {
 
-  ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<AutoDiffXd> eval;
+  ConstrainedDynamicsInfo::DynamicsEvaluation<AutoDiffXd> eval;
   DoEvaluate(*plant_ad_, context, holonomic_constraints_ad_.get(),
              contact_constraint_evaluators_ad_, u, lh, lc, active_contacts,
              eval);
@@ -189,16 +223,26 @@ ConstrainedDynamicsInfo::Evaluate(
 }
 
 template<>
-ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<double>
-ConstrainedDynamicsInfo::Evaluate(
+ConstrainedDynamicsInfo::DynamicsEvaluation<double>
+ConstrainedDynamicsInfo::EvaluateDynamics(
     const Context<double> &context, const VectorX<double> &u,
     const VectorX<double> &lh, const VectorX<double> &lc,
     const std::vector<std::string> &active_contacts) const {
-  ConstrainedDynamicsInfo::DynamicsConstraintEvaluation<double> eval;
+  ConstrainedDynamicsInfo::DynamicsEvaluation<double> eval;
   DoEvaluate(*plant_, context, holonomic_constraints_.get(),
              contact_constraint_evaluators_, u, lh, lc, active_contacts,
              eval);
   return eval;
 }
+
+template ConstrainedDynamicsInfo::DynamicsEvaluation<AutoDiffXd>
+    ConstrainedDynamicsInfo::EvaluateDynamics(
+        Context<AutoDiffXd>* context, const VectorX<AutoDiffXd> &all_vars, const
+        std::vector<std::string> &active_contacts) const; // NOLINT
+
+template ConstrainedDynamicsInfo::DynamicsEvaluation<double>
+ConstrainedDynamicsInfo::EvaluateDynamics(
+    Context<double>* context, const VectorX<double> &all_vars,
+    const std::vector<std::string> &active_contacts) const; // NOLINT
 
 }

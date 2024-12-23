@@ -30,41 +30,24 @@ int DoMain() {
   auto context_double = dynamics_info.MakeContext<double>();
   auto context_ad = dynamics_info.MakeContext<AutoDiffXd>();
 
-  VectorXd q = VectorXd::Zero(dynamics_info.nq());
+  VectorXd vars = VectorXd::Zero(dynamics_info.variable_count());
 
-  q << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
+  vars.head(dynamics_info.nq()) << 1, VectorXd::Zero(6), -0.084017,  -0,
+  .00120735, 0,
+  .366012, -0,
+  .6305,
       0.00205363, 0.838878, 0.205351, 0.084017,  0.00120735, 0.366012,
       .6305, 0.00205363,  0.838878, 0.205351;
-  VectorXd v = VectorXd::Zero(dynamics_info.nv());
 
-  VectorXd inputs = VectorXd::Zero(
-      dynamics_info.nu() + dynamics_info.nh() + dynamics_info.nc()
-  );
-  VectorXd x = stack<double>({q, v});
-  dynamics_info.SetPlantStateIfNew<double>(x, context_double.get());
-
-  auto results_double = dynamics_info.Evaluate<double>(
-      *context_double,
-      inputs.segment(0, dynamics_info.nu()),
-      inputs.segment(dynamics_info.nu(), dynamics_info.nh()),
-      inputs.segment(dynamics_info.nu() + dynamics_info.nh(), dynamics_info.nc()), {"toe_left_front"});
+  auto results_double = dynamics_info.EvaluateDynamics<double>(
+      context_double.get(), vars, {"toe_left_front"});
 
   std::cout << results_double;
 
-  VectorX<AutoDiffXd> vars_ad = drake::math::InitializeAutoDiff(
-      stack<double>({q, v, inputs}));
+  VectorX<AutoDiffXd> vars_ad = drake::math::InitializeAutoDiff(vars);
 
-  int nx = dynamics_info.nq() + dynamics_info.nv();
-
-  dynamics_info.SetPlantStateIfNew<AutoDiffXd>(
-      vars_ad.head(nx), context_ad.get());
-
-  auto results_ad = dynamics_info.Evaluate<AutoDiffXd>(
-      *context_ad,
-      vars_ad.segment(nx, dynamics_info.nu()),
-      vars_ad.segment(nx + dynamics_info.nu(), dynamics_info.nh()),
-      vars_ad.segment(nx + dynamics_info.nu() + dynamics_info.nh(),
-                      dynamics_info.nc()), {"toe_left_front"});
+  auto results_ad = dynamics_info.EvaluateDynamics<AutoDiffXd>(
+      context_ad.get(), vars_ad, {"toe_left_front"});
 
   std::cout << "\n" << results_ad;
 

@@ -30,22 +30,18 @@ int DoMain() {
   auto context_double = dynamics_info.MakeContext<double>();
   auto context_ad = dynamics_info.MakeContext<AutoDiffXd>();
 
-  const auto& plant = dynamics_info.get_plant();
-  const auto& plant_ad = dynamics_info.get_plant_ad();
-
-  VectorXd q = VectorXd::Zero(plant.num_positions());
+  VectorXd q = VectorXd::Zero(dynamics_info.nq());
 
   q << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
       0.00205363, 0.838878, 0.205351, 0.084017,  0.00120735, 0.366012,
       .6305, 0.00205363,  0.838878, 0.205351;
+  VectorXd v = VectorXd::Zero(dynamics_info.nv());
 
-  VectorXd v = VectorXd::Zero(plant.num_velocities());
   VectorXd inputs = VectorXd::Zero(
       dynamics_info.nu() + dynamics_info.nh() + dynamics_info.nc()
   );
-
-  plant.SetPositions(context_double.get(), q);
-  plant.SetVelocities(context_double.get(), v);
+  VectorXd x = stack<double>({q, v});
+  dynamics_info.SetPlantStateIfNew<double>(x, context_double.get());
 
   auto results_double = dynamics_info.Evaluate<double>(
       *context_double,
@@ -58,12 +54,11 @@ int DoMain() {
   VectorX<AutoDiffXd> vars_ad = drake::math::InitializeAutoDiff(
       stack<double>({q, v, inputs}));
 
-  plant_ad.SetPositions(context_ad.get(), vars_ad.head(dynamics_info.nq()));
-  plant_ad.SetVelocities(
-      context_ad.get(),
-      vars_ad.segment(dynamics_info.nq(), dynamics_info.nv()));
-
   int nx = dynamics_info.nq() + dynamics_info.nv();
+
+  dynamics_info.SetPlantStateIfNew<AutoDiffXd>(
+      vars_ad.head(nx), context_ad.get());
+
   auto results_ad = dynamics_info.Evaluate<AutoDiffXd>(
       *context_ad,
       vars_ad.segment(nx, dynamics_info.nu()),
@@ -72,7 +67,7 @@ int DoMain() {
                       dynamics_info.nc()), {"toe_left_front"});
 
   std::cout << "\n" << results_ad;
-  
+
   return 0;
 }
 

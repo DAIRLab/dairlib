@@ -91,6 +91,28 @@ void ConstrainedDynamicsInfo::AddDistanceConstraint(
   nh_ = holonomic_constraints_->count_full();
 }
 
+template<>
+void ConstrainedDynamicsInfo::SetPlantStateIfNew(
+    const VectorX<AutoDiffXd> &x, Context<AutoDiffXd> *context) const {
+  multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(*plant_ad_, x, context);
+}
+
+template<>
+void ConstrainedDynamicsInfo::SetPlantStateIfNew(
+    const VectorX<double> &x, Context<double> *context) const {
+  multibody::SetPositionsAndVelocitiesIfNew<double>(*plant_, x, context);
+}
+
+template <>
+std::unique_ptr<Context<double>> ConstrainedDynamicsInfo::MakeContext() const {
+  return plant_->CreateDefaultContext();
+}
+
+template <>
+std::unique_ptr<Context<AutoDiffXd>> ConstrainedDynamicsInfo::MakeContext() const {
+  return plant_ad_->CreateDefaultContext();
+}
+
 template <typename T>
 void ConstrainedDynamicsInfo::DoEvaluate(
     const MultibodyPlant<T> &plant, const Context<T> &context,

@@ -22,6 +22,7 @@ class ConstrainedDynamicsInfo {
    */
   explicit ConstrainedDynamicsInfo(std::string urdf);
 
+
   const MultibodyPlant<double>& get_plant() const {
     DRAKE_ASSERT(plant_!= nullptr);
     return *plant_;
@@ -69,6 +70,27 @@ class ConstrainedDynamicsInfo {
                        std::vector<int> active_constraint_directions,
                        double friction_coefficient);
 
+  /*!
+   * Set the state of a plant context via the internal plant
+   * @tparam T scalar type (double or AutoDiffXd)
+   * @param context context to set
+   */
+  template<typename T>
+  void SetPlantStateIfNew(const drake::VectorX<T>& x,
+                     drake::systems::Context<T>* context) const;
+
+  /*!
+   * Make the context for the plant with the appropriate scalar type
+   * @tparam T double or AutoDiffXd
+   * @return unique_ptr of the plant context
+   */
+  template<typename T>
+  std::unique_ptr<drake::systems::Context<T>> MakeContext() const;
+
+  /*!
+   * Placeholder struct for the results of evaluating the manipulator dynamics
+   * @tparam T scalar type
+   */
   template<typename T>
   struct DynamicsConstraintEvaluation {
     drake::VectorX<T> c_;
@@ -76,6 +98,16 @@ class ConstrainedDynamicsInfo {
     drake::VectorX<T> cddot_;
     drake::VectorX<T> vdot_;
     drake::VectorX<T> qdot_;
+
+    friend std::ostream& operator<<(
+        std::ostream& os, const DynamicsConstraintEvaluation<T>& eval) {
+      os << "c: " << eval.c_.transpose() << "\n"
+         << "cdot: " << eval.cdot_.transpose() << "\n"
+         << "cddot: " << eval.cddot_.transpose() << "\n"
+         << "vdot: " << eval.vdot_.transpose() << "\n"
+         << "qdot: " << eval.qdot_.transpose() << "\n";
+      return os;
+    }
   };
 
   template<typename T>

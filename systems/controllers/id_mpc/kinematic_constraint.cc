@@ -8,7 +8,7 @@ using Eigen::VectorXd;
 template <typename T>
 KinematicConstraint<T>::KinematicConstraint(KnotPointState *x) :
 solvers::NonlinearConstraint<T>(
-    x->get_dynamics().n_constraint_total(),
+    3 * x->get_dynamics().n_constraint_total(),
     x->get_dynamics().variable_count(),
     VectorXd::Zero(3 * x->get_dynamics().n_constraint_total()),
     VectorXd::Zero(3 * x->get_dynamics().n_constraint_total())), x_(x){}

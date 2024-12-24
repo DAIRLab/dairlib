@@ -64,10 +64,11 @@ VectorX<AutoDiffXd> KnotPointState::GetXDot() const {
 
 void KnotPointState::UpdateActiveContacts(
     const std::vector<std::string>& active_contacts) {
+  cache_.dirty = active_contacts != cache_.active_contacts;
   cache_.active_contacts = active_contacts;
-  cache_.dirty = true;
+
+  cache_ad_.dirty = cache_ad_.active_contacts != active_contacts;
   cache_ad_.active_contacts = active_contacts;
-  cache_ad_.dirty = true;
 }
 
 template<>

@@ -1,5 +1,6 @@
-#include "id_mpc_types.h"
+#pragma once
 
+#include "id_mpc_types.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "drake/common/eigen_autodiff_types.h"

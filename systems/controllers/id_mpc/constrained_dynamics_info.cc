@@ -257,4 +257,9 @@ ConstrainedDynamicsInfo::EvaluateDynamics(
     Context<double>* context, const VectorX<double> &all_vars,
     const std::vector<std::string> &active_contacts) const; // NOLINT
 
+template ConstrainedDynamicsInfo::DynamicsEvaluation<double>
+ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
+
+template ConstrainedDynamicsInfo::DynamicsEvaluation<AutoDiffXd>
+ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
 }

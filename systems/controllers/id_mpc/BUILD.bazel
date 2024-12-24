@@ -4,11 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "id_mpc",
-    srcs = [
-        "constrained_dynamics_info.cc",
-        "id_mpc.cc",
-        "id_mpc_knot_point.cc",
-    ],
+    srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     deps = [
         "//common:eigen_utils",

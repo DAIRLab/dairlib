@@ -1,4 +1,4 @@
-#include "id_mpc_knot_point.h"
+#include "knot_point_state.h"
 #include "common/eigen_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -62,28 +62,32 @@ VectorX<AutoDiffXd> KnotPointState::GetXDot() const {
       {cache_ad_.dynamics_results.qdot_, cache_ad_.dynamics_results.vdot_});
 }
 
+void KnotPointState::UpdateActiveContacts(
+    const std::vector<std::string>& active_contacts) {
+  cache_.active_contacts = active_contacts;
+  cache_.dirty = true;
+  cache_ad_.active_contacts = active_contacts;
+  cache_ad_.dirty = true;
+}
+
 template<>
-void KnotPointState::Update(
-    const VectorXd& vars, const std::vector<std::string>& active_contacts) {
-  if (!(AreVectorsEqual(vars, cache_.all_vars) and
-        active_contacts == cache_.active_contacts)) {
+void KnotPointState::Update(const VectorXd& vars) {
+  if (cache_.dirty || !AreVectorsEqual(vars, cache_.all_vars)) {
     cache_.all_vars = vars;
-    cache_.active_contacts = active_contacts;
     cache_.dynamics_results = dynamics_.EvaluateDynamics(
         cache_.context.get(), cache_.all_vars, cache_.active_contacts);
+    cache_.dirty = false;
   }
 }
 
 template<>
 void KnotPointState::Update(
-    const VectorX<AutoDiffXd>& vars, const std::vector<std::string>&
-        active_contacts) {
-  if (!(AreVectorsEqual(vars, cache_ad_.all_vars) and
-      active_contacts == cache_ad_.active_contacts)) {
+    const VectorX<AutoDiffXd>& vars) {
+  if (cache_ad_.dirty || !AreVectorsEqual(vars, cache_ad_.all_vars)) {
     cache_ad_.all_vars = vars;
-    cache_ad_.active_contacts = active_contacts;
     cache_ad_.dynamics_results = dynamics_.EvaluateDynamics(
         cache_ad_.context.get(), cache_ad_.all_vars, cache_ad_.active_contacts);
+    cache_ad_.dirty = false;
   }
 }
 

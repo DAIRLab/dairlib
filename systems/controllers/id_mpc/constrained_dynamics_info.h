@@ -43,6 +43,8 @@ class ConstrainedDynamicsInfo {
   int nh() const { return nq_; }
   int nc() const { return nc_; }
   int nc_active() const { return nc_active_; }
+  int nx() const { return nq_ + nv_; }
+  int n_constraint_total() const { return nh_ + nc_active_; }
 
   /*!
    * Add a distance constraint between two points

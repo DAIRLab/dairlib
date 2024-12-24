@@ -18,6 +18,27 @@ int DoMain() {
       {0, 1, 2},
       0.8
   );
+  dynamics_info->AddContactPoint(
+      "toe_right_front",
+      "toe_right",
+      Vector3d(-0.0457, 0.112, 0),
+      {0, 1, 2},
+      0.8
+  );
+  dynamics_info->AddContactPoint(
+      "toe_left_rear",
+      "toe_left",
+      Vector3d(0.088, 0, 0),
+      {0, 1},
+      0.8
+  );
+  dynamics_info->AddContactPoint(
+      "toe_right_rear",
+      "toe_right",
+      Vector3d(0.088, 0, 0),
+      {0, 1},
+      0.8
+  );
 
   dynamics_info->AddDistanceConstraint(
       "thigh_left",

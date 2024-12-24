@@ -11,7 +11,7 @@ namespace dairlib::systems::controllers::id_mpc {
 /*!
  * Wrapper class meant to hold mutable state for a single knot point
  *
- * holds the appropriate plant contexts and a cache of the most recetnyl
+ * holds the appropriate plant contexts and a cache of the most recently
  * evaluated dynamics values
  */
 class KnotPointState {

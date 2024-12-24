@@ -63,10 +63,9 @@ int DoMain() {
 
   VectorXd vars = VectorXd::Zero(dynamics_info->variable_count());
   VectorXd q = VectorXd::Zero(dynamics_info->nq());
-  q << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
-      0.00205363, 0.838878, 0.205351, 0.084017,  0.00120735, 0.366012,
-      .6305, 0.00205363,  0.838878, 0.205351;
-
+  q << 1, VectorXd::Zero(6),
+  -0.084017,  -0.00120735, 0.366012, -0.6305, 0.838878, 0.205351,
+   0.084017,   0.00120735, 0.366012, -0.6305, 0.838878, 0.205351;
   for (int i = 0; i < 4; ++i) {
     vars.tail(12).segment<3>(3*i) = Vector3d(0, 0, 9.81 * 33.0 / 4.0);
   }
@@ -97,6 +96,7 @@ int DoMain() {
   }
 
   mpc.SetInitialState(vars.head(2 * q.size() - 1));
+
   auto solver_options = drake::solvers::SolverOptions();
   solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "./snopt.out");

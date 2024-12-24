@@ -36,11 +36,12 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
       VectorXd::Zero(dynamics_->nx()),
-      knot_point_vars_.front().head(dynamics_->nx()));
+      knot_point_vars_.front().head(dynamics_->nx())).evaluator().get();
 }
 
 void IDMPC::SetInitialState(const Eigen::VectorXd &x) {
-  initial_state_constraint_.evaluator()->UpdateCoefficients(
+  DRAKE_ASSERT(x.size() == dynamics_->nx());
+  initial_state_constraint_->UpdateCoefficients(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()), x);
 }
 

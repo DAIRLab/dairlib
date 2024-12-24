@@ -29,8 +29,7 @@ void TrapezoidalCollocationConstraint<T>::EvaluateConstraint(
   const VectorX<T>& x0 = x.head(nx);
   const VectorX<T>& x1 = x.segment(var_count, nx);
 
-  *y = x1 - x0 - 0.5 * dt_ * (
-      x0_state_->GetXDot<T>() + x1_state_->GetXDot<T>());
+  *y = x1 - x0 - 0.5 * dt_ * (x0_state_->GetXDot<T>() + x1_state_->GetXDot<T>());
 }
 
 template class TrapezoidalCollocationConstraint<double>;

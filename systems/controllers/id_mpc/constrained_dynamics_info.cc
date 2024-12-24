@@ -37,7 +37,7 @@ ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf) {
 void ConstrainedDynamicsInfo::AddContactPoint(
     std::string name, std::string body,
     const Eigen::Vector3d &point_in_body_frame,
-    std::vector<int> active_constraint_diretions,
+    std::vector<int> active_constraint_directions,
     double friction_coefficient) {
   DRAKE_DEMAND(not contact_constraint_evaluators_.contains(name));
   DRAKE_DEMAND(plant_->HasBodyNamed(body));
@@ -49,12 +49,19 @@ void ConstrainedDynamicsInfo::AddContactPoint(
     name, make_unique<WorldPointEvaluator<double>>(
            *plant_,
            point_in_body_frame,
-           plant_->GetBodyByName(body).body_frame())});
+           plant_->GetBodyByName(body).body_frame(),
+           Eigen::Matrix3d::Identity(),
+           Eigen::Vector3d::Zero(),
+           active_constraint_directions)});
+
   contact_constraint_evaluators_ad_.insert({
     name, make_unique<WorldPointEvaluator<AutoDiffXd>>(
           *plant_ad_,
           point_in_body_frame,
-          plant_ad_->GetBodyByName(body).body_frame())});
+          plant_ad_->GetBodyByName(body).body_frame(),
+          Eigen::Matrix3d::Identity(),
+          Eigen::Vector3d::Zero(),
+          active_constraint_directions)});
 
   lambda_c_start_idxs_.insert({name, nc_});
   Jc_active_start_idxs_.insert({name, nc_active_});
@@ -140,11 +147,14 @@ void ConstrainedDynamicsInfo::DoEvaluate(
   MatrixX<T> Jc = MatrixX<T>::Zero(nc_, nv_);
 
   for (const auto &c : active_contacts) {
-    DRAKE_DEMAND(contact_constraint_evaluators.count(c) > 0);
+    DRAKE_ASSERT(contact_constraint_evaluators.contains(c));
     const auto &evaluator = contact_constraint_evaluators.at(c);
     Jc.block(lambda_c_start_idxs_.at(c), 0, 3, nv_) =
         evaluator->EvalFullJacobian(context);
     int start = Jc_active_start_idxs_.at(c);
+
+    eval.c_.segment(
+        nh_ + start, evaluator->num_active()) = evaluator->EvalActive(context);
     for (int i = 0; i < evaluator->num_active(); ++i) {
       Jc_active.row(start + i) =
           Jc.row(lambda_c_start_idxs_.at(c) + evaluator->active_inds().at(i));
@@ -168,6 +178,7 @@ void ConstrainedDynamicsInfo::DoEvaluate(
   eval.cdot_.head(nh_) = Jh * plant.GetVelocities(context);
   eval.cdot_.tail(nc_active_) = Jc_active * plant.GetVelocities(context);
   eval.cddot_.head(nh_) = JhdotV + Jh * eval.vdot_;
+  eval.cddot_.tail(nc_active_) = Jc_active_dot_v + Jc_active * eval.vdot_;
 
   eval.qdot_ = VectorX<T>::Zero(nq_);
   plant.MapVelocityToQDot(

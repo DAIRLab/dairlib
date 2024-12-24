@@ -40,6 +40,9 @@ class IDMPC {
     return knot_vars(index).tail(dynamics_->nc());
   }
 
+  void SetActiveContacts(int knot_index, std::vector<std::string> contacts);
+  void SetInitialState(const Eigen::VectorXd& x);
+
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
  private:
@@ -49,6 +52,7 @@ class IDMPC {
   std::vector<KnotPointState> knot_point_work_;
 
   drake::solvers::MathematicalProgram prog_;
+  drake::solvers::Binding<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> dynamics_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> kinematic_constraints_;

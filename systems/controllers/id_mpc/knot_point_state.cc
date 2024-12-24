@@ -35,7 +35,7 @@ KnotPointState::KnotPointState(
 template<>
 VectorX<double> KnotPointState::GetKinematicConstraints() const {
   return stack<double>({
-    cache_.dynamics_results.c_,
+    cache_.dynamics_results.c_.head(dynamics_.nh()),
     cache_.dynamics_results.cdot_,
     cache_.dynamics_results.cddot_
   });
@@ -44,7 +44,7 @@ VectorX<double> KnotPointState::GetKinematicConstraints() const {
 template<>
 VectorX<AutoDiffXd> KnotPointState::GetKinematicConstraints() const {
   return stack<AutoDiffXd>({
-    cache_ad_.dynamics_results.c_,
+    cache_ad_.dynamics_results.c_.head(dynamics_.nh()),
     cache_ad_.dynamics_results.cdot_,
     cache_ad_.dynamics_results.cddot_
   });

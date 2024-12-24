@@ -7,10 +7,11 @@ cc_library(
     srcs = [
         "constrained_dynamics_info.cc",
         "id_mpc.cc",
-        "id_mpc_dynamics_constraint.cc",
+        "id_mpc_knot_point.cc",
     ],
     hdrs = glob(["*.h"]),
     deps = [
+        "//common:eigen_utils",
         "//common:find_resource",
         "//multibody/kinematic",
         "//solvers:nonlinear_constraint",

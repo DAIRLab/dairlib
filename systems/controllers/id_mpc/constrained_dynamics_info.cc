@@ -208,6 +208,18 @@ void ConstrainedDynamicsInfo::EvaluateDynamicsConstraint(
       .cddot_;
 }
 
+template <typename T>
+ConstrainedDynamicsInfo::DynamicsEvaluation<T>
+ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const {
+  ConstrainedDynamicsInfo::DynamicsEvaluation<T> eval;
+  eval.qdot_ = VectorX<T>::Zero(nq_);
+  eval.vdot_ = VectorX<T>::Zero(nv_);
+  eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cddot_ = VectorX<T>::Zero(nh_ + nc_active_);
+  return eval;
+}
+
 template<>
 ConstrainedDynamicsInfo::DynamicsEvaluation<AutoDiffXd>
 ConstrainedDynamicsInfo::EvaluateDynamics(

@@ -111,6 +111,9 @@ class ConstrainedDynamicsInfo {
   };
 
   template<typename T>
+  DynamicsEvaluation<T> MakeEmptyDynamicsEvaluation() const;
+
+  template<typename T>
   DynamicsEvaluation<T> EvaluateDynamics(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& u, const drake::VectorX<T>& lh,

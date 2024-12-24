@@ -35,8 +35,10 @@ using std::map;
 using std::string;
 using std::vector;
 
-bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
-                     const Eigen::Ref<const AutoDiffVecXd>& b) {
+namespace {
+
+bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd> &a,
+                     const Eigen::Ref<const AutoDiffVecXd> &b) {
   if (a.rows() != b.rows()) {
     return false;
   }
@@ -52,9 +54,10 @@ bool AreVectorsEqual(const Eigen::Ref<const AutoDiffVecXd>& a,
   return a_gradient == b_gradient;
 }
 
-bool AreVectorsEqual(const Eigen::Ref<const VectorXd>& a,
-                     const Eigen::Ref<const VectorXd>& b) {
+bool AreVectorsEqual(const Eigen::Ref<const VectorXd> &a,
+                     const Eigen::Ref<const VectorXd> &b) {
   return a == b;
+}
 }
 
 template <typename T>

@@ -24,17 +24,17 @@ int DoMain() {
       0.8
   );
   dynamics_info->AddContactPoint(
-      "toe_right_front",
-      "toe_right",
-      Vector3d(-0.0457, 0.112, 0),
-      {0, 1, 2},
-      0.8
-  );
-  dynamics_info->AddContactPoint(
       "toe_left_rear",
       "toe_left",
       Vector3d(0.088, 0, 0),
       {1, 2},
+      0.8
+  );
+  dynamics_info->AddContactPoint(
+      "toe_right_front",
+      "toe_right",
+      Vector3d(-0.0457, 0.112, 0),
+      {0, 1, 2},
       0.8
   );
   dynamics_info->AddContactPoint(
@@ -63,14 +63,36 @@ int DoMain() {
 
   VectorXd vars = VectorXd::Zero(dynamics_info->variable_count());
   VectorXd q = VectorXd::Zero(dynamics_info->nq());
-  q << 1, VectorXd::Zero(6),
-  -0.084017,  -0.00120735, 0.366012, -0.6305, 0.838878, 0.205351,
-   0.084017,   0.00120735, 0.366012, -0.6305, 0.838878, 0.205351;
-  for (int i = 0; i < 4; ++i) {
-    vars.tail(12).segment<3>(3*i) = Vector3d(0, 0, 9.81 * 33.0 / 4.0);
-  }
+  VectorXd u = VectorXd::Zero(dynamics_info->nu());
+  VectorXd lambda = VectorXd::Zero(dynamics_info->nh() + dynamics_info->nc());
+
+  q << 1, 0, 0, 0, 0, 0, 0.95,
+     0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
+    -0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
+
+  u <<  -2.03951, 2.04169, 0.906345, -0.861539, -5.96077, -6.16527, 45.7984,
+        45.6304, -3.48936, -3.52897;
+
+  lambda << -395.296, -395.589,
+    39.7438, -9.54163, 81.7462,
+   -39.8489, 4.21296, 80.2822,
+    39.8174, 9.30058, 81.8166,
+   -39.7123, -3.97191, 79.936;
 
   vars.head(dynamics_info->nq()) = q;
+  vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
+  vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
+
+  auto test_context = dynamics_info->MakeContext<double>();
+  auto test_result = dynamics_info->EvaluateDynamics<double>(
+    test_context.get(),
+    vars,
+    {"toe_left_front", "toe_left_rear", "toe_right_front",
+     "toe_right_rear"});
+
+  std::cout << test_result;
+
+
 
   IDMPCParams params;
   params.N = 5;
@@ -104,6 +126,10 @@ int DoMain() {
                            "Major Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
+  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance", 1e-3);
+  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance", 1e-4);
   prog.SetSolverOptions(solver_options);
 
   auto solver = drake::solvers::SnoptSolver();

@@ -220,47 +220,41 @@ def sample(sim_params):
             obs, _ = env.reset()
 
 def run_play(sim_params, model_path=None):
+    np.random.seed(0)
+    th.manual_seed(0)
     sim_params.visualize = False
     sim_params.meshcat = Meshcat()
     env = gym.make("DrakeCassie-v0",
                     sim_params = sim_params,
                     )
-    # rate = 1.0
-    # env.simulator.set_target_realtime_rate(rate)
-    max_steps = 399*200 # 39900
+    rate = 3.0
+    env.simulator.set_target_realtime_rate(rate)
+    max_steps = 599*200 # 59900
     
     lstm=True
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    #model_path = 'RPPO_mirror_noise.zip'
-    #model_path = 'RPPO_003_1.zip'
-    model_path = 'new.zip'
-    #model_path = 'logs/rl_model_6720000_steps.zip'
+    model_path = 'contact.zip' # 64ALIP # contact
     
     model = RecurrentPPO.load(model_path, env, verbose=1)
-    #th.save(model.policy.state_dict(), 'test')
-    #model.load_state_dict(th.load('test'))
 
     obs, _ = env.reset()
     input("Start..")
     total_reward = 0
     model.policy.eval()
-    print("Friction: 0.4 slopy stair")
+    print("Friction: 0.4 slope 20")
     for i in range(int(max_steps)):
         if lstm:
             action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
         else:
             action, states = model.predict(obs, deterministic=True)
-        #print(obs[3*64*64:3*64*64+6])
-        # print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         if lstm:
             episode_starts = terminated
             
         total_reward += reward
         if terminated or truncated:
-            # print(total_reward)
             if lstm:
                 lstm_states = None
                 episode_starts = np.ones((1,), dtype=bool)

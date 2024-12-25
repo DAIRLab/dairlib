@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import torch as th
 
 from pydairlib.perceptive_locomotion.bench.bench_harness import (
     BenchEnvOptions,
@@ -63,28 +64,28 @@ def add_mpc_perception_deps(builder, env, mpc):
         mpc.get_input_port_state()
     )
 
-def run(env, controller, diagram):
-    simulator = Simulator(diagram)
-    context = diagram.CreateDefaultContext()
-    sim_context = env.GetMyMutableContextFromRoot(context)
-    controller_context = controller.GetMyMutableContextFromRoot(context)
+# def run(env, controller, diagram):
+#     simulator = Simulator(diagram)
+#     context = diagram.CreateDefaultContext()
+#     sim_context = env.GetMyMutableContextFromRoot(context)
+#     controller_context = controller.GetMyMutableContextFromRoot(context)
 
-    xvdes = np.random.uniform(-0.8, 0.8)
-    yvdes = 0.#np.random.uniform(-0.4, 0.4)
-    vdes_source = np.array([xvdes, yvdes]).flatten()
-    print(vdes_source)
-    controller.get_input_port_vdes().FixValue(
-        context = controller_context,
-        value = vdes_source
-    )
+#     xvdes = np.random.uniform(-0.8, 0.8)
+#     yvdes = 0.#np.random.uniform(-0.4, 0.4)
+#     vdes_source = np.array([xvdes, yvdes]).flatten()
+#     print(vdes_source)
+#     controller.get_input_port_vdes().FixValue(
+#         context = controller_context,
+#         value = vdes_source
+#     )
 
-    q = np.array([1, 0, 0, 0, 0, 0, 0.95, -0.0320918, 0, 0.539399, -1.31373,
-        -0.0410844, 1.61932, -0.0301574, -1.67739, 0.0320918, 0, 0.539399,
-        -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
-    v = np.zeros((22,))
-    t_init = 0.0
-    context.SetTime(t_init)
-    env.initialize_state(context, diagram, q, v)
+#     q = np.array([1, 0, 0, 0, 0, 0, 0.95, -0.0320918, 0, 0.539399, -1.31373,
+#         -0.0410844, 1.61932, -0.0301574, -1.67739, 0.0320918, 0, 0.539399,
+#         -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
+#     v = np.zeros((22,))
+#     t_init = 0.0
+#     context.SetTime(t_init)
+#     env.initialize_state(context, diagram, q, v)
     
 
 
@@ -121,12 +122,13 @@ def main():
     # simulator = Simulator(diagram)
     # context = diagram.CreateDefaultContext()
     # controller_context = controller.GetMyMutableContextFromRoot(context)
-    # np.random.seed()
+    np.random.seed(0)
+    th.manual_seed(0)
     MSE = []
     DES = []
     TRUE = []
     simulator = Simulator(diagram)
-    print("Friction: 1.1 slopy stair")
+    print("Friction: 1.1 flat")
     for i in range(200):
         # simulator = Simulator(diagram)
         context = diagram.CreateDefaultContext()
@@ -135,7 +137,7 @@ def main():
 
         # xvdes = np.random.uniform(0.2, 0.8)
         # vdes_source = np.array([xvdes, 0.]).flatten()
-        xvdes = np.random.uniform(0., 0.4)
+        xvdes = np.random.uniform(0, 0.8)
         #yvdes = np.random.uniform(-0.2, 0.2)
         yvdes = 0.
         vdes_source = np.array([xvdes, yvdes]).flatten()
@@ -149,6 +151,7 @@ def main():
         q = np.array([1, 0, 0, 0, 0, 0, 0.95, -0.0320918, 0, 0.539399, -1.31373,
         -0.0410844, 1.61932, -0.0301574, -1.67739, 0.0320918, 0, 0.539399,
         -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
+        #q[4:6] = np.array([0, -1])
         v = np.zeros((22,))
 
         env.initialize_state(context, diagram, q, v)
@@ -206,35 +209,50 @@ def main():
                 print("Right Toe Exceeded")
                 return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
-            scene_graph = env.get_output_port_by_name('scene_graph').Eval(sim_context)
-            front_contact_pt = np.array((-0.0457, 0.112, 0))
-            rear_contact_pt = np.array((0.088, 0, 0))
-            toe_axis = front_contact_pt - rear_contact_pt
-            toe_axis /= np.linalg.norm(toe_axis)
-            collision = 0.
-            left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
-            left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
-            for distances in left_distances:
-                if distances.distance <= -0.012:
-                    print("Left Collision")
-                    return EventStatus.ReachedTermination(diagram, "Left Collision")
+            # scene_graph = env.get_output_port_by_name('scene_graph').Eval(sim_context)
+            # front_contact_pt = np.array((-0.0457, 0.112, 0))
+            # rear_contact_pt = np.array((0.088, 0, 0))
+            # toe_axis = front_contact_pt - rear_contact_pt
+            # toe_axis /= np.linalg.norm(toe_axis)
+            # collision = 0.
+            # left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
+            # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+            # for distances in left_distances:
+            #     if distances.distance <= -0.0125:
+            #         print("Left Collision")
+            #         return EventStatus.ReachedTermination(diagram, "Left Collision")
 
-            right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
-            distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
-            for signed_distance in distances:
-                if signed_distance.distance <= -0.012:
-                    print("Right Collision")
-                    return EventStatus.ReachedTermination(diagram, "Right Collision")
+            # right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
+            # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+            # for signed_distance in distances:
+            #     if signed_distance.distance <= -0.0125:
+            #         print("Right Collision")
+            #         return EventStatus.ReachedTermination(diagram, "Right Collision")
 
             # if track_error > 0.6 and (context.get_time() > 1.):
             #     print("Track Error")
             #     return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
 
+            contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
+            contact_results = contact_results_port.Eval(plant_context)
+            for i in range(contact_results.num_point_pair_contacts()):
+                contact_info = contact_results.point_pair_contact_info(i)
+                # print(contact_info)
+                # body_A = plant.get_body(contact_info.bodyA_index())
+                body_B = plant.get_body(contact_info.bodyB_index())
+                contact_force = contact_info.contact_force()
+                if body_B.name() == "toe_left_tip" or body_B.name() == "toe_right_tip":
+                    # print(body_B.name())
+                    # print(contact_force)
+                    if np.linalg.norm(contact_force) > 500:
+                        print(context.get_time())
+                        print(np.linalg.norm(contact_force))
+
             return EventStatus.Succeeded()
 
         simulator.set_monitor(monitor)
 
-        for i in range(500):
+        for i in range(601):
             t_init += 0.025
             # if check_termination(env, context):
             #     terminate = True

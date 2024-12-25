@@ -173,9 +173,9 @@ class ObservationPublisher(LeafSystem):
         # hmap[-1] = hmap[-1] * 4
         
         # Visualize grid map @ stance frame
-        hmap_grid_world = hmap_query.calc_height_map_world_frame(
-            np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
-        )
+        # hmap_grid_world = hmap_query.calc_height_map_world_frame(
+        #     np.array([ud[0], ud[1], 0]), np.append(adverserial_offset, 0)
+        # )
 
         # alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         alip = self.EvalVectorInput(context, self.input_port_indices['x']).get_value()
@@ -248,9 +248,9 @@ class ObservationPublisher(LeafSystem):
             # hmap_grid_world[-1] += scaled_grid
 
         # Plot depth map with noise
-        hmap_query.plot_surface(
-            "hmap", hmap_grid_world[0], hmap_grid_world[1],
-            hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+        # hmap_query.plot_surface(
+        #     "hmap", hmap_grid_world[0], hmap_grid_world[1],
+        #     hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
         # np.save("height.npy", gt_hmap)
         # np.save("elevation.npy", hmap)
@@ -509,7 +509,7 @@ class RewardSystem(LeafSystem):
         self.DES.append(vdes[0])
         self.TRUE.append(bf_vel[0])
 
-        if self.t == 399 * 200:
+        if self.t == 599 * 200:
             MSE = np.asarray(self.MSE)
             print(np.mean(MSE))
         #     np.save("RL_mse_flat.npy", MSE)
@@ -630,7 +630,7 @@ class CassieFootstepControllerEnvironmentOptions:
     elevation_mapping_params_yaml: str = path.join(
         params_folder, 'elevation_mapping_params_simulation.yaml'
     )
-    urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
+    urdf: str = "examples/Cassie/urdf/cassie_v2_toe_link.urdf" #"examples/Cassie/urdf/cassie_v2.urdf"
     
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
@@ -673,7 +673,9 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.controller_input_type
         )
 
-        terrain_friction = 0.4 #np.random.uniform(0.4, 1.2)
+        terrain_friction = 0.4
+        # terrain_friction = 0.8
+        # terrain_friction = 1.1 #np.random.uniform(0.4, 1.2)
 
         # print(terrain_friction)
         self.cassie_sim = HikingSimDiagram(

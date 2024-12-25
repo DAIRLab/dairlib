@@ -45,7 +45,7 @@ using drake::perception::DepthImageToPointCloud;
 HikingSimDiagram::HikingSimDiagram(
     const std::variant<std::string, SquareSteppingStoneList>& terrain,
     const std::string& camera_pose_yaml, double terrain_friction)
-    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf"),
+    : urdf_("examples/Cassie/urdf/cassie_v2_toe_link.urdf"), // urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf"),
       depth_camera_info_(424, 240, 2){
 
 

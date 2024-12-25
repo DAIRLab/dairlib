@@ -71,7 +71,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
     
-    freq = np.random.uniform(low=0.001, high=0.01)
+    freq = 0.01#np.random.uniform(low=0.001, high=0.01)
     footstep_zoh = ZeroOrderHold(freq, 3)
     builder.AddSystem(footstep_zoh)
     builder.Connect(
@@ -87,7 +87,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 def reset_handler(simulator, terrain, seed, drake_rng):
-    np.random.seed()
+    # np.random.seed()
     # Get controller from context or simulator
     diagram = simulator.get_system()
     context = diagram.CreateDefaultContext()
@@ -190,6 +190,8 @@ def reset_handler(simulator, terrain, seed, drake_rng):
     -0.0410844, 1.61932, -0.0301574, -1.67739, 0.0320918, 0, 0.539399,
     -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
     
+    #q[4:6] = np.array([0.5,0])
+    
     v = np.zeros((22,))
 
     down = False
@@ -209,9 +211,7 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
     sim_env.initialize_state(context, diagram, q, v)
 
-    # xvdes = np.random.uniform(0.2, 0.8)
-    # des_velocity = np.array([xvdes, 0.]).flatten()
-    xvdes = np.random.uniform(0, 0.4)
+    xvdes = np.random.uniform(0., 0.4)
     #yvdes = np.random.uniform(-0.2, 0.2)
     yvdes = 0.
     des_velocity = np.array([xvdes, yvdes]).flatten()
@@ -230,14 +230,13 @@ def reset_handler(simulator, terrain, seed, drake_rng):
 
 def simulate_init(sim_params):
     rand = np.random.randint(1, 16)
-    rand = 7
+    # rand = 10
     if rand in [1,2,3,4,5,6]:
         rand = np.random.randint(500, 1500)
         terrain_yaml = f'params/stair/dustair_{rand}.yaml'
         terrain = 'stair'
     elif rand in [7,8,9,10]:
         rand = np.random.randint(0, 1000)
-        rand = 501
         terrain_yaml = f'params/slope/stair_{rand}.yaml'
         terrain = 'stair'
     elif rand in [11]:
@@ -248,24 +247,20 @@ def simulate_init(sim_params):
         terrain_yaml = f'params/flat/flat_{rand}.yaml'
         terrain = 'flat'
     # terrain_yaml = 'params/flat.yaml'
-    # terrain = 'no_obs'
-    # print(terrain_yaml)
-    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope20.yaml')
-    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope/stair_1.yaml')
-    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_curriculum.yaml')
-    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/easy_dustair_0.yaml')
-    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/normal_dustair_0.yaml')
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
+    #print(terrain_yaml)
+    sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope20.yaml')
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/slope10.yaml')
     #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/reg_dustair_0.yaml')
-    #sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_1.yaml')
-    
-    #terrain = 'stair'
-    sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/easy_dustair_0.yaml')
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_1.yaml') # tilt1
+    # sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/stair_501.yaml') # tilt2
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
 
     def monitor(context):
-        time_limit = 10
+        time_limit = 15
 
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
@@ -303,33 +298,94 @@ def simulate_init(sim_params):
         
         if z1 < 0.2:
             print("Left Toe Exceeded")
+            print(context.get_time())
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             print("Right Toe Exceeded")
+            print(context.get_time())
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
-        scene_graph = sim_env.get_output_port_by_name('scene_graph').Eval(sim_context)
-        front_contact_pt = np.array((-0.0457, 0.112, 0))
-        rear_contact_pt = np.array((0.088, 0, 0))
-        toe_axis = front_contact_pt - rear_contact_pt
-        toe_axis /= np.linalg.norm(toe_axis)
-        collision = 0.
+        # scene_graph = sim_env.get_output_port_by_name('scene_graph').Eval(sim_context)
+        # front_contact_pt = np.array((-0.0457, 0.112, 0))
+        # rear_contact_pt = np.array((0.088, 0, 0))
+        # toe_axis = front_contact_pt - rear_contact_pt
+        # toe_axis /= np.linalg.norm(toe_axis)
 
+        # toe_left = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context)
+        # R_WL = toe_left.rotation()
+        # p_WL = toe_left.translation()
+        # contact_pt = np.array([-0.0641797, 0.094719, 0]) # Local frame
+        # p_WQ = R_WL @ contact_pt + p_WL # Transform to world frame
         # left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (toe_left_rotation @ toe_axis) * 0.12
-        # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+
+        # toe_left_tip = plant.GetBodyByName("toe_left_tip").EvalPoseInWorld(plant_context)
+        # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=toe_left_tip.translation(), threshold=1.0)
         # for distances in left_distances:
-        #     if distances.distance <= -0.012:
-        #         print("Left Collision")
-        #         return EventStatus.ReachedTermination(diagram, "Left Collision")
+        #     if distances.distance <= 0.0:
+        #         print("Lcollision")
+        #         print(distances.distance)
+        #         contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
+        #         contact_results = contact_results_port.Eval(plant_context)
+        #         for i in range(contact_results.num_point_pair_contacts()):
+        #             contact_info = contact_results.point_pair_contact_info(i)
+        #             # print(contact_info)
+        #             # body_A = plant.get_body(contact_info.bodyA_index())
+        #             body_B = plant.get_body(contact_info.bodyB_index())
+        #             contact_force = contact_info.contact_force()
+        #             if body_B.name() == "toe_left_tip" and np.linalg.norm(contact_force) > 500:
+        #                 print(body_B.name())
+        #                 print(contact_force)
+        #                 print(np.linalg.norm(contact_force))
+                # return EventStatus.ReachedTermination(diagram, "Left Collision")
 
+        # toe_pose = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context)
+        # R_WL = toe_pose.rotation()
+        # p_WL = toe_pose.translation()
+        # contact_pt = np.array([-0.0641797, 0.094719, 0])  # Local frame
+        # p_WQ = R_WL @ contact_pt + p_WL # Transform to world frame
+        # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=p_WQ, threshold=1.0)
         # right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (toe_right_rotation @ toe_axis) * 0.12
-        # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
-        # for signed_distance in distances:
-        #     if signed_distance.distance <= -0.012:
-        #         print("Right Collision")
-        #         return EventStatus.ReachedTermination(diagram, "Right Collision")
 
+        # toe_right_tip = plant.GetBodyByName("toe_right_tip").EvalPoseInWorld(plant_context)
+        # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=toe_right_tip.translation(), threshold=1.0)
+        # for signed_distance in distances:
+        #     if signed_distance.distance <= 0.0:
+        #         print("Rcollision")
+        #         print(signed_distance.distance)
+        #         # print(signed_distance.id_G)
+        #         # inspector = scene_graph.inspector()
+        #         # geometry_name = inspector.GetName(signed_distance.id_G)
+        #         # print(geometry_name)
+        #         contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
+        #         contact_results = contact_results_port.Eval(plant_context)
+        #         for i in range(contact_results.num_point_pair_contacts()):
+        #             contact_info = contact_results.point_pair_contact_info(i)
+        #             # print(contact_info)
+        #             # body_A = plant.get_body(contact_info.bodyA_index())
+        #             body_B = plant.get_body(contact_info.bodyB_index())
+        #             contact_force = contact_info.contact_force()
+        #             if body_B.name() == "toe_right_tip" and np.linalg.norm(contact_force) > 500:
+        #                 print(body_B.name())
+        #                 print(contact_force)
+        #                 print(np.linalg.norm(contact_force))
+                # return EventStatus.ReachedTermination(diagram, "Right Collision")
+
+        contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
+        contact_results = contact_results_port.Eval(plant_context)
+        for i in range(contact_results.num_point_pair_contacts()):
+            contact_info = contact_results.point_pair_contact_info(i)
+            # print(contact_info)
+            # body_A = plant.get_body(contact_info.bodyA_index())
+            body_B = plant.get_body(contact_info.bodyB_index())
+            contact_force = contact_info.contact_force()
+            if body_B.name() == "toe_left_tip" or body_B.name() == "toe_right_tip":
+                # print(body_B.name())
+                # print(contact_force)
+                if np.linalg.norm(contact_force) > 500:
+                    print(context.get_time())
+                    print(np.linalg.norm(contact_force))
+        
         # if track_error > 0.6 and (context.get_time() > 1.):
         #     print("Track Error")
         #     return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")

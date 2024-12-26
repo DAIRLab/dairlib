@@ -1,6 +1,6 @@
 #pragma once
 
-#include "constrained_dynamics_info.h"
+#include "constrained_inverse_dynamics_info.h"
 #include "solvers/nonlinear_constraint.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -30,6 +30,9 @@ class KnotPointState {
   template<typename T>
   drake::VectorX<T> GetKinematicConstraints() const;
 
+  template<typename T>
+  void SetVDot(const drake::VectorX<T>& vdot);
+
   void UpdateActiveContacts(const std::vector<std::string>& active_contacts);
 
  private:
@@ -37,9 +40,10 @@ class KnotPointState {
   template<typename T>
   struct cache {
     bool dirty = true;
-    drake::VectorX<T> all_vars;
+    drake::VectorX<T> decision_vars;
+    drake::VectorX<T> vdot;
     std::unique_ptr<drake::systems::Context<T>> context;
-    ConstrainedDynamicsInfo::DynamicsEvaluation<T> dynamics_results;
+    ConstrainedDynamicsInfo::InverseDynamicsEvaluation<T> dynamics_results;
     std::vector<std::string> active_contacts;
   };
 

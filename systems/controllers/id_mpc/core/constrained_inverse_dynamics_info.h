@@ -33,7 +33,7 @@ class ConstrainedDynamicsInfo {
   }
 
   int variable_count() const {
-    return nq_ + nv_ + nu_ + nh_ + nc_;
+    return nq_ + nv_ + nv_ + nh_ + nc_;
   }
 
   int nq() const { return nq_; }
@@ -93,36 +93,34 @@ class ConstrainedDynamicsInfo {
    * @tparam T scalar type
    */
   template<typename T>
-  struct DynamicsEvaluation {
+  struct InverseDynamicsEvaluation {
     drake::VectorX<T> qdot_;
-    drake::VectorX<T> vdot_;
     drake::VectorX<T> c_;
     drake::VectorX<T> cdot_;
-    drake::VectorX<T> cddot_;
-
+    drake::VectorX<T> tau_;
     friend std::ostream& operator<<(
-        std::ostream& os, const DynamicsEvaluation<T>& eval) {
+        std::ostream& os, const InverseDynamicsEvaluation<T>& eval) {
       os << "qdot: " << eval.qdot_.transpose() << "\n"
          << "vdot: " << eval.vdot_.transpose() << "\n"
          << "c: " << eval.c_.transpose() << "\n"
          << "cdot: " << eval.cdot_.transpose() << "\n"
-         << "cddot: " << eval.cddot_.transpose() << "\n";
+         << "cddot: " << eval.tau_.transpose() << "\n";
       return os;
     }
   };
 
   template<typename T>
-  DynamicsEvaluation<T> MakeEmptyDynamicsEvaluation() const;
+  InverseDynamicsEvaluation<T> MakeEmptyDynamicsEvaluation() const;
 
   template<typename T>
-  DynamicsEvaluation<T> EvaluateDynamics(
+  InverseDynamicsEvaluation<T> EvaluateDynamics(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& u, const drake::VectorX<T>& lh,
       const drake::VectorX<T>& lc,
       const std::vector<std::string>& active_contacts) const;
 
   template<typename T>
-  DynamicsEvaluation<T> EvaluateDynamics(
+  InverseDynamicsEvaluation<T> EvaluateDynamics(
       drake::systems::Context<T>* context,
       const drake::VectorX<T>& all_vars,
       const std::vector<std::string>& active_contacts) const;
@@ -135,10 +133,10 @@ class ConstrainedDynamicsInfo {
       const drake::systems::Context<T>& context,
       const multibody::KinematicEvaluatorSet<T>* holonomic_constraints,
       const ContactConstraintMap<T>& contact_constraint_evaluators,
-      const drake::VectorX<T>& u, const drake::VectorX<T>& lh,
+      const drake::VectorX<T>& vdot, const drake::VectorX<T>& lh,
       const drake::VectorX<T>& lc,
       const std::vector<std::string>& active_contacts,
-      DynamicsEvaluation<T>& eval) const;
+      InverseDynamicsEvaluation<T>& eval) const;
 
   std::unique_ptr<drake::multibody::MultibodyPlant<AutoDiffXd>> plant_ad_;
   std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;

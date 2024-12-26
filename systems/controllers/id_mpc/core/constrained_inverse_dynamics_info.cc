@@ -1,4 +1,4 @@
-#include "constrained_dynamics_info.h"
+#include "constrained_inverse_dynamics_info.h"
 #include "common/find_resource.h"
 #include "multibody/kinematic/distance_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -127,7 +127,8 @@ void ConstrainedDynamicsInfo::DoEvaluate(
     const ContactConstraintMap<T>& contact_constraint_evaluators,
     const VectorX<T> &u, const VectorX<T> &lh, const VectorX<T> &lc,
     const std::vector<std::string> &active_contacts,
-    DynamicsEvaluation<T> &eval) const {
+    InverseDynamicsEvaluation<T> &eval) const {
+
 
   eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
   eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);

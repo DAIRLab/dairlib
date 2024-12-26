@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/knot_point_state.h"
-#include "core/constrained_dynamics_info.h"
-#include "core/trapezoidal_collocation_constraint.h"
+#include "core/constrained_inverse_dynamics_info.h"
+#include "core/collocation_constraint.h"
 #include "core/kinematic_constraint.h"
 #include "core/timeline.h"
 

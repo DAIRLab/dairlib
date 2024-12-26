@@ -1,9 +1,10 @@
 #pragma once
 
-#include "knot_point_state.h"
-#include "constrained_dynamics_info.h"
-#include "trapezoidal_collocation_constraint.h"
-#include "kinematic_constraint.h"
+#include "core/knot_point_state.h"
+#include "core/constrained_dynamics_info.h"
+#include "core/trapezoidal_collocation_constraint.h"
+#include "core/kinematic_constraint.h"
+#include "core/timeline.h"
 
 #include "drake/solvers/mathematical_program.h"
 
@@ -49,7 +50,7 @@ class IDMPC {
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
-  std::vector<KnotPointState> knot_point_work_;
+  Timeline timeline_;
 
   drake::solvers::MathematicalProgram prog_;
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;

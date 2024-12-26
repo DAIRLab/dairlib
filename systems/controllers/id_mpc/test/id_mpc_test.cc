@@ -1,5 +1,4 @@
 #include <iostream>
-#include "systems/controllers/id_mpc/constrained_dynamics_info.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
 
 #include "drake/solvers/solve.h"
@@ -68,7 +67,7 @@ int DoMain() {
 
   q << 1, 0, 0, 0, 0, 0, 0.95,
      0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
-    -0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
+    -0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692;
 
   u <<  -2.03951, 2.04169, 0.906345, -0.861539, -5.96077, -6.16527, 45.7984,
         45.6304, -3.48936, -3.52897;
@@ -92,21 +91,24 @@ int DoMain() {
 
   std::cout << test_result;
 
-
-
   IDMPCParams params;
-  params.N = 5;
-  params.dt = 0.05;
+  params.N = 10;
+  params.dt = 0.1;
 
   IDMPC mpc(params, std::move(dynamics_info));
 
   auto& prog = mpc.get_prog();
+
+  VectorXd vd = vars;
+  vd(6) = 0.7;
+
+  Eigen::MatrixXd Q_all = 0.0000001 *
+      Eigen::MatrixXd::Identity(vars.rows(), vars.rows());
+  Q_all(6,6) = 1000.0;
+
   for (int i = 0; i <= params.N; ++i) {
     prog.SetInitialGuess(mpc.knot_vars(i), vars);
-    prog.AddQuadraticErrorCost(
-        Eigen::MatrixXd::Identity(q.size(), q.size()),
-        q,
-        mpc.position_vars(i));
+    prog.AddQuadraticErrorCost(Q_all, vd, mpc.knot_vars(i));
     auto unit_quat = std::make_shared<drake::multibody
         ::UnitQuaternionConstraint>();
 
@@ -129,7 +131,8 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                           "Major optimality tolerance", 1e-3);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-4);
+                          "Major feasibility tolerance", 1e-3);
+
   prog.SetSolverOptions(solver_options);
 
   auto solver = drake::solvers::SnoptSolver();

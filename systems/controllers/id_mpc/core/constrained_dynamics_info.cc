@@ -201,23 +201,6 @@ ConstrainedDynamicsInfo::EvaluateDynamics(
   );
 }
 
-template <typename T>
-void ConstrainedDynamicsInfo::EvaluateDynamicsConstraint(
-    Context<T>* context, const VectorX<T> &vars,
-    const VectorX<T> *result, const std::string &active_contacts) const {
-
-  *result = VectorX<T>::Zero(nq_ + nv_ +  3 * (nh_ + nc_active_));
-
-  auto evaluation = EvaluateDynamics<T>(context, vars, active_contacts);
-
-  int nc_total = nh_ + nc_active_;
-  result->head(nq_) = evaluation.qdot_;
-  result->segment(nq_, nv_) = evaluation.vdot_;
-  result->segment(nq_ + nv_, nc_total) = evaluation.c_;
-  result->segment(nq_ + nv_ + nc_total, nc_total) = evaluation.cdot_;
-  result->segment(nq_ + nv_ + 2 * nc_total, nc_total) = evaluation
-      .cddot_;
-}
 
 template <typename T>
 ConstrainedDynamicsInfo::DynamicsEvaluation<T>

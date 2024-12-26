@@ -12,7 +12,12 @@ TrapezoidalCollocationConstraint<T>::TrapezoidalCollocationConstraint(
         x0->get_dynamics().nx(), 2 * x0->get_dynamics().variable_count(),
         VectorXd::Zero(x0->get_dynamics().nx()),
         VectorXd::Zero(x0->get_dynamics().nx())),
-        x0_state_(x0), x1_state_(x1), dt_(dt){}
+        x0_state_(x0), x1_state_(x1), dt_(dt) {
+
+  DRAKE_DEMAND(x0_state_ != nullptr);
+  DRAKE_DEMAND(x1_state_ != nullptr);
+  DRAKE_DEMAND(dt > 0);
+}
 
 
 template <typename T>

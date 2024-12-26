@@ -1,6 +1,5 @@
 #pragma once
 
-#include "id_mpc_types.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "drake/common/eigen_autodiff_types.h"
@@ -22,7 +21,6 @@ class ConstrainedDynamicsInfo {
    * @param urdf the filepath of the URDF for the plant
    */
   explicit ConstrainedDynamicsInfo(std::string urdf);
-
 
   const MultibodyPlant<double>& get_plant() const {
     DRAKE_ASSERT(plant_!= nullptr);
@@ -128,13 +126,6 @@ class ConstrainedDynamicsInfo {
       drake::systems::Context<T>* context,
       const drake::VectorX<T>& all_vars,
       const std::vector<std::string>& active_contacts) const;
-
-  template<typename T>
-  void EvaluateDynamicsConstraint(
-      drake::systems::Context<T>* context,
-      const drake::VectorX<T>& vars,
-      const drake::VectorX<T>* result,
-      const std::string& active_contacts) const;
 
  private:
 

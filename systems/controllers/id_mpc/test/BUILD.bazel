@@ -6,7 +6,6 @@ cc_binary(
     name = "id_mpc_test",
     srcs = ["id_mpc_test.cc"],
     deps = [
-        "//common:eigen_utils",
         "//systems/controllers/id_mpc",
     ],
 )

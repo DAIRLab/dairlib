@@ -1,6 +1,5 @@
 #pragma once
 
-#include "id_mpc_types.h"
 #include "constrained_dynamics_info.h"
 #include "solvers/nonlinear_constraint.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"

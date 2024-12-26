@@ -3,10 +3,10 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "id_mpc",
-    srcs = ["id_mpc.cc"],
-    hdrs = ["id_mpc.h"],
+    name = "cassie_mpc_utils",
+    srcs = ["cassie_mpc_utils.cc"],
+    hdrs = ["cassie_mpc_utils.h"],
     deps = [
-        "//systems/controllers/id_mpc/core:id_mpc_core",
+        "//systems/controllers/id_mpc",
     ],
 )

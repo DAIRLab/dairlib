@@ -40,8 +40,33 @@ void TestInverseDynamics(
   );
 
   Eigen::MatrixXd B = info.get_plant().MakeActuationMatrix();
-  std::cout << "inverse dynamics defect norm: " << (B*u - result.tau_).norm()
-  << std::endl;
+  double defect =  (B*u - result.tau_).norm();
+  std::cout << "inverse dynamics defect norm: " <<  defect << std::endl;
+  DRAKE_DEMAND(defect < 0.01);
+}
+
+void TestCollocation(const ConstrainedDynamicsInfo& info,
+                     const VectorXd& fixed_point_vars,
+                     const std::vector<std::string>& contacts) {
+  Timeline test_timeline;
+  for (int i = 0; i < 2; ++i) {
+    test_timeline.knots.push_back(KnotPointState(info));
+    test_timeline.knots.back().UpdateActiveContacts(contacts);
+    test_timeline.breaks.push_back(0.05 * i);
+  }
+
+  auto test_constraint = std::make_shared<CollocationConstraint<double>>(
+      &test_timeline);
+
+  VectorXd constraint_result;
+  test_constraint->EvaluateConstraint(
+      stack<double>({fixed_point_vars, fixed_point_vars}),
+      &constraint_result);
+
+  std::cout << "collocation defect norm: " << constraint_result.norm()
+            << std::endl;
+
+  DRAKE_DEMAND(constraint_result.norm() < 1e-2);
 }
 
 int DoMain() {
@@ -120,21 +145,7 @@ int DoMain() {
   vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
   vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
 
-  Timeline test_timeline;
-  for (int i = 0; i < 2; ++i) {
-    test_timeline.knots.push_back(KnotPointState(*dynamics_info));
-    test_timeline.knots.back().UpdateActiveContacts(contacts);
-    test_timeline.breaks.push_back(0.05 * i);
-  }
-
-  auto test_constraint = std::make_shared<CollocationConstraint<double>>(
-      &test_timeline);
-
-  VectorXd constraint_result;
-  test_constraint->EvaluateConstraint(stack<double>({vars, vars}), &constraint_result);
-
-  std::cout << "collocation defect norm: " << constraint_result.norm()
-            << std::endl;
+  TestCollocation(*dynamics_info, vars, contacts);
 
   IDMPCParams params;
   params.dt = 0.05;

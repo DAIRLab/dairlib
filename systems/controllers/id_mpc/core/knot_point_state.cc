@@ -1,5 +1,6 @@
 #include "knot_point_state.h"
 #include "common/eigen_utils.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -95,6 +96,7 @@ template<>
 void KnotPointState::Update(const VectorXd& vars) {
   if (cache_.dirty || !AreVectorsEqual(vars, cache_.decision_vars)) {
     cache_.decision_vars = vars;
+    dynamics_.SetPlantStateIfNew(dynamics_.get_x(vars), cache_.context.get());
     cache_.dynamics_results = dynamics_.EvaluateDynamics<double>(
         *cache_.context,
         cache_.vdot,
@@ -110,6 +112,8 @@ void KnotPointState::Update(
     const VectorX<AutoDiffXd>& vars) {
   if (cache_ad_.dirty || !AreVectorsEqual(vars, cache_ad_.decision_vars)) {
     cache_ad_.decision_vars = vars;
+    dynamics_.SetPlantStateIfNew(
+        dynamics_.get_x(vars), cache_ad_.context.get());
     cache_ad_.dynamics_results = dynamics_.EvaluateDynamics<AutoDiffXd>(
         *cache_ad_.context,
         cache_ad_.vdot,

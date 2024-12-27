@@ -40,12 +40,8 @@ void TestInverseDynamics(
   );
 
   Eigen::MatrixXd B = info.get_plant().MakeActuationMatrix();
-  std::cout << "tau (inv dyn): " << result.tau_.transpose() << std::endl;
-  std::cout << "Bu: " << (B * u).transpose() << std::endl;
-
   std::cout << "inverse dynamics defect norm: " << (B*u - result.tau_).norm()
   << std::endl;
-
 }
 
 int DoMain() {
@@ -124,13 +120,11 @@ int DoMain() {
   vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
   vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
 
-  std::cout << "vars:\n" << vars << std::endl;
-
   Timeline test_timeline;
   for (int i = 0; i < 2; ++i) {
     test_timeline.knots.push_back(KnotPointState(*dynamics_info));
     test_timeline.knots.back().UpdateActiveContacts(contacts);
-    test_timeline.breaks.push_back(0.01 * i);
+    test_timeline.breaks.push_back(0.05 * i);
   }
 
   auto test_constraint = std::make_shared<CollocationConstraint<double>>(
@@ -138,11 +132,13 @@ int DoMain() {
 
   VectorXd constraint_result;
   test_constraint->EvaluateConstraint(stack<double>({vars, vars}), &constraint_result);
-  std::cout << "test_collocation:\n" << constraint_result << std::endl;
+
+  std::cout << "collocation defect norm: " << constraint_result.norm()
+            << std::endl;
 
   IDMPCParams params;
-  params.N = 10;
-  params.dt = 0.1;
+  params.dt = 0.05;
+  params.N = static_cast<int>(0.8 / params.dt);
 
   IDMPC mpc(params, std::move(dynamics_info));
 
@@ -184,6 +180,7 @@ int DoMain() {
   auto solver = drake::solvers::SnoptSolver();
   auto result = solver.Solve(prog);
   std::cout << result.get_solution_result() << std::endl;
+
 
   return 0;
 }

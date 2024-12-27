@@ -112,6 +112,12 @@ const VectorX<T> ConstrainedDynamicsInfo::get_v(
 }
 
 template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_x(
+    const VectorX<T>& full_vars) const {
+  return full_vars.segment(0, nq_ + nv_);
+}
+
+template<typename T>
 const VectorX<T> ConstrainedDynamicsInfo::get_u(
     const VectorX<T>& full_vars) const {
   return full_vars.segment(nq_ + nv_, nu_);
@@ -255,6 +261,8 @@ template const VectorX<double> ConstrainedDynamicsInfo::get_q(const
     VectorX<double> &full_vars) const;
 template const VectorX<double> ConstrainedDynamicsInfo::get_v(const
     VectorX<double> &full_vars) const;
+template const VectorX<double> ConstrainedDynamicsInfo::get_x(const
+    VectorX<double> &full_vars) const;
 template const VectorX<double> ConstrainedDynamicsInfo::get_u(const
     VectorX<double> &full_vars) const;
 template const VectorX<double> ConstrainedDynamicsInfo::get_lh(const
@@ -265,6 +273,8 @@ template const VectorX<double> ConstrainedDynamicsInfo::get_lc(const
 template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_q(const
     VectorX<AutoDiffXd> &full_vars) const;
 template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_v(const
+    VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_x(const
     VectorX<AutoDiffXd> &full_vars) const;
 template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_u(const
     VectorX<AutoDiffXd> &full_vars) const;

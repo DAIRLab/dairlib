@@ -43,6 +43,9 @@ class ConstrainedDynamicsInfo {
   const drake::VectorX<T> get_v(const drake::VectorX<T>& full_vars) const;
 
   template<typename T>
+  const drake::VectorX<T> get_x(const drake::VectorX<T>& full_vars) const;
+
+  template<typename T>
   const drake::VectorX<T> get_u(const drake::VectorX<T>& full_vars) const;
 
   template<typename T>

@@ -1,3 +1,4 @@
+#include <iostream>
 #include "constrained_inverse_dynamics_info.h"
 #include "common/find_resource.h"
 #include "multibody/kinematic/distance_evaluator.h"
@@ -98,6 +99,36 @@ void ConstrainedDynamicsInfo::AddDistanceConstraint(
   nh_ = holonomic_constraints_->count_full();
 }
 
+template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_q(
+    const VectorX<T>& full_vars) const {
+  return full_vars.head(nq_);
+}
+
+template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_v(
+    const VectorX<T>& full_vars) const {
+  return full_vars.segment(nq_, nv_);
+}
+
+template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_u(
+    const VectorX<T>& full_vars) const {
+  return full_vars.segment(nq_ + nv_, nu_);
+}
+
+template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_lh(
+    const VectorX<T>& full_vars) const {
+  return full_vars.segment(nq_ + nv_ + nu_, nh_);
+}
+
+template<typename T>
+const VectorX<T> ConstrainedDynamicsInfo::get_lc(
+    const VectorX<T>& full_vars) const {
+  return full_vars.segment(nq_ + nv_ + nu_ + nh_, nc_);
+}
+
 template<>
 void ConstrainedDynamicsInfo::SetPlantStateIfNew(
     const VectorX<AutoDiffXd> &x, Context<AutoDiffXd> *context) const {
@@ -140,11 +171,9 @@ void ConstrainedDynamicsInfo::DoEvaluate(
   if (holonomic_constraints != nullptr) {
     eval.c_.head(nh_) = holonomic_constraints->EvalFull(context);
     Jh = holonomic_constraints->EvalFullJacobian(context);
-    JhdotV = holonomic_constraints->EvalFullJacobianDotTimesV(context);
   }
 
   MatrixX<T> Jc_active = MatrixX<T>::Zero(nc_active_, nv_);
-  VectorX<T> Jc_active_dot_v = VectorX<T>::Zero(nc_active_);
   MatrixX<T> Jc = MatrixX<T>::Zero(nc_, nv_);
 
   for (const auto &c : active_contacts) {
@@ -159,15 +188,13 @@ void ConstrainedDynamicsInfo::DoEvaluate(
     for (int i = 0; i < evaluator->num_active(); ++i) {
       Jc_active.row(start + i) =
           Jc.row(lambda_c_start_idxs_.at(c) + evaluator->active_inds().at(i));
-      Jc_active_dot_v.segment(start, evaluator->num_active()) =
-          evaluator->EvalActiveJacobianDotTimesV(context);
     }
   }
 
   VectorX<T> grav = plant.CalcGravityGeneralizedForces(context);
 
   drake::multibody::MultibodyForces tau_app(plant);
-  tau_app.mutable_generalized_forces() = grav + Jc.transpose() * lc + Jh
+  tau_app.mutable_generalized_forces() = grav +  Jc.transpose() * lc + Jh
       .transpose() * lh;
 
   eval.tau_ = plant.CalcInverseDynamics(context, vdot, tau_app);
@@ -223,4 +250,27 @@ ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
 
 template ConstrainedDynamicsInfo::InverseDynamicsEvaluation<AutoDiffXd>
 ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
+
+template const VectorX<double> ConstrainedDynamicsInfo::get_q(const
+    VectorX<double> &full_vars) const;
+template const VectorX<double> ConstrainedDynamicsInfo::get_v(const
+    VectorX<double> &full_vars) const;
+template const VectorX<double> ConstrainedDynamicsInfo::get_u(const
+    VectorX<double> &full_vars) const;
+template const VectorX<double> ConstrainedDynamicsInfo::get_lh(const
+    VectorX<double> &full_vars) const;
+template const VectorX<double> ConstrainedDynamicsInfo::get_lc(const
+    VectorX<double> &full_vars) const;
+
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_q(const
+    VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_v(const
+    VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_u(const
+    VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_lh(const
+    VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_lc(const
+    VectorX<AutoDiffXd> &full_vars) const;
+
 }

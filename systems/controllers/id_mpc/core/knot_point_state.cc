@@ -98,9 +98,8 @@ void KnotPointState::Update(const VectorXd& vars) {
     cache_.dynamics_results = dynamics_.EvaluateDynamics<double>(
         *cache_.context,
         cache_.vdot,
-        cache_.decision_vars.segment(
-            dynamics_.nx() + dynamics_.nu(), dynamics_.nh()),
-        cache_.decision_vars.tail(dynamics_.nu()),
+        dynamics_.get_lh(vars),
+        dynamics_.get_lc(vars),
         cache_.active_contacts);
     cache_.dirty = false;
   }
@@ -114,9 +113,8 @@ void KnotPointState::Update(
     cache_ad_.dynamics_results = dynamics_.EvaluateDynamics<AutoDiffXd>(
         *cache_ad_.context,
         cache_ad_.vdot,
-        cache_ad_.decision_vars.segment(
-            dynamics_.nx() + dynamics_.nu(), dynamics_.nh()),
-        cache_ad_.decision_vars.tail(dynamics_.nu()),
+        dynamics_.get_lh(vars),
+        dynamics_.get_lc(vars),
         cache_ad_.active_contacts);
     cache_ad_.dirty = false;
   }

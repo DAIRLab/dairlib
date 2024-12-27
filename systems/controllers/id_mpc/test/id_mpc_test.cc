@@ -1,5 +1,6 @@
 #include <iostream>
 #include "systems/controllers/id_mpc/id_mpc.h"
+#include "common/eigen_utils.h"
 
 #include "drake/solvers/solve.h"
 #include "drake/solvers/ipopt_solver.h"
@@ -10,6 +11,42 @@ namespace dairlib::systems::controllers::id_mpc {
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+
+void TestInverseDynamics(
+    const ConstrainedDynamicsInfo& info, const VectorXd q, const VectorXd& u,
+    const VectorXd& lambda, std::vector<std::string> contacts) {
+  VectorXd all_vars = VectorXd::Zero(info.variable_count());
+
+  all_vars.head(q.rows()) = q;
+  all_vars.segment(q.rows() + q.rows() - 1, u.rows()) = u;
+  all_vars.tail(lambda.rows()) = lambda;
+
+  DRAKE_DEMAND(info.get_q(all_vars) == q);
+  DRAKE_DEMAND(info.get_v(all_vars) == VectorXd::Zero(q.rows() - 1));
+  DRAKE_DEMAND(info.get_u(all_vars) == u);
+  DRAKE_DEMAND(info.get_lh(all_vars) == lambda.head(2));
+  DRAKE_DEMAND(info.get_lc(all_vars) == lambda.tail(12));
+
+  VectorXd x = all_vars.head(info.nx());
+  auto context = info.MakeContext<double>();
+  info.SetPlantStateIfNew<double>(x, context.get());
+
+  auto result = info.EvaluateDynamics<double>(
+      *context,
+      VectorXd::Zero(info.nv()),
+      info.get_lh(all_vars),
+      info.get_lc(all_vars),
+      contacts
+  );
+
+  Eigen::MatrixXd B = info.get_plant().MakeActuationMatrix();
+  std::cout << "tau (inv dyn): " << result.tau_.transpose() << std::endl;
+  std::cout << "Bu: " << (B * u).transpose() << std::endl;
+
+  std::cout << "inverse dynamics defect norm: " << (B*u - result.tau_).norm()
+  << std::endl;
+
+}
 
 int DoMain() {
   std::string urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
@@ -78,9 +115,30 @@ int DoMain() {
     39.8174, 9.30058, 81.8166,
    -39.7123, -3.97191, 79.936;
 
+  std::vector<std::string> contacts = {"toe_left_front", "toe_left_rear", "toe_right_front",
+                                       "toe_right_rear"};
+
+  TestInverseDynamics(*dynamics_info, q, u, lambda, contacts);
+
   vars.head(dynamics_info->nq()) = q;
   vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
   vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
+
+  std::cout << "vars:\n" << vars << std::endl;
+
+  Timeline test_timeline;
+  for (int i = 0; i < 2; ++i) {
+    test_timeline.knots.push_back(KnotPointState(*dynamics_info));
+    test_timeline.knots.back().UpdateActiveContacts(contacts);
+    test_timeline.breaks.push_back(0.01 * i);
+  }
+
+  auto test_constraint = std::make_shared<CollocationConstraint<double>>(
+      &test_timeline);
+
+  VectorXd constraint_result;
+  test_constraint->EvaluateConstraint(stack<double>({vars, vars}), &constraint_result);
+  std::cout << "test_collocation:\n" << constraint_result << std::endl;
 
   IDMPCParams params;
   params.N = 10;
@@ -104,10 +162,7 @@ int DoMain() {
         ::UnitQuaternionConstraint>();
 
     prog.AddConstraint(unit_quat, mpc.position_vars(i).head(4));
-
-    mpc.SetActiveContacts(
-        i, {"toe_left_front", "toe_left_rear", "toe_right_front",
-            "toe_right_rear"});
+    mpc.SetActiveContacts(i, contacts);
   }
 
   mpc.SetInitialState(vars.head(2 * q.size() - 1));

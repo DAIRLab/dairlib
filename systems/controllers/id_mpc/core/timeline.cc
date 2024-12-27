@@ -1,5 +1,5 @@
 #include "timeline.h"
-
+#include <iostream>
 namespace dairlib::systems::controllers::id_mpc {
 
 using drake::VectorX;
@@ -19,8 +19,9 @@ void Timeline::Update(const VectorX<T> stacked_decision_vars) {
 
     double dt = breaks.at(i+1) - breaks.at(i);
     VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;
+
     knots.at(i).SetVDot(vdot);
-    knots.at(i).Update<T>(stacked_decision_vars.segment(i * nx,  nvars));
+    knots.at(i).Update<T>(stacked_decision_vars.segment(i * nvars,  nvars));
   }
 }
 

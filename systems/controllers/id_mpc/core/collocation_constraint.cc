@@ -6,38 +6,40 @@ using drake::VectorX;
 using Eigen::VectorXd;
 
 template <typename T>
-TrapezoidalCollocationConstraint<T>::TrapezoidalCollocationConstraint(
-    KnotPointState *x0, KnotPointState *x1, double dt) :
+CollocationConstraint<T>::CollocationConstraint(Timeline* timeline) :
     solvers::NonlinearConstraint<T>(
-        x0->get_dynamics().nx(), 2 * x0->get_dynamics().variable_count(),
-        VectorXd::Zero(x0->get_dynamics().nx()),
-        VectorXd::Zero(x0->get_dynamics().nx())),
-        x0_state_(x0), x1_state_(x1), dt_(dt) {
-
-  DRAKE_DEMAND(x0_state_ != nullptr);
-  DRAKE_DEMAND(x1_state_ != nullptr);
-  DRAKE_DEMAND(dt > 0);
+        timeline->total_dynamics_constraints(),
+        timeline->total_vars(),
+        VectorXd::Zero(timeline->total_dynamics_constraints()),
+        VectorXd::Zero(timeline->total_dynamics_constraints())),
+        timeline_(timeline) {
+  DRAKE_DEMAND(timeline_ != nullptr);
 }
-
 
 template <typename T>
-void TrapezoidalCollocationConstraint<T>::EvaluateConstraint(
+void CollocationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>> &x, VectorX<T> *y) const {
-  DRAKE_ASSERT(x.rows() == 2 * x0_state_->get_dynamics().variable_count());
+  DRAKE_DEMAND(x.rows() == timeline_->total_vars());
+  *y = VectorX<T>::Zero(timeline_->total_dynamics_constraints());
 
-  int nx = x0_state_->get_dynamics().nx();
-  int var_count = x0_state_->get_dynamics().variable_count();
+  timeline_->Update<T>(x);
+  int nvars = timeline_->knots.front().get_dynamics().variable_count();
+  int nx = timeline_->knots.front().get_dynamics().nx();
+  int nq = timeline_->knots.front().get_dynamics().nq();
+  int nv = timeline_->knots.front().get_dynamics().nv();
 
-  x0_state_->Update<T>(x.head(var_count));
-  x1_state_->Update<T>(x.tail(var_count));
-
-  const VectorX<T>& x0 = x.head(nx);
-  const VectorX<T>& x1 = x.segment(var_count, nx);
-
-  *y = x1 - x0 - 0.5 * dt_ * (x0_state_->GetXDot<T>() + x1_state_->GetXDot<T>());
+  for (int i = 0; i < timeline_->nknots() - 1; ++i) {
+    double dt = timeline_->breaks.at(i+1) - timeline_->breaks.at(i);
+    const auto& x0 = timeline_->knots.at(i);
+    const auto& x1 = timeline_->knots.at(i+1);
+    y->segment(i * nx, nq) =
+        x.segment((i+1) * nvars, nq) - x.segment(i * nvars, nq)
+        - 0.5 * dt * (x0.GetQDot<T>() + x1.GetQDot<T>());
+    y->segment(i * nx + nq, nv) = x.segment(i * nx + nx, nv) - x0.GetTau<T>();
+  }
 }
 
-template class TrapezoidalCollocationConstraint<double>;
-template class TrapezoidalCollocationConstraint<AutoDiffXd>;
+template class CollocationConstraint<double>;
+template class CollocationConstraint<AutoDiffXd>;
 
 }

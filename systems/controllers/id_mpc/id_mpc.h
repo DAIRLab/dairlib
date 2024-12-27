@@ -52,12 +52,11 @@ class IDMPC {
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
 
+  std::shared_ptr<CollocationConstraint<double>> dynamics_constraint_;
   drake::solvers::MathematicalProgram prog_;
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> dynamics_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> kinematic_constraints_;
-
 };
 
 }

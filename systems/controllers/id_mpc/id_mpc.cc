@@ -1,4 +1,5 @@
 #include "id_mpc.h"
+#include "common/eigen_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -19,14 +20,12 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
         prog_.NewContinuousVariables(dynamics_->variable_count()));
   }
 
+  dynamics_constraint_ =
+      std::make_shared<CollocationConstraint<double>>(&timeline_);
+
+  prog_.AddConstraint(dynamics_constraint_, stack(knot_point_vars_));
+
   for (int i = 0; i < params_.N; ++i) {
-    auto collocation_constraint =
-        std::make_shared<TrapezoidalCollocationConstraint<double>>(
-            &timeline_.knots.at(i), &timeline_.knots.at(i + 1), params_.dt);
-    dynamics_constraints_.push_back(
-        prog_.AddConstraint(
-            collocation_constraint,
-            {knot_point_vars_.at(i), knot_point_vars_.at(i + 1)}));
     auto kinematic_constraint =
         std::make_shared<KinematicConstraint<double>>(
         &timeline_.knots.at(i+1));

@@ -23,10 +23,12 @@ bool AreVectorsEqual(const Eigen::Ref<const VectorXd> &a,
 
 KnotPointState::KnotPointState(
     const ConstrainedDynamicsInfo &dynamics) : dynamics_(dynamics) {
+  cache_.vdot = VectorXd::Zero(dynamics.nv());
   cache_.decision_vars = VectorXd::Zero(dynamics.variable_count());
   cache_.dynamics_results = dynamics.MakeEmptyDynamicsEvaluation<double>();
   cache_.context = dynamics.MakeContext<double>();
 
+  cache_ad_.decision_vars = AutoDiffVecXd::Zero(dynamics.nv());
   cache_ad_.decision_vars = AutoDiffVecXd::Zero(dynamics.variable_count());
   cache_ad_.dynamics_results = dynamics.MakeEmptyDynamicsEvaluation<AutoDiffXd>();
   cache_ad_.context = dynamics.MakeContext<AutoDiffXd>();
@@ -49,15 +51,23 @@ VectorX<AutoDiffXd> KnotPointState::GetKinematicConstraints() const {
 }
 
 template<>
-VectorX<double> KnotPointState::GetXDot() const {
-  return stack<double>(
-      {cache_.dynamics_results.qdot_, cache_.dynamics_results.vdot_});
+VectorX<double> KnotPointState::GetQDot() const {
+  return cache_.dynamics_results.qdot_;
 }
 
 template<>
-VectorX<AutoDiffXd> KnotPointState::GetXDot() const {
-  return stack<AutoDiffXd>(
-      {cache_ad_.dynamics_results.qdot_, cache_ad_.dynamics_results.vdot_});
+VectorX<AutoDiffXd> KnotPointState::GetTau() const {
+  return cache_ad_.dynamics_results.tau_;
+}
+
+template<>
+VectorX<double> KnotPointState::GetTau() const {
+  return cache_.dynamics_results.tau_;
+}
+
+template<>
+VectorX<AutoDiffXd> KnotPointState::GetQDot() const {
+  return cache_ad_.dynamics_results.qdot_;
 }
 
 void KnotPointState::UpdateActiveContacts(
@@ -85,8 +95,13 @@ template<>
 void KnotPointState::Update(const VectorXd& vars) {
   if (cache_.dirty || !AreVectorsEqual(vars, cache_.decision_vars)) {
     cache_.decision_vars = vars;
-    cache_.dynamics_results = dynamics_.EvaluateDynamics(
-        cache_.context.get(), cache_.decision_vars, cache_.active_contacts);
+    cache_.dynamics_results = dynamics_.EvaluateDynamics<double>(
+        *cache_.context,
+        cache_.vdot,
+        cache_.decision_vars.segment(
+            dynamics_.nx() + dynamics_.nu(), dynamics_.nh()),
+        cache_.decision_vars.tail(dynamics_.nu()),
+        cache_.active_contacts);
     cache_.dirty = false;
   }
 }
@@ -96,8 +111,13 @@ void KnotPointState::Update(
     const VectorX<AutoDiffXd>& vars) {
   if (cache_ad_.dirty || !AreVectorsEqual(vars, cache_ad_.decision_vars)) {
     cache_ad_.decision_vars = vars;
-    cache_ad_.dynamics_results = dynamics_.EvaluateDynamics(
-        cache_ad_.context.get(), cache_ad_.decision_vars, cache_ad_.active_contacts);
+    cache_ad_.dynamics_results = dynamics_.EvaluateDynamics<AutoDiffXd>(
+        *cache_ad_.context,
+        cache_ad_.vdot,
+        cache_ad_.decision_vars.segment(
+            dynamics_.nx() + dynamics_.nu(), dynamics_.nh()),
+        cache_ad_.decision_vars.tail(dynamics_.nu()),
+        cache_ad_.active_contacts);
     cache_ad_.dirty = false;
   }
 }

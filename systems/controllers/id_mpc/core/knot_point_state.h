@@ -25,7 +25,10 @@ class KnotPointState {
   void Update(const drake::VectorX<T>& vars);
 
   template<typename T>
-  drake::VectorX<T> GetXDot() const;
+  drake::VectorX<T> GetQDot() const;
+
+  template<typename T>
+  drake::VectorX<T> GetTau() const;
 
   template<typename T>
   drake::VectorX<T> GetKinematicConstraints() const;

@@ -82,15 +82,6 @@ int DoMain() {
   vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
   vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
 
-  auto test_context = dynamics_info->MakeContext<double>();
-  auto test_result = dynamics_info->EvaluateDynamics<double>(
-    test_context.get(),
-    vars,
-    {"toe_left_front", "toe_left_rear", "toe_right_front",
-     "toe_right_rear"});
-
-  std::cout << test_result;
-
   IDMPCParams params;
   params.N = 10;
   params.dt = 0.1;

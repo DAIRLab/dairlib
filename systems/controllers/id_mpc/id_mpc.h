@@ -6,7 +6,11 @@
 #include "core/kinematic_constraint.h"
 #include "core/timeline.h"
 
+#include "lcm/lcm_trajectory.h"
+
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/mathematical_program_result.h"
+#include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -41,6 +45,11 @@ class IDMPC {
     return knot_vars(index).tail(dynamics_->nc());
   }
 
+  void AddUnitQuaternionConstraintToAllFloatingBodies();
+
+  LcmTrajectory GetSolutionAsLcmTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const;
+
   void SetActiveContacts(int knot_index, std::vector<std::string> contacts);
   void SetInitialState(const Eigen::VectorXd& x);
 
@@ -57,6 +66,7 @@ class IDMPC {
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> kinematic_constraints_;
+  std::shared_ptr<drake::multibody::UnitQuaternionConstraint> unit_quat_ = nullptr;
 };
 
 }

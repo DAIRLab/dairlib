@@ -47,7 +47,6 @@ inline MatrixX<Scalar> BlockDiagonalRepeat(MatrixX<Scalar> X, int n) {
 
 template <typename Scalar>
 inline VectorX<Scalar> stack(const std::vector<VectorX<Scalar>>& v) {
-  int max_rows = 0;
   VectorX<Scalar> out(v.size() * v.front().rows());
 
   Eigen::Index start = 0;

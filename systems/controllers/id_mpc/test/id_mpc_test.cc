@@ -158,21 +158,21 @@ int DoMain() {
   VectorXd vd = vars;
   vd(6) = 0.7;
 
-  Eigen::MatrixXd Q_all = 0.0000001 *
-      Eigen::MatrixXd::Identity(vars.rows(), vars.rows());
-  Q_all(6,6) = 1000.0;
+  mpc.SetInitialState(vars.head(2 * q.size() - 1));
 
   for (int i = 0; i <= params.N; ++i) {
+    vars(6) -= (0.95 - 0.7) / params.N;
+    vars.segment(q.size(), q.size() - 1) =
+        0.1 * Eigen::VectorXd::Random(q.size() - 1);
     prog.SetInitialGuess(mpc.knot_vars(i), vars);
-    prog.AddQuadraticErrorCost(Q_all, vd, mpc.knot_vars(i));
-    auto unit_quat = std::make_shared<drake::multibody
-        ::UnitQuaternionConstraint>();
-
-    prog.AddConstraint(unit_quat, mpc.position_vars(i).head(4));
+    prog.AddQuadraticErrorCost(
+        Eigen::MatrixXd::Identity(1,1),
+        vd.segment<1>(6),
+        mpc.position_vars(i).segment<1>(6));
     mpc.SetActiveContacts(i, contacts);
   }
 
-  mpc.SetInitialState(vars.head(2 * q.size() - 1));
+
 
   auto solver_options = drake::solvers::SolverOptions();
   solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -182,15 +182,22 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-3);
+                          "Major optimality tolerance", 1e-2);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-3);
+                          "Major feasibility tolerance", 1e-2);
+  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
+                           "Scale option", 2);
 
   prog.SetSolverOptions(solver_options);
 
   auto solver = drake::solvers::SnoptSolver();
   auto result = solver.Solve(prog);
   std::cout << result.get_solution_result() << std::endl;
+
+  auto sol = mpc.GetSolutionAsLcmTrajectory(result);
+
+  std::cout << "q: \n";
+  std::cout << sol.GetTrajectory("q").datapoints << std::endl;
 
 
   return 0;

@@ -7,6 +7,7 @@ cc_library(
     srcs = ["id_mpc.cc"],
     hdrs = ["id_mpc.h"],
     deps = [
+        "//lcm:lcm_trajectory_saver",
         "//systems/controllers/id_mpc/core:id_mpc_core",
     ],
 )

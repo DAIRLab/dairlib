@@ -317,11 +317,9 @@ def make_hist_figure(results, title, key, edges, log_x_axis=False):
 
     if log_x_axis:
         plt.gca().set_xscale('log')
-    if title == 'Lab':
+    if title not in ['Brick Steps', 'Grass']:
         plt.legend([r['name'] for r in results])
-    if title == 'Grass':
-        plt.xlabel('Segmentation Run Time (s)')
-    else:
+    if title in ['Lab', 'Brick Steps']:
         plt.xticks([], [])
         plt.minorticks_off()
 
@@ -330,15 +328,21 @@ def plot_segmentation_run_time_results(results, title, savefile):
     fig = plt.figure()
     edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
     make_hist_figure(results, title, 'runtime', edges, log_x_axis=True)
+    if title == 'Grass':
+        plt.xlabel('Segmentation Run Time (s)')
+
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
 
 
-def plot_iou_results(results, title, savefile):
+def plot_iou_results(results, title, savefile, edges=None):
     fig = plt.figure()
-    edges = np.linspace(0, 1, 21)
+    if edges is None:
+        edges = np.linspace(0, 1, 21)
     make_hist_figure(results, title, 'iou', edges)
+    if title == 'Grass':
+        plt.xlabel('Frame-to-Frame IoU')
     fig.tight_layout()
     if savefile:
         plt.savefig(savefile)
@@ -414,8 +418,8 @@ def make_all_results_figures(logfolder, savefolder):
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
     data = all_results['data'].item()
-    N = 16
-    offset = 1050
+    N = 15
+    offset = 450
     interval = 30
     envs = ['Lab', 'Brick Steps', 'Grass']
     utils.setup_plots()
@@ -540,6 +544,22 @@ def make_full_profiling_plot(logfile, savefile):
     plt.savefig(savefile)
 
 
+def plot_hysteresis_comparison(logfile, savefile=None):
+    utils.setup_plots()
+    results = utils.hysteresis_comparison(logfile)
+    edges = np.linspace(np.min(results[0]['iou']), 1, 16)
+    fig = plt.figure()
+
+    for r in results:
+        print(f'{r["name"]}: {np.min(r["iou"])}')
+    make_hist_figure(results, None, 'iou', edges)
+    plt.title('Temporal Consistency vs $k_{hyst}$')
+    plt.xlabel('Frame-to-Frame IoU')
+    fig.tight_layout()
+    if savefile is not None:
+        plt.savefig(savefile)
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument('--logfolder', type=str, default='')
@@ -547,25 +567,30 @@ def main():
 
     args = parser.parse_args()
 
-    # save_all_results(args.logfolder)
-    make_full_profiling_plot(
+    plot_hysteresis_comparison(
         args.logfile,
-        os.path.join(
-            args.logfolder,
-            'cassie_laptop_profiling_figures/detailed_profiling.svg'
-        )
+        '../manuscripts/perceptive_walking_tro/figures/hysteresis_comparison.svg'
     )
+
+    # save_all_results(args.logfolder)
+    # make_full_profiling_plot(
+    #     args.logfile,
+    #     os.path.join(
+    #         args.logfolder,
+    #         'cassie_laptop_profiling_figures/detailed_profiling.svg'
+    #     )
+    # )
     # make_all_segmentation_videos(args.logfolder)
     # run_pipeline_figure_script(args.logfile)
-    #
+    # make_all_results_figures(
+    #     args.logfolder,
+    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    # )
     # make_segmentation_tiles(
     #     args.logfolder,
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     # )
-    make_all_results_figures(
-        args.logfolder,
-        os.path.join(args.logfolder, 'cassie_laptop_profiling_figures/')
-    )
+
     #
     # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)
     # write_mpfc_debug_video(args.logfile, 60)

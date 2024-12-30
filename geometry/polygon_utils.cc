@@ -266,17 +266,10 @@ ConvexPolygon MakeInscribedConvexPolygon(
   WhittlingSolver solver;
 
   while (not verts_sorted.empty()) {
-    // To avoid numerical issues, ignore violations of less than 1mm
+    // To avoid numerical issues, ignore non-convexities of less than 1mm
     if (distance_to_boundary(facets, verts_sorted.front()) < 0.001) {
       break;
     }
-
-//    auto start = std::chrono::high_resolution_clock::now();
-//    auto [a, b] = GetBestSupportAsRayToBoundary(
-//        verts_sorted.front(), facet_hull);
-
-//    auto [a, b] = SolveForBestApproximateSupport(
-//        verts_sorted.front(), facets, verts);
 
     auto [a, b] = solver.SolveForBestCut(
         verts_sorted.front(),

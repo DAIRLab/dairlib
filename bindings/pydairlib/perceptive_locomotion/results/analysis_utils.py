@@ -176,6 +176,25 @@ def profile_segmentation(system, grid_maps):
     }
 
 
+def hysteresis_comparison(logfile):
+    grid_maps, _ = get_grid_maps_from_log(logfile)
+
+    hysts = [0.0, 0.1, 0.3, 0.6]
+    results = []
+    for h in hysts:
+        s3 = TerrainSegmentationSystem(
+            {
+                'curvature_criterion': seg_criteria.curvature_criterion,
+                'inclination_criterion': seg_criteria.inclination_criterion,
+            }
+        )
+        s3.safety_hysteresis = h
+        s3.set_name(f'$k_{{hyst}}$ = {h:.1f}')
+        results.append(profile_segmentation(s3, grid_maps))
+
+    return results
+
+
 def make_segmentation_systems():
     params_folder = \
         'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'

@@ -181,6 +181,7 @@ void OperationalSpaceControl::AddContactPoint(
     std::vector<int> fsm_states) {
 
   DRAKE_DEMAND(not name.empty());
+  DRAKE_DEMAND(evaluator != nullptr);
 
   if (fsm_states.empty()) {
     fsm_states.push_back(-1);

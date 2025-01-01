@@ -35,7 +35,7 @@ void GeomGeomColliderTest() {
 
   auto X_WI = drake::math::RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(),
-                    plant.GetFrameByName("base_link"), X_WI);
+                   plant.GetFrameByName("base_link"), X_WI);
   plant.Finalize();
 
   auto diagram = builder.Build();
@@ -93,7 +93,7 @@ void GeomGeomColliderTest() {
 
   std::cout << "A-B, planar" << std::endl;
   auto [phi_A_B_planar, J_A_B_planar] = collider_A_B.EvalPlanar(context,
-      Eigen::Vector3d(0, 1, 0));
+                                                                Eigen::Vector3d(0, 1, 0));
   std::cout << J_A_B_planar << std::endl << std::endl;
 }
 

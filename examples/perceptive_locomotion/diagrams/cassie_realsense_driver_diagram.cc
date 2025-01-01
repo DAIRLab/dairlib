@@ -5,7 +5,6 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "systems/perception/feature_tracking/feature_tracker.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
@@ -21,8 +20,6 @@ using Eigen::Vector3d;
 
 using perception::ElevationMappingSystem;
 using perception::RealsensePointCloudSubscriber;
-using perception::RealsenseImagePairSubscriber;
-using perception::FeatureTracker;
 using perception::elevation_mapping_params_io;
 using systems::RobotOutputReceiver;
 
@@ -31,9 +28,7 @@ using drake::lcmt_point_cloud;
 
 
 CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& params_yaml) {
-//   ov_core::Printer::setPrintLevel(ov_core::Printer::PrintLevel::ALL);
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
-  const std::string feat_params = "examples/perceptive_locomotion/feature_tracking_node_params.yaml";
 
   AddCassieMultibody(&plant_, nullptr, true, urdf, true, false);
   plant_.Finalize();

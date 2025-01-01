@@ -159,14 +159,6 @@ cc_library(
 )
 
 cc_library(
-    name = "minimum_snap_trajectory_generation",
-    hdrs = ["minimum_snap_trajectory_generation.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_com_trajectory_generator",
     srcs = ["alip_com_trajectory_generator.cc"],
     hdrs = ["alip_com_trajectory_generator.h"],

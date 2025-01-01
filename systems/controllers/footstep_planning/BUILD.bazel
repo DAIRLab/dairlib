@@ -141,7 +141,6 @@ cc_library(
         ":swing_foot_traj_solver",
         "//common:polynomial_utils",
         "//multibody:utils",
-        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",

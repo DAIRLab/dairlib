@@ -10,7 +10,6 @@
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/perception/realsense/single_rs_interface.h"
 #include "systems/perception/realsense/realsense_point_cloud_subscriber.h"
-#include "systems/perception/realsense/realsense_image_pair_subscriber.h"
 
 
 #include "examples/perceptive_locomotion/cassie_perception_utils.h"

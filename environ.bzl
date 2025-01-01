@@ -62,3 +62,4 @@ inekf_repository = repository_rule(
     local = True,
     attrs = {"_vars": attr.string_list(default = ["DAIRLIB_LOCAL_INEKF_PATH"])},
 )
+

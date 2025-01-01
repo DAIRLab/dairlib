@@ -21,21 +21,6 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/perception/ideal_landmark_source.h"
 
-
-#ifdef DAIR_ROS_ON
-#include "systems/ros/ros_publisher_system.h"
-#include "systems/ros/robot_state_to_ros_pose.h"
-#include "systems/ros/multibody_plant_tf_broadcaster_system.h"
-#include "systems/perception/pointcloud/drake_to_ros_point_cloud.h"
-
-void SigintHandler(int sig) {
-  ros::shutdown();
-  exit(0);
-}
-
-
-#endif
-
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
@@ -53,10 +38,6 @@ void SigintHandler(int sig) {
 #include "drake/geometry/render_vtk/factory.h"
 
 namespace dairlib {
-
-#ifdef DAIR_ROS_ON
-using perception::DrakeToRosPointCloud;
-#endif
 
 using systems::SubvectorPassThrough;
 using perception::IdealLandmarkSource;

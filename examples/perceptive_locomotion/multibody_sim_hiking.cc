@@ -89,10 +89,6 @@ DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(publish_ros_pose, false, "if true, publishes the pelvis tf");
 DEFINE_bool(publish_points, true, "publish ros pointcloud messages");
-DEFINE_bool(time_stepping, true,
-            "If 'true', the plant is modeled as a "
-            "discrete system with periodic updates. "
-            "If 'false', the plant is modeled as a continuous system.");
 
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(toe_spread, .05, "Initial toe spread in m.");
@@ -113,6 +109,9 @@ DEFINE_double(start_time, 0.0,
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
+DEFINE_double(pc_visualization_period, 1.0 / 15.0,
+              "period for visualization of the point cloud for debugging");
+
 DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
               "LCM channel for virtual radio command");
 DEFINE_string(channel_u, "CASSIE_INPUT",
@@ -124,8 +123,6 @@ DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
               "yaml with camera calib");
 DEFINE_string(points_pub_channel, "CASSIE_DEPTH", "depth pointcloud channel");
-DEFINE_double(pc_visualization_period, 1.0 / 15.0,
-              "period for visualization of the point cloud for debugging");
 
 
 int do_main(int argc, char* argv[]) {
@@ -136,8 +133,7 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
-  MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
+  MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_dt);
   multibody::AddSteppingStonesToSimFromYaml(
       &plant, &scene_graph, FLAGS_stepping_stone_filename, 1.0);
 
@@ -209,51 +205,6 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<lcmt_landmark_array>(
           "CASSIE_EKF_LANDMARKS", lcm, 1.0 / 30.0));
 
-  // ROS interfaces
-#ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "cassie_hiking_simulaton");
-  ros::NodeHandle node_handle;
-  signal(SIGINT, SigintHandler);
-
-  if (FLAGS_publish_ros_pose) {
-    const auto& cov_source =
-        builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));
-    const auto& pose_sender =
-        builder.AddSystem<systems::RobotStateToRosPose>(
-            plant, context.get(), "pelvis");
-    const auto& pose_publisher =
-        builder.AddSystem<
-            systems::RosPublisherSystem<
-                geometry_msgs::PoseWithCovarianceStamped>>(
-                    "/geometry_msgs/PoseWithCovarianceStamped",
-                    &node_handle,
-                    TriggerTypeSet({TriggerType::kPeriodic}),
-                    FLAGS_ros_state_pub_period);
-
-    std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
-    bff.push_back({ "camera_depth_optical_frame", cam_transform});
-    std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
-
-    const auto& tf_broadcaster =
-        builder.AddSystem<systems::MultibodyPlantTfBroadcasterSystem>(
-            plant,
-            context.get(),
-            frames,
-            "pelvis",
-            "map",
-            bff,
-            TriggerTypeSet({TriggerType::kPeriodic}),
-            FLAGS_ros_state_pub_period);
-
-    builder.Connect(plant.get_state_output_port(),
-                    pose_sender->get_input_port_state());
-    builder.Connect(plant.get_state_output_port(),
-                    tf_broadcaster->get_input_port());
-    builder.Connect(cov_source->get_output_port(),
-                    pose_sender->get_input_port_covariance());
-    builder.Connect(*pose_sender, *pose_publisher);
-  }
-#endif
   if (FLAGS_publish_points) {
     const auto& [color_camera, depth_camera] = camera::MakeDairD455CameraModel(
         renderer_name, camera::D455ImageSize::k424x240
@@ -290,18 +241,6 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(*voxel_grid_filter, *pc_to_lcm);
     builder.Connect(*pc_to_lcm, *pc_pub);
     builder.Connect(*pc_to_lcm, *pc_pub_viz);
-
-#ifdef DAIR_ROS_ON
-    const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");
-    const auto points_pub = builder.AddSystem<
-        systems::RosPublisherSystem<sensor_msgs::PointCloud2>>(
-        "/camera/depth/color/points",
-            &node_handle,
-            TriggerTypeSet({TriggerType::kPeriodic}),
-            FLAGS_points_pub_period);
-    builder.Connect(*depth_to_points, *points_bridge);
-    builder.Connect(*points_bridge, *points_pub);
-#endif
   }
 
 
@@ -374,14 +313,6 @@ int do_main(int argc, char* argv[]) {
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
-
-  if (!FLAGS_time_stepping) {
-    // simulator.get_mutable_integrator()->set_maximum_step_size(0.01);
-    // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
-    // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
-    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-        FLAGS_dt);
-  }
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);

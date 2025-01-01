@@ -42,32 +42,6 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
       &AlipMPFCMeshcatVisualizer::UnrestrictedUpdate);
 }
 
-//void AlipMPFCMeshcatVisualizer::DrawComTrajSolution(
-//    const std::string &path,
-//    const dairlib::lcmt_mpc_solution &com_traj_solution,
-//    const Matrix3d& R_yaw, const double z_com) const {
-//
-//  std::vector<drake::geometry::Rgba> rgb = {
-//      drake::geometry::Rgba(0, 0, 1, 0.8),
-//      drake::geometry::Rgba(1, 0, 0, 0.8)
-//  };
-//  for (int n = 0; n < com_traj_solution.nm; n++) {
-//    Matrix3Xd segment = Matrix3Xd::Zero(3, com_traj_solution.nk);
-//
-//    Eigen::Vector3d pn = Eigen::Vector3d::Map(com_traj_solution.pp.at(n).data());
-//    Eigen::Vector3d pnp1 = (n == (com_traj_solution.nm - 1)) ?
-//        pn : Eigen::Vector3d::Map(com_traj_solution.pp.at(n+1).data());
-//    for (int k = 0; k < com_traj_solution.nk; k++) {
-//      Eigen::Vector3d com_k = Eigen::Vector3d::Zero();
-//      com_k.head<2>() = Eigen::Vector4d::Map(com_traj_solution.xx.at(n).at(k).data()).head<2>() + pn.head<2>();
-//      com_k(2) = z_com + pn(2) + (pnp1(2) - pn(2)) * (static_cast<double>(k) / (com_traj_solution.nk_minus_one));
-//      segment.col(k) = R_yaw * com_k;
-//    }
-//    std::string label = path + "_" + std::to_string(n);
-//    meshcat_->SetLine(label, segment, 4.0, rgb.at(n % 2));
-//  }
-//}
-
 
 void AlipMPFCMeshcatVisualizer::DrawFootsteps(
     const dairlib::lcmt_alip_s2s_mpfc_debug  &solution,

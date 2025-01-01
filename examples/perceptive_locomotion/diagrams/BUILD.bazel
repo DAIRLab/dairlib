@@ -43,45 +43,6 @@ cc_library(
 )
 
 cc_library(
-    name = "cassie_elevation_mapping_ros_diagram",
-    srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
-    hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
-    tags = ["manual"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        "//examples/perceptive_locomotion:cassie_perception_utils",
-        "//lcmtypes:lcmt_robot",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/perception:camera_utils",
-        "//systems/perception:elevation_mapping_system",
-        "//systems/perception:perceptive_locomotion_preprocessor",
-        "//systems/perception/pointcloud:ros_point_cloud2_receiver",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cassie_mpfc_diagram",
-    srcs = ["cassie_mpfc_diagram.cc"],
-    hdrs = ["cassie_mpfc_diagram.h"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/osc",
-        "//geometry:convex_polygon",
-        "//lcmtypes:lcmt_robot",
-        "//solvers:solver_options_io",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
-        "//systems/controllers/footstep_planning:alip_utils",
-        "//systems/controllers/footstep_planning:cf_mpfc_system",
-        "//systems/controllers/footstep_planning:mpfc_system_interface",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "mpfc_osc_diagram",
     srcs = ["mpfc_osc_diagram.cc"],
     hdrs = ["mpfc_osc_diagram.h"],
@@ -104,7 +65,6 @@ cc_library(
         "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
         "//systems/controllers/footstep_planning:alip_s2s_mpfc",
         "//systems/controllers/footstep_planning:alip_state_calculator_system",
-        "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "//systems/primitives:fsm_lcm_systems",
@@ -171,25 +131,8 @@ cc_library(
     deps = [
         ":cassie_elevation_mapping_lcm_diagram",
         ":cassie_realsense_driver_diagram",
-        ":cassie_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
-    ],
-)
-
-cc_binary(
-    name = "test_mpfc_osc_diagram",
-    srcs = ["test/test_mpfc_osc_diagram.cc"],
-    deps = [
-        ":cassie_mpfc_diagram",
-        ":hiking_sim_diagram",
-        ":mpfc_osc_diagram",
-        ":perception_module_diagram",
-        "//examples/Cassie:cassie_fixed_point_solver",
-        "//examples/Cassie:cassie_utils",
-        "//lcm:lcm_log_sink",
-        "//systems:plant_visualizer",
-        "//systems/perception:grid_map_visualizer",
     ],
 )

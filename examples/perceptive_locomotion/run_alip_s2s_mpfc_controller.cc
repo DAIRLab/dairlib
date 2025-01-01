@@ -13,7 +13,6 @@
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
-#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -44,7 +43,6 @@ using perception::GridMapReceiver;
 
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 

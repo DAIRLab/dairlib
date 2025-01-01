@@ -567,10 +567,10 @@ def main():
 
     args = parser.parse_args()
 
-    plot_hysteresis_comparison(
-        args.logfile,
-        '../manuscripts/perceptive_walking_tro/figures/hysteresis_comparison.svg'
-    )
+    # plot_hysteresis_comparison(
+    #     args.logfile,
+    #     '../manuscripts/perceptive_walking_tro/figures/hysteresis_comparison.svg'
+    # )
 
     # save_all_results(args.logfolder)
     # make_full_profiling_plot(
@@ -591,7 +591,6 @@ def main():
     #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
     # )
 
-    #
     # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)
     # write_mpfc_debug_video(args.logfile, 60)
     # test_iou_plot()

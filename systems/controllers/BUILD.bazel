@@ -2,6 +2,7 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+
 cc_library(
     name = "controllers_all",
     srcs = [],
@@ -105,17 +106,6 @@ cc_test(
 )
 
 cc_library(
-    name = "bipedal_walking_impact_info",
-    srcs = ["bipedal_walking_impact_info.cc"],
-    hdrs = ["bipedal_walking_impact_info.h"],
-    deps = [
-        "//common:blending_utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "time_based_fsm",
     srcs = ["time_based_fsm.cc"],
     hdrs = ["time_based_fsm.h"],
@@ -143,17 +133,6 @@ cc_library(
     hdrs = ["fsm_event_time.h"],
     deps = [
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "lcm_trajectory_receiver",
-    srcs = ["lcm_trajectory_receiver.cc"],
-    hdrs = ["lcm_trajectory_receiver.h"],
-    deps = [
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )

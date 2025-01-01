@@ -5,7 +5,7 @@
 namespace dairlib::geometry {
 
 /*!
- * Gradient-based solver to find (locally) optimal cuts for thw whittling
+ * Gradient-based solver to find (locally) optimal cuts for the whittling
  * algorithm. Minimizes a squared hinge loss on vertices excluded from the
  * polygon subject to unit-norm constraints on the halfspace normal
  */

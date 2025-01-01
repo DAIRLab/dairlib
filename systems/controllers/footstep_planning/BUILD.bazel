@@ -127,7 +127,7 @@ cc_library(
         "//common:legendre_polynomial_trajectory",
         "//solvers:fcc_qp_solver",
         "//solvers:legendre_coefficient_variables",
-        "//common:polynomial_utils",
+        "//common:legendre",
         "@drake//:drake_shared_library",
     ],
 )
@@ -139,7 +139,6 @@ cc_library(
     deps = [
         ":alip_utils",
         ":swing_foot_traj_solver",
-        "//common:polynomial_utils",
         "//multibody:utils",
         "//systems/framework:vector",
         "//systems/primitives",

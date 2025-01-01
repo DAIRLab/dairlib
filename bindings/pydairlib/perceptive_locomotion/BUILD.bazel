@@ -11,15 +11,6 @@ load(
     "pybind_py_library",
 )
 
-py_binary(
-    name = "test_swing_traj",
-    srcs = ["test_swing_traj.py"],
-    deps = [
-        "//bindings/pydairlib/common:plot_styler",
-        "//bindings/pydairlib/systems",
-    ],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

@@ -410,7 +410,7 @@ def make_all_results_figures(logfolder, savefolder):
         plot_segmentation_profiling(
             results,
             env_name=env,
-            save_prefix=savefolder + env.replace(' ', '_')
+            save_prefix=os.path.join(savefolder, env.replace(' ', '_'))
         )
     crop_perception_results_svgs(savefolder)
 
@@ -582,13 +582,13 @@ def main():
     # )
     # make_all_segmentation_videos(args.logfolder)
     # run_pipeline_figure_script(args.logfile)
-    # make_all_results_figures(
-    #     args.logfolder,
-    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
-    # )
+    make_all_results_figures(
+        args.logfolder,
+        os.path.join(args.logfolder, 'cassie_laptop_profiling_figures/')
+    )
     # make_segmentation_tiles(
     #     args.logfolder,
-    #     '../manuscripts/perceptive_walking_tro/figures/perception_results/'
+    #     os.path.join(args.logfolder, 'cassie_laptop_profiling_figures')
     # )
 
     # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)

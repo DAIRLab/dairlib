@@ -244,3 +244,12 @@ apple_support_dependencies()
 load("@bazel_features//:deps.bzl", "bazel_features_deps")
 
 bazel_features_deps()
+
+load("//tools/workspace/rules_foreign_cc:repository.bzl", "rules_foreign_cc_repository")
+rules_foreign_cc_repository()
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
+
+load("//tools/workspace/pinocchio:repository.bzl", "pinocchio_repository")
+pinocchio_repository()

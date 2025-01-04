@@ -42,15 +42,9 @@ using std::endl;
 using std::map;
 using std::string;
 
-template <>
-PinocchioPlant<AutoDiffXd>::PinocchioPlant(const MultibodyPlant<double>& plant,
-                                           const std::string& urdf)
-    : MultibodyPlant<AutoDiffXd>(plant), urdf_(urdf) {}
-
-template <>
-PinocchioPlant<double>::PinocchioPlant(double time_step,
-                                       const std::string& urdf)
-    : MultibodyPlant<double>(time_step), urdf_(urdf) {}
+template <typename T>
+PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf)
+    : MultibodyPlant<T>(time_step), urdf_(urdf) {}
 
 template <typename T>
 void PinocchioPlant<T>::FinalizePlant() {

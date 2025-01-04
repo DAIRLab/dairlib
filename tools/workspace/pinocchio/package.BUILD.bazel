@@ -39,7 +39,13 @@ cmake(
     ],
     out_include_dir = "include",
     out_shared_libs = select({
-        "@platforms//os:linux": ["libpinocchio_default.so.3.2.0"],
-        "@platforms//os:osx": ["libpinocchio_default.3.2.0.dylib"],
+        "@platforms//os:linux": [
+            "libpinocchio_default.so.3.2.0",
+            "libpinocchio_parsers.so.3.2.0",
+        ],
+        "@platforms//os:osx": [
+            "libpinocchio_default.3.2.0.dylib",
+            "libpinocchio_parsers.3.2.0.dylib",
+        ],
     }),
 )

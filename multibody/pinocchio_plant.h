@@ -17,8 +17,7 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PinocchioPlant)
 
-  explicit PinocchioPlant<double>(double time_step, const std::string& urdf);
-  explicit PinocchioPlant<drake::AutoDiffXd>(const drake::multibody::MultibodyPlant<double>& plant, const std::string& urdf);
+  explicit PinocchioPlant(double time_step, const std::string& urdf);
 
   void BuildPermutations();
 

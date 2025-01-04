@@ -35,16 +35,15 @@ class PinocchioKinematicTest : public ::testing::Test {
         dt_, full_name);
     Parser parser(plant_.get());
     Parser pin_parser((MultibodyPlant<double>*)pin_plant_.get());
-    parser.AddModelFromFile(full_name);
-    pin_parser.AddModelFromFile(full_name);
+    parser.AddModels(full_name);
+    pin_parser.AddModels(full_name);
     plant_->Finalize();
     pin_plant_->Finalize();
     pin_plant_->FinalizePlant();
 
     plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
-    pin_plant_ad_ =
-        std::make_unique<dairlib::multibody::PinocchioPlant<AutoDiffXd>>(
-            *plant_, full_name);
+    pin_plant_ad_ = std::make_unique<dairlib::multibody::PinocchioPlant
+        <AutoDiffXd>>(dt_, full_name);
     pin_plant_ad_->FinalizePlant();
 
     context_ = plant_->CreateDefaultContext();
@@ -79,10 +78,10 @@ class PinocchioKinematicTest : public ::testing::Test {
   std::unique_ptr<PinocchioPlant<double>> pin_plant_{};
   Eigen::Vector3d toe_front_;
   drake::Vector3<AutoDiffXd> toe_front_ad_;
-  const drake::multibody::BodyFrame<double>* foot_frame_;
-  const drake::multibody::BodyFrame<double>* pin_foot_frame_;
-  const drake::multibody::BodyFrame<AutoDiffXd>* foot_frame_ad_;
-  const drake::multibody::BodyFrame<AutoDiffXd>* pin_foot_frame_ad_;
+  const drake::multibody::RigidBodyFrame<double>* foot_frame_;
+  const drake::multibody::RigidBodyFrame<double>* pin_foot_frame_;
+  const drake::multibody::RigidBodyFrame<AutoDiffXd>* foot_frame_ad_;
+  const drake::multibody::RigidBodyFrame<AutoDiffXd>* pin_foot_frame_ad_;
   const drake::multibody::Frame<double>* world_;
   const drake::multibody::Frame<double>* pin_world_;
   const drake::multibody::Frame<AutoDiffXd>* world_ad_;

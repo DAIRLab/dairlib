@@ -3,8 +3,8 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def rules_foreign_cc_repository(
-        version = "0.9.0",
-        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51"):
+        version = "0.13.0",
+        sha256 = "8e5605dc2d16a4229cb8fbe398514b10528553ed4f5f7737b663fdd92f48e1c2"):
     """
     Download repository from GitHub as a ZIP archive, decompress it, and make
     its targets available for binding.

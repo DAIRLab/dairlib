@@ -1,6 +1,4 @@
 # -*- python -*-
-#
-# Custom build file to use the package with Bazel.
 
 package(default_visibility = ["//visibility:public"])
 
@@ -31,7 +29,6 @@ cmake(
         "BUILD_WITH_SDF_SUPPORT": "OFF",
         "BUILD_WITH_URDF_SUPPORT": "ON",  # this one is ON
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_LIBDIR": "lib",
         "ENABLE_COVERAGE": "OFF",
         "ENABLE_TEMPLATE_INSTANTIATION": "ON",  # this one is ON
         "GENERATE_PYTHON_STUBS": "OFF",
@@ -41,7 +38,8 @@ cmake(
         "@eigen",
     ],
     out_include_dir = "include",
-    out_shared_libs = [
-        "libpinocchio_default.so.3.2.0",
-    ],
+    out_shared_libs = select({
+        "@platforms//os:linux": ["libpinocchio_default.so.3.2.0"],
+        "@platforms//os:osx": ["libpinocchio_default.3.2.0.dylib"],
+    }),
 )

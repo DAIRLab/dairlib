@@ -253,6 +253,6 @@ load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_depende
 
 rules_foreign_cc_dependencies()
 
-load("//tools/workspace:pinocchio.bzl", "add_pinocchio_repositories")
+load("//tools/workspace/pinocchio:repository.bzl", "pinocchio_repository")
 
-add_pinocchio_repositories()
+pinocchio_repository()

@@ -3,6 +3,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "drake/common/eigen_autodiff_types.h"
+#include "multibody/pinocchio_plant.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -27,6 +28,11 @@ class ConstrainedDynamicsInfo {
     return *plant_;
   }
 
+  MultibodyPlant<double>& get_mutable_plant() const {
+    DRAKE_DEMAND(not plant_->is_finalized());
+    return *plant_;
+  }
+
   const MultibodyPlant<AutoDiffXd>& get_plant_ad() const {
     DRAKE_ASSERT(plant_ad_ != nullptr);
     return *plant_ad_;
@@ -35,6 +41,8 @@ class ConstrainedDynamicsInfo {
   int variable_count() const {
     return nq_ + nv_ + nu_ + nh_ + nc_;
   }
+
+  void Finalize();
 
   template<typename T>
   const drake::VectorX<T> get_q(const drake::VectorX<T>& full_vars) const;
@@ -151,6 +159,8 @@ class ConstrainedDynamicsInfo {
 
   std::unique_ptr<drake::multibody::MultibodyPlant<AutoDiffXd>> plant_ad_;
   std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
+
+  std::string urdf_;
 
   // Holonomic Constraints
   std::unique_ptr<multibody::KinematicEvaluatorSet<double>>

@@ -11,6 +11,7 @@ namespace dairlib::systems::controllers::id_mpc {
 using multibody::DistanceEvaluator;
 using multibody::WorldPointEvaluator;
 using multibody::KinematicEvaluatorSet;
+using multibody::PinocchioPlant;
 
 using Eigen::MatrixX;
 using drake::VectorX;
@@ -18,12 +19,20 @@ using drake::systems::Context;
 
 using std::make_unique;
 
-ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf) {
-  plant_ = make_unique<MultibodyPlant<double>>(0.0);
+ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf):
+  urdf_ (urdf) {
+  plant_ = make_unique<PinocchioPlant<double>>(0.0, urdf);
   drake::multibody::Parser parser(plant_.get());
   parser.AddModels(FindResourceOrThrow(urdf));
+}
+
+void ConstrainedDynamicsInfo::Finalize() {
   plant_->Finalize();
   plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
+
+  // TODO (@Brian-Acosta) fix pinocchio plant inverse dynamics
+//  plant_->FinalizePlant();
+//  plant_ad_->FinalizePlant();
 
   holonomic_constraints_ = make_unique<KinematicEvaluatorSet<double>>(*plant_);
   holonomic_constraints_ad_ = make_unique<KinematicEvaluatorSet<AutoDiffXd>>
@@ -40,6 +49,7 @@ void ConstrainedDynamicsInfo::AddContactPoint(
     const Eigen::Vector3d &point_in_body_frame,
     std::vector<int> active_constraint_directions,
     double friction_coefficient) {
+  DRAKE_DEMAND(plant_->is_finalized());
   DRAKE_DEMAND(not contact_constraint_evaluators_.contains(name));
   DRAKE_DEMAND(plant_->HasBodyNamed(body));
   DRAKE_DEMAND(not lambda_c_start_idxs_.contains(name));
@@ -74,7 +84,7 @@ void ConstrainedDynamicsInfo::AddContactPoint(
 void ConstrainedDynamicsInfo::AddDistanceConstraint(
     std::string body_A, const Eigen::Vector3d &pt_A,
     std::string body_B, const Eigen::Vector3d &pt_B, double distance) {
-
+  DRAKE_DEMAND(plant_->is_finalized());
   DRAKE_DEMAND(plant_->HasBodyNamed(body_A));
   DRAKE_DEMAND(plant_->HasBodyNamed(body_B));
   DRAKE_DEMAND(distance > 0); // Jacobian is not well-defined for distance 0

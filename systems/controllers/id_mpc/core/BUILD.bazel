@@ -9,6 +9,7 @@ cc_library(
     deps = [
         "//common:eigen_utils",
         "//common:find_resource",
+        "//multibody:pinocchio_plant",
         "//multibody/kinematic",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",

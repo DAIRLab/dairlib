@@ -99,7 +99,7 @@ class PinocchioKinematicTest : public ::testing::Test {
   }
 
   double tol = 1e-5;
-  double dt_ = 1e-3;
+  double dt_ = 0;
   std::unique_ptr<MultibodyPlant<double>> plant_{};
   std::unique_ptr<PinocchioPlant<double>> pin_plant_{};
   Eigen::Vector3d toe_front_;
@@ -139,6 +139,28 @@ TEST_F(PinocchioKinematicTest, TestMassMatrixDouble) {
   }
 
   EXPECT_TRUE((M - pin_M).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestInverseDynamics) {
+  int nv = plant_->num_velocities();
+  plant_->SetPositionsAndVelocities(context_.get(), x_);
+  pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
+
+  drake::multibody::MultibodyForces tau_app(*plant_);
+
+  VectorXd vdot = 20 * VectorXd::Random(nv);
+  tau_app.mutable_generalized_forces() = 20 * VectorXd::Random(nv);
+
+
+  VectorXd tau = plant_->CalcInverseDynamics(*context_, vdot, tau_app);
+  VectorXd tau_pin = pin_plant_->CalcInverseDynamics(
+      *pin_context_, vdot, tau_app);
+
+  if ((tau - tau_pin).norm() >= tol) {
+    std::cout << "tau:" << tau.transpose() << std::endl;
+    std::cout << "tau_pin:" << tau_pin.transpose() << std::endl;
+  }
+  EXPECT_TRUE((tau - tau_pin).norm() < tol);
 }
 
 TEST_F(PinocchioKinematicTest, TestCenterOfMassDouble) {

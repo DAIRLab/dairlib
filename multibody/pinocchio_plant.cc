@@ -291,8 +291,8 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     const drake::multibody::MultibodyForces<double>& external_forces) const {
   // TODO: support body forces
   if (external_forces.body_forces().size() > 0) {
-    // throw std::runtime_error(
-    // "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
+//     throw std::runtime_error(
+//     "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
   }
 
   // TODO: currently CalcInverseDynamics doesn't pass the test when the MBP has
@@ -305,9 +305,8 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
                                       GetVelocities(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       known_vdot));
-  return MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(),
-                                         f_pin) -
-         external_forces.generalized_forces();
+  return MapVelocityFromPinocchioToDrake(
+      GetPositions(context).head<4>(), f_pin) - external_forces.generalized_forces();
 }
 
 template <>

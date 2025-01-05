@@ -37,14 +37,36 @@ class PinocchioKinematicTest : public ::testing::Test {
     Parser pin_parser((MultibodyPlant<double>*)pin_plant_.get());
     parser.AddModels(full_name);
     pin_parser.AddModels(full_name);
+
+    VectorXd rotor_inertias(10);
+    rotor_inertias << 61, 61, 61, 61, 365, 365, 365, 365, 4.9, 4.9;
+    rotor_inertias *= 1e-6;
+    VectorXd gear_ratios(10);
+    gear_ratios << 25, 25, 25, 25, 16, 16, 16, 16, 50, 50;
+    std::vector<std::string> motor_joint_names = {
+        "hip_roll_left_motor", "hip_roll_right_motor", "hip_yaw_left_motor",
+        "hip_yaw_right_motor", "hip_pitch_left_motor", "hip_pitch_right_motor",
+        "knee_left_motor",     "knee_right_motor",     "toe_left_motor",
+        "toe_right_motor"};
+
+    for (int i = 0; i < rotor_inertias.size(); ++i) {
+      auto& joint_actuator = plant_->get_mutable_joint_actuator(
+          drake::multibody::JointActuatorIndex(i));
+      joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+      joint_actuator.set_default_gear_ratio(gear_ratios(i));
+
+      auto& joint_actuator_pin = pin_plant_->get_mutable_joint_actuator(
+          drake::multibody::JointActuatorIndex(i));
+      joint_actuator_pin.set_default_rotor_inertia(rotor_inertias(i));
+      joint_actuator_pin.set_default_gear_ratio(gear_ratios(i));
+      DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+    }
+
     plant_->Finalize();
     pin_plant_->Finalize();
     pin_plant_->FinalizePlant();
 
     plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
-
-    MultibodyPlant<AutoDiffXd> plant_ad_2(*plant_);
-
     pin_plant_ad_ =
         std::make_unique<dairlib::multibody::PinocchioPlant<AutoDiffXd>>(
             *plant_, full_name);
@@ -112,6 +134,10 @@ TEST_F(PinocchioKinematicTest, TestMassMatrixDouble) {
 
   pin_plant_->CalcMassMatrix(*pin_context_, &pin_M);
 
+  if ((M - pin_M).norm() > tol) {
+    std::cout << "M difference:\n" << (M - pin_M) << std::endl;
+  }
+
   EXPECT_TRUE((M - pin_M).norm() < tol);
 }
 
@@ -174,13 +200,6 @@ TEST_F(PinocchioKinematicTest, TestCentroidalMomentumAD) {
   auto pin_spatial_momentum =
       pin_plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_ad_,
                                                           pin_com);
-
-  std::cout << "drake: "
-            << ExtractGradient(spatial_momentum.rotational()).transpose()
-            << std::endl;
-  std::cout << "pinocchio: "
-            << ExtractGradient(pin_spatial_momentum.rotational()).transpose()
-            << std::endl;
 
   EXPECT_TRUE((ExtractValue(spatial_momentum.translational()) -
                ExtractValue(pin_spatial_momentum.translational()))

@@ -70,23 +70,26 @@ void PinocchioPlant<T>::FinalizePlant() {
 
   BuildPermutations();
 
-  // Warnings
+  // Add reflected inertia
   VectorXd gear_ratios = VectorXd::Ones(this->num_velocities());
   VectorXd rotor_inertias = VectorXd::Zero(this->num_velocities());
+  VectorXd armature = VectorXd::Zero(this->num_velocities());
   auto vel_map = MakeNameToVelocitiesMap(*this);
 
   for (int i = 0; i < this->num_actuators(); ++i) {
     auto& joint_actuator = this->get_mutable_joint_actuator(
         drake::multibody::JointActuatorIndex(i));
     auto name = joint_actuator.joint().name();
-    gear_ratios(vel_map.at(name + "dot")) =
-        joint_actuator.default_gear_ratio();
-    rotor_inertias(vel_map.at(name + "dot")) =
-        joint_actuator.default_rotor_inertia();
+    int idx = vel_map.at(name + "dot");
+    gear_ratios(idx) = joint_actuator.default_gear_ratio();
+    rotor_inertias(idx) = joint_actuator.default_rotor_inertia();
+    armature(idx) = gear_ratios(idx) * gear_ratios(idx) * rotor_inertias(idx);
   }
 
-  pinocchio_model_.rotorInertia = v_perm_.inverse() * rotor_inertias;
-  pinocchio_model_.rotorGearRatio = v_perm_.inverse() * gear_ratios;
+  pinocchio_model_.rotorInertia = v_perm_.transpose() * rotor_inertias;
+  pinocchio_model_.rotorGearRatio = v_perm_.transpose() * gear_ratios;
+  pinocchio_model_.armature = pinocchio_model_.armature +
+      v_perm_.transpose() * armature;
 
   // Check that models match
   int nq = this->num_positions();

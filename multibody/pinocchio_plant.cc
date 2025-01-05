@@ -55,7 +55,7 @@ PinocchioPlant<double>::PinocchioPlant(double time_step,
 
 template <typename T>
 void PinocchioPlant<T>::FinalizePlant() {
-  //  MultibodyPlant<T>::Finalize();
+  DRAKE_DEMAND(this->is_finalized());
 
   is_floating_base_ = HasQuaternion(*this);
   if (is_floating_base_) {
@@ -71,20 +71,26 @@ void PinocchioPlant<T>::FinalizePlant() {
   BuildPermutations();
 
   // Warnings
+  VectorXd gear_ratios = VectorXd::Ones(this->num_velocities());
+  VectorXd rotor_inertias = VectorXd::Zero(this->num_velocities());
+  auto vel_map = MakeNameToVelocitiesMap(*this);
+
   for (int i = 0; i < this->num_actuators(); ++i) {
     auto& joint_actuator = this->get_mutable_joint_actuator(
         drake::multibody::JointActuatorIndex(i));
-    if (joint_actuator.default_rotor_inertia() > 0) {
-      cout << "WARNING: currently PinoccioPlant doesn't have reflected "
-              "inertia!\n";
-      break;
-    }
+    auto name = joint_actuator.joint().name();
+    gear_ratios(vel_map.at(name + "dot")) =
+        joint_actuator.default_gear_ratio();
+    rotor_inertias(vel_map.at(name + "dot")) =
+        joint_actuator.default_rotor_inertia();
   }
+
+  pinocchio_model_.rotorInertia = v_perm_.inverse() * rotor_inertias;
+  pinocchio_model_.rotorGearRatio = v_perm_.inverse() * gear_ratios;
 
   // Check that models match
   int nq = this->num_positions();
   int nv = this->num_velocities();
-  int nu = this->num_actuators();
 
   n_q_ = nq;
   n_v_ = nv;

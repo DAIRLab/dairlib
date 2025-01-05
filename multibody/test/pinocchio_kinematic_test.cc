@@ -28,7 +28,7 @@ class PinocchioKinematicTest : public ::testing::Test {
   void SetUp() override {
     // Building a floating-base plant
     std::string full_name = FindResourceOrThrow(
-        "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf");
+        "examples/Cassie/urdf/cassie_fixed_spring_conservative.urdf");
 
     plant_ = std::make_unique<MultibodyPlant<double>>(dt_);
     pin_plant_ = std::make_unique<dairlib::multibody::PinocchioPlant<double>>(
@@ -42,8 +42,12 @@ class PinocchioKinematicTest : public ::testing::Test {
     pin_plant_->FinalizePlant();
 
     plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
-    pin_plant_ad_ = std::make_unique<dairlib::multibody::PinocchioPlant
-        <AutoDiffXd>>(dt_, full_name);
+
+    MultibodyPlant<AutoDiffXd> plant_ad_2(*plant_);
+
+    pin_plant_ad_ =
+        std::make_unique<dairlib::multibody::PinocchioPlant<AutoDiffXd>>(
+            *plant_, full_name);
     pin_plant_ad_->FinalizePlant();
 
     context_ = plant_->CreateDefaultContext();

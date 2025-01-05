@@ -42,9 +42,16 @@ using std::endl;
 using std::map;
 using std::string;
 
-template <typename T>
-PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf)
-    : MultibodyPlant<T>(time_step), urdf_(urdf) {}
+template <>
+PinocchioPlant<AutoDiffXd>::PinocchioPlant(const MultibodyPlant<double>& plant,
+                                           const std::string& urdf)
+    : MultibodyPlant<AutoDiffXd>(plant), urdf_(urdf) {}
+
+template <>
+PinocchioPlant<double>::PinocchioPlant(double time_step,
+                                       const std::string& urdf)
+    : MultibodyPlant<double>(time_step), urdf_(urdf) {}
+
 
 template <typename T>
 void PinocchioPlant<T>::FinalizePlant() {
@@ -516,7 +523,8 @@ void PinocchioPlant<double>::CalcPointsPositions(
     rf = pinocchio::ReferenceFrame::LOCAL;
   }
   pinocchio::framesForwardKinematics(pinocchio_model_, pinocchio_data_, MapPositionFromDrakeToPinocchio(GetPositions(context)));
-  pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(frame_B.name());
+  pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(
+      frame_B.name(), pinocchio::BODY);
   DRAKE_DEMAND(p_AQi);
   *p_AQi = pinocchio_data_.oMf[frame_id].actOnEigenObject(p_BQi);
 }

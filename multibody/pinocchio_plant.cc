@@ -159,7 +159,6 @@ void PinocchioPlant<T>::BuildPermutations() {
 template <typename T>
 drake::VectorX<double> PinocchioPlant<T>::MapPositionFromDrakeToPinocchio(
     const drake::VectorX<double>& q) const {
-  //  return q_perm_.inverse() * q;
   return q_perm_.inverse() * q;
 }
 
@@ -257,7 +256,6 @@ void PinocchioPlant<AutoDiffXd>::UpdateForwardKinematicsDerivatives(
 template <>
 void PinocchioPlant<double>::UpdateCentroidalDynamics(
     const Context<double>& context) const {
-  drake::VectorX<double> a = drake::VectorX<double>::Zero(n_v_);
   pinocchio::computeCentroidalMomentum(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)),
@@ -289,6 +287,7 @@ template <>
 VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
     const drake::multibody::MultibodyForces<double>& external_forces) const {
+
   // TODO: support body forces
   if (external_forces.body_forces().size() > 0) {
 //     throw std::runtime_error(
@@ -298,15 +297,23 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
   // TODO: currently CalcInverseDynamics doesn't pass the test when the MBP has
   // floating base
 
-  auto f_pin = pinocchio::rnea(
+  VectorXd fp = pinocchio::rnea(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(GetPositions(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       GetVelocities(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       known_vdot));
-  return MapVelocityFromPinocchioToDrake(
-      GetPositions(context).head<4>(), f_pin) - external_forces.generalized_forces();
+
+  // At this point, f_pin = M vdot + C + g
+  // Drake doesn't include gravity, so we will subtract it out.
+  VectorXd g = pinocchio::computeGeneralizedGravity(
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)));
+  // subract gravity
+  fp = MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(), fp - g);
+  fp = fp - external_forces.generalized_forces();
+  return fp;
 }
 
 template <>

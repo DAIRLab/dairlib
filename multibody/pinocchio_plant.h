@@ -12,13 +12,14 @@
 
 namespace dairlib {
 namespace multibody {
+
 template <typename T>
 class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PinocchioPlant);
 
-  PinocchioPlant<double>(double time_step, const std::string& urdf);
-  PinocchioPlant<drake::AutoDiffXd>(const drake::multibody::MultibodyPlant<double>& plant, const std::string& urdf);
+  PinocchioPlant(double time_step, const std::string& urdf);
+  PinocchioPlant(const drake::multibody::MultibodyPlant<double>& plant, const std::string& urdf);
 
   void BuildPermutations();
 

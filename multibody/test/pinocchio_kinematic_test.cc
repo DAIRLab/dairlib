@@ -89,12 +89,15 @@ class PinocchioKinematicTest : public ::testing::Test {
     toe_front_ad_ =
         drake::math::InitializeAutoDiff(Eigen::Vector3d(-0.0457, 0.112, 0));
 
-    x_ = VectorXd::Zero(plant_->num_positions() + plant_->num_velocities());
+    x_ = VectorXd::Random(plant_->num_positions() + plant_->num_velocities());
     x_(0) = 0.56270512;
     x_(1) = -0.32191005;
     x_(2) = 0.13835005;
     x_(3) = 0.74872968;
-    x_.tail(12) = VectorXd::Random(12);
+    x_(4) = 1.0;
+    x_(5) = 1.0;
+    x_(6) = 1.0;
+
     x_ad_ = drake::math::InitializeAutoDiff(x_);
   }
 
@@ -147,6 +150,7 @@ TEST_F(PinocchioKinematicTest, TestInverseDynamics) {
   pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
 
   drake::multibody::MultibodyForces tau_app(*plant_);
+  tau_app.SetZero();
 
   VectorXd vdot = 20 * VectorXd::Random(nv);
   tau_app.mutable_generalized_forces() = 20 * VectorXd::Random(nv);
@@ -156,9 +160,15 @@ TEST_F(PinocchioKinematicTest, TestInverseDynamics) {
   VectorXd tau_pin = pin_plant_->CalcInverseDynamics(
       *pin_context_, vdot, tau_app);
 
+  VectorXd tau_diff_rel = (tau - tau_pin);
+  for (int i = 0; i < plant_->num_velocities(); ++i) {
+    tau_diff_rel(i) = 100 * tau_diff_rel(i) / tau(i);
+  }
+
   if ((tau - tau_pin).norm() >= tol) {
     std::cout << "tau:" << tau.transpose() << std::endl;
     std::cout << "tau_pin:" << tau_pin.transpose() << std::endl;
+    std::cout << "tau_diff (pct):" << tau_diff_rel.transpose() << std::endl;
   }
   EXPECT_TRUE((tau - tau_pin).norm() < tol);
 }
@@ -250,6 +260,20 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassVel) {
       pin_plant_->CalcCenterOfMassTranslationalVelocityInWorld(*pin_context_);
 
   EXPECT_TRUE((com_vel - pin_com_vel).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestMapVelocity) {
+  VectorXd q = VectorXd::Random(plant_->num_positions());
+  VectorXd v = VectorXd::Random(plant_->num_velocities());
+
+  q.head<4>() = (1.0 / q.head<4>().norm()) * q.head<4>();
+
+  VectorXd v_mapped = pin_plant_->MapVelocityFromPinocchioToDrake(
+      q.head<4>(),
+      pin_plant_->MapVelocityFromDrakeToPinocchio(q.head<4>(), v));
+
+  EXPECT_TRUE((v - v_mapped).norm() < tol);
+
 }
 
 TEST_F(PinocchioKinematicTest, TestCalcPointsPositionDouble) {

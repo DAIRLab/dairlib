@@ -26,7 +26,9 @@ using drake::Matrix3X;
 using drake::Matrix6X;
 using drake::MatrixX;
 using drake::Vector3;
+using drake::Matrix3;
 using drake::VectorX;
+using drake::Vector6;
 using drake::math::ExtractValue;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
@@ -41,6 +43,8 @@ using std::cout;
 using std::endl;
 using std::map;
 using std::string;
+
+
 
 template <>
 PinocchioPlant<AutoDiffXd>::PinocchioPlant(const MultibodyPlant<double>& plant,
@@ -180,6 +184,47 @@ drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromDrakeToPinocchio(
 }
 
 template <typename T>
+Matrix3<T> PinocchioPlant<T>::skew(const Vector3<T>& v) const {
+  Matrix3<T> ret = Matrix3<T>::Zero();
+  ret(0, 1) = v(2);
+  ret(0, 2) = -v(1);
+  ret(1, 2) = v(0);
+  ret(1, 0) = -v(2);
+  ret(2, 0) = v(1);
+  ret(2, 1) = -v(0);
+  return ret;
+}
+
+template <typename T>
+Vector6<T> PinocchioPlant<T>::MapVDotToBodyFrame(
+    const drake::VectorX<T>& quat, const drake::VectorX<T>& v,
+    const drake::VectorX<T>& vdot) const {
+  Matrix3<T> R_BW =
+      Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+          .toRotationMatrix().transpose();
+  Matrix3<T> R_BW_dot = -R_BW * skew(v.template head<3>());
+
+  Vector6<T> ret = Vector6<T>::Zero();
+  ret.template head<3>() = R_BW_dot * v.template head<3>() + R_BW * vdot
+      .template head<3>();
+  ret.template tail<3>() = R_BW_dot * v.template tail<3>() + R_BW * vdot
+      .template tail<3>();
+  return ret;
+}
+
+template <typename T>
+drake::VectorX<T> PinocchioPlant<T>::MapVDotFromDrakeToPinocchio(
+    const VectorX<T>& quat, const VectorX<T>& v, const VectorX<T>& vdot) const {
+  VectorX<T> vdot_tmp = vdot;
+  if (is_floating_base_) {
+    Vector6<T> vdot_base = MapVDotToBodyFrame(
+        quat, v.template head<6>(), vdot.template head<6>());
+    vdot_tmp.template head<6>() = vdot_base;
+  }
+  return v_perm_.inverse() * vdot_tmp;
+}
+
+template <typename T>
 drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromPinocchioToDrake(
     const drake::VectorX<T>& quat, const drake::VectorX<T>& v) const {
   if (is_floating_base_) {
@@ -302,8 +347,10 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
       MapPositionFromDrakeToPinocchio(GetPositions(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       GetVelocities(context)),
-      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                      known_vdot));
+      MapVDotFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                  GetVelocities(context),
+                                  known_vdot)
+      );
 
   // At this point, f_pin = M vdot + C + g
   // Drake doesn't include gravity, so we will subtract it out.

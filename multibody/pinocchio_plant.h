@@ -31,6 +31,9 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
   drake::VectorX<T> MapVelocityFromPinocchioToDrake(
       const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
+  drake::VectorX<T> MapVDotFromDrakeToPinocchio(
+      const drake::VectorX<T>& q, const drake::VectorX<T>& v,
+      const drake::VectorX<T>& vdot) const;
 
   drake::MatrixX<T> GetVelocityMapFromDrakeToPinocchio(
       const drake::VectorX<T>& quat) const;
@@ -118,6 +121,11 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
 
  private:
+
+  drake::Matrix3<T> skew(const drake::Vector3<T>& v) const;
+  drake::Vector6<T> MapVDotToBodyFrame(const drake::VectorX<T>& q,
+                                       const drake::VectorX<T>& v,
+                                       const drake::VectorX<T>& vdot) const;
   std::string urdf_;
   bool is_floating_base_;
 

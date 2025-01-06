@@ -26,6 +26,7 @@ using Eigen::VectorXd;
 class PinocchioKinematicTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    srand((unsigned int) time(0));
     // Building a floating-base plant
     std::string full_name = FindResourceOrThrow(
         "examples/Cassie/urdf/cassie_fixed_spring_conservative.urdf");
@@ -90,6 +91,8 @@ class PinocchioKinematicTest : public ::testing::Test {
         drake::math::InitializeAutoDiff(Eigen::Vector3d(-0.0457, 0.112, 0));
 
     x_ = VectorXd::Random(plant_->num_positions() + plant_->num_velocities());
+//    x_(0) = 1;
+//    x_.segment<3>(1).setZero();
     x_(0) = 0.56270512;
     x_(1) = -0.32191005;
     x_(2) = 0.13835005;
@@ -97,6 +100,8 @@ class PinocchioKinematicTest : public ::testing::Test {
     x_(4) = 1.0;
     x_(5) = 1.0;
     x_(6) = 1.0;
+
+//    x_.segment<3>(plant_->num_positions()).setZero();
 
     x_ad_ = drake::math::InitializeAutoDiff(x_);
   }

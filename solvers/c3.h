@@ -108,10 +108,10 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_lambda_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
-  const int N_;
-  const int n_x_;  // n
-  const int n_lambda_;  // m
-  const int n_u_;  // k
+  const std::size_t N_;
+  const std::size_t n_x_;  // n
+  const std::size_t n_lambda_;  // m
+  const std::size_t n_u_;  // k
 
  private:
   LCS lcs_;

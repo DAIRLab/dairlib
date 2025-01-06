@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_c3_output
+{
+  int64_t utime;
+
+  lcmt_c3_solution c3_solution;
+  lcmt_c3_intermediates c3_intermediates;
+}

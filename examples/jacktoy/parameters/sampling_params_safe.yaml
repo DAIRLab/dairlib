@@ -50,7 +50,7 @@ use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 2
-use_more_contacts_to_compute_cost: true
+use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
 # switching to repositioning.

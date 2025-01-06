@@ -60,8 +60,10 @@ SamplingC3Controller::SamplingC3Controller(
       contact_pairs_(contact_geoms),
       c3_options_(std::move(c3_options)),
       sampling_params_(std::move(sampling_params)),
-      G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G_position_tracking)),
-      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U_position_tracking)),
+      G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
+      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G_for_curr_location)),
+      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
+      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U_for_curr_location)),
       N_(c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
@@ -559,35 +561,37 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Cost switching based on threshold to start using pose based cost.
+  Q_.clear();
+  G_.clear();
+  U_.clear();
+  G_for_curr_location_.clear();
+  U_for_curr_location_.clear();
+  double discount_factor = 1;
   if (crossed_cost_switching_threshold_) {
     dt_ = c3_options_.planning_dt;
     // clear the Q_ values and replace with costs for position and orientation.
-    Q_.clear();
-    G_.clear();
-    U_.clear();
-    double discount_factor = 1;
     for (int i = 0; i < N_+1; ++i) {
       Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
         G_.push_back(c3_options_.G);
         U_.push_back(c3_options_.U);
+        G_for_curr_location_.push_back(c3_options_.G_for_curr_location);
+        U_for_curr_location_.push_back(c3_options_.U_for_curr_location);
       }
     }
   }
   else {
     dt_ = c3_options_.planning_dt_position_tracking;
     // clear the Q_ values and replace with costs for position only.
-    Q_.clear();
-    G_.clear();
-    U_.clear();
-    double discount_factor = 1;
     for (int i = 0; i < N_+1; ++i) {
       Q_.push_back(discount_factor * c3_options_.Q_position);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
         G_.push_back(c3_options_.G_position_tracking);
         U_.push_back(c3_options_.U_position_tracking);
+        G_for_curr_location_.push_back(c3_options_.G_position_tracking_for_curr_location);
+        U_for_curr_location_.push_back(c3_options_.U_position_tracking_for_curr_location);
       }
     }
   }
@@ -662,7 +666,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // These objects will be linearized the same as candidate_lcs_objects but will
   // have all contact pairs resolved.  These will not be used to solve c3 but
   // will be used to compute more realistic costs.
-  std::vector<solvers::LCS> lcs_objects_with_more_contacts_for_cost_simulation;
+  std::vector<solvers::LCS> lcs_objects_for_cost_simulation;
 
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
@@ -686,37 +690,32 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
 
-    if (sampling_params_.use_more_contacts_to_compute_cost){
+    if (sampling_params_.use_different_contacts_to_compute_cost){
       // Create an LCS object with all contact pairs resolved.  In order, that
-      // is 3 EE-capsule contacts, and 6 ground-capsule_tip contacts.  Use the
-      // same friction coefficients as the current contact model.
-      // EE-jack is the first mu.
-      double mu_ee_jack = c3_options_.mu[c3_options_.num_contacts_index][0];
-      // Ground-jack is the last mu.
-      double mu_ground_jack = c3_options_.mu[c3_options_.num_contacts_index][
-        c3_options_.num_contacts[c3_options_.num_contacts_index]-1];
+      // is 3 EE-capsule contacts, and 6 ground-capsule_tip contacts.
 
       // Preprocessing the contact pairs.
       if(verbose_){
-        std::cout << "Using more contacts to compute cost." << std::endl;
+        std::cout << "Using different number of contacts to compute cost." <<
+          std::endl;
       }
       vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
       resolved_contact_pairs_for_cost_simulation =
         LCSFactoryPreProcessor::PreProcessor(
           plant_, *context_, contact_pairs_,
-          {3,6},
+          c3_options_.resolve_contacts_to_list[
+            c3_options_.num_contacts_index_for_cost],
           c3_options_.num_friction_directions,
-          6, verbose_);
+          c3_options_.num_contacts[c3_options_.num_contacts_index_for_cost],
+          verbose_);
       solvers::LCS lcs_object_sample_for_cost_simulation =
         solvers::LCSFactory::LinearizePlantToLCS(
           plant_, *context_, plant_ad_, *context_ad_,
           resolved_contact_pairs_for_cost_simulation,
           c3_options_.num_friction_directions,
-          {mu_ee_jack, mu_ee_jack, mu_ee_jack,
-           mu_ground_jack, mu_ground_jack, mu_ground_jack,
-           mu_ground_jack, mu_ground_jack, mu_ground_jack},
+          c3_options_.mu[c3_options_.num_contacts_index_for_cost],
           dt_, N_, contact_model_);
-      lcs_objects_with_more_contacts_for_cost_simulation.push_back(
+      lcs_objects_for_cost_simulation.push_back(
         lcs_object_sample_for_cost_simulation);
     }
   }
@@ -766,46 +765,79 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Get the candidate state, its LCS representation.
       Eigen::VectorXd test_state = candidate_states.at(i);
       solvers::LCS test_system = candidate_lcs_objects.at(i);
+      std::vector<Eigen::MatrixXd> G = G_;
+      std::vector<Eigen::MatrixXd> U = U_;
+      std::vector<Eigen::VectorXd> delta = deltas.at(i);
+      std::vector<Eigen::VectorXd> w = ws.at(i);
+
+      // Optionally the current location can use a different number of contacts
+      // than the other samples.
+      if ((i == 0) &&
+          (c3_options_.num_contacts_index_for_curr_location !=
+            c3_options_.num_contacts_index)) {
+        vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
+        resolved_contact_pairs_for_curr_location =
+          LCSFactoryPreProcessor::PreProcessor(
+            plant_, *context_, contact_pairs_,
+            c3_options_.resolve_contacts_to_list[
+              c3_options_.num_contacts_index_for_curr_location],
+            c3_options_.num_friction_directions,
+            c3_options_.num_contacts[
+              c3_options_.num_contacts_index_for_curr_location],
+            verbose_);
+        test_system =
+          solvers::LCSFactory::LinearizePlantToLCS(
+            plant_, *context_, plant_ad_, *context_ad_,
+            resolved_contact_pairs_for_curr_location,
+            c3_options_.num_friction_directions,
+            c3_options_.mu[c3_options_.num_contacts_index_for_curr_location],
+            dt_, N_, contact_model_);
+
+        G = G_for_curr_location_;
+        U = U_for_curr_location_;
+        int n_lambda = 2 * c3_options_.num_friction_directions *
+          c3_options_.num_contacts[
+            c3_options_.num_contacts_index_for_curr_location];
+        delta = std::vector<Eigen::VectorXd>(
+          N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
+        w = std::vector<Eigen::VectorXd>(
+          N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
+      }
 
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
 
       if (c3_options_.projection_type == "MIQP") {
-          test_c3_object = std::make_shared<C3MIQP>(test_system,
-                                              C3::CostMatrices(Q_, R_, G_, U_),
-                                              x_desired, c3_options_);
-          if(sampling_params_.use_more_contacts_to_compute_cost){
-            // Compute the cost using the lcs object with more contacts.
-            test_c3_object->UpdateCostLCS(
-              lcs_objects_with_more_contacts_for_cost_simulation.at(i));
-          }
+        test_c3_object = std::make_shared<C3MIQP>(test_system,
+                                            C3::CostMatrices(Q_, R_, G, U),
+                                            x_desired, c3_options_);
+      } else if (c3_options_.projection_type == "QP") {
+        test_c3_object = std::make_shared<C3QP>(test_system,
+                                            C3::CostMatrices(Q_, R_, G, U),
+                                            x_desired, c3_options_);
+      } else {
+        std::cerr << ("Unknown projection type") << std::endl;
+        DRAKE_THROW_UNLESS(false);
+      }
 
-        } else if (c3_options_.projection_type == "QP") {
-          test_c3_object = std::make_shared<C3QP>(test_system,
-                                              C3::CostMatrices(Q_, R_, G_, U_),
-                                              x_desired, c3_options_);
-          if(sampling_params_.use_more_contacts_to_compute_cost){
-            // Compute the cost using the lcs object with more contacts.
-            test_c3_object->UpdateCostLCS(
-              lcs_objects_with_more_contacts_for_cost_simulation.at(i));
-          }
-        } else {
-          std::cerr << ("Unknown projection type") << std::endl;
-          DRAKE_THROW_UNLESS(false);
-        }
-
+      if (sampling_params_.use_different_contacts_to_compute_cost) {
+        // Compute the cost using the lcs object with more contacts.
+        test_c3_object->UpdateCostLCS(
+          lcs_objects_for_cost_simulation.at(i));
+      }
 
 
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
-      test_c3_object->Solve(test_state, deltas.at(i), ws.at(i), verbose_);
+      test_c3_object->Solve(test_state, delta, w, verbose_);
       // Get the state solution and calculate the cost.
-      // This is taking in the xbox input to change the way we calculate cost type 3 based on if force tracking is on
-      // or off.
+      // This is taking in the xbox input to change the way we calculate cost
+      // type 3 based on if force tracking is on or off.
       std::pair<double,std::vector<Eigen::VectorXd>> cost_trajectory_pair;
       if(!crossed_cost_switching_threshold_){
         cost_trajectory_pair = test_c3_object->CalcCost(
-          sampling_params_.cost_type_position_tracking, radio_out->channel[11], verbose_);
+          sampling_params_.cost_type_position_tracking, radio_out->channel[11],
+          verbose_);
       }
       else{
         cost_trajectory_pair = test_c3_object->CalcCost(
@@ -832,7 +864,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   // End of parallelization
 
-  // Set up hysteresis values based on if the cost switching threshold has been crossed.
+  // Set up hysteresis values based on if the cost switching threshold has been
+  // crossed.
   double c3_to_repos_hysteresis;
   double repos_to_c3_hysteresis;
   double hysteresis_between_repos_targets;

@@ -144,7 +144,7 @@ vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
             }
         }
     }
-    DRAKE_ASSERT(closest_contacts.size() == n_contacts);
+    DRAKE_DEMAND(closest_contacts.size() == n_contacts);
     return closest_contacts;
 }
 

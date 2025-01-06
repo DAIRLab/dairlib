@@ -37,7 +37,7 @@ struct SamplingC3SamplingParams {
   double ang_error_sample_retention;
   int cost_type;
   int cost_type_position_tracking;
-  bool use_more_contacts_to_compute_cost;
+  bool use_different_contacts_to_compute_cost;
   int num_control_loops_to_wait;
   int num_control_loops_to_wait_position_tracking;
   int track_c3_progress_via;
@@ -82,7 +82,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(cost_type_position_tracking));
-    a->Visit(DRAKE_NVP(use_more_contacts_to_compute_cost));
+    a->Visit(DRAKE_NVP(use_different_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait_position_tracking));
     a->Visit(DRAKE_NVP(track_c3_progress_via));

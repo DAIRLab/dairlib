@@ -60,7 +60,7 @@ ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
 # trajectory in c3 and simulate the object trajectory.
 cost_type: 3
 cost_type_position_tracking: 2
-use_more_contacts_to_compute_cost: true
+use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
 # switching to repositioning.

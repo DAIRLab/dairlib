@@ -157,8 +157,8 @@ class ConstrainedDynamicsInfo {
       const std::vector<std::string>& active_contacts,
       InverseDynamicsEvaluation<T>& eval) const;
 
-  std::unique_ptr<drake::multibody::MultibodyPlant<AutoDiffXd>> plant_ad_;
-  std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
+  std::unique_ptr<multibody::PinocchioPlant<AutoDiffXd>> plant_ad_;
+  std::unique_ptr<multibody::PinocchioPlant<double>> plant_;
 
   std::string urdf_;
 

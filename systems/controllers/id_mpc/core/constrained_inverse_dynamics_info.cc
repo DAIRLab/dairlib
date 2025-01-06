@@ -28,11 +28,10 @@ ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf):
 
 void ConstrainedDynamicsInfo::Finalize() {
   plant_->Finalize();
-  plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
+  plant_ad_ = std::make_unique<PinocchioPlant<AutoDiffXd>>(*plant_, urdf_);
 
-  // TODO (@Brian-Acosta) fix pinocchio plant inverse dynamics
-//  plant_->FinalizePlant();
-//  plant_ad_->FinalizePlant();
+  plant_->FinalizePlant();
+  plant_ad_->FinalizePlant();
 
   holonomic_constraints_ = make_unique<KinematicEvaluatorSet<double>>(*plant_);
   holonomic_constraints_ad_ = make_unique<KinematicEvaluatorSet<AutoDiffXd>>

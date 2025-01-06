@@ -303,14 +303,10 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
     const drake::multibody::MultibodyForces<double>& external_forces) const {
 
-  // TODO: support body forces
-  if (external_forces.body_forces().size() > 0) {
-//     throw std::runtime_error(
-//     "PinocchioPlant::CalcInverseDynamics: body forces not yet supported");
+  for (const auto& f : external_forces.body_forces()) {
+    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
+    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
   }
-
-  // TODO: currently CalcInverseDynamics doesn't pass the test when the MBP has
-  // floating base
 
   VectorXd fp = pinocchio::rnea(
       pinocchio_model_, pinocchio_data_,

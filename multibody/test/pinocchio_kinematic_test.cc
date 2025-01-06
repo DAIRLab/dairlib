@@ -202,62 +202,6 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassAD) {
   EXPECT_TRUE((ExtractGradient(com) - ExtractGradient(pin_com)).norm() < tol);
 }
 
-TEST_F(PinocchioKinematicTest, TestCentroidalMomentumDouble) {
-  plant_->SetPositionsAndVelocities(context_.get(), x_);
-  pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
-  Eigen::Vector3d com = plant_->CalcCenterOfMassPositionInWorld(*context_);
-  Eigen::Vector3d pin_com =
-      pin_plant_->CalcCenterOfMassPositionInWorld(*pin_context_);
-  auto spatial_momentum =
-      plant_->CalcSpatialMomentumInWorldAboutPoint(*context_, com);
-  auto pin_spatial_momentum =
-      pin_plant_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_, com);
-
-  EXPECT_TRUE((com - pin_com).norm() < tol);
-  EXPECT_TRUE(
-      (spatial_momentum.translational() - pin_spatial_momentum.translational())
-          .norm() < tol);
-  EXPECT_TRUE(
-      (spatial_momentum.rotational() - pin_spatial_momentum.rotational())
-          .norm() < tol);
-}
-
-TEST_F(PinocchioKinematicTest, TestCentroidalMomentumAD) {
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(
-      *plant_ad_, x_ad_, context_ad_.get());
-  dairlib::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(
-      *pin_plant_ad_, x_ad_, pin_context_ad_.get());
-  drake::Vector3<AutoDiffXd> com =
-      plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
-  drake::Vector3<AutoDiffXd> pin_com =
-      pin_plant_ad_->CalcCenterOfMassPositionInWorld(*pin_context_ad_);
-
-  auto spatial_momentum =
-      plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*context_ad_, com);
-  auto pin_spatial_momentum =
-      pin_plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_ad_,
-                                                          pin_com);
-
-  EXPECT_TRUE((ExtractValue(spatial_momentum.translational()) -
-               ExtractValue(pin_spatial_momentum.translational()))
-                  .norm() < tol);
-  EXPECT_TRUE((ExtractValue(spatial_momentum.rotational()) -
-               ExtractValue(pin_spatial_momentum.rotational()))
-                  .norm() < tol);
-  EXPECT_TRUE((ExtractGradient(spatial_momentum.translational()) -
-               ExtractGradient(pin_spatial_momentum.translational()))
-                  .norm() < tol);
-  EXPECT_TRUE((ExtractGradient(spatial_momentum.translational()) -
-               ExtractGradient(pin_spatial_momentum.translational()))
-                  .norm() < tol);
-  EXPECT_TRUE((ExtractGradient(spatial_momentum.rotational()) -
-               ExtractGradient(pin_spatial_momentum.rotational()))
-                  .norm() < tol);
-  EXPECT_TRUE((ExtractGradient(spatial_momentum.rotational()) -
-               ExtractGradient(pin_spatial_momentum.rotational()))
-                  .norm() < tol);
-}
-
 TEST_F(PinocchioKinematicTest, TestCenterOfMassVel) {
   Eigen::Vector3d com_vel =
       plant_->CalcCenterOfMassTranslationalVelocityInWorld(*context_);

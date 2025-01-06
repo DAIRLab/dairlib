@@ -57,25 +57,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   void UpdateForwardKinematicsDerivatives(
       const drake::systems::Context<drake::AutoDiffXd>& context);
 
-  /**
-   * @brief This function updates the pinocchio data struct with centroidal
-   * dynamics If derivatives are needed, call the function with Derivatives
-   * @param q
-   * @param v
-   */
-  void UpdateCentroidalDynamics(
-      const drake::systems::Context<double>& context) const;
-
-  /**
-   * @brief: Computes computeCentroidalDynamicsDerivatives
-   * Updates: dh_dq, dhdot_dq, dhdot_dv, dhdot_da (dh_dv)
-   * Note: acceleration a is set to zero
-   * @param q
-   * @param v
-   */
-  void UpdateCentroidalDynamicsDerivatives(
-      const drake::systems::Context<drake::AutoDiffXd>& context) const;
-
   void RightMultiplicationFromDrakeToPinocchio(
       const drake::VectorX<double>& quat,
       drake::EigenPtr<drake::MatrixX<double>> M) const;
@@ -114,11 +95,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::multibody::Frame<T>& frame_A,
       const drake::multibody::Frame<T>& frame_E,
       drake::EigenPtr<drake::Matrix3X<T>> J) const;
-
-  drake::multibody::SpatialMomentum<T> CalcSpatialMomentumInWorldAboutPoint(
-      const drake::systems::Context<T>& context,
-      const drake::Vector3<T>& p_WoP_W) const;
-
 
  private:
 

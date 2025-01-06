@@ -38,4 +38,4 @@ curr_and_best_sample_costs_channel: CURR_AND_BEST_SAMPLE_COSTS          # lcmt_t
 is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
 sampling_controller_debug_channel: SAMPLING_CONTROLLER_DEBUG
                                             # lcmt_sampling_controller_debug
-radio_channel: RADIO
+radio_channel: SAMPLING_C3_RADIO

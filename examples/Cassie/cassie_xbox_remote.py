@@ -105,7 +105,7 @@ def main():
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
-        publisher.publish("RADIO", radio_msg.encode())
+        publisher.publish("SAMPLING_C3_RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
         clock.tick(60)

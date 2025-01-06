@@ -347,9 +347,8 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
       MapPositionFromDrakeToPinocchio(GetPositions(context)),
       MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
                                       GetVelocities(context)),
-      MapVDotFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                  GetVelocities(context),
-                                  known_vdot)
+      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                  GetVelocities(context))
       );
 
   // At this point, f_pin = M vdot + C + g

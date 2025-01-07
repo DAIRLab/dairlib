@@ -63,6 +63,11 @@ MODE_SWITCH_LABELS = [NO_SWITCH_LABEL,
                       TO_C3_XBOX_FORCED_SWITCH_LABEL]
 MODE_SWITCH_COLORS = ['black', 'red', 'orange', 'green', 'blue', 'purple']
 
+# Other success thresholds.
+POS_SUCCESS_THRESHOLDS = np.array([0.01, 0.02, 0.03, 0.04, 0.05])
+RAD_SUCCESS_THRESHOLDS = np.array([0.05, 0.1, 0.2, 0.3, 0.4])
+THRESHOLD_COLORS = ['black', 'red', 'darkorange', 'gold', 'green']
+
 EPS = 1e-5
 
 
@@ -114,6 +119,7 @@ def get_messages_from_log(log_file_path: str, start_time: float = 0.0,
 
     return messages_by_channel
 
+# TODO:  This does a very naive thing but should really get addressed better.
 def ensure_same_number_messages(messages_by_channel: dict,
                                 channels_and_lcmt: dict = CHANNELS_AND_LCMT):
     min_num_channels = np.inf
@@ -140,7 +146,7 @@ def angular_difference_from_quats(q1: np.ndarray, q2: np.ndarray) -> float:
     quat2 = Quaternion(q2.reshape(4,1))
 
     quat_diff = quat1.inverse().multiply(quat2)
-    return 2*np.arccos(quat_diff.w())
+    return 2*np.arccos(quat_diff.w()) % np.pi
 
 def get_shading_masks(bool_array):
     bool_array = bool_array.squeeze()
@@ -152,7 +158,7 @@ def get_shading_masks(bool_array):
         (right_shifted_yes, bool_array)))
     no_shading_mask = np.ravel(np.column_stack(
         (~right_shifted_yes, ~bool_array)))
-    
+
     return yes_shading_mask, no_shading_mask
 
 def visualize_sample_buffer(messages_by_channel: dict):
@@ -318,6 +324,114 @@ def inspect_mode_switching(messages_by_channel: dict):
     plt.savefig('examples/jacktoy/test/tmp/sample_sources.png')
     print(f'Wrote plot to examples/jacktoy/test/tmp/sample_sources.png')
 
+def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
+    states = messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
+    goal_states = messages_by_channel['C3_FINAL_TARGET'][MESSAGE_KEY]
+
+    times = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
+
+    times_of_new_goals = []
+    quats, xyzs, ee_xyzs = [], [], []
+    goal_quats, goal_xyzs = [], []
+    pos_errors, rad_errors = [], []
+    for state, goal, t in zip(states, goal_states, times):
+        quats.append(np.array(state.state[3:7]))
+        xyzs.append(np.array(state.state[7:10]))
+        ee_xyzs.append(np.array(state.state[:3]))
+        goal_quats.append(np.array(goal.state[3:7]))
+        goal_xyzs.append(np.array(goal.state[7:10]))
+
+        pos_errors.append(np.linalg.norm(
+            np.array(xyzs[-1]) - np.array(goal_xyzs[-1])).item())
+        rad_errors.append(angular_difference_from_quats(
+            np.array(quats[-1]), np.array(goal_quats[-1])).item())
+
+        if (len(goal_quats) == 1) or \
+           (goal_quats[-1] != goal_quats[-2]).any() or \
+           (goal_xyzs[-1] != goal_xyzs[-2]).any():
+            times_of_new_goals.append(t)
+
+    # Now inspect goal completion.
+    n_goals = len(times_of_new_goals)
+
+    pos_tol = trajectory_params['position_success_threshold']
+    rad_tol = trajectory_params['orientation_success_threshold']
+
+    pos_thresholds = POS_SUCCESS_THRESHOLDS[POS_SUCCESS_THRESHOLDS >= pos_tol]
+    rad_thresholds = RAD_SUCCESS_THRESHOLDS[RAD_SUCCESS_THRESHOLDS >= rad_tol]
+    colors = THRESHOLD_COLORS[-len(pos_thresholds):]
+
+    times_to_thresholds = np.zeros((n_goals-1, len(pos_thresholds)))
+    for goal_i, goal_t in enumerate(times_of_new_goals[:-1]):
+        for thresh_i, (pos_thresh, rad_thresh) in enumerate(
+            zip(pos_thresholds, rad_thresholds)):
+
+            if pos_thresh == pos_tol and rad_thresh == rad_tol:
+                times_to_thresholds[goal_i, thresh_i] = \
+                    times_of_new_goals[goal_i+1] - goal_t
+                continue
+
+            time_i = times.index(goal_t)
+            while (pos_errors[time_i] > pos_thresh.item()) or \
+                  (rad_errors[time_i] > rad_thresh.item()):
+                time_i += 1
+                if time_i == len(times):
+                    print(f'Goal {goal_i} not reached.')
+                    breakpoint()
+            times_to_thresholds[goal_i, thresh_i] = times[time_i] - goal_t
+
+    # Generate plots.
+    fig, axs = plt.subplots(3, 1, figsize=(10, 12))
+    axs[0].plot(times, pos_errors, label='Position error')
+    for pos_thresh, color in zip(pos_thresholds, colors):
+        axs[0].axhline(y=pos_thresh, linestyle='--', color=color,
+                       label=f'{pos_thresh:.2f}m threshold')
+    # axs[1].plot(times, rad_errors, label='Rotation error')
+    axs[1].plot(rad_errors, label='Rotation error')
+    for rad_thresh, color in zip(rad_thresholds, colors):
+        axs[1].axhline(y=rad_thresh, linestyle='--', color=color,
+                       label=f'{rad_thresh:.1f}rad threshold')
+    axs[0].set_xlabel('Time (s)')
+    axs[1].set_xlabel('Time index')
+    axs[0].set_ylabel('Error [m]')
+    axs[1].set_ylabel('Error [rad]')
+    axs[0].set_title('Position Error')
+    axs[1].set_title('Orientation Error')
+    axs[0].legend()
+    axs[1].legend()
+    for goal_i in range(times_to_thresholds.shape[0]):
+        for thresh_i, color in enumerate(colors):
+            time = times_to_thresholds[goal_i, thresh_i] + \
+                times_of_new_goals[goal_i]
+            time_i = times.index(time)
+            axs[0].axvline(x=time, color=color, alpha=0.5)
+            axs[1].axvline(x=time_i, color=color, alpha=0.5)
+
+    # Make third plot for time to reach each goal.
+    n_goals, n_thresholds = times_to_thresholds.shape
+    x = np.arange(n_goals)
+    bar_width = 0.2
+    offsets = np.linspace(-bar_width * (n_thresholds - 1) / 2,
+                           bar_width * (n_thresholds - 1) / 2,
+                          n_thresholds)
+
+    # Plot each threshold as a separate set of bars
+    for thresh_i, color in enumerate(colors):
+        axs[2].bar(x + offsets[thresh_i], times_to_thresholds[:, thresh_i],
+                   width=0.2, color=color,
+                   label=f'{pos_thresholds[thresh_i]:.2f}m, ' + \
+                    f'{rad_thresholds[thresh_i]:.1f}rad')
+    axs[2].set_ylabel('Time [s]')
+    axs[2].set_title('Time to Reach Goal')
+    axs[2].set_xticks(x)
+    axs[2].set_xticklabels([f'Goal {i+1}' for i in range(n_goals)])
+    axs[2].legend(title="Thresholds",
+                  bbox_to_anchor=(1.02, 1), loc='upper left')
+    plt.tight_layout()
+
+    plt.savefig('examples/jacktoy/test/tmp/goal_success.png')
+    print(f'Wrote plot to examples/jacktoy/test/tmp/goal_success.png')
+
 
 
 @click.command()
@@ -330,19 +444,34 @@ def inspect_mode_switching(messages_by_channel: dict):
               help='Visualize the buffer of samples throughout time range')
 @click.option('--inspect-switching', is_flag=True,
               help='Inspect switching between C3 and repositioning')
+@click.option('--visualize-goal-completion', is_flag=True,
+              help='Visualize the completion of goals')
+
 def main_command(log_folder: str, start: float, end: float, buffer_vis: bool,
-                 inspect_switching: bool):
+                 inspect_switching: bool, visualize_goal_completion: bool):
     # Turn the folder into a file path.
     log_folder = log_folder[:-1] if log_folder[-1] == '/' else log_folder
     log_number = log_folder.split('/')[-1][:6]
     log_filepath = op.join(log_folder, f'simlog-{log_number}')
-    print(f'Parsing log at: {log_filepath}\n')
+    log_type = 'simulation'
+    if not op.exists(log_filepath):
+        log_filepath = op.join(log_folder, f'hwlog-{log_number}')
+        log_type = 'hardware'
+    if not op.exists(log_filepath):
+        raise ValueError(f'Could not find simlog or hwlog in: {log_folder}')
+    print(f'Parsing {log_type} log at: {log_filepath}\n')
 
-    # # Get the sampling parameters.
-    # sampling_params_filepath = op.join(
-    #     log_folder, f'sampling_params_{log_number}.yaml')
-    # with open(sampling_params_filepath, 'r') as file:
-    #     sampling_params = yaml.safe_load(file)
+    # Get the sampling parameters.
+    sampling_params_filepath = op.join(
+        log_folder, f'sampling_params_{log_number}.yaml')
+    with open(sampling_params_filepath, 'r') as file:
+        sampling_params = yaml.safe_load(file)
+
+    # Get the trajectory parameters.
+    trajectory_params_filepath = op.join(
+        log_folder, f'trajectory_params_{log_number}.yaml')
+    with open(trajectory_params_filepath, 'r') as file:
+        trajectory_params = yaml.safe_load(file)
 
     # Get the messages from the log.
     messages_by_channel = get_messages_from_log(
@@ -356,6 +485,10 @@ def main_command(log_folder: str, start: float, end: float, buffer_vis: bool,
     # Inspect switching of modes.
     if inspect_switching:
         inspect_mode_switching(messages_by_channel)
+
+    # Visualize goal completion.
+    if visualize_goal_completion:
+        visualize_goal_success(messages_by_channel, trajectory_params)
 
 
 if __name__ == '__main__':

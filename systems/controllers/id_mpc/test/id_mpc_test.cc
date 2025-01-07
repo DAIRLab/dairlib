@@ -179,7 +179,7 @@ int DoMain() {
   VectorXd vd = vars;
   vd(6) = 0.7;
 
-  mpc.SetInitialState(vars.head(2 * q.size() - 1));
+  mpc.UpdateInitialState(vars.head(2 * q.size() - 1));
 
   for (int i = 0; i <= params.N; ++i) {
     vars(6) -= (0.95 - 0.7) / params.N;
@@ -190,7 +190,7 @@ int DoMain() {
         Eigen::MatrixXd::Identity(1,1),
         vd.segment<1>(6),
         mpc.position_vars(i).segment<1>(6));
-    mpc.SetActiveContacts(i, contacts);
+    mpc.UpdateActiveContacts(i, contacts);
   }
 
 

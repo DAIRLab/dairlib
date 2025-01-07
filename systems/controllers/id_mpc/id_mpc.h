@@ -21,8 +21,7 @@ struct IDMPCParams {
 
 class IDMPC {
  public:
-  IDMPC(
-      IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics);
+  IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics);
 
   const drake::solvers::VectorXDecisionVariable knot_vars(int index) const {
     DRAKE_DEMAND(index <= params_.N);
@@ -50,8 +49,8 @@ class IDMPC {
   LcmTrajectory GetSolutionAsLcmTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const;
 
-  void SetActiveContacts(int knot_index, std::vector<std::string> contacts);
-  void SetInitialState(const Eigen::VectorXd& x);
+  void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
+  void UpdateInitialState(const Eigen::VectorXd& x);
 
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
@@ -63,6 +62,8 @@ class IDMPC {
 
   std::shared_ptr<CollocationConstraint<double>> dynamics_constraint_;
   drake::solvers::MathematicalProgram prog_;
+  drake::solvers::MathematicalProgram sqp_prog_;
+
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> kinematic_constraints_;

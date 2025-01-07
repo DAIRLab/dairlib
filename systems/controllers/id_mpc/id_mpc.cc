@@ -42,13 +42,13 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
       knot_point_vars_.front().head(dynamics_->nx())).evaluator().get();
 }
 
-void IDMPC::SetInitialState(const Eigen::VectorXd &x) {
+void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
   DRAKE_ASSERT(x.size() == dynamics_->nx());
   initial_state_constraint_->UpdateCoefficients(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()), x);
 }
 
-void IDMPC::SetActiveContacts(
+void IDMPC::UpdateActiveContacts(
     int knot_index, std::vector<std::string> contacts) {
   timeline_.knots.at(knot_index).UpdateActiveContacts(contacts);
 }

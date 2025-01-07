@@ -147,15 +147,16 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
         prog_
-            .AddQuadraticCost(2 * cost_matrices_.Q.at(i), -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
+            .AddQuadraticCost(2 * cost_matrices_.Q.at(i),
+                              -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
             .evaluator()
             .get();
     if (i < N_) {
-      input_costs_[i] =
-          prog_
-              .AddQuadraticCost(2 * cost_matrices_.R.at(i), VectorXd::Zero(n_u_), u_.at(i), 1)
-              .evaluator();
+      input_costs_[i] = prog_
+                            .AddQuadraticCost(2 * cost_matrices_.R.at(i),
+                                              VectorXd::Zero(n_u_), u_.at(i), 1)
+                            .evaluator();
     }
   }
 }
@@ -198,8 +199,9 @@ void C3::UpdateLCS(const LCS& lcs) {
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (std::size_t i = 0; i < N_ + 1; i++) {
-    target_cost_[i]->UpdateCoefficients(2 * cost_matrices_.Q.at(i),
-                                        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+    target_cost_[i]->UpdateCoefficients(
+        2 * cost_matrices_.Q.at(i),
+        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
   }
 }
 
@@ -224,8 +226,9 @@ void C3::Solve(const VectorXd& x0) {
   vector<MatrixXd> Gv = cost_matrices_.G;
 
   for (std::size_t i = 0; i < N_; ++i) {
-    input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
-                                        -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
+    input_costs_[i]->UpdateCoefficients(
+        2 * cost_matrices_.R.at(i),
+        -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
   }
 
   for (std::size_t iter = 0; iter < options_.admm_iter; iter++) {

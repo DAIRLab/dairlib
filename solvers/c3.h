@@ -109,13 +109,13 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const std::size_t N_;
-  const std::size_t n_x_;  // n
+  const std::size_t n_x_;       // n
   const std::size_t n_lambda_;  // m
-  const std::size_t n_u_;  // k
+  const std::size_t n_u_;       // k
 
  private:
   LCS lcs_;
-  double AnDn_ = 1.0; // Scaling factor for lambda
+  double AnDn_ = 1.0;  // Scaling factor for lambda
   const CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;
@@ -129,7 +129,8 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
   // QP step constraints
-  std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint>
+      initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;

@@ -83,10 +83,11 @@ GaussNewtonApproximation NonlinearLeastSquaresCost<T>::CalcGaussNewtonApproximat
   MatrixXd J = ExtractGradient(y);
 
   // (Jx - y)^TQ(Jx - y) = x^TJ^TQJx - *^TQJx + x*^TQx*
+  VectorXd c = J * x - yval;
   return {
       J.transpose() * Q_ * J,
-      2 * yval.transpose() * Q_ * J,
-      yval.transpose() * Q_ * yval
+      2 * c.transpose() * Q_ * J,
+      c.transpose() * Q_ * c
   };
 }
 

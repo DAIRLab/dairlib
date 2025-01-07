@@ -5,12 +5,16 @@
 #include "core/collocation_constraint.h"
 #include "core/kinematic_constraint.h"
 #include "core/timeline.h"
+#include "core/quaternion_norm_constraint.h"
+
+#include "costs/nonlinear_least_squares_cost.h"
+
+#include "sqp/qp_data.h"
 
 #include "lcm/lcm_trajectory.h"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
-#include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -54,20 +58,25 @@ class IDMPC {
 
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
+
+  void ConstructSQPProgram(const Eigen::VectorXd& x, QPData& qp) const;
+
  private:
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
 
-  std::shared_ptr<CollocationConstraint<double>> dynamics_constraint_;
-  drake::solvers::MathematicalProgram prog_;
-  drake::solvers::MathematicalProgram sqp_prog_;
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
+  std::vector<drake::solvers::Binding<drake::solvers::Cost>> costs_;
 
+  std::shared_ptr<CollocationConstraint<double>> dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
+
+  drake::solvers::MathematicalProgram prog_;
+
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> kinematic_constraints_;
-  std::shared_ptr<drake::multibody::UnitQuaternionConstraint> unit_quat_ = nullptr;
+  std::shared_ptr<QuaternionNormConstraint<AutoDiffXd>> unit_quat_ = nullptr;
 };
 
 }

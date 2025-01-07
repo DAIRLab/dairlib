@@ -9,5 +9,7 @@ cc_library(
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//systems/controllers/id_mpc/core:id_mpc_core",
+        "//systems/controllers/id_mpc/costs:id_mpc_costs",
+        "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
     ],
 )

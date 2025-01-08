@@ -5,6 +5,10 @@
 
 namespace dairlib::systems::controllers::id_mpc {
 
+/*!
+ * Approximating a nonlinear least squares cost as
+ * 1/2x^TQx + g^Tx + c
+ */
 struct GaussNewtonApproximation {
     Eigen::MatrixXd H; // Gauss Newton Hessian
     Eigen::MatrixXd g; // gradient

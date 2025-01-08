@@ -78,17 +78,13 @@ void IDMPC::AddUnitQuaternionConstraintToAllFloatingBodies() {
 
 void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
   DRAKE_DEMAND(x.rows() == prog_.num_vars());
-  for (const auto& binding : prog_.GetAllCosts()) {
-    if (dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(binding.evaluator().get())) {
 
-    } else if (dynamic_cast<NonlinearLeastSquaresCost<double>*>(binding.evaluator().get())) {
+  // Reset problem size data
+  qp.num_vars = prog_.num_vars();
+  qp.num_eq = 0;
+  qp.num_ineq = 0;
 
-    } else if (dynamic_cast<drake::solvers::QuadraticCost*>(binding.evaluator().get())) {
-
-    } else {
-      throw std::runtime_error("Unsupported cost type has been added to IDMPC");
-    }
-  }
+  ParseCostsToQP(x, qp);
 
   for (const auto& binding : prog_.GetAllConstraints()) {
     if (dynamic_cast<NonlinearConstraint<AutoDiffXd>*>(binding.evaluator().get())) {
@@ -104,6 +100,57 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
     }
 
   }
+}
+
+void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
+
+  qp.g = VectorXd::Zero(prog_.num_vars());
+
+  std::vector<Eigen::Triplet<double>> cost_triplets;
+  cost_triplets.reserve(prog_.num_vars() * params_.N);
+
+  for (const auto& binding : prog_.GetAllCosts()) {
+    const auto& v = binding.variables();
+    const auto& indices = prog_.FindDecisionVariableIndices(v);
+
+    VectorXd xval = VectorXd::Zero(v.rows());
+    for (int i = 0; i < v.rows(); ++i) {
+      xval(i) = x(indices[i]);
+    }
+
+    GaussNewtonApproximation cost_data;
+    if (dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(binding.evaluator().get())) {
+      cost_data = dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(
+          binding.evaluator().get()
+      )->CalcGaussNewtonApproximation(xval);
+    } else if (dynamic_cast<NonlinearLeastSquaresCost<double>*>(binding.evaluator().get())) {
+      cost_data = dynamic_cast<NonlinearLeastSquaresCost<double>*>(
+          binding.evaluator().get()
+      )->CalcGaussNewtonApproximation(xval);
+    } else if (dynamic_cast<drake::solvers::QuadraticCost*>(binding.evaluator().get())) {
+      const auto evaluator = dynamic_cast<drake::solvers::QuadraticCost*>(
+          binding.evaluator().get());
+      cost_data.H = evaluator->Q();
+      cost_data.g = evaluator->b();
+      cost_data.c = evaluator->c();
+    } else {
+      throw std::runtime_error("Unsupported cost type has been added to IDMPC");
+    }
+    for (int j = 0; j < cost_data.H.cols(); ++j) {
+      for (int i = 0; i < cost_data.H.rows(); ++i) {
+        int r = indices[i];
+        int c = indices[j];
+        cost_triplets.emplace_back(r, c, cost_data.H(i,j));
+      }
+    }
+    for (int i = 0; i < cost_data.g.rows(); ++i) {
+      qp.g(indices[i]) += cost_data.g(i);
+    }
+    qp.c += cost_data.c;
+  }
+
+  qp.H.resize(prog_.num_vars(), prog_.num_vars());
+  qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {

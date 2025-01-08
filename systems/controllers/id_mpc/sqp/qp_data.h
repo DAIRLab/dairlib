@@ -3,13 +3,16 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#include "drake/solvers/binding.h"
+
+
 namespace dairlib::systems::controllers::id_mpc {
 
-class QPData {
- private:
-  int num_vars;
-  int num_eq;
-  int num_ineq;
+struct QPData {
+
+  int num_vars{0};
+  int num_eq{0};
+  int num_ineq{0};
 
   Eigen::SparseMatrix<double> H;    // Cost Hessian
   Eigen::SparseMatrix<double> A;    // Linear constraint A
@@ -18,6 +21,8 @@ class QPData {
   Eigen::VectorXd lb;               // linear constraint lb
   Eigen::VectorXd ub;               // linear constraint ub
   Eigen::VectorXd b_eq;             // linear equality constraint
+  double c;                         // cost constant term
+
 };
 
 }

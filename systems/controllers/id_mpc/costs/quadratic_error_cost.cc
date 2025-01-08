@@ -31,7 +31,7 @@ template <typename T>
 GaussNewtonApproximation QuadraticErrorCost<T>::CalcGaussNewtonApproximation(
     const Eigen::Ref<const Eigen::VectorXd>& x) const {
   return {
-    this->Q_,
+    2 * this->Q_,
     -2 * this->Q_ * x_ref_,
     x_ref_.transpose() * this->Q_ * x_ref_
   };

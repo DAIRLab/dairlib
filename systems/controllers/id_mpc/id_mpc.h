@@ -62,6 +62,9 @@ class IDMPC {
   void ConstructSQPProgram(const Eigen::VectorXd& x, QPData& qp) const;
 
  private:
+
+  void ParseCostsToQP(const Eigen::VectorXd& x, QPData& qp) const;
+
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;

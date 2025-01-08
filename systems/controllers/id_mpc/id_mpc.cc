@@ -85,21 +85,7 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
   qp.num_ineq = 0;
 
   ParseCostsToQP(x, qp);
-
-  for (const auto& binding : prog_.GetAllConstraints()) {
-    if (dynamic_cast<NonlinearConstraint<AutoDiffXd>*>(binding.evaluator().get())) {
-
-    } else if (dynamic_cast<NonlinearConstraint<double>*>(binding.evaluator().get())) {
-
-    } else if (dynamic_cast<drake::solvers::LinearEqualityConstraint*>(binding.evaluator().get())) {
-
-    } else if (dynamic_cast<drake::solvers::LinearConstraint*>(binding.evaluator().get())) {
-
-    } else {
-      throw std::runtime_error("Unsupported constraint type has been added to IDMPC");
-    }
-
-  }
+  ParseConstraintsToQP(x, qp);
 }
 
 void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
@@ -148,9 +134,25 @@ void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
     }
     qp.c += cost_data.c;
   }
-
   qp.H.resize(prog_.num_vars(), prog_.num_vars());
   qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());
+}
+
+void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
+  for (const auto& binding : prog_.GetAllConstraints()) {
+    if (dynamic_cast<NonlinearConstraint<AutoDiffXd>*>(binding.evaluator().get())) {
+
+    } else if (dynamic_cast<NonlinearConstraint<double>*>(binding.evaluator().get())) {
+
+    } else if (dynamic_cast<drake::solvers::LinearEqualityConstraint*>(binding.evaluator().get())) {
+
+    } else if (dynamic_cast<drake::solvers::LinearConstraint*>(binding.evaluator().get())) {
+
+    } else {
+      throw std::runtime_error("Unsupported constraint type has been added to IDMPC");
+    }
+
+  }
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {

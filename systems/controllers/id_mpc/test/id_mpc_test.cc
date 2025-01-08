@@ -214,12 +214,14 @@ int DoMain() {
   auto solver = drake::solvers::SnoptSolver();
   auto result = solver.Solve(prog);
   std::cout << result.get_solution_result() << std::endl;
-
   auto sol = mpc.GetSolutionAsLcmTrajectory(result);
 
   std::cout << "q: \n";
   std::cout << sol.GetTrajectory("q").datapoints << std::endl;
 
+
+  QPData qp;
+  mpc.ConstructSQPProgram(result.GetSolution(), qp);
 
   return 0;
 }

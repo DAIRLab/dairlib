@@ -183,6 +183,8 @@ void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
     }
     qp.num_ineq += binding.evaluator()->num_constraints();
   }
+  qp.A.resize(qp.num_ineq, x.rows());
+  qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {

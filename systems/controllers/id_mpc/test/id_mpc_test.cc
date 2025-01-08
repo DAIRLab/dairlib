@@ -5,6 +5,8 @@
 #include "drake/solvers/solve.h"
 #include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/gurobi_solver.h"
 #include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -222,6 +224,17 @@ int DoMain() {
 
   QPData qp;
   mpc.ConstructSQPProgram(result.GetSolution(), qp);
+
+  drake::solvers::MathematicalProgram sqp_prog;
+  qp.ToMathematicalProgram(sqp_prog);
+  drake::solvers::OsqpSolver osqp;
+  drake::solvers::GurobiSolver gurobi;
+  auto osqp_result = osqp.Solve(sqp_prog);
+  auto gurobi_result = gurobi.Solve(sqp_prog);
+  std::cout << "OSQP Solution status: " << osqp_result.get_solution_result() << std::endl;
+  std::cout << "OSQP solve took: " << osqp_result.get_solver_details<drake::solvers::OsqpSolver>().solve_time << std::endl;
+  std::cout << "Gurobi Solution status: " << gurobi_result.get_solution_result() << std::endl;
+  std::cout << "Gurobi solve took: " << gurobi_result.get_solver_details<drake::solvers::GurobiSolver>().optimizer_time << std::endl;
 
   return 0;
 }

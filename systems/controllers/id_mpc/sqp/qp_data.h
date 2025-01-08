@@ -3,8 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include "drake/solvers/binding.h"
-
+#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -22,6 +21,9 @@ struct QPData {
   Eigen::VectorXd ub;               // linear constraint ub
   Eigen::VectorXd b_eq;             // linear equality constraint
   double c;                         // cost constant term
+
+  void ToMathematicalProgram(drake::solvers::MathematicalProgram& empty_prog) const;
+  bool ValidateDimensions() const;
 
 };
 

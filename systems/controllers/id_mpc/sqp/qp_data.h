@@ -10,9 +10,9 @@ namespace dairlib::systems::controllers::id_mpc {
 
 struct QPData {
 
-  int num_vars{0};
-  int num_eq{0};
-  int num_ineq{0};
+  long int num_vars{0};
+  long int num_eq{0};
+  long int num_ineq{0};
 
   Eigen::SparseMatrix<double> H;    // Cost Hessian
   Eigen::SparseMatrix<double> A;    // Linear constraint A

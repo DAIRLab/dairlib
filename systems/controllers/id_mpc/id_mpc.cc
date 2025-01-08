@@ -11,6 +11,10 @@ using solvers::NonlinearConstraint;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
+using drake::AutoDiffVecXd;
+using drake::math::ExtractValue;
+using drake::math::ExtractGradient;
+using drake::math::InitializeAutoDiff;
 
 
 IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
@@ -81,8 +85,6 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
 
   // Reset problem size data
   qp.num_vars = prog_.num_vars();
-  qp.num_eq = 0;
-  qp.num_ineq = 0;
 
   ParseCostsToQP(x, qp);
   ParseConstraintsToQP(x, qp);
@@ -138,20 +140,48 @@ void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
   qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());
 }
 
+
+// TODO (@Brian-Acosta)
+//  Can maybe make this more efficient by handling constraints differently
+//   Depending on their type. Also likely want to denote true equality vs
+//   inequality constraints
 void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
+
+  qp.num_eq = 0;
+  qp.num_ineq = 0;
+
+  std::vector<Eigen::Triplet<double>> inequality_triplets;
+
   for (const auto& binding : prog_.GetAllConstraints()) {
-    if (dynamic_cast<NonlinearConstraint<AutoDiffXd>*>(binding.evaluator().get())) {
+    const auto& v = binding.variables();
+    const auto& indices = prog_.FindDecisionVariableIndices(v);
+    VectorXd xval = VectorXd::Zero(v.rows());
 
-    } else if (dynamic_cast<NonlinearConstraint<double>*>(binding.evaluator().get())) {
-
-    } else if (dynamic_cast<drake::solvers::LinearEqualityConstraint*>(binding.evaluator().get())) {
-
-    } else if (dynamic_cast<drake::solvers::LinearConstraint*>(binding.evaluator().get())) {
-
-    } else {
-      throw std::runtime_error("Unsupported constraint type has been added to IDMPC");
+    for (int i = 0; i < v.rows(); ++i) {
+      xval(i) = x(indices[i]);
     }
 
+    AutoDiffVecXd xval_ad = InitializeAutoDiff(xval);
+    AutoDiffVecXd y_ad;
+    binding.evaluator()->Eval(xval_ad, &y_ad);
+    MatrixXd dydx = ExtractGradient(y_ad);
+    VectorXd yval = ExtractValue(y_ad);
+    // SQP constraint: lb <= y(x) <= ub -->  lb <= dydx * dx + y* <= ub
+    // subtract y* from the above equation
+    int rows = binding.evaluator()->num_constraints();
+    qp.lb.conservativeResize(std::max(qp.lb.rows(), qp.num_ineq + rows));
+    qp.ub.conservativeResize(std::max(qp.ub.rows(), qp.num_ineq + rows));
+
+    qp.lb.segment(qp.num_ineq, rows) = binding.evaluator()->lower_bound() - yval;
+    qp.ub.segment(qp.num_ineq, rows) = binding.evaluator()->upper_bound() - yval;
+    for (int j = 0; j < dydx.cols(); ++j) {
+      for (int i = 0; i < dydx.rows(); ++i) {
+        int row = qp.num_ineq + i;
+        int col = indices[j];
+        inequality_triplets.emplace_back(row, col, dydx(i, j));
+      }
+    }
+    qp.num_ineq += binding.evaluator()->num_constraints();
   }
 }
 

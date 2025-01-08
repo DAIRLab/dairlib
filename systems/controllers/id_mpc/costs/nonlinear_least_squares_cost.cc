@@ -82,11 +82,13 @@ GaussNewtonApproximation NonlinearLeastSquaresCost<T>::CalcGaussNewtonApproximat
   VectorXd yval = ExtractValue(y);
   MatrixXd J = ExtractGradient(y);
 
-  VectorXd c = yval - J * x;
+  // Nonlinear cost is y(x)^TQy(x)
+  // Guass-Newton SQP cost is (J * dx + y)^TQ(J * dx + y)
+
   return {
       2 * J.transpose() * Q_ * J,
-      2 * c.transpose() * Q_ * J,
-      c.transpose() * Q_ * c
+      2 * J.transpose() * Q_ * yval,
+      yval.transpose() * Q_ * yval
   };
 }
 

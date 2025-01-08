@@ -30,10 +30,11 @@ void QuadraticErrorCost<T>::EvaluateInnerTerm(
 template <typename T>
 GaussNewtonApproximation QuadraticErrorCost<T>::CalcGaussNewtonApproximation(
     const Eigen::Ref<const Eigen::VectorXd>& x) const {
+  VectorXd y = x - x_ref_;
   return {
     2 * this->Q_,
-    -2 * this->Q_ * x_ref_,
-    x_ref_.transpose() * this->Q_ * x_ref_
+    -2 * this->Q_ * y,
+    y.transpose() * this->Q_ * y
   };
 }
 }

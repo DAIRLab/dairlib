@@ -145,7 +145,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   }
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
-    target_cost_[i] =
+    target_cost_.at(i) =
         prog_
             .AddQuadraticCost(2 * cost_matrices_.Q.at(i),
                               -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
@@ -153,10 +153,12 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .evaluator()
             .get();
     if (i < N_) {
-      input_costs_[i] = prog_
-                            .AddQuadraticCost(2 * cost_matrices_.R.at(i),
-                                              VectorXd::Zero(n_u_), u_.at(i), 1)
-                            .evaluator();
+      input_costs_.at(i) =
+          prog_
+              .AddQuadraticCost(2 * cost_matrices_.R.at(i),
+                                VectorXd::Zero(n_u_), u_.at(i), 1)
+              .evaluator()
+              .get();
     }
   }
 }

@@ -2,14 +2,15 @@
 #include <iostream>
 
 #include "drake/common/yaml/yaml_read_archive.h"
+#include <drake/common/yaml/yaml_io.h>
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter;     // total number of ADMM iterations
-  float rho;         // initial value of the rho parameter
-  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option;  // different options for delta update
+  int admm_iter = 10;    // total number of ADMM iterations
+  float rho = 0.1;       // initial value of the rho parameter
+  float rho_scale = 2;   // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads = 0;   // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option = 1;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
   double M = 1000;  // big M value for MIQP
@@ -135,8 +136,8 @@ struct C3Options {
     } else {
       g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
-
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
+
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
     if (contact_model == "stewart_and_trinkle") {
@@ -168,3 +169,8 @@ struct C3Options {
     U = w_U * u.asDiagonal();
   }
 };
+
+inline C3Options LoadC3Options(const std::string& filename) {
+  auto options = drake::yaml::LoadYamlFile<C3Options>(filename);
+  return options;
+}

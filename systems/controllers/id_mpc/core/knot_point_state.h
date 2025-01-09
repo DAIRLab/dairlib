@@ -15,7 +15,8 @@ namespace dairlib::systems::controllers::id_mpc {
  */
 class KnotPointState {
  public:
-  explicit KnotPointState(const ConstrainedDynamicsInfo& dynamics);
+  explicit KnotPointState(
+      );
 
   const ConstrainedDynamicsInfo& get_dynamics() const {
     return dynamics_;

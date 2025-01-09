@@ -108,42 +108,6 @@ void ConstrainedDynamicsInfo::AddDistanceConstraint(
   nh_ = holonomic_constraints_->count_full();
 }
 
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_q(
-    const VectorX<T>& full_vars) const {
-  return full_vars.head(nq_);
-}
-
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_v(
-    const VectorX<T>& full_vars) const {
-  return full_vars.segment(nq_, nv_);
-}
-
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_x(
-    const VectorX<T>& full_vars) const {
-  return full_vars.segment(0, nq_ + nv_);
-}
-
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_u(
-    const VectorX<T>& full_vars) const {
-  return full_vars.segment(nq_ + nv_, nu_);
-}
-
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_lh(
-    const VectorX<T>& full_vars) const {
-  return full_vars.segment(nq_ + nv_ + nu_, nh_);
-}
-
-template<typename T>
-const VectorX<T> ConstrainedDynamicsInfo::get_lc(
-    const VectorX<T>& full_vars) const {
-  return full_vars.segment(nq_ + nv_ + nu_ + nh_, nc_);
-}
-
 template<>
 void ConstrainedDynamicsInfo::SetPlantStateIfNew(
     const VectorX<AutoDiffXd> &x, Context<AutoDiffXd> *context) const {
@@ -263,31 +227,5 @@ ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
 
 template ConstrainedDynamicsInfo::InverseDynamicsEvaluation<AutoDiffXd>
 ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
-
-template const VectorX<double> ConstrainedDynamicsInfo::get_q(const
-    VectorX<double> &full_vars) const;
-template const VectorX<double> ConstrainedDynamicsInfo::get_v(const
-    VectorX<double> &full_vars) const;
-template const VectorX<double> ConstrainedDynamicsInfo::get_x(const
-    VectorX<double> &full_vars) const;
-template const VectorX<double> ConstrainedDynamicsInfo::get_u(const
-    VectorX<double> &full_vars) const;
-template const VectorX<double> ConstrainedDynamicsInfo::get_lh(const
-    VectorX<double> &full_vars) const;
-template const VectorX<double> ConstrainedDynamicsInfo::get_lc(const
-    VectorX<double> &full_vars) const;
-
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_q(const
-    VectorX<AutoDiffXd> &full_vars) const;
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_v(const
-    VectorX<AutoDiffXd> &full_vars) const;
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_x(const
-    VectorX<AutoDiffXd> &full_vars) const;
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_u(const
-    VectorX<AutoDiffXd> &full_vars) const;
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_lh(const
-    VectorX<AutoDiffXd> &full_vars) const;
-template const VectorX<AutoDiffXd> ConstrainedDynamicsInfo::get_lc(const
-    VectorX<AutoDiffXd> &full_vars) const;
 
 }

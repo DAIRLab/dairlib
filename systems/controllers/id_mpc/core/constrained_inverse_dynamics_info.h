@@ -44,24 +44,6 @@ class ConstrainedDynamicsInfo {
 
   void Finalize();
 
-  template<typename T>
-  const drake::VectorX<T> get_q(const drake::VectorX<T>& full_vars) const;
-
-  template<typename T>
-  const drake::VectorX<T> get_v(const drake::VectorX<T>& full_vars) const;
-
-  template<typename T>
-  const drake::VectorX<T> get_x(const drake::VectorX<T>& full_vars) const;
-
-  template<typename T>
-  const drake::VectorX<T> get_u(const drake::VectorX<T>& full_vars) const;
-
-  template<typename T>
-  const drake::VectorX<T> get_lh(const drake::VectorX<T>& full_vars) const;
-
-  template<typename T>
-  const drake::VectorX<T> get_lc(const drake::VectorX<T>& full_vars) const;
-
   int nq() const { return nq_; }
   int nv() const { return nv_; }
   int nu() const { return nu_; }

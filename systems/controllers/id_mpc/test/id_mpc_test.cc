@@ -218,15 +218,13 @@ int DoMain() {
   mpc.UpdateInitialState(vars.head(2 * q.size() - 1));
 
   for (int i = 0; i <= params.N; ++i) {
-    vars(6) -= (0.95 - 0.7) / params.N;
     vars.segment(q.size(), q.size() - 1) =
         0.1 * Eigen::VectorXd::Random(q.size() - 1);
     prog.SetInitialGuess(mpc.knot_vars(i), vars);
 
     double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
     auto pelvis_cost = std::make_shared<QuadraticErrorCost<double>>(
-        m * Eigen::MatrixXd::Identity(3,3), vars.segment<3>(4));
-
+        m * Eigen::MatrixXd::Identity(3,3), vd.segment<3>(4));
     prog.AddCost(pelvis_cost, mpc.position_vars(i).segment<3>(4));
     mpc.UpdateActiveContacts(i, contacts);
   }

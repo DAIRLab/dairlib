@@ -9,40 +9,34 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 template <typename T>
-CollocationConstraint<T>::CollocationConstraint(Timeline* timeline) :
+CollocationConstraint<T>::CollocationConstraint(
+    const KnotPoint& k0, const KnotPoint& k1,
+    KnotPointState* x0, KnotPointState* x1) :
     solvers::NonlinearConstraint<T>(
-        timeline->total_dynamics_constraints(),
-        timeline->total_vars(),
-        VectorXd::Zero(timeline->total_dynamics_constraints()),
-        VectorXd::Zero(timeline->total_dynamics_constraints())),
-        timeline_(timeline) {
-  DRAKE_DEMAND(timeline_ != nullptr);
+        k0.dynamics_constraint_dimension(),
+        k0.total_variables() + k1.num_state_variables(),
+        VectorXd::Zero(k0.dynamics_constraint_dimension()),
+        VectorXd::Zero(k0.dynamics_constraint_dimension())),
+        k0_(k0), k1_(k1), x0_(x0), x1_(x1) {
+  DRAKE_DEMAND(x0_ != nullptr);
+  DRAKE_DEMAND(x1_ != nullptr);
+  DRAKE_DEMAND(k0_.index() == k1_.index() - 1);
 }
 
 template <typename T>
 void CollocationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>> &x, VectorX<T> *y) const {
-  DRAKE_DEMAND(x.rows() == timeline_->total_vars());
-  *y = VectorX<T>::Zero(timeline_->total_dynamics_constraints());
 
-  timeline_->Update<T>(x);
+  *y = VectorX<T>::Zero(k0_.dynamics_constraint_dimension());
+  double dt = x1_->time() - x0_->time();
+  DRAKE_DEMAND(dt > 0);
 
-  const auto& dynamics = timeline_->knots.front().get_dynamics();
-  int nvars = dynamics.variable_count();
-  int nx = dynamics.nx();
-  int nq = dynamics.nq();
-  int nv = dynamics.nv();
-  const MatrixXd& B = dynamics.get_plant().MakeActuationMatrix();
+  const VectorX<T>& q0 = k0_.get_q<T>(x.head(k0_.total_variables()));
+  const VectorX<T>& q1 = k1_.get_q<T>(x.tail(k1_.num_state_variables()));
 
-  for (int i = 0; i < timeline_->nknots() - 1; ++i) {
-    double dt = timeline_->breaks.at(i+1) - timeline_->breaks.at(i);
-    const auto& k0 = timeline_->knots.at(i);
-    const auto& k1 = timeline_->knots.at(i+1);
-    const VectorX<T>& x0 = x.segment(i*nvars, nvars);
-    const VectorX<T>& x1 = x.segment((i+1) * nvars, nvars);
+  // TODO (@Brian-Acosta) need to update x0 and x1
 
-    y->segment(i * nx, nq) =  dynamics.get_q(x0) - dynamics.get_q(x1)
-        - 0.5 * dt * (k0.GetQDot<T>() + k1.GetQDot<T>());
+  y->head(q0.rows()) =  q0 - q1 - 0.5 * dt * (x0_->GetQDot<T>() + x1_->GetQDot<T>());
     y->segment(i * nx + nq, nv) = B * dynamics.get_u(x0) - k0.GetTau<T>();
   }
 }

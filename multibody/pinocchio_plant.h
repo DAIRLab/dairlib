@@ -66,6 +66,12 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::VectorX<T>& known_vdot,
       const drake::multibody::MultibodyForces<T>& external_forces) const;
 
+  drake::VectorX<T> CalcInverseDynamicsWithGravity(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& known_vdot,
+      const drake::multibody::MultibodyForces<T>& external_forces) const;
+
+
   void CalcMassMatrix(const drake::systems::Context<T>& context,
                       drake::EigenPtr<drake::MatrixX<T>> M) const;
 

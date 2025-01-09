@@ -1,13 +1,12 @@
 #include <iostream>
 #include "systems/controllers/id_mpc/id_mpc.h"
+#include "systems/controllers/id_mpc/costs/quadratic_error_cost.h"
 #include "common/eigen_utils.h"
 
 #include "drake/solvers/solve.h"
-#include "drake/solvers/ipopt_solver.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
-#include "drake/multibody/inverse_kinematics/unit_quaternion_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -43,7 +42,6 @@ void TestInverseDynamics(
 
   Eigen::MatrixXd B = info.get_plant().MakeActuationMatrix();
   double defect =  (B*u - result.tau_).norm();
-  std::cout << "inverse dynamics defect norm: " <<  defect << std::endl;
   DRAKE_DEMAND(defect < 0.01);
 }
 
@@ -65,13 +63,49 @@ void TestCollocation(const ConstrainedDynamicsInfo& info,
       stack<double>({fixed_point_vars, fixed_point_vars}),
       &constraint_result);
 
-  std::cout << "collocation defect norm: " << constraint_result.norm()
-            << std::endl;
-
   DRAKE_DEMAND(constraint_result.norm() < 1e-2);
 }
 
+void CostTest() {
+  
+  Eigen::MatrixXd Q = Eigen::MatrixXd::Random(3, 3);
+  Q = 0.5 * (Q * Q.transpose()) + 4 * Eigen::MatrixXd::Identity(3,3);
+  Eigen::VectorXd x = Eigen::VectorXd::Random(3);
+
+  auto quad_cost = QuadraticErrorCost<double>(Q, x);
+  auto drake_quad = drake::solvers::MakeQuadraticErrorCost(Q, x);
+
+  Eigen::VectorXd x_star = Eigen::VectorXd::Random(3);
+  Eigen::VectorXd dx = Eigen::VectorXd::Random(3);
+
+  Eigen::VectorXd result = Eigen::VectorXd::Zero(1);
+
+  double drake_val = 0;
+  double derived_val = 0;
+
+  drake_quad->Eval(x_star, &result);
+  drake_val = result(0);
+  result.setZero();
+
+  quad_cost.Eval(x_star, &result);
+  derived_val = result(0);
+  result.setZero();
+
+  DRAKE_DEMAND(abs(derived_val - drake_val) < 1e-8);
+
+  auto gn = quad_cost.CalcGaussNewtonApproximation(x_star);
+
+  double gn_approx = (0.5 * dx.transpose() * gn.H * dx + gn.g.transpose() * dx)
+      (0) + gn.c;
+  drake_quad->Eval(x_star + dx, &result);
+  DRAKE_DEMAND(abs(gn_approx - result(0)) < 1e-8);
+}
+
 int DoMain() {
+  srand((unsigned int) time(0));
+
+  CostTest();
+
   std::string urdf = "examples/Cassie/urdf/cassie_fixed_spring_conservative"
                      ".urdf";
   auto dynamics_info = std::make_unique<ConstrainedDynamicsInfo>(urdf);
@@ -171,8 +205,8 @@ int DoMain() {
   TestCollocation(*dynamics_info, vars, contacts);
 
   IDMPCParams params;
-  params.dt = 0.05;
-  params.N = static_cast<int>(0.8 / params.dt);
+  params.dt = 0.04;
+  params.N = static_cast<int>(0.5 / params.dt);
 
   IDMPC mpc(params, std::move(dynamics_info));
 
@@ -188,14 +222,14 @@ int DoMain() {
     vars.segment(q.size(), q.size() - 1) =
         0.1 * Eigen::VectorXd::Random(q.size() - 1);
     prog.SetInitialGuess(mpc.knot_vars(i), vars);
-    prog.AddQuadraticErrorCost(
-        Eigen::MatrixXd::Identity(1,1),
-        vd.segment<1>(6),
-        mpc.position_vars(i).segment<1>(6));
+
+    double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
+    auto pelvis_cost = std::make_shared<QuadraticErrorCost<double>>(
+        m * Eigen::MatrixXd::Identity(3,3), vars.segment<3>(4));
+
+    prog.AddCost(pelvis_cost, mpc.position_vars(i).segment<3>(4));
     mpc.UpdateActiveContacts(i, contacts);
   }
-
-
 
   auto solver_options = drake::solvers::SolverOptions();
   solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -216,6 +250,7 @@ int DoMain() {
   auto solver = drake::solvers::SnoptSolver();
   auto result = solver.Solve(prog);
   std::cout << result.get_solution_result() << std::endl;
+  std::cout << "solve time: " << result.get_solver_details<drake::solvers::SnoptSolver>().solve_time << std::endl;
   auto sol = mpc.GetSolutionAsLcmTrajectory(result);
 
   std::cout << "q: \n";

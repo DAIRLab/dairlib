@@ -168,7 +168,7 @@ std::unique_ptr<Context<AutoDiffXd>> ConstrainedDynamicsInfo::MakeContext() cons
 
 template <typename T>
 void ConstrainedDynamicsInfo::DoEvaluate(
-    const MultibodyPlant<T> &plant, const Context<T> &context,
+    const PinocchioPlant<T> &plant, const Context<T> &context,
     const KinematicEvaluatorSet<T>* holonomic_constraints,
     const ContactConstraintMap<T>& contact_constraint_evaluators,
     const VectorX<T> &vdot, const VectorX<T> &lh, const VectorX<T> &lc,
@@ -206,13 +206,11 @@ void ConstrainedDynamicsInfo::DoEvaluate(
     }
   }
 
-  VectorX<T> grav = plant.CalcGravityGeneralizedForces(context);
-
   drake::multibody::MultibodyForces tau_app(plant);
-  tau_app.mutable_generalized_forces() = grav +  Jc.transpose() * lc + Jh
-      .transpose() * lh;
+  tau_app.mutable_generalized_forces() =
+      Jc.transpose() * lc + Jh.transpose() * lh;
 
-  eval.tau_ = plant.CalcInverseDynamics(context, vdot, tau_app);
+  eval.tau_ = plant.CalcInverseDynamicsWithGravity(context, vdot, tau_app);
 
   eval.cdot_.head(nh_) = Jh * plant.GetVelocities(context);
   eval.cdot_.tail(nc_active_) = Jc_active * plant.GetVelocities(context);

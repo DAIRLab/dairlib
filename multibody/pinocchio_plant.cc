@@ -328,6 +328,30 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
 }
 
 template <>
+VectorXd PinocchioPlant<double>::CalcInverseDynamicsWithGravity(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces) const {
+
+  for (const auto& f : external_forces.body_forces()) {
+    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
+    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
+  }
+
+  VectorXd fp = pinocchio::rnea(
+      pinocchio_model_, pinocchio_data_,
+      MapPositionFromDrakeToPinocchio(GetPositions(context)),
+      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                      GetVelocities(context)),
+      MapVDotFromDrakeToPinocchio(GetPositions(context).head<4>(),
+                                  GetVelocities(context), known_vdot));
+
+  // subract gravity
+  fp = MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(), fp);
+  fp = fp - external_forces.generalized_forces();
+  return fp;
+}
+
+template <>
 void PinocchioPlant<double>::CalcMassMatrix(
     const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> M) const {
   pinocchio::crba(pinocchio_model_, pinocchio_data_,

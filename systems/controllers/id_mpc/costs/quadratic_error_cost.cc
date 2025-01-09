@@ -33,8 +33,8 @@ GaussNewtonApproximation QuadraticErrorCost<T>::CalcGaussNewtonApproximation(
   VectorXd y = x - x_ref_;
   return {
     2 * this->Q_,
-    -2 * this->Q_ * y,
-    y.transpose() * this->Q_ * y
+    2 * this->Q_ * y,
+    y.dot(this->Q_ * y)
   };
 }
 }

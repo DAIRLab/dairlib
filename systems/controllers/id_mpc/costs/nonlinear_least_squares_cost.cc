@@ -97,8 +97,8 @@ void NonlinearLeastSquaresCost<T>::EvaluateCost(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
   VectorX<T> yval;
   EvaluateInnerTerm(x, &yval);
-  *y = VectorX<T>::Zero(1);
-  (*y)(0) = yval.transpose() * Q_ * yval;
+  y->resize(1);
+  *y = yval.transpose() * Q_ * yval;
 }
 
 }

@@ -7,7 +7,7 @@ template <typename T>
 class QuadraticErrorCost : public NonlinearLeastSquaresCost<T> {
  public:
   QuadraticErrorCost(const Eigen::MatrixXd& x_ref, const Eigen::VectorXd &Q,
-                     const std::string &description);
+                     const std::string &description="");
 
   void EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
                          drake::AutoDiffVecXd *y) const override;

@@ -21,6 +21,8 @@ class KnotPointState {
     return dynamics_;
   }
 
+  double time() {return timestamp;}
+
   template<typename T>
   void Update(const drake::VectorX<T>& vars);
 
@@ -37,8 +39,13 @@ class KnotPointState {
   void SetVDot(const drake::VectorX<T>& vdot);
 
   void UpdateActiveContacts(const std::vector<std::string>& active_contacts);
+  void UpdateTimestamp(double t) {
+    timestamp = t;
+  }
 
  private:
+  int index = 0;
+  double timestamp;
 
   template<typename T>
   struct cache {

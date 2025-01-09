@@ -148,7 +148,7 @@ class ConstrainedDynamicsInfo {
 
   template<typename T>
   void DoEvaluate(
-      const drake::multibody::MultibodyPlant<T>& plant,
+      const multibody::PinocchioPlant<T>& plant,
       const drake::systems::Context<T>& context,
       const multibody::KinematicEvaluatorSet<T>* holonomic_constraints,
       const ContactConstraintMap<T>& contact_constraint_evaluators,

@@ -39,7 +39,7 @@ consider_best_buffer_sample_when_leaving_c3: true
 # Repositioning parameters.
 spline_width: 0.17
 spherical_repositioning_radius: 0.12
-reposition_speed: 0.10    # m/s
+reposition_speed: 0.13    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
 use_spherical_repositioning: true   # alternative is a spline

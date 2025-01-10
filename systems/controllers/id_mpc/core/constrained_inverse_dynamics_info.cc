@@ -167,8 +167,8 @@ void ConstrainedDynamicsInfo::DoEvaluateKinematics(
   }
 
   eval.J.topRows(nh_) = Jh;
-  eval.J.bottomRows(nc_active_) = Jc_active;
-  eval.cdot = eval.J * plant.GetVelocities(context);
+  eval.J.bottomRows(nc_) = Jc;
+  eval.cdot = Jc_active * plant.GetVelocities(context);
   plant.MapVelocityToQDot(context, plant.GetVelocities(context), &eval.qdot);
 }
 
@@ -190,7 +190,7 @@ ConstrainedDynamicsInfo::KinematicsResults<T>
 ConstrainedDynamicsInfo::MakeEmptyKinematicsResults() const {
   ConstrainedDynamicsInfo::KinematicsResults<T> eval;
   eval.qdot = VectorX<T>::Zero(nq_);
-  eval.J = MatrixX<T>::Zero(nh_ + nc_active_, nv_);
+  eval.J = MatrixX<T>::Zero(nh_ + nc_, nv_);
   eval.c = VectorX<T>::Zero(nh_ + nc_active_);
   eval.cdot = VectorX<T>::Zero(nh_ + nc_active_);
   return eval;

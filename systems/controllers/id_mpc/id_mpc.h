@@ -21,6 +21,7 @@ namespace dairlib::systems::controllers::id_mpc {
 struct IDMPCParams {
   int N;
   double dt;
+  int num_full_torque_knots;
 };
 
 class IDMPC {
@@ -64,6 +65,9 @@ class IDMPC {
 
  private:
 
+  void MakeKnotPoints();
+  void MakeCollocationConstraints();
+  void MakeKinematicConstraints();
   void ParseCostsToQP(const Eigen::VectorXd& x, QPData& qp) const;
   void ParseConstraintsToQP(const Eigen::VectorXd& x, QPData& qp) const;
   const IDMPCParams params_;
@@ -74,9 +78,7 @@ class IDMPC {
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::Cost>> costs_;
 
-  std::shared_ptr<CollocationConstraint<double>> dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
-
   drake::solvers::MathematicalProgram prog_;
 
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;

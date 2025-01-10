@@ -128,6 +128,7 @@ void KnotPointState::UpdateDynamics(
     d_cache_.lambda = lambda;
     d_cache_.tau = dynamics_.EvaluateInverseDynamics(
         *k_cache_.context, k_cache_.kinematics, vdot, lambda);
+    d_cache_.dirty = false;
   }
 }
 
@@ -141,6 +142,7 @@ void KnotPointState::UpdateDynamics(
     d_cache_ad_.lambda = lambda;
     d_cache_ad_.tau = dynamics_.EvaluateInverseDynamics(
         *k_cache_ad_.context, k_cache_ad_.kinematics, vdot, lambda);
+    d_cache_.dirty = false;
   }
 }
 

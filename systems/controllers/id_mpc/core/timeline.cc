@@ -1,30 +1,16 @@
 #include "timeline.h"
-#include <iostream>
+
 namespace dairlib::systems::controllers::id_mpc {
 
-using drake::VectorX;
+void Timeline::set_time_vector(const std::vector<double> &breaks) {
+  DRAKE_DEMAND(breaks.size() == knot_states.size());
+  breaks_ = breaks;
 
-template<typename T>
-void Timeline::Update(const VectorX<T> stacked_decision_vars) {
-  int n = breaks.size() - 1;
-  int nvars = knots.front().get_dynamics().variable_count();
-  int nx = knots.front().get_dynamics().nx();
-  int nv = knots.front().get_dynamics().nv();
-  int start = 0;
-
-  for (int i = 0; i < n; ++i) {
-    const VectorX<T>& x0 = stacked_decision_vars.segment(start, nx);
-    start += nvars;
-    const VectorX<T>& x1 = stacked_decision_vars.segment(start, nx);
-
-    double dt = breaks.at(i+1) - breaks.at(i);
-    VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;
-
-    knots.at(i).SetVDot(vdot);
-    knots.at(i).Update<T>(stacked_decision_vars.segment(i * nvars,  nvars));
+  for (int i = 0; i < breaks_.size(); ++i) {
+    DRAKE_ASSERT(i == 0 || breaks_.at(i-1) < breaks_.at(i));
+    knot_states.at(i).UpdateTimestamp(breaks_.at(i));
   }
+
 }
 
-template void Timeline::Update(const VectorX<double> stacked_decision_vars);
-template void Timeline::Update(const VectorX<AutoDiffXd> stacked_decision_vars);
 }

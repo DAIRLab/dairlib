@@ -1,26 +1,19 @@
 #pragma once
 #include <vector>
-#include "knot_point_state.h"
+#include <memory>
+#include "knot_point.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
 class Timeline {
  public:
+  const std::vector<double>& breaks() const {return breaks_;};
+  void set_time_vector(const std::vector<double>& breaks);
+  std::vector<KnotPointState> knot_states{};
+  std::vector<std::unique_ptr<KnotPoint>> knots;
 
-  template<typename T>
-  void Update(const drake::VectorX<T> stacked_decision_vars);
-
-  int nknots() const { return breaks.size(); }
-
-  int total_vars() const {
-    return knots.front().get_dynamics().variable_count() * nknots();
-  }
-  int total_dynamics_constraints() const {
-    return knots.front().get_dynamics().nx() * (nknots() - 1);
-  };
-
-  std::vector<double> breaks{};
-  std::vector<KnotPointState> knots{};
+ private:
+  std::vector<double> breaks_{};
 };
 
 }

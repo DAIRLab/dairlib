@@ -25,7 +25,7 @@ CollocationConstraint<T>::CollocationConstraint(
   // Constraint evaluation code assumes that lambda is well defined for
   // the first knot point so we can call x0.UpdateDynamics()
   const auto& dynamics = x0->get_dynamics();
-  DRAKE_DEMAND(k0_.num_input_variables() >= dynamics.nc() + dynamics.nv());
+  DRAKE_DEMAND(k0_.num_input_variables() >= dynamics.nc() + dynamics.nh());
 }
 
 template <typename T>
@@ -38,7 +38,7 @@ void CollocationConstraint<T>::EvaluateConstraint(
 
   const VectorX<T> x0 = x.head(k0_.num_state_variables());
   const VectorX<T> u0 = x.segment(
-      k0_.num_input_variables(), k0_.num_input_variables());
+      k0_.num_state_variables(), k0_.num_input_variables());
   const VectorX<T> x1 = x.tail(k1_.num_state_variables());
 
   x0_->UpdateKinematics(x0);
@@ -46,7 +46,8 @@ void CollocationConstraint<T>::EvaluateConstraint(
 
   int nq = x0_->get_dynamics().nq();
   int nv = x0_->get_dynamics().nv();
-  y->head(nq) = x1.head(nq) - x1.head(nq) -
+
+  y->head(nq) = x0.head(nq) - x1.head(nq) -
       0.5 * dt * (x0_->GetQDot<T>() + x1_->GetQDot<T>());
 
   const VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;

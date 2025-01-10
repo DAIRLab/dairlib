@@ -6,23 +6,21 @@ using drake::VectorX;
 using Eigen::VectorXd;
 
 template <typename T>
-KinematicConstraint<T>::KinematicConstraint(KnotPointState *x) :
+KinematicConstraint<T>::KinematicConstraint(
+    const KnotPoint& k, KnotPointState *x) :
 solvers::NonlinearConstraint<T>(
-    2 * x->get_dynamics().n_constraint_total() - x->get_dynamics().nc_active(),
-    x->get_dynamics().variable_count(),
-    VectorXd::Zero(2 * x->get_dynamics().n_constraint_total() -
-    x->get_dynamics().nc_active()),
-    VectorXd::Zero(2 * x->get_dynamics().n_constraint_total() -
-    x->get_dynamics().nc_active())), x_
-    (x){}
+    k.num_state_variables(),
+    k.kinematic_constraint_dimension(),
+    VectorXd::Zero(k.kinematic_constraint_dimension()),
+    VectorXd::Zero(k.kinematic_constraint_dimension())),
+    k_(k), x_(x){}
 
 
 template <typename T>
 void KinematicConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>> &x, VectorX<T> *y) const {
-  DRAKE_ASSERT(x.rows() == x_->get_dynamics().variable_count());
-  x_->Update<T>(x);
-  *y = x_->GetKinematicConstraints<T>();
+  DRAKE_ASSERT(x.rows() == k_.num_state_variables());
+  *y = k_.EvalKinematicConstraints<T>(x_, x);
 }
 
 template class KinematicConstraint<double>;

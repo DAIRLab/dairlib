@@ -1,3 +1,4 @@
+#include <numeric>
 #include "id_mpc.h"
 #include "common/eigen_utils.h"
 
@@ -24,29 +25,10 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   DRAKE_DEMAND(params_.N > 0);
   DRAKE_DEMAND(params_.dt > 0);
 
-  for (int i = 0; i < params_.N + 1; ++i) {
-    timeline_.breaks.push_back(i * params_.dt);
-    timeline_.knots.push_back(KnotPointState(*dynamics_));
-    knot_point_vars_.push_back(
-        prog_.NewContinuousVariables(dynamics_->variable_count()));
-  }
-
+  MakeKnotPoints();
+  MakeCollocationConstraints();
+  MakeKinematicConstraints();
   AddUnitQuaternionConstraintToAllFloatingBodies();
-
-  // TODO (@Birn-Acosta) split dynamics constraint into pairwise constraints on
-  //  knot points for sparsity
-  dynamics_constraint_ =
-      std::make_shared<CollocationConstraint<double>>(&timeline_);
-
-  nonlin_constraints_.push_back(
-       prog_.AddConstraint(dynamics_constraint_, stack(knot_point_vars_)));
-
-  for (int i = 0; i < params_.N; ++i) {
-    auto kinematic_constraint = std::make_shared<KinematicConstraint<double>>(
-        &timeline_.knots.at(i+1));
-    nonlin_constraints_.push_back(
-         prog_.AddConstraint(kinematic_constraint, knot_point_vars_.at(i+1)));
-  }
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -62,7 +44,7 @@ void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
 
 void IDMPC::UpdateActiveContacts(
     int knot_index, std::vector<std::string> contacts) {
-  timeline_.knots.at(knot_index).UpdateActiveContacts(contacts);
+  timeline_.knot_states.at(knot_index).UpdateActiveContacts(contacts);
 }
 
 void IDMPC::AddUnitQuaternionConstraintToAllFloatingBodies() {
@@ -77,6 +59,61 @@ void IDMPC::AddUnitQuaternionConstraintToAllFloatingBodies() {
           unit_quat_,
           this->position_vars(i).segment(body.floating_positions_start(), 4)));
     }
+  }
+}
+
+void IDMPC::MakeKnotPoints() {
+  std::vector<double> breaks;
+  for (int i = 0; i < params_.N + 1; ++i) {
+    // Base config with no constraint handling
+    auto cfg = knot_config{
+      i,
+      i == params_.N,
+      i >= params_.num_full_torque_knots,
+      {}, {}
+    };
+    if (i > 0) {
+      cfg.active_constraint_indices.resize(dynamics_->nh(), 0);
+      std::iota(cfg.active_constraint_indices.begin(),
+                cfg.active_constraint_indices.end(), 0);
+      cfg.active_constraint_dot_indices.resize(
+          dynamics_->nh() + dynamics_->nc_active(), 0);
+      std::iota(cfg.active_constraint_dot_indices.begin(),
+                cfg.active_constraint_dot_indices.end(), 0);
+    }
+
+    auto knot = std::make_unique<KnotPoint>(*dynamics_, cfg);
+    knot_point_vars_.push_back(
+        prog_.NewContinuousVariables(knot->total_variables()));
+    timeline_.knot_states.push_back(KnotPointState(*dynamics_));
+    timeline_.knots.push_back(std::move(knot));
+  }
+  timeline_.set_time_vector(breaks);
+}
+
+void IDMPC::MakeCollocationConstraints() {
+  for (int i = 0; i < params_.N; ++i) {
+    auto collocation_constraint =
+        std::make_shared<CollocationConstraint<double>>(
+            *timeline_.knots.at(i),
+            *timeline_.knots.at(i+1),
+            &timeline_.knot_states.at(i),
+            &timeline_.knot_states.at(i+1)
+        );
+    nonlin_constraints_.push_back(
+        prog_.AddConstraint(
+            collocation_constraint,
+            {knot_point_vars_.at(i),
+             knot_point_vars_.at(i+1).head(dynamics_->nx())}));
+  }
+}
+
+void IDMPC::MakeKinematicConstraints() {
+  for (int i = 0; i < params_.N; ++i) {
+    auto kinematic_constraint = std::make_shared<KinematicConstraint<double>>(
+        *timeline_.knots.at(i+1), &timeline_.knot_states.at(i+1));
+    nonlin_constraints_.push_back(
+        prog_.AddConstraint(kinematic_constraint, knot_point_vars_.at(i+1)));
   }
 }
 
@@ -196,15 +233,15 @@ LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult 
                                    params_.N);
 
   for (int i = 0; i < params_.N + 1; ++i) {
-    q.time_vector(i) = timeline_.breaks.at(i);
-    v.time_vector(i) = timeline_.breaks.at(i);
+    q.time_vector(i) = timeline_.breaks().at(i);
+    v.time_vector(i) = timeline_.breaks().at(i);
     q.datapoints.col(i) = result.GetSolution(position_vars(i));
     v.datapoints.col(i) = result.GetSolution(velocity_vars(i));
   }
 
   for (int i = 0; i < params_.N; ++i) {
-    u.time_vector(i) = timeline_.breaks.at(i);
-    lambda.time_vector(i) = timeline_.breaks.at(i);
+    u.time_vector(i) = timeline_.breaks().at(i);
+    lambda.time_vector(i) = timeline_.breaks().at(i);
     u.datapoints.col(i) = result.GetSolution(input_vars(i));
     lambda.datapoints.col(i) = stack<double>(
         {result.GetSolution(lambda_h_vars(i)),

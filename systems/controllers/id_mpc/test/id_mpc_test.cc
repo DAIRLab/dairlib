@@ -19,29 +19,23 @@ void TestInverseDynamics(
   VectorXd all_vars = VectorXd::Zero(info.variable_count());
 
   all_vars.head(q.rows()) = q;
-  all_vars.segment(q.rows() + q.rows() - 1, u.rows()) = u;
-  all_vars.tail(lambda.rows()) = lambda;
-
-  DRAKE_DEMAND(info.get_q(all_vars) == q);
-  DRAKE_DEMAND(info.get_v(all_vars) == VectorXd::Zero(q.rows() - 1));
-  DRAKE_DEMAND(info.get_u(all_vars) == u);
-  DRAKE_DEMAND(info.get_lh(all_vars) == lambda.head(2));
-  DRAKE_DEMAND(info.get_lc(all_vars) == lambda.tail(12));
+  all_vars.segment(q.rows() + q.rows() - 1, lambda.rows()) = lambda;
+  all_vars.tail(u.rows()) = u;
 
   VectorXd x = all_vars.head(info.nx());
   auto context = info.MakeContext<double>();
   info.SetPlantStateIfNew<double>(x, context.get());
 
-  auto result = info.EvaluateDynamics<double>(
+  auto kinematics = info.EvaluateKinematics<double>(*context, contacts);
+  auto tau = info.EvaluateInverseDynamics<double>(
       *context,
+      kinematics,
       VectorXd::Zero(info.nv()),
-      info.get_lh(all_vars),
-      info.get_lc(all_vars),
-      contacts
+      lambda
   );
 
   Eigen::MatrixXd B = info.get_plant().MakeActuationMatrix();
-  double defect =  (B*u - result.tau_).norm();
+  double defect =  (B*u - tau).norm();
   DRAKE_DEMAND(defect < 0.01);
 }
 
@@ -49,21 +43,39 @@ void TestCollocation(const ConstrainedDynamicsInfo& info,
                      const VectorXd& fixed_point_vars,
                      const std::vector<std::string>& contacts) {
   Timeline test_timeline;
-  for (int i = 0; i < 2; ++i) {
-    test_timeline.knots.push_back(KnotPointState(info));
-    test_timeline.knots.back().UpdateActiveContacts(contacts);
-    test_timeline.breaks.push_back(0.05 * i);
+
+  std::vector<std::unique_ptr<KnotPoint>> ks;
+  std::vector<KnotPointState> states;
+  for (int i = 0; i < 3; ++i) {
+    auto cfg = knot_config {
+      i, i == 2, i > 0, {}, {}
+    };
+    ks.push_back(std::make_unique<KnotPoint>(info, cfg));
+    states.push_back(KnotPointState(info));
   }
 
-  auto test_constraint = std::make_shared<CollocationConstraint<double>>(
-      &test_timeline);
+  auto test_constraint_torque =
+      std::make_shared<CollocationConstraint<double>>(
+          *ks[0], *ks[1], &states[0], &states[1]);
+
+  auto test_constraint_no_torque =
+      std::make_shared<CollocationConstraint<double>>(
+          *ks[1], *ks[2], &states[1], &states[2]);
 
   VectorXd constraint_result;
-  test_constraint->EvaluateConstraint(
-      stack<double>({fixed_point_vars, fixed_point_vars}),
+  VectorXd constraint_result_nc;
+  test_constraint_torque->EvaluateConstraint(
+      stack<double>({fixed_point_vars, fixed_point_vars.head(info.nx())}),
       &constraint_result);
-
   DRAKE_DEMAND(constraint_result.norm() < 1e-2);
+
+  test_constraint_no_torque->EvaluateConstraint(
+      stack<double>({
+        fixed_point_vars.head(info.nx() + info.nh() + info.nc()),
+        fixed_point_vars.head(info.nx())}),
+      &constraint_result_nc
+    );
+  DRAKE_DEMAND(constraint_result_nc.norm() < 1e-2);
 }
 
 void CostTest() {
@@ -199,8 +211,8 @@ int DoMain() {
   TestInverseDynamics(*dynamics_info, q, u, lambda, contacts);
 
   vars.head(dynamics_info->nq()) = q;
-  vars.segment(dynamics_info->nx(), dynamics_info->nu()) = u;
-  vars.tail(dynamics_info->nh() + dynamics_info->nc()) = lambda;
+  vars.segment(dynamics_info->nx(), dynamics_info->nh() + dynamics_info->nc()) = lambda;
+  vars.tail(dynamics_info->nu()) = u;
 
   TestCollocation(*dynamics_info, vars, contacts);
 

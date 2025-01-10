@@ -9,8 +9,8 @@ template <typename T>
 KinematicConstraint<T>::KinematicConstraint(
     const KnotPoint& k, KnotPointState *x) :
 solvers::NonlinearConstraint<T>(
-    k.num_state_variables(),
     k.kinematic_constraint_dimension(),
+    k.num_state_variables(),
     VectorXd::Zero(k.kinematic_constraint_dimension()),
     VectorXd::Zero(k.kinematic_constraint_dimension())),
     k_(k), x_(x){}

@@ -87,6 +87,7 @@ void IDMPC::MakeKnotPoints() {
         prog_.NewContinuousVariables(knot->total_variables()));
     timeline_.knot_states.push_back(KnotPointState(*dynamics_));
     timeline_.knots.push_back(std::move(knot));
+    breaks.push_back(params_.dt * i);
   }
   timeline_.set_time_vector(breaks);
 }
@@ -113,7 +114,9 @@ void IDMPC::MakeKinematicConstraints() {
     auto kinematic_constraint = std::make_shared<KinematicConstraint<double>>(
         *timeline_.knots.at(i+1), &timeline_.knot_states.at(i+1));
     nonlin_constraints_.push_back(
-        prog_.AddConstraint(kinematic_constraint, knot_point_vars_.at(i+1)));
+        prog_.AddConstraint(
+            kinematic_constraint,
+            timeline_.knots.at(i+1)->get_x(knot_point_vars_.at(i+1))));
   }
 }
 

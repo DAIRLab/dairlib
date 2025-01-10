@@ -1,5 +1,4 @@
 #include "collocation_constraint.h"
-#include <iostream>
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -31,7 +30,6 @@ CollocationConstraint<T>::CollocationConstraint(
 template <typename T>
 void CollocationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>> &x, VectorX<T> *y) const {
-
   *y = VectorX<T>::Zero(k0_.dynamics_constraint_dimension());
   double dt = x1_->time() - x0_->time();
   DRAKE_DEMAND(dt > 0);
@@ -52,7 +50,7 @@ void CollocationConstraint<T>::EvaluateConstraint(
 
   const VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;
   y->tail(k0_.vdot_constraint_dimension()) = k0_.EvalInverseDynamicsDefect(
-      x0_, x0,u0, vdot);
+      x0_, x0, u0, vdot);
 }
 
 template class CollocationConstraint<double>;

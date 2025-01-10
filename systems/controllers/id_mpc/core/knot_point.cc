@@ -1,9 +1,12 @@
 #include "knot_point.h"
+#include "drake/common/symbolic/expression/variable.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
 using drake::VectorX;
 using Eigen::MatrixXd;
+
+using drake::symbolic::Variable;
 
 KnotPoint::KnotPoint(
     const ConstrainedDynamicsInfo &dynamics, knot_config config):
@@ -124,6 +127,19 @@ template const VectorX<double> KnotPoint::get_lh(const
     VectorX<double> &full_vars) const;
 template const VectorX<double> KnotPoint::get_lc(const 
     VectorX<double> &full_vars) const;
+
+template const VectorX<Variable> KnotPoint::get_q(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_v(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_x(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_u(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_lh(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_lc(
+    const VectorX<Variable> &full_vars) const;
 
 template const VectorX<AutoDiffXd> KnotPoint::get_q(const 
     VectorX<AutoDiffXd> &full_vars) const;

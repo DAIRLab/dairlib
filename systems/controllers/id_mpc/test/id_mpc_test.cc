@@ -48,10 +48,12 @@ void TestCollocation(const ConstrainedDynamicsInfo& info,
   std::vector<KnotPointState> states;
   for (int i = 0; i < 3; ++i) {
     auto cfg = knot_config {
-      i, i == 2, i > 0, {}, {}
+      i, i == 2, i == 0, {}, {}
     };
     ks.push_back(std::make_unique<KnotPoint>(info, cfg));
     states.push_back(KnotPointState(info));
+    states.back().UpdateTimestamp(i * 0.05);
+    states.back().UpdateActiveContacts(contacts);
   }
 
   auto test_constraint_torque =
@@ -64,6 +66,7 @@ void TestCollocation(const ConstrainedDynamicsInfo& info,
 
   VectorXd constraint_result;
   VectorXd constraint_result_nc;
+
   test_constraint_torque->EvaluateConstraint(
       stack<double>({fixed_point_vars, fixed_point_vars.head(info.nx())}),
       &constraint_result);
@@ -73,8 +76,7 @@ void TestCollocation(const ConstrainedDynamicsInfo& info,
       stack<double>({
         fixed_point_vars.head(info.nx() + info.nh() + info.nc()),
         fixed_point_vars.head(info.nx())}),
-      &constraint_result_nc
-    );
+      &constraint_result_nc);
   DRAKE_DEMAND(constraint_result_nc.norm() < 1e-2);
 }
 
@@ -218,7 +220,7 @@ int DoMain() {
 
   IDMPCParams params;
   params.dt = 0.04;
-  params.N = static_cast<int>(0.5 / params.dt);
+  params.N = static_cast<int>(0.8 / params.dt);
 
   IDMPC mpc(params, std::move(dynamics_info));
 
@@ -232,7 +234,7 @@ int DoMain() {
   for (int i = 0; i <= params.N; ++i) {
     vars.segment(q.size(), q.size() - 1) =
         0.1 * Eigen::VectorXd::Random(q.size() - 1);
-    prog.SetInitialGuess(mpc.knot_vars(i), vars);
+    prog.SetInitialGuess(mpc.knot_vars(i), vars.head(mpc.knot_vars(i).rows()));
 
     double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
     auto pelvis_cost = std::make_shared<QuadraticErrorCost<double>>(
@@ -249,9 +251,9 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-2);
+                          "Major optimality tolerance", 1e-3);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-2);
+                          "Major feasibility tolerance", 1e-3);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Scale option", 2);
 

@@ -351,6 +351,16 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamicsWithGravity(
   return fp;
 }
 
+template<>
+VectorX<AutoDiffXd> PinocchioPlant<AutoDiffXd>::CalcInverseDynamicsWithGravity(
+    const drake::systems::Context<AutoDiffXd> &context,
+    const drake::VectorX<AutoDiffXd> &known_vdot,
+    const drake::multibody::MultibodyForces<AutoDiffXd> &external_forces) const {
+  throw std::runtime_error("CalcInverseDynamicsWithGravity not implemented "
+                           "for AutoDiffXd yet.");
+  return VectorX<AutoDiffXd>::Zero(known_vdot.rows());
+}
+
 template <>
 void PinocchioPlant<double>::CalcMassMatrix(
     const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> M) const {

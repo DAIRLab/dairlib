@@ -220,7 +220,8 @@ int DoMain() {
 
   IDMPCParams params;
   params.dt = 0.04;
-  params.N = static_cast<int>(0.8 / params.dt);
+  params.N = static_cast<int>(0.4 / params.dt);
+  params.num_full_torque_knots = 2;
 
   IDMPC mpc(params, std::move(dynamics_info));
 
@@ -233,7 +234,7 @@ int DoMain() {
 
   for (int i = 0; i <= params.N; ++i) {
     vars.segment(q.size(), q.size() - 1) =
-        0.1 * Eigen::VectorXd::Random(q.size() - 1);
+        0.01 * Eigen::VectorXd::Random(q.size() - 1);
     prog.SetInitialGuess(mpc.knot_vars(i), vars.head(mpc.knot_vars(i).rows()));
 
     double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
@@ -251,9 +252,9 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-3);
+                          "Major optimality tolerance", 5e-3);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-3);
+                          "Major feasibility tolerance", 5e-3);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Scale option", 2);
 
@@ -270,7 +271,12 @@ int DoMain() {
 
 
   QPData qp;
+  auto qp_start = std::chrono::high_resolution_clock::now();
   mpc.ConstructSQPProgram(result.GetSolution(), qp);
+  auto qp_end = std::chrono::high_resolution_clock::now();
+
+  std::cout << "Building the SQP qp took " <<
+      std::chrono::duration<double>(qp_end - qp_start).count() << " sec\n";
 
   drake::solvers::MathematicalProgram sqp_prog;
   qp.ToMathematicalProgram(sqp_prog);

@@ -228,7 +228,8 @@ void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {
-
+  bool THIS_NEEDS_FIXED_TO_ACCOUNT_FOR_U_DIMS = false;
+  DRAKE_DEMAND(THIS_NEEDS_FIXED_TO_ACCOUNT_FOR_U_DIMS);
   LcmTrajectory::Trajectory q("q", dynamics_->nq(), params_.N + 1);
   LcmTrajectory::Trajectory v("v", dynamics_->nv(), params_.N + 1);
   LcmTrajectory::Trajectory u("u", dynamics_->nu(), params_.N);

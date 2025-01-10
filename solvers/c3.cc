@@ -150,15 +150,13 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .AddQuadraticCost(2 * cost_matrices_.Q.at(i),
                               -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
-            .evaluator()
-            .get();
+            .evaluator();
     if (i < N_) {
       input_costs_.at(i) =
           prog_
               .AddQuadraticCost(2 * cost_matrices_.R.at(i),
                                 VectorXd::Zero(n_u_), u_.at(i), 1)
-              .evaluator()
-              .get();
+              .evaluator();
     }
   }
 }

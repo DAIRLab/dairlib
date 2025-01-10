@@ -2,14 +2,11 @@
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
 
 #include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
 #include "solvers/lcs.h"
-
-#include "drake/bindings/pydrake/common/serialize_pybind.h"
 
 namespace py = pybind11;
 
@@ -135,7 +132,7 @@ PYBIND11_MODULE(c3, m) {
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());
-  drake::pydrake::DefAttributesUsingSerialize(&cls);
+  //  drake::pydrake::DefAttributesUsingSerialize(&cls);
   cls.def_property(
          "Q", [](C3Options const& self) { return self.Q; },
          [](C3Options& self, const Eigen::MatrixXd& val) { self.Q = val; })

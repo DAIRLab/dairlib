@@ -140,9 +140,9 @@ class C3 {
   /// Projection step variables are defined outside of the MathematicalProgram
   /// interface
 
-  std::vector<drake::solvers::QuadraticCost*> target_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> target_cost_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
-  std::vector<drake::solvers::QuadraticCost*> input_costs_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 
   // Solutions
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;

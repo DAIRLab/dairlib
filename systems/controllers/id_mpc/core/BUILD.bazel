@@ -4,14 +4,87 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "id_mpc_core",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
     deps = [
-        "//common:eigen_utils",
+        ":constrained_inverse_dynamics_info",
+        ":knot_point_state",
+        ":knot_point",
+        ":collocation_constraint",
+        ":kinematic_constraint",
+        ":quaternion_norm_constraint",
+        ":timeline",
+    ],
+)
+
+cc_library(
+    name = "constrained_inverse_dynamics_info",
+    srcs = ["constrained_inverse_dynamics_info.cc"],
+    hdrs = ["constrained_inverse_dynamics_info.h"],
+    deps = [
         "//common:find_resource",
         "//multibody:pinocchio_plant",
         "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "knot_point_state",
+    srcs = ["knot_point_state.cc"],
+    hdrs = ["knot_point_state.h"],
+    deps = [
+        ":constrained_inverse_dynamics_info",
+        "//common:eigen_utils",
+    ],
+)
+
+cc_library(
+    name = "knot_point",
+    srcs = ["knot_point.cc"],
+    hdrs = ["knot_point.h"],
+    deps = [
+        ":constrained_inverse_dynamics_info",
+        ":knot_point_state",
+    ]
+)
+
+cc_library(
+    name = "collocation_constraint",
+    srcs = ["collocation_constraint.cc"],
+    hdrs = ["collocation_constraint.h"],
+    deps = [
+        ":constrained_inverse_dynamics_info",
+        ":knot_point",
+        ":knot_point_state",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic_constraint",
+    srcs = ["kinematic_constraint.cc"],
+    hdrs = ["kinematic_constraint.h"],
+    deps = [
+        ":knot_point",
+        ":knot_point_state",
+        ":constrained_inverse_dynamics_info",
+    ],
+)
+
+cc_library(
+    name = "quaternion_norm_constraint",
+    srcs = ["quaternion_norm_constraint.cc"],
+    hdrs = ["quaternion_norm_constraint.h"],
+    deps = [
+        "//solvers:nonlinear_constraint",
+    ],
+)
+
+cc_library(
+    name = "timeline",
+    srcs = ["timeline.cc"],
+    hdrs = ["timeline.h"],
+    deps = [
+        ":knot_point_state",
     ],
 )

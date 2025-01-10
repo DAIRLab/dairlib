@@ -21,6 +21,11 @@ CollocationConstraint<T>::CollocationConstraint(
   DRAKE_DEMAND(x0_ != nullptr);
   DRAKE_DEMAND(x1_ != nullptr);
   DRAKE_DEMAND(k0_.index() == k1_.index() - 1);
+
+  // Constraint evaluation code assumes that lambda is well defined for
+  // the first knot point so we can call x0.UpdateDynamics()
+  const auto& dynamics = x0->get_dynamics();
+  DRAKE_DEMAND(k0_.num_input_variables() >= dynamics.nc() + dynamics.nv());
 }
 
 template <typename T>
@@ -31,14 +36,22 @@ void CollocationConstraint<T>::EvaluateConstraint(
   double dt = x1_->time() - x0_->time();
   DRAKE_DEMAND(dt > 0);
 
-  const VectorX<T>& q0 = k0_.get_q<T>(x.head(k0_.total_variables()));
-  const VectorX<T>& q1 = k1_.get_q<T>(x.tail(k1_.num_state_variables()));
+  const VectorX<T> x0 = x.head(k0_.num_state_variables());
+  const VectorX<T> u0 = x.segment(
+      k0_.num_input_variables(), k0_.num_input_variables());
+  const VectorX<T> x1 = x.tail(k1_.num_state_variables());
 
-  // TODO (@Brian-Acosta) need to update x0 and x1
+  x0_->UpdateKinematics(x0);
+  x1_->UpdateKinematics(x1);
 
-  y->head(q0.rows()) =  q0 - q1 - 0.5 * dt * (x0_->GetQDot<T>() + x1_->GetQDot<T>());
-    y->segment(i * nx + nq, nv) = B * dynamics.get_u(x0) - k0.GetTau<T>();
-  }
+  int nq = x0_->get_dynamics().nq();
+  int nv = x0_->get_dynamics().nv();
+  y->head(nq) = x1.head(nq) - x1.head(nq) -
+      0.5 * dt * (x0_->GetQDot<T>() + x1_->GetQDot<T>());
+
+  const VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;
+  y->tail(k0_.vdot_constraint_dimension()) = k0_.EvalInverseDynamicsDefect(
+      x0_, x0,u0, vdot);
 }
 
 template class CollocationConstraint<double>;

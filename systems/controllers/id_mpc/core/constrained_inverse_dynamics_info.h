@@ -80,15 +80,6 @@ class ConstrainedDynamicsInfo {
                        double friction_coefficient);
 
   /*!
-   * Set the state of a plant context via the internal plant
-   * @tparam T scalar type (double or AutoDiffXd)
-   * @param context context to set
-   */
-  template<typename T>
-  void SetPlantStateIfNew(const drake::VectorX<T>& x,
-                     drake::systems::Context<T>* context) const;
-
-  /*!
    * Make the context for the plant with the appropriate scalar type
    * @tparam T double or AutoDiffXd
    * @return unique_ptr of the plant context
@@ -96,48 +87,54 @@ class ConstrainedDynamicsInfo {
   template<typename T>
   std::unique_ptr<drake::systems::Context<T>> MakeContext() const;
 
-  /*!
-   * Placeholder struct for the results of evaluating the manipulator dynamics
-   * @tparam T scalar type
-   */
-  template<typename T>
-  struct InverseDynamicsEvaluation {
-    drake::VectorX<T> qdot_;
-    drake::VectorX<T> tau_;
-    drake::VectorX<T> c_;
-    drake::VectorX<T> cdot_;
-    friend std::ostream& operator<<(
-        std::ostream& os, const InverseDynamicsEvaluation<T>& eval) {
-      os << "qdot: " << eval.qdot_.transpose() << "\n"
-         << "tau: " << eval.tau_.transpose() << "\n"
-         << "c: " << eval.c_.transpose() << "\n"
-         << "cdot: " << eval.cdot_.transpose() << "\n";
-      return os;
-    }
+  template <typename T>
+  struct KinematicsResults {
+    drake::MatrixX<T> J{};
+    drake::VectorX<T> c{};
+    drake::VectorX<T> cdot{};
+    drake::VectorX<T> qdot{};
   };
 
+  /*!
+ * Set the state of a plant context via the internal plant
+ * @tparam T scalar type (double or AutoDiffXd)
+ * @param context context to set
+ */
   template<typename T>
-  InverseDynamicsEvaluation<T> MakeEmptyDynamicsEvaluation() const;
+  void SetPlantStateIfNew(const drake::VectorX<T>& x,
+                          drake::systems::Context<T>* context) const;
 
   template<typename T>
-  InverseDynamicsEvaluation<T> EvaluateDynamics(
+  KinematicsResults<T> MakeEmptyKinematicsResults() const;
+
+  template<typename T>
+  KinematicsResults<T> EvaluateKinematics(
       const drake::systems::Context<T>& context,
-      const drake::VectorX<T>& vdot, const drake::VectorX<T>& lh,
-      const drake::VectorX<T>& lc,
       const std::vector<std::string>& active_contacts) const;
+
+  template <typename T>
+  drake::VectorX<T> EvaluateInverseDynamics(
+      const drake::systems::Context<T>& context,
+      const KinematicsResults<T>& kinematics,
+      const drake::VectorX<T>& vdot, const drake::VectorX<T>& lambda) const;
 
  private:
 
   template<typename T>
-  void DoEvaluate(
+  void DoEvaluateKinematics(
       const multibody::PinocchioPlant<T>& plant,
       const drake::systems::Context<T>& context,
       const multibody::KinematicEvaluatorSet<T>* holonomic_constraints,
       const ContactConstraintMap<T>& contact_constraint_evaluators,
-      const drake::VectorX<T>& vdot, const drake::VectorX<T>& lh,
-      const drake::VectorX<T>& lc,
       const std::vector<std::string>& active_contacts,
-      InverseDynamicsEvaluation<T>& eval) const;
+      KinematicsResults<T>& eval) const;
+
+  template<typename T>
+  drake::VectorX<T> DoEvaluateInverseDynamics(
+      const multibody::PinocchioPlant<T>& plant,
+      const drake::systems::Context<T>& context,
+      const KinematicsResults<T>& kinematics,
+      const drake::VectorX<T>& vdot, const drake::VectorX<T>& lambda) const;
 
   std::unique_ptr<multibody::PinocchioPlant<AutoDiffXd>> plant_ad_;
   std::unique_ptr<multibody::PinocchioPlant<double>> plant_;

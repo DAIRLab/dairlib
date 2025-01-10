@@ -13,7 +13,7 @@ using multibody::WorldPointEvaluator;
 using multibody::KinematicEvaluatorSet;
 using multibody::PinocchioPlant;
 
-using Eigen::MatrixX;
+using drake::MatrixX;
 using drake::VectorX;
 using drake::systems::Context;
 
@@ -131,24 +131,20 @@ std::unique_ptr<Context<AutoDiffXd>> ConstrainedDynamicsInfo::MakeContext() cons
 }
 
 template <typename T>
-void ConstrainedDynamicsInfo::DoEvaluate(
+void ConstrainedDynamicsInfo::DoEvaluateKinematics(
     const PinocchioPlant<T> &plant, const Context<T> &context,
     const KinematicEvaluatorSet<T>* holonomic_constraints,
     const ContactConstraintMap<T>& contact_constraint_evaluators,
-    const VectorX<T> &vdot, const VectorX<T> &lh, const VectorX<T> &lc,
     const std::vector<std::string> &active_contacts,
-    InverseDynamicsEvaluation<T> &eval) const {
+    KinematicsResults<T> &eval) const {
 
-
-  eval.tau_ = VectorX<T>::Zero(nv_);
-  eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
-  eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.c = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cdot = VectorX<T>::Zero(nh_ + nc_active_);
 
   MatrixX<T> Jh = MatrixX<T>::Zero(nh_, nv_);
-  VectorX<T> JhdotV = VectorX<T>::Zero(nh_);
 
   if (holonomic_constraints != nullptr) {
-    eval.c_.head(nh_) = holonomic_constraints->EvalFull(context);
+    eval.c.head(nh_) = holonomic_constraints->EvalFull(context);
     Jh = holonomic_constraints->EvalFullJacobian(context);
   }
 
@@ -162,7 +158,7 @@ void ConstrainedDynamicsInfo::DoEvaluate(
         evaluator->EvalFullJacobian(context);
     int start = Jc_active_start_idxs_.at(c);
 
-    eval.c_.segment(
+    eval.c.segment(
         nh_ + start, evaluator->num_active()) = evaluator->EvalActive(context);
     for (int i = 0; i < evaluator->num_active(); ++i) {
       Jc_active.row(start + i) =
@@ -170,62 +166,82 @@ void ConstrainedDynamicsInfo::DoEvaluate(
     }
   }
 
-  drake::multibody::MultibodyForces tau_app(plant);
-  tau_app.mutable_generalized_forces() =
-      Jc.transpose() * lc + Jh.transpose() * lh;
-
-  eval.tau_ = plant.CalcInverseDynamicsWithGravity(context, vdot, tau_app);
-
-  eval.cdot_.head(nh_) = Jh * plant.GetVelocities(context);
-  eval.cdot_.tail(nc_active_) = Jc_active * plant.GetVelocities(context);
-
-  eval.qdot_ = VectorX<T>::Zero(nq_);
-  plant.MapVelocityToQDot(
-      context, plant.GetVelocities(context), &eval.qdot_);
+  eval.J.topRows(nh_) = Jh;
+  eval.J.bottomRows(nc_active_) = Jc_active;
+  eval.cdot = eval.J * plant.GetVelocities(context);
+  plant.MapVelocityToQDot(context, plant.GetVelocities(context), &eval.qdot);
 }
 
 template <typename T>
-ConstrainedDynamicsInfo::InverseDynamicsEvaluation<T>
-ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const {
-  ConstrainedDynamicsInfo::InverseDynamicsEvaluation<T> eval;
-  eval.qdot_ = VectorX<T>::Zero(nq_);
-  eval.tau_ = VectorX<T>::Zero(nv_);
-  eval.c_ = VectorX<T>::Zero(nh_ + nc_active_);
-  eval.cdot_ = VectorX<T>::Zero(nh_ + nc_active_);
+VectorX<T> ConstrainedDynamicsInfo::DoEvaluateInverseDynamics(
+    const multibody::PinocchioPlant<T> &plant,
+    const Context<T> &context,
+    const KinematicsResults<T> &kinematics,
+    const VectorX<T> &vdot, const VectorX<T> &lambda) const {
+
+  drake::multibody::MultibodyForces tau_app(plant);
+  tau_app.mutable_generalized_forces() = kinematics.J.transpose() * lambda;
+  return plant.CalcInverseDynamicsWithGravity(context, vdot, tau_app);
+
+}
+
+template <typename T>
+ConstrainedDynamicsInfo::KinematicsResults<T>
+ConstrainedDynamicsInfo::MakeEmptyKinematicsResults() const {
+  ConstrainedDynamicsInfo::KinematicsResults<T> eval;
+  eval.qdot = VectorX<T>::Zero(nq_);
+  eval.J = MatrixX<T>::Zero(nh_ + nc_active_, nv_);
+  eval.c = VectorX<T>::Zero(nh_ + nc_active_);
+  eval.cdot = VectorX<T>::Zero(nh_ + nc_active_);
   return eval;
 }
 
 template<>
-ConstrainedDynamicsInfo::InverseDynamicsEvaluation<AutoDiffXd>
-ConstrainedDynamicsInfo::EvaluateDynamics(
-    const Context<AutoDiffXd> &context, const VectorX<AutoDiffXd> &vdot,
-    const VectorX<AutoDiffXd> &lh, const VectorX<AutoDiffXd> &lc,
-    const std::vector<std::string> &active_contacts) const {
+VectorX<double> ConstrainedDynamicsInfo::EvaluateInverseDynamics(
+    const Context<double>& context,
+    const ConstrainedDynamicsInfo::KinematicsResults<double>& kinematics,
+    const VectorX<double>& vdot, const VectorX<double>& lambda) const {
+  return DoEvaluateInverseDynamics(*plant_, context, kinematics, vdot, lambda);
+}
 
-  ConstrainedDynamicsInfo::InverseDynamicsEvaluation<AutoDiffXd> eval;
-  DoEvaluate(*plant_ad_, context, holonomic_constraints_ad_.get(),
-             contact_constraint_evaluators_ad_, vdot, lh, lc, active_contacts,
-             eval);
+template<>
+VectorX<AutoDiffXd> ConstrainedDynamicsInfo::EvaluateInverseDynamics(
+    const Context<AutoDiffXd>& context,
+    const ConstrainedDynamicsInfo::KinematicsResults<AutoDiffXd>& kinematics,
+    const VectorX<AutoDiffXd>& vdot, const VectorX<AutoDiffXd>& lambda) const {
+  return DoEvaluateInverseDynamics(
+      *plant_ad_, context, kinematics, vdot, lambda);
+}
+
+template<>
+ConstrainedDynamicsInfo::KinematicsResults<AutoDiffXd>
+ConstrainedDynamicsInfo::EvaluateKinematics(
+    const Context<AutoDiffXd> &context,
+    const std::vector<std::string> &active_contacts) const {
+  ConstrainedDynamicsInfo::KinematicsResults<AutoDiffXd> eval =
+      MakeEmptyKinematicsResults<AutoDiffXd>();
+  DoEvaluateKinematics(
+      *plant_ad_, context, holonomic_constraints_ad_.get(),
+      contact_constraint_evaluators_ad_, active_contacts, eval);
   return eval;
 }
 
 template<>
-ConstrainedDynamicsInfo::InverseDynamicsEvaluation<double>
-ConstrainedDynamicsInfo::EvaluateDynamics(
-    const Context<double> &context, const VectorX<double> &vdot,
-    const VectorX<double> &lh, const VectorX<double> &lc,
+ConstrainedDynamicsInfo::KinematicsResults<double>
+ConstrainedDynamicsInfo::EvaluateKinematics(
+    const Context<double> &context,
     const std::vector<std::string> &active_contacts) const {
-  ConstrainedDynamicsInfo::InverseDynamicsEvaluation<double> eval;
-  DoEvaluate(*plant_, context, holonomic_constraints_.get(),
-             contact_constraint_evaluators_, vdot, lh, lc, active_contacts,
-             eval);
+  ConstrainedDynamicsInfo::KinematicsResults<double> eval =
+      MakeEmptyKinematicsResults<double>();
+  DoEvaluateKinematics(*plant_, context, holonomic_constraints_.get(),
+             contact_constraint_evaluators_, active_contacts, eval);
   return eval;
 }
 
-template ConstrainedDynamicsInfo::InverseDynamicsEvaluation<double>
-ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
+template ConstrainedDynamicsInfo::KinematicsResults<double>
+ConstrainedDynamicsInfo::MakeEmptyKinematicsResults() const;
 
-template ConstrainedDynamicsInfo::InverseDynamicsEvaluation<AutoDiffXd>
-ConstrainedDynamicsInfo::MakeEmptyDynamicsEvaluation() const;
+template ConstrainedDynamicsInfo::KinematicsResults<AutoDiffXd>
+ConstrainedDynamicsInfo::MakeEmptyKinematicsResults() const;
 
 }

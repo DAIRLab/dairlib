@@ -31,6 +31,9 @@ class KnotPoint {
   const drake::VectorX<T> get_lc(const drake::VectorX<T>& full_vars) const;
 
   template<typename T>
+  const drake::VectorX<T> get_lambda(const drake::VectorX<T>& full_vars) const;
+
+  template<typename T>
   const drake::VectorX<T> get_u(const drake::VectorX<T>& full_vars) const;
 
 
@@ -85,17 +88,20 @@ class KnotPoint {
   };
 
   [[nodiscard]] size_t dynamics_constraint_dimension() const {
-    size_t dim_vdot_constraint = config_.include_torques ?
-        dynamics_info_.nv() : dynamics_info_.nv() - dynamics_info_.nu();
-    return dim_vdot_constraint + dynamics_info_.nq();
+    return vdot_constraint_dimension() + dynamics_info_.nq();
+  }
+
+  [[nodiscard]] size_t vdot_constraint_dimension() const {
+    return config_.include_torques ?
+           dynamics_info_.nv() : dynamics_info_.nv() - dynamics_info_.nu();
   }
 
   template <typename T>
   drake::VectorX<T> EvalInverseDynamicsDefect(
       KnotPointState* cache,
       const drake::VectorX<T>& x,
-      const drake::VectorX<T> vdot,
-      const drake::VectorX<T> lambdas_and_maybe_us) const;
+      const drake::VectorX<T>& lambdas_and_maybe_us,
+      const drake::VectorX<T>& vdot) const;
 
   template <typename T>
   drake::VectorX<T> EvalKinematicConstraints(
@@ -104,6 +110,9 @@ class KnotPoint {
  private:
   const ConstrainedDynamicsInfo& dynamics_info_;
   knot_config config_;
+
+  std::vector<int> unactuated_vdot_coords_;
+  Eigen::MatrixXd actuation_matrix_;
 
   int nq_;
   int nv_;

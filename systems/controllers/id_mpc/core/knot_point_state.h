@@ -1,9 +1,6 @@
 #pragma once
 
 #include "constrained_inverse_dynamics_info.h"
-#include "solvers/nonlinear_constraint.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -15,8 +12,7 @@ namespace dairlib::systems::controllers::id_mpc {
  */
 class KnotPointState {
  public:
-  explicit KnotPointState(
-      );
+  explicit KnotPointState(const ConstrainedDynamicsInfo& dynamics);
 
   const ConstrainedDynamicsInfo& get_dynamics() const {
     return dynamics_;
@@ -25,19 +21,24 @@ class KnotPointState {
   double time() {return timestamp;}
 
   template<typename T>
-  void Update(const drake::VectorX<T>& vars);
+  void UpdateKinematics(const drake::VectorX<T>& x);
 
   template<typename T>
-  drake::VectorX<T> GetQDot() const;
+  void UpdateDynamics(const drake::VectorX<T>&x,
+                      const drake::VectorX<T>& vdot,
+                      const drake::VectorX<T>& lambda);
 
   template<typename T>
-  drake::VectorX<T> GetTau() const;
+  const drake::VectorX<T>& GetQDot() const;
 
   template<typename T>
-  drake::VectorX<T> GetKinematicConstraints() const;
+  const drake::VectorX<T>& GetTau() const;
 
   template<typename T>
-  void SetVDot(const drake::VectorX<T>& vdot);
+  const drake::VectorX<T>& GetKinematicConstraints() const;
+
+  template<typename T>
+  const drake::VectorX<T>& GetKinematicConstraintsDot() const;
 
   void UpdateActiveContacts(const std::vector<std::string>& active_contacts);
   void UpdateTimestamp(double t) {
@@ -45,21 +46,30 @@ class KnotPointState {
   }
 
  private:
-  int index = 0;
   double timestamp;
 
   template<typename T>
-  struct cache {
+  struct KinematicsCache {
     bool dirty = true;
-    drake::VectorX<T> decision_vars;
-    drake::VectorX<T> vdot;
+    drake::VectorX<T> x;
     std::unique_ptr<drake::systems::Context<T>> context;
-    ConstrainedDynamicsInfo::InverseDynamicsEvaluation<T> dynamics_results;
+    ConstrainedDynamicsInfo::KinematicsResults<T> kinematics;
     std::vector<std::string> active_contacts;
   };
 
-  cache<double> cache_;
-  cache<AutoDiffXd> cache_ad_;
+  template<typename T>
+  struct DynamicsCache {
+    bool dirty = true;
+    drake::VectorX<T> vdot;
+    drake::VectorX<T> lambda;
+    drake::VectorX<T> tau;
+  };
+
+  KinematicsCache<double> k_cache_;
+  KinematicsCache<AutoDiffXd> k_cache_ad_;
+
+  DynamicsCache<double> d_cache_;
+  DynamicsCache<AutoDiffXd> d_cache_ad_;
 
   const ConstrainedDynamicsInfo& dynamics_;
 

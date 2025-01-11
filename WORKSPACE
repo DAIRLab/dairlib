@@ -256,3 +256,7 @@ rules_foreign_cc_dependencies()
 load("//tools/workspace/pinocchio:repository.bzl", "pinocchio_repository")
 
 pinocchio_repository()
+
+load("//tools/workspace:qpalm.bzl", "add_qpalm")
+
+add_qpalm()

@@ -1,0 +1,24 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "ncqp_solver",
+    srcs = ["ncqp_solver.cc"],
+    hdrs = ["ncqp_solver.h"],
+    deps = [
+        "nonconvex_constraint",
+        "@drake//:drake_shared_library",
+        "@qpalm",
+    ],
+)
+
+cc_library(
+    name = "nonconvex_constraint",
+    srcs = ["nonconvex_constraint.cc"],
+    hdrs = ["nonconvex_constraint.h"],
+    deps = [
+        "//solvers:nonlinear_constraint",
+    ],
+)

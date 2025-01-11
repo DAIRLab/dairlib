@@ -1,7 +1,9 @@
 #pragma once
 
-#include "drake/solvers/osqp_solver.h"
 #include "nonconvex_constraint.h"
+#include "qpalm.hpp"
+
+#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib::solvers {
 
@@ -47,6 +49,8 @@ struct NCQPSolution {
  */
 class NCQPSolver {
  public:
+  explicit NCQPSolver(int num_vars, int num_lin_constraints);
+
   NCQPSolution Solve(
       const drake::solvers::MathematicalProgram& qp,
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&

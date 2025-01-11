@@ -56,6 +56,8 @@ group "drivers" {
 
 
 script "init_experiment" {
+    stop cmd "franka_c3";
+    stop cmd "franka_osc";
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
     stop cmd "torque_driver";

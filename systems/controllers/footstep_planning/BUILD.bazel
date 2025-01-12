@@ -119,6 +119,18 @@ cc_library(
 )
 
 cc_library(
+    name = "swing_foot_traj_solver_train",
+    srcs = ["swing_foot_traj_solver_train.cc"],
+    hdrs = ["swing_foot_traj_solver_train.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//solvers:fcc_qp_solver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
     name = "swing_foot_traj_solver",
     srcs = ["swing_foot_traj_solver.cc"],
     hdrs = ["swing_foot_traj_solver.h"],
@@ -138,7 +150,7 @@ cc_library(
     hdrs = ["swing_foot_trajectory_generator.h"],
     deps = [
         ":alip_utils",
-        ":swing_foot_traj_solver",
+        ":swing_foot_traj_solver_train",
         "//multibody:utils",
         "//systems/framework:vector",
         "//systems/primitives",

@@ -96,7 +96,6 @@ class AlipComTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
   ConstructAlipComTraj(const Eigen::Vector3d& stance_foot_pos,
-                       const Eigen::Vector3d& com_pos,
                        const Eigen::Vector4d& x_alip,
                        const Eigen::Vector2d& kx_ky,
                        double start_time, double end_time) const;

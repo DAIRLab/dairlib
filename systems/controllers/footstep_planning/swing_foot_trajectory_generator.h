@@ -3,7 +3,7 @@
 #include "alip_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
+#include "systems/controllers/footstep_planning/swing_foot_traj_solver_train.h"
 
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/parsing/parser.h"
@@ -114,7 +114,7 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   std::map<int, alip_utils::PointOnFramed> swing_foot_map_;
 
   // Solver
-  mutable SwingFootTrajSolver foot_traj_solver_{};
+  mutable SwingFootTrajSolverTrain foot_traj_solver_{};
 };
 
 

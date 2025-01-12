@@ -27,7 +27,17 @@ KnotPoint::KnotPoint(
   }
   DRAKE_DEMAND(unactuated_vdot_coords_.size() == (dynamics.nv() - dynamics.nu()));
 
-  // TODO (@Brian-Acosta) Validate active constraint and constraint-dot indices
+  DRAKE_DEMAND(config_.active_constraint_indices.size() <=
+      dynamics_info_.n_constraint_total());
+  DRAKE_DEMAND(config_.active_constraint_dot_indices.size() <=
+      dynamics_info_.n_constraint_total());
+
+  for (const auto& idx : config_.active_constraint_indices) {
+    DRAKE_DEMAND(idx < dynamics_info_.n_constraint_total());
+  }
+  for (const auto& idx : config_.active_constraint_dot_indices) {
+    DRAKE_DEMAND(idx < dynamics_info_.n_constraint_total());
+  }
 }
 
 template<typename T>
@@ -109,8 +119,9 @@ VectorX<T> KnotPoint::EvalKinematicConstraints(
         config_.active_constraint_indices.at(i));
   }
   for (size_t i = 0; i < config_.active_constraint_dot_indices.size(); ++i) {
-    out(nca + i) = cache->GetKinematicConstraintsDot<T>()(
+    T val = cache->GetKinematicConstraintsDot<T>()(
         config_.active_constraint_dot_indices.at(i));
+    out(nca + i) = val;
   }
   return out;
 }
@@ -127,6 +138,8 @@ template const VectorX<double> KnotPoint::get_lh(const
     VectorX<double> &full_vars) const;
 template const VectorX<double> KnotPoint::get_lc(const 
     VectorX<double> &full_vars) const;
+template const VectorX<double> KnotPoint::get_lambda(
+    const VectorX<double> &full_vars) const;
 
 template const VectorX<Variable> KnotPoint::get_q(
     const VectorX<Variable> &full_vars) const;
@@ -139,6 +152,8 @@ template const VectorX<Variable> KnotPoint::get_u(
 template const VectorX<Variable> KnotPoint::get_lh(
     const VectorX<Variable> &full_vars) const;
 template const VectorX<Variable> KnotPoint::get_lc(
+    const VectorX<Variable> &full_vars) const;
+template const VectorX<Variable> KnotPoint::get_lambda(
     const VectorX<Variable> &full_vars) const;
 
 template const VectorX<AutoDiffXd> KnotPoint::get_q(const 
@@ -153,6 +168,8 @@ template const VectorX<AutoDiffXd> KnotPoint::get_lh(const
     VectorX<AutoDiffXd> &full_vars) const;
 template const VectorX<AutoDiffXd> KnotPoint::get_lc(const 
     VectorX<AutoDiffXd> &full_vars) const;
+template const VectorX<AutoDiffXd> KnotPoint::get_lambda(
+    const VectorX<AutoDiffXd> &full_vars) const;
 
 template VectorX<double> KnotPoint::EvalInverseDynamicsDefect(
     KnotPointState *cache, const VectorX<double>& x,

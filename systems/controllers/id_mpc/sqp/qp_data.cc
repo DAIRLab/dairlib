@@ -36,4 +36,26 @@ bool QPData::ValidateDimensions() const {
   return true;
 }
 
+void AppendQuadraticCost(
+    const std::vector<int>& variable_indices, const Eigen::MatrixXd& H,
+    const Eigen::MatrixXd& b, double c,
+    std::vector<Eigen::Triplet<double>>& triplets, Eigen::VectorXd& qp_g,
+    double* qp_c) {
+
+  for (int j = 0; j < H.cols(); ++j) {
+    for (int i = 0; i < H.rows(); ++i) {
+      int row = variable_indices[i];
+      int col = variable_indices[j];
+      // see https://github.com/RobotLocomotion/drake/blob/962483669d015ee2618585ace2c884598fbadbb5/solvers/aggregate_costs_constraints.cc#L476
+      const double factor = (i != j && row == col) ? 2 : 1;
+      triplets.emplace_back(row, col, factor * H(i,j));
+    }
+  }
+
+  for (int i = 0; i < b.rows(); ++i) {
+    qp_g(variable_indices[i]) += b(i);
+  }
+  *qp_c += c;
+}
+
 }

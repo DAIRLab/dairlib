@@ -145,7 +145,6 @@ void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
     for (int i = 0; i < v.rows(); ++i) {
       xval(i) = x(indices[i]);
     }
-
     GaussNewtonApproximation cost_data;
     if (dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(binding.evaluator().get())) {
       cost_data = dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(
@@ -164,17 +163,8 @@ void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
     } else {
       throw std::runtime_error("Unsupported cost type has been added to IDMPC");
     }
-    for (int j = 0; j < cost_data.H.cols(); ++j) {
-      for (int i = 0; i < cost_data.H.rows(); ++i) {
-        int r = indices[i];
-        int c = indices[j];
-        cost_triplets.emplace_back(r, c, cost_data.H(i,j));
-      }
-    }
-    for (int i = 0; i < cost_data.g.rows(); ++i) {
-      qp.g(indices[i]) += cost_data.g(i);
-    }
-    qp.c += cost_data.c;
+    AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
+                        cost_triplets, qp.g, &qp.c);
   }
   qp.H.resize(prog_.num_vars(), prog_.num_vars());
   qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());
@@ -228,12 +218,10 @@ void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {
-  bool THIS_NEEDS_FIXED_TO_ACCOUNT_FOR_U_DIMS = false;
-  DRAKE_DEMAND(THIS_NEEDS_FIXED_TO_ACCOUNT_FOR_U_DIMS);
   LcmTrajectory::Trajectory q("q", dynamics_->nq(), params_.N + 1);
   LcmTrajectory::Trajectory v("v", dynamics_->nv(), params_.N + 1);
-  LcmTrajectory::Trajectory u("u", dynamics_->nu(), params_.N);
-  LcmTrajectory::Trajectory lambda("lambda",dynamics_->n_constraint_total(),
+  LcmTrajectory::Trajectory u("u", dynamics_->nu(), params_.num_full_torque_knots);
+  LcmTrajectory::Trajectory lambda("lambda",dynamics_->nc() + dynamics_->nh(),
                                    params_.N);
 
   for (int i = 0; i < params_.N + 1; ++i) {
@@ -244,13 +232,13 @@ LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult 
   }
 
   for (int i = 0; i < params_.N; ++i) {
-    u.time_vector(i) = timeline_.breaks().at(i);
     lambda.time_vector(i) = timeline_.breaks().at(i);
+    lambda.datapoints.col(i) = result.GetSolution(lambda_vars(i));
+  }
+
+  for (int i = 0; i < params_.num_full_torque_knots; ++i) {
+    u.time_vector(i) = timeline_.breaks().at(i);
     u.datapoints.col(i) = result.GetSolution(input_vars(i));
-    lambda.datapoints.col(i) = stack<double>(
-        {result.GetSolution(lambda_h_vars(i)),
-         result.GetSolution(lambda_c_vars(i))}
-    );
   }
 
   return LcmTrajectory(

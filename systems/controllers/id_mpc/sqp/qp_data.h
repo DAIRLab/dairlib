@@ -24,7 +24,14 @@ struct QPData {
 
   void ToMathematicalProgram(drake::solvers::MathematicalProgram& empty_prog) const;
   bool ValidateDimensions() const;
+  static QPData ToQPData(drake::solvers::MathematicalProgram& qp_prog);
 
 };
+
+void AppendQuadraticCost(
+    const std::vector<int>& variable_indices, const Eigen::MatrixXd& H,
+    const Eigen::MatrixXd& b, double c,
+    std::vector<Eigen::Triplet<double>>& triplets, Eigen::VectorXd& qp_g,
+    double* qp_c);
 
 }

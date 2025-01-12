@@ -252,9 +252,9 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 5e-3);
+                          "Major optimality tolerance", 1e-2);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 5e-3);
+                          "Major feasibility tolerance", 1e-2);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Scale option", 2);
 

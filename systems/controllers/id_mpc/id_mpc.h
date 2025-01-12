@@ -33,20 +33,16 @@ class IDMPC {
     return knot_point_vars_.at(index);
   }
   const drake::solvers::VectorXDecisionVariable position_vars(int index) const {
-    return knot_vars(index).head(dynamics_->nq());
+    return timeline_.knots.at(index)->get_q(knot_vars(index));
   }
   const drake::solvers::VectorXDecisionVariable velocity_vars(int index) const {
-    return knot_vars(index).segment(dynamics_->nq(), dynamics_->nv());
+    return timeline_.knots.at(index)->get_v(knot_vars(index));
   }
   const drake::solvers::VectorXDecisionVariable input_vars(int index) const {
-    return knot_vars(index).segment(dynamics_->nx(), dynamics_->nu());
+    return timeline_.knots.at(index)->get_u(knot_vars(index));
   }
-  const drake::solvers::VectorXDecisionVariable lambda_h_vars(int index) const {
-    return knot_vars(index).segment(dynamics_->nx() + dynamics_->nu(),
-                                    dynamics_->nh());
-  }
-  const drake::solvers::VectorXDecisionVariable lambda_c_vars(int index) const {
-    return knot_vars(index).tail(dynamics_->nc());
+  const drake::solvers::VectorXDecisionVariable lambda_vars(int index) const {
+    return timeline_.knots.at(index)->get_lambda(knot_vars(index));
   }
 
   void AddUnitQuaternionConstraintToAllFloatingBodies();

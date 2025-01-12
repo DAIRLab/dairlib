@@ -28,13 +28,13 @@ KnotPointState::KnotPointState(const ConstrainedDynamicsInfo &dynamics) :
   k_cache_.kinematics = dynamics.MakeEmptyKinematicsResults<double>();
   k_cache_.context = dynamics.MakeContext<double>();
   d_cache_.vdot = VectorXd::Zero(dynamics.nv());
-  d_cache_.tau - VectorXd::Zero(dynamics.nv());
+  d_cache_.tau = VectorXd::Zero(dynamics.nv());
 
   k_cache_ad_.x = AutoDiffVecXd::Zero(dynamics.nx());
   k_cache_ad_.kinematics = dynamics.MakeEmptyKinematicsResults<AutoDiffXd>();
   k_cache_ad_.context = dynamics.MakeContext<AutoDiffXd>();
   d_cache_ad_.vdot = AutoDiffVecXd::Zero(dynamics.nv());
-  d_cache_ad_.tau - AutoDiffVecXd::Zero(dynamics.nv());
+  d_cache_ad_.tau = AutoDiffVecXd::Zero(dynamics.nv());
 }
 
 template<>

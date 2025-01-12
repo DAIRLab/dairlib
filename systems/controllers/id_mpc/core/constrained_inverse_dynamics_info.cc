@@ -168,7 +168,8 @@ void ConstrainedDynamicsInfo::DoEvaluateKinematics(
 
   eval.J.topRows(nh_) = Jh;
   eval.J.bottomRows(nc_) = Jc;
-  eval.cdot = Jc_active * plant.GetVelocities(context);
+  eval.cdot.topRows(nh_) = Jh * plant.GetVelocities(context);
+  eval.cdot.bottomRows(nc_active_) = Jc_active * plant.GetVelocities(context);
   plant.MapVelocityToQDot(context, plant.GetVelocities(context), &eval.qdot);
 }
 

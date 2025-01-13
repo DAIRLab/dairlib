@@ -132,8 +132,7 @@ class C3 {
   std::shared_ptr<drake::solvers::LinearEqualityConstraint>
       initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      constraints_;
+  std::optional<drake::solvers::Binding<drake::solvers::LinearConstraint>> lambda_constraint_for_zero_h_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
 

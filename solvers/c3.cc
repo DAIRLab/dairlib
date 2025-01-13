@@ -206,6 +206,16 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 }
 
 void C3::Solve(const VectorXd& x0) {
+  if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
+    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    VectorXd lambda0;
+    LCPSolver.SolveLcpLemke(lcs_.F_[0], lcs_.E_[0] * x0 + lcs_.c_[0], &lambda0);
+    if (!lambda_constraint_for_zero_h_.has_value()) {
+      lambda_constraint_for_zero_h_ = prog_.AddLinearConstraint(lambda_[0] == lambda0);
+    } else {
+      prog_.RemoveConstraint(lambda_constraint_for_zero_h_.value());
+    }
+  }
   auto start = std::chrono::high_resolution_clock::now();
   if (initial_state_constraint_) {
     initial_state_constraint_->UpdateCoefficients(
@@ -304,13 +314,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                              const vector<VectorXd>& WD, int admm_iteration,
                              bool is_final_solve) {
-  if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
-    VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(lcs_.F_[0], lcs_.E_[0] * x0 + lcs_.c_[0], &lambda0);
-    constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
-  }
-
   for (auto& cost : costs_) {
     prog_.RemoveCost(cost);
   }

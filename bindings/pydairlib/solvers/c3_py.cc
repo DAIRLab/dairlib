@@ -72,22 +72,16 @@ PYBIND11_MODULE(c3, m) {
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
            py::arg("options"))
 
-      .def("Solve", &C3::Solve, py::arg("x0"))
+      .def("Solve", [](C3& self, const Eigen::VectorXd& x0) {
+        py::gil_scoped_release release;  // Still need this for nested OpenMP calls
+        return self.Solve(x0);
+      })
       .def("UpdateLCS", &C3::UpdateLCS, py::arg("lcs"))
       .def("UpdateTarget", &C3::UpdateTarget, py::arg("x_des"))
       .def("AddLinearConstraint", &C3::AddLinearConstraint, py::arg("A"),
            py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
-      .def("ADMMStep", &C3::ADMMStep, py::arg("x0"), py::arg("delta"),
-           py::arg("w"), py::arg("G"), py::arg("admm_iteration"))
-      .def("SolveQP", &C3::SolveQP, py::arg("x0"), py::arg("G"), py::arg("WD"),
-           py::arg("admm_iteration"), py::arg("is_final_solve") = false)
-      .def("SolveProjection", &C3::SolveProjection, py::arg("G"), py::arg("WZ"),
-           py::arg("admm_iteration"))
-      .def("SolveSingleProjection", &C3::SolveSingleProjection, py::arg("U"),
-           py::arg("delta_c"), py::arg("E"), py::arg("F"), py::arg("H"),
-           py::arg("c"), py::arg("admm_iteration"), py::arg("warm_start_index"))
       .def("SetOsqpSolverOptions", &C3::SetOsqpSolverOptions,
            py::arg("options"))
       .def("GetFullSolution", &C3::GetFullSolution)

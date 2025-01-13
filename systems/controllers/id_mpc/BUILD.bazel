@@ -8,6 +8,7 @@ cc_library(
     hdrs = ["id_mpc.h"],
     deps = [
         "//lcm:lcm_trajectory_saver",
+        "//solvers:qp_data",
         "//systems/controllers/id_mpc/core:id_mpc_core",
         "//systems/controllers/id_mpc/costs:id_mpc_costs",
         "//systems/controllers/id_mpc/sqp:id_mpc_sqp",

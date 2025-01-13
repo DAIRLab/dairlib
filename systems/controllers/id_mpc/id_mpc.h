@@ -9,7 +9,7 @@
 
 #include "costs/nonlinear_least_squares_cost.h"
 
-#include "sqp/qp_data.h"
+#include "solvers/qp_data.h"
 
 #include "lcm/lcm_trajectory.h"
 
@@ -55,17 +55,18 @@ class IDMPC {
 
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
-
-  void ConstructSQPProgram(const Eigen::VectorXd& x, QPData& qp) const;
-
+  void ConstructSQPProgram(const Eigen::VectorXd& x, solvers::QPData& qp) const;
+  void UpdateSQPProgram(const Eigen::VectorXd& x, solvers::QPData& qp) const;
+  double EvaluateConstraintViolation(const Eigen::VectorXd& x) const;
+  double EvaluateCost(const Eigen::VectorXd& x) const;
 
  private:
 
   void MakeKnotPoints();
   void MakeCollocationConstraints();
   void MakeKinematicConstraints();
-  void ParseCostsToQP(const Eigen::VectorXd& x, QPData& qp) const;
-  void ParseConstraintsToQP(const Eigen::VectorXd& x, QPData& qp) const;
+  void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
+  void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;

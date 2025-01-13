@@ -8,6 +8,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 using solvers::NonlinearConstraint;
+using solvers::QPData;
+using solvers::AppendQuadraticCost;
+using solvers::AppendLinearConstraint;
 
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MathematicalProgram;
@@ -126,11 +129,13 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
   // Reset problem size data
   qp.num_vars = prog_.num_vars();
 
-  ParseCostsToQP(x, qp);
-  ParseConstraintsToQP(x, qp);
+  ParseCostsToSQP(x, qp);
+  ParseConstraintsToSQP(x, qp);
 }
 
-void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
+
+// TODO (@Brian-Acosta) add support for L2Norm costs
+void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
 
   qp.g = VectorXd::Zero(prog_.num_vars());
 
@@ -175,7 +180,7 @@ void IDMPC::ParseCostsToQP(const VectorXd& x, QPData &qp) const {
 //  Can maybe make this more efficient by handling constraints differently
 //   Depending on their type. Also likely want to denote true equality vs
 //   inequality constraints
-void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
+void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
 
   qp.num_eq = 0;
   qp.num_ineq = 0;
@@ -198,19 +203,12 @@ void IDMPC::ParseConstraintsToQP(const VectorXd& x, QPData &qp) const {
     VectorXd yval = ExtractValue(y_ad);
     // SQP constraint: lb <= y(x) <= ub -->  lb <= dydx * dx + y* <= ub
     // subtract y* from the above equation
-    int rows = binding.evaluator()->num_constraints();
-    qp.lb.conservativeResize(std::max(qp.lb.rows(), qp.num_ineq + rows));
-    qp.ub.conservativeResize(std::max(qp.ub.rows(), qp.num_ineq + rows));
-
-    qp.lb.segment(qp.num_ineq, rows) = binding.evaluator()->lower_bound() - yval;
-    qp.ub.segment(qp.num_ineq, rows) = binding.evaluator()->upper_bound() - yval;
-    for (int j = 0; j < dydx.cols(); ++j) {
-      for (int i = 0; i < dydx.rows(); ++i) {
-        int row = qp.num_ineq + i;
-        int col = indices[j];
-        inequality_triplets.emplace_back(row, col, dydx(i, j));
-      }
-    }
+    VectorXd lb = binding.evaluator()->lower_bound() - yval;
+    VectorXd ub = binding.evaluator()->upper_bound() - yval;
+    AppendLinearConstraint(
+        indices, qp.num_ineq, dydx, lb, ub, inequality_triplets,
+        qp.lb, qp.ub
+    );
     qp.num_ineq += binding.evaluator()->num_constraints();
   }
   qp.A.resize(qp.num_ineq, x.rows());

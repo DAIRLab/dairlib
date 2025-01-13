@@ -115,6 +115,37 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "qp_data",
+    srcs = ["qp_data.cc"],
+    hdrs = ["qp_data.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ]
+)
+
+cc_library(
+    name = "qpalm_solver",
+    srcs = ["qpalm_solver.cc"],
+    hdrs = ["qpalm_solver.h"],
+    deps = [
+        ":qp_data",
+        "@qpalm",
+    ],
+)
+
+cc_binary(
+    name = "qp_solvers_test",
+    srcs = ["test/qp_solvers_test.cc"],
+    deps = [
+        ":qp_data",
+        ":qpalm_solver",
+    ],
+    defines = [
+        "EIGEN_INDEX_TYPE"
+    ]
+)
+
 cc_test(
     name = "cost_constraint_approximation_test",
     size = "small",

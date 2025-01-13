@@ -277,7 +277,7 @@ int DoMain() {
   std::cout << sol.GetTrajectory("q").datapoints << std::endl;
 
 
-  QPData qp;
+  solvers::QPData qp;
   auto qp_start = std::chrono::high_resolution_clock::now();
   mpc.ConstructSQPProgram(result.GetSolution(), qp);
   auto qp_end = std::chrono::high_resolution_clock::now();

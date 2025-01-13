@@ -80,6 +80,7 @@ const VectorX<T> KnotPoint::get_lambda(
 template<typename T>
 const VectorX<T> KnotPoint::get_u(
     const VectorX<T>& full_vars) const {
+  DRAKE_ASSERT(config_.include_torques);
   return full_vars.segment(nq_ + nv_ + nh_ + nc_, nu_);
 }
 

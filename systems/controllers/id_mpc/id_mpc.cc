@@ -69,13 +69,13 @@ void IDMPC::MakeKnotPoints() {
     auto cfg = knot_config{
       i,
       i == params_.N,
-      i >= params_.num_full_torque_knots,
+      i < params_.num_full_torque_knots,
       {}, {}
     };
     if (i > 0) {
-      cfg.active_constraint_indices.resize(dynamics_->nh(), 0);
-      std::iota(cfg.active_constraint_indices.begin(),
-                cfg.active_constraint_indices.end(), 0);
+//      cfg.active_constraint_indices.resize(dynamics_->nh(), 0);
+//      std::iota(cfg.active_constraint_indices.begin(),
+//                cfg.active_constraint_indices.end(), 0);
       cfg.active_constraint_dot_indices.resize(
           dynamics_->nh() + dynamics_->nc_active(), 0);
       std::iota(cfg.active_constraint_dot_indices.begin(),

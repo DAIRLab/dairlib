@@ -219,18 +219,22 @@ int DoMain() {
   TestCollocation(*dynamics_info, vars, contacts);
 
   IDMPCParams params;
-  params.dt = 0.04;
-  params.N = static_cast<int>(0.4 / params.dt);
+  params.dt = 0.025;
+  params.N = static_cast<int>(0.5 / params.dt);
   params.num_full_torque_knots = 2;
 
   IDMPC mpc(params, std::move(dynamics_info));
 
   auto& prog = mpc.get_prog();
 
-  VectorXd vd = vars;
-  vd(6) = 0.7;
 
   mpc.UpdateInitialState(vars.head(2 * q.size() - 1));
+
+  Eigen::VectorXd qd = VectorXd::Zero(q.rows());
+  qd << 1, -1.0603e-16, 0, 0, 0, 0, 0.7,
+   0.0989926, 0, 0.897318, -2.0368, 2.26086, -1.99487,
+  -0.0989926, 0, 0.897318, -2.0368, 2.26086, -1.99487;
+
 
   for (int i = 0; i <= params.N; ++i) {
     vars.segment(q.size(), q.size() - 1) =
@@ -238,9 +242,12 @@ int DoMain() {
     prog.SetInitialGuess(mpc.knot_vars(i), vars.head(mpc.knot_vars(i).rows()));
 
     double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
-    auto pelvis_cost = std::make_shared<QuadraticErrorCost<double>>(
-        m * Eigen::MatrixXd::Identity(3,3), vd.segment<3>(4));
-    prog.AddCost(pelvis_cost, mpc.position_vars(i).segment<3>(4));
+    if (i == params.N) {
+      m += 100;
+    }
+    auto q_cost = std::make_shared<QuadraticErrorCost<double>>(
+        m * Eigen::MatrixXd::Identity(q.rows(), q.rows()), qd);
+    prog.AddCost(q_cost, mpc.position_vars(i));
     mpc.UpdateActiveContacts(i, contacts);
   }
 

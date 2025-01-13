@@ -19,7 +19,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
-#include "dairlib/lcmt_contact_force.hpp"
+#include "dairlib/lcmt_densetact_data.hpp"
 
 DEFINE_string(sim_parameters,
               "examples/trifinger/parameters/trifinger_sim_params.yaml",
@@ -109,7 +109,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
 
   // publisher block
   auto tri_reaction_pub = builder.AddSystem(
-    LcmPublisherSystem::Make<dairlib::lcmt_contact_force>(
+    LcmPublisherSystem::Make<dairlib::lcmt_densetact_data>(
       lcm_channels.contact_force_channel, 
       lcm,
       1.0 / sim_params.trifinger_publish_rate));

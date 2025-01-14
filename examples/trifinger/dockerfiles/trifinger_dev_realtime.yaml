@@ -24,3 +24,10 @@ services:
       rtprio: 99
       rttime: -1 # corresponds to 'unlimited'
       memlock: 8428281856
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

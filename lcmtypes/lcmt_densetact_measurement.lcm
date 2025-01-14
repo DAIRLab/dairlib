@@ -1,6 +1,6 @@
 package dairlib;
 
-/*  Measured DenseTact Contact Data
+/*  Measured DenseTact Contact
 */
 
 struct lcmt_densetact_measurement
@@ -10,10 +10,4 @@ struct lcmt_densetact_measurement
   double contactFrame [4][4];
   double scaledNormal;
   double scaledFriction [2];
-}
-
-struct lcmt_densetact_measurement_data
-{
-  int8_t numSensors;
-  lcmt_densetact_measurement sensorData [numSensors];
 }

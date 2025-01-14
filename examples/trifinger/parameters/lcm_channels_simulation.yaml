@@ -10,3 +10,4 @@ fingertips_position_channel: FINGERTIPS_POSITION
 fingertips_target_position_channel: FINGERTIPS_TARGET_POSITION
 estimated_friction_torque: ESTIMATED_FRICTION_TORQUE
 impedance_debug_channel: IMPEDANCE_DEBUG
+densetact_channel: DENSETACT_DATA

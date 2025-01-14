@@ -22,4 +22,4 @@ tmp/
 MODULE.bazel
 MODULE.bazel.lock
 
-/examples/jacktoy/camera_calibration/*-*-*_*-*-*/
+/examples/jacktoy/camera_calibration/cam_cals/

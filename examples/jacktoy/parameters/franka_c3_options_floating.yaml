@@ -45,7 +45,7 @@ num_friction_directions: 2
 # contacts.
 num_contacts_index: 0
 num_contacts_index_for_cost: 5
-num_contacts_index_for_curr_location: 6
+num_contacts_index_for_curr_location: 0
 
 # num_contacts changes based on the num_contacts_index.
 num_contacts: [4, 6, 5, 7, 5, 9, 5]
@@ -97,7 +97,7 @@ g_lambda: [[0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005
 g_u: [30, 30, 30]
 
 # Penalty on matching the QP variables
-u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+u_x: [10, 10, 10, 100, 100, 100, 100, 10, 10, 10, 8, 8, 8, 1, 1, 1, 1, 1, 1]
 u_gamma: [[1, 1, 1, 1],
           [1, 1, 1, 1, 1, 1]]
 u_lambda_n: [[1, 1, 1, 1],
@@ -129,7 +129,7 @@ Kp_for_cost_type_3: 100
 Kd_for_cost_type_3: 0.5
 # If this is true, the portion of the Q matrix corresponding to the quaternions will be set based on the current and desired quaternion.
 use_quaternion_dependent_cost: true
-q_quaternion_dependent_weight: 2000
+q_quaternion_dependent_weight: 2500
 q_quaternion_dependent_regularizer_fraction: 0
 
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity
@@ -154,7 +154,7 @@ q_vector_position_and_orientation: [
            0.1, 0.1, 0.1, 0.1,              # object orientation
            120, 120, 120,    # object position
            5, 5, 5,              # end effector linear velocity
-           0.1, 0.1, 0.1,                 # object angular velocity
+           0.05, 0.05, 0.05,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity
 
 # POSITION GOAL GAINS

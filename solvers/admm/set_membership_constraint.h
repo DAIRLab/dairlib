@@ -4,9 +4,17 @@
 
 namespace dairlib::solvers {
 
-class NonconvexConstraint : public NonlinearConstraint<double> {
+/*!
+ * Generic set-membership constraint class for the constraint x \in X.
+ * Subclasses should implement EvaluateConstraint so that the output is set to
+ * within the bounds for feasible points.
+ *
+ * We are mostly interested in implementing the ProjectToFeasibleSet
+ * function, which will be used in ADMM.
+ */
+class SetMembershipConstraint : public NonlinearConstraint<double> {
  public:
-  NonconvexConstraint(int num_constraints, int num_vars,
+  SetMembershipConstraint(int num_constraints, int num_vars,
                       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
 
   virtual void EvaluateConstraint(

@@ -8,7 +8,9 @@ cc_library(
     srcs = ["ncqp_solver.cc"],
     hdrs = ["ncqp_solver.h"],
     deps = [
-        "nonconvex_constraint",
+        ":nonconvex_constraint",
+        "//solvers:qp_data",
+        "//solvers:qpalm_solver",
         "@drake//:drake_shared_library",
         "@qpalm",
     ],
@@ -16,8 +18,8 @@ cc_library(
 
 cc_library(
     name = "nonconvex_constraint",
-    srcs = ["nonconvex_constraint.cc"],
-    hdrs = ["nonconvex_constraint.h"],
+    srcs = ["set_membership_constraint.cc"],
+    hdrs = ["set_membership_constraint.h"],
     deps = [
         "//solvers:nonlinear_constraint",
     ],

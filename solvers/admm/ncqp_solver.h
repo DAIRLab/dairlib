@@ -1,9 +1,9 @@
 #pragma once
 
-#include "nonconvex_constraint.h"
-#include "qpalm.hpp"
-
 #include "drake/solvers/mathematical_program.h"
+#include "solvers/qp_data.h"
+#include "solvers/qpalm_solver.h"
+
 
 namespace dairlib::solvers {
 
@@ -31,10 +31,10 @@ struct NCQPSolution {
 
 /*!
  * A generic solver for optimization problems of the form
- *      minimize   f(x) + Ic(x) + Inc(x)
+ *      minimize   f(x) + Ilin(x) + Inc(x)
  *        x
  *
- *  where f is quadratic and positive semidefinite, Ic(x) is the 0-inf
+ *  where f is quadratic and positive semidefinite, Ilin(x) is the 0-inf
  *  indicator function for linear constraints, and Inc(x) is the 0-inf
  *  indicator function for the general nonconvex constraints.
  *
@@ -44,7 +44,7 @@ struct NCQPSolution {
  *        x, z
  *      subject to x = z
  *
- *  to solve the problem via ADMM
+ *  to solve the problem via ADMM.
  *
  */
 class NCQPSolver {
@@ -61,6 +61,7 @@ class NCQPSolver {
   bool CheckConvergence();
 
   ADMMParams params_;
+  mutable QPALMSolver qp_solver_;
 
 };
 

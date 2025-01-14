@@ -26,7 +26,7 @@ struct QPData {
 
   void ToMathematicalProgram(drake::solvers::MathematicalProgram& empty_prog) const;
   bool ValidateDimensions() const;
-  static QPData ToQPData(drake::solvers::MathematicalProgram& qp_prog);
+  static QPData ToQPData(const drake::solvers::MathematicalProgram& qp_prog);
 
 };
 

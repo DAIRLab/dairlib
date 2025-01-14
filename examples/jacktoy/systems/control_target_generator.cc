@@ -3,6 +3,14 @@
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
 #include "solvers/c3_options.h"
 
+#include "drake/systems/framework/leaf_system.h"
+#include <vector>
+#include "Eigen/Dense"
+#include "Eigen/Core"
+#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "lcm/lcm_trajectory.h"
+
 #include <iostream>
 
 #include "dairlib/lcmt_radio_out.hpp"
@@ -51,6 +59,11 @@ TargetGenerator::TargetGenerator(
                               "object_final_target", BasicVector<double>(7),
                               &TargetGenerator::OutputObjectFinalTarget)
                           .get_index();
+  target_gen_info_port_ = this->DeclareAbstractOutputPort(
+                            "target_generator_info",
+                            dairlib::lcmt_timestamped_saved_traj(),
+                            &TargetGenerator::OutputTargetGeneratorInfo)
+                              .get_index();
 
   C3Options c3_options;
   FrankaC3ControllerParams controller_params =
@@ -374,6 +387,31 @@ void TargetGenerator::OutputObjectFinalTarget(
   target->SetFromVector(target_final_obj_state);
 }
 
+void TargetGenerator::OutputTargetGeneratorInfo(
+  const drake::systems::Context<double>& context,
+  dairlib::lcmt_timestamped_saved_traj* target) const {
+  // NOTE: This is a placeholder for the boolean value so we can output 
+  // it as an existing lcm message type. It is unconventional to be 
+  // using this message type for this purpose.
+  Eigen::MatrixXd orientation_index_data = orientation_index_ *
+    Eigen::MatrixXd::Ones(1, 1);
+  Eigen::VectorXd timestamp = context.get_time() * Eigen::VectorXd::Ones(1);
+
+  LcmTrajectory::Trajectory orientation_index_traj;
+  orientation_index_traj.traj_name = "orientation_index";
+  orientation_index_traj.datatypes = std::vector<std::string>(1, "int");
+  orientation_index_traj.datapoints = orientation_index_data;
+  orientation_index_traj.time_vector = timestamp.cast<double>();
+
+  LcmTrajectory orientation_index_lcm_traj(
+    {orientation_index_traj}, {"orientation_index"}, "orientation_index",
+    "orientation_index", false);
+
+  // Output the mode as an lcm message
+  target->saved_traj = orientation_index_lcm_traj.GenerateLcmObject();
+  target->utime = context.get_time() * 1e6;
+}
+
 void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
   // Obeys x and y limits (to stay on the table) as well as radius limits (to
   // more closely match robot limits).
@@ -397,42 +435,38 @@ void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
 }
 
 void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
-
-  // Nominal orientations for the jack to be balanced on the ground.
-  std::vector<Eigen::Quaterniond> valid_orientations{
-    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
-    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN
-  };
-
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<int> dis(0, valid_orientations.size()-1);
+  std::uniform_int_distribution<int> dis(0, valid_orientations_.size()-1);
   int random_index = dis(gen);
 
-  Eigen::Quaterniond quat_nominal = valid_orientations.at(random_index);
+  Eigen::Quaterniond quat_nominal = valid_orientations_.at(random_index);
 
-  // Add random yaw in world frame.
-  std::uniform_real_distribution<double> yaw_dis(0, 2*PI);
+  // Add random yaw in world frame.  Ensure at least 90 degrees away if no
+  // topple is required.
+  double min_yaw = 0;
+  double max_yaw = 2*PI;
+  if (random_index == orientation_index_) {
+    min_yaw = PI/2;
+    max_yaw = 3*PI/2;
+  }
+  std::uniform_real_distribution<double> yaw_dis(min_yaw, max_yaw);
   Eigen::Quaterniond quat_world_yaw(
     Eigen::AngleAxisd(yaw_dis(gen), Eigen::Vector3d::UnitZ()));
-  // Apply world yaw rotation to nominal orientation.
   Eigen::Quaterniond quat_final = quat_world_yaw * quat_nominal;
-
 
   target_final_object_orientation_ <<
     quat_final.w(), quat_final.x(), quat_final.y(), quat_final.z();
+
+  orientation_index_ = random_index;
 }
 
 void TargetGenerator::CycleThroughOrientationSequence() const {
-  // Nominal orientations for the jack to be balanced on the ground.
-  std::vector<Eigen::Quaterniond> valid_orientations{
-    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
-    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN
-  };
-
-  Eigen::Quaterniond next_quat = valid_orientations.at(goal_counter_ % 8);
+  Eigen::Quaterniond next_quat = valid_orientations_.at(goal_counter_ % 8);
   target_final_object_orientation_ <<
     next_quat.w(), next_quat.x(), next_quat.y(), next_quat.z();
+
+  orientation_index_ = goal_counter_ % 8;
 }
 
 }  // namespace systems

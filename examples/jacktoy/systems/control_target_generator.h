@@ -3,6 +3,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "systems/framework/state_vector.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -56,6 +57,11 @@ class TargetGenerator
     return this->get_output_port(object_final_target_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_target_gen_info()
+  const {
+    return this->get_output_port(target_gen_info_port_);
+  }
+
   void SetRemoteControlParameters(
     const int& trajectory_type,
     const bool& use_changing_final_goal,
@@ -93,6 +99,8 @@ class TargetGenerator
                     drake::systems::BasicVector<double>* target) const;
   void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
+  void OutputTargetGeneratorInfo(const drake::systems::Context<double>& context,
+                      dairlib::lcmt_timestamped_saved_traj* target) const;
   void SetRandomizedTargetFinalObjectPosition() const;
   void SetRandomizedTargetFinalObjectOrientation() const;
   void CycleThroughOrientationSequence() const;
@@ -103,6 +111,7 @@ class TargetGenerator
   drake::systems::OutputPortIndex object_target_port_;
   drake::systems::OutputPortIndex object_velocity_target_port_;
   drake::systems::OutputPortIndex object_final_target_port_;
+  drake::systems::OutputPortIndex target_gen_info_port_;
 
   int trajectory_type_;
   bool use_changing_final_goal_;
@@ -135,6 +144,13 @@ class TargetGenerator
   ChangingGoalType changing_goal_type_;
 
   mutable int goal_counter_ = 1;
+  mutable int orientation_index_ = -1;
+
+  // Nominal orientations for the jack to be balanced on the ground.
+  const std::vector<Eigen::Quaterniond> valid_orientations_{
+    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
+    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN
+  };
 };
 
 }  // namespace systems

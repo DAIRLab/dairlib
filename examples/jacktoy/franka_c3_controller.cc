@@ -363,9 +363,12 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
-//   auto object_zero_velocity_source =
-//       builder.AddSystem<drake::systems::ConstantVectorSource>(
-//           VectorXd::Zero(6));
+  auto target_gen_info_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.target_generator_info_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+
   builder.Connect(control_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
   builder.Connect(control_target->get_output_port_object_target(),
@@ -374,7 +377,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
                   target_state_mux->get_input_port(2));
   builder.Connect(control_target->get_output_port_object_velocity_target(),
                   target_state_mux->get_input_port(3));
-                  
+  builder.Connect(control_target->get_output_port_target_gen_info(),
+                  target_gen_info_publisher->get_input_port());
   builder.Connect(control_target->get_output_port_end_effector_target(),
                   final_target_state_mux->get_input_port(0));
   builder.Connect(control_target->get_output_port_object_final_target(),
@@ -517,7 +521,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
           TriggerTypeSet({TriggerType::kForced})));
   auto controller_debug_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_sampling_c3_debug>(
-          lcm_channel_params.sampling_controller_debug_channel, &lcm,
+          lcm_channel_params.sampling_c3_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto is_c3_mode_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(

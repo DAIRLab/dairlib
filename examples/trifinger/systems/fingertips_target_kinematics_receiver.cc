@@ -140,30 +140,29 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
 
   // check if the obtained message from lcm input port is still old one,
   // if so, no update is performed on the discrete states.
-  if (current_msg_timestamp == previous_msg_timestamp) {
-    return drake::systems::EventStatus::Succeeded();
+  if (current_msg_timestamp != previous_msg_timestamp) {
+    if (!fingertips_target_kinematics_lcm_msg->isAbsoluteTargetPos) {
+      fingertips_target_pos += Eigen::VectorXd::Map(
+          fingertips_target_kinematics_lcm_msg->targetPos, 9);
+    } else if (previous_msg_timestamp != -1) {
+      fingertips_target_pos = Eigen::VectorXd::Map(
+          fingertips_target_kinematics_lcm_msg->targetPos, 9);
+    }
+    discrete_state->get_mutable_vector(start_time_traj_idx_)
+        .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
+    discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)
+        .set_value(cur_fingertips_pos);
+    discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
+        .set_value(cur_fingertips_vel);
+    discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
+        .set_value(fingertips_target_pos);
+    discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
+        .set_value(Eigen::VectorXd::Map(
+            fingertips_target_kinematics_lcm_msg->targetVel, 9));
+    discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
+        .set_value((Eigen::VectorXd::Ones(1) *
+                    fingertips_target_kinematics_lcm_msg->utime));
   }
-  if (!fingertips_target_kinematics_lcm_msg->isAbsoluteTargetPos) {
-    fingertips_target_pos += Eigen::VectorXd::Map(
-        fingertips_target_kinematics_lcm_msg->targetPos, 9);
-  } else if (previous_msg_timestamp != -1) {
-    fingertips_target_pos = Eigen::VectorXd::Map(
-        fingertips_target_kinematics_lcm_msg->targetPos, 9);
-  }
-  discrete_state->get_mutable_vector(start_time_traj_idx_)
-      .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
-  discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)
-      .set_value(cur_fingertips_pos);
-  discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
-      .set_value(cur_fingertips_vel);
-  discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
-      .set_value(fingertips_target_pos);
-  discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
-      .set_value(Eigen::VectorXd::Map(
-          fingertips_target_kinematics_lcm_msg->targetVel, 9));
-  discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
-      .set_value((Eigen::VectorXd::Ones(1) *
-                  fingertips_target_kinematics_lcm_msg->utime));
   return drake::systems::EventStatus::Succeeded();
 }
 

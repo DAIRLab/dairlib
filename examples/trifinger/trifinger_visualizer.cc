@@ -10,6 +10,7 @@
 #include "systems/lcm_visualization_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
@@ -160,6 +161,7 @@ int DoMain(int argc, char* argv[]) {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
+  diagram->set_name(("trifinger_visualizer"));
   auto stepper =
       std::make_unique<Simulator<double>>(*diagram, std::move(context));
   stepper->set_publish_every_time_step(false);
@@ -169,6 +171,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::log()->info("visualizer started");
 
+  DrawAndSaveDiagramGraph(*diagram);
   stepper->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;

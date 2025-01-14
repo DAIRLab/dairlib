@@ -90,7 +90,9 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
 
   // Evaluate the current positions of the fingertips.
   Eigen::VectorXd q_trifinger = trifinger_state->GetPositions();
+  Eigen::VectorXd v_trifinger = trifinger_state->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q_trifinger, context_);
+  multibody::SetVelocitiesIfNew<double>(plant_, v_trifinger, context_);
 
   auto fingertip_0_pos =
       plant_
@@ -228,11 +230,16 @@ void FingertipTargetKinematicsReceiver::CopytoLCMCurrentFingertipPositions(
     dairlib::lcmt_fingertips_position* lcm_cur_fingertips_pos) const {
   auto cur_fingertips_pos =
       context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
+  auto cur_fingertips_vel =
+      context.get_discrete_state(cur_fingertips_vel_idx_).get_value();
   lcm_cur_fingertips_pos->utime =
       static_cast<int64_t>(context.get_time() * 1e6);
 
   for (int i = 0; i < cur_fingertips_pos.size(); i++) {
     lcm_cur_fingertips_pos->curPos[i] = cur_fingertips_pos[i];
+  }
+  for (int i = 0; i < cur_fingertips_vel.size(); i++) {
+    lcm_cur_fingertips_pos->curVel[i] = cur_fingertips_vel[i];
   }
 }
 

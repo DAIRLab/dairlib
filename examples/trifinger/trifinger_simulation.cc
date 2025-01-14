@@ -108,6 +108,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
                   cube_state_pub->get_input_port());
 
   // publisher block
+  /*
   auto tri_reaction_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_densetact_measurement_data>(
       lcm_channels.densetact_channel, 
@@ -118,6 +119,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
   // Connect plant reaction to lcm
   builder.Connect(plant.get_reaction_forces_output_port(), 
     tri_reaction_pub->get_input_port());
+  */
 
 
   // Builds diagram.

@@ -15,6 +15,6 @@ def add_qpalm():
     print("Detected {} as OS for adding QPALM.".format(os))
 
     if "macos" in os:
-        qpalm_repository(platform = "Darwin")
+        qpalm_repository(platform = "Darwin", sha256 = "dd454b28d62db750bf97948a2e51e0007ae2234586786991be2e39d00393bedf")
     if "linux" in os:
         qpalm_repository(platform = "Linux")

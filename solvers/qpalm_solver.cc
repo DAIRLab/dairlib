@@ -5,7 +5,10 @@ namespace dairlib::solvers {
 using Eigen::VectorXd;
 using Eigen::Map;
 
-QPALMSolver::QPALMSolver(long n, long m) : data_(n, m){}
+
+QPALMSolver::QPALMSolver(long n, long m) : data_(n, m){
+  settings_.verbose = 0;
+}
 
 VectorXd QPALMSolver::Solve(const dairlib::solvers::QPData &qp) {
   VectorXd result = VectorXd::Zero(data_.n);
@@ -18,8 +21,11 @@ VectorXd QPALMSolver::Solve(const dairlib::solvers::QPData &qp) {
 //  QPALM_INFTY?
 void QPALMSolver::Solve(const dairlib::solvers::QPData &qp, VectorXd &x) {
   if (!init_) {
-    data_.set_Q(qp.H);
-    data_.set_A(qp.A);
+    // need to make copies to convert to the type expected by qpalm
+    qpalm::sparse_mat_t qp_H = qp.H;
+    qpalm::sparse_mat_t qp_A = qp.A;
+    data_.set_Q(qp_H);
+    data_.set_A(qp_A);
     data_.q = qp.g;
     data_.c = qp.c;
     data_.bmin = qp.lb;

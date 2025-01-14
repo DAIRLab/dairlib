@@ -36,6 +36,7 @@ struct C3Options {
 
   // See comments below for how we parse the .yaml into the cost matrices
   Eigen::MatrixXd Q;
+  Eigen::MatrixXd Qf;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
   Eigen::MatrixXd U;
@@ -46,6 +47,7 @@ struct C3Options {
   // G = w_G * diag(g_vector)
   // U = w_U * diag(u_vector)
   double w_Q;
+  double w_Qf;
   double w_R;
   double w_G;
   double w_U;
@@ -57,6 +59,7 @@ struct C3Options {
   // Trinkle contact model uses *_gamma, *_lambda_n, *_lambda_t while the
   // Anitescu model uses *_lambda.
   std::vector<double> q_vector;
+  std::vector<double> qf_vector;
   std::vector<double> r_vector;
 
   std::vector<double> g_vector;
@@ -109,10 +112,12 @@ struct C3Options {
     a->Visit(DRAKE_NVP(N));
     a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
+    a->Visit(DRAKE_NVP(w_Qf));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
     a->Visit(DRAKE_NVP(q_vector));
+    a->Visit(DRAKE_NVP(qf_vector));
     a->Visit(DRAKE_NVP(r_vector));
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
@@ -151,6 +156,8 @@ struct C3Options {
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());
+    Eigen::VectorXd qf = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->qf_vector.data(), this->qf_vector.size());
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
     Eigen::VectorXd g = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
@@ -164,6 +171,7 @@ struct C3Options {
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();
+    Qf = w_Qf * qf.asDiagonal();
     R = w_R * r.asDiagonal();
     G = w_G * g.asDiagonal();
     U = w_U * u.asDiagonal();

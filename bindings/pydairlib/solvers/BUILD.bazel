@@ -16,7 +16,6 @@ pybind_py_library(
     cc_deps = [
         "//solvers:c3",
         "@drake//:drake_shared_library",
-#        "@drake//bindings/pydrake/common:serialize_pybind"
     ],
     cc_so_name = "c3",
     cc_srcs = ["c3_py.cc"],

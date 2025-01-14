@@ -131,6 +131,9 @@ PYBIND11_MODULE(c3, m) {
          "Q", [](C3Options const& self) { return self.Q; },
          [](C3Options& self, const Eigen::MatrixXd& val) { self.Q = val; })
       .def_property(
+          "Qf", [](C3Options const& self) { return self.Qf; },
+          [](C3Options& self, const Eigen::MatrixXd& val) { self.Qf = val; })
+      .def_property(
           "R", [](C3Options const& self) { return self.R; },
           [](C3Options& self, const Eigen::MatrixXd& val) { self.R = val; })
       .def_property(

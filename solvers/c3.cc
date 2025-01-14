@@ -214,6 +214,7 @@ void C3::Solve(const VectorXd& x0) {
       lambda_constraint_for_zero_h_ = prog_.AddLinearConstraint(lambda_[0] == lambda0);
     } else {
       prog_.RemoveConstraint(lambda_constraint_for_zero_h_.value());
+      lambda_constraint_for_zero_h_ = prog_.AddLinearConstraint(lambda_[0] == lambda0);
     }
   }
   auto start = std::chrono::high_resolution_clock::now();
@@ -421,7 +422,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 void C3::AddLinearConstraint(Eigen::MatrixXd& A, VectorXd& lower_bound,
                              VectorXd& upper_bound, int constraint) {
   if (constraint == 1) {
-    for (std::size_t i = 1; i < N_; i++) {
+    for (std::size_t i = 1; i < N_ + 1; i++) {
       user_constraints_.push_back(
           prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }

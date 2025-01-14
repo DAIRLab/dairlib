@@ -3,8 +3,17 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "qpalm",
     srcs = select({
-        "@platforms//os:linux": glob(["lib/**/*.so.*"]),
-        "@platforms//os:osx": glob([
+        "@platforms//os:linux": [
+            "lib/libladel.so",
+            "lib/libladel_amd.a",
+            "lib/libqpalm.so",
+            "lib/libqpalm.so.1.2",
+            "lib/libqpalm.so.1.2.5",
+            "lib/libqpalm_cxx.so",
+            "lib/libqpalm_cxx.so.1.2",
+            "lib/libqpalm_cxx.so.1.2.5",
+        ],
+        "@platforms//os:osx": [
             "lib/libqpalm.dylib",
             "lib/libqpalm.1.2.dylib",
             "lib/libqpalm.1.2.5.dylib",
@@ -12,7 +21,7 @@ cc_library(
             "lib/libqpalm_cxx.1.2.dylib",
             "lib/libqpalm_cxx.1.2.5.dylib",
             "lib/libladel.dylib",
-        ]),
+        ],
     }),
     defines = ["LADEL_64BIT_INDICES"],
     hdrs = glob(["include/**/*.h", "include/**/*.hpp"]),

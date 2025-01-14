@@ -40,7 +40,7 @@ dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN
 curr_and_best_sample_costs_channel: CURR_AND_BEST_SAMPLE_COSTS
                                             # lcmt_timestamped_saved_traj
 is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
-sampling_controller_debug_channel: SAMPLING_CONTROLLER_DEBUG
-                                            # lcmt_sampling_controller_debug
+sampling_controller_debug_channel: SAMPLING_C3_DEBUG
+                                            # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO

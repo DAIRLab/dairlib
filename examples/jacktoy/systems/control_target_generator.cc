@@ -91,7 +91,7 @@ void TargetGenerator::SetRemoteControlParameters(
   // Create class variables for each parameter
   trajectory_type_ = trajectory_type;
   use_changing_final_goal_ = use_changing_final_goal;
-  changing_goal_type_ = static_cast<ChangingGoalType>(changing_final_goal_type);  // timestamps.cast<double>();
+  changing_goal_type_ = static_cast<ChangingGoalType>(changing_final_goal_type);
   traj_radius_ = traj_radius;
   x_c_ = x_c;
   y_c_ = y_c; 

@@ -8,7 +8,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "dairlib/lcmt_sampling_controller_debug.hpp"
+#include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
 
@@ -239,7 +239,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputDebug(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_sampling_controller_debug* debug_msg) const;
+    dairlib::lcmt_sampling_c3_debug* debug_msg) const;
 
   void OutputSampleBufferConfigurations(
     const drake::systems::Context<double>& context,
@@ -364,6 +364,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;
+  mutable int detected_goal_changes_ = -1;
 
   // For more intelligent sampling.
   mutable int num_in_buffer_ = 0;

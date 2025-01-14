@@ -516,7 +516,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
           lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto controller_debug_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_sampling_controller_debug>(
+      LcmPublisherSystem::Make<dairlib::lcmt_sampling_c3_debug>(
           lcm_channel_params.sampling_controller_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto is_c3_mode_publisher = builder.AddSystem(

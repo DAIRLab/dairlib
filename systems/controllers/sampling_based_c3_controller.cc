@@ -310,7 +310,7 @@ SamplingC3Controller::SamplingC3Controller(
   // A debug output port to publish information about the internals of the
   // sampling-based controller.
   debug_lcmt_port_ = this->DeclareAbstractOutputPort(
-    "sampling_controller_debug", dairlib::lcmt_sampling_controller_debug(),
+    "sampling_c3_debug", dairlib::lcmt_sampling_c3_debug(),
     &SamplingC3Controller::OutputDebug
   ).get_index();
 
@@ -333,10 +333,10 @@ SamplingC3Controller::SamplingC3Controller(
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_final_target_ = VectorXd::Zero(n_x_);
   best_progress_steps_ago_ = 0;
-  lowest_cost_ = std::numeric_limits<double>::infinity();
-  lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-  lowest_position_error_ = std::numeric_limits<double>::infinity();
-  lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+  lowest_cost_ = -1.0;
+  lowest_pos_and_rot_current_cost_ = -1.0;
+  lowest_position_error_ = -1.0;
+  lowest_orientation_error_ = -1.0;
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
@@ -520,16 +520,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!x_final_target_.segment(3, n_x_-3).isApprox(
         x_lcs_final_des.value().segment(3, n_x_-3), 1e-5)) {
     std::cout << "Detected goal change!" << std::endl;
-    // if (verbose_) {
+    if (verbose_) {
       std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
       std::cout << "  New goal:  " << x_lcs_final_des.value().transpose() <<
         std::endl;
       std::cout << "  --> Error:  " <<
         (x_final_target_.segment(3, n_x_-3) -
          x_lcs_final_des.value().segment(3, n_x_-3)).norm() << std::endl;
-    // }
+    }
     crossed_cost_switching_threshold_ = false;
     x_final_target_ = x_lcs_final_des.value();
+    detected_goal_changes_++;
 
     // Reset the sample buffer now that the costs have changed.
     sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
@@ -551,10 +552,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // If also in C3 mode, reset the lowest cost seen in this mode.
       if (is_doing_c3_){
-        lowest_cost_ = std::numeric_limits<double>::infinity();
-        lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-        lowest_position_error_ = std::numeric_limits<double>::infinity();
-        lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+        lowest_cost_ = -1.0;
+        lowest_pos_and_rot_current_cost_ = -1.0;
+        lowest_position_error_ = -1.0;
+        lowest_orientation_error_ = -1.0;
         best_progress_steps_ago_ = 0;
       }
     }
@@ -992,19 +993,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
       Q_pos_and_rot * pos_and_rot_error_vec;
 
-    if (all_sample_costs_[CURRENT_LOCATION_INDEX] < lowest_cost_) {
+    if ((all_sample_costs_[CURRENT_LOCATION_INDEX] < lowest_cost_) ||
+        (lowest_cost_ == -1.0)) {
       lowest_cost_ = all_sample_costs_[CURRENT_LOCATION_INDEX];
       updated_cost = true;
     }
-    if (curr_pos_and_rot_cost < lowest_pos_and_rot_current_cost_) {
+    if ((curr_pos_and_rot_cost < lowest_pos_and_rot_current_cost_) ||
+        (lowest_pos_and_rot_current_cost_ == -1.0)) {
       lowest_pos_and_rot_current_cost_ = curr_pos_and_rot_cost;
       updated_curr_pos_and_rot_cost = true;
     }
-    if (current_position_error_ < lowest_position_error_) {
+    if ((current_position_error_ < lowest_position_error_) ||
+        (lowest_position_error_ == -1.0)) {
       lowest_position_error_ = current_position_error_;
       updated_pos_or_rot = true;
     }
-    if (current_orientation_error_ < lowest_orientation_error_) {
+    if ((current_orientation_error_ < lowest_orientation_error_) ||
+        (lowest_orientation_error_ == -1.0)) {
       lowest_orientation_error_ = current_orientation_error_;
       updated_pos_or_rot = true;
     }
@@ -1042,10 +1047,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       mode_switch_reason_ = MODE_SWITCH_TO_REPOS_UNPRODUCTIVE;
       std::cout << "Repositioning after not making progress in C3" << std::endl;
 
-      lowest_cost_ = std::numeric_limits<double>::infinity();
-      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-      lowest_position_error_ = std::numeric_limits<double>::infinity();
-      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      lowest_cost_ = -1.0;
+      lowest_pos_and_rot_current_cost_ = -1.0;
+      lowest_position_error_ = -1.0;
+      lowest_orientation_error_ = -1.0;
       best_progress_steps_ago_ = -1;
     }
 
@@ -1132,8 +1137,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         (sampling_params_.use_relative_hysteresis &&
          best_additional_sample_cost >
          all_sample_costs_[CURRENT_LOCATION_INDEX] +
-         repos_to_c3_cost_fraction*
-         all_sample_costs_[CURRENT_LOCATION_INDEX])) {
+         repos_to_c3_cost_fraction*best_additional_sample_cost)) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (all_sample_costs_[CURRENT_REPOSITION_INDEX] >
@@ -1149,10 +1153,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       pursued_target_source_ = TARGET_SOURCE_NONE;
 
       // Reset the lowest cost seen in this mode.
-      lowest_cost_ = std::numeric_limits<double>::infinity();
-      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-      lowest_position_error_ = std::numeric_limits<double>::infinity();
-      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      lowest_cost_ = -1.0;
+      lowest_pos_and_rot_current_cost_ = -1.0;
+      lowest_position_error_ = -1.0;
+      lowest_orientation_error_ = -1.0;
       best_progress_steps_ago_ = 0;
     }
 
@@ -1164,10 +1168,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       pursued_target_source_ = TARGET_SOURCE_NONE;
 
       // Reset the lowest cost seen in this mode.
-      lowest_cost_ = std::numeric_limits<double>::infinity();
-      lowest_pos_and_rot_current_cost_ = std::numeric_limits<double>::infinity();
-      lowest_position_error_ = std::numeric_limits<double>::infinity();
-      lowest_orientation_error_ = std::numeric_limits<double>::infinity();
+      lowest_cost_ = -1.0;
+      lowest_pos_and_rot_current_cost_ = -1.0;
+      lowest_position_error_ = -1.0;
+      lowest_orientation_error_ = -1.0;
       best_progress_steps_ago_ = 0;
     }
   }
@@ -2001,7 +2005,7 @@ void SamplingC3Controller::OutputCurrAndBestSampleCost(
 
 void SamplingC3Controller::OutputDebug(
   const drake::systems::Context<double>& context,
-  dairlib::lcmt_sampling_controller_debug* debug_msg) const
+  dairlib::lcmt_sampling_c3_debug* debug_msg) const
 {
   debug_msg->utime = context.get_time() * 1e6;
 
@@ -2019,6 +2023,8 @@ void SamplingC3Controller::OutputDebug(
 
   debug_msg->mode_switch_reason = mode_switch_reason_;
   debug_msg->source_of_pursued_target = pursued_target_source_;
+
+  debug_msg->detected_goal_changes = detected_goal_changes_;
 
   debug_msg->best_progress_steps_ago = best_progress_steps_ago_;
   debug_msg->lowest_cost = lowest_cost_;

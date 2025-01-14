@@ -136,7 +136,6 @@ void EndEffectorTrajectoryGenerator::CalcPoseShiftingTraj(
       shifting_pose_(2) += radio_out->channel[2] * z_scale_;
     }
     VectorXd y_0 = shifting_pose_;
-    std::cout<<"shifting pose: " << shifting_pose_.transpose()<<std::endl;
 
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;

@@ -5,14 +5,16 @@ changing_final_goal_type: 1  # 0 to randomize goal, 1 to cycle through orientati
 final_goal_time_tolerance: 45 # in seconds
 
 # Thresholds for position and orientation for reaching a goal successfully.
-position_success_threshold: 0.02
-orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
+position_success_threshold: 0.05
+orientation_success_threshold: 0.4   # 0.1 rad = 5.7 degrees
 
-random_goal_x_limits: [0.35, 0.5]  #0.27, 0.5]
-random_goal_y_limits: [-0.35, 0.2]   # 0.35]
-random_goal_radius_limits: [0.3, 0.6]
+random_goal_x_limits: [0.42, 0.5]  #0.27, 0.5]
+random_goal_y_limits: [0.02, 0.25]   # 0.35]
+random_goal_radius_limits: [0.48, 0.5]
 
-resting_object_height: 0.031971466           #currently being used by the goal randomization code.
+resting_object_height: 0.031971466           # currently being used by the goal randomization code.
+
+prevent_three_topples_for_random_goal_gen: false
 
 # Adaptive circular path parameters
 traj_radius: 0.2
@@ -24,7 +26,7 @@ lead_angle: 40
 
 
 # #### C3 sanity checking good starting configurations ####
-fixed_target_position: [0.4, 0.2, 0.031971466]    # 0) for orientation cycling
+fixed_target_position: [0.45, 0.2, 0.031971466]    # 0) for orientation cycling
 fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
                            -0.3647051996310009, -0.11591689595929514]
 

@@ -66,6 +66,7 @@ class TargetGenerator
     const int& trajectory_type,
     const bool& use_changing_final_goal,
     const int& changing_final_goal_type,
+    const bool& prevent_three_topples_for_random_goal_gen,
     const double& traj_radius,
     const double& x_c,
     const double& y_c,
@@ -105,6 +106,8 @@ class TargetGenerator
   void SetRandomizedTargetFinalObjectOrientation() const;
   void CycleThroughOrientationSequence() const;
 
+  bool three_topples_required(const int new_orientation_index) const;
+
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
@@ -115,6 +118,7 @@ class TargetGenerator
 
   int trajectory_type_;
   bool use_changing_final_goal_;
+  bool prevent_three_topples_;
   double traj_radius_;
   double x_c_;
   double y_c_;

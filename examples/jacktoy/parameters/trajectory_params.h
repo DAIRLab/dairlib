@@ -8,6 +8,7 @@ struct SamplingC3TrajectoryParams {
   int trajectory_type;
   bool use_changing_final_goal;
   int changing_final_goal_type;
+  bool prevent_three_topples_for_random_goal_gen;
   double final_goal_time_tolerance;
   double traj_radius;
   double x_c;
@@ -38,6 +39,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(trajectory_type));
     a->Visit(DRAKE_NVP(use_changing_final_goal));
     a->Visit(DRAKE_NVP(changing_final_goal_type));
+    a->Visit(DRAKE_NVP(prevent_three_topples_for_random_goal_gen));
     a->Visit(DRAKE_NVP(final_goal_time_tolerance));
     a->Visit(DRAKE_NVP(traj_radius));
     a->Visit(DRAKE_NVP(x_c));

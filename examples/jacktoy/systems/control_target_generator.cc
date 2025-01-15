@@ -80,6 +80,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type,
     const bool& use_changing_final_goal,
     const int& changing_final_goal_type,
+    const bool& prevent_three_topples_for_random_goal_gen,
     const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle,
     const Eigen::VectorXd& target_object_position,
@@ -105,6 +106,7 @@ void TargetGenerator::SetRemoteControlParameters(
   trajectory_type_ = trajectory_type;
   use_changing_final_goal_ = use_changing_final_goal;
   changing_goal_type_ = static_cast<ChangingGoalType>(changing_final_goal_type);
+  prevent_three_topples_ = prevent_three_topples_for_random_goal_gen;
   traj_radius_ = traj_radius;
   x_c_ = x_c;
   y_c_ = y_c; 
@@ -434,11 +436,48 @@ void TargetGenerator::SetRandomizedTargetFinalObjectPosition() const {
   target_final_object_position_ << x, y, resting_object_height_;
 }
 
+
+// Helper function to check if three topples are required.
+bool TargetGenerator::three_topples_required(const int new_orientation_index)
+  const {
+  switch (orientation_index_) {
+    case 0:
+      if (new_orientation_index == 3) {return true;} else {return false;}
+    case 1:
+      if (new_orientation_index == 6) {return true;} else {return false;}
+    case 2:
+      if (new_orientation_index == 5) {return true;} else {return false;}
+    case 3:
+      if (new_orientation_index == 0) {return true;} else {return false;}
+    case 4:
+      if (new_orientation_index == 7) {return true;} else {return false;}
+    case 5:
+      if (new_orientation_index == 2) {return true;} else {return false;}
+    case 6:
+      if (new_orientation_index == 1) {return true;} else {return false;}
+    case 7:
+      if (new_orientation_index == 4) {return true;} else {return false;}
+    default:
+      return false;
+  }
+}
+
 void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<int> dis(0, valid_orientations_.size()-1);
   int random_index = dis(gen);
+
+  if (prevent_three_topples_) {
+    while (three_topples_required(random_index)) {
+      std::cout << "Rejected orientation: " << random_index <<
+        " is 3 topples from " << orientation_index_ << std::endl;
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<int> dis(0, valid_orientations_.size()-1);
+      random_index = dis(gen);
+    }
+  }
 
   Eigen::Quaterniond quat_nominal = valid_orientations_.at(random_index);
 

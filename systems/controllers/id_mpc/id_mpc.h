@@ -60,8 +60,14 @@ class IDMPC {
   double EvaluateConstraintViolation(const Eigen::VectorXd& x) const;
   double EvaluateCost(const Eigen::VectorXd& x) const;
 
+  const ConstrainedDynamicsInfo& dynamics() const {
+    return *dynamics_;
+  }
+
  private:
 
+  // TODO (@Brian-Acosta) Methods for setting and updating costs,
+  //  Methods for creating and updating contact and friction cone constraints
   void MakeKnotPoints();
   void MakeCollocationConstraints();
   void MakeKinematicConstraints();

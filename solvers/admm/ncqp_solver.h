@@ -57,7 +57,6 @@ class NCQPSolver {
       feasibility_constraints) const;
 
  private:
-  void DualUpdate();
   bool CheckConvergence();
 
   ADMMParams params_;

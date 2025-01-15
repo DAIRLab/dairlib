@@ -82,6 +82,7 @@ class FingertipTargetKinematicsReceiver
   drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
   drake::systems::DiscreteStateIndex cur_fingertips_pos_idx_;
   drake::systems::DiscreteStateIndex cur_fingertips_vel_idx_;
+  drake::systems::DiscreteStateIndex cur_fingertips_quat_idx_;
 
   std::string fingertip_0_name_;
   std::string fingertip_120_name_;

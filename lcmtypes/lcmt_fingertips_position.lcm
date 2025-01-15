@@ -3,6 +3,10 @@ package dairlib;
 struct lcmt_fingertips_position
 {
   int64_t utime;
+  // Position of center of fingertip in world frame
   double curPos [9];
+  // Velocity of center of fingertip in world frame
   double curVel [9];
+  // Orientation of fingertip / densetact frame in world frame (WXYZ x 3)
+  double curQuat [12];
 }

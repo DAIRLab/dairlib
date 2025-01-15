@@ -5,7 +5,7 @@
 # 3 means a fixed sample location. Currently allows for 3 fixed sample.
 control_loop_delay_ms: 0
 sampling_strategy: 2
-filter_samples_for_safety: false
+filter_samples_for_safety: true
 
 # This is the fixed sample location for sampling strategy 3.
 fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
@@ -72,9 +72,12 @@ track_c3_progress_via: 1  # 0: C3 cost,
                           # 1: current position and orientation cost,
                           # 2: position and orientation error
 
-####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead for the trajectory type i.e. trajectory_type in the trajectory_params.yaml, 
-####### the lookahead step size (i.e.lookahead_step_size in trajectory_params.yaml) needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
-####### sampling_params.
+####### WARNING!! Make sure that if we want to do orientation tracking and use a
+####### lookahead for the trajectory type i.e. trajectory_type in the
+####### trajectory_params.yaml,
+####### the lookahead step size (i.e.lookahead_step_size in
+####### trajectory_params.yaml) needs to be bigger than the orientation tracking
+####### threshold, i.e. cost_switching_threshold_distance in sampling_params.
 cost_switching_threshold_distance: 0.14
 # Cost associated with traveling.
 travel_cost_per_meter: 0

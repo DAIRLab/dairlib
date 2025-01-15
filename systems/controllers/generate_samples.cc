@@ -95,12 +95,15 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 // Helper function to check sample validity.
 bool is_sample_within_workspace(const Eigen::VectorXd& candidate_state,
   const C3Options c3_options){
+  double candidate_radius = sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
   if(candidate_state[0] < c3_options.world_x_limits[0] ||
               candidate_state[0] > c3_options.world_x_limits[1] ||
               candidate_state[1] < c3_options.world_y_limits[0] ||
               candidate_state[1] > c3_options.world_y_limits[1] ||
               candidate_state[2] < c3_options.world_z_limits[0] ||
-              candidate_state[2] > c3_options.world_z_limits[1]){
+              candidate_state[2] > c3_options.world_z_limits[1] ||
+              candidate_radius > c3_options.robot_radius_limits[1] ||
+              candidate_radius < c3_options.robot_radius_limits[0]) {
     return false;
   }
   return true;

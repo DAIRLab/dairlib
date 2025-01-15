@@ -26,11 +26,13 @@
       <inertia ixx="4.166666666666667e-06" ixy="0" ixz="0" iyy="4.166666666666667e-06" iyz="0" izz="4.166666666666667e-06"/>
     </inertial>
   </link>
+
   <joint name="base_to_trifinger_base_joint" type="fixed">
     <parent link="base_link"/>
     <child link="trifinger_base_link"/>
     <origin rpy="0 0 -1.5707963267948966" xyz="0 0 0.282"/>
   </joint>
+
   <material name="fingeredu_0_material">
     <color rgba="0.6 0.0 0.0 1.0"/>
   </material>
@@ -38,11 +40,10 @@
     <color rgba="0.0 0.6 0.0 1.0"/>
   </material>
   <material name="fingeredu_240_material">
-    <color rgba="0.0 0.0 0.6 1.0"/>
+    <color rgba="0 0.0 0.6 1.0"/>
   </material>
-  <!--
-        Fixed links for the finger base (parts where the upper link is mounted).
-        -->
+
+
   <link name="finger_base_link_0">
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
@@ -61,19 +62,6 @@
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
-      </geometry>
-      <material name="fingeredu_0_material"/>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
-      <geometry>
-        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>

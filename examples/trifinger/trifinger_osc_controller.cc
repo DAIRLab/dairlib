@@ -92,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  // create lcm systems.
+  // create lcm systems.fingertip_0_name
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
@@ -139,6 +139,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           lcm_channel_params.osc_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+
   auto fingertip_0_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_0_target", controller_params.Kp_fingertip_0,
@@ -146,6 +147,7 @@ int DoMain(int argc, char* argv[]) {
           plant, plant);
   fingertip_0_position_tracking_data->AddPointToTrack(
       controller_params.fingertip_0_name);
+
   auto fingertip_120_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_120_target", controller_params.Kp_fingertip_120,
@@ -153,6 +155,7 @@ int DoMain(int argc, char* argv[]) {
           plant, plant);
   fingertip_120_position_tracking_data->AddPointToTrack(
       controller_params.fingertip_120_name);
+
   auto fingertip_240_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_240_target", controller_params.Kp_fingertip_240,
@@ -247,4 +250,4 @@ int DoMain(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {  return dairlib::DoMain(argc, argv); }

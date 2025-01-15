@@ -90,7 +90,8 @@ int DoMain(int argc, char* argv[]) {
               {drake::systems::TriggerType::kForced})));
   auto impedance_controller =
       builder.AddSystem<systems::TrifingerImpedanceControl>(
-          plant, plant_context.get(), controller_params.fingertip_0_name,
+          plant, plant_context.get(), 
+          controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
           controller_params.fingertip_240_name,
           controller_params.Kp_fingertip_0, controller_params.Kd_fingertip_0,

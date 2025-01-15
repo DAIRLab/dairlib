@@ -7,7 +7,7 @@
 #include "core/timeline.h"
 #include "core/quaternion_norm_constraint.h"
 
-#include "costs/nonlinear_least_squares_cost.h"
+#include "costs/reference_manager.h"
 
 #include "solvers/qp_data.h"
 
@@ -45,8 +45,6 @@ class IDMPC {
     return timeline_.knots.at(index)->get_lambda(knot_vars(index));
   }
 
-  void AddUnitQuaternionConstraintToAllFloatingBodies();
-
   LcmTrajectory GetSolutionAsLcmTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const;
 
@@ -69,17 +67,20 @@ class IDMPC {
   // TODO (@Brian-Acosta) Methods for setting and updating costs,
   //  Methods for creating and updating contact and friction cone constraints
   void MakeKnotPoints();
-  void MakeCollocationConstraints();
   void MakeKinematicConstraints();
+  void MakeCollocationConstraints();
+  void MakeUnitQuaternionConstraints();
+
+
   void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
-
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::Cost>> costs_;
+
+  ReferenceManager<double> reference_manager_;
 
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
   drake::solvers::MathematicalProgram prog_;

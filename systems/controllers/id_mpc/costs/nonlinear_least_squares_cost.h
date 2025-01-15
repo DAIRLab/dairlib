@@ -12,7 +12,7 @@ namespace dairlib::systems::controllers::id_mpc {
 struct GaussNewtonApproximation {
     Eigen::MatrixXd H; // Gauss Newton Hessian
     Eigen::MatrixXd g; // gradient
-    double c;          // constant
+    double c;          // constants
 };
 
 
@@ -23,7 +23,7 @@ struct GaussNewtonApproximation {
 template <typename T>
  class NonlinearLeastSquaresCost : public drake::solvers::Cost{
  public:
-  NonlinearLeastSquaresCost(int num_vars, const Eigen::MatrixXd& Q,
+  NonlinearLeastSquaresCost(int num_vars, int num_y, const Eigen::MatrixXd& Q,
                             const std::string& description="", double eps=1e-8);
 
    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -45,6 +45,8 @@ template <typename T>
   void EvaluateCost(const Eigen::Ref<const drake::VectorX<T>>& x,
                     drake::VectorX<T>* y) const;
 
+  virtual void UpdateReference(const Eigen::VectorXd& y) = 0;
+
   virtual GaussNewtonApproximation CalcGaussNewtonApproximation(
       const Eigen::Ref<const Eigen::VectorXd>& x) const;
 
@@ -54,8 +56,15 @@ template <typename T>
     Q_ = Q;
   }
 
+  void MultiplyByScalar(double s) {
+    Q_ *= s;
+  }
+
+  int dim_y() const { return ny_;}
+
  protected:
   Eigen::MatrixXd Q_;
+  int ny_;
 
  private:
   double eps_;

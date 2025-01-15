@@ -31,12 +31,14 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeKnotPoints();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-  AddUnitQuaternionConstraintToAllFloatingBodies();
+  MakeUnitQuaternionConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
       VectorXd::Zero(dynamics_->nx()),
       knot_point_vars_.front().head(dynamics_->nx())).evaluator().get();
+
+  reference_manager_ = ReferenceManager<double>(params_.N, params_.dt);
 }
 
 void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
@@ -50,7 +52,7 @@ void IDMPC::UpdateActiveContacts(
   timeline_.knot_states.at(knot_index).UpdateActiveContacts(contacts);
 }
 
-void IDMPC::AddUnitQuaternionConstraintToAllFloatingBodies() {
+void IDMPC::MakeUnitQuaternionConstraints() {
   unit_quat_ = std::make_shared<QuaternionNormConstraint<AutoDiffXd>>();
 
   for (auto index: dynamics_->get_plant().GetFloatingBaseBodies()) {
@@ -159,14 +161,10 @@ void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
       cost_data = dynamic_cast<NonlinearLeastSquaresCost<double>*>(
           binding.evaluator().get()
       )->CalcGaussNewtonApproximation(xval);
-    } else if (dynamic_cast<drake::solvers::QuadraticCost*>(binding.evaluator().get())) {
-      const auto evaluator = dynamic_cast<drake::solvers::QuadraticCost*>(
-          binding.evaluator().get());
-      cost_data.H = evaluator->Q();
-      cost_data.g = evaluator->b();
-      cost_data.c = evaluator->c();
     } else {
-      throw std::runtime_error("Unsupported cost type has been added to IDMPC");
+      throw std::runtime_error("IDMPC only supports NonlinearLeastSquares costs "
+                               "To ensure that the SQP gauss newton "
+                               "approximation is properly implemented");
     }
     AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
                         cost_triplets, qp.g, &qp.c);

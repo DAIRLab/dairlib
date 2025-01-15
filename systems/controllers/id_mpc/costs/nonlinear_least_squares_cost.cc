@@ -17,10 +17,11 @@ using Eigen::VectorXd;
 
 template <typename T>
 NonlinearLeastSquaresCost<T>::NonlinearLeastSquaresCost(
-    int num_vars, const Eigen::MatrixXd &Q, const std::string &description,
-    double eps) : Cost(num_vars, description), Q_(Q), eps_(eps)  {
+    int num_vars, int num_y, const Eigen::MatrixXd &Q, const std::string &description,
+    double eps) : Cost(num_vars, description), Q_(Q), ny_(num_y), eps_(eps)  {
   DRAKE_DEMAND(eps_ > 0);
   DRAKE_DEMAND(Q_.cols() == Q_.rows());
+  DRAKE_DEMAND(Q_.rows() == ny_);
 }
 
 template <>

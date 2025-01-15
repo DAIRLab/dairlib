@@ -18,7 +18,7 @@ class QuadraticErrorCost : public NonlinearLeastSquaresCost<T> {
   GaussNewtonApproximation CalcGaussNewtonApproximation(
       const Eigen::Ref<const Eigen::VectorXd>& x) const override;
 
-  void UpdateReference(const Eigen::VectorXd& x) {
+  void UpdateReference(const Eigen::VectorXd& x) override {
     DRAKE_ASSERT(x.rows() == x_ref_.rows());
     x_ref_ = x;
   }

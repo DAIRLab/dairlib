@@ -11,7 +11,7 @@ using Eigen::MatrixXd;
 template <typename T>
 QuadraticErrorCost<T>::QuadraticErrorCost(const MatrixXd& Q, const VectorXd& x,
                                           const std::string& description) :
-    NonlinearLeastSquaresCost<T>(x.rows(), Q, description), x_ref_(x) {
+    NonlinearLeastSquaresCost<T>(x.rows(), x.rows(), Q, description), x_ref_(x) {
   DRAKE_DEMAND(x_ref_.rows() == Q.rows());
 }
 

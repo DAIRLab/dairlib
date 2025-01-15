@@ -14,15 +14,15 @@ struct QPData {
   long int num_ineq{0};
 
   // These need to have long as the storage index for qpalm compatibility
-  Eigen::SparseMatrix<double> H;    // Cost Hessian
-  Eigen::SparseMatrix<double> A;    // Linear constraint A
-  Eigen::SparseMatrix<double> A_eq; // Linear equality constraint A
+  Eigen::SparseMatrix<double> H{};    // Cost Hessian
+  Eigen::SparseMatrix<double> A{};    // Linear constraint A
+  Eigen::SparseMatrix<double> A_eq{}; // Linear equality constraint A
 
-  Eigen::VectorXd g;                // Cost gradient
-  Eigen::VectorXd lb;               // linear constraint lb
-  Eigen::VectorXd ub;               // linear constraint ub
-  Eigen::VectorXd b_eq;             // linear equality constraint
-  double c;                         // cost constant term
+  Eigen::VectorXd g = Eigen::VectorXd::Zero(0);    // Cost gradient
+  Eigen::VectorXd lb = Eigen::VectorXd::Zero(0);   // linear constraint lb
+  Eigen::VectorXd ub = Eigen::VectorXd::Zero(0);   // linear constraint ub
+  Eigen::VectorXd b_eq = Eigen::VectorXd::Zero(0); // linear equality constraint
+  double c = 0;                         // cost constant term
 
   void ToMathematicalProgram(drake::solvers::MathematicalProgram& empty_prog) const;
   bool ValidateDimensions() const;

@@ -920,10 +920,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::distance(std::begin(all_sample_costs_), it));
     Vector3d best_new_ee_sample = all_sample_locations_[lowest_new_cost_index];
 
+    // Initialize the buffer plan with something.
+    if (dynamically_feasible_buffer_plan_.size() != N_+1) {
+      c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
+      dynamically_feasible_buffer_plan_ =
+        all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
+    }
     // If the best in the buffer is from the current set of samples, store the
     // associated C3 object and dynamically feasible plan, but don't add to the
     // set of samples to consider for repositioning.
-    if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
+    else if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
         ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
       dynamically_feasible_buffer_plan_ =

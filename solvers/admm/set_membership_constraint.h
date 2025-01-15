@@ -23,7 +23,7 @@ class SetMembershipConstraint : public NonlinearConstraint<double> {
 
   virtual void ProjectToFeasibleSet(
       const Eigen::Ref<const drake::VectorX<double>>& x,
-      drake::VectorX<double>* y);
+      drake::VectorX<double>* y) const = 0;
 
 };
 

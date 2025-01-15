@@ -1,4 +1,5 @@
 #include "ncqp_solver.h"
+#include "set_membership_constraint.h"
 
 namespace dairlib::solvers {
 
@@ -28,7 +29,7 @@ NCQPSolution NCQPSolver::Solve(
   // Add the Augmented lagrangian cost
   QPData primal_step_qp = original_qp;
   for (int i = 0; i < primal_step_qp.num_vars; ++i) {
-    primal_step_qp.H.coeffRef(i,i) += params_.rho;
+    primal_step_qp.H.coeffRef(i, i) += params_.rho;
   }
 
   // ADMM Iterations
@@ -39,16 +40,36 @@ NCQPSolution NCQPSolver::Solve(
     sol.x = qp_solver_.Solve(primal_step_qp);
 
     // Slack update - project to the feasible set
+    VectorXd d = sol.x + sol.w;
     for (const auto& binding: constraints) {
+      // TODO (@Brian-Acosta) make sure there are no repeated variables here
       const auto& variables = binding.variables();
       const auto& indices = qp.FindDecisionVariableIndices(variables);
+      VectorXd y = VectorXd::Zero(variables.size());
 
+      for (int i = 0; i < variables.size(); ++i) {
+        y(i) = d(indices[i]);
+      }
 
+      VectorXd y_proj = VectorXd::Zero(y.rows());
+      auto evaluator = dynamic_cast<SetMembershipConstraint*>(
+          binding.evaluator().get());
+      DRAKE_DEMAND(evaluator != nullptr);
+      evaluator->ProjectToFeasibleSet(y, &y_proj);
+
+      for (int i = 0; i < variables.size(); ++i) {
+        d(indices[i]) = y_proj(i);
+      }
     }
+    sol.z = d;
 
+    // dual update
+    sol.w += sol.x - sol.z;
   }
 
+  // TODO (@Brian-Acosta) check termination conditions
 
+  return sol;
 }
 
 

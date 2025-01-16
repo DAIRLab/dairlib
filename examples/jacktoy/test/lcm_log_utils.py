@@ -19,13 +19,11 @@ from matplotlib.patches import Patch
 import numpy as np
 import yaml
 
-from pydrake.common.eigen_geometry import Quaternion
-
 import dairlib
 
 
 # Add to this dictionary to include more LCM channels from which to read.
-CHANNELS_AND_LCMT = {
+ALL_CHANNELS_AND_LCMT = {
     'C3_ACTUAL': dairlib.lcmt_c3_state,
     'C3_FINAL_TARGET': dairlib.lcmt_c3_state,
     'SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
@@ -33,8 +31,17 @@ CHANNELS_AND_LCMT = {
     'SAMPLE_COSTS': dairlib.lcmt_timestamped_saved_traj,
     'C3_TRAJECTORY_ACTOR_CURR_PLAN': dairlib.lcmt_timestamped_saved_traj,
     'C3_TRAJECTORY_ACTOR_BEST_PLAN': dairlib.lcmt_timestamped_saved_traj,
-    'SAMPLING_CONTROLLER_DEBUG': dairlib.lcmt_sampling_controller_debug,
+    'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
+    'SAMPLING_C3_RADIO': dairlib.lcmt_radio_out,
+    'FRANKA_STATE': dairlib.lcmt_robot_output,
 }
+MINIMAL_CHANNELS_AND_LCMT = {
+    'SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
+    'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
+}
+CHANNELS_AND_LCMT_TO_SYNC = {key: val for key, val in \
+                             ALL_CHANNELS_AND_LCMT.items() if \
+                             key not in ['SAMPLING_C3_RADIO', 'FRANKA_STATE']}
 TIME_KEY = 'seconds'
 MESSAGE_KEY = 'message'
 
@@ -50,11 +57,11 @@ PURSUED_TARGET_LABELS = [NO_TARGET_LABEL,
 
 # Labels for the reason behind switching modes.
 NO_SWITCH_LABEL = 'N/A'
-TO_C3_LOWER_COST_SWITCH_LABEL = 'Repos->C3 due to lower cost'
-TO_C3_REACHED_TARGET_SWITCH_LABEL = 'Repos->C3 because reached target'
-TO_REPOS_LOWER_COST_SWITCH_LABEL = 'C3->Repos due to lower cost'
-TO_REPOS_UNPRODUCTIVE_SWITCH_LABEL = 'C3->Repos due to unproductivity'
-TO_C3_XBOX_FORCED_SWITCH_LABEL = 'Repos->C3 due to Xbox'
+TO_C3_LOWER_COST_SWITCH_LABEL = 'Switch to Contact-Rich:  lower cost'
+TO_C3_REACHED_TARGET_SWITCH_LABEL = 'Switch to Contact-Rich:  reached target'
+TO_REPOS_LOWER_COST_SWITCH_LABEL = 'Switch to Contact-Free:  lower cost'
+TO_REPOS_UNPRODUCTIVE_SWITCH_LABEL = 'Switch to Contact-Free:  unproductivity'
+TO_C3_XBOX_FORCED_SWITCH_LABEL = 'Switch to Contact-Rich:  Xbox'
 MODE_SWITCH_LABELS = [NO_SWITCH_LABEL,
                       TO_C3_LOWER_COST_SWITCH_LABEL,
                       TO_C3_REACHED_TARGET_SWITCH_LABEL,
@@ -62,6 +69,8 @@ MODE_SWITCH_LABELS = [NO_SWITCH_LABEL,
                       TO_REPOS_UNPRODUCTIVE_SWITCH_LABEL,
                       TO_C3_XBOX_FORCED_SWITCH_LABEL]
 MODE_SWITCH_COLORS = ['black', 'red', 'orange', 'green', 'blue', 'purple']
+POS_ERROR_COLOR = 'black'
+RAD_ERROR_COLOR = 'purple'
 
 # Other success thresholds.
 POS_SUCCESS_THRESHOLDS = np.array([0.01, 0.02, 0.03, 0.04, 0.05])
@@ -70,11 +79,15 @@ THRESHOLD_COLORS = ['black', 'red', 'darkorange', 'gold', 'green']
 
 EPS = 1e-5
 
+TIME_SYNCH_THRESH = 0.03
+
+global_is_interactive = False
+
 
 
 def get_messages_from_log(log_file_path: str, start_time: float = 0.0,
                           end_time: float = 1e12,
-                          channels_and_lcmt: dict = CHANNELS_AND_LCMT,
+                          channels_and_lcmt: dict = ALL_CHANNELS_AND_LCMT,
                           verbose: bool = True):
     start_utime = int(start_time*1e6)
     end_utime = int(end_time*1e6)
@@ -119,34 +132,120 @@ def get_messages_from_log(log_file_path: str, start_time: float = 0.0,
 
     return messages_by_channel
 
-# TODO:  This does a very naive thing but should really get addressed better.
-def ensure_same_number_messages(messages_by_channel: dict,
-                                channels_and_lcmt: dict = CHANNELS_AND_LCMT):
+def synchronize_messages(
+        messages_by_channel: dict,
+        channels_and_lcmt_to_sync: dict = CHANNELS_AND_LCMT_TO_SYNC,
+        synchronize_to_channel: str = 'SAMPLING_C3_DEBUG',
+        log_folder: str = None,
+        remove_initial_teleop: bool = True):
+    # First remove the initial teleop messages if desired.
+    if remove_initial_teleop:
+        ts = messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY]
+        msgs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
+        first_auto_idx = [msg.is_teleop for msg in msgs].index(False)
+
+        messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY] = \
+            ts[first_auto_idx:]
+        messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
+            msgs[first_auto_idx:]
+        print(f'Removed initial teleop:  first {first_auto_idx} messages.')
+
+    # Otherwise trim the first message off every channel since the first
+    # timestamp can be off by many seconds.
+    else:
+        for channel in channels_and_lcmt_to_sync.keys():
+            messages_by_channel[channel][TIME_KEY] = \
+                messages_by_channel[channel][TIME_KEY][1:]
+            messages_by_channel[channel][MESSAGE_KEY] = \
+                messages_by_channel[channel][MESSAGE_KEY][1:]
+
+    # Detect which channel had the fewest messages.
     min_num_channels = np.inf
-    for channel in channels_and_lcmt.keys():
+    max_num_channels = 0
+    min_channel = None
+    max_channel = None
+    for channel in channels_and_lcmt_to_sync.keys():
         if len(messages_by_channel[channel][TIME_KEY]) < min_num_channels:
             min_num_channels = len(messages_by_channel[channel][TIME_KEY])
+            min_channel = channel
+        if len(messages_by_channel[channel][TIME_KEY]) > max_num_channels:
+            max_num_channels = len(messages_by_channel[channel][TIME_KEY])
+            max_channel = channel
+    print(f'{min_channel} had fewest messages at {min_num_channels}')
+    print(f'{max_channel} had most messages at {max_num_channels}')
+    print(f'Synchronizing...', end=' ', flush=True)
 
-    for channel in channels_and_lcmt.keys():
-        if len(messages_by_channel[channel][TIME_KEY]) > min_num_channels:
-            print(f'Trimming {channel} messages from ' + \
-                  f'{len(messages_by_channel[channel][TIME_KEY])} to ' + \
-                    f'{min_num_channels}')
-            messages_by_channel[channel][TIME_KEY] = \
-                messages_by_channel[channel][TIME_KEY][:min_num_channels]
-            messages_by_channel[channel][MESSAGE_KEY] = \
-                messages_by_channel[channel][MESSAGE_KEY][:min_num_channels]
-    print('')
+    _fig, axs = plt.subplots(2, 2, figsize=(12, 9), sharex=True,
+                            gridspec_kw={'height_ratios': [2, 1]})
+    axs[0,0].sharey(axs[0,1])
+    for channel in channels_and_lcmt_to_sync.keys():
+        axs[0,0].plot(messages_by_channel[channel][TIME_KEY], marker='o',
+                 label=channel)
+    axs[0,0].set_title('All messages')
+    axs[0,0].set_xlabel('Index')
+    axs[0,0].set_ylabel('Time (s)')
+    axs[0,0].legend()
 
-def angular_difference_from_quats(q1: np.ndarray, q2: np.ndarray) -> float:
-    assert q1.shape == q2.shape == (4,), f'q1: {q1.shape}, q2: {q2.shape}'
-    q1 = q1 / np.linalg.norm(q1)
-    q2 = q2 / np.linalg.norm(q2)
-    quat1 = Quaternion(q1.reshape(4,1))
-    quat2 = Quaternion(q2.reshape(4,1))
+    axs[1,0].plot(
+        np.array(messages_by_channel[min_channel][TIME_KEY]) - \
+        np.array(messages_by_channel[max_channel][TIME_KEY][:min_num_channels]))
+    axs[1,0].set_title(f'Time difference {min_channel} to {max_channel}')
+    axs[1,0].set_xlabel('Index')
+    axs[1,0].set_ylabel('Time difference (s)')
 
-    quat_diff = quat1.inverse().multiply(quat2)
-    return 2*np.arccos(quat_diff.w()) % np.pi
+    # Detect timestamps that are shared between all channels.
+    ts = messages_by_channel[synchronize_to_channel][TIME_KEY]
+    problem_ts = []
+    channel_problem_ts = []
+    for channel in channels_and_lcmt_to_sync.keys():
+        if channel == synchronize_to_channel:
+            continue
+        channel_ts = np.array(messages_by_channel[channel][TIME_KEY])
+        for t in ts:
+            delta = np.min(np.abs(channel_ts - t))
+            if delta > TIME_SYNCH_THRESH and t not in problem_ts:
+                problem_ts.append(t)
+                channel_problem_ts.append(channel)
+    for problem_t in problem_ts:
+        ts.remove(problem_t)
+
+    # Do some time synchronization to the minimum set of messages.
+    for channel in channels_and_lcmt_to_sync.keys():
+        new_times = []
+        new_msgs = []
+        channel_ts = np.array(messages_by_channel[channel][TIME_KEY])
+
+        for t in ts:
+            i = np.argmin(np.abs(channel_ts - t))
+            new_times.append(messages_by_channel[channel][TIME_KEY][i])
+            new_msgs.append(messages_by_channel[channel][MESSAGE_KEY][i])
+
+        messages_by_channel[channel][TIME_KEY] = new_times
+        messages_by_channel[channel][MESSAGE_KEY] = new_msgs
+
+    print(f'Done.')
+
+    for channel in channels_and_lcmt_to_sync.keys():
+        axs[0,1].plot(messages_by_channel[channel][TIME_KEY], marker='o',
+                 label=channel)
+    axs[0,1].set_title('Synchronized messages')
+    axs[0,1].set_xlabel('Index')
+    axs[0,1].legend()
+
+    axs[1,1].plot(
+        np.array(messages_by_channel[min_channel][TIME_KEY]) - \
+        np.array(messages_by_channel[max_channel][TIME_KEY]))
+    axs[1,1].set_xlabel('Index')
+    axs[1,1].set_ylabel('Time difference (s)')
+
+    plt.savefig('examples/jacktoy/test/tmp/time_synch.png')
+    print(f'Wrote plot to examples/jacktoy/test/tmp/time_synch.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, 'time_synch.png'))
+        print(f'Wrote plot to {op.join(log_folder, "time_synch.png")}')
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
 
 def get_shading_masks(bool_array):
     bool_array = bool_array.squeeze()
@@ -161,34 +260,29 @@ def get_shading_masks(bool_array):
 
     return yes_shading_mask, no_shading_mask
 
-def visualize_sample_buffer(messages_by_channel: dict):
+def visualize_sample_buffer(messages_by_channel: dict, log_folder: str = None):
     # First start with just a simple matplotlib plot of the buffer contents.
     sample_buffers = messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
     states = messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
-    goal_states = messages_by_channel['C3_FINAL_TARGET'][MESSAGE_KEY]
+    debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
 
     times = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
 
     n_in_buffers = []
     quats, xyzs, ee_xyzs = [], [], []
-    goal_quats, goal_xyzs = [], []
     # Store orientation error in full rotation units for easier viewing on same
     # axis as meter distance error.
     pos_errors, full_rotation_errors = [], []
-    for buffer, state, goal in zip(sample_buffers, states, goal_states):
+    for buffer, state, debug in zip(sample_buffers, states, debugs):
         n_in_buffers.append(buffer.num_in_buffer)
         quats.append(state.state[3:7])
         xyzs.append(state.state[7:10])
         ee_xyzs.append(state.state[:3])
-        goal_quats.append(goal.state[3:7])
-        goal_xyzs.append(goal.state[7:10])
 
-        pos_errors.append(np.linalg.norm(
-            np.array(xyzs[-1]) - np.array(goal_xyzs[-1])))
-        full_rotation_errors.append(angular_difference_from_quats(
-            np.array(quats[-1]), np.array(goal_quats[-1])) / (2*np.pi))
+        pos_errors.append(debug.current_pos_error)
+        full_rotation_errors.append(debug.current_rot_error / (2*np.pi))
 
-    fig, axs = plt.subplots(2, 1, figsize=(6, 9), sharex=True)
+    _fig, axs = plt.subplots(2, 1, figsize=(6, 9), sharex=True)
     axs[0].plot(times, n_in_buffers)
     axs[0].set_xlabel('Time (s)')
     axs[0].set_ylabel('Number of samples')
@@ -197,13 +291,18 @@ def visualize_sample_buffer(messages_by_channel: dict):
     axs[1].plot(times, full_rotation_errors, label='Rotation error')
     axs[1].set_xlabel('Time (s)')
     axs[1].set_ylabel('Error [m or full rotation]')
-    axs[1].set_ylim([0, 1.05])
     axs[1].set_title('Error between current and goal states')
     plt.legend()
     plt.savefig('examples/jacktoy/test/tmp/sample_buffer.png')
     print(f'Wrote plot to examples/jacktoy/test/tmp/sample_buffer.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, 'sample_buffer.png'))
+        print(f'Wrote plot to {op.join(log_folder, "sample_buffer.png")}')
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
 
-def inspect_mode_switching(messages_by_channel: dict):
+def inspect_mode_switching(messages_by_channel: dict, log_folder: str = None):
     # Get relevant messages over time.
     sample_buffers = messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
     sample_locations = messages_by_channel['SAMPLE_LOCATIONS'][MESSAGE_KEY]
@@ -214,7 +313,7 @@ def inspect_mode_switching(messages_by_channel: dict):
         MESSAGE_KEY]
     c3_actor_plan_bests = messages_by_channel['C3_TRAJECTORY_ACTOR_BEST_PLAN'][
         MESSAGE_KEY]
-    debugs = messages_by_channel['SAMPLING_CONTROLLER_DEBUG'][MESSAGE_KEY]
+    debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
 
     times = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
 
@@ -255,14 +354,8 @@ def inspect_mode_switching(messages_by_channel: dict):
         best_plan_z = plan_best.saved_traj.trajectories[1].datapoints[2][0]
         best_plan_ees.append([best_plan_x, best_plan_y, best_plan_z])
 
-        quat = c3_actual.state[3:7]
-        xyz = c3_actual.state[7:10]
-        goal_quat = goal_state.state[3:7]
-        goal_xyz = goal_state.state[7:10]
-        pos_errors.append(np.linalg.norm(
-            np.array(xyz) - np.array(goal_xyz)))
-        full_rotation_errors.append(angular_difference_from_quats(
-            np.array(quat), np.array(goal_quat)) / (2*np.pi))
+        pos_errors.append(debug.current_pos_error)
+        full_rotation_errors.append(debug.current_rot_error / (2*np.pi))
 
         sample_locs.append(
             np.array(sample_loc.saved_traj.trajectories[0].datapoints).T)
@@ -284,6 +377,8 @@ def inspect_mode_switching(messages_by_channel: dict):
     best_plan_ees = np.array(best_plan_ees)
     best_buffer_ees = np.array(best_buffer_ees)
     is_c3_mode_flags = np.array(is_c3_mode_flags)
+    pos_errors = np.array(pos_errors)
+    full_rotation_errors = np.array(full_rotation_errors)
 
     # Make a 2D plot of where the pursued samples come from.
     _fig, axs = plt.subplots(4, 1, figsize=(12, 16), sharex=True)
@@ -323,33 +418,164 @@ def inspect_mode_switching(messages_by_channel: dict):
 
     plt.savefig('examples/jacktoy/test/tmp/sample_sources.png')
     print(f'Wrote plot to examples/jacktoy/test/tmp/sample_sources.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, 'sample_sources.png'))
+        print(f'Wrote plot to {op.join(log_folder, "sample_sources.png")}')
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
 
-def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
+def presentable_plots(messages_by_channel: dict, trajectory_params: dict,
+                      log_folder: str = None):
+    # Get some information from the trajectory parameters.
+    pos_tol = trajectory_params['position_success_threshold']
+    rad_tol = trajectory_params['orientation_success_threshold']
+
+    # Get relevant messages over time.
+    sample_buffers = messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
+    debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
+
+    times = np.array(messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY])
+
+    n_in_buffers, n_goals_achieved, n_since_last_progress = [], [], []
+    is_c3_mode_flags, pose_tracking = [], []
+    pos_errors, rad_errors = [], []
+    target_came_froms, switch_reasons = [], []
+
+    for buffer, debug in zip(sample_buffers, debugs):
+        n_in_buffers.append(buffer.num_in_buffer)
+        n_goals_achieved.append(debug.detected_goal_changes)
+        n_since_last_progress.append(debug.best_progress_steps_ago)
+
+        is_c3_mode_flags.append(debug.is_c3_mode)
+        pose_tracking.append(debug.in_pose_tracking_mode)
+
+        pos_errors.append(debug.current_pos_error)
+        rad_errors.append(debug.current_rot_error)
+
+        target_came_froms.append(debug.source_of_pursued_target)
+        switch_reasons.append(debug.mode_switch_reason)
+
+    is_c3_mode_flags = np.array(is_c3_mode_flags)
+    n_goals_achieved = np.array(n_goals_achieved)
+    switch_reasons = np.array(switch_reasons)
+    pos_errors = np.array(pos_errors)
+    rad_errors = np.array(rad_errors)
+
+    # Do some plots per goal.
+    n_goals = n_goals_achieved[-1]
+    for i in range(n_goals):
+        ts = times[n_goals_achieved == i]
+        is_c3s = is_c3_mode_flags[n_goals_achieved == i]
+        switches = switch_reasons[n_goals_achieved == i]
+        pos_es = pos_errors[n_goals_achieved == i]
+        rad_es = rad_errors[n_goals_achieved == i]
+        inspect_mode_switching_by_goal(
+            ts, is_c3s, switches, pos_es, rad_es, pos_tol, rad_tol, i,
+            log_folder=log_folder)
+
+def inspect_mode_switching_by_goal(times: np.ndarray,
+                                   is_c3_mode_flags: np.ndarray,
+                                   switch_reasons: list,
+                                   pos_errors: np.ndarray,
+                                   rad_errors: np.ndarray,
+                                   pos_tol: float, rad_tol: float,
+                                   goal_num: int,
+                                   log_folder: str = None):
+    print(f'Making plot for goal {goal_num}...')
+
+    times = times - times[0]
+    double_t = np.repeat(times, 2)
+    c3_mask, repos_mask = get_shading_masks(is_c3_mode_flags)
+    deg_errors = rad_errors * 180 / np.pi
+
+    # A more presentable plot:  position and rotation errors with mode shading
+    # and mode switch lines.
+    fig, axs = plt.subplots(1, 1, figsize=(12, 4))
+    ax0 = axs
+    ax1 = ax0.twinx()
+    ax0.fill_between(double_t, 0, 1.05, where=repos_mask, color='gray',
+                     alpha=0.5, transform=ax0.get_xaxis_transform())
+    ax0.fill_between(double_t, 0, 1.05, where=c3_mask, color='white',
+                     alpha=0.5, transform=ax0.get_xaxis_transform())
+
+    # Add mode switch lines.
+    for i, mode_switch_reason in enumerate(MODE_SWITCH_LABELS):
+        if i == 0:
+            continue
+        switch_ts = np.array(times)[np.array(switch_reasons) == i]
+        prefix = ''
+        for switch_t in switch_ts:
+            ax0.axvline(x=switch_t, color=MODE_SWITCH_COLORS[i],
+                        linewidth=4, label=prefix + mode_switch_reason)
+            prefix = '_'
+
+    ax0.plot(times, pos_errors, color=POS_ERROR_COLOR, label='Position error')
+    ax1.plot(times, deg_errors, color=RAD_ERROR_COLOR,
+             label='Orientation error')
+
+    ax0.axhline(y=pos_tol, linestyle='--', color=POS_ERROR_COLOR,
+                   label='Position success threshold')
+    ax1.axhline(y=rad_tol, linestyle='--', color=RAD_ERROR_COLOR,
+                   label='Orientation success threshold')
+
+    ax0.set_xlabel('Time (s)')
+    ax0.set_ylabel('Position Error [m]')
+    ax0.set_ylim([-0.01, np.max(pos_errors) + 0.01])
+    ax0.set_xlim([np.min(times), np.max(times)])
+    ax1.set_ylabel('Orientation Error [deg]', color=RAD_ERROR_COLOR)
+    ax1.set_ylim([-10, np.max(deg_errors) + 10])
+    ax1.tick_params(axis='y', labelcolor=RAD_ERROR_COLOR)
+    fig.suptitle(f'Errors over Time with Mode Switching for Goal {goal_num}')
+
+    # Legend:  need to add patches manually.
+    grey_patch = Patch(color='gray', alpha=0.5, label='Contact-free mode')
+    white_patch = Patch(facecolor='white', edgecolor='black', linewidth=1,
+                        alpha=0.5, label='Contact-rich mode')
+    ax0.legend(
+        handles=ax0.get_legend_handles_labels()[0] + \
+            ax1.get_legend_handles_labels()[0] + [grey_patch, white_patch],
+        bbox_to_anchor=(1.1, 1), loc='upper left')
+    plt.tight_layout()
+
+    plt.savefig('examples/jacktoy/test/tmp/shading_goal.png')
+    print(f'Wrote plot to examples/jacktoy/test/tmp/shading_goal.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, f'shading_goal_{goal_num}.png'))
+        print('Wrote plot to ' + \
+              op.join(log_folder, f'shading_goal_{goal_num}.png'))
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
+
+def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
+                           log_folder: str = None):
     states = messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
     goal_states = messages_by_channel['C3_FINAL_TARGET'][MESSAGE_KEY]
+    debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
 
-    times = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
+    times = messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY]
 
     times_of_new_goals = []
     quats, xyzs, ee_xyzs = [], [], []
     goal_quats, goal_xyzs = [], []
     pos_errors, rad_errors = [], []
-    for state, goal, t in zip(states, goal_states, times):
+    for state, goal, debug, t in zip(states, goal_states, debugs, times):
         quats.append(np.array(state.state[3:7]))
         xyzs.append(np.array(state.state[7:10]))
         ee_xyzs.append(np.array(state.state[:3]))
         goal_quats.append(np.array(goal.state[3:7]))
         goal_xyzs.append(np.array(goal.state[7:10]))
 
-        pos_errors.append(np.linalg.norm(
-            np.array(xyzs[-1]) - np.array(goal_xyzs[-1])).item())
-        rad_errors.append(angular_difference_from_quats(
-            np.array(quats[-1]), np.array(goal_quats[-1])).item())
+        pos_errors.append(debug.current_pos_error)
+        rad_errors.append(debug.current_rot_error)
 
-        if (len(goal_quats) == 1) or \
-           (goal_quats[-1] != goal_quats[-2]).any() or \
-           (goal_xyzs[-1] != goal_xyzs[-2]).any():
+        if len(times_of_new_goals) < debug.detected_goal_changes + 1:
             times_of_new_goals.append(t)
+
+    times = np.array(times)
+    pos_errors = np.array(pos_errors)
+    rad_errors = np.array(rad_errors)
 
     # Now inspect goal completion.
     n_goals = len(times_of_new_goals)
@@ -371,28 +597,33 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
                     times_of_new_goals[goal_i+1] - goal_t
                 continue
 
-            time_i = times.index(goal_t)
+            time_i = np.argmin(np.abs(times - times_of_new_goals[goal_i])) + 1
+            already_set = False
             while (pos_errors[time_i] > pos_thresh.item()) or \
                   (rad_errors[time_i] > rad_thresh.item()):
                 time_i += 1
                 if time_i == len(times):
-                    print(f'Goal {goal_i} not reached.')
-                    breakpoint()
-            times_to_thresholds[goal_i, thresh_i] = times[time_i] - goal_t
+                    assert thresh_i > 0
+                    times_to_thresholds[goal_i, thresh_i] = \
+                        times_to_thresholds[goal_i, thresh_i-1]
+                    already_set = True
+                    break
+            if not already_set:
+                times_to_thresholds[goal_i, thresh_i] = times[time_i] - goal_t
 
     # Generate plots.
     fig, axs = plt.subplots(3, 1, figsize=(10, 12))
+    axs[0].sharex(axs[1])
     axs[0].plot(times, pos_errors, label='Position error')
     for pos_thresh, color in zip(pos_thresholds, colors):
         axs[0].axhline(y=pos_thresh, linestyle='--', color=color,
                        label=f'{pos_thresh:.2f}m threshold')
-    # axs[1].plot(times, rad_errors, label='Rotation error')
-    axs[1].plot(rad_errors, label='Rotation error')
+    axs[1].plot(times, rad_errors, label='Rotation error')
     for rad_thresh, color in zip(rad_thresholds, colors):
         axs[1].axhline(y=rad_thresh, linestyle='--', color=color,
                        label=f'{rad_thresh:.1f}rad threshold')
     axs[0].set_xlabel('Time (s)')
-    axs[1].set_xlabel('Time index')
+    axs[1].set_xlabel('Time (s)')
     axs[0].set_ylabel('Error [m]')
     axs[1].set_ylabel('Error [rad]')
     axs[0].set_title('Position Error')
@@ -403,9 +634,9 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
         for thresh_i, color in enumerate(colors):
             time = times_to_thresholds[goal_i, thresh_i] + \
                 times_of_new_goals[goal_i]
-            time_i = times.index(time)
+            time_i = np.argmin(np.abs(times - time)).item()
             axs[0].axvline(x=time, color=color, alpha=0.5)
-            axs[1].axvline(x=time_i, color=color, alpha=0.5)
+            axs[1].axvline(x=time, color=color, alpha=0.5)
 
     # Make third plot for time to reach each goal.
     n_goals, n_thresholds = times_to_thresholds.shape
@@ -431,6 +662,32 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
 
     plt.savefig('examples/jacktoy/test/tmp/goal_success.png')
     print(f'Wrote plot to examples/jacktoy/test/tmp/goal_success.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, 'goal_success.png'))
+        print(f'Wrote plot to {op.join(log_folder, "goal_success.png")}')
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
+
+def inspect_lcm_traffic(messages_by_channel: dict):
+    buffer_ts = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
+    franka_ts = messages_by_channel['FRANKA_STATE'][TIME_KEY]
+    radio_ts = messages_by_channel['SAMPLING_C3_RADIO'][TIME_KEY]
+
+    buffer_ts = np.array(buffer_ts)
+    franka_ts = np.array(franka_ts)
+    radio_ts = np.array(radio_ts)
+
+    print(f'Max buffer time: {np.max(buffer_ts)}')
+    print(f'Max Franka time: {np.max(franka_ts)}')
+    print(f'Max radio time: {np.max(radio_ts)}')
+
+    plt.figure()
+    plt.plot(buffer_ts, label='Buffer times')
+    plt.plot(franka_ts, label='Franka times')
+    plt.plot(radio_ts, label='Radio times')
+    plt.legend()
+    plt.show()
 
 
 
@@ -446,9 +703,19 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict):
               help='Inspect switching between C3 and repositioning')
 @click.option('--visualize-goal-completion', is_flag=True,
               help='Visualize the completion of goals')
+@click.option('--lcm-traffic-debug', is_flag=True,
+              help='Debug LCM traffic issues')
+@click.option('--all', is_flag=True,
+              help='Run all visualizations')
+@click.option('--interactive', is_flag=True,
+              help='Run in interactive mode')
+@click.option('--present', is_flag=True,
+              help='Generate presentable plots')
 
 def main_command(log_folder: str, start: float, end: float, buffer_vis: bool,
-                 inspect_switching: bool, visualize_goal_completion: bool):
+                 inspect_switching: bool, visualize_goal_completion: bool,
+                 lcm_traffic_debug: bool, all: bool, interactive: bool,
+                 present: bool):
     # Turn the folder into a file path.
     log_folder = log_folder[:-1] if log_folder[-1] == '/' else log_folder
     log_number = log_folder.split('/')[-1][:6]
@@ -473,22 +740,47 @@ def main_command(log_folder: str, start: float, end: float, buffer_vis: bool,
     with open(trajectory_params_filepath, 'r') as file:
         trajectory_params = yaml.safe_load(file)
 
+    if interactive:
+        global global_is_interactive
+        global_is_interactive = True
+        plt.ion()
+
+    channels_and_lcmt = ALL_CHANNELS_AND_LCMT if lcm_traffic_debug \
+        else MINIMAL_CHANNELS_AND_LCMT if present \
+        else CHANNELS_AND_LCMT_TO_SYNC
+
     # Get the messages from the log.
     messages_by_channel = get_messages_from_log(
-        log_filepath, start_time=start, end_time=end)
-    ensure_same_number_messages(messages_by_channel)
+        log_filepath, start_time=start, end_time=end,
+        channels_and_lcmt=channels_and_lcmt)
+    if lcm_traffic_debug:
+        inspect_lcm_traffic(messages_by_channel)
+        exit()
+
+    synchronize_messages(messages_by_channel,
+                         channels_and_lcmt_to_sync=channels_and_lcmt)
+
+    if present:
+        presentable_plots(messages_by_channel, trajectory_params,
+                          log_folder=log_folder)
+        if interactive:
+            breakpoint()
+        exit()
 
     # Visualize the buffer of samples.
-    if buffer_vis:
+    if buffer_vis or all:
         visualize_sample_buffer(messages_by_channel)
 
     # Inspect switching of modes.
-    if inspect_switching:
+    if inspect_switching or all:
         inspect_mode_switching(messages_by_channel)
 
     # Visualize goal completion.
-    if visualize_goal_completion:
+    if visualize_goal_completion or all:
         visualize_goal_success(messages_by_channel, trajectory_params)
+
+    if interactive:
+        breakpoint()
 
 
 if __name__ == '__main__':

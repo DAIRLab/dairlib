@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<robot name="jack">
+    <link name="capsule_1">
+        <!-- <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact> -->
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.99"/>
+            <inertia ixx="0.000934" ixy="0" ixz="0" iyy="0.000934" iyz="0" izz="0.000934"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                 <mesh filename="jack_30mm_tag_facets_from_stl.obj" scale=".001 .001 .001"/>  
+                 <!-- <mesh filename="jack_with_1697mm_tag_faces.obj" scale=".001 .001 .001"/>   -->
+            </geometry>
+        </collision>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
+        </drake:proximity_properties>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="jack_30mm_tag_facets_from_stl.obj" scale=".001 .001 .001"/> 
+                <!-- <mesh filename="jack_with_1697mm_tag_faces.obj" scale=".001 .001 .001"/>  -->
+            </geometry>
+            <material>
+                <color rgba="1 0 0 1"/> <!-- red color for visualization -->
+                <!-- <color rgba="0.5 0.5 0.5 0.2"/> gray transparent color for visualization -->
+            </material>
+        </visual>
+    </link>
+</robot>

@@ -1,7 +1,7 @@
 # Trajectory generation parameters
 trajectory_type: 4       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path, 4 to use a fixed goal but with a lookahead
 use_changing_final_goal: true
-changing_final_goal_type: 1  # 0 to randomize goal, 1 to cycle through orientations
+changing_final_goal_type: 0  # 0 to randomize goal, 1 to cycle through orientations
 final_goal_time_tolerance: 45 # in seconds
 
 # Thresholds for position and orientation for reaching a goal successfully.

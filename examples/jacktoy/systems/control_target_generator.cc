@@ -488,10 +488,19 @@ void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
   if (random_index == orientation_index_) {
     min_yaw = PI/2;
     max_yaw = 3*PI/2;
+    quat_nominal = Eigen::Quaterniond(target_final_object_orientation_[0],
+                                      target_final_object_orientation_[1],
+                                      target_final_object_orientation_[2],
+                                      target_final_object_orientation_[3]);
+    std::cout << "No topple required -- will use ";
   }
   std::uniform_real_distribution<double> yaw_dis(min_yaw, max_yaw);
+  double yaw = yaw_dis(gen);
+  if (random_index == orientation_index_) {
+    std::cout << yaw << " radians of yaw." << std::endl;
+  }
   Eigen::Quaterniond quat_world_yaw(
-    Eigen::AngleAxisd(yaw_dis(gen), Eigen::Vector3d::UnitZ()));
+    Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
   Eigen::Quaterniond quat_final = quat_world_yaw * quat_nominal;
 
   target_final_object_orientation_ <<

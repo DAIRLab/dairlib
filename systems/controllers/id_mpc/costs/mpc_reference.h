@@ -2,6 +2,9 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
+// TODO (Brian-Acosta) - Support more general reference
+//  trajectories, including task-space references
+
 class MPCReference {
  public:
   drake::trajectories::PiecewisePolynomial<double> q_traj_;

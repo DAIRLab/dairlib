@@ -1,5 +1,5 @@
 #pragma once
-#include "knot_point.h"
+#include "systems/controllers/id_mpc/core/knot_point.h"
 #include "solvers/nonlinear_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {

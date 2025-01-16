@@ -1,4 +1,4 @@
-#include "quaternion_norm_constraint.h"
+#include "systems/controllers/id_mpc/contraints/quaternion_norm_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 

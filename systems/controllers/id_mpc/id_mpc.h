@@ -2,10 +2,10 @@
 
 #include "core/knot_point_state.h"
 #include "core/constrained_inverse_dynamics_info.h"
-#include "core/collocation_constraint.h"
-#include "core/kinematic_constraint.h"
+#include "systems/controllers/id_mpc/contraints/collocation_constraint.h"
+#include "systems/controllers/id_mpc/contraints/kinematic_constraint.h"
 #include "core/timeline.h"
-#include "core/quaternion_norm_constraint.h"
+#include "systems/controllers/id_mpc/contraints/quaternion_norm_constraint.h"
 
 #include "costs/reference_manager.h"
 #include "costs/mpc_reference.h"

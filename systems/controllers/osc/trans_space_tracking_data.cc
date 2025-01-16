@@ -26,8 +26,8 @@ void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
                                                  const Vector3d& pt_on_body) {
   AddStateAndPointToTrack(-1, body_name, pt_on_body);
 }
-void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
-    int fsm_state, const std::string& body_name, const Vector3d& pt_on_body) {
+
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int fsm_state, const std::string& body_name, const Vector3d& pt_on_body) {
   AddFiniteStateToTrack(fsm_state);
   DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));

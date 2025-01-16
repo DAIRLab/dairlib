@@ -8,6 +8,7 @@
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_densetact_measurement_data.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/state_vector.h"
 #include "systems/framework/timestamped_vector.h"
@@ -144,6 +145,30 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> position_index_map_;
   std::map<std::string, int> velocity_index_map_;
 };
+
+// TODO: Convert a contact ... to LCM type lcmt_densetact_measurement_data.lcm
+
+class ContactDataSender : public drake::systems::LeafSystem<double>{
+    public:
+        explicit ContactDataSender(
+            const drake::multibody::MultibodyPlant<double>& plant,
+            drake::systems::Context<double>* plant_context);
+
+        const drake::systems::InputPort<double>& get_input_port_state() const {
+            return this->get_input_port();
+                }
+
+    private:
+        void Output(const drake::systems::Context<double>& context,
+            dairlib::lcmt_densetact_measurement_data* output) const;
+            const drake::multibody::MultibodyPlant<double>& plant_;
+            drake::systems::Context<double>* plant_context_;
+            int num_positions_;
+            int num_velocities_;
+
+};
+
+
 
 /// Converts a StateVector object to LCM type lcmt_robot_output
 class ObjectStateSender : public drake::systems::LeafSystem<double> {

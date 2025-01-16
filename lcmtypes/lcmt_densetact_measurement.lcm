@@ -1,0 +1,13 @@
+package dairlib;
+
+/*  Measured DenseTact Contact Data
+*/
+
+struct lcmt_densetact_measurement
+{
+  int64_t utime;
+  boolean inContact;
+  double contactPose [4][4];
+  double scaledNormal;
+  double scaledFriction [2];
+}

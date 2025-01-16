@@ -9,6 +9,8 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 
+#include "drake/common/text_logging.h"
+
 namespace dairlib {
 namespace systems {
 
@@ -159,6 +161,57 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
     state_msg.velocity_names[i] = ordered_velocity_names[i];
   }
 }
+ContactDataSender::ContactDataSender(
+  const drake::multibody::MultibodyPlant<double>& plant,
+  drake::systems::Context<double>* plant_context): 
+  plant_(plant), plant_context_(plant_context){
+  num_positions_ = plant.num_positions();
+  num_velocities_ = plant.num_velocities();
+
+  this->DeclareAbstractInputPort("x", drake::Value<drake::multibody::ContactResults<double>>{}).get_index();
+  this->DeclareAbstractOutputPort("lcmt_densetact_measurement_data", &ContactDataSender::Output);
+  }
+
+void ContactDataSender::Output(
+  const drake::systems::Context<double>& context,
+  dairlib::lcmt_densetact_measurement_data* contact_output) const
+  {
+  
+  //const auto& contact_results = this->Eval<drake::multibody::ContactResults<double>>(context);
+  //const drake::AbstractValue* contact_results = this->EvalAbstractInput(context, 0);//.num_point_pair_contacts();
+
+  //const auto& contact_value = contact_results->get_value();
+
+  //drake::log()->info(contact_value);
+
+  const std::string sensor_name = "densetact_0";
+  const std::string object_name = "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf";
+  
+  //drake::multibody::BodyIndex sensor_body_index = plant.GetBodyByName(sensor_name).index();
+  //drake::multibody::BodyIndex object_body_index = plant.GetBodyByName(object_name).index();
+
+  //drake::multibody::PointPairContactInfo(sensor_body_index, object_body_index);
+
+  //const auto& contact_results = this->get_input_port(PointPairContactInfo);//.Eval<drake::multibody::ContactResults<double>>(context);
+  //drake::log()->info(contact_results);
+  
+  // Using 2 DenseTacts
+  contact_output->numSensors = 2;
+  contact_output->sensorData.resize(contact_output->numSensors);
+
+  for (int i = 0; i < contact_output->numSensors; i++){
+    dairlib::lcmt_densetact_measurement contact;
+    contact.utime = context.get_time() * 1e6; 
+    contact.inContact = 1;
+    contact.scaledNormal = 1;
+    contact.scaledFriction[0] = 1;
+    contact.scaledFriction[1] = 1;
+    contact_output->sensorData[i] = contact;
+  }
+  
+  //plant_.GetPositions(*plant_context_);
+}
+
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.

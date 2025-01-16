@@ -1,0 +1,18 @@
+# config/settings.yml
+
+data:
+  real_time: True
+  path: "/home/bbaraki/PycharmProjects/OpticalFlow/BasicTouches/normal_center_corner.mkv"
+  grid_step: 51
+  stream: True
+  mesh_cat: True
+
+sensor:
+  DenseTact1:
+    serial_number: SN0001
+    expo_time: 70
+    rad_OI: 300
+  DenseTact2:
+    serial_number: SN20200519001
+    expo_time: 6
+    rad_OI: 320

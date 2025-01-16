@@ -13,6 +13,8 @@ namespace dairlib::systems::controllers::id_mpc {
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
+using drake::trajectories::PiecewisePolynomial;
+
 void TestInverseDynamics(
     const ConstrainedDynamicsInfo& info, const VectorXd q, const VectorXd& u,
     const VectorXd& lambda, std::vector<std::string> contacts) {
@@ -191,6 +193,7 @@ int DoMain() {
 
   VectorXd vars = VectorXd::Zero(dynamics_info->variable_count());
   VectorXd q = VectorXd::Zero(dynamics_info->nq());
+  VectorXd v = VectorXd::Zero(dynamics_info->nv());
   VectorXd u = VectorXd::Zero(dynamics_info->nu());
   VectorXd lambda = VectorXd::Zero(dynamics_info->nh() + dynamics_info->nc());
 
@@ -219,37 +222,42 @@ int DoMain() {
   TestCollocation(*dynamics_info, vars, contacts);
 
   IDMPCParams params;
-  params.dt = 0.025;
+  params.dt = 0.05;
   params.N = static_cast<int>(0.5 / params.dt);
   params.num_full_torque_knots = 2;
+
+  params.Wq = 1000 * Eigen::MatrixXd::Identity(q.rows(), q.rows());
+  params.Wv = 0.001 * Eigen::MatrixXd::Identity(v.rows(), v.rows());
+  params.Wu = 0.001 * Eigen::MatrixXd::Identity(u.rows(), u.rows());
+  params.Wlambda = 0.0001 * Eigen::MatrixXd::Identity(
+      lambda.rows(), lambda.rows());
 
   IDMPC mpc(params, std::move(dynamics_info));
 
   auto& prog = mpc.get_prog();
-
-
-  mpc.UpdateInitialState(vars.head(2 * q.size() - 1));
 
   Eigen::VectorXd qd = VectorXd::Zero(q.rows());
   qd << 1, -1.0603e-16, 0, 0, 0, 0, 0.7,
    0.0989926, 0, 0.897318, -2.0368, 2.26086, -1.99487,
   -0.0989926, 0, 0.897318, -2.0368, 2.26086, -1.99487;
 
+  MPCReference reference;
+
+  reference.q_traj_ = PiecewisePolynomial<double>(qd);
+  reference.v_traj_ = PiecewisePolynomial<double>(v);
+  reference.lambda_traj_ = PiecewisePolynomial<double>(lambda);
+  reference.u_traj_ = PiecewisePolynomial<double>(u);
 
   for (int i = 0; i <= params.N; ++i) {
     vars.segment(q.size(), q.size() - 1) =
         0.01 * Eigen::VectorXd::Random(q.size() - 1);
     prog.SetInitialGuess(mpc.knot_vars(i), vars.head(mpc.knot_vars(i).rows()));
 
-    double m = (i == 0 || i == params.N) ? 1.0 : 2.0;
-    if (i == params.N) {
-      m += 100;
-    }
-    auto q_cost = std::make_shared<QuadraticErrorCost<double>>(
-        m * Eigen::MatrixXd::Identity(q.rows(), q.rows()), qd);
-    prog.AddCost(q_cost, mpc.position_vars(i));
-    mpc.UpdateActiveContacts(i, contacts);
+    reference.active_contacts_.push_back(contacts);
+    reference.knot_times_.push_back(params.dt * i);
   }
+
+  mpc.UpdateProblemData(reference, vars.head(2 * q.size() - 1));
 
   auto solver_options = drake::solvers::SolverOptions();
   solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
@@ -259,7 +267,7 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Iterations Limit", 1e6);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major optimality tolerance", 1e-2);
+                          "Major optimality tolerance", 1e-4);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                           "Major feasibility tolerance", 1e-2);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),

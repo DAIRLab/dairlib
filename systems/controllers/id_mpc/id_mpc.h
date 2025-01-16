@@ -8,6 +8,7 @@
 #include "core/quaternion_norm_constraint.h"
 
 #include "costs/reference_manager.h"
+#include "costs/mpc_reference.h"
 
 #include "solvers/qp_data.h"
 
@@ -22,6 +23,12 @@ struct IDMPCParams {
   int N;
   double dt;
   int num_full_torque_knots;
+
+  // cost weights
+  Eigen::MatrixXd Wq;
+  Eigen::MatrixXd Wv;
+  Eigen::MatrixXd Wlambda;
+  Eigen::MatrixXd Wu;
 };
 
 class IDMPC {
@@ -45,11 +52,11 @@ class IDMPC {
     return timeline_.knots.at(index)->get_lambda(knot_vars(index));
   }
 
+  void UpdateProblemData(const MPCReference& reference,
+                         const Eigen::VectorXd& initial_state);
+
   LcmTrajectory GetSolutionAsLcmTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const;
-
-  void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
-  void UpdateInitialState(const Eigen::VectorXd& x);
 
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
@@ -64,8 +71,13 @@ class IDMPC {
 
  private:
 
-  // TODO (@Brian-Acosta) Methods for setting and updating costs,
-  //  Methods for creating and updating contact and friction cone constraints
+  void UpdateCosts(const MPCReference& reference);
+  void UpdateInitialState(const Eigen::VectorXd& x);
+  void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
+
+  // TODO (@Brian-Acosta) methods for creating and updating friction cone
+  //  constraints and contact no-force constraints
+  void MakeMPCCosts();
   void MakeKnotPoints();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();

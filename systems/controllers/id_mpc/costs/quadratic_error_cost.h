@@ -6,7 +6,7 @@ namespace dairlib::systems::controllers::id_mpc {
 template <typename T>
 class QuadraticErrorCost : public NonlinearLeastSquaresCost<T> {
  public:
-  QuadraticErrorCost(const Eigen::MatrixXd& x_ref, const Eigen::VectorXd &Q,
+  QuadraticErrorCost(const Eigen::MatrixXd &Q, const Eigen::VectorXd& x_ref,
                      const std::string &description="");
 
   void EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,

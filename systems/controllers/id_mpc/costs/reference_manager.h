@@ -28,10 +28,10 @@ class ReferenceManager {
    * @param name name of the cost
    * @param args arguments to c's constructor
    */
-  template<template <typename S> class C, typename... Args>
+  template<class C, typename... Args>
   void AddRunningStateCost(const std::string& name, Args&&... args) {
     static_assert(
-        std::derived_from<C<T>, NonlinearLeastSquaresCost<T>> == true);
+        std::derived_from<C, NonlinearLeastSquaresCost<T>> == true);
 
     DRAKE_DEMAND(not evaluators_.contains(name));
     std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>> costs;
@@ -39,9 +39,9 @@ class ReferenceManager {
     for (int i = 0; i < N_ + 1; ++i) {
       // trapezoidal integration
       double s = (i == 0 or i == N_) ? 0.5 : 1.0;
-      auto ptr = std::make_shared<C<T>>(std::forward(args)...);
+      auto ptr = std::make_shared<C>(std::forward<Args>(args)...);
       costs.push_back(std::move(ptr));
-      costs.back().MultiplyByScalar(s * dt_);
+      costs.back()->MultiplyByScalar(s * dt_);
     }
     evaluators_[name] = costs;
   }
@@ -51,9 +51,10 @@ class ReferenceManager {
     DRAKE_DEMAND(not evaluators_.contains(name));
     std::vector<std::shared_ptr<QuadraticErrorCost<T>>> costs;
     for (int i = 0; i < N_; ++i) {
-      auto ptr = std::make_shared<QuadraticErrorCost<T>>(std::forward(args)...);
+      auto ptr = std::make_shared<QuadraticErrorCost<T>>(
+          std::forward<Args>(args)...);
       ptr->MultiplyByScalar(dt_);
-      costs.push_back(ptr);
+      costs.push_back(std::move(ptr));
     }
     evaluators_[name] = costs;
   }

@@ -27,8 +27,21 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   DRAKE_DEMAND(dynamics_ != nullptr);
   DRAKE_DEMAND(params_.N > 0);
   DRAKE_DEMAND(params_.dt > 0);
+  DRAKE_DEMAND(params_.Wq.rows() == dynamics_->nq());
+  DRAKE_DEMAND(params_.Wq.cols() == dynamics_->nq());
+  DRAKE_DEMAND(params_.Wv.rows() == dynamics_->nv());
+  DRAKE_DEMAND(params_.Wv.cols() == dynamics_->nv());
+  DRAKE_DEMAND(params_.Wu.rows() == dynamics_->nu());
+  DRAKE_DEMAND(params_.Wu.cols() == dynamics_->nu());
+  DRAKE_DEMAND(params_.Wlambda.rows() == dynamics_->nh() + dynamics_->nc());
+  DRAKE_DEMAND(params_.Wlambda.cols() == dynamics_->nh() + dynamics_->nc());
 
+  // MakeKnotPoints has to be called first
+  // to create the decision variables and KnotPoints
+  // for the remaining objects to use
   MakeKnotPoints();
+
+  MakeMPCCosts();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
   MakeUnitQuaternionConstraints();
@@ -37,8 +50,16 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
       VectorXd::Zero(dynamics_->nx()),
       knot_point_vars_.front().head(dynamics_->nx())).evaluator().get();
+}
 
-  reference_manager_ = ReferenceManager<double>(params_.N, params_.dt);
+void IDMPC::UpdateProblemData(const MPCReference &reference,
+                              const VectorXd &initial_state) {
+  UpdateInitialState(initial_state);
+  timeline_.set_time_vector(reference.knot_times_);
+  for (size_t i = 0; i < params_.N + 1; ++i) {
+    UpdateActiveContacts(i, reference.active_contacts_.at(i));
+  }
+  UpdateCosts(reference);
 }
 
 void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
@@ -50,6 +71,18 @@ void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
 void IDMPC::UpdateActiveContacts(
     int knot_index, std::vector<std::string> contacts) {
   timeline_.knot_states.at(knot_index).UpdateActiveContacts(contacts);
+}
+
+// TODO (@Brian-Acosta) correctly implement orientation cost
+void IDMPC::UpdateCosts(const MPCReference &reference) {
+  reference_manager_.UpdateReference(
+      "q", reference.q_traj_, reference.knot_times_);
+  reference_manager_.UpdateReference(
+      "v", reference.v_traj_, reference.knot_times_);
+  reference_manager_.UpdateReference(
+      "u", reference.u_traj_, reference.knot_times_);
+  reference_manager_.UpdateReference(
+      "lambda", reference.lambda_traj_, reference.knot_times_);
 }
 
 void IDMPC::MakeUnitQuaternionConstraints() {
@@ -64,6 +97,37 @@ void IDMPC::MakeUnitQuaternionConstraints() {
           unit_quat_,
           this->position_vars(i).segment(body.floating_positions_start(), 4)));
     }
+  }
+}
+
+void IDMPC::MakeMPCCosts() {
+  reference_manager_ = ReferenceManager<double>(params_.N, params_.dt);
+  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+      "q", params_.Wq, VectorXd::Zero(dynamics_->nq()));
+  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+      "v", params_.Wv, VectorXd::Zero(dynamics_->nv()));
+  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+      "u", params_.Wu, VectorXd::Zero(dynamics_->nu()));
+  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+      "lambda", params_.Wlambda, VectorXd::Zero(dynamics_->nlambda()));
+
+  for (int i = 0; i < params_.N + 1; ++i) {
+    prog_.AddCost(
+        reference_manager_.GetEvaluator("q", i),
+        position_vars(i));
+    prog_.AddCost(
+        reference_manager_.GetEvaluator("v", i),
+        velocity_vars(i));
+  }
+  for (int i = 0; i < params_.N; ++i) {
+    prog_.AddCost(
+        reference_manager_.GetEvaluator("lambda", i),
+        lambda_vars(i));
+  }
+  for (int i = 0; i < params_.num_full_torque_knots; ++i) {
+    prog_.AddCost(
+        reference_manager_.GetEvaluator("u", i),
+        input_vars(i));
   }
 }
 

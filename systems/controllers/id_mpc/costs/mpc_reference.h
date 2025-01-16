@@ -9,5 +9,5 @@ class MPCReference {
   drake::trajectories::PiecewisePolynomial<double> lambda_traj_;
   drake::trajectories::PiecewisePolynomial<double> u_traj_;
   std::vector<double> knot_times_;
-  std::vector<std::string> active_contacts_;
+  std::vector<std::vector<std::string>> active_contacts_;
 };

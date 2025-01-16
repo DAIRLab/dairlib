@@ -49,6 +49,7 @@ class ConstrainedDynamicsInfo {
   int nu() const { return nu_; }
   int nh() const { return nh_; }
   int nc() const { return nc_; }
+  int nlambda() const {return nh_ + nc_; }
   int nc_active() const { return nc_active_; }
   int nx() const { return nq_ + nv_; }
   int n_constraint_total() const { return nh_ + nc_active_; }

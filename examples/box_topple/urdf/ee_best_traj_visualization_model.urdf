@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+
+<robot name="end_effector_simple">
+  <!--
+    Frames are defined such that they all align with the base frame when all
+    joints are at position zero.
+
+    In zero-configuration the origins of all joints are in one line.
+
+    In zero-configuration the origin of the base link is exactly above the
+    finger tip which should make it easy to place the finger in the world.
+    -->
+  <!-- Define the global base_link and place all other objects relative to it. -->
+  <link name="end_effector_simple">
+   <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+			<material>
+        <color rgba="1.0 0.64 0.0 1.0"/>
+			</material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.01"/>
+    </inertial>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+                  <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+  </link>
+</robot>

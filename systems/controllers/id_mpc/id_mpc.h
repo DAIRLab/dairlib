@@ -23,6 +23,7 @@ struct IDMPCParams {
   int N;
   double dt;
   int num_full_torque_knots;
+  double mu = 1.0;
 
   // cost weights
   Eigen::MatrixXd Wq;
@@ -30,6 +31,11 @@ struct IDMPCParams {
   Eigen::MatrixXd Wlambda;
   Eigen::MatrixXd Wu;
 };
+
+using ForceEvaluatorsMap =
+    std::unordered_map<std::string,
+    std::vector<drake::solvers::LinearConstraint*>>;
+
 
 class IDMPC {
  public:
@@ -74,11 +80,14 @@ class IDMPC {
   void UpdateCosts(const MPCReference& reference);
   void UpdateInitialState(const Eigen::VectorXd& x);
   void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
+  void UpdateFrictionCone(
+      int knot_index, const std::vector<std::string>& active_contacts);
 
   // TODO (@Brian-Acosta) methods for creating and updating friction cone
   //  constraints and contact no-force constraints
   void MakeMPCCosts();
   void MakeKnotPoints();
+  void MakeForceLimits();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
   void MakeUnitQuaternionConstraints();
@@ -92,6 +101,7 @@ class IDMPC {
   Timeline timeline_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
 
+  ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;
 
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;

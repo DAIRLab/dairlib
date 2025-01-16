@@ -15,11 +15,14 @@ using solvers::AppendLinearConstraint;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::LinearConstraint;
+
 using drake::AutoDiffVecXd;
 using drake::math::ExtractValue;
 using drake::math::ExtractGradient;
 using drake::math::InitializeAutoDiff;
 
+constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
 IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
     dynamics) : params_(params), dynamics_(std::move(dynamics)) {
@@ -40,8 +43,8 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   // to create the decision variables and KnotPoints
   // for the remaining objects to use
   MakeKnotPoints();
-
   MakeMPCCosts();
+  MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
   MakeUnitQuaternionConstraints();
@@ -59,7 +62,29 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
   for (size_t i = 0; i < params_.N + 1; ++i) {
     UpdateActiveContacts(i, reference.active_contacts_.at(i));
   }
+  for (size_t i = 0; i < params_.N; ++i) {
+    UpdateFrictionCone(i, reference.active_contacts_.at(i));
+  }
   UpdateCosts(reference);
+}
+
+void IDMPC::UpdateFrictionCone(
+    int knot_index, const std::vector<std::string> &active_contacts) {
+  for (const auto& c : dynamics_->contacts()) {
+    if (std::find(active_contacts.begin(), active_contacts.end(), c) !=
+        active_contacts.end()) {
+      MatrixXd A = MatrixXd(4, 3);
+      A << -1, 0, params_.mu,
+            0, -1, params_.mu,
+            1, 0, params_.mu,
+            0, 1, params_.mu;
+      contact_force_limits_.at(c).at(knot_index)->UpdateCoefficients(
+          A, VectorXd::Zero(4), VectorXd::Constant(4, kInfinity));
+    } else {
+      contact_force_limits_.at(c).at(knot_index)->UpdateCoefficients(
+          MatrixXd::Identity(4, 3), VectorXd::Zero(4), VectorXd::Zero(4));
+    }
+  }
 }
 
 void IDMPC::UpdateInitialState(const Eigen::VectorXd &x) {
@@ -97,6 +122,22 @@ void IDMPC::MakeUnitQuaternionConstraints() {
           unit_quat_,
           this->position_vars(i).segment(body.floating_positions_start(), 4)));
     }
+  }
+}
+
+void IDMPC::MakeForceLimits() {
+  for (const auto& c : dynamics_->contacts()) {
+    std::vector<LinearConstraint*> evaluators;
+    for (int i = 0; i < params_.N ; ++i) {
+      evaluators.push_back(
+        prog_.AddLinearConstraint(
+            MatrixXd::Zero(4, 3),
+            VectorXd::Zero(4),
+            VectorXd::Zero(4),
+            dynamics_->select_contact_force_from_lambda(c, lambda_vars(i))
+        ).evaluator().get());
+    }
+    contact_force_limits_.insert({c, evaluators});
   }
 }
 

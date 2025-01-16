@@ -269,9 +269,7 @@ int DoMain() {
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                           "Major optimality tolerance", 1e-4);
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                          "Major feasibility tolerance", 1e-2);
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                           "Scale option", 2);
+                          "Major feasibility tolerance", 1e-3);
 
   prog.SetSolverOptions(solver_options);
 

@@ -78,6 +78,7 @@ void ConstrainedDynamicsInfo::AddContactPoint(
   mu_map_.insert({name, friction_coefficient});
   nc_ += contact_constraint_evaluators_.at(name)->num_full();
   nc_active_ += contact_constraint_evaluators_.at(name)->num_active();
+  contact_names_.push_back(name);
 }
 
 void ConstrainedDynamicsInfo::AddDistanceConstraint(

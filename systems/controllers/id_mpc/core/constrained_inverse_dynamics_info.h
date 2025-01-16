@@ -42,6 +42,16 @@ class ConstrainedDynamicsInfo {
     return nq_ + nv_ + nu_ + nh_ + nc_;
   }
 
+  template <typename T>
+  drake::VectorX<T> select_contact_force_from_lambda(
+      const std::string& name, const drake::VectorX<T>& lambda) const {
+    return lambda.segment(nh_ + lambda_c_start_idxs_.at(name), 3);
+  }
+
+  const std::vector<std::string>& contacts() {
+    return contact_names_;
+  }
+
   void Finalize();
 
   int nq() const { return nq_; }
@@ -154,6 +164,7 @@ class ConstrainedDynamicsInfo {
     holonomic_constraint_ad_storage_;
 
   // Contact Constraints
+  std::vector<std::string> contact_names_;
   ContactConstraintMap<double> contact_constraint_evaluators_{};
   ContactConstraintMap<drake::AutoDiffXd> contact_constraint_evaluators_ad_{};
 

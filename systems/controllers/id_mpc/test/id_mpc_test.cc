@@ -226,10 +226,10 @@ int DoMain() {
   params.N = static_cast<int>(0.5 / params.dt);
   params.num_full_torque_knots = 2;
 
-  params.Wq = 1000 * Eigen::MatrixXd::Identity(q.rows(), q.rows());
-  params.Wv = 0.001 * Eigen::MatrixXd::Identity(v.rows(), v.rows());
-  params.Wu = 0.001 * Eigen::MatrixXd::Identity(u.rows(), u.rows());
-  params.Wlambda = 0.0001 * Eigen::MatrixXd::Identity(
+  params.Wq = 100 * Eigen::MatrixXd::Identity(q.rows(), q.rows());
+  params.Wv = 0.01 * Eigen::MatrixXd::Identity(v.rows(), v.rows());
+  params.Wu = 0.01 * Eigen::MatrixXd::Identity(u.rows(), u.rows());
+  params.Wlambda = 0.01 * Eigen::MatrixXd::Identity(
       lambda.rows(), lambda.rows());
 
   IDMPC mpc(params, std::move(dynamics_info));

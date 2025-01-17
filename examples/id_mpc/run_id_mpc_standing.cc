@@ -64,7 +64,7 @@ int DoMain() {
   reference.v_traj_ = PiecewisePolynomial<double>(v);
   reference.lambda_traj_ = PiecewisePolynomial<double>(lambda);
   reference.u_traj_ = PiecewisePolynomial<double>(u);
-  for (int i = 0; i <= params.N + 1; ++i) {
+  for (int i = 0; i < params.N + 1; ++i) {
     reference.active_contacts_.push_back(dynamics->contacts());
     reference.knot_times_.push_back(params.dt * i);
   }
@@ -80,10 +80,22 @@ int DoMain() {
         "ID_MPC", &lcm_local, TriggerTypeSet({TriggerType::kForced})
     ));
 
+
+  builder.Connect(
+      state_receiver->get_output_port(),
+      mpc_system->get_input_port_state()
+  );
+  builder.Connect(
+      const_ref->get_output_port(),
+      mpc_system->get_input_port_reference()
+  );
+  builder.Connect(*mpc_system, *solution_pub);
   auto diagram = builder.Build();
 
+
+
   LcmDrivenLoop<lcmt_robot_output> loop(
-      &lcm_local, std::move(diagram), "CASSIE_STATE_SIMULATION", true);
+      &lcm_local, std::move(diagram), state_receiver, "CASSIE_STATE_SIMULATION", true);
 
   loop.Simulate();
 

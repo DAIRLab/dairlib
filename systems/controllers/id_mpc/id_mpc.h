@@ -51,11 +51,11 @@ class IDMPC {
   const drake::solvers::VectorXDecisionVariable velocity_vars(int index) const {
     return timeline_.knots.at(index)->get_v(knot_vars(index));
   }
-  const drake::solvers::VectorXDecisionVariable input_vars(int index) const {
-    return timeline_.knots.at(index)->get_u(knot_vars(index));
-  }
   const drake::solvers::VectorXDecisionVariable lambda_vars(int index) const {
     return timeline_.knots.at(index)->get_lambda(knot_vars(index));
+  }
+  const drake::solvers::VectorXDecisionVariable input_vars(int index) const {
+    return timeline_.knots.at(index)->get_u(knot_vars(index));
   }
 
   void UpdateProblemData(const MPCReference& reference,

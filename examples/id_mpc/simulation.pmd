@@ -1,0 +1,48 @@
+group "0.operator" {
+    cmd "0.visualizer" {
+        exec = "bazel-bin/examples/Cassie/visualizer";
+        host = "idmpc";
+    }
+    cmd "1.xbox-radio" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "idmpc";
+    }
+}
+
+group "1.cassie-robot" {
+    cmd "0.standing-controller (OSC)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.8 --channel_x=CASSIE_STATE_SIMULATION --channel_u=OSC_STANDING";
+        host = "idmpc";
+    }
+    cmd "1.standing-mpc" {
+        exec = "bazel-bin/examples/id_mpc/run_id_mpc_standing";
+        host = "idmpc";
+    }
+}
+
+group "2.drake-simulator" {
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim --spring_model=false --target_realtime_rate=1.0";
+        host = "idmpc";
+    }
+}
+
+group "5.lcm-tools" {
+    cmd "0.cassie-lcm-logger" {
+        exec = "python3 examples/Cassie/start_logging.py";
+        host = "idmpc";
+    }
+    cmd "1.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "idmpc";
+    }
+}
+
+
+script "initialize_standing" {
+    stop group "1.cassie-robot";
+    stop cmd "0.cassie-lcm-logger";
+    stop group "2.drake-simulator" wait "stopped";
+    start cmd "0.standing-controller (OSC)";
+    start cmd "0.visualizer";
+}

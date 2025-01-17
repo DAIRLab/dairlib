@@ -48,6 +48,10 @@ void IDMPCSystem::SolveMPC(
   solver_options.SetOption(drake::solvers::SnoptSolver::id(),
                            "Major feasibility tolerance", 1e-2);
 
+  for (int i = 0; i < reference.knot_times_.size(); ++i) {
+    trajopt_.get_prog().SetInitialGuess(trajopt_.position_vars(i), state->GetPositions());
+  }
+
   trajopt_.get_prog().SetSolverOptions(solver_options);
 
   const auto& result = solver_.Solve(trajopt_.get_prog());

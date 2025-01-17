@@ -13,6 +13,7 @@ struct GaussNewtonApproximation {
     Eigen::MatrixXd H; // Gauss Newton Hessian
     Eigen::MatrixXd g; // gradient
     double c;          // constants
+    bool diagonal_hessian = false;
 };
 
 

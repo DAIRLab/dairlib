@@ -34,7 +34,7 @@ void AppendQuadraticCost(
     const std::vector<int>& variable_indices, const Eigen::MatrixXd& H,
     const Eigen::MatrixXd& b, double c,
     std::vector<Eigen::Triplet<double>>& triplets, Eigen::VectorXd& qp_g,
-    double* qp_c);
+    double* qp_c, bool diagonal_hessian=false);
 
 void AppendLinearConstraint(
     const std::vector<int>& variable_indices, int start_row,

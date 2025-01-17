@@ -13,6 +13,12 @@ QuadraticErrorCost<T>::QuadraticErrorCost(const MatrixXd& Q, const VectorXd& x,
                                           const std::string& description) :
     NonlinearLeastSquaresCost<T>(x.rows(), x.rows(), Q, description), x_ref_(x) {
   DRAKE_DEMAND(x_ref_.rows() == Q.rows());
+  DRAKE_DEMAND(Q.rows() == Q.cols());
+  for (int i = 0; i < Q.cols(); ++i) {
+    for (int j = 0; j < Q.rows(); ++j) {
+      DRAKE_ASSERT(i == j || Q(j, i) == 0);
+    }
+  }
 }
 
 template<typename T>
@@ -34,7 +40,8 @@ GaussNewtonApproximation QuadraticErrorCost<T>::CalcGaussNewtonApproximation(
   return {
     2 * this->Q_,
     2 * this->Q_ * y,
-    y.dot(this->Q_ * y)
+    y.dot(this->Q_ * y),
+    true
   };
 }
 }

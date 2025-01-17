@@ -89,7 +89,8 @@ GaussNewtonApproximation NonlinearLeastSquaresCost<T>::CalcGaussNewtonApproximat
   return {
       2 * J.transpose() * Q_ * J,
       2 * J.transpose() * Q_ * yval,
-      yval.transpose() * Q_ * yval
+      yval.transpose() * Q_ * yval,
+      false
   };
 }
 

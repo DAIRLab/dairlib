@@ -272,7 +272,7 @@ void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
                                "approximation is properly implemented");
     }
     AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
-                        cost_triplets, qp.g, &qp.c);
+                        cost_triplets, qp.g, &qp.c, cost_data.diagonal_hessian);
   }
   qp.H.resize(prog_.num_vars(), prog_.num_vars());
   qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());

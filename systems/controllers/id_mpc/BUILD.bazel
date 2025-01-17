@@ -15,13 +15,3 @@ cc_library(
         "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
     ],
 )
-
-cc_library(
-    name = "id_mpc_system",
-    srcs = ["id_mpc_system.cc"],
-    hdrs = ["id_mpc_system.h"],
-    deps = [
-        ":id_mpc",
-        "@drake//:drake_shared_library",
-    ],
-)

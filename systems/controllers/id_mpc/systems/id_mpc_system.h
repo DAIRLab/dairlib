@@ -1,9 +1,11 @@
 #pragma once
 
-#include "id_mpc.h"
-#include "core/mpc_solution.h"
 
+
+#include "systems/controllers/id_mpc/id_mpc.h"
+#include "systems/controllers/id_mpc/core/mpc_solution.h"
 #include "drake/solvers/snopt_solver.h"
+#include "dairlib/lcmt_id_mpc_solution.hpp"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -14,6 +16,14 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
   IDMPCSystem(IDMPCParams params,
               std::unique_ptr<ConstrainedDynamicsInfo> dynamics);
 
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return get_input_port(input_port_state_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_reference() const {
+    return get_input_port(input_port_reference_);
+  }
+
  private:
 
   void SolveMPC(const drake::systems::Context<double>& context,
@@ -21,15 +31,16 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
 
   // TODO (@Brian-Acosta) should this go straight to LCM?
   void CalcOutput(const drake::systems::Context<double>& context,
-                  MPCSolution* solution) const;
+                  lcmt_id_mpc_solution* solution) const;
 
-  IDMPC mpc_problem_;
+  mutable IDMPC trajopt_;
+
+  drake::solvers::SnoptSolver solver_;
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_reference_;
 
   drake::systems::OutputPortIndex output_port_mpc_solution_;
-
   drake::systems::CacheIndex mpc_solution_cache_;
 };
 

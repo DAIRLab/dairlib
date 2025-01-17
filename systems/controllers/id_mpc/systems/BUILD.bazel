@@ -1,0 +1,31 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "id_mpc_systems",
+    deps = [
+        ":constant_reference_system",
+        ":id_mpc_system",
+    ],
+)
+
+cc_library(
+    name = "id_mpc_system",
+    srcs = ["id_mpc_system.cc"],
+    hdrs = ["id_mpc_system.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/controllers/id_mpc:id_mpc",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "constant_reference_system",
+    srcs = ["constant_reference_system.cc"],
+    hdrs = ["constant_reference_system.h"],
+    deps = [
+        "//systems/controllers/id_mpc/costs:id_mpc_costs"
+    ],
+)

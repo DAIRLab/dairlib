@@ -72,10 +72,14 @@ PYBIND11_MODULE(c3, m) {
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
            py::arg("options"))
 
-      .def("Solve", [](C3& self, const Eigen::VectorXd& x0) {
-        py::gil_scoped_release release;  // Still need this for nested OpenMP calls
-        return self.Solve(x0);
-      })
+      .def("Solve",
+           [](C3& self, const Eigen::VectorXd& x0) {
+             py::gil_scoped_release
+                 release;  // Still need this for nested OpenMP calls
+             return self.Solve(x0);
+           })
+      .def("UpdateWarmStart", &C3::UpdateWarmStart, py::arg("warm_start_x"),
+           py::arg("warm_start_u"))
       .def("UpdateLCS", &C3::UpdateLCS, py::arg("lcs"))
       .def("UpdateTarget", &C3::UpdateTarget, py::arg("x_des"))
       .def("AddLinearConstraint", &C3::AddLinearConstraint, py::arg("A"),

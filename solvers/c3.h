@@ -40,6 +40,9 @@ class C3 {
   /// @return The first control action to take, u[0]
   void Solve(const Eigen::VectorXd& x0);
 
+  void UpdateWarmStart(const std::vector<Eigen::VectorXd>& warm_start_x,
+                       const std::vector<Eigen::VectorXd>& warm_start_u);
+
   /// Update the LCS without needing to reconstruct the C3 object
   void UpdateLCS(const LCS& lcs);
   /// Update the target without needing to reconstruct the C3 object

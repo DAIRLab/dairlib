@@ -112,6 +112,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     w_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   }
+  x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
 
   for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_x_, "x" + std::to_string(i)));
@@ -157,6 +158,19 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
               .AddQuadraticCost(2 * cost_matrices_.R.at(i),
                                 VectorXd::Zero(n_u_), u_.at(i), 1)
               .evaluator();
+    }
+  }
+}
+
+void C3::UpdateWarmStart(const std::vector<Eigen::VectorXd>& warm_start_x,
+                         const std::vector<Eigen::VectorXd>& warm_start_u) {
+  DRAKE_DEMAND(warm_start_ == true);
+  for (size_t iter = 0; iter < options_.admm_iter + 1; ++iter) {
+    for (size_t i = 0; i < N_ + 1; i++) {
+      warm_start_x_[iter][i] = warm_start_x[i];
+    }
+    for (size_t i = 0; i < N_; i++) {
+      warm_start_u_[iter][i] = warm_start_u[i];
     }
   }
 }
@@ -211,10 +225,12 @@ void C3::Solve(const VectorXd& x0) {
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(lcs_.F_[0], lcs_.E_[0] * x0 + lcs_.c_[0], &lambda0);
     if (!lambda_constraint_for_zero_h_.has_value()) {
-      lambda_constraint_for_zero_h_ = prog_.AddLinearConstraint(lambda_[0] == lambda0);
+      lambda_constraint_for_zero_h_ =
+          prog_.AddLinearConstraint(lambda_[0] == lambda0);
     } else {
       prog_.RemoveConstraint(lambda_constraint_for_zero_h_.value());
-      lambda_constraint_for_zero_h_ = prog_.AddLinearConstraint(lambda_[0] == lambda0);
+      lambda_constraint_for_zero_h_ =
+          prog_.AddLinearConstraint(lambda_[0] == lambda0);
     }
   }
   auto start = std::chrono::high_resolution_clock::now();
@@ -246,27 +262,29 @@ void C3::Solve(const VectorXd& x0) {
     ADMMStep(x0, &delta, &w, &Gv, iter);
   }
 
-  vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-  for (std::size_t i = 0; i < N_; i++) {
-    WD.at(i) = delta.at(i) - w.at(i);
-  }
-
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
-
-  *w_sol_ = w;
-  *delta_sol_ = delta;
-
-  if (!options_.end_on_qp_step) {
+  // If end_on_qp_step is true, solve one more QP step
+  if (options_.end_on_qp_step) {
+    vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+    for (std::size_t i = 0; i < N_; i++) {
+      WD.at(i) = delta.at(i) - w.at(i);
+    }
+    vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  } else {
+    // Since the last step is the projection step, dynamics and complementarity constraints may not be satisfied (QP
+    // step is responsible for making sure they are satisfied). One trick is to directly set z to delta and simulate
+    // forward with LCS (without complementarity constraints) to obtain the next state.
     *z_sol_ = delta;
     z_sol_->at(0).segment(0, n_x_) = x0;
     x_sol_->at(0) = x0;
     for (int i = 1; i < N_; ++i) {
       z_sol_->at(i).segment(0, n_x_) =
-          lcs_.A_.at(i - 1) * x_sol_->at(i - 1) +
+          lcs_.A_.at(i - 1) * z_sol_->at(i - 1).head(n_x_) +
           lcs_.B_.at(i - 1) * u_sol_->at(i - 1) +
-          lcs_.D_.at(i - 1) * lambda_sol_->at(i - 1) + lcs_.d_.at(i - 1);
+          lcs_.D_.at(i - 1) * z_sol_->at(i - 1).segment(n_x_, (n_x_ + n_lambda_)) + lcs_.d_.at(i - 1);
     }
   }
+  *w_sol_ = w;
+  *delta_sol_ = delta;
 
   // Undoing to scaling to put variables back into correct units
   // This only scales lambda
@@ -341,8 +359,10 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    int index = solve_time_ / lcs_.dt_;
-    double weight = (solve_time_ - index * lcs_.dt_) / lcs_.dt_;
+    // int index = solve_time_ / lcs_.dt_;
+    // double weight = (solve_time_ - index * lcs_.dt_) / lcs_.dt_;
+    double weight = 0;
+
     for (int i = 0; i < N_ - 1; i++) {
       prog_.SetInitialGuess(x_[i],
                             (1 - weight) * warm_start_x_[admm_iteration][i] +

@@ -16,7 +16,9 @@ import os.path as op
 from lcm import EventLog
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import matplotlib.ticker as mtick
 import numpy as np
+from scipy.stats import gaussian_kde
 import yaml
 
 import dairlib
@@ -78,8 +80,8 @@ RAD_SUCCESS_THRESHOLDS = np.array([0.05, 0.1, 0.2, 0.3, 0.4])
 THRESHOLD_COLORS = ['black', 'red', 'darkorange', 'gold', 'green']
 
 EPS = 1e-5
-
 TIME_SYNCH_THRESH = 0.03
+HIST_BINS = 10
 
 global_is_interactive = False
 
@@ -247,6 +249,16 @@ def synchronize_messages(
     if not global_is_interactive:
         plt.close()
 
+def save_current_figure(filename: str, log_folder: str = None):
+    plt.savefig(f'examples/jacktoy/test/tmp/{filename}.png')
+    print(f'Wrote plot to examples/jacktoy/test/tmp/{filename}.png')
+    if log_folder is not None:
+        plt.savefig(op.join(log_folder, f'{filename}.png'))
+        print(f'Wrote plot to {op.join(log_folder, f"{filename}.png")}')
+    global global_is_interactive
+    if not global_is_interactive:
+        plt.close()
+
 def get_shading_masks(bool_array):
     bool_array = bool_array.squeeze()
     assert bool_array.ndim == 1
@@ -293,14 +305,7 @@ def visualize_sample_buffer(messages_by_channel: dict, log_folder: str = None):
     axs[1].set_ylabel('Error [m or full rotation]')
     axs[1].set_title('Error between current and goal states')
     plt.legend()
-    plt.savefig('examples/jacktoy/test/tmp/sample_buffer.png')
-    print(f'Wrote plot to examples/jacktoy/test/tmp/sample_buffer.png')
-    if log_folder is not None:
-        plt.savefig(op.join(log_folder, 'sample_buffer.png'))
-        print(f'Wrote plot to {op.join(log_folder, "sample_buffer.png")}')
-    global global_is_interactive
-    if not global_is_interactive:
-        plt.close()
+    save_current_figure('sample_buffer', log_folder=log_folder)
 
 def inspect_mode_switching(messages_by_channel: dict, log_folder: str = None):
     # Get relevant messages over time.
@@ -415,15 +420,7 @@ def inspect_mode_switching(messages_by_channel: dict, log_folder: str = None):
     axs[3].set_ylabel('Error [m or full rotation]')
     axs[3].legend()
     axs[3].set_title('Error between current and goal states')
-
-    plt.savefig('examples/jacktoy/test/tmp/sample_sources.png')
-    print(f'Wrote plot to examples/jacktoy/test/tmp/sample_sources.png')
-    if log_folder is not None:
-        plt.savefig(op.join(log_folder, 'sample_sources.png'))
-        print(f'Wrote plot to {op.join(log_folder, "sample_sources.png")}')
-    global global_is_interactive
-    if not global_is_interactive:
-        plt.close()
+    save_current_figure('sample_sources', log_folder=log_folder)
 
 def presentable_plots(messages_by_channel: dict, trajectory_params: dict,
                       log_folder: str = None):
@@ -537,16 +534,9 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
             ax1.get_legend_handles_labels()[0] + [grey_patch, white_patch],
         bbox_to_anchor=(1.1, 1), loc='upper left')
     plt.tight_layout()
-
-    plt.savefig('examples/jacktoy/test/tmp/shading_goal.png')
-    print(f'Wrote plot to examples/jacktoy/test/tmp/shading_goal.png')
-    if log_folder is not None:
-        plt.savefig(op.join(log_folder, f'shading_goal_{goal_num}.png'))
-        print('Wrote plot to ' + \
-              op.join(log_folder, f'shading_goal_{goal_num}.png'))
-    global global_is_interactive
-    if not global_is_interactive:
-        plt.close()
+    save_current_figure(
+        f'shading_goal_{goal_num}' if log_folder is not None else \
+        'shading_goal', log_folder=log_folder)
 
 def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
                            log_folder: str = None):
@@ -557,6 +547,8 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
     times = messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY]
 
     times_of_new_goals = []
+    worst_pos_errors, worst_rad_errors = [], []
+    init_pos_errors, init_rad_errors = [], []
     quats, xyzs, ee_xyzs = [], [], []
     goal_quats, goal_xyzs = [], []
     pos_errors, rad_errors = [], []
@@ -572,10 +564,25 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
 
         if len(times_of_new_goals) < debug.detected_goal_changes + 1:
             times_of_new_goals.append(t)
+            init_pos_errors.append(debug.current_pos_error)
+            init_rad_errors.append(debug.current_rot_error)
+            worst_pos_errors.append(debug.current_pos_error)
+            worst_rad_errors.append(debug.current_rot_error)
+
+        if debug.current_pos_error > worst_pos_errors[-1]:
+            worst_pos_errors[-1] = debug.current_pos_error
+        if debug.current_rot_error > worst_rad_errors[-1]:
+            worst_rad_errors[-1] = debug.current_rot_error
 
     times = np.array(times)
     pos_errors = np.array(pos_errors)
     rad_errors = np.array(rad_errors)
+
+    # Cut off the last goal since it was not achieved.
+    init_pos_errors = np.array(init_pos_errors[:-1])
+    init_rad_errors = np.array(init_rad_errors[:-1])
+    worst_pos_errors = np.array(worst_pos_errors[:-1])
+    worst_rad_errors = np.array(worst_rad_errors[:-1])
 
     # Now inspect goal completion.
     n_goals = len(times_of_new_goals)
@@ -646,7 +653,7 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
                            bar_width * (n_thresholds - 1) / 2,
                           n_thresholds)
 
-    # Plot each threshold as a separate set of bars
+    # Plot each threshold as a separate set of bars.
     for thresh_i, color in enumerate(colors):
         axs[2].bar(x + offsets[thresh_i], times_to_thresholds[:, thresh_i],
                    width=0.2, color=color,
@@ -659,15 +666,61 @@ def visualize_goal_success(messages_by_channel: dict, trajectory_params: dict,
     axs[2].legend(title="Thresholds",
                   bbox_to_anchor=(1.02, 1), loc='upper left')
     plt.tight_layout()
+    save_current_figure('goal_success', log_folder=log_folder)
 
-    plt.savefig('examples/jacktoy/test/tmp/goal_success.png')
-    print(f'Wrote plot to examples/jacktoy/test/tmp/goal_success.png')
-    if log_folder is not None:
-        plt.savefig(op.join(log_folder, 'goal_success.png'))
-        print(f'Wrote plot to {op.join(log_folder, "goal_success.png")}')
-    global global_is_interactive
-    if not global_is_interactive:
-        plt.close()
+    # A histogram of times.
+    fig, axs = plt.subplot_mosaic(
+        [[0, 4], [1, 4], [2, 4], [3, 4]], constrained_layout=True,
+        figsize=(9, 9), sharex=True, sharey=False)
+    axs[1].sharey(axs[0])
+    axs[2].sharey(axs[0])
+    axs[3].sharey(axs[0])
+    fig.suptitle('Time to Reach Goal')
+    handles = []
+
+    counts, bins = np.histogram(times_to_thresholds, bins=HIST_BINS,
+                                range=(0, np.max(times_to_thresholds)))
+
+    for thresh_i, color in enumerate(colors):
+        data = times_to_thresholds[:, thresh_i]
+        kde = gaussian_kde(data)
+        x = np.linspace(min(data), max(data), 100)
+        label=f'{pos_thresholds[thresh_i]:.2f}m, ' + \
+            f'{rad_thresholds[thresh_i]:.1f}rad'
+        axs[thresh_i].hist(data, color=color, alpha=0.5, density=True,
+                           bins=bins, label=label)
+        handles.append(
+            axs[thresh_i].plot(
+                x, kde(x), color=color, linewidth=4, label=label)[0])
+        axs[thresh_i].set_ylabel('Probability Density')
+        axs[thresh_i].yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+
+        axs[4].hist(data, color=color, alpha=0.5, density=True, bins=bins)
+        axs[4].plot(x, kde(x), color=color, linewidth=4, label=label)
+
+    axs[3].set_xlabel('Time [s]')
+    axs[4].set_xlabel('Time [s]')
+    axs[4].set_ylabel('Probability Density')
+    axs[4].yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    axs[4].legend(handles=handles, title='Thresholds')
+    plt.tight_layout()
+    save_current_figure('time_hist', log_folder=log_folder)
+
+    fig, axs = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
+    for thresh_i, color in enumerate(colors):
+        axs[0].scatter(worst_pos_errors, times_to_thresholds[:, thresh_i],
+                       color=color, label=f'{pos_thresholds[thresh_i]:.2f}' + \
+                        f'm, {rad_thresholds[thresh_i]:.1f}rad')
+        axs[1].scatter(worst_rad_errors*180/np.pi,
+                       times_to_thresholds[:, thresh_i], color=color,
+                       label=f'{pos_thresholds[thresh_i]:.2f}m, ' + \
+                        f'{rad_thresholds[thresh_i]:.1f}rad')
+    axs[1].legend(title='Success Thresholds')
+    axs[0].set_xlabel('Position Error [m]')
+    axs[1].set_xlabel('Orientation Error [deg]')
+    axs[0].set_ylabel('Time to Goal [s]')
+    fig.suptitle('Time to Goal vs. Worst Error Over Trajectory')
+    save_current_figure('time_vs_error', log_folder=log_folder)
 
 def inspect_lcm_traffic(messages_by_channel: dict):
     buffer_ts = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]

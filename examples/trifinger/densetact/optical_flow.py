@@ -37,16 +37,13 @@ class OpticalFlow:
         self.cap.set(cv.CAP_PROP_FRAME_WIDTH, self.resolution[0])
         self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
 
-        # Set camera settings
-        self.cap.set(cv.CAP_PROP_SETTINGS, 1)
-
-        # Set auto exposure off
-        self.cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 1)  # 0.25 is manual exposure mode in OpenCV
         time.sleep(1)
-        # Sensor 1: Exposure 80 ms
-        # Sensor 2: Exposure 11 ms
-        self.cap.set(cv.CAP_PROP_EXPOSURE, densetact['expo_time'])
-        time.sleep(2)
+        # Disable Manual Exposure (Only works in terminal)
+        subprocess.check_call(f"v4l2-ctl -d /dev/video{i} -c auto_exposure=1", shell=True)
+        # Set the Exposure Time [ms.] from the .yaml (Only works in terminal)
+        subprocess.check_call(f"v4l2-ctl -d /dev/video{i} -c exposure_time_absolute={densetact['expo_time']}", shell=True)
+
+        time.sleep(1)
         ret, old_frame = self.cap.read()  # Get first frame
         self.start = time.perf_counter()
         print("Opened up camera: ", densetact['serial_number']) if ret else 0
@@ -178,7 +175,7 @@ class OpticalFlow:
         CoP = np.array([int(x[armgax_2d[1]]), int(y[armgax_2d[0]])])
 
         # figure out the region of contact
-        div_thres = 0.12
+        div_thres = 0.10
         contact_mask = div_grid > div_thres
 
         # HELMHOLTZ HODGE DECOMP
@@ -221,7 +218,37 @@ class OpticalFlow:
         Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))/50_000
 
         #St = np.nansum((div_free + harm)[contact_mask], axis = 0)/500 if np.any(contact_mask) else np.array([0, 0])
-        St = np.nansum((div_free + harm), axis=(0,1)) / 5000 if np.any(contact_mask) else np.array([0, 0])
+        
+        gn = np.nansum(div_free, axis = (0, 1))
+        gt = np.nansum(harm, axis = (0, 1))
+        g_tau = np.nansum(curl_free, axis = (0, 1))
+
+        # gn = np.nansum(div_free[contact_mask], axis = 0)
+        # gt = np.nansum(harm[contact_mask], axis = 0)
+        # g_tau = np.nansum(curl_free[contact_mask], axis = 0)
+
+        # f(gn, gt, g_tau, max_div)
+
+        #print("gn: ", gn, "gt: ", gt, "g_tau: ", g_tau, "d_max: ", div_max)
+        
+        print(np.mean(curl_free[contact_mask], axis = 0))
+        # theta_t = np.arctan2(gt[1]/gt[0])
+        # gt_norm = np.linalg.norm(gt)
+
+        # theta_t = np.arctan2(gt[1]/gt[0])
+        # gt_norm = np.linalg.norm(gn)
+
+
+        
+
+        #print(np.nansum(div_free, axis = (0, 1)))
+
+        #St_1 = np.nansum(div_free[contact_mask]) / 500 if np.any(contact_mask) else np.array([0, 0])
+
+        #St_2 = np.nansum(harm[contact_mask]) / 500 if np.any(contact_mask) else np.array([0, 0])
+        #print("first_term", St_1, "second_term", St_2, "division", St_2/St_1)
+
+        #St = np.nansum((div_free + harm), axis=(0,1)) / 5000 if np.any(contact_mask) else np.array([0, 0])
 
 
         # recalibration
@@ -238,7 +265,7 @@ class OpticalFlow:
             'CoP': CoP, 'CoP_ray_norm': CoP_ray_norm,
             'curl_free': curl_free, 'div_free': div_free, 'harm': harm,
             'contact_bool': np.any(contact_mask), 'contact_points': contact_points,
-            'Sn': Sn, 'St': St,
+            'Sn': Sn, 'St': np.mean(curl_free[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0],
             'M': M, 'T': np.block([[M, CoP_on_sph.reshape(3, 1)], [np.zeros((1, 3)), np.array([[1]])]])
         }
 

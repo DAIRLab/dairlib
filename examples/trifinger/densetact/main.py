@@ -1,19 +1,90 @@
-#import densetact_.projection_model as pm
 import numpy as np
-
 import optical_flow as of
-
 import yaml
-
 from helper import graphical, real_time_visual
 
-"""
-Testing Framework
-"""
 from io import BytesIO
 import struct
 
-import dairlib
+import os
+
+class lcmt_densetact_measurement(object):
+    """
+      Measured DenseTact Contact Data
+    
+    """
+
+    __slots__ = ["utime", "inContact", "contactPose", "scaledNormal", "scaledFriction"]
+
+    __typenames__ = ["int64_t", "boolean", "double", "double", "double"]
+
+    __dimensions__ = [None, None, [4, 4], None, [2]]
+
+    def __init__(self):
+        self.utime = 0
+        """ LCM Type: int64_t """
+        self.inContact = False
+        """ LCM Type: boolean """
+        self.contactPose = [ [ 0.0 for dim1 in range(4) ] for dim0 in range(4) ]
+        """ LCM Type: double[4][4] """
+        self.scaledNormal = 0.0
+        """ LCM Type: double """
+        self.scaledFriction = [ 0.0 for dim0 in range(2) ]
+        """ LCM Type: double[2] """
+
+    def encode(self):
+        buf = BytesIO()
+        buf.write(lcmt_densetact_measurement._get_packed_fingerprint())
+        self._encode_one(buf)
+        return buf.getvalue()
+
+    def _encode_one(self, buf):
+        buf.write(struct.pack(">qb", self.utime, self.inContact))
+        for i0 in range(4):
+            buf.write(struct.pack('>4d', *self.contactPose[i0][:4]))
+        buf.write(struct.pack(">d", self.scaledNormal))
+        buf.write(struct.pack('>2d', *self.scaledFriction[:2]))
+
+    @staticmethod
+    def decode(data: bytes):
+        if hasattr(data, 'read'):
+            buf = data
+        else:
+            buf = BytesIO(data)
+        if buf.read(8) != lcmt_densetact_measurement._get_packed_fingerprint():
+            raise ValueError("Decode error")
+        return lcmt_densetact_measurement._decode_one(buf)
+
+    @staticmethod
+    def _decode_one(buf):
+        self = lcmt_densetact_measurement()
+        self.utime = struct.unpack(">q", buf.read(8))[0]
+        self.inContact = bool(struct.unpack('b', buf.read(1))[0])
+        self.contactPose = []
+        for i0 in range(4):
+            self.contactPose.append(struct.unpack('>4d', buf.read(32)))
+        self.scaledNormal = struct.unpack(">d", buf.read(8))[0]
+        self.scaledFriction = struct.unpack('>2d', buf.read(16))
+        return self
+
+    @staticmethod
+    def _get_hash_recursive(parents):
+        if lcmt_densetact_measurement in parents: return 0
+        tmphash = (0x9a1ca3e28aa202c) & 0xffffffffffffffff
+        tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
+        return tmphash
+    _packed_fingerprint = None
+
+    @staticmethod
+    def _get_packed_fingerprint():
+        if lcmt_densetact_measurement._packed_fingerprint is None:
+            lcmt_densetact_measurement._packed_fingerprint = struct.pack(">Q", lcmt_densetact_measurement._get_hash_recursive([]))
+        return lcmt_densetact_measurement._packed_fingerprint
+
+    def get_hash(self):
+        """Get the LCM hash of the struct"""
+        return struct.unpack(">Q", lcmt_densetact_measurement._get_packed_fingerprint())[0]
+
 
 class lcmt_densetact_measurement_data(object):
     """
@@ -23,15 +94,15 @@ class lcmt_densetact_measurement_data(object):
 
     __slots__ = ["numSensors", "sensorData"]
 
-    __typenames__ = ["int8_t", "dairlib.lcmt_densetact_measurement"]
+    __typenames__ = ["int8_t", "lcmt_densetact_measurement"]
 
-    __dimensions__ = [None, ["numSensors"]]
+    __dimensions__ = [None, [2]]
 
     def __init__(self):
-        self.numSensors = 2
+        self.numSensors = 0
         """ LCM Type: int8_t """
-        self.sensorData = []
-        """ LCM Type: lcmt_densetact_measurement[numSensors] """
+        self.sensorData = [lcmt_densetact_measurement() for dim0 in range(2) ]
+        """ LCM Type: dairlib.lcmt_densetact_measurement[2] """
 
     def encode(self):
         buf = BytesIO()
@@ -41,8 +112,8 @@ class lcmt_densetact_measurement_data(object):
 
     def _encode_one(self, buf):
         buf.write(struct.pack(">b", self.numSensors))
-        for i0 in range(self.numSensors):
-            assert self.sensorData[i0]._get_packed_fingerprint() == dairlib.lcmt_densetact_measurement._get_packed_fingerprint()
+        for i0 in range(2):
+            assert self.sensorData[i0]._get_packed_fingerprint() == lcmt_densetact_measurement._get_packed_fingerprint()
             self.sensorData[i0]._encode_one(buf)
 
     @staticmethod
@@ -60,15 +131,15 @@ class lcmt_densetact_measurement_data(object):
         self = lcmt_densetact_measurement_data()
         self.numSensors = struct.unpack(">b", buf.read(1))[0]
         self.sensorData = []
-        for i0 in range(self.numSensors):
-            self.sensorData.append(dairlib.lcmt_densetact_measurement._decode_one(buf))
+        for i0 in range(2):
+            self.sensorData.append(lcmt_densetact_measurement._decode_one(buf))
         return self
 
     @staticmethod
     def _get_hash_recursive(parents):
         if lcmt_densetact_measurement_data in parents: return 0
         newparents = parents + [lcmt_densetact_measurement_data]
-        tmphash = (0x5eb95ea8bc9c69bf+ dairlib.lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
+        tmphash = (0x32f905fce21983bf+ lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None
@@ -103,6 +174,7 @@ if __name__ == "__main__":
 
     import os
 
+
     
     #from dairlib import lcmt_densetact_measurement_data
 
@@ -122,6 +194,7 @@ if __name__ == "__main__":
     real_time_visual1 = helper.graphical("DenseTact1", config['sensor']['DenseTact1'])
     real_time_visual2 = helper.graphical("DenseTact2", config['sensor']['DenseTact2'])
 
+    msg = lcmt_densetact_measurement_data()
 
     # Main loop that runs the densetact processing
     frame = 0
@@ -136,31 +209,26 @@ if __name__ == "__main__":
         real_time_visual1.images(frame_color, flow_data1) if stream_bool else 0
         real_time_visual2.images(frame_color2, flow_data2) if stream_bool else 0
 
-        msg = lcmt_densetact_measurement_data()
-        data = lcmt_densetact_measurement_data().sensorData
-        print(data)
+        msg.sensorData[0].utime = np.int64(flow_data1['time']*1E6)
+        msg.sensorData[0].inContact = flow_data1['contact_bool']
+        msg.sensorData[0].contactPose = flow_data1['T']
+        msg.sensorData[0].scaledNormal = flow_data1['Sn']
+        msg.sensorData[0].scaledFriction = flow_data1['St']
 
+        # sensorData_dt1 = [flow_data1['time'], flow_data1['contact_bool'], flow_data1['T'], flow_data1['Sn'], flow_data1['St']]
+        # sensorData_dt2 = [flow_data2['time'], flow_data2['contact_bool'], flow_data2['T'], flow_data2['Sn'], flow_data2['St']]
+        # msg.sensorData = [sensorData_dt1, sensorData_dt2]
 
-        msg.numSensors = 2
-        # msg.sensorData.utime = flow_data1['time']
-        # msg.sensorData.inContact = flow_data1['contact_bool']
-        # msg.sensorData.contactPose = flow_data1['T']
-        # msg.sensorData.scaledNormal = flow_data1['Sn']
-        # msg.sensorData.scaledFriction = flow_data1['St']
-
-        sensorData_dt1 = [flow_data1['time'], flow_data1['contact_bool'], flow_data1['T'], flow_data1['Sn'], flow_data1['St']]
-        sensorData_dt2 = [flow_data2['time'], flow_data2['contact_bool'], flow_data2['T'], flow_data2['Sn'], flow_data2['St']]
-        msg.sensorData = [sensorData_dt1, sensorData_dt2]
-
-        # msg.sensorData[1].utime = flow_data2['time']
-        # msg.sensorData[1].inContact = flow_data2['contact_bool']
-        # msg.sensorData[1].contactPose = flow_data2['T']
-        # msg.sensorData[1].scaledNormal = flow_data2['Sn']
-        # msg.sensorData[1].scaledFriction = flow_data2['St']
+        msg.sensorData[1].utime = np.int64(flow_data2['time']*1E6)
+        msg.sensorData[1].inContact = flow_data2['contact_bool']
+        msg.sensorData[1].contactPose = flow_data2['T']
+        msg.sensorData[1].scaledNormal = flow_data2['Sn']
+        msg.sensorData[1].scaledFriction = flow_data2['St']
 
         lc = lcm.LCM()
 
-        lc.publish("DENSETACT", msg.encode())
+        lc.publish("CONTACT_FORCE_CHANNEL", msg.encode())
+
 
 
 

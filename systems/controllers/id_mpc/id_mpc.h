@@ -67,7 +67,6 @@ class IDMPC {
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
   void ConstructSQPProgram(const Eigen::VectorXd& x, solvers::QPData& qp) const;
-  void UpdateSQPProgram(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   double EvaluateConstraintViolation(const Eigen::VectorXd& x) const;
   double EvaluateCost(const Eigen::VectorXd& x) const;
 

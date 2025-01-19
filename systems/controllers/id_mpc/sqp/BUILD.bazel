@@ -7,6 +7,8 @@ cc_library(
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     deps = [
+        "//solvers:qp_data",
+        "//solvers:qpalm_solver",
         "@drake//:drake_shared_library",
     ],
 )

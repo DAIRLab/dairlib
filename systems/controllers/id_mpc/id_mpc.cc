@@ -53,6 +53,11 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
       VectorXd::Zero(dynamics_->nx()),
       knot_point_vars_.front().head(dynamics_->nx())).evaluator().get();
+
+  num_constraints_ = 0;
+  for (const auto& binding : prog_.GetAllConstraints()) {
+    num_constraints_ += binding.evaluator()->num_constraints();
+  }
 }
 
 void IDMPC::UpdateProblemData(const MPCReference &reference,
@@ -316,6 +321,44 @@ void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
   }
   qp.A.resize(qp.num_ineq, x.rows());
   qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
+}
+
+double IDMPC::EvaluateCost(const Eigen::VectorXd &x) const {
+  double cost = 0;
+  for (const auto& binding: prog_.GetAllCosts()) {
+    VectorXd y = VectorXd::Zero(1);
+    const auto& v = binding.variables();
+    const auto& indices = prog_.FindDecisionVariableIndices(v);
+
+    VectorXd xval = VectorXd::Zero(v.rows());
+    for (int i = 0; i < v.rows(); ++i) {
+      xval(i) = x(indices[i]);
+    }
+    binding.evaluator()->Eval(xval, &y);
+    cost += y(0);
+  }
+}
+
+double IDMPC::EvaluateConstraintViolation(const Eigen::VectorXd &x) const {
+  VectorXd lb_viol = VectorXd::Zero(num_constraints());
+  VectorXd ub_viol = VectorXd::Zero(num_constraints());
+  int start = 0;
+  for (const auto& binding : prog_.GetAllConstraints()) {
+    const auto &v = binding.variables();
+    const auto &indices = prog_.FindDecisionVariableIndices(v);
+    VectorXd xval = VectorXd::Zero(v.rows());
+    for (int i = 0; i < v.rows(); ++i) {
+      xval(i) = x(indices[i]);
+    }
+    VectorXd y;
+    binding.evaluator()->Eval(xval, &y);
+    const int n = binding.evaluator()->num_constraints();
+    const VectorXd& lb = binding.evaluator()->lower_bound();
+    const VectorXd& ub = binding.evaluator()->upper_bound();
+    lb_viol.segment(start, n) = (lb - y).cwiseMax(0);
+    ub_viol.segment(start, n) = (y - ub).cwiseMax(0);
+  }
+  return params_.dt * lb_viol.cwiseMax(ub_viol).norm();
 }
 
 LcmTrajectory IDMPC::GetSolutionAsLcmTrajectory(const MathematicalProgramResult &result) const {

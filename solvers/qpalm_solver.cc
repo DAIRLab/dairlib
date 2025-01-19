@@ -6,7 +6,7 @@ using Eigen::VectorXd;
 using Eigen::Map;
 
 
-QPALMSolver::QPALMSolver(long n, long m) : data_(n, m){
+QPALMSolver::QPALMSolver(long n, long m) : n_(n), data_(n, m){
   settings_.verbose = 0;
 }
 

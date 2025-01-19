@@ -5,10 +5,26 @@
 namespace dairlib::systems::controllers::id_mpc {
 
 using drake::systems::Context;
+using drake::systems::EventStatus;
+using drake::systems::State;
 
-IDMPCSystem::IDMPCSystem(IDMPCParams params,
-                         std::unique_ptr<ConstrainedDynamicsInfo> dynamics) :
-                         trajopt_(params, std::move(dynamics)) {
+using Eigen::VectorXd;
+using solvers::QPData;
+
+IDMPCSystem::IDMPCSystem(
+    IDMPCParams params,
+    std::unique_ptr<ConstrainedDynamicsInfo> dynamics) :
+    trajopt_(params, std::move(dynamics)),
+    solver_(trajopt_.num_vars(), trajopt_.num_constraints(),
+      [this](const VectorXd& x, QPData& qp) {
+        this->trajopt_.ConstructSQPProgram(x, qp);
+      },
+      [this](const VectorXd& x) {
+        return this->trajopt_.EvaluateConstraintViolation(x);
+      },
+      [this](const VectorXd& x) {
+        return this->trajopt_.EvaluateCost(x);
+      }) {
 
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",
@@ -19,54 +35,48 @@ IDMPCSystem::IDMPCSystem(IDMPCParams params,
       "mpc_reference",
       drake::Value<MPCReference>()).get_index();
 
-  mpc_solution_cache_ = DeclareCacheEntry(
-      "mpc_solution", MPCSolution(),
-      &IDMPCSystem::SolveMPC).cache_index();
+  MPCSolution model_solution;
+  model_solution.sqp_iterate = solver_.AllocateIterate();
+  mpc_solution_state_ = DeclareAbstractState(
+      drake::Value<MPCSolution>(model_solution));
+
+  DeclareForcedUnrestrictedUpdateEvent(&IDMPCSystem::SolveMPC);
 
   output_port_mpc_solution_ = DeclareAbstractOutputPort(
       "mpc_solution", lcmt_id_mpc_solution(),
       &IDMPCSystem::CalcOutput).get_index();
 }
 
-void IDMPCSystem::SolveMPC(
-    const Context<double> &context, MPCSolution *solution) const {
+EventStatus IDMPCSystem::SolveMPC(
+    const Context<double> &context, State<double> *system_state) const {
   const auto& reference = get_input_port_reference().Eval<MPCReference>(context);
   const auto& state = EvalVectorInput<OutputVector>(context, input_port_state_);
+
+  auto solution =
+      system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
+
+  if (solution.is_initial_solve) {
+    SetInitialSolverState(*state, solution.sqp_iterate);
+    solution.is_initial_solve = false;
+  }
   const Eigen::VectorXd& x = state->GetState();
 
   trajopt_.UpdateProblemData(reference, x);
-
-  auto solver_options = drake::solvers::SolverOptions();
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "./snopt.out");
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                           "Major Iterations Limit", 1e6);
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations Limit", 1e6);
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance", 1e-2);
-  solver_options.SetOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance", 1e-2);
-
-  for (int i = 0; i < reference.knot_times_.size(); ++i) {
-    trajopt_.get_prog().SetInitialGuess(trajopt_.position_vars(i), state->GetPositions());
-  }
-
-  trajopt_.get_prog().SetSolverOptions(solver_options);
-
-  const auto& result = solver_.Solve(trajopt_.get_prog());
-
-  solution->contact_sequence = reference.active_contacts_;
-  solution->solution_trajectories = trajopt_.GetSolutionAsLcmTrajectory(result);
-  trajopt_.get_prog().SetInitialGuessForAllVariables(result.GetSolution());
+  solver_.DoSQPStep(solution.sqp_iterate.x_sol, solution.sqp_iterate);
+  solution.contact_sequence = reference.active_contacts_;
+  return EventStatus::Succeeded();
 }
 
 void IDMPCSystem::CalcOutput(const Context<double>& context,
                              lcmt_id_mpc_solution *solution) const {
   auto mpc_solution =
-      get_cache_entry(mpc_solution_cache_).Eval<MPCSolution>(context);
-
+      context.get_abstract_state<MPCSolution>(mpc_solution_state_);
   solution->traj = mpc_solution.solution_trajectories.GenerateLcmObject();
+}
+
+void IDMPCSystem::SetInitialSolverState(const OutputVector<double> &x_u_t,
+                                        SQPIterate &solver_state) const {
+  throw std::runtime_error("not implemented!");
 }
 
 }

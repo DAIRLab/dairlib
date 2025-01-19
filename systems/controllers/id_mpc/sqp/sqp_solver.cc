@@ -10,9 +10,7 @@ SQPSolver::SQPSolver(
     std::function<double (const VectorXd&)> eval_constraint_viol,
     std::function<double (const VectorXd&)> eval_cost) :
     make_qp_(make_qp), eval_constraint_viol_(eval_constraint_viol),
-    eval_cost_(eval_cost), qp_solver_(n, m) {
-
-}
+    eval_cost_(eval_cost), qp_solver_(n, m) {}
 
 void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate &sol) {
   sol.x_init = x;
@@ -55,7 +53,20 @@ void SQPSolver::LineSearch(SQPIterate &sol) {
     }
   }
   sol.accepted = accepted;
-  sol.x_sol = accepted ? sol.x_init : sol.x_init + alpha * sol.dx;
+  sol.x_sol = accepted ? sol.x_init + alpha * sol.dx : sol.x_init;
+  sol.constraint_viol = accepted ? theta_k_p1 : theta_k;
+  sol.cost = accepted ? phi_k_p1 : phi_k;
+
+}
+
+SQPIterate SQPSolver::AllocateIterate() const {
+  SQPIterate ret;
+  ret.x_init = VectorXd::Zero(qp_solver_.n());
+  ret.dx = VectorXd::Zero(qp_solver_.n());
+  ret.x_sol = VectorXd::Zero(qp_solver_.n());
+  ret.constraint_viol = 0;
+  ret.cost = 0;
+  return ret;
 }
 
 }

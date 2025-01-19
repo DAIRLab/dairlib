@@ -58,6 +58,9 @@ class IDMPC {
     return timeline_.knots.at(index)->get_u(knot_vars(index));
   }
 
+  int num_vars() const {return prog_.num_vars();}
+  int num_constraints() const {return num_constraints_;}
+
   void UpdateProblemData(const MPCReference& reference,
                          const Eigen::VectorXd& initial_state);
 
@@ -82,15 +85,12 @@ class IDMPC {
   void UpdateFrictionCone(
       int knot_index, const std::vector<std::string>& active_contacts);
 
-  // TODO (@Brian-Acosta) methods for creating and updating friction cone
-  //  constraints and contact no-force constraints
   void MakeMPCCosts();
   void MakeKnotPoints();
   void MakeForceLimits();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
   void MakeUnitQuaternionConstraints();
-
 
   void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
@@ -108,6 +108,8 @@ class IDMPC {
 
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
   std::shared_ptr<QuaternionNormConstraint<AutoDiffXd>> unit_quat_ = nullptr;
+
+  int num_constraints_;
 };
 
 }

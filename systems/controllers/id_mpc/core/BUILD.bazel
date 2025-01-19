@@ -6,9 +6,8 @@ cc_library(
     name = "id_mpc_core",
     deps = [
         ":constrained_inverse_dynamics_info",
-        ":knot_point_state",
         ":knot_point",
-        ":mpc_solution",
+        ":knot_point_state",
         ":timeline",
     ],
 )
@@ -42,7 +41,7 @@ cc_library(
     deps = [
         ":constrained_inverse_dynamics_info",
         ":knot_point_state",
-    ]
+    ],
 )
 
 cc_library(
@@ -51,15 +50,5 @@ cc_library(
     hdrs = ["timeline.h"],
     deps = [
         ":knot_point",
-    ],
-)
-
-
-cc_library(
-    name = "mpc_solution",
-    srcs = ["mpc_solution.cc"],
-    hdrs = ["mpc_solution.h"],
-    deps = [
-        "//lcm:lcm_trajectory_saver",
     ],
 )

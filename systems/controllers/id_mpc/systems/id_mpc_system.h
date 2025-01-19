@@ -1,9 +1,10 @@
 #pragma once
 
-
-
+#include "mpc_solution.h"
+#include "systems/framework/output_vector.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
-#include "systems/controllers/id_mpc/core/mpc_solution.h"
+#include "systems/controllers/id_mpc/sqp/sqp_solver.h"
+
 #include "drake/solvers/snopt_solver.h"
 #include "dairlib/lcmt_id_mpc_solution.hpp"
 
@@ -26,22 +27,25 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
 
  private:
 
-  void SolveMPC(const drake::systems::Context<double>& context,
-                MPCSolution* solution) const;
+  void SetInitialSolverState(const OutputVector<double>& x_u_t,
+                             SQPIterate& solver_state) const;
+
+  drake::systems::EventStatus
+  SolveMPC(const drake::systems::Context<double>&context,
+                drake::systems::State<double>* state) const;
 
   // TODO (@Brian-Acosta) should this go straight to LCM?
   void CalcOutput(const drake::systems::Context<double>& context,
                   lcmt_id_mpc_solution* solution) const;
 
   mutable IDMPC trajopt_;
-
-  drake::solvers::SnoptSolver solver_;
+  mutable SQPSolver solver_;
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_reference_;
 
   drake::systems::OutputPortIndex output_port_mpc_solution_;
-  drake::systems::CacheIndex mpc_solution_cache_;
+  drake::systems::AbstractStateIndex mpc_solution_state_;
 };
 
 }

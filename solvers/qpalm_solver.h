@@ -26,8 +26,9 @@ class QPALMSolver {
   void Solve(const QPData& qp, Eigen::VectorXd& x);
   Eigen::VectorXd Solve(const QPData& qp);
 
-
+  long n() const {return n_;}
  private:
+  const long n_;
   qpalm::Data data_;
   qpalm::Settings settings_{};
 

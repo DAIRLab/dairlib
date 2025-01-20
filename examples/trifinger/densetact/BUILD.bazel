@@ -1,0 +1,6 @@
+py_binary(
+    name = "densetact_hardware",
+    srcs = ["densetact_hardware.py"],
+    data = [],
+    deps = [],
+)

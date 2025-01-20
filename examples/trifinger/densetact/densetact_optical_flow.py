@@ -1,15 +1,29 @@
-import numpy as np
-import cv2 as cv
-import scipy as sp
 import time
-from numpy.random import normal
-
-import helper as h
-#import projection_model as pm
 import subprocess
-
 import os
+import numpy as np
+import scipy as sp
+import cv2 as cv
 
+from densetact_poisson_solver import poisson
+from densetact_visualizer import graphical
+
+def pre_processing(image):
+    """
+    Helper function designed for any image pre-processing (ie blurring, sharpening, changing contrast)
+    and conversion to gray-scale
+
+    :param image, (746, 1024, 3) BGR image
+    :return: proc_img, (746, 1024) gray-scale image
+    """
+
+    blurred = cv.GaussianBlur(image, (5, 5), 0)
+    #proc_img = cv.addWeighted(image, 2, blurred, -1, 0)
+
+    proc_img = blurred
+    proc_img_gray = cv.cvtColor(proc_img, cv.COLOR_BGR2GRAY)
+
+    return proc_img_gray, proc_img
 
 class OpticalFlow:
     def __init__(self, densetact, data):
@@ -48,7 +62,7 @@ class OpticalFlow:
         self.start = time.perf_counter()
         print("Opened up camera: ", densetact['serial_number']) if ret else 0
 
-        self.old_gray, self.old_frame = h.pre_processing(old_frame)
+        self.old_gray, self.old_frame = pre_processing(old_frame)
 
         #Parameters for Feature Detection
         self.feature_params = dict(maxCorners=2000,
@@ -70,40 +84,43 @@ class OpticalFlow:
         # Setting up the ROI, centered in the middle of the image
         self.rad = densetact['rad_OI']#325
         grid_step = data['grid_step']
-        self.x = np.linspace((self.resolution[0] / 2) - self.rad,
-                             (self.resolution[0] / 2) + self.rad,
+
+        self.x = np.linspace(densetact['center'][1] - self.rad,
+                             densetact['center'][1] + self.rad,
                              grid_step)
-        self.y = np.linspace((self.resolution[1] / 2) - self.rad,
-                             (self.resolution[1] / 2) + self.rad,
+        self.y = np.linspace(densetact['center'][0] - self.rad,
+                             densetact['center'][0] + self.rad,
                              grid_step)
 
         self.XX, self.YY = np.meshgrid(self.x, self.y)
 
+        # Set up the laplacian matrix
+        self.decomp = poisson(self.XX, self.YY)
+
         #Set up the boundaries
-        rad = densetact['rad_OI']
-        bc_pos_x = np.linspace(((self.resolution[0] / 2) - rad),
-                               ((self.resolution[0] / 2) + rad),
-                               grid_step)
+        # rad = densetact['rad_OI']
+        # bc_pos_x = np.linspace(((self.resolution[0] / 2) - rad),
+        #                        ((self.resolution[0] / 2) + rad),
+        #                        grid_step)
 
-        sqrt_term = np.sqrt(rad ** 2 - (bc_pos_x - self.resolution[0] / 2) ** 2)
-        bc_pos_y_1 = sqrt_term + (self.resolution[1] / 2)
-        bc_pos_y_2 = -sqrt_term + (self.resolution[1] / 2)
+        # sqrt_term = np.sqrt(rad ** 2 - (bc_pos_x - self.resolution[0] / 2) ** 2)
+        # bc_pos_y_1 = sqrt_term + (self.resolution[1] / 2)
+        # bc_pos_y_2 = -sqrt_term + (self.resolution[1] / 2)
 
-        bc_pos = np.array([np.concatenate([bc_pos_x, bc_pos_x]),
-                           np.concatenate([bc_pos_y_1, bc_pos_y_2])]).T
+        # bc_pos = np.array([np.concatenate([bc_pos_x, bc_pos_x]),
+        #                    np.concatenate([bc_pos_y_1, bc_pos_y_2])]).T
 
-        flow_vec_bc = np.zeros_like(bc_pos)
+        # flow_vec_bc = np.zeros_like(bc_pos)
 
-        self.mask = ~np.isnan(sp.interpolate.griddata(bc_pos, flow_vec_bc, (self.XX, self.YY), method='linear')[...,0])
+        # self.mask = ~np.isnan(sp.interpolate.griddata(bc_pos, flow_vec_bc, (self.XX, self.YY), method='linear')[...,0])
 
-        self.bc_pos = bc_pos
-        self.flow_vec_bc = flow_vec_bc
+        # self.bc_pos = bc_pos
+        # self.flow_vec_bc = flow_vec_bc
 
         self.f = (0.76 * 10**-3) / (6*10**-6)
         self.cx = self.resolution[0]/2
         self.cy = self.resolution[1]/2
 
-        self.decomp = h.poisson(self.XX, self.YY, self.mask)
 
     def pyrLK(self, img0, img1, p0, back_threshold=0.5, checkTrace=True):
         """
@@ -219,9 +236,9 @@ class OpticalFlow:
 
         #St = np.nansum((div_free + harm)[contact_mask], axis = 0)/500 if np.any(contact_mask) else np.array([0, 0])
         
-        gn = np.nansum(div_free, axis = (0, 1))
-        gt = np.nansum(harm, axis = (0, 1))
-        g_tau = np.nansum(curl_free, axis = (0, 1))
+        # gn = np.nansum(div_free, axis = (0, 1))
+        # gt = np.nansum(harm, axis = (0, 1))
+        # g_tau = np.nansum(curl_free, axis = (0, 1))
 
         # gn = np.nansum(div_free[contact_mask], axis = 0)
         # gt = np.nansum(harm[contact_mask], axis = 0)
@@ -231,7 +248,7 @@ class OpticalFlow:
 
         #print("gn: ", gn, "gt: ", gt, "g_tau: ", g_tau, "d_max: ", div_max)
         
-        print(np.mean(curl_free[contact_mask], axis = 0))
+        #print(np.mean((curl_free)[contact_mask], axis = 0))
         # theta_t = np.arctan2(gt[1]/gt[0])
         # gt_norm = np.linalg.norm(gt)
 
@@ -249,8 +266,8 @@ class OpticalFlow:
         #print("first_term", St_1, "second_term", St_2, "division", St_2/St_1)
 
         #St = np.nansum((div_free + harm), axis=(0,1)) / 5000 if np.any(contact_mask) else np.array([0, 0])
-
-
+        
+        #harm = div_free
         # recalibration
         contact_thres = 6_000_000
         con = np.sum(cv.absdiff(frame_color, self.old_frame).astype(np.float32))
@@ -265,7 +282,7 @@ class OpticalFlow:
             'CoP': CoP, 'CoP_ray_norm': CoP_ray_norm,
             'curl_free': curl_free, 'div_free': div_free, 'harm': harm,
             'contact_bool': np.any(contact_mask), 'contact_points': contact_points,
-            'Sn': Sn, 'St': np.mean(curl_free[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0],
+            'Sn': Sn, 'St': np.mean((curl_free+harm)[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0],
             'M': M, 'T': np.block([[M, CoP_on_sph.reshape(3, 1)], [np.zeros((1, 3)), np.array([[1]])]])
         }
 
@@ -291,7 +308,7 @@ class OpticalFlow:
         if not ret:
             return 0
 
-        frame_gray, frame_color = h.pre_processing(frame)
+        frame_gray, frame_color = pre_processing(frame)
 
         # Run Pyramidal Lucas-Kanade
         p1, st = self.pyrLK(self.old_gray, frame_gray, self.p0, checkTrace = True)

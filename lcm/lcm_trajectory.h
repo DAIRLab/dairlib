@@ -65,6 +65,10 @@ class LcmTrajectory {
 
   lcmt_metadata GetMetadata() const { return metadata_; }
 
+  bool HasTrajectory(const std::string& name) {
+    return trajectories_.contains(name);
+  }
+
   const Trajectory& GetTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);
   }

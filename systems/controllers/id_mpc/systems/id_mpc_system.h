@@ -6,7 +6,7 @@
 #include "systems/controllers/id_mpc/sqp/sqp_solver.h"
 
 #include "drake/solvers/snopt_solver.h"
-#include "dairlib/lcmt_id_mpc_solution.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -38,7 +38,7 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
 
   // TODO (@Brian-Acosta) should this go straight to LCM?
   void CalcOutput(const drake::systems::Context<double>& context,
-                  lcmt_id_mpc_solution* solution) const;
+                  lcmt_timestamped_saved_traj* solution) const;
 
   mutable IDMPC trajopt_;
   mutable SQPSolver solver_;

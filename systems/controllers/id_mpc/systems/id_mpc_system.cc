@@ -45,7 +45,7 @@ IDMPCSystem::IDMPCSystem(
   DeclareForcedUnrestrictedUpdateEvent(&IDMPCSystem::SolveMPC);
 
   output_port_mpc_solution_ = DeclareAbstractOutputPort(
-      "mpc_solution", lcmt_id_mpc_solution(),
+      "mpc_solution", lcmt_timestamped_saved_traj(),
       &IDMPCSystem::CalcOutput).get_index();
 
   plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
@@ -82,10 +82,11 @@ EventStatus IDMPCSystem::SolveMPC(
 }
 
 void IDMPCSystem::CalcOutput(const Context<double>& context,
-                             lcmt_id_mpc_solution *solution) const {
+                             lcmt_timestamped_saved_traj *solution) const {
   auto mpc_solution =
       context.get_abstract_state<MPCSolution>(mpc_solution_state_);
-  solution->traj = mpc_solution.solution_trajectories.GenerateLcmObject();
+  solution->saved_traj = mpc_solution.solution_trajectories.GenerateLcmObject();
+  solution->utime = 1e6 * context.get_time();
 }
 
 void IDMPCSystem::SetInitialSolverState(

@@ -76,7 +76,7 @@ int DoMain() {
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(
-    LcmPublisherSystem::Make<lcmt_id_mpc_solution>(
+    LcmPublisherSystem::Make<lcmt_timestamped_saved_traj>(
         "ID_MPC", &lcm_local, TriggerTypeSet({TriggerType::kForced})
     ));
 

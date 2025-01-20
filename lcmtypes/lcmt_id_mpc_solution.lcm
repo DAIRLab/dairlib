@@ -1,7 +1,0 @@
-package dairlib;
-
-
-struct lcmt_id_mpc_solution {
-    int32_t N;
-    lcmt_saved_traj traj;
-}

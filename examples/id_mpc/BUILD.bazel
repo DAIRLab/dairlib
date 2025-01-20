@@ -24,6 +24,18 @@ cc_binary(
 )
 
 cc_binary(
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "//systems:plant_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
     name = "profile",
     srcs = ["test/standing_mpc_profiling_test.cc"],
     deps = [

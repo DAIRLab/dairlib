@@ -2,17 +2,19 @@
 
 data:
   real_time: True
+  # Ignore unless for debugging with precorded videos
   path: "/home/bbaraki/PycharmProjects/OpticalFlow/BasicTouches/normal_center_corner.mkv"
-  grid_step: 51
-  stream: True
-  mesh_cat: True
+  grid_step: 101
+  visual_bool: True
 
 sensor:
   DenseTact1:
     serial_number: SN0001
-    expo_time: 70
-    rad_OI: 300
+    expo_time: 80
+    rad_OI: 350 #300: min
+    center: [512, 384] #[u,-v]
   DenseTact2:
     serial_number: SN20200519001
-    expo_time: 6
-    rad_OI: 320
+    expo_time: 80
+    rad_OI: 400 #340:min
+    center: [512, 384]

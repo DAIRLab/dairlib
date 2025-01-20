@@ -98,14 +98,16 @@ void IDMPCSystem::SetInitialSolverState(
         trajopt_.position_vars(i), x_u_t.GetPositions());
     trajopt_.get_prog().SetInitialGuess(
         trajopt_.velocity_vars(i), x_u_t.GetVelocities());
-    trajopt_.get_prog().SetInitialGuess(
-        trajopt_.lambda_vars(i), lambda);
+    if (trajopt_.has_lambdas_at_knot(i)) {
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.lambda_vars(i), lambda);
+    }
     if (trajopt_.has_torques_at_knot(i)) {
       trajopt_.get_prog().SetInitialGuess(
           trajopt_.input_vars(i), x_u_t.GetEfforts());
     }
   }
-  solver_state.x_init = trajopt_.get_prog().initial_guess();
+  solver_state.x_sol = trajopt_.get_prog().initial_guess();
 }
 
 }

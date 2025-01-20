@@ -58,6 +58,9 @@ class IDMPC {
     return timeline_.knots.at(index)->get_u(knot_vars(index));
   }
 
+  bool has_lambdas_at_knot(int index) const {
+    return timeline_.knots.at(index)->num_input_variables() > 0;
+  }
   bool has_torques_at_knot(int index) const {
     return timeline_.knots.at(index)->has_torques();
   }

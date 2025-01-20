@@ -256,7 +256,7 @@ VectorXd ConstrainedDynamicsInfo::EstimateConstraintForcesForFixedPoint(
   plant_->CalcBiasTerm(context, &bias);
   bias = bias - grav;
   // solve bias = Bu + J^T lambda for lambda
-  Eigen::VectorXd lambda =
+  VectorXd lambda =
       kinematics.J.transpose().completeOrthogonalDecomposition().solve(
           bias - B * u);
   return lambda;

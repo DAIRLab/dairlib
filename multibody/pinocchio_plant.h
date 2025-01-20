@@ -71,6 +71,15 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::VectorX<T>& known_vdot,
       const drake::multibody::MultibodyForces<T>& external_forces) const;
 
+  void CalcJacobianTranslationalVelocity(
+      const drake::systems::Context<T>& context,
+      drake::multibody::JacobianWrtVariable with_respect_to,
+      const drake::multibody::Frame<T>& frame_B,
+      const Eigen::Ref<const drake::Matrix3X<T>>& p_BoBi_B,
+      const drake::multibody::Frame<T>& frame_A, const
+      drake::multibody::Frame<T>& frame_E,
+      drake::EigenPtr<drake::MatrixX<T>> Js_v_ABi_E) const override;
+
 
   void CalcMassMatrix(const drake::systems::Context<T>& context,
                       drake::EigenPtr<drake::MatrixX<T>> M) const;

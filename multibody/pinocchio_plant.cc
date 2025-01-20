@@ -328,6 +328,30 @@ VectorXd PinocchioPlant<double>::CalcInverseDynamics(
 }
 
 template <>
+void PinocchioPlant<double>::CalcJacobianTranslationalVelocity(
+    const drake::systems::Context<double>& context,
+    drake::multibody::JacobianWrtVariable with_respect_to,
+    const drake::multibody::Frame<double>& frame_B,
+    const Eigen::Ref<const drake::Matrix3X<double>>& p_BoBi_B,
+    const drake::multibody::Frame<double>& frame_A, const
+    drake::multibody::Frame<double>& frame_E,
+    drake::EigenPtr<drake::MatrixX<double>> Js_v_ABi_E) const {
+  throw std::runtime_error("not implemented yet");
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcJacobianTranslationalVelocity(
+    const drake::systems::Context<AutoDiffXd>& context,
+    drake::multibody::JacobianWrtVariable with_respect_to,
+    const drake::multibody::Frame<AutoDiffXd>& frame_B,
+    const Eigen::Ref<const drake::Matrix3X<AutoDiffXd>>& p_BoBi_B,
+    const drake::multibody::Frame<AutoDiffXd>& frame_A, const
+    drake::multibody::Frame<AutoDiffXd>& frame_E,
+    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> Js_v_ABi_E) const {
+  throw std::runtime_error("not implemented yet");
+}
+
+template <>
 VectorXd PinocchioPlant<double>::CalcInverseDynamicsWithGravity(
     const drake::systems::Context<double>& context, const VectorXd& known_vdot,
     const drake::multibody::MultibodyForces<double>& external_forces) const {

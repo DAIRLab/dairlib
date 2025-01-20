@@ -18,7 +18,19 @@ cc_binary(
         ":cassie_mpc_utils",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
         "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/framework:lcm_driven_loop",
+    ],
+)
+
+cc_binary(
+    name = "profile",
+    srcs = ["test/standing_mpc_profiling_test.cc"],
+    deps = [
+        ":cassie_mpc_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/framework:lcm_driven_loop",
     ],
 )

@@ -41,3 +41,16 @@ cc_library(
         "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
     ],
 )
+
+cc_library(
+    name = "joint_pd_controller",
+    srcs = ["joint_pd_controller.cc"],
+    hdrs = ["joint_pd_controller.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ]
+)

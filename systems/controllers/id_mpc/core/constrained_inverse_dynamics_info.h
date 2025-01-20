@@ -129,6 +129,11 @@ class ConstrainedDynamicsInfo {
       const KinematicsResults<T>& kinematics,
       const drake::VectorX<T>& vdot, const drake::VectorX<T>& lambda) const;
 
+  Eigen::VectorXd EstimateConstraintForcesForFixedPoint(
+      const drake::systems::Context<double>& context,
+      const Eigen::VectorXd& u,
+      const std::vector<std::string>& active_contacts) const;
+
  private:
 
   template<typename T>

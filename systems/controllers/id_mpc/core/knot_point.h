@@ -41,6 +41,11 @@ class KnotPoint {
       const ConstrainedDynamicsInfo& dynamics, knot_config config);
 
   /*!
+   * whether the config for this nkot includes torques
+   */
+   bool has_torques() const {return config_.include_torques;}
+
+  /*!
    * Index of this knot point in the trajectory
    * @return
    */

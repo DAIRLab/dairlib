@@ -17,6 +17,9 @@ using drake::MatrixX;
 using drake::VectorX;
 using drake::systems::Context;
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
 using std::make_unique;
 
 ConstrainedDynamicsInfo::ConstrainedDynamicsInfo(std::string urdf):
@@ -238,6 +241,25 @@ ConstrainedDynamicsInfo::EvaluateKinematics(
   DoEvaluateKinematics(*plant_, context, holonomic_constraints_.get(),
              contact_constraint_evaluators_, active_contacts, eval);
   return eval;
+}
+
+VectorXd ConstrainedDynamicsInfo::EstimateConstraintForcesForFixedPoint(
+    const Context<double> &context, const VectorXd &u,
+    const std::vector<std::string> &active_contacts) const {
+
+  KinematicsResults<double> kinematics =
+      EvaluateKinematics<double>(context, active_contacts);
+
+  VectorXd bias(nv_);
+  MatrixXd B = plant_->MakeActuationMatrix();
+  VectorXd grav = plant_->CalcGravityGeneralizedForces(context);
+  plant_->CalcBiasTerm(context, &bias);
+  bias = bias - grav;
+  // solve bias = Bu + J^T lambda for lambda
+  Eigen::VectorXd lambda =
+      kinematics.J.transpose().completeOrthogonalDecomposition().solve(
+          bias - B * u);
+  return lambda;
 }
 
 template ConstrainedDynamicsInfo::KinematicsResults<double>

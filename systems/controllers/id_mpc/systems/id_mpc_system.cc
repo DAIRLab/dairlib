@@ -1,6 +1,8 @@
-#include "systems/controllers/id_mpc/systems/id_mpc_system.h"
-#include "systems/framework/output_vector.h"
+#include "id_mpc_system.h"
+
+#include "multibody/multibody_utils.h"
 #include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/framework/output_vector.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -45,6 +47,9 @@ IDMPCSystem::IDMPCSystem(
   output_port_mpc_solution_ = DeclareAbstractOutputPort(
       "mpc_solution", lcmt_id_mpc_solution(),
       &IDMPCSystem::CalcOutput).get_index();
+
+  plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
+
 }
 
 EventStatus IDMPCSystem::SolveMPC(
@@ -56,7 +61,10 @@ EventStatus IDMPCSystem::SolveMPC(
       system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
 
   if (solution.is_initial_solve) {
-    SetInitialSolverState(*state, solution.sqp_iterate);
+    SetInitialSolverState(
+        *state,
+        reference.active_contacts_,
+        solution.sqp_iterate);
     solution.is_initial_solve = false;
   }
   const Eigen::VectorXd& x = state->GetState();
@@ -74,9 +82,30 @@ void IDMPCSystem::CalcOutput(const Context<double>& context,
   solution->traj = mpc_solution.solution_trajectories.GenerateLcmObject();
 }
 
-void IDMPCSystem::SetInitialSolverState(const OutputVector<double> &x_u_t,
-                                        SQPIterate &solver_state) const {
-  throw std::runtime_error("not implemented!");
+void IDMPCSystem::SetInitialSolverState(
+    const OutputVector<double> &x_u_t,
+    const std::vector<std::vector<std::string>>& contacts,
+    SQPIterate &solver_state) const {
+
+  trajopt_.dynamics().SetPlantStateIfNew(
+      x_u_t.GetState(), plant_context_.get());
+
+  for (size_t i = 0; i < contacts.size() ; ++i) {
+    VectorXd lambda = trajopt_.dynamics().EstimateConstraintForcesForFixedPoint(
+        *plant_context_, x_u_t.GetEfforts(), contacts.at(i)
+    );
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.position_vars(i), x_u_t.GetPositions());
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.velocity_vars(i), x_u_t.GetVelocities());
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.lambda_vars(i), lambda);
+    if (trajopt_.has_torques_at_knot(i)) {
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.input_vars(i), x_u_t.GetEfforts());
+    }
+  }
+  solver_state.x_init = trajopt_.get_prog().initial_guess();
 }
 
 }

@@ -337,6 +337,7 @@ double IDMPC::EvaluateCost(const Eigen::VectorXd &x) const {
     binding.evaluator()->Eval(xval, &y);
     cost += y(0);
   }
+  return cost;
 }
 
 double IDMPC::EvaluateConstraintViolation(const Eigen::VectorXd &x) const {

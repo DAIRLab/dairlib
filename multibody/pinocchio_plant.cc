@@ -336,7 +336,9 @@ void PinocchioPlant<double>::CalcJacobianTranslationalVelocity(
     const drake::multibody::Frame<double>& frame_A, const
     drake::multibody::Frame<double>& frame_E,
     drake::EigenPtr<drake::MatrixX<double>> Js_v_ABi_E) const {
-  throw std::runtime_error("not implemented yet");
+  MultibodyPlant<double>::CalcJacobianTranslationalVelocity(
+      context, with_respect_to, frame_B, p_BoBi_B, frame_A, frame_E,
+      Js_v_ABi_E);
 }
 
 template <>
@@ -573,17 +575,26 @@ void PinocchioPlant<AutoDiffXd>::CalcPointsPositions(
     drake::EigenPtr<MatrixX<AutoDiffXd>> p_AQi) const {
   pinocchio::ReferenceFrame rf;
   if (frame_A.is_world_frame()) {
-    rf = pinocchio_world_;
+    rf = pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED;
   } else {
     rf = pinocchio::ReferenceFrame::LOCAL;
   }
-  pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(frame_B.name());
+  pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(
+      frame_B.name(), pinocchio::BODY);
   Matrix6X<double> J = MatrixXd::Zero(6, n_v_);
+
   pinocchio::computeFrameJacobian(
       pinocchio_model_, pinocchio_data_,
       MapPositionFromDrakeToPinocchio(ExtractValue(GetPositions(context))),
       frame_id, rf, J);
+
   Matrix3X<double> J_translation = J.topRows(3);
+
+//  for (int i = 0; i < 3; ++i) {
+//    J_translation.row(i) = MapVelocityFromPinocchioToDrake(
+//        ExtractValue(GetPositions(context)), J_translation.row(i).transpose()
+//    ).transpose();
+//  }
 
   Vector3d position = pinocchio_data_.oMf[frame_id].actOnEigenObject(ExtractValue(p_BQi));
 //  DRAKE_DEMAND(p_AQi);

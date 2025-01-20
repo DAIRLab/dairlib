@@ -196,18 +196,18 @@ void ContactDataSender::Output(
   //drake::log()->info(contact_results);
   
   // Using 2 DenseTacts
-  contact_output->numSensors = 2;
-  contact_output->sensorData.resize(contact_output->numSensors);
+  // contact_output->numSensors = 2;
+  // contact_output->sensorData.resize(contact_output->numSensors);
 
-  for (int i = 0; i < contact_output->numSensors; i++){
-    dairlib::lcmt_densetact_measurement contact;
-    contact.utime = context.get_time() * 1e6; 
-    contact.inContact = 1;
-    contact.scaledNormal = 1;
-    contact.scaledFriction[0] = 1;
-    contact.scaledFriction[1] = 1;
-    contact_output->sensorData[i] = contact;
-  }
+  // for (int i = 0; i < contact_output->numSensors; i++){
+  //   dairlib::lcmt_densetact_measurement contact;
+  //   contact.utime = context.get_time() * 1e6; 
+  //   contact.inContact = 1;
+  //   contact.scaledNormal = 1;
+  //   contact.scaledFriction[0] = 1;
+  //   contact.scaledFriction[1] = 1;
+  //   contact_output->sensorData[i] = contact;
+  // }
   
   //plant_.GetPositions(*plant_context_);
 }

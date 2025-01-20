@@ -57,7 +57,7 @@ EventStatus IDMPCSystem::SolveMPC(
   const auto& reference = get_input_port_reference().Eval<MPCReference>(context);
   const auto& state = EvalVectorInput<OutputVector>(context, input_port_state_);
 
-  auto solution =
+  auto& solution =
       system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
 
   if (solution.is_initial_solve) {
@@ -72,6 +72,12 @@ EventStatus IDMPCSystem::SolveMPC(
   trajopt_.UpdateProblemData(reference, x);
   solver_.DoSQPStep(solution.sqp_iterate.x_sol, solution.sqp_iterate);
   solution.contact_sequence = reference.active_contacts_;
+
+  drake::solvers::MathematicalProgramResult result;
+  result.set_decision_variable_index(trajopt_.get_prog().decision_variable_index());
+  result.set_x_val(solution.sqp_iterate.x_sol);
+  solution.solution_trajectories = trajopt_.GetSolutionAsLcmTrajectory(result);
+
   return EventStatus::Succeeded();
 }
 

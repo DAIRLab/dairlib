@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.35.0"
+DRAKE_COMMIT = "pinocchio_plant_compatible"
 
-DRAKE_CHECKSUM = "f19ee360656c87db8b0688c676c9f2ab2ae71ea08691432979b32d71c236e768"
+DRAKE_CHECKSUM = "dbb35c9f789493a27019b68884be7e2727c94725884d9604d10ed5d364f6dabb"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -46,7 +46,7 @@ http_archive(
     sha256 = DRAKE_CHECKSUM,
     strip_prefix = "drake-{}".format(DRAKE_COMMIT.strip("v")),
     urls = [x.format(DRAKE_COMMIT) for x in [
-        "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
+        "https://github.com/Brian-Acosta/drake/archive/{}.tar.gz",
     ]],
 )
 

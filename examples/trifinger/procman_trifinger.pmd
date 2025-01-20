@@ -69,6 +69,13 @@ group "6.lcm-tools" {
     }
 }
 
+group "7. densetact"{
+    cmd "run_densetact"{
+        exec = "bazel-bin/examples/trifinger/densetact/densetact_hardware";
+        host = "localhost";
+    }
+}
+
 script "run-osc-controller-hardware" {
     stop cmd "state-visualizer-floating (from hardware)";
     stop cmd "OSC Controller (from hardware)";

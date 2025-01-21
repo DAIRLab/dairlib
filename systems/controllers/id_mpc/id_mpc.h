@@ -30,6 +30,8 @@ struct IDMPCParams {
   Eigen::MatrixXd Wv;
   Eigen::MatrixXd Wlambda;
   Eigen::MatrixXd Wu;
+  Eigen::MatrixXd Wq_final;
+  Eigen::MatrixXd Wv_final;
 };
 
 using ForceEvaluatorsMap =

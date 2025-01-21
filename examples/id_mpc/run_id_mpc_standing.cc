@@ -35,11 +35,15 @@ int DoMain() {
   params.num_full_torque_knots = 4;
 
   params.Wq = 100 * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
+  params.Wq.topLeftCorner<4,4>() *=0;
   params.Wv = MatrixXd::Identity(dynamics->nv(), dynamics->nv());
-  params.Wu = MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.01 * MatrixXd::Identity(
+  params.Wu = 0.01 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
+  params.Wlambda = 0.00001 * MatrixXd::Identity(
       dynamics->nlambda(), dynamics->nlambda());
 
+  params.Wq_final = params.Wq;
+  params.Wq_final.topLeftCorner<4,4>() = 100 * Eigen::Matrix4d::Identity();
+  params.Wv_final = params.Wv;
 
   VectorXd q = VectorXd::Zero(dynamics->nq());
   VectorXd v = VectorXd::Zero(dynamics->nv());
@@ -47,17 +51,17 @@ int DoMain() {
   VectorXd lambda = VectorXd::Zero(dynamics->nlambda());
 
   q << 1, 0, 0, 0, 0, 0, 0.95,
-      0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
+       0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
       -0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692;
 
   u <<  -2.03951, 2.04169, 0.906345, -0.861539, -5.96077, -6.16527, 45.7984,
       45.6304, -3.48936, -3.52897;
 
   lambda << -395.296, -395.589,
-      39.7438, -9.54163, 81.7462,
-      -39.8489, 4.21296, 80.2822,
-      39.8174, 9.30058, 81.8166,
-      -39.7123, -3.97191, 79.936;
+             39.7438, -9.54163, 81.7462,
+            -39.8489,  4.21296, 80.2822,
+             39.8174,  9.30058, 81.8166,
+            -39.7123, -3.97191, 79.936;
 
   MPCReference reference;
   reference.q_traj_ = PiecewisePolynomial<double>(q);

@@ -16,6 +16,9 @@ void ReferenceManager<T>::UpdateReference(
   for (size_t i = 0; i < evaluator_list.size(); ++i) {
     evaluator_list[i]->UpdateReference(traj.value(breaks[i]));
   }
+  if (terminal_evals_.contains(name)) {
+    terminal_evals_.at(name)->UpdateReference(traj.value(breaks.back()));
+  }
 }
 
 }

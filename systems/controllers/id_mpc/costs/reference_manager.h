@@ -49,7 +49,7 @@ class ReferenceManager {
   template<typename... Args>
   void AddRunningInputCost(const std::string& name, Args&&... args) {
     DRAKE_DEMAND(not evaluators_.contains(name));
-    std::vector<std::shared_ptr<QuadraticErrorCost<T>>> costs;
+    std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>> costs;
     for (int i = 0; i < N_; ++i) {
       auto ptr = std::make_shared<QuadraticErrorCost<T>>(
           std::forward<Args>(args)...);
@@ -57,6 +57,17 @@ class ReferenceManager {
       costs.push_back(std::move(ptr));
     }
     evaluators_[name] = costs;
+  }
+
+  template<class C, typename... Args>
+  void AddTerminalStateCost(const std::string& name, Args&&... args) {
+    static_assert(
+        std::derived_from<C, NonlinearLeastSquaresCost<T>> == true);
+
+    DRAKE_DEMAND(not terminal_evals_.contains(name));
+
+    auto ptr = std::make_shared<C>(std::forward<Args>(args)...);
+    terminal_evals_[name] = ptr;
   }
 
   void UpdateReference(
@@ -69,9 +80,18 @@ class ReferenceManager {
     DRAKE_DEMAND(i <= N_);
     return evaluators_.at(name).at(i);
   }
+
+  std::shared_ptr<NonlinearLeastSquaresCost<T>> GetTerminalEvaluator(
+      const std::string& name) {
+    return terminal_evals_.at(name);
+  }
+
  private:
   std::unordered_map<
       std::string, std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>>> evaluators_;
+
+  std::unordered_map<
+      std::string, std::shared_ptr<NonlinearLeastSquaresCost<T>>> terminal_evals_;
 
   int N_;
   double dt_;

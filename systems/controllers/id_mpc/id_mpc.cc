@@ -152,10 +152,16 @@ void IDMPC::MakeMPCCosts() {
       "q", params_.Wq, VectorXd::Zero(dynamics_->nq()));
   reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
       "v", params_.Wv, VectorXd::Zero(dynamics_->nv()));
-  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+  reference_manager_.AddRunningInputCost(
       "u", params_.Wu, VectorXd::Zero(dynamics_->nu()));
-  reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
+  reference_manager_.AddRunningInputCost(
       "lambda", params_.Wlambda, VectorXd::Zero(dynamics_->nlambda()));
+
+  reference_manager_.AddTerminalStateCost<QuadraticErrorCost<double>>(
+      "q", params_.Wq_final, VectorXd::Zero(dynamics_->nq()));
+  reference_manager_.AddTerminalStateCost<QuadraticErrorCost<double>>(
+      "v", params_.Wv_final, VectorXd::Zero(dynamics_->nv()));
+
 
   for (int i = 0; i < params_.N + 1; ++i) {
     prog_.AddCost(
@@ -175,6 +181,12 @@ void IDMPC::MakeMPCCosts() {
         reference_manager_.GetEvaluator("u", i),
         input_vars(i));
   }
+  prog_.AddCost(
+      reference_manager_.GetTerminalEvaluator("q"),
+      position_vars(params_.N));
+  prog_.AddCost(
+      reference_manager_.GetTerminalEvaluator("v"),
+      velocity_vars(params_.N));
 }
 
 void IDMPC::MakeKnotPoints() {

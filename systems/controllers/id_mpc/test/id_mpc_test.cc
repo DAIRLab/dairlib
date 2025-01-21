@@ -9,6 +9,7 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
+#include "drake/math/autodiff_gradient.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -128,10 +129,18 @@ void OrientationCostTest() {
   cost.EvaluateInnerTerm(qd, &y);
   std::cout << y.transpose() << std::endl;
 
-  drake::AutoDiffVecXd q_ad = drake::math::InitializeAutdiff(qd);
+  drake::AutoDiffVecXd q_ad = drake::math::InitializeAutoDiff(qd);
   drake::AutoDiffVecXd y_ad;
+  cost.EvaluateInnerTerm(q_ad, &y_ad);
+  MatrixXd J = drake::math::ExtractGradient(y_ad);
+  std::cout << J << std::endl;
 
-  
+  Eigen::Vector4d qt(1 - 1e-3, 1e-3, 1e-3, 1e-3);
+  drake::AutoDiffVecXd qt_ad = drake::math::InitializeAutoDiff(qd);
+  drake::AutoDiffVecXd yt_ad;
+  cost.EvaluateInnerTerm(qt_ad, &yt_ad);
+  MatrixXd Jt = drake::math::ExtractGradient(yt_ad);
+  std::cout << Jt << std::endl;
 }
 
 int DoMain() {

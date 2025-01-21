@@ -23,10 +23,13 @@ OrientationErrorCost<T>::OrientationErrorCost(
 template<typename T>
 void OrientationErrorCost<T>::EvaluateInnerTerm(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  Quaternion<AutoDiffXd> qd(q_(0), q_(1), q_(2), q_(3));
+  Quaternion<double> qd(q_(0), q_(1), q_(2), q_(3));
   Quaternion<AutoDiffXd> q(x(0), x(1), x(2), x(3));
-  Eigen::AngleAxis<AutoDiffXd> diff(qd * q.inverse());
-  *y = diff.angle() * diff.axis();
+  Quaternion<AutoDiffXd> qrel = qd.template cast<AutoDiffXd>() * q.inverse();
+  
+  //TODO (@Brian-Acosta)
+  // Special case this based on if we can differentiate or not
+  *y = qrel.vec();
 }
 
 template<typename T>

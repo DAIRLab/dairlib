@@ -20,7 +20,7 @@ struct LineSearchParams {
   double eta = 1e-4;
   double gamma_phi = 1e-6;
   double gamma_theta = 1e-6;
-  double gamma_alpha=0.5;
+  double gamma_alpha = 0.5;
 };
 
 class SQPSolver {

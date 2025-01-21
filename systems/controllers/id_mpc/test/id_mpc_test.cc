@@ -1,6 +1,8 @@
 #include <iostream>
 #include "systems/controllers/id_mpc/id_mpc.h"
 #include "systems/controllers/id_mpc/costs/quadratic_error_cost.h"
+#include "systems/controllers/id_mpc/costs/orientation_error_cost.h"
+
 #include "common/eigen_utils.h"
 
 #include "drake/solvers/solve.h"
@@ -12,7 +14,7 @@ namespace dairlib::systems::controllers::id_mpc {
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
-
+using Eigen::MatrixXd;
 using drake::trajectories::PiecewisePolynomial;
 
 void TestInverseDynamics(
@@ -117,10 +119,26 @@ void CostTest() {
   DRAKE_DEMAND(abs(gn_approx - result(0)) < 1e-8);
 }
 
+void OrientationCostTest() {
+  Eigen::Matrix3d Q = Eigen::Matrix3d::Identity();
+  Eigen::Vector4d qd = Eigen::Vector4d::UnitX();
+  OrientationErrorCost<double> cost(Q, qd);
+
+  Eigen::VectorXd y;
+  cost.EvaluateInnerTerm(qd, &y);
+  std::cout << y.transpose() << std::endl;
+
+  drake::AutoDiffVecXd q_ad = drake::math::InitializeAutdiff(qd);
+  drake::AutoDiffVecXd y_ad;
+
+  
+}
+
 int DoMain() {
   srand((unsigned int) time(0));
 
   CostTest();
+  OrientationCostTest();
 
   std::string urdf = "examples/Cassie/urdf/cassie_fixed_spring_conservative"
                      ".urdf";
@@ -221,16 +239,25 @@ int DoMain() {
 
   TestCollocation(*dynamics_info, vars, contacts);
 
+
+
   IDMPCParams params;
   params.dt = 0.05;
-  params.N = static_cast<int>(0.5 / params.dt);
-  params.num_full_torque_knots = 2;
+  params.N = static_cast<int>(0.8 / params.dt);
+  params.num_full_torque_knots = 4;
 
-  params.Wq = 100 * Eigen::MatrixXd::Identity(q.rows(), q.rows());
-  params.Wv = 0.01 * Eigen::MatrixXd::Identity(v.rows(), v.rows());
-  params.Wu = 0.01 * Eigen::MatrixXd::Identity(u.rows(), u.rows());
-  params.Wlambda = 0.01 * Eigen::MatrixXd::Identity(
-      lambda.rows(), lambda.rows());
+  params.Wq = 100 * MatrixXd::Identity(dynamics_info->nq(), dynamics_info->nq());
+  params.Wq.topLeftCorner<4,4>() *= 0.001;
+  params.Wv = 0.01 * MatrixXd::Identity(dynamics_info->nv(), dynamics_info->nv());
+  params.Wu = 0.00001 * MatrixXd::Identity(dynamics_info->nu(), dynamics_info->nu());
+  params.Wlambda = 0.000001 * MatrixXd::Identity(
+      dynamics_info->nlambda(), dynamics_info->nlambda());
+
+  params.Wrot = 100 * Eigen::Matrix3d::Identity();
+  params.Wrot_final = 10 * params.Wrot;
+
+  params.Wq_final = params.Wq;
+  params.Wv_final = params.Wv;
 
   IDMPC mpc(params, std::move(dynamics_info));
 
@@ -244,6 +271,7 @@ int DoMain() {
   MPCReference reference;
 
   reference.q_traj_ = PiecewisePolynomial<double>(qd);
+  reference.quat_traj_ = PiecewisePolynomial<double>(qd.head<4>());
   reference.v_traj_ = PiecewisePolynomial<double>(v);
   reference.lambda_traj_ = PiecewisePolynomial<double>(lambda);
   reference.u_traj_ = PiecewisePolynomial<double>(u);

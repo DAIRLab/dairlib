@@ -8,6 +8,7 @@
 class MPCReference {
  public:
   drake::trajectories::PiecewisePolynomial<double> q_traj_;
+  drake::trajectories::PiecewisePolynomial<double> quat_traj_;
   drake::trajectories::PiecewisePolynomial<double> v_traj_;
   drake::trajectories::PiecewisePolynomial<double> lambda_traj_;
   drake::trajectories::PiecewisePolynomial<double> u_traj_;

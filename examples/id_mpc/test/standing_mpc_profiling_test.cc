@@ -33,15 +33,21 @@ int DoMain() {
   // TODO (@Brian-Acosta) YAML-ize this
   IDMPCParams params;
   params.dt = 0.05;
-  params.N = static_cast<int>(0.5 / params.dt);
-  params.num_full_torque_knots = 2;
+  params.N = static_cast<int>(0.8 / params.dt);
+  params.num_full_torque_knots = 4;
 
   params.Wq = 100 * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
-  params.Wv = MatrixXd::Identity(dynamics->nv(), dynamics->nv());
-  params.Wu = 0.0001 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.0001 * MatrixXd::Identity(
+  params.Wq.topLeftCorner<4,4>() *= 0.1;
+  params.Wv = 0.01 * MatrixXd::Identity(dynamics->nv(), dynamics->nv());
+  params.Wu = 0.00001 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
+  params.Wlambda = 0.000001 * MatrixXd::Identity(
       dynamics->nlambda(), dynamics->nlambda());
 
+  params.Wrot = 300 * Eigen::Matrix3d::Identity();
+  params.Wrot_final = 10 * params.Wrot;
+
+  params.Wq_final = params.Wq;
+  params.Wv_final = params.Wv;
 
   VectorXd q = VectorXd::Zero(dynamics->nq());
   VectorXd v = VectorXd::Zero(dynamics->nv());
@@ -62,14 +68,15 @@ int DoMain() {
 
   lambda << -395.296, -395.589,
       39.7438, -9.54163, 81.7462,
-      -39.8489, 4.21296, 80.2822,
-      39.8174, 9.30058, 81.8166,
+      -39.8489,  4.21296, 80.2822,
+      39.8174,  9.30058, 81.8166,
       -39.7123, -3.97191, 79.936;
 
   OutputVector<double> state(q, v, u);
 
   MPCReference reference;
   reference.q_traj_ = PiecewisePolynomial<double>(qd);
+  reference.quat_traj_ = PiecewisePolynomial<double>(qd.head<4>());
   reference.v_traj_ = PiecewisePolynomial<double>(v);
   reference.lambda_traj_ = PiecewisePolynomial<double>(lambda);
   reference.u_traj_ = PiecewisePolynomial<double>(

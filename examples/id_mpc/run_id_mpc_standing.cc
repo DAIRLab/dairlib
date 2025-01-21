@@ -30,19 +30,21 @@ int DoMain() {
 
   // TODO (@Brian-Acosta) YAML-ize this
   IDMPCParams params;
-  params.dt = 0.025;
-  params.N = static_cast<int>(0.5 / params.dt);
+  params.dt = 0.05;
+  params.N = static_cast<int>(0.8 / params.dt);
   params.num_full_torque_knots = 4;
 
   params.Wq = 100 * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
-  params.Wq.topLeftCorner<4,4>() *=0;
-  params.Wv = MatrixXd::Identity(dynamics->nv(), dynamics->nv());
-  params.Wu = 0.01 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.00001 * MatrixXd::Identity(
+  params.Wq.topLeftCorner<4,4>() *= 0.001;
+  params.Wv = 0.01 * MatrixXd::Identity(dynamics->nv(), dynamics->nv());
+  params.Wu = 0.00001 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
+  params.Wlambda = 0.000001 * MatrixXd::Identity(
       dynamics->nlambda(), dynamics->nlambda());
 
+  params.Wrot = 300 * Eigen::Matrix3d::Identity();
+  params.Wrot_final = 10 * params.Wrot;
+
   params.Wq_final = params.Wq;
-  params.Wq_final.topLeftCorner<4,4>() = 100 * Eigen::Matrix4d::Identity();
   params.Wv_final = params.Wv;
 
   VectorXd q = VectorXd::Zero(dynamics->nq());
@@ -65,6 +67,7 @@ int DoMain() {
 
   MPCReference reference;
   reference.q_traj_ = PiecewisePolynomial<double>(q);
+  reference.quat_traj_ = PiecewisePolynomial<double>(q.head<4>());
   reference.v_traj_ = PiecewisePolynomial<double>(v);
   reference.lambda_traj_ = PiecewisePolynomial<double>(lambda);
   reference.u_traj_ = PiecewisePolynomial<double>(u);

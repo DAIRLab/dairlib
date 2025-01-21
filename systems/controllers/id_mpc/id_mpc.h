@@ -27,10 +27,12 @@ struct IDMPCParams {
 
   // cost weights
   Eigen::MatrixXd Wq;
+  Eigen::MatrixXd Wrot;
   Eigen::MatrixXd Wv;
   Eigen::MatrixXd Wlambda;
   Eigen::MatrixXd Wu;
   Eigen::MatrixXd Wq_final;
+  Eigen::MatrixXd Wrot_final;
   Eigen::MatrixXd Wv_final;
 };
 

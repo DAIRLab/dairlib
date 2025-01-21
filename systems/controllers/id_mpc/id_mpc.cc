@@ -1,6 +1,7 @@
 #include <numeric>
 #include "id_mpc.h"
 #include "common/eigen_utils.h"
+#include "costs/orientation_error_cost.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -17,6 +18,7 @@ using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearConstraint;
 
+using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
 using drake::math::ExtractValue;
 using drake::math::ExtractGradient;
@@ -108,6 +110,8 @@ void IDMPC::UpdateCosts(const MPCReference &reference) {
   reference_manager_.UpdateReference(
       "q", reference.q_traj_, reference.knot_times_);
   reference_manager_.UpdateReference(
+      "quat", reference.quat_traj_, reference.knot_times_);
+  reference_manager_.UpdateReference(
       "v", reference.v_traj_, reference.knot_times_);
   reference_manager_.UpdateReference(
       "u", reference.u_traj_, reference.knot_times_);
@@ -146,10 +150,14 @@ void IDMPC::MakeForceLimits() {
   }
 }
 
+// TODO (Brian-Acosta) this assumes floating base plant when constructing the
+//  Orientation cost
 void IDMPC::MakeMPCCosts() {
   reference_manager_ = ReferenceManager<double>(params_.N, params_.dt);
   reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
       "q", params_.Wq, VectorXd::Zero(dynamics_->nq()));
+  reference_manager_.AddRunningStateCost<OrientationErrorCost<double>>(
+      "quat", params_.Wrot, Eigen::Vector4d::UnitX());
   reference_manager_.AddRunningStateCost<QuadraticErrorCost<double>>(
       "v", params_.Wv, VectorXd::Zero(dynamics_->nv()));
   reference_manager_.AddRunningInputCost(
@@ -159,14 +167,18 @@ void IDMPC::MakeMPCCosts() {
 
   reference_manager_.AddTerminalStateCost<QuadraticErrorCost<double>>(
       "q", params_.Wq_final, VectorXd::Zero(dynamics_->nq()));
+  reference_manager_.AddTerminalStateCost<OrientationErrorCost<double>>(
+      "quat", params_.Wrot_final, Eigen::Vector4d::UnitX());
   reference_manager_.AddTerminalStateCost<QuadraticErrorCost<double>>(
       "v", params_.Wv_final, VectorXd::Zero(dynamics_->nv()));
-
 
   for (int i = 0; i < params_.N + 1; ++i) {
     prog_.AddCost(
         reference_manager_.GetEvaluator("q", i),
         position_vars(i));
+    prog_.AddCost(
+        reference_manager_.GetEvaluator("quat", i),
+        position_vars(i).head<4>());
     prog_.AddCost(
         reference_manager_.GetEvaluator("v", i),
         velocity_vars(i));
@@ -184,6 +196,9 @@ void IDMPC::MakeMPCCosts() {
   prog_.AddCost(
       reference_manager_.GetTerminalEvaluator("q"),
       position_vars(params_.N));
+  prog_.AddCost(
+      reference_manager_.GetTerminalEvaluator("quat"),
+      position_vars(params_.N).head<4>());
   prog_.AddCost(
       reference_manager_.GetTerminalEvaluator("v"),
       velocity_vars(params_.N));

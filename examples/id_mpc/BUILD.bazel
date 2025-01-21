@@ -28,10 +28,20 @@ cc_binary(
     srcs = ["visualizer.cc"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//systems:plant_visualizer",
         "//systems:robot_lcm_systems",
         "//systems/visualization:lcm_visualization_systems",
-        "//systems:plant_visualizer",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "run_joint_controller",
+    srcs = ["run_joint_controller.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/id_mpc/systems:joint_pd_controller",
+        "//systems/framework:lcm_driven_loop",
     ],
 )
 

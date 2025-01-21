@@ -50,6 +50,11 @@ JointPDController::JointPDController(
       "trajectory", &JointPDController::CalcTrajs,
       {input_port_ticket(input_port_lcm_traj_)}).cache_index();
 
+  DeclareVectorOutputPort(
+      "u, t",
+      TimestampedVector<double>(plant_.num_actuators()),
+      &JointPDController::CalcTorques);
+
   context_ = plant.CreateDefaultContext();
 }
 

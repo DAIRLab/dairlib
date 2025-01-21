@@ -34,7 +34,7 @@ int DoMain() {
       plant_visualizer->get_plant());
 
   auto mpc_visualizer = builder.AddSystem<LcmConfigurationDrawer>(
-      plant_visualizer->get_meshcat(), urdf, "q");
+      plant_visualizer->get_meshcat(), urdf, "q", 10);
 
   builder.Connect(*state_sub, *state_receiver);
   builder.Connect(*state_receiver, *plant_visualizer);

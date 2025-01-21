@@ -1,40 +1,44 @@
 group "0.operator" {
     cmd "0.visualizer" {
-        exec = "bazel-bin/examples/Cassie/visualizer";
-        host = "idmpc";
+        exec = "bazel-bin/examples/id_mpc/visualizer";
+        host = "localhost";
     }
     cmd "1.xbox-radio" {
         exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
-        host = "idmpc";
+        host = "localhost";
     }
 }
 
 group "1.cassie-robot" {
     cmd "0.standing-controller (OSC)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.8 --channel_x=CASSIE_STATE_SIMULATION --channel_u=OSC_STANDING";
-        host = "idmpc";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.8 --channel_x=CASSIE_STATE_SIMULATION --channel_u=CASSIE_INPUT";
+        host = "localhost";
     }
     cmd "1.standing-mpc" {
         exec = "bazel-bin/examples/id_mpc/run_id_mpc_standing";
-        host = "idmpc";
+        host = "localhost";
+    }
+    cmd "2.pd-controller" {
+        exec = "bazel-bin/examples/id_mpc/run_joint_controller";
+        host = "localhost";
     }
 }
 
 group "2.drake-simulator" {
     cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --spring_model=false --target_realtime_rate=1.0";
-        host = "idmpc";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --spring_model=false --target_realtime_rate=0.1 --publish_rate=1000";
+        host = "localhost";
     }
 }
 
 group "5.lcm-tools" {
     cmd "0.cassie-lcm-logger" {
         exec = "python3 examples/Cassie/start_logging.py";
-        host = "idmpc";
+        host = "localhost";
     }
     cmd "1.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "idmpc";
+        host = "localhost";
     }
 }
 
@@ -45,4 +49,12 @@ script "initialize_standing" {
     stop group "2.drake-simulator" wait "stopped";
     start cmd "0.standing-controller (OSC)";
     start cmd "0.visualizer";
+}
+
+script "mpc" {
+    start cmd "2.pd-controller" wait "running";
+    start cmd "1.standing-mpc" wait "running";
+    stop cmd "0.standing-controller (OSC)";
+    wait ms 1000;
+    start cmd "0.cassie-lcm-logger";
 }

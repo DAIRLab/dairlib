@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "id_mpc",
     srcs = ["id_mpc.cc"],
-    hdrs = ["id_mpc.h"],
+    hdrs = ["id_mpc.h", "id_mpc_params.h"],
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//solvers:qp_data",

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "id_mpc_params.h"
+
 #include "core/knot_point_state.h"
 #include "core/constrained_inverse_dynamics_info.h"
 #include "systems/controllers/id_mpc/contraints/collocation_constraint.h"
@@ -18,23 +20,6 @@
 #include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib::systems::controllers::id_mpc {
-
-struct IDMPCParams {
-  int N;
-  double dt;
-  int num_full_torque_knots;
-  double mu = 1.0;
-
-  // cost weights
-  Eigen::MatrixXd Wq;
-  Eigen::MatrixXd Wrot;
-  Eigen::MatrixXd Wv;
-  Eigen::MatrixXd Wlambda;
-  Eigen::MatrixXd Wu;
-  Eigen::MatrixXd Wq_final;
-  Eigen::MatrixXd Wrot_final;
-  Eigen::MatrixXd Wv_final;
-};
 
 using ForceEvaluatorsMap =
     std::unordered_map<std::string,

@@ -29,31 +29,14 @@ int DoMain() {
   auto dynamics = MakeCassieDynamics();
 
   // TODO (@Brian-Acosta) YAML-ize this
-  IDMPCParams params;
-  params.dt = 0.025;
-  params.N = static_cast<int>(0.4 / params.dt);
-  params.num_full_torque_knots = 5;
-
-  params.Wq = 100
-      * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
-  params.Wq.topLeftCorner<4,4>() *= 0.001;
-  params.Wv = 0.01 * MatrixXd::Identity(dynamics->nv(), dynamics->nv());
-  params.Wu = 0.01 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.01 * MatrixXd::Identity(
-      dynamics->nlambda(), dynamics->nlambda());
-
-  params.Wrot = 10 * Eigen::Matrix3d::Identity();
-  params.Wrot_final = 10 * params.Wrot;
-
-  params.Wq_final = 10 * params.Wq;
-  params.Wv_final = params.Wv;
+  IDMPCParams params =
+      LoadIDMPCParamsFromYaml("examples/id_mpc/gains/mpc_gains_standing.yaml");
 
   VectorXd q = VectorXd::Zero(dynamics->nq());
   VectorXd v = VectorXd::Zero(dynamics->nv());
   VectorXd u = VectorXd::Zero(dynamics->nu());
   VectorXd lambda = VectorXd::Zero(dynamics->nlambda());
-
-  q << 1, 0, 0, 0, 0, 0, 0.95,
+  q << 1, 0, 0, 0, 0.02, 0, 0.95,
        0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692,
       -0.0730404, 0, 0.571375, -1.38058, 1.60491, -1.6692;
 

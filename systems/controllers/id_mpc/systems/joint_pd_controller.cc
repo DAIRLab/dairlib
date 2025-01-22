@@ -99,7 +99,7 @@ void JointPDController::CalcTorques(
   VectorXd u_ff = trajs.u.value(t);
 
   u->set_timestamp(t);
-  u->SetDataVector(u_ff);
+  u->SetDataVector(u_ff + u_fb);
 }
 
 

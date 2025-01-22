@@ -2,6 +2,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/controllers/id_mpc/systems/joint_pd_controller.h"
+#include "systems/controllers/id_mpc/systems/joint_controller_gains.h"
 
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -39,32 +40,10 @@ int DoMain() {
           mpc_channel, &lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
-  // TODO (@Brian-Acosta) YAML-ize this
-  std::unordered_map<std::string, double> kp;
-  kp.insert({"hip_roll_right", 100});
-  kp.insert({"hip_yaw_right", 100});
-  kp.insert({"hip_pitch_right", 300});
-  kp.insert({"knee_right", 400});
-  kp.insert({"toe_right", 100});
-  kp.insert({"hip_roll_left", 100});
-  kp.insert({"hip_yaw_left", 100});
-  kp.insert({"hip_pitch_left", 300});
-  kp.insert({"knee_left", 400});
-  kp.insert({"toe_left", 100});
+  auto gains = drake::yaml::LoadYamlFile<JointPDGains>(
+      "examples/id_mpc/gains/pd_gains_standing.yaml");
 
-  std::unordered_map<std::string, double> kd;
-  kd.insert({"hip_roll_right", 5});
-  kd.insert({"hip_yaw_right", 5});
-  kd.insert({"hip_pitch_right", 10});
-  kd.insert({"knee_right", 15});
-  kd.insert({"toe_right", 5});
-  kd.insert({"hip_roll_left", 5});
-  kd.insert({"hip_yaw_left", 5});
-  kd.insert({"hip_pitch_left", 10});
-  kd.insert({"knee_left", 15});
-  kd.insert({"toe_left", 5});
-
-  auto pd_controller = builder.AddSystem<JointPDController>(plant, kp, kd);
+  auto pd_controller = builder.AddSystem<JointPDController>(plant, gains.kp, gains.kd);
   auto command_sender = builder.AddSystem<RobotCommandSender>(plant);
   auto command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_input>(

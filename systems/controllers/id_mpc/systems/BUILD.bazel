@@ -45,7 +45,10 @@ cc_library(
 cc_library(
     name = "joint_pd_controller",
     srcs = ["joint_pd_controller.cc"],
-    hdrs = ["joint_pd_controller.h"],
+    hdrs = [
+        "joint_controller_gains.h",
+        "joint_pd_controller.h"
+    ],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",

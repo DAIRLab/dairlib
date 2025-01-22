@@ -45,7 +45,7 @@ void CollocationConstraint<T>::EvaluateConstraint(
   int nq = x0_->get_dynamics().nq();
   int nv = x0_->get_dynamics().nv();
 
-  y->head(nq) = x0.head(nq) - x1.head(nq) -
+  y->head(nq) = x1.head(nq) - x0.head(nq) -
       0.5 * dt * (x0_->GetQDot<T>() + x1_->GetQDot<T>());
 
   const VectorX<T> vdot = (x1.tail(nv) - x0.tail(nv)) / dt;

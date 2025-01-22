@@ -1,0 +1,25 @@
+kp: {
+ "hip_roll_right": 100,
+ "hip_yaw_right": 100,
+ "hip_pitch_right": 300,
+ "knee_right": 500,
+ "toe_right": 100,
+ "hip_roll_left": 100,
+ "hip_yaw_left": 100,
+ "hip_pitch_left": 300,
+ "knee_left": 500,
+ "toe_left": 100,
+}
+
+kd: {
+  "hip_roll_right": 5,
+  "hip_yaw_right": 5,
+  "hip_pitch_right": 10,
+  "knee_right": 15,
+  "toe_right": 5,
+  "hip_roll_left": 5,
+  "hip_yaw_left": 5,
+  "hip_pitch_left": 10,
+  "knee_left": 15,
+  "toe_left": 5,
+}

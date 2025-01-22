@@ -1,6 +1,6 @@
 #pragma once
 
-#include "solvers/qpalm_solver.h"
+#include "solvers/osqp_wrapper.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -38,6 +38,9 @@ class SQPSolver {
 
  private:
 
+  int n_;
+  int m_;
+  drake::solvers::SolverOptions drake_solver_options_;
   /*!
    * line search assuming x_init and dx have already been properly set
    * @param sol SQPIterate to perform line search for
@@ -49,7 +52,7 @@ class SQPSolver {
   std::function<double (const Eigen::VectorXd&)> eval_cost_;
   std::function<void (Eigen::VectorXd&)> proj_to_config_space_;
 
-  solvers::QPALMSolver qp_solver_;
+  solvers::OsqpWrapper qp_solver_;
   solvers::QPData qp_;
 
   LineSearchParams lsparams_;

@@ -67,6 +67,17 @@ cc_library(
 )
 
 cc_library(
+    name = "osqp_qrapper",
+    srcs = ["osqp_wrapper.cc"],
+    hdrs = ["osqp_wrapper.h"],
+    deps = [
+        ":qp_data",
+        "@drake//:drake_shared_library",
+        "@osqp",
+    ],
+)
+
+cc_library(
     name = "legendre_coefficient_variables",
     srcs = ["legendre_coefficient_variables.cc"],
     hdrs = ["legendre_coefficient_variables.h"],

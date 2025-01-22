@@ -30,6 +30,17 @@ struct QPData {
 
 };
 
+struct QPResult {
+  Eigen::VectorXd x;  // solution
+  Eigen::VectorXd y;  // dual solution
+  std::string status;
+  double run_time;
+  double primal_res;
+  double dual_res;
+  double objective;
+  bool success = false;
+};
+
 void AppendQuadraticCost(
     const std::vector<int>& variable_indices, const Eigen::MatrixXd& H,
     const Eigen::MatrixXd& b, double c,

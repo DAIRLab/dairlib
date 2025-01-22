@@ -303,7 +303,6 @@ void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
                                "To ensure that the SQP gauss newton "
                                "approximation is properly implemented");
     }
-    std::cout << cost_data << std::endl;
     AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
                         cost_triplets, qp.g, &qp.c, cost_data.diagonal_hessian);
   }
@@ -355,7 +354,7 @@ void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd &x) {
   for (int i = 0; i < params_.N + 1; ++i) {
     auto w = position_vars(i)(0);
     int start_idx = prog_.FindDecisionVariableIndex(w);
-    x.segment<4>(start_idx).normalize();
+    x.segment<4>(start_idx) = x.segment<4>(start_idx).normalized();
   }
 }
 

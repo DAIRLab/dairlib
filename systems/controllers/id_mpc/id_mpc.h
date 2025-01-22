@@ -88,6 +88,8 @@ class IDMPC {
     return *dynamics_;
   }
 
+  void ProjectToQuaternionConstraint(Eigen::VectorXd& x);
+
  private:
 
   void UpdateCosts(const MPCReference& reference);
@@ -110,6 +112,7 @@ class IDMPC {
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> quat_contraints_;
 
   ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;

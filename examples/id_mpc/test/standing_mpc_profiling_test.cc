@@ -32,19 +32,19 @@ int DoMain() {
 
   // TODO (@Brian-Acosta) YAML-ize this
   IDMPCParams params;
-  params.dt = 0.05;
-  params.N = static_cast<int>(0.8 / params.dt);
-  params.num_full_torque_knots = 4;
+  params.dt = 0.025;
+  params.N = static_cast<int>(0.4 / params.dt);
+  params.num_full_torque_knots = 3;
 
   params.Wq = 100 * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
-  params.Wq.topLeftCorner<4,4>() *= 0.1;
+  params.Wq.topLeftCorner<4,4>() *= 0.01;
   params.Wv = 0.01 * MatrixXd::Identity(dynamics->nv(), dynamics->nv());
   params.Wu = 0.00001 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.000001 * MatrixXd::Identity(
+  params.Wlambda = 0.00001 * MatrixXd::Identity(
       dynamics->nlambda(), dynamics->nlambda());
 
-  params.Wrot = 300 * Eigen::Matrix3d::Identity();
-  params.Wrot_final = 10 * params.Wrot;
+  params.Wrot = 100 * Eigen::Matrix3d::Identity();
+  params.Wrot_final = params.Wrot;
 
   params.Wq_final = params.Wq;
   params.Wv_final = params.Wv;

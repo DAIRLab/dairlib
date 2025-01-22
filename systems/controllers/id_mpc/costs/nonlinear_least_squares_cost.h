@@ -14,6 +14,15 @@ struct GaussNewtonApproximation {
     Eigen::MatrixXd g; // gradient
     double c;          // constants
     bool diagonal_hessian = false;
+
+    friend std::ostream& operator<<(std::ostream& os, const GaussNewtonApproximation& gna) {
+    os << "GaussNewtonApproximation:\n";
+    os << "Hessian H:\n" << gna.H << "\n";
+    os << "Gradient g:\n" << gna.g << "\n";
+    os << "Constant c: " << gna.c << "\n";
+    os << "Diagonal Hessian: " << (gna.diagonal_hessian ? "true" : "false") << "\n";
+    return os;
+  }
 };
 
 

@@ -26,7 +26,10 @@ IDMPCSystem::IDMPCSystem(
       },
       [this](const VectorXd& x) {
         return this->trajopt_.EvaluateCost(x);
-      }) {
+      },
+      [this](VectorXd& x){
+        this->trajopt_.ProjectToQuaternionConstraint(x);
+    }) {
 
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",

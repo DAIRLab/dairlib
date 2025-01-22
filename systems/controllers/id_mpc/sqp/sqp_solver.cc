@@ -8,9 +8,11 @@ SQPSolver::SQPSolver(
     int n, int m,
     std::function<void (const VectorXd&, solvers::QPData&)> make_qp,
     std::function<double (const VectorXd&)> eval_constraint_viol,
-    std::function<double (const VectorXd&)> eval_cost) :
+    std::function<double (const VectorXd&)> eval_cost,
+    std::function<void (Eigen::VectorXd&)> proj_to_cspace) :
     make_qp_(make_qp), eval_constraint_viol_(eval_constraint_viol),
-    eval_cost_(eval_cost), qp_solver_(n, m) {}
+    eval_cost_(eval_cost), proj_to_config_space_(proj_to_cspace),
+    qp_solver_(n, m) {}
 
 void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate &sol) {
   sol.x_init = x;
@@ -25,13 +27,14 @@ void SQPSolver::LineSearch(SQPIterate &sol) {
   double phi_k = eval_cost_(sol.x_init);
   const VectorXd& grad_phi_k = qp_.g;
   bool accepted = false;
-
   double theta_k_p1 = 0;
   double phi_k_p1 = 0;
-
+  VectorXd candidate = sol.x_init;
   while (not accepted and alpha >= lsparams_.alpha_min) {
-    theta_k_p1 = eval_constraint_viol_(sol.x_init + alpha * sol.dx);
-    phi_k_p1 = eval_cost_(sol.x_init + alpha * sol.dx);
+    candidate = sol.x_init + alpha * sol.dx;
+    proj_to_config_space_(candidate);
+    theta_k_p1 = eval_constraint_viol_(candidate);
+    phi_k_p1 = eval_cost_(candidate);
 
     if (theta_k_p1 > lsparams_.theta_max) {
       if (theta_k_p1 < (1.0 - lsparams_.gamma_theta) * theta_k) {
@@ -53,7 +56,7 @@ void SQPSolver::LineSearch(SQPIterate &sol) {
     }
   }
   sol.accepted = accepted;
-  sol.x_sol = accepted ? sol.x_init + alpha * sol.dx : sol.x_init;
+  sol.x_sol = accepted ? candidate : sol.x_init;
   sol.constraint_viol = accepted ? theta_k_p1 : theta_k;
   sol.cost = accepted ? phi_k_p1 : phi_k;
 

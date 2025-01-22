@@ -49,7 +49,7 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-  MakeUnitQuaternionConstraints();
+//  MakeUnitQuaternionConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -126,7 +126,7 @@ void IDMPC::MakeUnitQuaternionConstraints() {
     const auto& body = dynamics_->get_plant().get_body(index);
     DRAKE_DEMAND(body.has_quaternion_dofs());
     for (int i = 0; i <= params_.N; ++i) {
-      nonlin_constraints_.push_back(
+      quat_contraints_.push_back(
       prog_.AddConstraint(
           unit_quat_,
           this->position_vars(i).segment(body.floating_positions_start(), 4)));
@@ -303,6 +303,7 @@ void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
                                "To ensure that the SQP gauss newton "
                                "approximation is properly implemented");
     }
+    std::cout << cost_data << std::endl;
     AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
                         cost_triplets, qp.g, &qp.c, cost_data.diagonal_hessian);
   }
@@ -348,6 +349,14 @@ void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
   }
   qp.A.resize(qp.num_ineq, x.rows());
   qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
+}
+
+void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd &x) {
+  for (int i = 0; i < params_.N + 1; ++i) {
+    auto w = position_vars(i)(0);
+    int start_idx = prog_.FindDecisionVariableIndex(w);
+    x.segment<4>(start_idx).normalize();
+  }
 }
 
 double IDMPC::EvaluateCost(const Eigen::VectorXd &x) const {

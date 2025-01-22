@@ -7,7 +7,12 @@ using Eigen::Map;
 
 
 QPALMSolver::QPALMSolver(long n, long m) : n_(n), data_(n, m){
-  settings_.verbose = 0;
+  settings_.verbose = true;
+  settings_.max_rank_update = n + m;
+  settings_.max_rank_update_fraction = 1.0;
+  settings_.factorization_method = 0;
+  settings_.warm_start = true;
+  settings_.scaling = 0;
 }
 
 VectorXd QPALMSolver::Solve(const dairlib::solvers::QPData &qp) {

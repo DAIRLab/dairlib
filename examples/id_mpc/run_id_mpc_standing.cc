@@ -34,15 +34,16 @@ int DoMain() {
   params.N = static_cast<int>(0.8 / params.dt);
   params.num_full_torque_knots = 4;
 
-  params.Wq = 100 * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
+  params.Wq = 100
+      * MatrixXd::Identity(dynamics->nq(), dynamics->nq());
   params.Wq.topLeftCorner<4,4>() *= 0.001;
-  params.Wv = 0.01 * MatrixXd::Identity(dynamics->nv(), dynamics->nv());
-  params.Wu = 0.00001 * MatrixXd::Identity(dynamics->nu(), dynamics->nu());
-  params.Wlambda = 0.000001 * MatrixXd::Identity(
+  params.Wv = MatrixXd::Identity(dynamics->nv(), dynamics->nv());
+  params.Wu = MatrixXd::Identity(dynamics->nu(), dynamics->nu());
+  params.Wlambda = 0.001 * MatrixXd::Identity(
       dynamics->nlambda(), dynamics->nlambda());
 
-  params.Wrot = 300 * Eigen::Matrix3d::Identity();
-  params.Wrot_final = 10 * params.Wrot;
+  params.Wrot = 10 * Eigen::Matrix3d::Identity();
+  params.Wrot_final = params.Wrot;
 
   params.Wq_final = params.Wq;
   params.Wv_final = params.Wv;
@@ -60,10 +61,10 @@ int DoMain() {
       45.6304, -3.48936, -3.52897;
 
   lambda << -395.296, -395.589,
-             39.7438, -9.54163, 81.7462,
-            -39.8489,  4.21296, 80.2822,
-             39.8174,  9.30058, 81.8166,
-            -39.7123, -3.97191, 79.936;
+             0, -9.54163, 81.7462,
+             0,  4.21296, 80.2822,
+             0,  9.30058, 81.8166,
+             0, -3.97191, 79.936;
 
   MPCReference reference;
   reference.q_traj_ = PiecewisePolynomial<double>(q);

@@ -136,7 +136,8 @@ void OrientationCostTest() {
   std::cout << J << std::endl;
 
   Eigen::Vector4d qt(1 - 1e-3, 1e-3, 1e-3, 1e-3);
-  drake::AutoDiffVecXd qt_ad = drake::math::InitializeAutoDiff(qd);
+  qt.normalize();
+  drake::AutoDiffVecXd qt_ad = drake::math::InitializeAutoDiff(qt);
   drake::AutoDiffVecXd yt_ad;
   cost.EvaluateInnerTerm(qt_ad, &yt_ad);
   MatrixXd Jt = drake::math::ExtractGradient(yt_ad);

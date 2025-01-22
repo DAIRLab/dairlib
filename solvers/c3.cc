@@ -114,6 +114,34 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   }
   x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
 
+  // initialize debugging outputs
+  z_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  delta_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  w_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  z_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  delta_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  w_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+
+  for (int i = 0; i < options_.admm_iter; i++) {
+    std::vector<VectorXd> z_sol_debug_iter_i;
+    std::vector<VectorXd> delta_sol_debug_iter_i;
+    std::vector<VectorXd> w_sol_debug_iter_i;
+    for (int j = 0; j < N_; j++) {
+      z_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      delta_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      w_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+    }
+    z_qp_debug_->push_back(z_sol_debug_iter_i);
+    delta_qp_debug_->push_back(delta_sol_debug_iter_i);
+    w_qp_debug_->push_back(w_sol_debug_iter_i);
+    z_proj_debug_->push_back(z_sol_debug_iter_i);
+    delta_proj_debug_->push_back(delta_sol_debug_iter_i);
+    w_proj_debug_->push_back(w_sol_debug_iter_i);
+  }
+
   for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_x_, "x" + std::to_string(i)));
     if (i < N_) {
@@ -270,17 +298,21 @@ void C3::Solve(const VectorXd& x0) {
     }
     vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
   } else {
-    // Since the last step is the projection step, dynamics and complementarity constraints may not be satisfied (QP
-    // step is responsible for making sure they are satisfied). One trick is to directly set z to delta and simulate
-    // forward with LCS (without complementarity constraints) to obtain the next state.
+    // Since the last step is the projection step, dynamics and complementarity
+    // constraints may not be satisfied (QP step is responsible for making sure
+    // they are satisfied). One trick is to directly set z to delta and simulate
+    // forward with LCS (without complementarity constraints) to obtain the next
+    // state.
     *z_sol_ = delta;
     z_sol_->at(0).segment(0, n_x_) = x0;
     x_sol_->at(0) = x0;
     for (int i = 1; i < N_; ++i) {
       z_sol_->at(i).segment(0, n_x_) =
           lcs_.A_.at(i - 1) * z_sol_->at(i - 1).head(n_x_) +
-          lcs_.B_.at(i - 1) * u_sol_->at(i - 1) +
-          lcs_.D_.at(i - 1) * z_sol_->at(i - 1).segment(n_x_, (n_x_ + n_lambda_)) + lcs_.d_.at(i - 1);
+          lcs_.B_.at(i - 1) * z_sol_->at(i - 1).tail(n_u_) +
+          lcs_.D_.at(i - 1) *
+              z_sol_->at(i - 1).segment(n_x_, (n_x_ + n_lambda_)) +
+          lcs_.d_.at(i - 1);
     }
   }
   *w_sol_ = w;
@@ -291,6 +323,7 @@ void C3::Solve(const VectorXd& x0) {
   for (int i = 0; i < N_; ++i) {
     lambda_sol_->at(i) *= AnDn_;
     z_sol_->at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    delta_sol_->at(i).segment(n_x_, n_lambda_) *= AnDn_;
   }
 
   auto finish = std::chrono::high_resolution_clock::now();
@@ -311,6 +344,12 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
 
+  for (auto i = 0; i < N_; i++) {
+    z_qp_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    delta_qp_debug_->at(admm_iteration).at(i) = delta->at(i);
+    w_qp_debug_->at(admm_iteration).at(i) = w->at(i);
+  }
+
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   for (auto i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
@@ -321,6 +360,12 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
+  }
+
+  for (auto i = 0; i < N_; i++) {
+    z_proj_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    delta_proj_debug_->at(admm_iteration).at(i) = delta->at(i);
+    w_proj_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 
   for (auto i = 0; i < N_; i++) {

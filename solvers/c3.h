@@ -103,6 +103,24 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  std::vector<std::vector<Eigen::VectorXd>> GetPrimalZAfterQP() {
+    return *z_qp_debug_;
+  }
+  std::vector<std::vector<Eigen::VectorXd>> GetDualDeltaAfterQP() {
+    return *delta_qp_debug_;
+  }
+  std::vector<std::vector<Eigen::VectorXd>> GetDualWAfterQP() {
+    return *w_qp_debug_;
+  }
+  std::vector<std::vector<Eigen::VectorXd>> GetPrimalZAfterProjection() {
+    return *z_proj_debug_;
+  }
+  std::vector<std::vector<Eigen::VectorXd>> GetDualDeltaAfterProjection() {
+    return *delta_proj_debug_;
+  }
+  std::vector<std::vector<Eigen::VectorXd>> GetDualWAfterProjection() {
+    return *w_proj_debug_;
+  }
 
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
@@ -135,7 +153,8 @@ class C3 {
   std::shared_ptr<drake::solvers::LinearEqualityConstraint>
       initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::optional<drake::solvers::Binding<drake::solvers::LinearConstraint>> lambda_constraint_for_zero_h_;
+  std::optional<drake::solvers::Binding<drake::solvers::LinearConstraint>>
+      lambda_constraint_for_zero_h_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
 
@@ -154,6 +173,15 @@ class C3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
+
+  // Debugging outputs that store solution of each ADMM iterations
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> z_qp_debug_;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> delta_qp_debug_;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> w_qp_debug_;
+
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> z_proj_debug_;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> delta_proj_debug_;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> w_proj_debug_;
 };
 
 }  // namespace solvers

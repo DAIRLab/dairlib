@@ -93,7 +93,13 @@ PYBIND11_MODULE(c3, m) {
       .def("GetForceSolution", &C3::GetForceSolution)
       .def("GetInputSolution", &C3::GetInputSolution)
       .def("GetDualDeltaSolution", &C3::GetDualDeltaSolution)
-      .def("GetDualWSolution", &C3::GetDualWSolution);
+      .def("GetDualWSolution", &C3::GetDualWSolution)
+      .def("GetPrimalZAfterQP", &C3::GetPrimalZAfterQP)
+      .def("GetDualDeltaAfterQP", &C3::GetDualDeltaAfterQP)
+      .def("GetDualWAfterQP", &C3::GetDualWAfterQP)
+      .def("GetPrimalZAfterProjection", &C3::GetPrimalZAfterProjection)
+      .def("GetDualDeltaAfterProjection", &C3::GetDualDeltaAfterProjection)
+      .def("GetDualWAfterProjection", &C3::GetDualWAfterProjection);
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,

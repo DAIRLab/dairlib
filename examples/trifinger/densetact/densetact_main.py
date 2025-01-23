@@ -27,12 +27,15 @@ if vis_bool:
 lcm_data = lcmt_densetact_measurement_data()
 
 while True:
+    # Calculates flow vectors and outputs the next frame
     frame_color1 = densetact_obj1.calc_flow()
     frame_color2 = densetact_obj2.calc_flow()
 
+    # Calculates several parameters including force
     flow_data1 = densetact_obj1.get_force(frame_color1)
     flow_data2 = densetact_obj2.get_force(frame_color2)
 
+    ### LCM
     lcm_data.sensorData[0].utime = np.int64(flow_data1['time']*1E6)
     lcm_data.sensorData[0].inContact = flow_data1['contact_bool']
     lcm_data.sensorData[0].contactPose = flow_data1['contactPose']
@@ -49,11 +52,12 @@ while True:
 
     lc.publish("CONTACT_FORCE_CHANNEL", lcm_data.encode())
 
-        # Display real-time visual
+    # Display real-time visual
     if vis_bool:
         real_time_visual1.images(frame_color1, flow_data1) 
         real_time_visual2.images(frame_color2, flow_data2)
 
+        # Required for opencv images
         k = cv.waitKey(1) & 0xff
         if k == ord('q'):
             break

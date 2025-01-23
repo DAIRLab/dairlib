@@ -80,10 +80,10 @@ class OpticalFlow:
         self.cy = densetact['rad_OI']
 
         # Set up a binary mask for what is inside of the reflective surface on the image
-        self.mask = np.sqrt((self.XX_s - densetact['rad_OI'])**2 + (self.YY_s - densetact['rad_OI'])**2) < 260
+        self.mask = np.sqrt((self.XX_ss - densetact['rad_OI'])**2 + (self.YY_ss - densetact['rad_OI'])**2) < 260
 
         # Set up the laplacian matrix
-        self.decomp = poisson(self.XX_s, self.YY_s)
+        self.decomp = poisson(self.XX_ss, self.YY_ss)
 
         self.f = (0.76 * 10**-3) / (6*10**-6)
 
@@ -139,13 +139,15 @@ class OpticalFlow:
         div_grid = (np.gradient(interp_grid[..., 0], x_ss, axis=1, edge_order=2)
                     + np.gradient(interp_grid[..., 1], y_ss, axis=0, edge_order=2))
         
+        div_grid[~self.mask] = np.nan
+        
         # Get the CoP on the field
         armgax_2d = np.unravel_index(np.nanargmax(div_grid), interp_grid[..., 0].shape)
         div_max = div_grid[armgax_2d]
         CoP = np.array([int(x_ss[armgax_2d[1]]), int(y_ss[armgax_2d[0]])])
 
         # figure out the region of contact
-        div_thres = 0.07
+        div_thres = 0.03
         contact_mask = div_grid > div_thres
 
         # HELMHOLTZ HODGE DECOMP
@@ -166,6 +168,7 @@ class OpticalFlow:
         CoP_ray = proj_ray
 
         CoP_ray_norm =  CoP_ray/np.linalg.norm(CoP_ray)
+        
         #sensor diameter: 32mm
         CoP_on_sph = (0.032/2) * CoP_ray_norm
 
@@ -177,16 +180,6 @@ class OpticalFlow:
         theta = np.arctan(np.sqrt(CoP_ray[0] ** 2 + CoP_ray[1] ** 2))
         phi = np.arctan2(CoP_ray[1], CoP_ray[0])
 
-        # [theta, phi, rho] = M @ [i, j, k]
-        # M = np.array([[np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
-        #               [-np.sin(phi), np.cos(phi), 0],
-        #               [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
-
-        #print(np.rad2deg(theta), np.rad2deg(phi))
-        # M = np.array([[np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
-        #         [-np.sin(phi), np.cos(phi), 0],
-        #         [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
-
         M = np.array([
             [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)],
             [np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
@@ -194,91 +187,24 @@ class OpticalFlow:
         ])
         
         
-        #print(np.round(M,2))
-
 
         Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))/5000
-
-        #St = np.nansum((div_free + harm)[contact_mask], axis = 0)/500 if np.any(contact_mask) else np.array([0, 0])
-        
-        # gn = np.nansum(div_free, axis = (0, 1))
-        # gt = np.nansum(harm, axis = (0, 1))
-        # g_tau = np.nansum(curl_free, axis = (0, 1))
-
-        # gn = np.nanmean(div_free[contact_mask], axis = 0)
-        # gt = np.nanmean(harm[contact_mask], axis = 0)
-        # g_tau = np.nanmean(curl_free[contact_mask], axis = 0)
-
-        # f(gn, gt, g_tau, max_div)
-
-        #print("gn: ", gn, "gt: ", gt, "g_tau: ", g_tau, "d_max: ", div_max)
-        
-        #print(np.mean((curl_free)[contact_mask], axis = 0))
-        # theta_t = np.arctan2(gt[1]/gt[0])
-        # gt_norm = np.linalg.norm(gt)
-
-        # theta_t = np.arctan2(gt[1]/gt[0])
-        # gt_norm = np.linalg.norm(gn)
-
-
-        
-
-        #print(np.nansum(div_free, axis = (0, 1)))
-
-        #St_1 = np.nansum(div_free[contact_mask]) / 500 if np.any(contact_mask) else np.array([0, 0])
-
-        #St_2 = np.nansum(harm[contact_mask]) / 500 if np.any(contact_mask) else np.array([0, 0])
-        #print("first_term", St_1, "second_term", St_2, "division", St_2/St_1)
-
-        #St = np.nansum((div_free + harm), axis=(0,1)) / 5000 if np.any(contact_mask) else np.array([0, 0])
-        
-        #harm = div_free
         
         # recalibration
         contact_thres = 6_000_000
         con = np.sum(cv.absdiff(frame_color, self.old_frame).astype(np.float32))
         self.recalibration(frame_color) if (con < contact_thres) and (div_max > div_thres) else 0
 
-        # #St = np.mean((self.a*div_free + self.b*curl_free + self.c*harm)[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0]
+        St = np.nanmean(div_free[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0]
 
-
-        # dis = np.array([x[armgax_2d[1]] - self.cx, y[armgax_2d[0]] - self.cy])
-
-
-        # St = g_tau + 0.0025 * dis if np.any(contact_mask) else [0, 0]
-
-        # if True:
-        #     csv_file = "output.csv"
-
-        #     if np.any(contact_mask):
-        #         with open(csv_file, mode='a', newline='') as file:
-        #             writer = csv.writer(file)
-
-
-        #             file_exists = os.path.isfile(csv_file)
-        #             writer.writerow([gn[0], gn[1], gt[0], gt[1], g_tau[0], g_tau[1], dis[0], dis[1], div_max])
-
-        #St = np.nansum((div_free), axis = (0,1)) / 50_000 
-
-        [Sx, Sy] = np.nanmean(harm, axis = (0,1)) if np.any(contact_mask) else [0, 0]
-
-        #Sn = Sz
-        #p = M @ [Sx, Sy, Sz]
-
-        #St = p[1:]
-
-        St = np.nanmean(div_free, axis = (0,1)) if np.any(contact_mask) else [0, 0]
-        #print([Sx, Sy, Sz])
-
-      
         self.old_gray = self.old_gray#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
         self.old_frame = self.old_frame#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
 
         return {
             'time': self.end - self.start,
-            'x': XX, 'y' : YY,
+            'x': XX_ss, 'y' : YY_ss,
             'theta': theta_ang, 'phi': phi_ang,
-            'feat_pos': np.stack([XX, YY], axis = -1),
+            'feat_pos': np.stack([XX_ss, YY_ss], axis = -1),
             'grid': interp_grid, 'div': div_max,
             'CoP': CoP, 'CoP_ray_norm': CoP_ray_norm,
             'curl_free': curl_free, 'div_free': div_free, 'harm': harm,

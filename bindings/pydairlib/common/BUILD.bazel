@@ -35,6 +35,25 @@ py_library(
 )
 
 py_library(
+    name = "meshcat_chrome_capture",
+    srcs = ["meshcat_chrome_capture.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "meshcat_video_writer",
+    srcs = ["meshcat_video_writer.py"],
+    deps = [
+        ":meshcat_chrome_capture",
+        "//bindings/pydairlib/lcm:log_playback",
+        "@drake//bindings/pydrake"
+    ],
+)
+
+
+py_library(
     name = "plotting_utils",
     srcs = ["plotting_utils.py"],
     deps = [],

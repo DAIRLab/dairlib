@@ -30,8 +30,7 @@ class poisson:
 
         flow_zero = flow.copy()
         flow_zero[~mask] = 0
-        blurred_flow = sp.ndimage.gaussian_filter(flow_zero, 4)
-        #blurred_flow = cv.bilateralFilter(flow_zero, d=9, sigmaColor=75, sigmaSpace=75)
+        blurred_flow = sp.ndimage.gaussian_filter(flow_zero, sigma = 0.833)
 
         flow[~mask] = blurred_flow[~mask]
 
@@ -39,9 +38,8 @@ class poisson:
         flow = flow2.copy()
 
         mask = ~np.isnan(flow[..., 0]) #inside is true
-
-        self.remove_discon(flow, mask)
-
+        flow[~mask] = 0
+        #self.remove_discon(flow, mask)
         x = self.x
         y = self.y
 
@@ -62,6 +60,9 @@ class poisson:
         b1 = div_F * h * h
         b2 = curl_F * h * h
 
+        b1[~mask] = 0
+        b2[~mask] = 0
+
         phi = sp.sparse.linalg.spsolve(self.laplacian, b1.flatten()).reshape(x_n, y_n)
         A = sp.sparse.linalg.spsolve(self.laplacian, b2.flatten()).reshape(x_n, y_n)
 
@@ -72,7 +73,6 @@ class poisson:
         phi_y[~mask] = np.nan
         A_x[~mask] = np.nan
         A_y[~mask] = np.nan
-        phi[~mask] = np.nan
 
         curl_free = np.stack([phi_x, phi_y], axis = -1)
         div_free = np.stack([A_y, -A_x], axis = -1)

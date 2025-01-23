@@ -18,7 +18,7 @@ class graphical:
         b_x = (int(c_x - d), int(c_x + d))
         b_y = (int(c_y - d), int(c_y + d))
 
-        return frame[b_x[0]: b_x[1], b_y[0]: b_y[1]]
+        return frame
 
     def images(self, og_frame, flow_data):
         frame_color = self.__crop(og_frame.copy())
@@ -48,12 +48,22 @@ class graphical:
                                     int(y + scale * grid_qui[i, j, 1])),
                                    (255, 255, 255), 2)
 
-        for point in flow_data['feat_pos']:
+        # for point in flow_data['feat_pos']:
+        #     cv.circle(arrow_frame,
+        #               (int(point[0]), int(point[1])),
+        #               1,
+        #               (0,0,0),
+        #                -1)
+
+        og_arrow = arrow_frame.copy()
+            
+        for contant_point in flow_data['contact_points']:
             cv.circle(arrow_frame,
-                      (int(point[0]), int(point[1])),
+                      (int(contant_point[0]), int(contant_point[1])),
                       1,
-                      (0,0,0),
-                       -1)
+                      (255,0,0),
+                       5)
+        arrow_frame = cv.addWeighted(arrow_frame, 0.5, og_arrow, 0.5, 0)
 
         right_align = 200
         cv.arrowedLine(arrow_frame, (right_align, 75),
@@ -111,7 +121,7 @@ def real_time_visual(frame_color, flow_data, n = 4, flow_bool = True, feat_bool 
 
     if flow_bool:
         x_qui = flow_data['x'][0, :][::n]
-        y_qui = flow_data['y'][:, 0][::n]
+        y_qui = flow_data['y'][:, 0][::n] 
         grid_qui = flow_data['grid_sph'][::n, ::n]
         cf_qui = flow_data['curl_free'][::n, ::n]
         df_qui = flow_data['div_free'][::n, ::n]

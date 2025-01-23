@@ -1,6 +1,35 @@
 py_binary(
-    name = "densetact_hardware",
-    srcs = ["densetact_hardware.py"],
+    name = "densetact_main",
+    srcs = ["densetact_main.py"],
+    data = [],
+    deps = [],
+)
+
+py_binary(
+    name = "densetact_optical_flow",
+    srcs = ["densetact_optical_flow.py"],
+    data = [],
+    deps = [],
+)
+
+py_binary(
+    name = "densetact_lcm",
+    srcs = ["densetact_lcm.py"],
+    data = [],
+    deps = [],
+)
+
+py_binary(
+    name = "densetact_poisson_solver",
+    srcs = ["densetact_poisson_solver.py"],
+    data = [],
+    deps = [],
+)
+
+
+py_binary(
+    name = "densetact_visualizer",
+    srcs = ["densetact_visualizer.py"],
     data = [],
     deps = [],
 )

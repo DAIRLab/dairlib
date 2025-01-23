@@ -8,22 +8,9 @@ import cv2 as cv
 from densetact_poisson_solver import poisson
 from densetact_visualizer import graphical
 
-def pre_processing(image):
-    """
-    Helper function designed for any image pre-processing (ie blurring, sharpening, changing contrast)
-    and conversion to gray-scale
+#import csv
+import os
 
-    :param image, (746, 1024, 3) BGR image
-    :return: proc_img, (746, 1024) gray-scale image
-    """
-
-    blurred = cv.GaussianBlur(image, (5, 5), 0)
-    #proc_img = cv.addWeighted(image, 2, blurred, -1, 0)
-
-    proc_img = blurred
-    proc_img_gray = cv.cvtColor(proc_img, cv.COLOR_BGR2GRAY)
-
-    return proc_img_gray, proc_img
 
 class OpticalFlow:
     def __init__(self, densetact, data):
@@ -54,114 +41,80 @@ class OpticalFlow:
         time.sleep(1)
         # Disable Manual Exposure (Only works in terminal)
         subprocess.check_call(f"v4l2-ctl -d /dev/video{i} -c auto_exposure=1", shell=True)
+        time.sleep(1)
         # Set the Exposure Time [ms.] from the .yaml (Only works in terminal)
         subprocess.check_call(f"v4l2-ctl -d /dev/video{i} -c exposure_time_absolute={densetact['expo_time']}", shell=True)
 
         time.sleep(1)
-        ret, old_frame = self.cap.read()  # Get first frame
+
+        # Get first frame
+        ret, old_frame = self.cap.read()
+        # Get the time first frame was taken
         self.start = time.perf_counter()
-        print("Opened up camera: ", densetact['serial_number']) if ret else 0
 
-        self.old_gray, self.old_frame = pre_processing(old_frame)
+        assert ret, "Camera could not open"
+        print("Opened up camera: ", densetact['serial_number'])
 
-        #Parameters for Feature Detection
-        self.feature_params = dict(maxCorners=2000,
-                              qualityLevel=0.05,
-                              minDistance=5,
-                              blockSize=5)
+        # Setup bounding box for densetact
+        self.bx = (densetact['center'][0] - densetact['rad_OI'], densetact['center'][0] + densetact['rad_OI'])
+        self.by = (densetact['center'][1] - densetact['rad_OI'], densetact['center'][1] + densetact['rad_OI'])
 
-        # Parameters for Lucas_Kanade
-        self.lk_params = dict(winSize=(30, 30),
-                         maxLevel=5,
-                         criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 20, 0.03))
+        # Run image through pre-processing
+        self.old_gray, self.old_frame = self.pre_processing(old_frame)
 
-        # ShiTomasi corner detection
-        self.p0 = cv.goodFeaturesToTrack(self.old_gray, mask=None, **self.feature_params)
-        self.p0 = np.squeeze(self.p0, axis=1)
+        # Set up dense inverse search optical flow
+        self.flow = cv.DISOpticalFlow_create()
 
-        self.init_p0 = self.p0.copy()
+        # grid for for region of interest of step 1
+        self.x = np.arange(0, 2 * densetact['rad_OI'])
+        self.y = np.arange(0, 2 * densetact['rad_OI'])
 
-        # Setting up the ROI, centered in the middle of the image
-        self.rad = densetact['rad_OI']#325
-        grid_step = data['grid_step']
+        # Sub-sampling (TODO: use interpolation instead of sub-sampling)
+        self.x_ss = self.x[::data['grid_step']]
+        self.y_ss = self.y[::data['grid_step']]
+        self.n = data['grid_step']
 
-        self.x = np.linspace(densetact['center'][1] - self.rad,
-                             densetact['center'][1] + self.rad,
-                             grid_step)
-        self.y = np.linspace(densetact['center'][0] - self.rad,
-                             densetact['center'][0] + self.rad,
-                             grid_step)
+        self.XX_ss, self.YY_ss = np.meshgrid(self.x_ss, self.y_ss)
 
-        self.XX, self.YY = np.meshgrid(self.x, self.y)
+        self.cx = densetact['rad_OI']
+        self.cy = densetact['rad_OI']
+
+        # Set up a binary mask for what is inside of the reflective surface on the image
+        self.mask = np.sqrt((self.XX_s - densetact['rad_OI'])**2 + (self.YY_s - densetact['rad_OI'])**2) < 260
 
         # Set up the laplacian matrix
-        self.decomp = poisson(self.XX, self.YY)
-
-        #Set up the boundaries
-        # rad = densetact['rad_OI']
-        # bc_pos_x = np.linspace(((self.resolution[0] / 2) - rad),
-        #                        ((self.resolution[0] / 2) + rad),
-        #                        grid_step)
-
-        # sqrt_term = np.sqrt(rad ** 2 - (bc_pos_x - self.resolution[0] / 2) ** 2)
-        # bc_pos_y_1 = sqrt_term + (self.resolution[1] / 2)
-        # bc_pos_y_2 = -sqrt_term + (self.resolution[1] / 2)
-
-        # bc_pos = np.array([np.concatenate([bc_pos_x, bc_pos_x]),
-        #                    np.concatenate([bc_pos_y_1, bc_pos_y_2])]).T
-
-        # flow_vec_bc = np.zeros_like(bc_pos)
-
-        # self.mask = ~np.isnan(sp.interpolate.griddata(bc_pos, flow_vec_bc, (self.XX, self.YY), method='linear')[...,0])
-
-        # self.bc_pos = bc_pos
-        # self.flow_vec_bc = flow_vec_bc
+        self.decomp = poisson(self.XX_s, self.YY_s)
 
         self.f = (0.76 * 10**-3) / (6*10**-6)
-        self.cx = self.resolution[0]/2
-        self.cy = self.resolution[1]/2
+
+        self.flow_vec = np.zeros((2 * densetact['rad_OI'], 2 * densetact['rad_OI'], 2))
 
 
-    def pyrLK(self, img0, img1, p0, back_threshold=0.5, checkTrace=True):
+    def pre_processing(self, image):
         """
-        :param img0: first image
-        :param img1: subsequent image
-        :param p0: features
-        :param back_threshold:
-        :param checkTrace: Set True if you want to check if the LK estimation is correct, the LK algorithm will be
-        applied in both directions
-        :return:
+        Helper function designed for any image pre-processing 
+        - blurring, sharpening, or changing contrast)
+        and conversion to gray-scale
+
+        :param image, (746, 1024, 3) BGR image
+        :return: proc_img, (746, 1024) gray-scale image
         """
 
-        if checkTrace == True:
-            p1, _st, _err = cv.calcOpticalFlowPyrLK(img0, img1, p0, None, **self.lk_params)
-            p0r, _st, _err = cv.calcOpticalFlowPyrLK(img1, img0, p1, None, **self.lk_params)
-            d = abs(p0 - p0r).reshape(-1, 2).max(-1)
-            status = d < back_threshold
+        bx = self.bx
+        by = self.by
 
-            return p1, status[:, np.newaxis]
+        blurred = cv.GaussianBlur(image, (5, 5), 0)
 
-        else:
-            p1, _st, _err = cv.calcOpticalFlowPyrLK(img0, img1, p0, None, **self.lk_params)
+        proc_img = blurred
+        proc_img_gray = cv.cvtColor(blurred, cv.COLOR_BGR2GRAY)
 
-            return p1, _st
+        
+        bx = self.bx
+        by = self.by
 
-    def add_boundaries(self, pos, flow_vec, steps=50):
-        """
-        :param pos: nx2 array, the position of the features on image space
-        :param flow_vec: nx2 array, the flow vector for each feature
-        :param steps: int, the number steps along the axis for the boundaries
-        :return: pos, flow_vec
-        Adds boundaries to the pos and flow_vec, on the basis that flow is zero there    """
-        flow_vec_bc = self.flow_vec_bc
-        bc_pos = self.bc_pos
+        return proc_img_gray[by[0]: by[1], bx[0]: bx[1]], proc_img[by[0]: by[1], bx[0]: bx[1]]
 
-        pos = np.vstack([pos, bc_pos])
-        flow_vec = np.vstack([flow_vec, flow_vec_bc])
-
-        return pos, flow_vec
-
-    def get_force(self, pos, flow_vec, frame_color):
+    def get_force(self, frame_color):
         """
         Each feature has its respective position (i.e. pos) and flow vector (i.e. flow_vec).
         This extracts location of contact (max divergence) and force magnitudes:
@@ -170,29 +123,29 @@ class OpticalFlow:
         :param flow_vec: nx2 array
         :return: XX, YY, interp_grid, field_comps, max_div
         """
-        x = self.x
-        y = self.y
-        XX = self.XX
-        YY = self.YY
+        x_ss = self.x_ss
+        y_ss = self.y_ss
+        XX_ss = self.XX_ss
+        YY_ss = self.YY_ss
+        interp_grid = self.flow_vec[::self.n, ::self.n]
 
-        ### GRID INTERPOLATION
-        interp_grid = sp.interpolate.griddata(pos, flow_vec, (XX, YY), method='cubic', fill_value=np.nan)
+        u_hat = (1/self.f) * (XX_ss - self.cx)
+        v_hat = (1/self.f) * (YY_ss - self.cy)
 
-        u_hat = (1/self.f) * (XX - self.cx)
-        v_hat = (1/self.f) * (YY - self.cy)
-
+        # Remove flow outside of ROI
+        interp_grid[~self.mask] = np.nan
 
         # Calculate divergence over the entire field
-        div_grid = (np.gradient(interp_grid[..., 0], x, axis=1, edge_order=2)
-                    + np.gradient(interp_grid[..., 1], y, axis=0, edge_order=2))
-
+        div_grid = (np.gradient(interp_grid[..., 0], x_ss, axis=1, edge_order=2)
+                    + np.gradient(interp_grid[..., 1], y_ss, axis=0, edge_order=2))
+        
         # Get the CoP on the field
         armgax_2d = np.unravel_index(np.nanargmax(div_grid), interp_grid[..., 0].shape)
         div_max = div_grid[armgax_2d]
-        CoP = np.array([int(x[armgax_2d[1]]), int(y[armgax_2d[0]])])
+        CoP = np.array([int(x_ss[armgax_2d[1]]), int(y_ss[armgax_2d[0]])])
 
         # figure out the region of contact
-        div_thres = 0.10
+        div_thres = 0.07
         contact_mask = div_grid > div_thres
 
         # HELMHOLTZ HODGE DECOMP
@@ -201,10 +154,7 @@ class OpticalFlow:
             if np.any(contact_mask) \
             else [nan_field, nan_field, nan_field]
 
-        contact_points = np.stack([XX[contact_mask], YY[contact_mask]], axis=1)
-
-
-        
+        contact_points = np.stack([XX_ss[contact_mask], YY_ss[contact_mask]], axis=1)
 
         proj_ray = np.hstack([(1/self.f) * (CoP[0] - self.cx), (1/self.f) * (CoP[1] - self.cy), 1])
 
@@ -228,11 +178,26 @@ class OpticalFlow:
         phi = np.arctan2(CoP_ray[1], CoP_ray[0])
 
         # [theta, phi, rho] = M @ [i, j, k]
-        M = np.array([[np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
-                      [-np.sin(phi), np.cos(phi), 0],
-                      [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
+        # M = np.array([[np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
+        #               [-np.sin(phi), np.cos(phi), 0],
+        #               [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
 
-        Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))/50_000
+        #print(np.rad2deg(theta), np.rad2deg(phi))
+        # M = np.array([[np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
+        #         [-np.sin(phi), np.cos(phi), 0],
+        #         [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
+
+        M = np.array([
+            [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)],
+            [np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
+            [-np.sin(phi), np.cos(phi), 0]
+        ])
+        
+        
+        #print(np.round(M,2))
+
+
+        Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))/5000
 
         #St = np.nansum((div_free + harm)[contact_mask], axis = 0)/500 if np.any(contact_mask) else np.array([0, 0])
         
@@ -240,9 +205,9 @@ class OpticalFlow:
         # gt = np.nansum(harm, axis = (0, 1))
         # g_tau = np.nansum(curl_free, axis = (0, 1))
 
-        # gn = np.nansum(div_free[contact_mask], axis = 0)
-        # gt = np.nansum(harm[contact_mask], axis = 0)
-        # g_tau = np.nansum(curl_free[contact_mask], axis = 0)
+        # gn = np.nanmean(div_free[contact_mask], axis = 0)
+        # gt = np.nanmean(harm[contact_mask], axis = 0)
+        # g_tau = np.nanmean(curl_free[contact_mask], axis = 0)
 
         # f(gn, gt, g_tau, max_div)
 
@@ -268,32 +233,62 @@ class OpticalFlow:
         #St = np.nansum((div_free + harm), axis=(0,1)) / 5000 if np.any(contact_mask) else np.array([0, 0])
         
         #harm = div_free
+        
         # recalibration
         contact_thres = 6_000_000
         con = np.sum(cv.absdiff(frame_color, self.old_frame).astype(np.float32))
         self.recalibration(frame_color) if (con < contact_thres) and (div_max > div_thres) else 0
 
+        # #St = np.mean((self.a*div_free + self.b*curl_free + self.c*harm)[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0]
+
+
+        # dis = np.array([x[armgax_2d[1]] - self.cx, y[armgax_2d[0]] - self.cy])
+
+
+        # St = g_tau + 0.0025 * dis if np.any(contact_mask) else [0, 0]
+
+        # if True:
+        #     csv_file = "output.csv"
+
+        #     if np.any(contact_mask):
+        #         with open(csv_file, mode='a', newline='') as file:
+        #             writer = csv.writer(file)
+
+
+        #             file_exists = os.path.isfile(csv_file)
+        #             writer.writerow([gn[0], gn[1], gt[0], gt[1], g_tau[0], g_tau[1], dis[0], dis[1], div_max])
+
+        #St = np.nansum((div_free), axis = (0,1)) / 50_000 
+
+        [Sx, Sy] = np.nanmean(harm, axis = (0,1)) if np.any(contact_mask) else [0, 0]
+
+        #Sn = Sz
+        #p = M @ [Sx, Sy, Sz]
+
+        #St = p[1:]
+
+        St = np.nanmean(div_free, axis = (0,1)) if np.any(contact_mask) else [0, 0]
+        #print([Sx, Sy, Sz])
+
+      
+        self.old_gray = self.old_gray#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
+        self.old_frame = self.old_frame#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
+
         return {
             'time': self.end - self.start,
             'x': XX, 'y' : YY,
             'theta': theta_ang, 'phi': phi_ang,
-            'feat_pos': pos, 'feat_vec': flow_vec,
+            'feat_pos': np.stack([XX, YY], axis = -1),
             'grid': interp_grid, 'div': div_max,
             'CoP': CoP, 'CoP_ray_norm': CoP_ray_norm,
             'curl_free': curl_free, 'div_free': div_free, 'harm': harm,
             'contact_bool': np.any(contact_mask), 'contact_points': contact_points,
-            'Sn': Sn, 'St': np.mean((curl_free+harm)[contact_mask], axis = 0) if np.any(contact_mask) else [0, 0],
-            'M': M, 'T': np.block([[M, CoP_on_sph.reshape(3, 1)], [np.zeros((1, 3)), np.array([[1]])]])
+            'Sn': Sn, 'St': St,
+            'M': M, 'contactPose': np.block([[M, CoP_on_sph.reshape(3, 1)], [np.zeros((1, 3)), np.array([[1]])]])
         }
 
     def recalibration(self, frame_color):
-        frame_gray = cv.cvtColor(frame_color, cv.COLOR_BGR2GRAY)
-
-        p0 = cv.goodFeaturesToTrack(frame_gray, mask=None, **self.feature_params)
-        p0 = np.squeeze(p0, axis=1)
-
-        self.p0 = p0
-        self.init_p0 = p0
+        self.flow_vec = np.zeros_like(self.flow_vec)
 
     def calc_flow(self):
         """
@@ -304,27 +299,16 @@ class OpticalFlow:
         """
         ### CAPTURE IMAGE
         ret, frame = self.cap.read()
-        self.end = time.perf_counter()
-        if not ret:
-            return 0
+        self.end = time.perf_counter() if not ret else 0
 
-        frame_gray, frame_color = pre_processing(frame)
+        frame_gray, frame_color = self.pre_processing(frame)
 
-        # Run Pyramidal Lucas-Kanade
-        p1, st = self.pyrLK(self.old_gray, frame_gray, self.p0, checkTrace = True)
-
-        # Discard bad points
-        good_new = p1[(st == 1).flatten()]
-        self.init_p0 =  self.init_p0[(st == 1).flatten()]
-
-        # Calculate flow vectors with respect to the initial frame
-        flow_vec = good_new - self.init_p0
-
-        # Now update the previous frame and previous points
+        instan_flow_vec = self.flow.calc(np.ascontiguousarray(self.old_gray), np.ascontiguousarray(frame_gray), None)
+  
         self.old_gray = frame_gray
-        self.p0 = good_new
+        self.flow_vec = self.flow_vec + instan_flow_vec
 
-        return good_new, flow_vec, frame_color
+        return frame_color
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -566,3 +550,9 @@ if __name__ == "__main__":
         plt.pause(1000)
 
     # plt.show()
+
+    def recalibration(self, frame_color):
+        frame_gray = cv.cvtColor(frame_color, cv.COLOR_BGR2GRAY)
+
+        p0 = cv.goodFeaturesToTrack(frame_gray, mask=None, **self.feature_params)
+        p0 = np.squeeze(p0, axis=1)

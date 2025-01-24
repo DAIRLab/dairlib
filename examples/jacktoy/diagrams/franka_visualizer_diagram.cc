@@ -221,7 +221,7 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
-  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
@@ -394,6 +394,8 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
                   end_effector_force_drawer_curr->get_input_port_actor_trajectory());
   builder.Connect(robot_time_passthrough->get_output_port(),
                   end_effector_force_drawer_curr->get_input_port_robot_time());
+  input_port_trajectory_sub_force_curr_ = builder.ExportInput(
+    end_effector_force_drawer_curr->get_input_port_force_trajectory());
 
   auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
       meshcat, "best_", "end_effector_position_target", "end_effector_force_target",
@@ -402,6 +404,8 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
                   end_effector_force_drawer_best->get_input_port_actor_trajectory());
   builder.Connect(robot_time_passthrough->get_output_port(),
                   end_effector_force_drawer_best->get_input_port_robot_time());
+  input_port_trajectory_sub_force_best_ = builder.ExportInput(
+    end_effector_force_drawer_best->get_input_port_force_trajectory());
 
   auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
   input_port_is_c3_mode_sub_ = builder.ExportInput(

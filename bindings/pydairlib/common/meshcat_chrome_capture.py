@@ -25,7 +25,6 @@ class MeshcatChromeCapture:
     """
     def __init__(self, meshcat: Meshcat, window_size: Tuple[int, int], silent: bool = False):
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--force-device-scale-factor=2')
         options.add_argument('--high-spi-support=1')

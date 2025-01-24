@@ -14,6 +14,7 @@ load(
 py_binary(
     name = "make_video",
     srcs = ["make_video.py"],
+    data = ["@lcm//:lcm-python"],
     deps = [
         ":jacktoy",
         "//bindings/pydairlib/common:common"

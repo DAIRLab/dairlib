@@ -30,8 +30,8 @@ def write_video(logfile: str, savefile: str, duration=-1):
         (channel, visualizer.get_input_port_for_channel(channel)) for \
          channel in visualizer.get_input_channels()
     ])
-
     lcm_log = lcm.EventLog(logfile, "r")
+    
     write_meshcat_video_from_log(
         visualizer, lcm_log, meshcat, types, ports, savefile, duration=duration
     )
@@ -42,7 +42,7 @@ def main():
     parser.add_argument('--logfile', type=str, default='')
     parser.add_argument('--savefile', type=str, default='')
     args = parser.parse_args()
-    write_video(args.logfile, args.savefile)
+    write_video(args.logfile, args.savefile, 1.0)
 
 
 if __name__ == '__main__':

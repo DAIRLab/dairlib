@@ -16,6 +16,10 @@ class FrankaVisualizerDiagram : public drake::systems::Diagram<double> {
 
   const drake::systems::InputPort<double>& get_input_port_for_channel(const std::string& channel_name) const {
     DRAKE_DEMAND(this->has_input_for_channel(channel_name));
+    auto index = channel_to_input_port_map_.at(channel_name);
+    if (index < 0) {
+      throw std::runtime_error(channel_name + " does not have a valid input port assigned");
+    }
     return get_input_port(channel_to_input_port_map_.at(channel_name));
   }
 

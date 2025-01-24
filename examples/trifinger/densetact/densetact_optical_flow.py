@@ -56,8 +56,8 @@ class OpticalFlow:
         print("Opened up camera: ", densetact['serial_number'])
 
         # Setup bounding box for densetact
-        self.bx = (densetact['center'][0] - densetact['rad_OI'], densetact['center'][0] + densetact['rad_OI'])
-        self.by = (densetact['center'][1] - densetact['rad_OI'], densetact['center'][1] + densetact['rad_OI'])
+        self.bx = (densetact['center'][0] - densetact['rad_view'], densetact['center'][0] + densetact['rad_view'])
+        self.by = (densetact['center'][1] - densetact['rad_view'], densetact['center'][1] + densetact['rad_view'])
 
         # Run image through pre-processing
         self.old_gray, self.old_frame = self.pre_processing(old_frame)
@@ -66,28 +66,29 @@ class OpticalFlow:
         self.flow = cv.DISOpticalFlow_create()
 
         # grid for for region of interest of step 1
-        self.x = np.arange(0, 2 * densetact['rad_OI'])
-        self.y = np.arange(0, 2 * densetact['rad_OI'])
+        self.x = np.arange(0, 2 * densetact['rad_view'])
+        self.y = np.arange(0, 2 * densetact['rad_view'])
 
-        # Sub-sampling (TODO: use interpolation instead of sub-sampling)
+        # Sub-sampling
         self.x_ss = self.x[::data['grid_step']]
         self.y_ss = self.y[::data['grid_step']]
-        self.n = data['grid_step']
-
         self.XX_ss, self.YY_ss = np.meshgrid(self.x_ss, self.y_ss)
 
-        self.cx = densetact['rad_OI']
-        self.cy = densetact['rad_OI']
+        self.cx = densetact['rad_view']
+        self.cy = densetact['rad_view']
 
         # Set up a binary mask for what is inside of the reflective surface on the image
-        self.mask = np.sqrt((self.XX_ss - densetact['rad_OI'])**2 + (self.YY_ss - densetact['rad_OI'])**2) < 260
+        self.mask = np.sqrt((self.XX_ss - densetact['rad_view'])**2 + (self.YY_ss - densetact['rad_view'])**2) < densetact['rad_flow']
 
         # Set up the laplacian matrix
         self.decomp = poisson(self.XX_ss, self.YY_ss)
 
         self.f = (0.76 * 10**-3) / (6*10**-6)
 
-        self.flow_vec = np.zeros((2 * densetact['rad_OI'], 2 * densetact['rad_OI'], 2))
+        self.flow_vec = np.zeros((2 * densetact['rad_view'], 2 * densetact['rad_view'], 2))
+
+        self.dt = 0
+        self.t_old_frame = time.perf_counter()
 
 
     def pre_processing(self, image):
@@ -103,7 +104,7 @@ class OpticalFlow:
         bx = self.bx
         by = self.by
 
-        blurred = cv.GaussianBlur(image, (5, 5), 0)
+        blurred = cv.GaussianBlur(image, (3, 3), 0)
 
         proc_img = blurred
         proc_img_gray = cv.cvtColor(blurred, cv.COLOR_BGR2GRAY)
@@ -114,7 +115,7 @@ class OpticalFlow:
 
         return proc_img_gray[by[0]: by[1], bx[0]: bx[1]], proc_img[by[0]: by[1], bx[0]: bx[1]]
 
-    def get_force(self, frame_color):
+    def get_force(self, frame_color, div_thres = 0.001):
         """
         Each feature has its respective position (i.e. pos) and flow vector (i.e. flow_vec).
         This extracts location of contact (max divergence) and force magnitudes:
@@ -127,7 +128,9 @@ class OpticalFlow:
         y_ss = self.y_ss
         XX_ss = self.XX_ss
         YY_ss = self.YY_ss
-        interp_grid = self.flow_vec[::self.n, ::self.n]
+
+        interp = sp.interpolate.RegularGridInterpolator((self.x, self.y), self.flow_vec, method='linear')
+        interp_grid = interp((YY_ss, XX_ss))
 
         u_hat = (1/self.f) * (XX_ss - self.cx)
         v_hat = (1/self.f) * (YY_ss - self.cy)
@@ -137,9 +140,10 @@ class OpticalFlow:
 
         # Calculate divergence over the entire field
         div_grid = (np.gradient(interp_grid[..., 0], x_ss, axis=1, edge_order=2)
-                    + np.gradient(interp_grid[..., 1], y_ss, axis=0, edge_order=2))
+            + np.gradient(interp_grid[..., 1], y_ss, axis=0, edge_order=2))
         
-        div_grid[~self.mask] = np.nan
+
+        div_grid[~sp.ndimage.binary_erosion(self.mask, iterations = 5)] = np.nan
         
         # Get the CoP on the field
         armgax_2d = np.unravel_index(np.nanargmax(div_grid), interp_grid[..., 0].shape)
@@ -147,14 +151,13 @@ class OpticalFlow:
         CoP = np.array([int(x_ss[armgax_2d[1]]), int(y_ss[armgax_2d[0]])])
 
         # figure out the region of contact
-        div_thres = 0.03
         contact_mask = div_grid > div_thres
 
         # HELMHOLTZ HODGE DECOMP
         nan_field = np.full(interp_grid.shape, np.nan)
-        curl_free, div_free, harm = self.decomp.solve(interp_grid) \
-            if np.any(contact_mask) \
-            else [nan_field, nan_field, nan_field]
+        curl_free, div_free, harm, height = self.decomp.solve(interp_grid) \
+            if True \
+            else [nan_field, nan_field, nan_field, nan_field]
 
         contact_points = np.stack([XX_ss[contact_mask], YY_ss[contact_mask]], axis=1)
 
@@ -188,7 +191,15 @@ class OpticalFlow:
         
         
 
-        Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))/5000
+        Sn = np.nansum(np.linalg.norm(curl_free, axis = 2))
+        
+
+        phi_2d = np.unravel_index(np.nanargmin(height), interp_grid[..., 0].shape)
+        print(height[phi_2d])
+        #phi_max = phi[phi_2d]
+        CoP = np.array([int(x_ss[phi_2d[1]]), int(y_ss[phi_2d[0]])])
+
+        #print(Sn)
         
         # recalibration
         contact_thres = 6_000_000
@@ -201,7 +212,7 @@ class OpticalFlow:
         self.old_frame = self.old_frame#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
 
         return {
-            'time': self.end - self.start,
+            'time': self.t_old_frame - self.start,
             'x': XX_ss, 'y' : YY_ss,
             'theta': theta_ang, 'phi': phi_ang,
             'feat_pos': np.stack([XX_ss, YY_ss], axis = -1),
@@ -225,14 +236,17 @@ class OpticalFlow:
         """
         ### CAPTURE IMAGE
         ret, frame = self.cap.read()
-        self.end = time.perf_counter() if not ret else 0
+
+        t_new_frame = time.perf_counter()
+        self.dt = t_new_frame - self.t_old_frame
+        self.t_old_frame = t_new_frame
 
         frame_gray, frame_color = self.pre_processing(frame)
 
         instan_flow_vec = self.flow.calc(np.ascontiguousarray(self.old_gray), np.ascontiguousarray(frame_gray), None)
-  
+
         self.old_gray = frame_gray
-        self.flow_vec = self.flow_vec + instan_flow_vec
+        self.flow_vec = self.flow_vec + instan_flow_vec * self.dt
 
         return frame_color
 

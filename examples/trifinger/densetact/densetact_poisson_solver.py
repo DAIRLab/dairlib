@@ -60,8 +60,8 @@ class poisson:
         b1 = div_F * h * h
         b2 = curl_F * h * h
 
-        b1[~mask] = 0
-        b2[~mask] = 0
+        # b1[~mask] = 0
+        # b2[~mask] = 0
 
         phi = sp.sparse.linalg.spsolve(self.laplacian, b1.flatten()).reshape(x_n, y_n)
         A = sp.sparse.linalg.spsolve(self.laplacian, b2.flatten()).reshape(x_n, y_n)
@@ -79,4 +79,4 @@ class poisson:
 
         harm = flow - curl_free - div_free
 
-        return curl_free, div_free, harm
+        return curl_free, div_free, harm, phi

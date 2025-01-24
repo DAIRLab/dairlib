@@ -3,7 +3,7 @@ import cv2 as cv
 
 class graphical:
     def __init__(self, name, densetact):
-        self.dis_RIO = densetact['rad_OI']
+        self.dis_RIO = densetact['rad_view']
         self.center = densetact['center']
         self.name = name
 
@@ -35,7 +35,7 @@ class graphical:
         resized_image = cv.resize(tot_image, (int(tot_image.shape[1] // 1.5), int(tot_image.shape[0] // 1.5)))
         cv.imshow("Optimal Flow: " + self.name, resized_image)
 
-    def graphical_flow(self, arrow_frame, flow_data, n = 4, scale = 2):
+    def graphical_flow(self, arrow_frame, flow_data, n = 10, scale = 50):
         x_qui = flow_data['x'][0, :][::n]
         y_qui = flow_data['y'][:, 0][::n]
         grid_qui = flow_data['grid'][::n, ::n]
@@ -57,13 +57,13 @@ class graphical:
 
         og_arrow = arrow_frame.copy()
             
-        for contant_point in flow_data['contact_points']:
-            cv.circle(arrow_frame,
-                      (int(contant_point[0]), int(contant_point[1])),
-                      1,
-                      (255,0,0),
-                       5)
-        arrow_frame = cv.addWeighted(arrow_frame, 0.5, og_arrow, 0.5, 0)
+        # for contant_point in flow_data['contact_points']:
+        #     cv.circle(arrow_frame,
+        #               (int(contant_point[0]), int(contant_point[1])),
+        #               1,
+        #               (255,0,0),
+        #                5)
+        # arrow_frame = cv.addWeighted(arrow_frame, 0.5, og_arrow, 0.5, 0)
 
         right_align = 200
         cv.arrowedLine(arrow_frame, (right_align, 75),
@@ -71,11 +71,11 @@ class graphical:
                        (255, 255, 255), 3)
         cv.putText(arrow_frame, "Optical Flow", (right_align+20, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 1, cv.LINE_AA)
 
-        cv.circle(arrow_frame, (flow_data['CoP'][0], flow_data['CoP'][1]), 5, (100, 255, 100), -1) if flow_data['contact_bool'] else 0
+        cv.circle(arrow_frame, (flow_data['CoP'][0], flow_data['CoP'][1]), 5, (0, 0, 0), -1) if flow_data['contact_bool'] else 0
 
         return self.__crop(arrow_frame)
 
-    def graphical_decomp(self, og_frame, flow_data, n = 4, scale = 3, thick = 3):
+    def graphical_decomp(self, og_frame, flow_data, n = 10, scale = 50, thick = 3):
         x_qui = flow_data['x'][0, :][::n]
         y_qui = flow_data['y'][:, 0][::n]
         cf_qui = flow_data['curl_free'][::n, ::n]

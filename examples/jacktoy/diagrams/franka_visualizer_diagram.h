@@ -33,9 +33,14 @@ class FrankaVisualizerDiagram : public drake::systems::Diagram<double> {
 
   FrankaVisualizerDiagram();
 
+  std::string get_lcm_type(const std::string& channel_name) const {
+    return channel_to_lcmtype_map_.at(channel_name);
+  }
+
  private:
 
   void MakeChannelToInputPortMap(const FrankaLcmChannels& lcm_channel_params);
+  void MakeChannelToLcmTypeMap(const FrankaLcmChannels& lcm_channel_params);
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat;
   drake::multibody::MultibodyPlant<double> plant{0.0};
@@ -67,6 +72,8 @@ class FrankaVisualizerDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_c3_final_state_target_sub_;
 
   std::unordered_map<std::string, drake::systems::InputPortIndex> channel_to_input_port_map_;
+  std::unordered_map<std::string, std::string> channel_to_lcmtype_map_;
+
 
 
 };

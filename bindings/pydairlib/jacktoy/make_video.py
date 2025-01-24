@@ -9,26 +9,27 @@ from pydairlib.common import write_meshcat_video_from_log
 
 from pydrake.geometry import Meshcat
 
-from dairlib import (
-    lcmt_timestamped_saved_traj,
-    lcmt_c3_forces,
-    lcmt_c3_state,
-    lcmt_sample_buffer,
-    lcmt_robot_output,
-    lcmt_object_state,
-)
+# lcmtypes
+import dairlib
+
+
+def lookup_lcmtype(name: str):
+    return getattr(dairlib, name)
+
 
 def write_video(logfile: str, savefile: str, duration=-1):
     visualizer = FrankaVisualizerDiagram()
     meshcat = visualizer.get_meshcat()
 
-    # make channel to type map
-    types = {}
+    types = dict([
+        (channel, lookup_lcmtype(visualizer.get_lcm_type(channel))) for \
+        channel in visualizer.get_input_channels()
+    ])
 
-    ports = dict(
+    ports = dict([
         (channel, visualizer.get_input_port_for_channel(channel)) for \
-         channel in visualizer.get_input_channels()]
-    )
+         channel in visualizer.get_input_channels()
+    ])
 
     lcm_log = lcm.EventLog(logfile, "r")
     write_meshcat_video_from_log(

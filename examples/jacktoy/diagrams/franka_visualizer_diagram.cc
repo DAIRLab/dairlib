@@ -181,6 +181,13 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
   auto tray_state_receiver =
       builder.AddSystem<ObjectStateReceiver>(plant, jack_index);
 
+  input_port_franka_state_sub_ = builder.ExportInput(
+      franka_state_receiver->get_input_port()
+  );
+  input_port_object_state_sub_ = builder.ExportInput(
+      tray_state_receiver->get_input_port()
+  );
+
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
@@ -422,9 +429,16 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
   DrawAndSaveDiagramGraph(*this, "examples/jacktoy/diagrams/visualizer_diagram");
 
   MakeChannelToInputPortMap(lcm_channel_params);
+  MakeChannelToLcmTypeMap(lcm_channel_params);
 }
 
 void FrankaVisualizerDiagram::MakeChannelToInputPortMap(const FrankaLcmChannels& lcm_channel_params) {
+  channel_to_input_port_map_[lcm_channel_params.franka_state_channel] =
+      input_port_franka_state_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.object_state_channel] =
+      input_port_object_state_sub_;
+
   channel_to_input_port_map_[lcm_channel_params.c3_trajectory_exec_actor_channel] =
       input_port_c3_execution_trajectory_sub_actor_;
 
@@ -475,6 +489,66 @@ void FrankaVisualizerDiagram::MakeChannelToInputPortMap(const FrankaLcmChannels&
 
   channel_to_input_port_map_[lcm_channel_params.c3_force_best_channel] =
       input_port_trajectory_sub_force_best_;
+
+}
+
+void FrankaVisualizerDiagram::MakeChannelToLcmTypeMap(const FrankaLcmChannels &lcm_channel_params) {
+  channel_to_lcmtype_map_[lcm_channel_params.franka_state_channel] =
+      "lcmt_robot_output";
+
+  channel_to_lcmtype_map_[lcm_channel_params.object_state_channel] =
+      "lcmt_object_state";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_trajectory_exec_actor_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.repos_trajectory_exec_actor_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_actor_curr_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_object_curr_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.dynamically_feasible_curr_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.dynamically_feasible_curr_actor_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_actor_best_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_object_best_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.dynamically_feasible_best_plan_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.sample_locations_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.sample_buffer_channel] =
+      "lcmt_sample_buffer";
+
+  channel_to_lcmtype_map_[lcm_channel_params.sample_costs_channel] =
+      "lcmt_timestamped_saved_traj";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_actual_state_channel] =
+      "lcmt_c3_state";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_target_state_channel] =
+      "lcmt_c3_state";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_final_target_state_channel] =
+      "lcmt_c3_state";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_force_curr_channel] =
+      "lcmt_c3_forces";
+
+  channel_to_lcmtype_map_[lcm_channel_params.c3_force_best_channel] =
+      "lcmt_c3_forces";
 
 }
 

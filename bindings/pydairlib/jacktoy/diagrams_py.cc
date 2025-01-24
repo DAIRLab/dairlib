@@ -23,6 +23,7 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_meshcat", &FrankaVisualizerDiagram::get_meshcat, py_rvp::reference_internal)
       .def("has_input_for_channel", &FrankaVisualizerDiagram::has_input_for_channel)
       .def("get_input_channels", &FrankaVisualizerDiagram::get_input_channels)
+      .def("get_lcm_type", &FrankaVisualizerDiagram::get_lcm_type)
       .def("get_input_port_for_channel", &FrankaVisualizerDiagram::get_input_port_for_channel, py_rvp::reference_internal);
 }
 }

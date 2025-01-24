@@ -588,15 +588,13 @@ void PinocchioPlant<AutoDiffXd>::CalcPointsPositions(
       MapPositionFromDrakeToPinocchio(ExtractValue(GetPositions(context))),
       frame_id, rf, J);
 
-  Matrix3X<double> J_translation = J.topRows(3);
+  Matrix3X<double> J_translation = J.topRows<3>();
+  Matrix3X<double> J_rotation = J.bottomRows<3>();
 
-//  for (int i = 0; i < 3; ++i) {
-//    J_translation.row(i) = MapVelocityFromPinocchioToDrake(
-//        ExtractValue(GetPositions(context)), J_translation.row(i).transpose()
-//    ).transpose();
-//  }
+  Vector3d p_BQi_double = ExtractValue(p_BQi);
+  J_translation = J_translation + J_rotation.colwise().cross(p_BQi_double);
 
-  Vector3d position = pinocchio_data_.oMf[frame_id].actOnEigenObject(ExtractValue(p_BQi));
+  Vector3d position = pinocchio_data_.oMf[frame_id].actOnEigenObject(p_BQi_double);
 //  DRAKE_DEMAND(p_AQi);
   *p_AQi = drake::math::InitializeAutoDiff(position, J_translation);
 //  *p_AQi = drake::math::InitializeAutoDiff(position);

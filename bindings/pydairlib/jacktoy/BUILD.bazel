@@ -11,54 +11,29 @@ load(
     "pybind_py_library",
 )
 
+py_binary(
+    name = "make_video",
+    srcs = ["make_video.py"],
+    deps = [
+        ":jacktoy",
+        "//bindings/pydairlib/common:common"
+    ],
+)
+
 pybind_py_library(
-    name = "common_py",
+    name = "diagrams_py",
     cc_deps = [
-        "//common",
+        "//examples/jacktoy/diagrams:franka_visualizer_diagram",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "common",
-    cc_srcs = ["common_py.cc"],
+    cc_so_name = "diagrams",
+    cc_srcs = ["diagrams_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
     ],
     py_imports = ["."],
 )
-
-py_library(
-    name = "plot_styler",
-    srcs = ["plot_styler.py"],
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_library(
-    name = "meshcat_chrome_capture",
-    srcs = ["meshcat_chrome_capture.py"],
-    deps = [
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "meshcat_video_writer",
-    srcs = ["meshcat_video_writer.py"],
-    deps = [
-        ":meshcat_chrome_capture",
-        "//bindings/pydairlib/lcm:log_playback",
-        "@drake//bindings/pydrake"
-    ],
-)
-
-
-py_library(
-    name = "plotting_utils",
-    srcs = ["plotting_utils.py"],
-    deps = [],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -75,16 +50,14 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":common_py",
-    ":plot_styler",
-    ":plotting_utils",
-    ":meshcat_video_writer",
-    ":meshcat_chrome_capture",
+    ":diagrams_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "common",
+    name = "jacktoy",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )
+
+

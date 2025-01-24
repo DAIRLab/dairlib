@@ -8,6 +8,12 @@
 #include "dairlib/lcmt_osc_tracking_data.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_c3_state.hpp"
+#include "dairlib/lcmt_sample_buffer.hpp"
+#include "dairlib/lcmt_object_state.hpp"
+
 
 #include "drake/bindings/pydrake/systems/lcm_pybind.h"
 
@@ -25,6 +31,11 @@ void BindCppSerializers() {
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_osc_tracking_data>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_robot_input>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_saved_traj>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_timestamped_saved_traj>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_c3_forces>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_c3_state>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_sample_buffer>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_object_state>("dairlib");
 }
 
 }  // namespace pydairlib

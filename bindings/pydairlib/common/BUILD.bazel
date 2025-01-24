@@ -78,6 +78,8 @@ PY_LIBRARIES = [
     ":common_py",
     ":plot_styler",
     ":plotting_utils",
+    ":meshcat_video_writer",
+    ":meshcat_chrome_capture",
 ]
 
 # Package roll-up (for Bazel dependencies).

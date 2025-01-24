@@ -219,36 +219,32 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
       &builder, scene_graph, meshcat, std::move(params));
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
 
-  if (sim_params.visualize_c3_workspace){
-    double width = c3_options.world_x_limits[1] - c3_options.world_x_limits[0];
-    double depth = c3_options.world_y_limits[1] - c3_options.world_y_limits[0];
-    double height = c3_options.world_z_limits[1] - c3_options.world_z_limits[0];
-    Vector3d workspace_center = {0.5 * (c3_options.world_x_limits[1] + c3_options.world_x_limits[0]),
-                                 0.5 * (c3_options.world_y_limits[1] + c3_options.world_y_limits[0]),
-                                 0.5 * (c3_options.world_z_limits[1] + c3_options.world_z_limits[0])};
-    meshcat->SetObject("c3_workspace", drake::geometry::Box(width, depth, height),
-                       {0, 1, 0, 0.2});
-    meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
-  }
+  double width = c3_options.world_x_limits[1] - c3_options.world_x_limits[0];
+  double depth = c3_options.world_y_limits[1] - c3_options.world_y_limits[0];
+  double height = c3_options.world_z_limits[1] - c3_options.world_z_limits[0];
+  Vector3d workspace_center = {0.5 * (c3_options.world_x_limits[1] + c3_options.world_x_limits[0]),
+                               0.5 * (c3_options.world_y_limits[1] + c3_options.world_y_limits[0]),
+                               0.5 * (c3_options.world_z_limits[1] + c3_options.world_z_limits[0])};
+  meshcat->SetObject("c3_workspace", drake::geometry::Box(width, depth, height),
+                     {0, 1, 0, 0.2});
+  meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
 
-  if (sim_params.visualize_execution_plan){
-    auto c3_exec_trajectory_drawer_actor =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat,"c3_exec_", "end_effector_position_target");
-    auto repos_trajectory_drawer_actor =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"repos_exec_",
-                                                        "end_effector_position_target");
-    c3_exec_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0.75, 0.79, 1}));
-    c3_exec_trajectory_drawer_actor->SetLineWidth(10000000);
-    repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-    repos_trajectory_drawer_actor->SetLineWidth(10000000);
-    c3_exec_trajectory_drawer_actor->SetNumSamples(5);
-    repos_trajectory_drawer_actor->SetNumSamples(5);
-    input_port_c3_execution_trajectory_sub_actor_ = builder.ExportInput(
-                    c3_exec_trajectory_drawer_actor->get_input_port_trajectory());
-    input_port_repos_execution_trajectory_sub_actor_ = builder.ExportInput(
-                    repos_trajectory_drawer_actor->get_input_port_trajectory());
-  }
+  auto c3_exec_trajectory_drawer_actor =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(
+          meshcat,"c3_exec_", "end_effector_position_target");
+  auto repos_trajectory_drawer_actor =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"repos_exec_",
+                                                      "end_effector_position_target");
+  c3_exec_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0.75, 0.79, 1}));
+  c3_exec_trajectory_drawer_actor->SetLineWidth(10000000);
+  repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+  repos_trajectory_drawer_actor->SetLineWidth(10000000);
+  c3_exec_trajectory_drawer_actor->SetNumSamples(5);
+  repos_trajectory_drawer_actor->SetNumSamples(5);
+  input_port_c3_execution_trajectory_sub_actor_ = builder.ExportInput(
+                  c3_exec_trajectory_drawer_actor->get_input_port_trajectory());
+  input_port_repos_execution_trajectory_sub_actor_ = builder.ExportInput(
+                  repos_trajectory_drawer_actor->get_input_port_trajectory());
 
   auto trajectory_drawer_actor_curr =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(
@@ -291,10 +287,12 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
       FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
       "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
-  input_port_trajectory_sub_object_curr_ = builder.ExportInput(
-      object_pose_drawer_curr->get_input_port_trajectory());
-  input_port_trajectory_sub_actor_curr_ = builder.ExportInput(
+  builder.ConnectInput(
+      input_port_trajectory_sub_actor_curr_,
       end_effector_pose_drawer_curr->get_input_port_trajectory());
+  builder.ConnectInput(
+      input_port_trajectory_sub_object_curr_,
+      object_pose_drawer_curr->get_input_port_trajectory());
 
   auto dynamically_feasible_actor_pose_drawer_curr_actor = builder.AddSystem<systems::LcmPoseDrawer>(
       meshcat, "plans/dynamically_feasible_curr_plan_actor",
@@ -312,118 +310,102 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
       dynamically_feasible_object_pose_drawer_curr->get_input_port_trajectory());
 
 
-  if (sim_params.visualize_pose_trace_best){
-    auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "plans/best_planned",
-        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target");
-    auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "plans/best_planned",
-        FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
-        "end_effector_position_target", "end_effector_orientation_target", 5, false);
+  auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, "plans/best_planned",
+      FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+      "object_position_target", "object_orientation_target");
+  auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, "plans/best_planned",
+      FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
+      "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
-    input_port_trajectory_sub_object_best_ = builder.ExportInput(
-        object_pose_drawer_best->get_input_port_trajectory());
-    input_port_trajectory_sub_actor_best_ = builder.ExportInput(
-        end_effector_pose_drawer_best->get_input_port_trajectory());
+  builder.ConnectInput(
+      input_port_trajectory_sub_object_best_,
+      object_pose_drawer_best->get_input_port_trajectory());
+  builder.ConnectInput(
+      input_port_trajectory_sub_actor_best_,
+      end_effector_pose_drawer_best->get_input_port_trajectory());
 
-    auto dynamically_feasible_object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "plans/dynamically_feasible_best_plan",
-        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target", 6, false);
-    input_port_dynamically_feasible_trajectory_sub_object_best_ = builder.ExportInput(
-        dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
+  auto dynamically_feasible_object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, "plans/dynamically_feasible_best_plan",
+      FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+      "object_position_target", "object_orientation_target", 6, false);
+  input_port_dynamically_feasible_trajectory_sub_object_best_ = builder.ExportInput(
+      dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
+
+  // This drawer object is used to visualize the sample locations.
+  // This isn't designed to be used for visualizing sample locations but we
+  // use it for that purpose since the sample_location_sender sends out an
+  // lcmt_timestamped_traj with a trajectory by the name sample_locations.
+  // The last argument "end_effector_orientation_target" is a dummy argument
+  // here that is not used.
+  int from_buffer = 0;
+  if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
+    from_buffer = 1;
   }
+  auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, "samples_",
+      FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+      "sample_locations", "end_effector_orientation_target",
+      std::max(sampling_params.num_additional_samples_c3 + from_buffer,
+               sampling_params.num_additional_samples_repos + 1) + 1, false);
 
-  if (sim_params.visualize_sample_locations){
-    // This drawer object is used to visualize the sample locations.
-    // This isn't designed to be used for visualizing sample locations but we
-    // use it for that purpose since the sample_location_sender sends out an
-    // lcmt_timestamped_traj with a trajectory by the name sample_locations.
-    // The last argument "end_effector_orientation_target" is a dummy argument
-    // here that is not used.
-    int from_buffer = 0;
-    if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
-      from_buffer = 1;
-    }
-    auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "samples_",
-        FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
-        "sample_locations", "end_effector_orientation_target",
-        std::max(sampling_params.num_additional_samples_c3 + from_buffer,
-                 sampling_params.num_additional_samples_repos + 1) + 1, false);
+  input_port_sample_location_sub_ = builder.ExportInput(
+      sample_locations_drawer->get_input_port_trajectory());
 
-    input_port_sample_location_sub_ = builder.ExportInput(
-        sample_locations_drawer->get_input_port_trajectory());
-  }
+  auto sample_buffer_to_point_cloud_converter =
+      builder.AddSystem<systems::PointCloudFromSampleBuffer>();
+  auto sample_buffer_point_cloud_visualizer =
+      builder.AddSystem<MeshcatPointCloudVisualizer>(meshcat, "sample_buffer");
+  sample_buffer_point_cloud_visualizer->set_point_size(0.02);
 
-  if (sim_params.visualize_sample_buffer) {
-    auto sample_buffer_to_point_cloud_converter =
-        builder.AddSystem<systems::PointCloudFromSampleBuffer>();
-    auto sample_buffer_point_cloud_visualizer =
-        builder.AddSystem<MeshcatPointCloudVisualizer>(meshcat, "sample_buffer");
-    sample_buffer_point_cloud_visualizer->set_point_size(0.02);
+  input_port_sample_buffer_sub_ = builder.ExportInput(
+      sample_buffer_to_point_cloud_converter->get_input_port_lcmt_sample_buffer()
+  );
+  input_port_sample_costs_sub_ = builder.ExportInput(
+      sample_buffer_to_point_cloud_converter->get_input_port_new_sample_costs()
+  );
 
-    input_port_sample_buffer_sub_ = builder.ExportInput(
-        sample_buffer_to_point_cloud_converter->get_input_port_lcmt_sample_buffer()
-    );
-    input_port_sample_costs_sub_ = builder.ExportInput(
-        sample_buffer_to_point_cloud_converter->get_input_port_new_sample_costs()
-    );
+  builder.Connect(
+      sample_buffer_to_point_cloud_converter->get_output_port_sample_buffer_point_cloud(),
+      sample_buffer_point_cloud_visualizer->cloud_input_port()
+  );
 
-    builder.Connect(
-        sample_buffer_to_point_cloud_converter->get_output_port_sample_buffer_point_cloud(),
-        sample_buffer_point_cloud_visualizer->cloud_input_port()
-    );
-  }
+  auto c3_target_drawer =
+      builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
+  input_port_c3_state_actual_sub_ = builder.ExportInput(
+                  c3_target_drawer->get_input_port_c3_state_actual());
+  input_port_c3_state_target_sub_ = builder.ExportInput(
+                  c3_target_drawer->get_input_port_c3_state_target());
+  input_port_c3_final_state_target_sub_ = builder.ExportInput(
+                  c3_target_drawer->get_input_port_c3_state_final_target());
 
-  if (sim_params.visualize_c3_state){
-    auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
-    input_port_c3_state_actual_sub_ = builder.ExportInput(
-                    c3_target_drawer->get_input_port_c3_state_actual());
-    input_port_c3_state_target_sub_ = builder.ExportInput(
-                    c3_target_drawer->get_input_port_c3_state_target());
-    input_port_c3_final_state_target_sub_ = builder.ExportInput(
-                    c3_target_drawer->get_input_port_c3_state_final_target());
-  }
+  auto end_effector_force_drawer_curr = builder.AddSystem<systems::LcmForceDrawer>(
+      meshcat, "curr_", "end_effector_position_target", "end_effector_force_target",
+      "lcs_force_trajectory_curr");
+  builder.ConnectInput(input_port_trajectory_sub_actor_curr_,
+                  end_effector_force_drawer_curr->get_input_port_actor_trajectory());
+  builder.Connect(robot_time_passthrough->get_output_port(),
+                  end_effector_force_drawer_curr->get_input_port_robot_time());
 
-  if (sim_params.visualize_c3_forces_curr){
-    auto end_effector_force_drawer_curr = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "curr_", "end_effector_position_target", "end_effector_force_target",
-        "lcs_force_trajectory_curr");
-    builder.ConnectInput(input_port_trajectory_sub_actor_curr_,
-                    end_effector_force_drawer_curr->get_input_port_actor_trajectory());
-    builder.ConnectInput(input_port_trajectory_sub_force_curr_,
-                    end_effector_force_drawer_curr->get_input_port_force_trajectory());
-    builder.Connect(robot_time_passthrough->get_output_port(),
-                    end_effector_force_drawer_curr->get_input_port_robot_time());
-  }
+  auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
+      meshcat, "best_", "end_effector_position_target", "end_effector_force_target",
+      "lcs_force_trajectory_best");
+  builder.ConnectInput(input_port_trajectory_sub_actor_best_,
+                  end_effector_force_drawer_best->get_input_port_actor_trajectory());
+  builder.Connect(robot_time_passthrough->get_output_port(),
+                  end_effector_force_drawer_best->get_input_port_robot_time());
 
-  if (sim_params.visualize_c3_forces_best){
-    auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "best_", "end_effector_position_target", "end_effector_force_target",
-        "lcs_force_trajectory_best");
-    builder.ConnectInput(input_port_trajectory_sub_actor_best_,
-                    end_effector_force_drawer_best->get_input_port_actor_trajectory());
-    builder.ConnectInput(input_port_trajectory_sub_force_best_,
-                    end_effector_force_drawer_best->get_input_port_force_trajectory());
-    builder.Connect(robot_time_passthrough->get_output_port(),
-                    end_effector_force_drawer_best->get_input_port_robot_time());
-  }
-
-  if(sim_params.visualize_is_c3_mode){
-    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
-    input_port_is_c3_mode_sub_ = builder.ExportInput(
-                    c3_mode_visualizer->get_input_port_is_c3_mode());
-    builder.Connect(reduced_order_model_receiver->get_output_port(),
-                    c3_mode_visualizer->get_input_port_curr_lcs_state());
-    auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "c3_mode", FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
-        "c3_mode_visualization", "end_effector_orientation_target", 1, false);
-    builder.Connect(c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
-                    is_c3_mode_drawer->get_input_port_trajectory());
-  }
+  auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
+  input_port_is_c3_mode_sub_ = builder.ExportInput(
+                  c3_mode_visualizer->get_input_port_is_c3_mode());
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  c3_mode_visualizer->get_input_port_curr_lcs_state());
+  auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, "c3_mode", FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
+      "c3_mode_visualization", "end_effector_orientation_target", 1, false);
+  builder.Connect(c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
+                  is_c3_mode_drawer->get_input_port_trajectory());
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
@@ -438,6 +420,61 @@ FrankaVisualizerDiagram::FrankaVisualizerDiagram() {
 
   builder.BuildInto(this);
   DrawAndSaveDiagramGraph(*this, "examples/jacktoy/diagrams/visualizer_diagram");
+
+  MakeChannelToInputPortMap(lcm_channel_params);
+}
+
+void FrankaVisualizerDiagram::MakeChannelToInputPortMap(const FrankaLcmChannels& lcm_channel_params) {
+  channel_to_input_port_map_[lcm_channel_params.c3_trajectory_exec_actor_channel] =
+      input_port_c3_execution_trajectory_sub_actor_;
+
+  channel_to_input_port_map_[lcm_channel_params.repos_trajectory_exec_actor_channel] =
+      input_port_repos_execution_trajectory_sub_actor_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_actor_curr_plan_channel] =
+      input_port_trajectory_sub_actor_curr_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_object_curr_plan_channel] =
+      input_port_trajectory_sub_object_curr_;
+
+  channel_to_input_port_map_[lcm_channel_params.dynamically_feasible_curr_plan_channel] =
+      input_port_dynamically_feasible_trajectory_sub_object_curr_;
+
+  channel_to_input_port_map_[lcm_channel_params.dynamically_feasible_curr_actor_plan_channel] =
+      input_port_dynamically_feasible_trajectory_sub_actor_curr_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_actor_best_plan_channel] =
+      input_port_trajectory_sub_actor_best_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_object_best_plan_channel] =
+      input_port_trajectory_sub_object_best_;
+
+  channel_to_input_port_map_[lcm_channel_params.dynamically_feasible_best_plan_channel] =
+      input_port_dynamically_feasible_trajectory_sub_object_best_;
+
+  channel_to_input_port_map_[lcm_channel_params.sample_locations_channel] =
+      input_port_sample_location_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.sample_buffer_channel] =
+      input_port_sample_buffer_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.sample_costs_channel] =
+      input_port_sample_costs_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_actual_state_channel] =
+      input_port_c3_state_actual_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_target_state_channel] =
+      input_port_c3_state_target_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_final_target_state_channel] =
+      input_port_c3_final_state_target_sub_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_force_curr_channel] =
+      input_port_trajectory_sub_force_curr_;
+
+  channel_to_input_port_map_[lcm_channel_params.c3_force_best_channel] =
+      input_port_trajectory_sub_force_best_;
 
 }
 

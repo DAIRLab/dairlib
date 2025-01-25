@@ -136,11 +136,6 @@ cc_library(
     hdrs = ["pinocchio_plant.h"],
     deps = [
         "//multibody:utils",
-        "@boost//:asio",
-        "@boost//:math",
-        "@boost//:serialization",
-        "@boost//:type_traits",
-        "@boost//:variant",
         "@drake//:drake_shared_library",
         "@pinocchio",
     ],

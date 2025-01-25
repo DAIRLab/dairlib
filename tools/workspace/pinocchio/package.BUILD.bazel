@@ -9,8 +9,16 @@ filegroup(
     srcs = glob(["**"]),
 )
 
-cmake(
+cc_library(
     name = "pinocchio",
+    deps = [
+        ":pinocchio_boost_deps",
+        ":pinocchio_core",
+    ],
+)
+
+cmake(
+    name = "pinocchio_core",
     lib_source = ":srcs",
     cache_entries = {
         "BUILD_ADVANCED_TESTING": "OFF",
@@ -48,4 +56,15 @@ cmake(
             "libpinocchio_parsers.3.2.0.dylib",
         ],
     }),
+)
+
+cc_library(
+    name = "pinocchio_boost_deps",
+    deps = [
+        "@boost//:asio",
+        "@boost//:math",
+        "@boost//:serialization",
+        "@boost//:type_traits",
+        "@boost//:variant",
+    ],
 )

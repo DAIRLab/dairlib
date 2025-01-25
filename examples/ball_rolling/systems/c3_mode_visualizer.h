@@ -1,3 +1,4 @@
+#pragma once
 #include "drake/systems/framework/leaf_system.h"
 #include <vector>
 #include "Eigen/Dense"

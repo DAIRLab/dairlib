@@ -11,7 +11,7 @@ struct ADMMParams {
   double rho{0.1};         // Penalty parameter
   int max_iterations{8};  // Maximum number of iterations
   double tolerance{1e-3};    // Convergence tolerance
-  bool verbose = true;
+  bool verbose = false;
 };
 
 struct NCQPSolution {

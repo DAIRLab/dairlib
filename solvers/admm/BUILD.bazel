@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["ncqp_solver.h"],
     deps = [
         ":set_membership_constraint",
-        "//solvers:osqp_qrapper",
+        "//solvers:osqp_wrapper",
         "//solvers:qp_data",
         "@drake//:drake_shared_library",
         "@qpalm",

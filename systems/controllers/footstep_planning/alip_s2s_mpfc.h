@@ -17,6 +17,7 @@
 namespace dairlib::systems::controllers {
 
 using drake::solvers::Binding;
+using drake::solvers::Constraint;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -80,6 +81,8 @@ class AlipS2SMPFC {
   void MakeInputConstraints();
   void MakeStateConstraints();
   void MakeDynamicsConstraint();
+  void MakeMIQPFootholdConstraints();
+  void MakeNCQPFootholdConstraints();
   void MakeInitialConditionsConstraints();
 
   void UpdateInitialConditions(
@@ -87,6 +90,7 @@ class AlipS2SMPFC {
       double t, double tmin, double tmax);
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
+  void UpdateMIQPFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
@@ -149,6 +153,7 @@ class AlipS2SMPFC {
   std::shared_ptr<LinearConstraint> trust_region_ = nullptr;
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
+  vector<Binding<Constraint>> foothold_set_c_{};
 
   std::shared_ptr<QuadraticCost> ankle_torque_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;

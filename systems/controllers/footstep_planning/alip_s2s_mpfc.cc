@@ -3,6 +3,8 @@
 #include <iostream>
 #include <chrono>
 #include "common/eigen_utils.h"
+#include "solvers/admm/ncqp_solver.h"
+#include "solvers/admm/convex_polygon_set_constraint.h"
 
 namespace dairlib::systems::controllers{
 
@@ -54,10 +56,11 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateTimeRegularization(t);
   UpdateTrustRegionConstraint(t, p_prev_stance);
 
+  bool success;
+  std::string solution_result;
+
   auto solver_start = std::chrono::steady_clock::now();
-
   auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
-
   auto solver_end = std::chrono::steady_clock::now();
 
   if (not result.is_success()) {
@@ -86,7 +89,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   }
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
-    mpfc_solution.mu.push_back(result.GetSolution(mu_.at(i)));
+    mpfc_solution.mu.push_back(params_.miqp ?
+        result.GetSolution(mu_.at(i)) : VectorXd::Zero(kMaxFootholds));
   }
 
   mpfc_solution.t_nom = t;
@@ -117,7 +121,9 @@ void AlipS2SMPFC::MakeMPCVariables() {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     std::string mode = std::to_string(i+1);
     ee_.push_back(prog_->NewContinuousVariables(1, "ee_" + mode));
-    mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
+    if (params_.miqp) {
+      mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
+    }
   }
 }
 
@@ -161,7 +167,6 @@ void AlipS2SMPFC::MakeMPCCosts() {
 }
 
 void AlipS2SMPFC::MakeInputConstraints() {
-  constexpr double bigM = 20.0;
 
   Matrix<double, 2, 6> A_reach = Matrix<double, 2, 6>::Zero();
   A_reach.leftCols<2>() = -Matrix2d ::Identity();
@@ -181,7 +186,30 @@ void AlipS2SMPFC::MakeInputConstraints() {
             VectorXd::Constant(1, -kInfinity),
             VectorXd::Constant(1, kInfinity),
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
-        ));
+    ));
+  }
+
+  if (params_.miqp) {
+    MakeMIQPFootholdConstraints();
+  } else {
+    MakeNCQPFootholdConstraints();
+  }
+
+  MatrixXd A_trust = MatrixXd::Zero(3, 6);
+  A_trust.leftCols<3>().setIdentity();
+  A_trust.rightCols<3>().setIdentity();
+  A_trust.rightCols<3>() *= -1;
+  trust_region_ = prog_->AddLinearConstraint(
+      A_trust, -Vector3d::Constant(kInfinity), Vector3d::Constant(kInfinity),
+      {pp_.at(1), pp_.at(0)}
+  ).evaluator();
+}
+
+void AlipS2SMPFC::MakeMIQPFootholdConstraints() {
+  DRAKE_DEMAND(params_.miqp);
+
+  constexpr double bigM = 20.0;
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
     for (size_t j = 0; j < kMaxFootholds; ++j) {
@@ -223,15 +251,17 @@ void AlipS2SMPFC::MakeInputConstraints() {
       VectorXd::Ones(mu_.size()),
       stack(mu_)
   ).evaluator();
+}
 
-  MatrixXd A_trust = MatrixXd::Zero(3, 6);
-  A_trust.leftCols<3>().setIdentity();
-  A_trust.rightCols<3>().setIdentity();
-  A_trust.rightCols<3>() *= -1;
-  trust_region_ = prog_->AddLinearConstraint(
-      A_trust, -Vector3d::Constant(kInfinity), Vector3d::Constant(kInfinity),
-      {pp_.at(1), pp_.at(0)}
-  ).evaluator();
+void AlipS2SMPFC::MakeNCQPFootholdConstraints() {
+  DRAKE_DEMAND(not params_.miqp);
+  auto evaluator = std::make_shared<solvers::ConvexPolygonSetConstraint>(
+      ConvexPolygonSet());
+  for (int i = 0 ; i < params_.nmodes - 1; ++i) {
+    foothold_set_c_.push_back(
+        prog_->AddConstraint(evaluator, pp_.at(i+1))
+    );
+  }
 }
 
 void AlipS2SMPFC::MakeStateConstraints() {
@@ -365,7 +395,18 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
   }
 }
 
-void AlipS2SMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
+void AlipS2SMPFC::UpdateFootholdConstraints(
+    const geometry::ConvexPolygonSet &footholds) {
+  if (params_.miqp) {
+    UpdateMIQPFootholdConstraints(footholds);
+  } else {
+    dynamic_cast<solvers::ConvexPolygonSetConstraint*>(
+        foothold_set_c_.front().evaluator().get())->UpdatePolygons(footholds);
+  }
+}
+
+void AlipS2SMPFC::UpdateMIQPFootholdConstraints(
+    const ConvexPolygonSet& footholds) {
   const auto& polys = footholds.polygons();
   size_t n = std::min(kMaxFootholds, footholds.size());
 

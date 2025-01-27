@@ -180,9 +180,6 @@ void OsqpWrapper::InitializeSolver(
   // Populate data.
   osqp_data_ = static_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
 
-  ConvertInfinity(qp.lb);
-  ConvertInfinity(qp.ub);
-
   osqp_data_->n = qp.num_vars;
   osqp_data_->m = qp.num_ineq;
   osqp_data_->P = P_csc_;

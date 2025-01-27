@@ -22,8 +22,8 @@ cc_library(
     deps = [
         ":alip_s2s_mpfc",
         "//lcm:lcm_trajectory_saver",
-        "//systems/framework:vector",
         "//systems/filters:s2s_kalman_filter",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],
@@ -115,6 +115,8 @@ cc_library(
         "//solvers:constraints",
         "//solvers:optimization_utils",
         "//solvers:solver_options_io",
+        "//solvers/admm:convex_polygon_set_constraint",
+        "//solvers/admm:ncqp_solver",
         "@drake//:drake_shared_library",
     ],
 )
@@ -197,9 +199,9 @@ cc_library(
     deps = [
         "//common:eigen_utils",
         "//common:legendre_polynomial_trajectory",
+        "//common:polynomial_utils",
         "//solvers:fcc_qp_solver",
         "//solvers:legendre_coefficient_variables",
-        "//common:polynomial_utils",
         "@drake//:drake_shared_library",
     ],
 )

@@ -67,7 +67,7 @@ cc_library(
 )
 
 cc_library(
-    name = "osqp_qrapper",
+    name = "osqp_wrapper",
     srcs = ["osqp_wrapper.cc"],
     hdrs = ["osqp_wrapper.h"],
     deps = [
@@ -83,7 +83,7 @@ cc_library(
     hdrs = ["legendre_coefficient_variables.h"],
     deps = [
         "//common:polynomial_utils",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -132,7 +132,7 @@ cc_library(
     hdrs = ["qp_data.h"],
     deps = [
         "@drake//:drake_shared_library",
-    ]
+    ],
 )
 
 cc_library(
@@ -148,13 +148,13 @@ cc_library(
 cc_binary(
     name = "qp_solvers_test",
     srcs = ["test/qp_solvers_test.cc"],
+    defines = [
+        "EIGEN_INDEX_TYPE",
+    ],
     deps = [
         ":qp_data",
         ":qpalm_solver",
     ],
-    defines = [
-        "EIGEN_INDEX_TYPE"
-    ]
 )
 
 cc_test(

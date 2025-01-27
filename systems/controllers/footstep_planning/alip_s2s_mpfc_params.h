@@ -28,6 +28,7 @@ struct alip_s2s_mpfc_params {
   double ankle_torque_regularization = 1.0;
   alip_utils::AlipTrackingCostType tracking_cost_type =
       alip_utils::AlipTrackingCostType::kVelocity;
+  bool miqp = true;
 };
 
 struct alip_s2s_mpfc_params_io {

@@ -56,11 +56,19 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateTimeRegularization(t);
   UpdateTrustRegionConstraint(t, p_prev_stance);
 
-  bool success;
-  std::string solution_result;
+
+  drake::solvers::MathematicalProgramResult result;
 
   auto solver_start = std::chrono::steady_clock::now();
-  auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+
+  if (params_.miqp) {
+    result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+  } else {
+    auto solver = solvers::NCQPSolver();
+    auto solution = solver.Solve(*prog_, foothold_set_c_);
+    result.set_decision_variable_index(prog_->decision_variable_index());
+    result.set_x_val(solution.x);
+  }
   auto solver_end = std::chrono::steady_clock::now();
 
   if (not result.is_success()) {

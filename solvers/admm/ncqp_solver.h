@@ -49,7 +49,6 @@ struct NCQPSolution {
        << "  Iterations: " << sol.n_iter;
     return os;
   }
-
 };
 
 /*!

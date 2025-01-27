@@ -100,8 +100,15 @@ end_point_y: -0.35            # y coordinate of end point of straight line.
 ####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
 ####### sampling_params.
 lookahead_step_size: 0.15      # lookahead size for adaptive straight line and fixed goal with lookahead.
-lookahead_angle: 5  #3.14        # lookahead angle for adaptive straight line and fixed goal with lookahead
+lookahead_angle: 2  #3.14        # lookahead angle for adaptive straight line and fixed goal with lookahead
                               # 0.785 is 45 degrees, 0.698 is 40 degrees .
+angle_hysteresis: 0.4         # Hysteresis for locking onto a rotation
+                              # direction.  The smaller this is, the more often
+                              # the lookahead orientation target can switch when
+                              # the rotational error is near 180 degrees.  The
+                              # larger this is, the lookahead orientation target
+                              # will be more stable but possibly guide progress
+                              # in the less optimal direction.
 angle_err_to_vel_factor: 0    # factor for converting an angular error to angular velocity command.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 

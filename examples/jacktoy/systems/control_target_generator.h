@@ -80,6 +80,7 @@ class TargetGenerator
     const double& end_point_y,
     const double& lookahead_step_size,
     const double& lookahead_angle,
+    const double& angle_hysteresis,
     const double& angle_err_to_vel_factor,
     const double& max_step_size,
     const double& ee_goal_height,
@@ -132,6 +133,7 @@ class TargetGenerator
   double end_point_y_;
   double lookahead_step_size_;
   double lookahead_angle_;
+  double angle_hysteresis_;
   double angle_err_to_vel_factor_;
   double max_step_size_;
   double ee_goal_height_;
@@ -141,6 +143,7 @@ class TargetGenerator
   Eigen::VectorXd random_goal_x_limits_;
   Eigen::VectorXd random_goal_y_limits_;
   Eigen::VectorXd random_goal_radius_limits_;
+  mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   double resting_object_height_;
 
   enum ChangingGoalType {CHANGING_GOAL_RANDOM,

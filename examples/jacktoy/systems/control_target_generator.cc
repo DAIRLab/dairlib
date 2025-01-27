@@ -91,6 +91,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const double& end_point_y,
     const double& lookahead_step_size,
     const double& lookahead_angle,
+    const double& angle_hysteresis,
     const double& angle_err_to_vel_factor,
     const double& max_step_size,
     const double& ee_goal_height,
@@ -109,7 +110,7 @@ void TargetGenerator::SetRemoteControlParameters(
   prevent_three_topples_ = prevent_three_topples_for_random_goal_gen;
   traj_radius_ = traj_radius;
   x_c_ = x_c;
-  y_c_ = y_c; 
+  y_c_ = y_c;
   lead_angle_ = lead_angle;
   target_final_object_position_ = target_object_position;
   target_final_object_orientation_ = target_object_orientation;
@@ -120,6 +121,7 @@ void TargetGenerator::SetRemoteControlParameters(
   end_point_y_ = end_point_y;
   lookahead_step_size_ = lookahead_step_size;
   lookahead_angle_ = lookahead_angle;
+  angle_hysteresis_ = angle_hysteresis;
   angle_err_to_vel_factor_ = angle_err_to_vel_factor;
   max_step_size_ = max_step_size;
   ee_goal_height_ = ee_goal_height;
@@ -220,57 +222,68 @@ void TargetGenerator::CalcObjectTarget(
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){
     // initializing fixed goal vector that remains constant.
-    if ((target_final_object_position_ - obj_curr_position).norm() < step_size_){
-      // if the jack is within one step size of the fixed goal, set the target to be the fixed goal.
+    if ((target_final_object_position_ - obj_curr_position).norm() < step_size_)
+    {
+      // if the jack is within one step size of the fixed goal, set the target
+      // to be the fixed goal.
       target_obj_position(0) = target_final_object_position_[0];
       target_obj_position(1) = target_final_object_position_[1];
       target_obj_position(2) = target_final_object_position_[2];
     }
     else{
-      // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
-      VectorXd next_target = obj_curr_position + step_size_ * (target_final_object_position_ - obj_curr_position); 
+      // compute and set next target location for jack to be one step_size in
+      // the direction of the fixed goal.
+      VectorXd next_target = obj_curr_position + step_size_ * (
+        target_final_object_position_ - obj_curr_position);
       target_obj_position(0) = next_target[0];
       target_obj_position(1) = next_target[1];
       target_obj_position(2) = next_target[2];
-    } 
+    }
   }
-   // Use a straight line trajectory with adaptive next goal if trajectory type is 3.
+   // Use a straight line trajectory with adaptive next goal if trajectory type
+   // is 3.
   else if(trajectory_type_ == 3){
     VectorXd start_point = VectorXd::Zero(3);
     VectorXd end_point = VectorXd::Zero(3);
     // define the start and end points for the straight line.
-    start_point[0] = start_point_x_; 
+    start_point[0] = start_point_x_;
     start_point[1] = start_point_y_;
     start_point[2] = object_half_width_;
 
-    end_point[0] = end_point_x_; 
+    end_point[0] = end_point_x_;
     end_point[1] = end_point_y_;
     end_point[2] = object_half_width_;
 
     // compute vector from start point to end point
     VectorXd distance_vector = end_point - start_point;
     // project current jack location onto straight line vector.
-    double projection_length = (obj_curr_position - start_point).dot(distance_vector)/distance_vector.norm();
-    VectorXd projection_point = start_point + projection_length*(distance_vector/distance_vector.norm());
+    double projection_length = (obj_curr_position - start_point).dot(
+      distance_vector)/distance_vector.norm();
+    VectorXd projection_point = start_point + projection_length*(
+      distance_vector/distance_vector.norm());
 
-    // Step ahead along the path to the goal from the projection point, without overshooting past the goal.
+    // Step ahead along the path to the goal from the projection point, without
+    // overshooting past the goal.
     VectorXd target_on_line_with_lookahead;
     if ((obj_curr_position - end_point).norm() < lookahead_step_size_) {
       target_on_line_with_lookahead = end_point;
     }
     else {
-      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd step_vector = lookahead_step_size_ * (
+        distance_vector/distance_vector.norm());
       target_on_line_with_lookahead = projection_point + step_vector;
     }
 
     // compute error vector between projection point and current jack location
     VectorXd error_vector = target_on_line_with_lookahead - obj_curr_position;
-    
+
     // declaring next_target vector
     VectorXd next_target;
-    if (error_vector.norm() >= max_step_size_){ 
-        // if jack is max step size or further from the projection point, the next target will be one step size in that direction.
-        next_target = obj_curr_position + max_step_size_*(error_vector/error_vector.norm());
+    if (error_vector.norm() >= max_step_size_){
+        // if jack is max step size or further from the projection point, the
+        // next target will be one step size in that direction.
+        next_target = obj_curr_position + max_step_size_*(
+          error_vector/error_vector.norm());
     }
     else{
         // else set the next target to be the projection point.
@@ -295,7 +308,8 @@ void TargetGenerator::CalcObjectTarget(
       target_obj_position(2) = end_point[2];
     }
     else{
-      VectorXd step_vector = lookahead_step_size_ * distance_vector/distance_vector.norm();
+      VectorXd step_vector = lookahead_step_size_ * (
+        distance_vector/distance_vector.norm());
       VectorXd target_on_line_with_lookahead = start_point + step_vector;
       target_obj_position(0) = target_on_line_with_lookahead[0];
       target_obj_position(1) = target_on_line_with_lookahead[1];
@@ -304,31 +318,45 @@ void TargetGenerator::CalcObjectTarget(
 
     // Second handle orientation lookahead.
     // Get target orientation
-    Eigen::Quaterniond y_quat_des(target_final_object_orientation_[0], 
-                                  target_final_object_orientation_[1], 
-                                  target_final_object_orientation_[2], 
+    Eigen::Quaterniond y_quat_des(target_final_object_orientation_[0],
+                                  target_final_object_orientation_[1],
+                                  target_final_object_orientation_[2],
                                   target_final_object_orientation_[3]);
-    
-    // Get current orientation
+
+    // Get current orientation.
     const VectorX<double> &q = object_state->GetPositions().head(4);
     Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
-
-    // Generate spherically interpolated trajectory.
-     auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
-      {0, 1}, {y_quat, y_quat_des});
 
     // Compute the error.
     Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
 
-    // Evaluate the trajectory at the lookahead time.
-    // Scale time based on lookahead angle.
-    double lookahead_fraction = std::min(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
-    Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
+    // Get the axis and angle of rotation.
+    double angle = angle_axis_diff.angle();
+    Eigen::Vector3d axis = angle_axis_diff.axis();
+
+    // Enforce consistency near 180 degrees.
+    if ((axis.dot(last_rotation_axis_) < 0) &&
+        (PI - angle < angle_hysteresis_)) {
+      angle = -angle;
+      axis = -axis;
+    }
+    last_rotation_axis_ = axis;
+
+    // Enforce the lookahead.
+    angle = std::max(std::min(angle, lookahead_angle_), -lookahead_angle_);
+
+    // Apply the rotation.
+    Eigen::AngleAxis<double> angle_axis_relative(angle, axis);
+    Eigen::Quaterniond y_quat_lookahead_quat = angle_axis_relative * y_quat;
+    Eigen::MatrixXd y_quat_lookahead = y_quat_lookahead_quat.coeffs();
+
     target_obj_orientation = y_quat_lookahead;
   }
   else if(trajectory_type_ == 0){
         // Throw an error.
-    std::cerr << ("Trajectory type 0 - Time Based Path : Currently unimplemented") << std::endl;
+    std::cerr <<
+      ("Trajectory type 0 - Time Based Path : Currently unimplemented")
+      << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
   else{
@@ -347,9 +375,9 @@ void TargetGenerator::CalcObjectVelocityTarget(
   const StateVector<double>* object_state =
       (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
   // Get target orientation
-  Eigen::Quaterniond y_quat_des(target_final_object_orientation_[0], 
-                                target_final_object_orientation_[1], 
-                                target_final_object_orientation_[2], 
+  Eigen::Quaterniond y_quat_des(target_final_object_orientation_[0],
+                                target_final_object_orientation_[1],
+                                target_final_object_orientation_[2],
                                 target_final_object_orientation_[3]);
 
   // Get current orientation
@@ -360,19 +388,25 @@ void TargetGenerator::CalcObjectVelocityTarget(
 
   // Compute the error.
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
-  
+
   // Generate spherically interpolated trajectory.
     auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
     {0, 1}, {y_quat, y_quat_des});
 
   // Evaluate the trajectory at the lookahead time.
   // Scale time based on lookahead angle.
-  double lookahead_fraction = std::min(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
-  Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(lookahead_fraction);
-  Eigen::Quaterniond y_quat_lookahead_quat(y_quat_lookahead(0), y_quat_lookahead(1), y_quat_lookahead(2), y_quat_lookahead(3));
+  double lookahead_fraction = std::min(
+    lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+  Eigen::MatrixXd y_quat_lookahead = orientation_trajectory.value(
+    lookahead_fraction);
+  Eigen::Quaterniond y_quat_lookahead_quat(
+    y_quat_lookahead(0), y_quat_lookahead(1), y_quat_lookahead(2),
+    y_quat_lookahead(3));
 
-  Eigen::AngleAxis<double> angle_axis_diff_to_lookahead(y_quat_lookahead_quat * y_quat.inverse());
-  VectorXd angle_error = angle_axis_diff_to_lookahead.angle() * angle_axis_diff_to_lookahead.axis();
+  Eigen::AngleAxis<double> angle_axis_diff_to_lookahead(
+    y_quat_lookahead_quat * y_quat.inverse());
+  VectorXd angle_error = angle_axis_diff_to_lookahead.angle() *
+    angle_axis_diff_to_lookahead.axis();
   angle_error *= angle_err_to_vel_factor_;
 
   VectorXd target_obj_velocity = VectorXd::Zero(6);
@@ -383,17 +417,18 @@ void TargetGenerator::CalcObjectVelocityTarget(
 void TargetGenerator::OutputObjectFinalTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
-  
+
   VectorXd target_final_obj_state = VectorXd::Zero(7);
-  target_final_obj_state << target_final_object_orientation_, target_final_object_position_; 
+  target_final_obj_state << target_final_object_orientation_,
+    target_final_object_position_;
   target->SetFromVector(target_final_obj_state);
 }
 
 void TargetGenerator::OutputTargetGeneratorInfo(
   const drake::systems::Context<double>& context,
   dairlib::lcmt_timestamped_saved_traj* target) const {
-  // NOTE: This is a placeholder for the boolean value so we can output 
-  // it as an existing lcm message type. It is unconventional to be 
+  // NOTE: This is a placeholder for the boolean value so we can output
+  // it as an existing lcm message type. It is unconventional to be
   // using this message type for this purpose.
   Eigen::MatrixXd orientation_index_data = orientation_index_ *
     Eigen::MatrixXd::Ones(1, 1);

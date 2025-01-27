@@ -343,6 +343,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
       trajectory_params.end_point_y,
       trajectory_params.lookahead_step_size,
       trajectory_params.lookahead_angle,
+      trajectory_params.angle_hysteresis,
       trajectory_params.angle_err_to_vel_factor,
       trajectory_params.max_step_size,
       trajectory_params.ee_goal_height,

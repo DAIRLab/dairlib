@@ -23,6 +23,7 @@ struct SamplingC3TrajectoryParams {
   double end_point_y;
   double lookahead_step_size;
   double lookahead_angle;
+  double angle_hysteresis;
   double angle_err_to_vel_factor;
   double max_step_size;
   double ee_goal_height;
@@ -54,6 +55,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(end_point_y));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));
+    a->Visit(DRAKE_NVP(angle_hysteresis));
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
     a->Visit(DRAKE_NVP(max_step_size));
     a->Visit(DRAKE_NVP(ee_goal_height));

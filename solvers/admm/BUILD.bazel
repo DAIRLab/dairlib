@@ -8,19 +8,38 @@ cc_library(
     srcs = ["ncqp_solver.cc"],
     hdrs = ["ncqp_solver.h"],
     deps = [
-        ":nonconvex_constraint",
+        ":set_membership_constraint",
+        "//solvers:osqp_qrapper",
         "//solvers:qp_data",
-        "//solvers:qpalm_solver",
         "@drake//:drake_shared_library",
         "@qpalm",
     ],
 )
 
 cc_library(
-    name = "nonconvex_constraint",
+    name = "set_membership_constraint",
     srcs = ["set_membership_constraint.cc"],
     hdrs = ["set_membership_constraint.h"],
     deps = [
         "//solvers:nonlinear_constraint",
+    ],
+)
+
+cc_library(
+    name = "convex_polygon_set_constraint",
+    srcs = ["convex_polygon_set_constraint.cc"],
+    hdrs = ["convex_polygon_set_constraint.h"],
+    deps = [
+        ":set_membership_constraint",
+        "//geometry:convex_polygon_set",
+    ],
+)
+
+cc_binary(
+    name = "ncqp_solver_test",
+    srcs = ["test/ncqp_solver_test.cc"],
+    deps = [
+        ":convex_polygon_set_constraint",
+        ":ncqp_solver",
     ],
 )

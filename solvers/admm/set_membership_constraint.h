@@ -17,13 +17,19 @@ class SetMembershipConstraint : public NonlinearConstraint<double> {
   SetMembershipConstraint(int num_constraints, int num_vars,
                       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
 
-  virtual void EvaluateConstraint(
+  void EvaluateConstraint(
       const Eigen::Ref<const drake::VectorX<double>>& x,
-      drake::VectorX<double>* y) const = 0;
+      drake::VectorX<double>* y) const override;
 
   virtual void ProjectToFeasibleSet(
       const Eigen::Ref<const drake::VectorX<double>>& x,
       drake::VectorX<double>* y) const = 0;
+
+  // return a pointer to the previously projected to convex component
+  // associated with this constraint
+  virtual std::unique_ptr<SetMembershipConstraint>
+      RestrictionToConvexComponentClosestTo(
+          const Eigen::Ref<const drake::VectorX<double>>& x) const = 0;
 
 };
 

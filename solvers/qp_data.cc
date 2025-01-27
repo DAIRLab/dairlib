@@ -119,8 +119,6 @@ void AppendQuadraticCost(
     }
   }
 
-
-
   for (int i = 0; i < b.rows(); ++i) {
     qp_g(variable_indices[i]) += b(i);
   }

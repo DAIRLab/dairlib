@@ -139,8 +139,29 @@ c_float ConvertInfinity(double val) {
 
 }
 
+OsqpWrapper::~OsqpWrapper() {
+  FreeProblemData();
+}
+
+void OsqpWrapper::FreeProblemData() {
+  if (P_csc_ != nullptr) {
+    c_free(P_csc_->x);
+    c_free(P_csc_->i);
+    c_free(P_csc_->p);
+    c_free(P_csc_);
+  }
+  if (A_csc_ != nullptr) {
+    c_free(A_csc_->x);
+    c_free(A_csc_->i);
+    c_free(A_csc_->p);
+    c_free(A_csc_);
+  }
+}
+
 void OsqpWrapper::InitializeSolver(
     QPData& qp, const drake::solvers::SolverOptions& solver_options) {
+
+  FreeProblemData();
 
   P_csc_ = EigenSparseToCSC(qp.H.triangularView<Eigen::Upper>());
   A_csc_ = EigenSparseToCSC(qp.A);
@@ -264,14 +285,6 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
     }
   }
 }
-//  c_free(P_csc->x);
-//  c_free(P_csc->i);
-//  c_free(P_csc->p);
-//  c_free(P_csc);
-//  c_free(A_csc->x);
-//  c_free(A_csc->i);
-//  c_free(A_csc->p);
-//  c_free(A_csc);
 
 }  // namespace solvers
 }  // namespace dairlib

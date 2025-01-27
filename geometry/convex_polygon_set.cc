@@ -51,9 +51,44 @@ ConvexPolygonSet ConvexPolygonSet::GetSubsetCloseToPoint(
   return close;
 }
 
+std::pair<Vector3d, ConvexPolygon> ConvexPolygonSet::ProjectPointToPolygonSet(
+    const Vector3d &point) const {
+
+  drake::solvers::MathematicalProgram prog;
+  std::vector<drake::solvers::VectorXDecisionVariable> pp;
+
+  for (int i = 0; i < set_.size(); i++) {
+    auto p = prog.NewContinuousVariables(3);
+    const auto& [Aeq, beq] = set_.at(i).GetEqualityConstraintMatrices();
+    const auto& [A, b] = set_.at(i).GetConstraintMatrices();
+    prog.AddLinearEqualityConstraint(Aeq, beq, p);
+    prog.AddLinearConstraint(
+        A, -numeric_limits<double>::infinity()*VectorXd::Ones(A.rows()), b, p);
+    prog.AddQuadraticErrorCost(Matrix3d::Identity(), point, p);
+    pp.push_back(p);
+  }
+
+  drake::solvers::OsqpSolver solver;
+  const auto result = solver.Solve(prog);
+  DRAKE_ASSERT(result.is_success());
+
+  Vector3d sol = point;
+  ConvexPolygon active_poly;
+  double min_dist = std::numeric_limits<double>::infinity();
+  for (int i = 0; i < set_.size(); i++) {
+    auto p = result.GetSolution(pp.at(i));
+    double dist = (point - p).norm();
+    if (dist < min_dist) {
+      min_dist = dist;
+      sol = p;
+      active_poly = set_.at(i);
+    }
+  }
+  return {sol, active_poly};
+}
 
 ConvexPolygonSet ConvexPolygonSet::GetSubsetInForwardLookingCone(
-    const Vector3d &query_pt, double cone_angle) const {
+     const Vector3d &query_pt, double cone_angle) const {
   Matrix2d Aq;
   Aq << cos(cone_angle), sin(cone_angle), cos(cone_angle), -sin(cone_angle);
   Vector2d bq = Aq * query_pt.head<2>();

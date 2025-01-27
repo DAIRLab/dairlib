@@ -14,6 +14,7 @@ class OsqpWrapper {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(OsqpWrapper);
 
   OsqpWrapper() = default;
+  ~OsqpWrapper();
 
   void InitializeSolver(QPData &qp,
                         const drake::solvers::SolverOptions &);
@@ -33,6 +34,8 @@ class OsqpWrapper {
 
   bool IsInitialized() const { return is_init_; }
   void Solve(QPData &qp, QPResult &result) const;
+
+  void FreeProblemData();
 
  private:
 

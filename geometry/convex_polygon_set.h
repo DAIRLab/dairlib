@@ -20,6 +20,9 @@ class ConvexPolygonSet {
   ConvexPolygonSet GetSubsetCloseToPoint(
       const Eigen::Vector3d &query_pt, double threshold) const;
 
+  std::pair<Eigen::Vector3d, ConvexPolygon> ProjectPointToPolygonSet(
+      const Eigen::Vector3d& point) const;
+
   ConvexPolygonSet GetSubsetInForwardLookingCone(
       const Eigen::Vector3d& query_pt, double cone_angle) const;
 

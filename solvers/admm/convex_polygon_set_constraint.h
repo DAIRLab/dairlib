@@ -18,8 +18,8 @@ class ConvexPolygonSetConstraint : public SetMembershipConstraint {
     set_ = polygons;
   }
 
-  std::unique_ptr<SetMembershipConstraint>
-  RestrictionToConvexComponentClosestTo(
+  std::tuple<Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXd>
+  CalcClosestConvexRestrictionToQP(
       const Eigen::Ref<const drake::VectorX<double>>& x) const override;
 
  private:

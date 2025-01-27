@@ -28,6 +28,20 @@ struct QPData {
   bool ValidateDimensions() const;
   static QPData ToQPData(const drake::solvers::MathematicalProgram& qp_prog);
 
+  friend
+  std::ostream& operator<<(std::ostream& os, const QPData& data) {
+    os << "{vars:" << data.num_vars << " eq:" << data.num_eq << " ineq:" << data.num_ineq
+       << "\nH:\n" << Eigen::MatrixXd(data.H)
+       << "\nA:\n" << Eigen::MatrixXd(data.A)
+       << "\nA_eq\n:" << Eigen::MatrixXd(data.A_eq)
+       << "\ng:" << data.g.transpose()
+       << "\nlb:" << data.lb.transpose()
+       << "\nub:" << data.ub.transpose()
+       << "\nb_eq:" << data.b_eq.transpose()
+       << "\nc:" << data.c << "}";
+    return os;
+  }
+
 };
 
 struct QPResult {
@@ -39,6 +53,19 @@ struct QPResult {
   double dual_res;
   double objective;
   bool success = false;
+
+  friend
+  std::ostream& operator<<(std::ostream& os, const QPResult& result) {
+    os << "{status:" << result.status
+       << "\nsuccess:" << std::boolalpha << result.success
+       << "\nx:" << result.x.transpose()
+       << "\ny:" << result.y.transpose()
+       << "\nobj:" << result.objective
+       << "\np_res:" << result.primal_res
+       << "\nd_res:" << result.dual_res
+       << "\ntime:" << result.run_time << "}\n";
+    return os;
+  }
 };
 
 void AppendQuadraticCost(

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "examples/id_mpc/cassie_mpc_utils.h"
 
 #include "systems/framework/lcm_driven_loop.h"

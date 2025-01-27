@@ -24,7 +24,7 @@ struct NCQPSolution {
   double total_solve_time;
   double projection_time;
   double primal_solve_time;
-  double dual_cost =  std::numeric_limits<double>::infinity();
+  double slack_cost =  std::numeric_limits<double>::infinity();
   bool fallback;
   int n_iter;
 
@@ -40,7 +40,7 @@ struct NCQPSolution {
        << "  z (Auxiliary variables): " << sol.z.transpose() << "\n"
        << "  w (Dual variables): " << sol.w.transpose() << "\n"
        << "  slack_res (Slack residual): " << sol.slack_res.transpose() << "\n"
-       << "  Dual cost: " << sol.dual_cost << "\n"
+       << "  Slack cost: " << sol.slack_cost << "\n"
        << "  Solved: " << (sol.is_solved ? "Yes" : "No") << "\n"
        << "  Slack Residual Norm: " << sol.slack_res_norm << "\n"
        << "  Total Solve Time: " << sol.total_solve_time << " s\n"
@@ -97,12 +97,11 @@ class NCQPSolver {
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       feasibility_constraints) const;
 
-  Eigen::VectorXd DoProjectionStep(
-      const Eigen::VectorXd& d,
-      const drake::solvers::MathematicalProgram& qp,
-      const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
-      feasibility_constraints,
-      const std::vector<SetMembershipConstraint*> convex_restrictions) const;
+  QPResult Polish(const Eigen::VectorXd& x,
+                  const QPData& original_qp,
+                  const drake::solvers::MathematicalProgram& qp,
+                  const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
+                         feasibility_constraints) const;
 
   class Timer {
    public:

@@ -137,6 +137,12 @@ c_float ConvertInfinity(double val) {
   return static_cast<c_float>(val);
 }
 
+void ConvertInfinity(Eigen::VectorXd& v) {
+  for (Eigen::Index i = 0; i < v.rows(); ++i) {
+    v(i) = ConvertInfinity(v(i));
+  }
+}
+
 }
 
 OsqpWrapper::~OsqpWrapper() {
@@ -150,12 +156,14 @@ void OsqpWrapper::FreeProblemData() {
     c_free(P_csc_->p);
     c_free(P_csc_);
   }
+  P_csc_ = nullptr;
   if (A_csc_ != nullptr) {
     c_free(A_csc_->x);
     c_free(A_csc_->i);
     c_free(A_csc_->p);
     c_free(A_csc_);
   }
+  A_csc_ = nullptr;
 }
 
 void OsqpWrapper::InitializeSolver(
@@ -171,6 +179,9 @@ void OsqpWrapper::InitializeSolver(
 
   // Populate data.
   osqp_data_ = static_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
+
+  ConvertInfinity(qp.lb);
+  ConvertInfinity(qp.ub);
 
   osqp_data_->n = qp.num_vars;
   osqp_data_->m = qp.num_ineq;

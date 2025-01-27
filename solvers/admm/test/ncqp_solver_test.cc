@@ -32,7 +32,7 @@ int DoMain() {
   auto p = prog.NewContinuousVariables(3, "p");
 
   prog.AddQuadraticErrorCost(
-      2.0 * Eigen::Matrix3d::Identity(),
+      1.0 * Eigen::Matrix3d::Identity(),
       2.0 * Vector3d::UnitY(),
       p
   );
@@ -48,6 +48,10 @@ int DoMain() {
   );
 
   std::cout << "Projection: " << p_star_proj.transpose() << std::endl;
+
+  Eigen::VectorXd y;
+  prog.GetAllCosts().front().evaluator()->Eval(p_star_proj, &y);
+  std::cout << "optimal cost: " << y(0) << std::endl;
 
   set_constraints.push_back(prog.AddConstraint(square_constraint, p));
 

@@ -27,8 +27,9 @@ class SetMembershipConstraint : public NonlinearConstraint<double> {
 
   // return a pointer to the previously projected to convex component
   // associated with this constraint
-  virtual std::unique_ptr<SetMembershipConstraint>
-      RestrictionToConvexComponentClosestTo(
+  virtual
+  std::tuple<Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXd>
+  CalcClosestConvexRestrictionToQP(
           const Eigen::Ref<const drake::VectorX<double>>& x) const = 0;
 
 };

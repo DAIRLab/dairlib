@@ -337,20 +337,24 @@ void TargetGenerator::CalcObjectTarget(
     // Enforce consistency near 180 degrees.
     if ((axis.dot(last_rotation_axis_) < 0) &&
         (PI - angle < angle_hysteresis_)) {
-      angle = -angle;
+      angle = 2*PI - angle;
       axis = -axis;
     }
     last_rotation_axis_ = axis;
 
     // Enforce the lookahead.
-    angle = std::max(std::min(angle, lookahead_angle_), -lookahead_angle_);
+    angle = std::min(angle, lookahead_angle_);
 
     // Apply the rotation.
     Eigen::AngleAxis<double> angle_axis_relative(angle, axis);
-    Eigen::Quaterniond y_quat_lookahead_quat = angle_axis_relative * y_quat;
-    Eigen::MatrixXd y_quat_lookahead = y_quat_lookahead_quat.coeffs();
+    Eigen::Quaterniond quat_relative = Eigen::Quaterniond(angle_axis_relative);
+    Eigen::Quaterniond y_quat_lookahead_quat = quat_relative * y_quat;
+    Eigen::MatrixXd y_quat_lookahead_wxyz(4, 1);
+    y_quat_lookahead_wxyz << y_quat_lookahead_quat.w(),
+      y_quat_lookahead_quat.x(), y_quat_lookahead_quat.y(),
+      y_quat_lookahead_quat.z();
 
-    target_obj_orientation = y_quat_lookahead;
+    target_obj_orientation = y_quat_lookahead_wxyz;
   }
   else if(trajectory_type_ == 0){
         // Throw an error.

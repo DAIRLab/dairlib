@@ -57,7 +57,7 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
 
   alip_s2s_mpfc_params params;
   params.gait_params = test_gait;
-  params.nmodes = 3;
+  params.nmodes = 6;
   params.tmin = 0.25;
   params.tmax = 0.35;
   params.soft_constraint_cost = 1000;
@@ -71,6 +71,7 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
       "Presolve",
       0
   );
+  params.miqp = false;
 
   auto trajopt_s2s = AlipS2SMPFC(params);
   auto footholds = GetRandomFootholds(n, r);

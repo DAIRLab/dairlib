@@ -30,7 +30,7 @@ void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate &sol) {
     sol.dx = result.x;
     LineSearch(sol);
   } else {
-    std::cout << "SQP qp solve failed with status: " << result.status;
+    std::cout << "SQP qp solve failed with status: " << result.solution_result;
   }
 }
 

@@ -39,7 +39,7 @@ class OsqpWrapper {
 
  private:
 
-  OSQPData *osqp_data_;
+  OSQPData *osqp_data_ = nullptr;
   mutable csc *P_csc_ = nullptr;
   mutable csc *A_csc_ = nullptr;
   mutable std::vector<c_float> l_;

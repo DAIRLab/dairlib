@@ -56,7 +56,6 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateTimeRegularization(t);
   UpdateTrustRegionConstraint(t, p_prev_stance);
 
-
   drake::solvers::MathematicalProgramResult result;
 
   auto solver_start = std::chrono::steady_clock::now();
@@ -65,9 +64,10 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
   } else {
     auto solver = solvers::NCQPSolver();
-    auto solution = solver.Solve(*prog_, foothold_set_c_);
+    solvers::QPResult solution = solver.Solve(*prog_, foothold_set_c_);
     result.set_decision_variable_index(prog_->decision_variable_index());
     result.set_x_val(solution.x);
+    result.set_solution_result(solution.solution_result);
   }
   auto solver_end = std::chrono::steady_clock::now();
 
@@ -83,9 +83,6 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
 
-  auto solution_details =
-      result.get_solver_details<drake::solvers::GurobiSolver>();
-
   mpfc_solution.pp.clear();
   mpfc_solution.xx.clear();
   mpfc_solution.ee.clear();
@@ -99,6 +96,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
     mpfc_solution.mu.push_back(params_.miqp ?
         result.GetSolution(mu_.at(i)) : VectorXd::Zero(kMaxFootholds));
+    mpfc_solution.mu.back()(0) = 1;
   }
 
   mpfc_solution.t_nom = t;
@@ -111,7 +109,6 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   std::chrono::duration<double> total_time = end - start;
   std::chrono::duration<double> solve_time = solver_end - solver_start;
 
-  mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
 

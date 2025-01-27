@@ -150,20 +150,31 @@ OsqpWrapper::~OsqpWrapper() {
 }
 
 void OsqpWrapper::FreeProblemData() {
+  if (workspace_ != nullptr) {
+    osqp_cleanup(workspace_);
+  }
   if (P_csc_ != nullptr) {
     c_free(P_csc_->x);
     c_free(P_csc_->i);
     c_free(P_csc_->p);
     c_free(P_csc_);
+    P_csc_ = nullptr;
   }
-  P_csc_ = nullptr;
   if (A_csc_ != nullptr) {
     c_free(A_csc_->x);
     c_free(A_csc_->i);
     c_free(A_csc_->p);
     c_free(A_csc_);
+    A_csc_ = nullptr;
   }
-  A_csc_ = nullptr;
+  if (osqp_data_ != nullptr) {
+    c_free(osqp_data_);
+    osqp_data_ = nullptr;
+  }
+  if (osqp_settings_ != nullptr) {
+    c_free(osqp_settings_);
+    osqp_settings_ = nullptr;
+  }
 }
 
 void OsqpWrapper::InitializeSolver(
@@ -239,7 +250,7 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
   DisableWarmStart(); // will only be re-enabled if the solve was successful
 
   if (osqp_solve_err != 0) {
-    result.status = "invalid input";
+    result.solution_result = SolutionResult::kInvalidInput;
     std::cout << "OSQP ERROR: " << osqp_solve_err<< std::endl;
     return;
   }
@@ -250,7 +261,7 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
 
   switch (workspace_->info->status_val) {
     case OSQP_SOLVED:
-      result.status = "solved";
+      result.solution_result = SolutionResult::kSolutionFound;
     case OSQP_SOLVED_INACCURATE: {
       this->EnableWarmStart();
       result.x = Eigen::Map<Eigen::VectorXd>(workspace_->solution->x, qp.num_vars);
@@ -258,20 +269,20 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
                                              workspace_->data->m);
       result.objective = workspace_->info->obj_val + qp.c;
       if (workspace_->info->status_val == OSQP_SOLVED_INACCURATE) {
-        result.status = "solved inaccurate";
+        result.solution_result = SolutionResult::kSolutionFound;
       }
       result.success = true;
       break;
     }
     case OSQP_PRIMAL_INFEASIBLE:
     case OSQP_PRIMAL_INFEASIBLE_INACCURATE: {
-      result.status = "primal infeasible";
+      result.solution_result = SolutionResult::kInfeasibleConstraints;
       result.success = false;
       break;
     }
     case OSQP_DUAL_INFEASIBLE:
     case OSQP_DUAL_INFEASIBLE_INACCURATE: {
-      result.status = "dual infeasible";
+      result.solution_result = SolutionResult::kDualInfeasible;
       result.success = false;
       break;
     }
@@ -281,14 +292,13 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
       result.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                              workspace_->data->m);
       result.objective = workspace_->info->obj_val + qp.c;
-      if (workspace_->info->status_val == OSQP_SOLVED_INACCURATE) {
-        result.status = "iteration limit";
-      }
+      result.solution_result = SolutionResult::kIterationLimit;
       result.success = true;
       break;
     }
     default: {
-      throw std::runtime_error("undefined OSQP return status");
+      throw std::runtime_error("undefined OSQP return status " +
+                                std::to_string(workspace_->info->status_val));
       break;
     }
   }

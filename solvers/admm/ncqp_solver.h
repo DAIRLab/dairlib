@@ -83,7 +83,7 @@ class NCQPSolver {
    * a warm-start
    *
    */
-  NCQPSolution Solve(
+  QPResult Solve(
       const drake::solvers::MathematicalProgram& qp,
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       feasibility_constraints) const;

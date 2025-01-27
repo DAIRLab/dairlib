@@ -91,6 +91,20 @@ QPData QPData::ToQPData(const drake::solvers::MathematicalProgram &prog) {
         constraint_triplets, qp.lb, qp.ub);
     qp.num_ineq += binding.evaluator()->num_constraints();
   }
+  for (const auto& binding : prog.bounding_box_constraints()) {
+    const auto& vars = binding.variables();
+    const auto& indices = prog.FindDecisionVariableIndices(vars);
+    Eigen::Index rows = vars.size();
+    AppendLinearConstraint(
+        indices,
+        qp.num_ineq,
+        Eigen::MatrixXd::Identity(rows, rows),
+        binding.evaluator()->lower_bound(),
+        binding.evaluator()->upper_bound(),
+        constraint_triplets,
+        qp.lb, qp.ub);
+    qp.num_ineq += rows;
+  }
   qp.A.resize(qp.num_ineq, qp.num_vars);
   qp.A.setFromTriplets(constraint_triplets.begin(), constraint_triplets.end());
   return qp;

@@ -115,7 +115,7 @@ class AlipS2SMPFC {
     DRAKE_DEMAND(initial_state_c_ != nullptr);
     DRAKE_DEMAND(initial_time_constraint_ != nullptr);
     DRAKE_DEMAND(dynamics_c_ != nullptr);
-    DRAKE_DEMAND(footstep_choice_c_ != nullptr);
+    DRAKE_DEMAND(footstep_choice_c_ != nullptr || not foothold_set_c_.empty());
     DRAKE_DEMAND(terminal_cost_ != nullptr);
     DRAKE_DEMAND(time_regularization_ != nullptr);
   };

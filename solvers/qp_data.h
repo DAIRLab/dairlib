@@ -4,6 +4,7 @@
 #include <Eigen/Sparse>
 
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/solution_result.h"
 
 namespace dairlib::solvers {
 
@@ -47,7 +48,7 @@ struct QPData {
 struct QPResult {
   Eigen::VectorXd x;  // solution
   Eigen::VectorXd y;  // dual solution
-  std::string status;
+  drake::solvers::SolutionResult solution_result;
   double run_time;
   double primal_res;
   double dual_res;
@@ -56,7 +57,7 @@ struct QPResult {
 
   friend
   std::ostream& operator<<(std::ostream& os, const QPResult& result) {
-    os << "{status:" << result.status
+    os << "{status:" << result.solution_result
        << "\nsuccess:" << std::boolalpha << result.success
        << "\nx:" << result.x.transpose()
        << "\ny:" << result.y.transpose()

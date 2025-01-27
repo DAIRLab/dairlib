@@ -34,7 +34,7 @@ void AppendRowsToSparse(Eigen::SparseMatrix<double>& A_sparse,
 NCQPSolver::NCQPSolver(){}
 
 // TODO (@Brian-Acosta) warmstart the duals
-NCQPSolution NCQPSolver::Solve(
+QPResult NCQPSolver::Solve(
     const MathematicalProgram &qp,
     const std::vector<Binding<Constraint>>& constraints) const {
 
@@ -56,8 +56,6 @@ NCQPSolution NCQPSolver::Solve(
 
   Timer timer;
 
-  std::vector<std::unique_ptr<SetMembershipConstraint>> convex_restrictions;
-
   // Convert prog into a QPData object
   QPData original_qp = QPData::ToQPData(qp);
 
@@ -65,6 +63,10 @@ NCQPSolution NCQPSolver::Solve(
   QPData primal_step_qp = original_qp;
   for (int i = 0; i < primal_step_qp.num_vars; ++i) {
     primal_step_qp.H.coeffRef(i, i) += params_.rho;
+    original_qp.H.coeffRef(i, i) += 0.0; // Allocate memory here to avoid sparsity changes when
+                                         // switching to ADMM QP
+    primal_step_qp.H.makeCompressed();
+    original_qp.H.makeCompressed();
   }
 
   if (not qp_solver_.IsInitialized()) {
@@ -75,6 +77,7 @@ NCQPSolution NCQPSolver::Solve(
   QPResult initial_result;
   qp_solver_.Solve(original_qp, initial_result);
   sol.x = initial_result.x;
+
   QPResult primal_result;
   sol.primal_solve_time += timer.tock();
   
@@ -86,6 +89,9 @@ NCQPSolution NCQPSolver::Solve(
       primal_step_qp.g = original_qp.g + g_al;
       timer.tick();
       qp_solver_.Solve(primal_step_qp, primal_result);
+      if (params_.verbose) {
+        std::cout << "\nprimal qp result:\n" << primal_result << std::endl;
+      }
       sol.x = primal_result.x;
       sol.primal_solve_time += timer.tock();
     }
@@ -99,12 +105,8 @@ NCQPSolution NCQPSolver::Solve(
     if (slack_cost > sol.slack_cost) {
       sol.fallback = true;
       auto polish_result = Polish(sol.z, original_qp, qp, constraints);
-      if (polish_result.success) {
-        sol.is_solved = true;
-        sol.x = polish_result.x;
-      }
-      sol.n_iter = iter;
-      break;
+      polish_result.run_time = global_timer.tock();
+      return polish_result;
     } else {
       sol.z = d;
       sol.slack_cost = slack_cost;
@@ -128,14 +130,18 @@ NCQPSolution NCQPSolver::Solve(
       std::cout << "----- iteration " << iter << " -----\n"
                 << sol << "\n" << std::endl;
     }
-
     if (sol.is_solved) {
       break;
     }
   }
-
   sol.total_solve_time = global_timer.tock();
-  return sol;
+  QPResult out;
+  out.x = sol.x;
+  out.y = sol.w;
+  out.objective = 0.5 * sol.x.dot(original_qp.H * sol.x) +
+                  sol.x.dot(original_qp.g) + original_qp.c;
+  out.solution_result = drake::solvers::kSolutionFound;
+  return out;
 }
 
 VectorXd NCQPSolver::DoProjectionStep(
@@ -193,10 +199,6 @@ QPResult NCQPSolver::Polish(
     AppendRowsToSparse(copy.A, A, indices);
   }
   copy.A.makeCompressed();
-
-  if (params_.verbose) {
-    std::cout << "Polish QP:\n" << copy << std::endl;
-  }
 
   OsqpWrapper tmp_solver;
   tmp_solver.InitializeSolver(copy, qp.solver_options());

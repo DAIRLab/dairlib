@@ -104,7 +104,7 @@ QPResult NCQPSolver::Solve(
           original_qp.c;
     if (slack_cost > sol.slack_cost) {
       sol.fallback = true;
-      auto polish_result = Polish(sol.z, original_qp, qp, constraints);
+      auto polish_result = Polish(sol, original_qp, primal_result, qp, constraints);
       polish_result.run_time = global_timer.tock();
       return polish_result;
     } else {
@@ -174,34 +174,39 @@ VectorXd NCQPSolver::DoProjectionStep(
 }
 
 QPResult NCQPSolver::Polish(
-    const VectorXd &x,
+    const NCQPSolution& sol,
     const QPData &original_qp,
+    const QPResult& most_recent_result,
     const MathematicalProgram &qp,
     const std::vector<Binding<Constraint>> &feasibility_constraints) const {
 
-  QPData copy = original_qp;
+  const VectorXd& warm_start_primal = sol.z;
+  VectorXd warm_start_dual = most_recent_result.y;
 
+  QPData copy = original_qp;
   for (const auto& binding : feasibility_constraints) {
     const auto& variables = binding.variables();
     const auto& indices = qp.FindDecisionVariableIndices(variables);
     VectorXd y = VectorXd::Zero(variables.size());
-
     for (int i = 0; i < variables.size(); ++i) {
-      y(i) = x(indices[i]);
+      y(i) = sol.z(indices[i]);
     }
     const auto [A, lb, ub] = dynamic_cast<SetMembershipConstraint*>(
         binding.evaluator().get())->CalcClosestConvexRestrictionToQP(y);
     copy.num_ineq += A.rows();
     copy.lb.conservativeResize(copy.num_ineq);
     copy.ub.conservativeResize(copy.num_ineq);
+    warm_start_dual.conservativeResize(copy.num_ineq);
     copy.lb.tail(lb.rows()) = lb;
     copy.ub.tail(ub.rows()) = ub;
+    warm_start_dual.tail(A.rows()) = VectorXd::Zero(A.rows());
     AppendRowsToSparse(copy.A, A, indices);
   }
   copy.A.makeCompressed();
 
   OsqpWrapper tmp_solver;
   tmp_solver.InitializeSolver(copy, qp.solver_options());
+  tmp_solver.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
   tmp_solver.Solve(copy, out);
 

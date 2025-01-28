@@ -28,7 +28,7 @@ struct alip_s2s_mpfc_params {
   double ankle_torque_regularization = 1.0;
   alip_utils::AlipTrackingCostType tracking_cost_type =
       alip_utils::AlipTrackingCostType::kVelocity;
-  bool miqp = false;
+  bool miqp = true;
 };
 
 struct alip_s2s_mpfc_params_io {
@@ -43,6 +43,7 @@ struct alip_s2s_mpfc_params_io {
   double stance_width;
   double max_ankle_torque;
   double ankle_torque_regularization;
+  bool miqp;
   std::string reset_discretization_method;
   std::string cost_type;
   std::vector<double> com_pos_bound;
@@ -71,6 +72,7 @@ struct alip_s2s_mpfc_params_io {
     a->Visit(DRAKE_NVP(Q));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(Qf));
+    a->Visit(DRAKE_NVP(miqp));
   }
 };
 
@@ -112,7 +114,7 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
 
   params_out.gait_params.reset_discretization_method =
       alip_utils::reset_discretization(params_io.reset_discretization_method);
-
+  params_out.miqp = params_io.miqp;
   params_out.com_pos_bound =
       Eigen::Vector2d::Map(params_io.com_vel_bound.data());
   params_out.com_vel_bound =

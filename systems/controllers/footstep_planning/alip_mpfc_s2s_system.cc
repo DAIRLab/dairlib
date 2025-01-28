@@ -189,6 +189,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   double tnom_remaining = single_stance_duration_ + double_stance_duration_ - t_elapsed_this_mode;
 
   tmin_remaining = std::max(tmin_remaining, 0.0);
+  tmax_remaining = std::max(tmax_remaining, 0.0);
   tnom_remaining = std::max(tnom_remaining, 0.0);
 
   const int fsm_state = curr_fsm(fsm_idx);

@@ -96,8 +96,9 @@ class NCQPSolver {
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       feasibility_constraints) const;
 
-  QPResult Polish(const Eigen::VectorXd& x,
+  QPResult Polish(const NCQPSolution& sol,
                   const QPData& original_qp,
+                  const QPResult& most_recent_result,
                   const drake::solvers::MathematicalProgram& qp,
                   const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
                          feasibility_constraints) const;

@@ -43,13 +43,6 @@ QPResult NCQPSolver::Solve(
   Timer global_timer;
   global_timer.tick();
 
-  auto options = qp.solver_options();
-  options.SetOption(OsqpSolver::id(), "max_iter", params_.max_inner_iterations);
-  options.SetOption(OsqpSolver::id(), "rho", params_.rho);
-  options.SetOption(OsqpSolver::id(), "adaptive_rho", 0);
-  options.SetOption(OsqpSolver::id(), "scaling", 0);
-
-
   NCQPSolution sol(qp.num_vars());
   sol.x = qp.initial_guess().hasNaN() ?
       VectorXd::Zero(qp.num_vars()) : qp.initial_guess();
@@ -79,7 +72,7 @@ QPResult NCQPSolver::Solve(
   }
 
   if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(original_qp, options);
+    qp_solver_.InitializeSolver(original_qp, qp.solver_options());
   }
 
   timer.tick();
@@ -112,7 +105,6 @@ QPResult NCQPSolver::Solve(
     double slack_cost = 0.5 * d.dot(original_qp.H * d) + d.dot(original_qp.g) +
           original_qp.c;
     if (slack_cost > sol.slack_cost) {
-      sol.fallback = true;
       auto polish_result = Polish(sol, original_qp, primal_result, qp, constraints);
       polish_result.run_time = global_timer.tock();
       return polish_result;
@@ -143,14 +135,10 @@ QPResult NCQPSolver::Solve(
       break;
     }
   }
-  sol.total_solve_time = global_timer.tock();
-  QPResult out;
-  out.x = sol.x;
-  out.y = sol.w;
-  out.objective = 0.5 * sol.x.dot(original_qp.H * sol.x) +
-                  sol.x.dot(original_qp.g) + original_qp.c;
-  out.solution_result = drake::solvers::kSolutionFound;
-  return out;
+  const QPResult& result_for_warmstarting_polish = sol.n_iter > 1 ? primal_result : initial_result;
+  auto polish_result = Polish(sol, original_qp, result_for_warmstarting_polish, qp, constraints);
+  polish_result.run_time = global_timer.tock();
+  return polish_result;
 }
 
 VectorXd NCQPSolver::DoProjectionStep(
@@ -189,13 +177,8 @@ QPResult NCQPSolver::Polish(
     const MathematicalProgram &qp,
     const std::vector<Binding<Constraint>> &feasibility_constraints) const {
 
-  const VectorXd& warm_start_primal = sol.z;
+  const VectorXd& warm_start_primal = sol.x;
   VectorXd warm_start_dual = most_recent_result.y;
-  auto options = qp.solver_options();
-  options.SetOption(OsqpSolver::id(), "max_iter", params_.max_inner_iterations);
-  options.SetOption(OsqpSolver::id(), "rho", params_.rho);
-  options.SetOption(OsqpSolver::id(), "adaptive_rho", 0);
-  options.SetOption(OsqpSolver::id(), "scaling", 0);
 
   QPData copy = original_qp;
   for (const auto& binding : feasibility_constraints) {
@@ -203,7 +186,7 @@ QPResult NCQPSolver::Polish(
     const auto& indices = qp.FindDecisionVariableIndices(variables);
     VectorXd y = VectorXd::Zero(variables.size());
     for (int i = 0; i < variables.size(); ++i) {
-      y(i) = sol.z(indices[i]);
+      y(i) = sol.x(indices[i]);
     }
     const auto [A, lb, ub] = dynamic_cast<SetMembershipConstraint*>(
         binding.evaluator().get())->CalcClosestConvexRestrictionToQP(y);
@@ -219,7 +202,7 @@ QPResult NCQPSolver::Polish(
   copy.A.makeCompressed();
 
   OsqpWrapper tmp_solver;
-  tmp_solver.InitializeSolver(copy, options);
+  tmp_solver.InitializeSolver(copy, qp.solver_options());
   tmp_solver.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
   tmp_solver.Solve(copy, out);

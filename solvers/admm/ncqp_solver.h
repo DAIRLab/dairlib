@@ -9,7 +9,8 @@ namespace dairlib::solvers {
 
 struct ADMMParams {
   double rho{0.1};         // Penalty parameter
-  int max_iterations{8};  // Maximum number of iterations
+  int max_iterations{10};  // Maximum number of outer iterations
+  int max_inner_iterations{100};
   double tolerance{1e-3};    // Convergence tolerance
   bool verbose = false;
 };

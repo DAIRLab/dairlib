@@ -1,6 +1,7 @@
 #include <iostream>
 #include "ncqp_solver.h"
 #include "set_membership_constraint.h"
+#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::solvers {
 
@@ -8,6 +9,7 @@ using Eigen::VectorXd;
 
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
+using drake::solvers::OsqpSolver;
 using drake::solvers::MathematicalProgram;
 
 constexpr double kInf = std::numeric_limits<double>::infinity();
@@ -41,6 +43,13 @@ QPResult NCQPSolver::Solve(
   Timer global_timer;
   global_timer.tick();
 
+  auto options = qp.solver_options();
+  options.SetOption(OsqpSolver::id(), "max_iter", params_.max_inner_iterations);
+  options.SetOption(OsqpSolver::id(), "rho", params_.rho);
+  options.SetOption(OsqpSolver::id(), "adaptive_rho", 0);
+  options.SetOption(OsqpSolver::id(), "scaling", 0);
+
+
   NCQPSolution sol(qp.num_vars());
   sol.x = qp.initial_guess().hasNaN() ?
       VectorXd::Zero(qp.num_vars()) : qp.initial_guess();
@@ -70,7 +79,7 @@ QPResult NCQPSolver::Solve(
   }
 
   if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(original_qp, qp.solver_options());
+    qp_solver_.InitializeSolver(original_qp, options);
   }
 
   timer.tick();
@@ -182,6 +191,11 @@ QPResult NCQPSolver::Polish(
 
   const VectorXd& warm_start_primal = sol.z;
   VectorXd warm_start_dual = most_recent_result.y;
+  auto options = qp.solver_options();
+  options.SetOption(OsqpSolver::id(), "max_iter", params_.max_inner_iterations);
+  options.SetOption(OsqpSolver::id(), "rho", params_.rho);
+  options.SetOption(OsqpSolver::id(), "adaptive_rho", 0);
+  options.SetOption(OsqpSolver::id(), "scaling", 0);
 
   QPData copy = original_qp;
   for (const auto& binding : feasibility_constraints) {
@@ -205,7 +219,7 @@ QPResult NCQPSolver::Polish(
   copy.A.makeCompressed();
 
   OsqpWrapper tmp_solver;
-  tmp_solver.InitializeSolver(copy, qp.solver_options());
+  tmp_solver.InitializeSolver(copy, options);
   tmp_solver.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
   tmp_solver.Solve(copy, out);

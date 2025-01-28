@@ -64,7 +64,7 @@ use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
 # switching to repositioning.
-num_control_loops_to_wait: 20
+num_control_loops_to_wait: 12
 num_control_loops_to_wait_position_tracking: 20
 
 # How to measure C3's progress.

@@ -111,6 +111,19 @@ int DoMain(int argc,  char* argv[]) {
   // changes here, e.g.:
   // c3_options.admm_iter = 8;
 
+  //example of updating Q to test effect of changing cost weights on C3 solve
+  // std::vector<double> new_q {0.01, 0.01, 0.01,
+  //          0.1, 0.1, 0.1, 0.1,
+  //          120, 120, 120,
+  //          25, 25, 25,
+  //          0.05, 0.05, 0.05,
+  //          0.05, 0.05, 0.05};
+  // c3_options.q_vector_position_and_orientation = new_q;
+  // Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+  //       c3_options.q_vector_position_and_orientation.data(), c3_options.q_vector_position_and_orientation.size());
+  // c3_options.Q_position_and_orientation = c3_options.w_Q * q_position_and_orientation.asDiagonal();
+  // std::cout<<"Updated Q"<<std::endl;
+
   // (3/4) Sim parameters.
   std::string sim_params_path = log_filepath;
   std::string sim_params_path_replacement = "sim_params_";

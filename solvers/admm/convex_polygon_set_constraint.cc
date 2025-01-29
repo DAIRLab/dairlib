@@ -1,3 +1,4 @@
+#include "drake/solvers/osqp_solver.h"
 #include "convex_polygon_set_constraint.h"
 
 namespace dairlib::solvers {
@@ -15,6 +16,8 @@ ConvexPolygonSetConstraint::ConvexPolygonSetConstraint(
     const ConvexPolygonSet& polygons)
     : SetMembershipConstraint(3, 3, Vector3d::Zero(), Vector3d::Zero()){
   set_ = polygons;
+  projection_prog_.SetSolverOption(
+      drake::solvers::OsqpSolver::id(), "scale", 0);
   BuildProjectionProg();
 }
 

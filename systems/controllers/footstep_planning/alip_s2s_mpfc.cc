@@ -5,6 +5,7 @@
 #include "common/eigen_utils.h"
 #include "solvers/admm/ncqp_solver.h"
 #include "solvers/admm/convex_polygon_set_constraint.h"
+#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -63,8 +64,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   if (params_.miqp) {
     result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
   } else {
-    auto solver = solvers::NCQPSolver();
-    solvers::QPResult solution = solver.Solve(*prog_, foothold_set_c_);
+    solvers::QPResult solution = ncqp_solver_.Solve(*prog_, foothold_set_c_);
     result.set_decision_variable_index(prog_->decision_variable_index());
     result.set_x_val(solution.x);
     result.set_solution_result(solution.solution_result);

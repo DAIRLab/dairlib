@@ -6,6 +6,7 @@
 #include "alip_utils.h"
 #include "geometry/convex_polygon_set.h"
 #include "solvers/optimization_utils.h"
+#include "solvers/admm/ncqp_solver.h"
 
 #include "drake/solvers/decision_variable.h"
 #include "drake/solvers/mathematical_program.h"
@@ -131,6 +132,7 @@ class AlipS2SMPFC {
   };
 
   drake::solvers::GurobiSolver solver_;
+  solvers::NCQPSolver ncqp_solver_;
 
   vector<VectorXDecisionVariable> pp_{}; // footstep sequence
   vector<VectorXDecisionVariable> xx_{}; // ALIP state

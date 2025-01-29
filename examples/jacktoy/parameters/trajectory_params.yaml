@@ -78,6 +78,9 @@ fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
 
 # fixed_target_position: [0.4, 0.3, 0.031971466]    # 16) jack begins on the far left of the franka and the goal is to move the jack back towards the right side.
 # fixed_target_orientation: [ -0.42418233, 0.33692512, 0.821965, -0.17753652] # Remember to change the q_init_object sim params for this test case.
+
+# fixed_target_position: [0.4710, 0.1502, 0.0320]    # 17) Efficiency testing goal (same as goal 4 in log 14 from Jan 14th)
+# fixed_target_orientation: [ -0.1194, -0.7695, -0.4433, -0.4439] # Remember to change the q_init_object sim params for this test case.
 #^^# C3 sanity checking good starting configurations #^^#
 
 

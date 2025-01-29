@@ -474,6 +474,14 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   // std::cout<<"\tR_eff at i = 0: "<<std::endl;
   // std::cout<<R_eff.at(0)<<std::endl;
 
+  //used only for verbose mode printouts
+  double cost_contrib_ee_pos = 0;
+  double cost_contrib_obj_orientation = 0;
+  double cost_contrib_obj_pos = 0;
+  double cost_contrib_ee_vel = 0;
+  double cost_contrib_obj_ang_vel = 0;
+  double cost_contrib_obj_vel = 0;
+
   for (int i = 0; i < N_; i++){
     // Print cost contribution for each part of the cost function.
     // std::cout<<"\ttimestep "<<i<<std::endl;
@@ -522,12 +530,54 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
 
     // std::cout<<"\t\tCost contribution from u: "<<
     //   UU[i].transpose()*R_eff.at(i)*UU[i]<<std::endl;
+
+    if(verbose){
+      //ee_pos
+      cost_contrib_ee_pos += (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*
+        Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - x_desired_[i].segment(0,3));
+      //obj_orientation
+      cost_contrib_obj_orientation += (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*
+        Q_eff.at(i).block(3,3,4,4)*(XX[i].segment(3,4) - x_desired_[i].segment(3,4));
+      //obj_pos
+      cost_contrib_obj_pos += (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*
+        Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - x_desired_[i].segment(7,3));
+      //ee_vel
+      cost_contrib_ee_vel += (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*
+        Q_eff.at(i).block(10,10,3,3)*(XX[i].segment(10,3) - x_desired_[i].segment(10,3));
+      //obj_ang_vel
+      cost_contrib_obj_ang_vel += (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*
+        Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - x_desired_[i].segment(13,3));
+      //obj_vel
+      cost_contrib_obj_vel += (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
+        Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3));
+    }
     cost = cost + 
       (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
       UU[i].transpose()*R_eff.at(i)*UU[i];
   }
   cost = cost + 
     (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+  
+  if(verbose){
+    cost_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*
+      Q_eff.at(N_).block(0,0,3,3)*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
+    cost_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*
+      Q_eff.at(N_).block(3,3,4,4)*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
+    cost_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*
+      Q_eff.at(N_).block(7,7,3,3)*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
+    cost_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*
+      Q_eff.at(N_).block(10,10,3,3)*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
+    cost_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*
+      Q_eff.at(N_).block(13,13,3,3)*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
+    cost_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*
+      Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+    std::cout<<"\t total cost contribution from x_ee: "<<cost_contrib_ee_pos<<std::endl;
+    std::cout<<"\t total cost contribution from x_obj: "<<cost_contrib_obj_pos<<std::endl;
+    std::cout<<"\t total cost contribution from q_obj: "<<cost_contrib_obj_orientation<<std::endl;
+    std::cout<<"\t total cost contribution from v_ee: "<<cost_contrib_ee_vel<<std::endl;
+    std::cout<<"\t total cost contribution from w_obj: "<<cost_contrib_obj_ang_vel<<std::endl;
+    std::cout<<"\t total cost contribution from v_obj: "<<cost_contrib_obj_vel<<std::endl;
+  }
 
   // Return the cost and the rolled out state trajectory.
   std::pair <double, std::vector<VectorXd>> ret (cost, XX);

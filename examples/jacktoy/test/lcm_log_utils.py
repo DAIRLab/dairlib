@@ -15,6 +15,7 @@ import click
 import os
 import os.path as op
 import shutil
+from tqdm import tqdm
 from typing import List, Tuple
 
 from lcm import EventLog
@@ -24,6 +25,20 @@ import matplotlib.ticker as mtick
 import numpy as np
 from scipy.stats import gaussian_kde
 import yaml
+
+from pydrake.common.eigen_geometry import Quaternion
+from pydrake.geometry import HalfSpace, MeshcatVisualizer, StartMeshcat, \
+    ClippingRange, DepthRange, DepthRenderCamera, \
+    RenderCameraCore, MakeRenderEngineVtk, RenderEngineVtkParams
+from pydrake.math import RigidTransform, RollPitchYaw
+from pydrake.multibody.parsing import Parser
+from pydrake.multibody.plant import AddMultibodyPlant, MultibodyPlantConfig
+from pydrake.systems.analysis import Simulator
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.systems.sensors import CameraInfo, RgbdSensor
+from pydrake.trajectories import PiecewisePolynomial, \
+    PiecewiseQuaternionSlerp, StackedTrajectory
+from pydrake.visualization import VideoWriter
 
 import dairlib
 
@@ -40,15 +55,23 @@ ALL_CHANNELS_AND_LCMT = {
     'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
     'SAMPLING_C3_RADIO': dairlib.lcmt_radio_out,
     'FRANKA_STATE': dairlib.lcmt_robot_output,
+    'OBJECT_STATE': dairlib.lcmt_object_state,
 }
 MINIMAL_CHANNELS_AND_LCMT = {
     'SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
     'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
 }
-CHANNELS_AND_LCMT_TO_SYNC = {key: val for key, val in \
-                             ALL_CHANNELS_AND_LCMT.items() if \
-                             key not in ['SAMPLING_C3_RADIO', 'FRANKA_STATE']}
-TIME_KEY = 'seconds'
+MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO = {
+    'SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
+    'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
+    'C3_ACTUAL': dairlib.lcmt_c3_state,
+    'C3_FINAL_TARGET': dairlib.lcmt_c3_state,
+}
+CHANNELS_AND_LCMT_TO_SYNC = {
+    key: val for key, val in ALL_CHANNELS_AND_LCMT.items() \
+    if key not in ['SAMPLING_C3_RADIO', 'FRANKA_STATE', 'OBJECT_STATE']}
+LCM_TIME_KEY = 'lcm_seconds'
+MESSAGE_TIME_KEY = 'msg_seconds'
 MESSAGE_KEY = 'message'
 
 TRAJ_PARAM_POS_TOL_KEY = 'position_success_threshold'
@@ -97,6 +120,25 @@ TIME_SYNCH_THRESH = 0.03
 HIST_BINS = 10
 CDF_TIME_CUTOFF = 300
 
+CAM_FOV = np.pi/6
+VIDEO_PIXELS = [480, 640]
+VIDEO_FPS = 30
+
+# Front video view.
+SENSOR_RPY_FRONT = np.array([-np.pi / 2, 0, np.pi / 2])
+SENSOR_POSITION_FRONT = np.array([2., 0., 0.2])
+SENSOR_POSE_FRONT_VIEW = RigidTransform(
+    RollPitchYaw(SENSOR_RPY_FRONT).ToQuaternion(), SENSOR_POSITION_FRONT)
+LOCKED_CAMERA_OFFSET = np.array([0.6, 0, 0]).reshape(3, 1)
+LOCKED_CAMERA_QUAT = SENSOR_POSE_FRONT_VIEW.rotation().ToQuaternion(
+    ).wxyz().reshape(4, 1)
+
+ACTUAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/jack_with_triad.urdf'
+GOAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/goal_triad.urdf'
+CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model.urdf'
+SECOND_CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model_2.urdf'
+
+
 global_is_interactive = False
 
 
@@ -132,7 +174,7 @@ def visualize_sample_buffer(messages_by_channel: dict, log_folder: str = None):
     states = messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
     debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
 
-    times = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
+    times = messages_by_channel['SAMPLE_BUFFER'][LCM_TIME_KEY]
 
     n_in_buffers = []
     quats, xyzs, ee_xyzs = [], [], []
@@ -160,56 +202,6 @@ def visualize_sample_buffer(messages_by_channel: dict, log_folder: str = None):
     axs[1].set_title('Error between current and goal states')
     plt.legend()
     save_current_figure('sample_buffer', store_folder=log_folder)
-
-# TODO remove
-def presentable_plots(messages_by_channel: dict, trajectory_params: dict,
-                      log_folder: str = None):
-    # Get some information from the trajectory parameters.
-    pos_tol = trajectory_params[TRAJ_PARAM_POS_TOL_KEY]
-    rad_tol = trajectory_params[TRAJ_PARAM_RAD_TOL_KEY]
-
-    # Get relevant messages over time.
-    sample_buffers = messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
-    debugs = messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
-
-    times = np.array(messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY])
-
-    n_in_buffers, n_goals_achieved, n_since_last_progress = [], [], []
-    is_c3_mode_flags, pose_tracking = [], []
-    pos_errors, rad_errors = [], []
-    target_came_froms, switch_reasons = [], []
-
-    for buffer, debug in zip(sample_buffers, debugs):
-        n_in_buffers.append(buffer.num_in_buffer)
-        n_goals_achieved.append(debug.detected_goal_changes)
-        n_since_last_progress.append(debug.best_progress_steps_ago)
-
-        is_c3_mode_flags.append(debug.is_c3_mode)
-        pose_tracking.append(debug.in_pose_tracking_mode)
-
-        pos_errors.append(debug.current_pos_error)
-        rad_errors.append(debug.current_rot_error)
-
-        target_came_froms.append(debug.source_of_pursued_target)
-        switch_reasons.append(debug.mode_switch_reason)
-
-    is_c3_mode_flags = np.array(is_c3_mode_flags)
-    n_goals_achieved = np.array(n_goals_achieved)
-    switch_reasons = np.array(switch_reasons)
-    pos_errors = np.array(pos_errors)
-    rad_errors = np.array(rad_errors)
-
-    # Do some plots per goal.
-    n_goals = n_goals_achieved[-1]
-    for i in range(n_goals):
-        ts = times[n_goals_achieved == i]
-        is_c3s = is_c3_mode_flags[n_goals_achieved == i]
-        switches = switch_reasons[n_goals_achieved == i]
-        pos_es = pos_errors[n_goals_achieved == i]
-        rad_es = rad_errors[n_goals_achieved == i]
-        inspect_mode_switching_by_goal(
-            ts, is_c3s, switches, pos_es, rad_es, pos_tol, rad_tol, i,
-            log_folder=log_folder)
 
 def inspect_mode_switching_by_goal(times: np.ndarray,
                                    is_c3_mode_flags: np.ndarray,
@@ -281,9 +273,9 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
 
 # TODO implement and remove
 def inspect_lcm_traffic(messages_by_channel: dict):
-    buffer_ts = messages_by_channel['SAMPLE_BUFFER'][TIME_KEY]
-    franka_ts = messages_by_channel['FRANKA_STATE'][TIME_KEY]
-    radio_ts = messages_by_channel['SAMPLING_C3_RADIO'][TIME_KEY]
+    buffer_ts = messages_by_channel['SAMPLE_BUFFER'][LCM_TIME_KEY]
+    franka_ts = messages_by_channel['FRANKA_STATE'][LCM_TIME_KEY]
+    radio_ts = messages_by_channel['SAMPLING_C3_RADIO'][LCM_TIME_KEY]
 
     buffer_ts = np.array(buffer_ts)
     franka_ts = np.array(franka_ts)
@@ -302,7 +294,9 @@ def inspect_lcm_traffic(messages_by_channel: dict):
 
 
 class ResultsAnalyzer:
-    """TODO"""
+    """Analyzes the results of a sampling-based C3 log by extracting information
+    out of one or multiple associated LCM logs, with the ability to generate
+    visuals."""
     def __init__(self, log_filepaths: List[str], channels: List[str],
                  sync_channels: List[str] = None,
                  start_times: List[float] = None, end_times: List[float] = None,
@@ -326,9 +320,12 @@ class ResultsAnalyzer:
         self.save_folder = save_folder
 
         # Load and stitch together each log file.
-        self.t_adj = 0
-        self.messages_by_channel = {key: {TIME_KEY: [], MESSAGE_KEY: []}
-                                    for key in self._channels}
+        self.lcm_t_adj = 0
+        self.msg_t_adj = 0
+        self.messages_by_channel = {
+            key: {LCM_TIME_KEY: [], MESSAGE_TIME_KEY: [], MESSAGE_KEY: []}
+            for key in self._channels
+        }
         for log_file, start, end in zip(log_filepaths, start_times, end_times):
             self._add_messages_from_log(
                 log_file, start_time=start, end_time=end, verbose=verbose)
@@ -373,7 +370,7 @@ class ResultsAnalyzer:
         self.rad_tol = rad_tol
 
     def _add_messages_from_log(self, log_filepath: str, start_time: float = 0.0,
-                              end_time: float = 1e12, verbose: bool = True):
+                               end_time: float = 1e12, verbose: bool = True):
         """Add messages and times for every channel of interest into the
         current self.messages_and_channels dictionary, appending the new data
         to the end as if it were a continuous experiment."""
@@ -387,17 +384,28 @@ class ResultsAnalyzer:
         log_file = EventLog(log_filepath, 'r')
 
         # Read through the log file.
-        init_utime = log_file.read_next_event().timestamp
-        event = log_file.seek_to_timestamp(init_utime + start_utime)
         event = log_file.read_next_event()
-        t_init = (event.timestamp - init_utime)*1e-6
+        init_lcm_utime = event.timestamp
+        init_msg_utime = ALL_CHANNELS_AND_LCMT[
+            event.channel].decode(event.data).utime
+        event = log_file.seek_to_timestamp(init_lcm_utime + start_utime)
+        event = log_file.read_next_event()
+        t_lcm_init = (event.timestamp - init_lcm_utime)*1e-6
+        t_msg_init = (ALL_CHANNELS_AND_LCMT[
+            event.channel].decode(event.data).utime - init_msg_utime)*1e-6
 
-        t_of_last_goal_change = 0
+        print(f'{init_lcm_utime=}')
+        print(f'{init_msg_utime=}')
+        print(f'{int(t_lcm_init)=}')
+        print(f'{t_msg_init=}\n')
+
+        lcm_t_of_last_goal_change = 0
+        msg_t_of_last_goal_change = 0
         experiment_started = False
         goals_achieved = 0
 
         while event is not None:
-            if event.timestamp - init_utime > end_utime:
+            if event.timestamp - init_lcm_utime > end_utime:
                 break
 
             if event.channel in self._channels:
@@ -407,51 +415,67 @@ class ResultsAnalyzer:
                 except ValueError:
                     print(f'Failed to decode message from {event.channel}.')
                     breakpoint()
-                secs = (event.timestamp - init_utime)*1e-6 - t_init
+                lcm_secs = (event.timestamp - init_lcm_utime)*1e-6 - t_lcm_init
+                msg_utime = msg_contents.utime
+                msg_secs = (msg_utime - init_msg_utime)*1e-6 - t_msg_init
 
                 # Cut off initial teleop.
                 if event.channel == 'SAMPLING_C3_DEBUG':
                     if (not experiment_started) and \
                        (not msg_contents.is_teleop):
                         experiment_started = True
-                        start_t = secs
+                        lcm_start_t = lcm_secs
+                        msg_start_t = msg_secs
                         goals_achieved = msg_contents.detected_goal_changes
                     if experiment_started and \
                        (msg_contents.detected_goal_changes > goals_achieved):
                         goals_achieved = msg_contents.detected_goal_changes
-                        t_of_last_goal_change = secs - start_t + self.t_adj
+                        lcm_t_of_last_goal_change = lcm_secs - lcm_start_t + \
+                            self.lcm_t_adj
+                        msg_t_of_last_goal_change = msg_secs - msg_start_t + \
+                            self.msg_t_adj
                         print(f'Goal {goals_achieved} achieved at ' + \
-                              f'{t_of_last_goal_change:.2f} s.')
+                              f'{lcm_t_of_last_goal_change:.2f} s (' + \
+                              f'{msg_t_of_last_goal_change:.2f} s from msg).')
 
                 if experiment_started:
-                    self.messages_by_channel[event.channel][TIME_KEY].append(
-                        secs - start_t + self.t_adj)
+                    self.messages_by_channel[event.channel][LCM_TIME_KEY
+                        ].append(lcm_secs - lcm_start_t + self.lcm_t_adj)
                     self.messages_by_channel[event.channel][MESSAGE_KEY].append(
                         msg_contents)
+                    try:
+                        self.messages_by_channel[event.channel][MESSAGE_TIME_KEY
+                            ].append(msg_secs - msg_start_t + self.msg_t_adj)
+                    except:
+                        pass
 
             event = log_file.read_next_event()
 
         # Cut off the last goal since it was not achieved.
         i_cutoff = self.messages_by_channel[
-            'SAMPLING_C3_DEBUG'][TIME_KEY].index(t_of_last_goal_change)
-        self.messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY] = \
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY][:i_cutoff]
+            'SAMPLING_C3_DEBUG'][LCM_TIME_KEY].index(lcm_t_of_last_goal_change)
+        self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY] = \
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY][:i_cutoff]
+        self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY] = \
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY][:i_cutoff]
         self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
             self.messages_by_channel[
                 'SAMPLING_C3_DEBUG'][MESSAGE_KEY][:i_cutoff]
-        self.t_adj += t_of_last_goal_change
+        self.lcm_t_adj += lcm_t_of_last_goal_change
+        self.msg_t_adj += msg_t_of_last_goal_change
 
         if verbose:
             for channel, contents in self.messages_by_channel.items():
                 print(f'Channel: {channel}')
-                print(f'\tNum messages: {len(contents[TIME_KEY])}', end = ', ')
-                print(f'Time range: {contents[TIME_KEY][0]:.2f} to ' + \
-                    f'{contents[TIME_KEY][-1]:.2f}')
+                print(f'\tNum messages: {len(contents[LCM_TIME_KEY])}', end = ', ')
+                print(f'Time range: {contents[LCM_TIME_KEY][0]:.2f} to ' + \
+                    f'{contents[LCM_TIME_KEY][-1]:.2f}')
             print(f'\nFinished processing log file at {log_filepath}.\n')
 
     def _synchronize_messages(self, sync_channels: List[str] = None,
-                             synchronize_to_channel: str = 'SAMPLING_C3_DEBUG',
-                             visualize: bool = True):
+                              synchronize_to_channel: str = 'SAMPLING_C3_DEBUG',
+                              use_lcm_times: bool = True,
+                              visualize: bool = True):
         """Synchronize the messages in the sync_channels list so their times
         match to within TIME_SYNC_THRESH of every message in the
         synchronize_to_channel.  If any channel in the sync_channels list cannot
@@ -460,6 +484,7 @@ class ResultsAnalyzer:
         index corresponds across channels."""
         sync_channels = sync_channels if sync_channels is not None else \
             self._channels
+        time_key = LCM_TIME_KEY if use_lcm_times else MESSAGE_TIME_KEY
 
         # Detect which channel had the fewest messages.
         min_num_channels = np.inf
@@ -467,7 +492,7 @@ class ResultsAnalyzer:
         min_channel = None
         max_channel = None
         for channel in sync_channels:
-            n_msgs = len(self.messages_by_channel[channel][TIME_KEY])
+            n_msgs = len(self.messages_by_channel[channel][time_key])
             if n_msgs < min_num_channels:
                 min_num_channels = n_msgs
                 min_channel = channel
@@ -483,7 +508,7 @@ class ResultsAnalyzer:
                                      gridspec_kw={'height_ratios': [2, 1]})
             axs[0,0].sharey(axs[0,1])
             for channel in sync_channels:
-                axs[0,0].plot(self.messages_by_channel[channel][TIME_KEY],
+                axs[0,0].plot(self.messages_by_channel[channel][time_key],
                               marker='o', label=channel)
             axs[0,0].set_title('All messages')
             axs[0,0].set_xlabel('Index')
@@ -491,8 +516,8 @@ class ResultsAnalyzer:
             axs[0,0].legend()
 
             axs[1,0].plot(
-                np.array(self.messages_by_channel[min_channel][TIME_KEY]) - \
-                np.array(self.messages_by_channel[max_channel][TIME_KEY][
+                np.array(self.messages_by_channel[min_channel][time_key]) - \
+                np.array(self.messages_by_channel[max_channel][time_key][
                     :min_num_channels]))
             axs[1,0].set_title(f'Time difference {min_channel} to ' + \
                                f'{max_channel}')
@@ -500,13 +525,13 @@ class ResultsAnalyzer:
             axs[1,0].set_ylabel('Time difference (s)')
 
         # Detect timestamps that are shared between all channels.
-        ts = self.messages_by_channel[synchronize_to_channel][TIME_KEY]
+        ts = self.messages_by_channel[synchronize_to_channel][time_key].copy()
         problem_ts = []
         channel_problem_ts = []
         for channel in sync_channels:
             if channel == synchronize_to_channel:
                 continue
-            channel_ts = np.array(self.messages_by_channel[channel][TIME_KEY])
+            channel_ts = np.array(self.messages_by_channel[channel][time_key])
             for t in ts:
                 delta = np.min(np.abs(channel_ts - t))
                 if delta > TIME_SYNCH_THRESH and t not in problem_ts:
@@ -517,17 +542,22 @@ class ResultsAnalyzer:
 
         # Do some time synchronization to the minimum set of messages.
         for channel in sync_channels:
-            new_times = []
+            new_lcm_times = []
+            new_msg_times = []
             new_msgs = []
-            channel_ts = np.array(self.messages_by_channel[channel][TIME_KEY])
+            channel_ts = np.array(self.messages_by_channel[channel][time_key])
 
             for t in ts:
                 i = np.argmin(np.abs(channel_ts - t))
-                new_times.append(self.messages_by_channel[channel][TIME_KEY][i])
+                new_lcm_times.append(self.messages_by_channel[channel][
+                    LCM_TIME_KEY][i])
+                new_msg_times.append(self.messages_by_channel[channel][
+                    MESSAGE_TIME_KEY][i])
                 new_msgs.append(
                     self.messages_by_channel[channel][MESSAGE_KEY][i])
 
-            self.messages_by_channel[channel][TIME_KEY] = new_times
+            self.messages_by_channel[channel][LCM_TIME_KEY] = new_lcm_times
+            self.messages_by_channel[channel][MESSAGE_TIME_KEY] = new_msg_times
             self.messages_by_channel[channel][MESSAGE_KEY] = new_msgs
 
         print(f'Done.')
@@ -535,22 +565,22 @@ class ResultsAnalyzer:
         if visualize:
             for channel in self._channels:
                 axs[0,1].plot(
-                    self.messages_by_channel[channel][TIME_KEY], marker='o',
+                    self.messages_by_channel[channel][time_key], marker='o',
                     label=channel)
             axs[0,1].set_title('Synchronized messages')
             axs[0,1].set_xlabel('Index')
             axs[0,1].legend()
 
             axs[1,1].plot(
-                np.array(self.messages_by_channel[min_channel][TIME_KEY]) - \
-                np.array(self.messages_by_channel[max_channel][TIME_KEY]))
+                np.array(self.messages_by_channel[min_channel][time_key]) - \
+                np.array(self.messages_by_channel[max_channel][time_key]))
             axs[1,1].set_xlabel('Index')
             axs[1,1].set_ylabel('Time difference (s)')
             save_current_figure('time_sync')
 
     def _extract_information(self):
         """Extracts and stores the following as numpy class attributes, if not
-        done already:
+        done already, per time step:
             - times (N,)
             - pos_errors (N,)
             - rad_errors (N,)
@@ -558,6 +588,13 @@ class ResultsAnalyzer:
             - n_goals_achieved (N,)
             - n_in_buffers (N,)
             - switch_reasons (N,)
+            - jack_poses (N, 7)
+
+        And the following per goal:
+            - times_of_new_goals (M,)
+            - goals (M, 7)
+            - worst_pos_errors (M,)
+            - worst_rad_errors (M,)
         """
         if hasattr(self, 'times'):
             return
@@ -565,26 +602,31 @@ class ResultsAnalyzer:
         # Get relevant messages over time.
         sample_buffers = self.messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
         debugs = self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
+        goals = self.messages_by_channel['C3_FINAL_TARGET'][MESSAGE_KEY]
+        actuals = self.messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
 
         self.times = np.array(
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][TIME_KEY])
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY])
 
         # Things to keep track of for every timestamp.
         n_in_buffers, n_goals_achieved, n_since_last_progress = [], [], []
         is_c3_mode_flags, pose_tracking = [], []
         pos_errors, rad_errors = [], []
         target_came_froms, switch_reasons = [], []
+        jack_poses = []
 
         # Things to keep track of for every goal.
-        last_goal = -1
-        times_of_new_goals = []
+        last_goal_num, last_goal = -1, np.zeros((7))
+        times_of_new_goals, goal_poses = [], []
         worst_pos_errors, worst_rad_errors = [], []
         init_pos_errors, init_rad_errors = [], []
 
         # Things to keep track of for every log.
         goals_per_log = []
 
-        for buffer, debug, t in zip(sample_buffers, debugs, self.times):
+        for buffer, debug, goal, actual, t in zip(
+            sample_buffers, debugs, goals, actuals, self.times):
+
             n_in_buffers.append(buffer.num_in_buffer)
             n_goals_achieved.append(debug.detected_goal_changes)
             n_since_last_progress.append(debug.best_progress_steps_ago)
@@ -598,10 +640,10 @@ class ResultsAnalyzer:
             target_came_froms.append(debug.source_of_pursued_target)
             switch_reasons.append(debug.mode_switch_reason)
 
-            if last_goal != debug.detected_goal_changes:
-                if last_goal > debug.detected_goal_changes:
-                    goals_per_log.append(last_goal + 1)
-                last_goal = debug.detected_goal_changes
+            if last_goal_num != debug.detected_goal_changes:
+                if last_goal_num > debug.detected_goal_changes:
+                    goals_per_log.append(last_goal_num + 1)
+                last_goal_num = debug.detected_goal_changes
                 times_of_new_goals.append(t)
                 init_pos_errors.append(debug.current_pos_error)
                 init_rad_errors.append(debug.current_rot_error)
@@ -613,6 +655,12 @@ class ResultsAnalyzer:
             if debug.current_rot_error > worst_rad_errors[-1]:
                 worst_rad_errors[-1] = debug.current_rot_error
 
+            if np.any(last_goal != np.array(goal.state[3:10])):
+                goal_poses.append(np.array(goal.state[3:10]))
+                last_goal = np.array(goal.state[3:10])
+
+            jack_poses.append(np.array(actual.state[3:10]))
+
         goals_per_log.append(debug.detected_goal_changes + 1)
 
         self.is_c3_mode_flags = np.array(is_c3_mode_flags)
@@ -621,7 +669,10 @@ class ResultsAnalyzer:
         self.switch_reasons = np.array(switch_reasons)
         self.pos_errors = np.array(pos_errors)
         self.rad_errors = np.array(rad_errors)
+        self.jack_poses = np.array(jack_poses)
+
         self.times_of_new_goals = np.array(times_of_new_goals)
+        self.goal_poses = np.array(goal_poses)
         self.worst_pos_errors = np.array(worst_pos_errors)
         self.worst_rad_errors = np.array(worst_rad_errors)
 
@@ -676,10 +727,6 @@ class ResultsAnalyzer:
 
         self.times_to_thresholds = times_to_thresholds
 
-    # TODO:  Is there a way we can ensure the errors cross the tolerance lines?
-    # Ideally this could happen with actual data (requires synchronization of
-    # SAMPLING_C3_DEBUG and C3_ACTUAL/C3_FINAL_TARGET), but we could also just
-    # add a final datapoint ensuring thresholds are met.
     def inspect_mode_switching_by_goal(self):
         """Generate mode switching plots for every goal achieved.  The plots
         show the position and orientation errors over time, with shading for
@@ -892,6 +939,178 @@ class ResultsAnalyzer:
         fig.suptitle('Time to Goal Cumulative Density')
         save_current_figure('cdf', store_folder=self.save_folder)
 
+    def generate_goal_video(self):
+        self._extract_information()
+
+        # Build Drake trajectories for the goals (zero-order hold) and the jack
+        # poses (cubic with continuous second derivatives).
+        # The zero-order hold requires a final break time but will ignore the
+        # final pose.  Add the final time and repeat the last goal pose to
+        # satisfy.
+        times_of_goals = np.concatenate((
+            self.times_of_new_goals, [self.times[-1]]))
+        goal_poses = np.vstack((self.goal_poses, self.goal_poses[-1, :]))
+        goal_traj = PiecewisePolynomial.ZeroOrderHold(
+            breaks=times_of_goals, samples=goal_poses.T)
+
+        jack_quats, jack_xyzs = self.jack_poses[:, :4], self.jack_poses[:, 4:7]
+        jack_quat_objects = [Quaternion(q) for q in jack_quats]
+        position_trajectory = \
+            PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
+                breaks=self.times,
+                samples=jack_xyzs.T,
+                sample_dot_at_start=np.zeros(3),
+                sample_dot_at_end=np.zeros(3)
+            )
+        orientation_trajectory = PiecewiseQuaternionSlerp(
+            breaks=self.times,
+            quaternions=jack_quat_objects
+        )
+        # Sadly the more fool-proof PiecewisePose outputs 4x4 homogeneous
+        # transform matrices, but TrajectorySource needs a column vector.  Use
+        # StackedTrajectory instead, and use caution when interpreting the
+        # output ordering.
+        jack_quat_pos_traj = StackedTrajectory()
+        jack_quat_pos_traj.Append(orientation_trajectory)
+        jack_quat_pos_traj.Append(position_trajectory)
+
+        self.vid = ProgressVideoMaker(
+            save_dir=self.save_folder, open_meshcat=True)
+        self.vid.visualize(goal_traj, jack_quat_pos_traj,
+                           t_init=0, t_final=self.times[-1])
+
+    # TODO
+    def generate_error_plot_video(self):
+        pass
+
+class ProgressVideoMaker:
+    """Generates videos of the goal and jack poses over time, from the
+    perspective of a jack-locked camera view and from a goal-locked camera view.
+    """
+    def __init__(self, save_dir: str, open_meshcat: bool = False):
+        self.save_dir = save_dir if save_dir is not None \
+            else 'examples/jacktoy/test/tmp'
+        self.open_meshcat = open_meshcat
+
+    def visualize(self, goal_traj: PiecewisePolynomial,
+                  jack_traj: PiecewisePolynomial, t_init: float,
+                  t_final: float):
+        builder = DiagramBuilder()
+
+        # Add the jack and goal triad to the plant.
+        mbp_config = MultibodyPlantConfig(time_step=0)
+        plant, scene_graph = AddMultibodyPlant(
+            mbp_config, builder)
+        parser = Parser(plant)
+        goal_vis = parser.AddModels(GOAL_JACK_URDF_PATH)[0]
+        jack_vis = parser.AddModels(ACTUAL_JACK_URDF_PATH)[0]
+        goal_camera_vis = parser.AddModels(CAMERA_URDF_PATH)[0]
+        jack_camera_vis = parser.AddModels(SECOND_CAMERA_URDF_PATH)[0]
+        plant.RegisterVisualGeometry(
+            plant.world_body(), RigidTransform(p=np.array([0, 0, -0.029])),
+            HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 0.5]))
+        plant.Finalize()
+        plant.set_name('plant')
+
+        # Add a meshcat visualizer.
+        if self.open_meshcat:
+            if hasattr(self, 'meshcat'):
+                self.meshcat.Delete()
+            else:
+                self.meshcat = StartMeshcat()
+            MeshcatVisualizer.AddToBuilder(
+                builder, scene_graph, self.meshcat)
+
+        # Add a vtk renderer; necessary to add video writers not with the
+        # VideoWriter.AddToBuilder method.
+        if not scene_graph.HasRenderer('vtk'):
+            scene_graph.AddRenderer('vtk', MakeRenderEngineVtk(
+                RenderEngineVtkParams()))
+
+        # Add a goal-locked video writer (with fixed orientation and translation
+        # offset).
+        g_intrinsics = CameraInfo(
+            width=VIDEO_PIXELS[1], height=VIDEO_PIXELS[0], fov_y=CAM_FOV)
+        g_clip = ClippingRange(0.01, 10.0)
+        g_camera = DepthRenderCamera(
+            RenderCameraCore("vtk", g_intrinsics, g_clip, RigidTransform()),
+            DepthRange(0.01, 10.0)
+        )
+        g_sensor = RgbdSensor(
+            plant.GetBodyFrameIdOrThrow(
+                plant.GetBodyByName('invisible_body').index()),
+            RigidTransform(),
+            g_camera
+        )
+        builder.AddSystem(g_sensor)
+        builder.Connect(scene_graph.GetOutputPort('query'),
+                        g_sensor.GetInputPort('geometry_query'))
+        video_writer_goal = VideoWriter(
+            filename=op.join(
+                self.save_dir, f'goal_{int(t_init)}_{int(t_final)}.mp4'),
+            fps=VIDEO_FPS,
+            backend="cv2"
+        )
+        builder.AddSystem(video_writer_goal)
+        video_writer_goal.ConnectRgbdSensor(builder=builder, sensor=g_sensor)
+
+        # Add a jack-locked video writer (with fixed orientation and translation
+        # offset).
+        j_intrinsics = CameraInfo(
+            width=VIDEO_PIXELS[1], height=VIDEO_PIXELS[0], fov_y=CAM_FOV)
+        j_clip = ClippingRange(0.01, 10.0)
+        j_camera = DepthRenderCamera(
+            RenderCameraCore("vtk", j_intrinsics, j_clip, RigidTransform()),
+            DepthRange(0.01, 10.0)
+        )
+        j_sensor = RgbdSensor(
+            plant.GetBodyFrameIdOrThrow(
+                plant.GetBodyByName('second_invisible_body').index()),
+            RigidTransform(),
+            j_camera
+        )
+        builder.AddSystem(j_sensor)
+        builder.Connect(scene_graph.GetOutputPort('query'),
+                        j_sensor.GetInputPort('geometry_query'))
+        video_writer_jack = VideoWriter(
+            filename=op.join(
+                self.save_dir, f'current_{int(t_init)}_{int(t_final)}.mp4'),
+            fps=VIDEO_FPS,
+            backend="cv2"
+        )
+        builder.AddSystem(video_writer_jack)
+        video_writer_jack.ConnectRgbdSensor(builder=builder, sensor=j_sensor)
+
+        # Build the diagram.
+        diagram = builder.Build()
+        simulator = Simulator(diagram)
+        context = simulator.get_context()
+        diagram.ForcedPublish(context)
+
+        for t in tqdm(np.arange(t_init, t_final, 1.0/VIDEO_FPS)):
+            # Update the visualization.
+            goal_camera_xyz = goal_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            jack_camera_xyz = jack_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            configs = np.vstack((
+                goal_traj.value(t),
+                jack_traj.value(t),
+                LOCKED_CAMERA_QUAT, goal_camera_xyz,
+                LOCKED_CAMERA_QUAT, jack_camera_xyz
+            ))
+            context = simulator.get_context()
+            plant_context = plant.GetMyMutableContextFromRoot(context)
+            plant.SetPositions(plant_context, configs)
+            diagram.ForcedPublish(context)
+
+            vw_context_front = video_writer_goal.GetMyContextFromRoot(context)
+            video_writer_goal._publish(vw_context_front)
+            vw_context_jack = video_writer_jack.GetMyContextFromRoot(
+                context)
+            video_writer_jack._publish(vw_context_jack)
+
+        video_writer_goal.Save()
+        video_writer_jack.Save()
+
 
 @click.group()
 def cli():
@@ -905,8 +1124,11 @@ def cli():
               help='Save the results to a folder of provided name')
 @click.option('--interactive', is_flag=True,
               help='Run in interactive mode')
+@click.option('--video', is_flag=True,
+              help='Generate video')
 
-def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool):
+def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
+                  video: bool):
     channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT
 
     # Turn the folders into filepaths.
@@ -944,6 +1166,10 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool):
         save_folder=save_folder,
         verbose=False
     )
+
+    if video:
+        results_analyzer.generate_goal_video()
+
     results_analyzer.visualize_cdf()
     results_analyzer.visualize_goal_success()
     results_analyzer.inspect_mode_switching_by_goal()
@@ -972,11 +1198,13 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool):
               help='Run in interactive mode')
 @click.option('--present', is_flag=True,
               help='Generate presentable plots')
+@click.option('--video', is_flag=True,
+              help='Generate video')
 
 def single_command(log_folder: str, start: float, end: float, buffer_vis: bool,
                    inspect_switching: bool, visualize_goal_completion: bool,
                    lcm_traffic_debug: bool, all: bool, interactive: bool,
-                   present: bool):
+                   present: bool, video: bool):
     # Turn the folder into a file path.
     log_folder = log_folder[:-1] if log_folder[-1] == '/' else log_folder
     log_number = log_folder.split('/')[-1][:6]
@@ -990,6 +1218,7 @@ def single_command(log_folder: str, start: float, end: float, buffer_vis: bool,
     print(f'Parsing {log_type} log at: {log_filepath}\n')
 
     channels_and_lcmt = ALL_CHANNELS_AND_LCMT if lcm_traffic_debug \
+        else MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO if present and video \
         else MINIMAL_CHANNELS_AND_LCMT if present \
         else CHANNELS_AND_LCMT_TO_SYNC
 
@@ -1002,8 +1231,15 @@ def single_command(log_folder: str, start: float, end: float, buffer_vis: bool,
         log_filepaths=[log_filepath],
         channels=channels_and_lcmt.keys(),
         start_times=[start], end_times=[end],
-        verbose=False
+        verbose=True
     )
+
+    if video:
+        results_analyzer.generate_goal_video()
+
+    if lcm_traffic_debug:
+        inspect_lcm_traffic(results_analyzer.messages_by_channel)
+        exit()
 
     if visualize_goal_completion or all:
         results_analyzer.visualize_goal_success()
@@ -1011,28 +1247,10 @@ def single_command(log_folder: str, start: float, end: float, buffer_vis: bool,
     if inspect_switching or all:
         results_analyzer.inspect_mode_switching_by_goal()
 
-    # # Get the sampling parameters.
-    # sampling_params_filepath = op.join(
-    #     log_folder, f'sampling_params_{log_number}.yaml')
-    # with open(sampling_params_filepath, 'r') as file:
-    #     sampling_params = yaml.safe_load(file)
-
-    trajectory_params_filepath = op.join(
-        log_folder, f'trajectory_params_{log_number}.yaml')
-    with open(trajectory_params_filepath, 'r') as file:
-        traj_params = yaml.safe_load(file)
-
-
-    if lcm_traffic_debug:
-        inspect_lcm_traffic(results_analyzer.messages_by_channel)
-        exit()
-
-    if present:
-        presentable_plots(results_analyzer.messages_by_channel,
-                          traj_params, log_folder=log_folder)
-        if interactive:
-            breakpoint()
-        exit()
+    if all:
+        results_analyzer.visualize_cdf()
+        results_analyzer.visualize_time_histograms()
+        results_analyzer.visualize_time_to_goal_vs_error()
 
     # Visualize the buffer of samples.
     if buffer_vis or all:

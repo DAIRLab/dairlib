@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<robot name="second_invisible_for_camera">
+    <link name="second_invisible_body">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.33"/>
+            <inertia ixx="0.0004488" ixy="0" ixz="0" iyy="0.0004488" iyz="0" izz="0.0000363"/>
+        </inertial>
+        <!-- <visual>
+            <origin rpy="0 1.5708 0" xyz="0.025 0 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.003"/>
+            </geometry>
+            <material>
+                <color rgba="1 0 0 1"/>
+            </material>
+        </visual>
+        <visual>
+            <origin rpy="1.5708 0 0" xyz="0 0.025 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.003"/>
+            </geometry>
+            <material>
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.025"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.003"/>
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/>
+            </material>
+        </visual> -->
+    </link>
+</robot>

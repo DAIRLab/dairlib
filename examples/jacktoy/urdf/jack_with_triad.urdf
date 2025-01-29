@@ -1,0 +1,113 @@
+<?xml version="1.0" ?>
+<robot name="jack">
+    <link name="capsule_1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.33"/>
+            <inertia ixx="0.0004488" ixy="0" ixz="0" iyy="0.0004488" iyz="0" izz="0.0000363"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="0 0 1 0.3"/>
+            </material>
+        </visual>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.06"/>
+            <geometry>
+                <cylinder length="0.12" radius="0.006"/>
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/>
+            </material>
+        </visual>
+    </link>
+
+    <link name="capsule_2">
+        <inertial>
+            <origin rpy="0 1.5708 0" xyz="0 0 0"/>
+            <mass value="0.33"/>
+            <inertia ixx="0.0004488" ixy="0" ixz="0" iyy="0.0004488" iyz="0" izz="0.0000363"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 1.5708 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0 1.5708 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="1 0 0 0.3"/>
+            </material>
+        </visual>
+        <visual>
+            <origin rpy="0 1.5708 0" xyz="0.06 0 0"/>
+            <geometry>
+                <cylinder length="0.12" radius="0.006"/>
+            </geometry>
+            <material>
+                <color rgba="1 0 0 1"/>
+            </material>
+        </visual>
+    </link>
+
+    <link name="capsule_3">
+        <inertial>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+            <mass value="0.33"/>
+            <inertia ixx="0.0004488" ixy="0" ixz="0" iyy="0.0004488" iyz="0" izz="0.0000363"/>
+        </inertial>
+        <collision>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="0 1 0 0.3"/>
+            </material>
+        </visual>
+        <visual>
+            <origin rpy="1.5708 0 0" xyz="0 0.06 0"/>
+            <geometry>
+                <cylinder length="0.12" radius="0.006"/>
+            </geometry>
+            <material>
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Joints to connect the capsules-->
+    <joint name="attach_joint" type="fixed">
+        <parent link="capsule_1"/>
+        <child link="capsule_2"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+    <joint name="attach_joint2" type="fixed">
+        <parent link="capsule_2"/>
+        <child link="capsule_3"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+    
+</robot>

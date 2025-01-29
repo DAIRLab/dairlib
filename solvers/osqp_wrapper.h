@@ -33,7 +33,7 @@ class OsqpWrapper {
   void WarmStart(const Eigen::VectorXd &primal, const Eigen::VectorXd &dual);
 
   bool IsInitialized() const { return is_init_; }
-  void Solve(QPData &qp, QPResult &result) const;
+  void Solve(QPData &qp, QPResult &result, bool has_matrix_update=true) const;
 
   void FreeProblemData();
 

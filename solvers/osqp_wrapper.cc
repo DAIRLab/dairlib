@@ -227,17 +227,20 @@ void OsqpWrapper::WarmStart(const Eigen::VectorXd& primal,
 }
 
 void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
-                        dairlib::solvers::QPResult &result) const {
+                        dairlib::solvers::QPResult &result,
+                        bool has_matrix_update) const {
 
   DRAKE_DEMAND(is_init_);
 
-  UpdateCSCFromEigenSparse(qp.H.triangularView<Eigen::Upper>(), P_csc_);
-  UpdateCSCFromEigenSparse(qp.A, A_csc_);
+  if (has_matrix_update) {
+    UpdateCSCFromEigenSparse(qp.H.triangularView<Eigen::Upper>(), P_csc_);
+    UpdateCSCFromEigenSparse(qp.A, A_csc_);
+    osqp_update_P_A(workspace_, P_csc_->x, OSQP_NULL, P_csc_->nzmax, A_csc_->x,
+                    OSQP_NULL, A_csc_->nzmax);
+  }
 
   osqp_update_lin_cost(workspace_, qp.g.data());
   osqp_update_bounds(workspace_, qp.lb.data(), qp.ub.data());
-  osqp_update_P_A(workspace_, P_csc_->x, OSQP_NULL, P_csc_->nzmax, A_csc_->x,
-                  OSQP_NULL, A_csc_->nzmax);
   osqp_update_warm_start(workspace_, osqp_settings_->warm_start);
 
   // If any step fails, it will set the solution_result and skip other steps.

@@ -7,13 +7,18 @@
 
 namespace dairlib::solvers {
 
+enum PolishType {
+  kProject = 0,
+  kConvexRestriction
+};
+
 struct ADMMParams {
   double rho{0.1};         // Penalty parameter
-  int max_iterations{4};  // Maximum number of outer iterations
+  int max_iterations{5};  // Maximum number of outer iterations
   int max_inner_iterations{100};
   double tolerance{1e-3};    // Convergence tolerance
   bool verbose = false;
-  bool polish_on_fallback = false;
+  PolishType polish_type = kConvexRestriction;
 };
 
 struct NCQPSolution {
@@ -96,7 +101,7 @@ class NCQPSolver {
       const drake::solvers::MathematicalProgram& qp_prog) const;
 
   void SolveALQP(const QPData& cvx_qp, QPData& al_qp,
-                 QPResult* al_result, NCQPSolution* sol) const;
+                 QPResult* al_result, NCQPSolution* sol, int iter) const;
 
   Eigen::VectorXd DoProjectionStep(
       const Eigen::VectorXd& d,
@@ -104,12 +109,18 @@ class NCQPSolver {
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       feasibility_constraints) const;
 
-  QPResult Polish(const NCQPSolution& sol,
+  QPResult QPPolish(const NCQPSolution& sol,
                   const QPData& cvx_qp,
                   const QPResult& most_recent_result,
                   const drake::solvers::MathematicalProgram& qp,
                   const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
                          feasibility_constraints) const;
+
+  QPResult ProjectionPolish(
+      const NCQPSolution& sol,
+      const drake::solvers::MathematicalProgram& qp,
+      const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
+                            feasibility_constraints) const;
 
   class Timer {
    public:

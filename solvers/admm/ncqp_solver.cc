@@ -81,11 +81,11 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(
 
 void NCQPSolver::SolveALQP(
     const QPData &cvx_qp, QPData &al_qp,
-    QPResult* al_result, NCQPSolution *sol) const {
+    QPResult* al_result, NCQPSolution *sol, int iter) const {
   VectorXd g_al = -params_.rho * (sol->z - sol->w);
   al_qp.g = cvx_qp.g + g_al;
 
-  qp_solver_.Solve(al_qp, *al_result);
+  qp_solver_.Solve(al_qp, *al_result, iter <= 1);
   sol->x = al_result->x;
 
   if (params_.verbose) {
@@ -94,6 +94,8 @@ void NCQPSolver::SolveALQP(
 }
 
 // TODO (@Brian-Acosta) warmstart the duals
+// TODO (@Brian-Acosta) result a mathematicalprogram result with appropriate
+//  solution details
 QPResult NCQPSolver::Solve(
     const MathematicalProgram &qp_prog,
     const std::vector<Binding<Constraint>>& constraints) const {
@@ -116,7 +118,7 @@ QPResult NCQPSolver::Solve(
     // Primal update - solve the convex QP
     if (iter > 0) {
       timer.tick();
-      SolveALQP(cvx_qp, al_qp, &primal_result, &sol);
+      SolveALQP(cvx_qp, al_qp, &primal_result, &sol, iter);
       sol.primal_solve_time += timer.tock();
     }
 
@@ -127,10 +129,18 @@ QPResult NCQPSolver::Solve(
     double slack_cost = eval_cost(d, cvx_qp);
 
     if (slack_cost > sol.slack_cost) {
-      QPResult polish_result = Polish(
-          sol, cvx_qp, primal_result, qp_prog, constraints);
-      polish_result.run_time = global_timer.tock();
-      return polish_result;
+      QPResult out;
+      switch (params_.polish_type) {
+        case kProject:
+          out = ProjectionPolish(sol, qp_prog, constraints);
+          out.solution_result = drake::solvers::kSolutionFound;
+          break;
+        case kConvexRestriction:
+          out = QPPolish(
+              sol, cvx_qp, primal_result, qp_prog, constraints);
+      }
+      out.run_time = global_timer.tock();
+      return out;
     } else {
       sol.z = d;
       sol.slack_cost = slack_cost;
@@ -155,12 +165,19 @@ QPResult NCQPSolver::Solve(
       break;
     }
   }
-  const QPResult& polish_warmstarter = sol.n_iter > 1 ? primal_result : init_result;
-  auto polish_result = Polish(sol, cvx_qp,
-                              polish_warmstarter, qp_prog,
-                              constraints);
-  polish_result.run_time = global_timer.tock();
-  return polish_result;
+
+  QPResult out;
+  switch (params_.polish_type) {
+    case kProject:
+      out = ProjectionPolish(sol, qp_prog, constraints);
+      out.solution_result = drake::solvers::kSolutionFound;
+      break;
+    case kConvexRestriction:
+      const QPResult& polish_warmstarter = sol.n_iter > 1 ? primal_result : init_result;
+      out = QPPolish(sol, cvx_qp, polish_warmstarter, qp_prog,constraints);
+  }
+  out.run_time = global_timer.tock();
+  return out;
 }
 
 VectorXd NCQPSolver::DoProjectionStep(
@@ -192,7 +209,16 @@ VectorXd NCQPSolver::DoProjectionStep(
   return out;
 }
 
-QPResult NCQPSolver::Polish(
+QPResult NCQPSolver::ProjectionPolish(
+    const NCQPSolution& sol,
+    const drake::solvers::MathematicalProgram &qp,
+    const std::vector<Binding<Constraint>> &constraints) const {
+  QPResult out;
+  out.x = DoProjectionStep(sol.x, qp, constraints);
+  return out;
+}
+
+QPResult NCQPSolver::QPPolish(
     const NCQPSolution& sol,
     const QPData &cvx_qp,
     const QPResult& most_recent_result,

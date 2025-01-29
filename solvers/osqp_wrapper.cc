@@ -305,5 +305,17 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
   }
 }
 
+MathematicalProgramResult OsqpWrapper::Solve(
+    const MathematicalProgram& prog, bool has_matrix_update) const {
+  QPData qp = QPData::ToQPData(prog);
+  QPResult solution;
+  this->Solve(qp, solution, has_matrix_update);
+  MathematicalProgramResult result;
+  result.set_decision_variable_index(prog.decision_variable_index());
+  result.set_x_val(solution.x);
+  result.set_solution_result(solution.solution_result);
+  return result;
+}
+
 }  // namespace solvers
 }  // namespace dairlib

@@ -32,6 +32,7 @@ cc_library(
     deps = [
         ":set_membership_constraint",
         "//geometry:convex_polygon_set",
+        "//solvers:osqp_wrapper",
     ],
 )
 

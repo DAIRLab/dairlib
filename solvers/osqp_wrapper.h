@@ -5,6 +5,7 @@
 
 #include "qp_data.h"
 #include "drake/solvers/solver_options.h"
+#include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib {
 namespace solvers {
@@ -34,6 +35,9 @@ class OsqpWrapper {
 
   bool IsInitialized() const { return is_init_; }
   void Solve(QPData &qp, QPResult &result, bool has_matrix_update=true) const;
+  drake::solvers::MathematicalProgramResult Solve(
+      const drake::solvers::MathematicalProgram& prog,
+      bool has_matrix_update = true) const;
 
   void FreeProblemData();
 

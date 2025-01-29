@@ -3,18 +3,25 @@
 data:
   real_time: True
   # Ignore unless for debugging with precorded videos
-  path: "/home/bbaraki/PycharmProjects/OpticalFlow/BasicTouches/normal_center_corner.mkv"
-  grid_step: 101
+  path: "examples/trifinger/densetact/normal_right_side.mkv"
+  grid_step: 80
   visual_bool: True
 
 sensor:
   DenseTact1:
     serial_number: SN0001
-    expo_time: 80
-    rad_OI: 350 #300: min
+    expo_time: 90
+    rad_view: 300 #300: min
+    rad_flow: 260
     center: [512, 384] #[u,-v]
+    height_thresh: 1.6
+    image_diff_thresh: 3_000_000
+
   DenseTact2:
     serial_number: SN20200519001
-    expo_time: 80
-    rad_OI: 400 #340:min
-    center: [512, 384]
+    expo_time: 40
+    rad_view: 355 #340:min
+    rad_flow: 310
+    center: [533, 395]
+    height_thresh: 1.6
+    image_diff_thresh: 3_000_000

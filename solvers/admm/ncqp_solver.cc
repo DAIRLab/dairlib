@@ -5,6 +5,9 @@
 
 namespace dairlib::solvers {
 
+using std::cout;
+using std::endl;
+
 using Eigen::VectorXd;
 
 using drake::solvers::Binding;
@@ -31,81 +34,101 @@ void AppendRowsToSparse(Eigen::SparseMatrix<double>& A_sparse,
     }
   }
 }
+
+inline double eval_cost(const Eigen::VectorXd& v, const QPData& qp) {
+  return 0.5 * v.dot(qp.H * v) + v.dot(qp.g) + qp.c;
 }
 
-NCQPSolver::NCQPSolver(){}
-
-// TODO (@Brian-Acosta) warmstart the duals
-QPResult NCQPSolver::Solve(
-    const MathematicalProgram &qp,
-    const std::vector<Binding<Constraint>>& constraints) const {
-
-  Timer global_timer;
-  global_timer.tick();
-
-  NCQPSolution sol(qp.num_vars());
-  sol.x = qp.initial_guess().hasNaN() ?
-      VectorXd::Zero(qp.num_vars()) : qp.initial_guess();
+NCQPSolution initialize_sol(const MathematicalProgram& qp_prog) {
+  NCQPSolution sol(qp_prog.num_vars());
+  sol.x = qp_prog.initial_guess().hasNaN() ?
+          VectorXd::Zero(qp_prog.num_vars()) : qp_prog.initial_guess();
   sol.z = sol.x;
   sol.w = sol.x - sol.z;
   sol.primal_solve_time = 0;
   sol.projection_time = 0;
   sol.total_solve_time = 0;
   sol.is_solved = false;
-  sol.slack_res = VectorXd::Zero(qp.num_vars());
+  sol.slack_res = VectorXd::Zero(qp_prog.num_vars());
   sol.slack_res_norm = kInf;
   sol.n_iter = 0;
+  return sol;
+}
 
-  Timer timer;
+}
 
-  // Convert prog into a QPData object
-  QPData original_qp = QPData::ToQPData(qp);
+NCQPSolver::NCQPSolver(){}
+
+std::pair<QPData, QPData> NCQPSolver::InitializeQPData(
+    const MathematicalProgram &qp_prog) const {
+  QPData cvx_qp = QPData::ToQPData(qp_prog);
+  QPData al_qp = cvx_qp;
 
   // Add the Augmented lagrangian cost
-  QPData primal_step_qp = original_qp;
-  for (int i = 0; i < primal_step_qp.num_vars; ++i) {
-    primal_step_qp.H.coeffRef(i, i) += params_.rho;
-    original_qp.H.coeffRef(i, i) += 0.0; // Allocate memory here to avoid sparsity changes when
-                                         // switching to ADMM QP
-    primal_step_qp.H.makeCompressed();
-    original_qp.H.makeCompressed();
+  // We also add zeros to the original QP to keep the same sparsity pattern
+  for (int i = 0; i < al_qp.num_vars; ++i) {
+    al_qp.H.coeffRef(i, i) += params_.rho;
+    cvx_qp.H.coeffRef(i, i) += 0.0;
+    al_qp.H.makeCompressed();
+    cvx_qp.H.makeCompressed();
   }
 
   if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(original_qp, qp.solver_options());
+    qp_solver_.InitializeSolver(cvx_qp, qp_prog.solver_options());
   }
+  return {cvx_qp, al_qp};
+}
 
-  timer.tick();
-  QPResult initial_result;
-  qp_solver_.Solve(original_qp, initial_result);
-  sol.x = initial_result.x;
+void NCQPSolver::SolveALQP(
+    const QPData &cvx_qp, QPData &al_qp,
+    QPResult* al_result, NCQPSolution *sol) const {
+  VectorXd g_al = -params_.rho * (sol->z - sol->w);
+  al_qp.g = cvx_qp.g + g_al;
 
+  qp_solver_.Solve(al_qp, *al_result);
+  sol->x = al_result->x;
+
+  if (params_.verbose) {
+    cout << "\nprimal qp result:\n" << al_result << endl;
+  }
+}
+
+// TODO (@Brian-Acosta) warmstart the duals
+QPResult NCQPSolver::Solve(
+    const MathematicalProgram &qp_prog,
+    const std::vector<Binding<Constraint>>& constraints) const {
+
+  Timer global_timer;
+
+  NCQPSolution sol = initialize_sol(qp_prog);
+  auto [cvx_qp, al_qp] = InitializeQPData(qp_prog);
+
+  QPResult init_result;
   QPResult primal_result;
+  Timer timer;
+
+  qp_solver_.Solve(cvx_qp, init_result);
+  sol.x = init_result.x;
   sol.primal_solve_time += timer.tock();
   
   // ADMM Iterations
   for (int iter = 0; iter < params_.max_iterations; ++iter) {
     // Primal update - solve the convex QP
     if (iter > 0) {
-      VectorXd g_al = -params_.rho * (sol.z - sol.w);
-      primal_step_qp.g = original_qp.g + g_al;
       timer.tick();
-      qp_solver_.Solve(primal_step_qp, primal_result);
-      if (params_.verbose) {
-        std::cout << "\nprimal qp result:\n" << primal_result << std::endl;
-      }
-      sol.x = primal_result.x;
+      SolveALQP(cvx_qp, al_qp, &primal_result, &sol);
       sol.primal_solve_time += timer.tock();
     }
 
     // Slack update - project to the feasible set
     timer.tick();
     VectorXd d = sol.x + sol.w;
-    d = DoProjectionStep(d, qp, constraints);
-    double slack_cost = 0.5 * d.dot(original_qp.H * d) + d.dot(original_qp.g) +
-          original_qp.c;
+    d = DoProjectionStep(d, qp_prog, constraints);
+    double slack_cost = eval_cost(d, cvx_qp);
+
     if (slack_cost > sol.slack_cost) {
-      auto polish_result = Polish(sol, original_qp, primal_result, qp, constraints);
+      QPResult polish_result = Polish(
+          sol, cvx_qp, primal_result, qp_prog, constraints);
       polish_result.run_time = global_timer.tock();
       return polish_result;
     } else {
@@ -114,14 +137,11 @@ QPResult NCQPSolver::Solve(
     }
     sol.projection_time += timer.tock();
 
-    // Calculate residual between primal and slack variables
+    // Dual update and increment sol iteration
     sol.slack_res = sol.x - sol.z;
     sol.slack_res_norm = sol.slack_res.norm();
-
-    // dual update
     sol.w += sol.slack_res;
-
-    ++sol.n_iter;
+    sol.n_iter = iter;
 
     // check for convergence
     if (sol.slack_res_norm < params_.tolerance) {
@@ -135,8 +155,10 @@ QPResult NCQPSolver::Solve(
       break;
     }
   }
-  const QPResult& result_for_warmstarting_polish = sol.n_iter > 1 ? primal_result : initial_result;
-  auto polish_result = Polish(sol, original_qp, result_for_warmstarting_polish, qp, constraints);
+  const QPResult& polish_warmstarter = sol.n_iter > 1 ? primal_result : init_result;
+  auto polish_result = Polish(sol, cvx_qp,
+                              polish_warmstarter, qp_prog,
+                              constraints);
   polish_result.run_time = global_timer.tock();
   return polish_result;
 }
@@ -172,7 +194,7 @@ VectorXd NCQPSolver::DoProjectionStep(
 
 QPResult NCQPSolver::Polish(
     const NCQPSolution& sol,
-    const QPData &original_qp,
+    const QPData &cvx_qp,
     const QPResult& most_recent_result,
     const MathematicalProgram &qp,
     const std::vector<Binding<Constraint>> &feasibility_constraints) const {
@@ -180,7 +202,7 @@ QPResult NCQPSolver::Polish(
   const VectorXd& warm_start_primal = sol.x;
   VectorXd warm_start_dual = most_recent_result.y;
 
-  QPData copy = original_qp;
+  QPData copy = cvx_qp;
   for (const auto& binding : feasibility_constraints) {
     const auto& variables = binding.variables();
     const auto& indices = qp.FindDecisionVariableIndices(variables);

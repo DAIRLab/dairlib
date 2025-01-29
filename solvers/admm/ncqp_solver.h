@@ -92,6 +92,12 @@ class NCQPSolver {
 
  private:
 
+  std::pair<QPData, QPData> InitializeQPData(
+      const drake::solvers::MathematicalProgram& qp_prog) const;
+
+  void SolveALQP(const QPData& cvx_qp, QPData& al_qp,
+                 QPResult* al_result, NCQPSolution* sol) const;
+
   Eigen::VectorXd DoProjectionStep(
       const Eigen::VectorXd& d,
       const drake::solvers::MathematicalProgram& qp,
@@ -99,7 +105,7 @@ class NCQPSolver {
       feasibility_constraints) const;
 
   QPResult Polish(const NCQPSolution& sol,
-                  const QPData& original_qp,
+                  const QPData& cvx_qp,
                   const QPResult& most_recent_result,
                   const drake::solvers::MathematicalProgram& qp,
                   const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
@@ -107,6 +113,7 @@ class NCQPSolver {
 
   class Timer {
    public:
+    Timer() { this->tick(); }
     void tick() {
       start = std::chrono::high_resolution_clock::now();
     }

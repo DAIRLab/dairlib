@@ -21,7 +21,8 @@ class C3QP final : public C3 {
  public:
   /// Default constructor for time-varying LCS
   C3QP(const LCS& LCS, const CostMatrices& costs,
-       const std::vector<Eigen::VectorXd>& xdesired,
+       const std::vector<Eigen::VectorXd>& x_desired,
+       const std::vector<Eigen::VectorXd>& u_desired,
        const C3Options& options);
 
   ~C3QP() override = default;

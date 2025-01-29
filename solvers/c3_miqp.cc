@@ -10,8 +10,9 @@ using Eigen::VectorXd;
 using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
-               const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options), M_(options.M) {}
+               const vector<VectorXd>& x_desired,
+               const vector<VectorXd>& u_desired, const C3Options& options)
+    : C3(LCS, costs, x_desired, u_desired, options), M_(options.M) {}
 
 VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
@@ -22,7 +23,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   try {
     // Create an environment
     GRBEnv env = GRBEnv(true);
-    //  env.set("LogToConsole", "0");
     env.set("OutputFlag", "0");
     env.set("Threads", "0");
     env.start();

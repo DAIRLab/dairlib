@@ -68,9 +68,10 @@ PYBIND11_MODULE(c3, m) {
 
   py::class_<C3, PyC3>(m, "C3")
       .def(py::init<const LCS&, const C3::CostMatrices&,
+                    const std::vector<Eigen::VectorXd>&,
                     const std::vector<Eigen::VectorXd>&, const C3Options&>(),
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
+           py::arg("u_desired"), py::arg("options"))
 
       .def("Solve",
            [](C3& self, const Eigen::VectorXd& x0) {
@@ -81,7 +82,8 @@ PYBIND11_MODULE(c3, m) {
       .def("UpdateWarmStart", &C3::UpdateWarmStart, py::arg("warm_start_x"),
            py::arg("warm_start_u"))
       .def("UpdateLCS", &C3::UpdateLCS, py::arg("lcs"))
-      .def("UpdateTarget", &C3::UpdateTarget, py::arg("x_des"))
+      .def("UpdateTargetStates", &C3::UpdateTargetStates, py::arg("x_des"))
+      .def("UpdateTargetInputs", &C3::UpdateTargetInputs, py::arg("u_des"))
       .def("AddLinearConstraint", &C3::AddLinearConstraint, py::arg("A"),
            py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint"))
@@ -103,9 +105,10 @@ PYBIND11_MODULE(c3, m) {
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,
+                    const std::vector<Eigen::VectorXd>&,
                     const std::vector<Eigen::VectorXd>&, const C3Options&>(),
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
+           py::arg("u_desired"), py::arg("options"))
       .def("GetWarmStartDelta", &C3MIQP::GetWarmStartDelta)
       .def("GetWarmStartBinary", &C3MIQP::GetWarmStartBinary);
 

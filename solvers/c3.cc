@@ -40,7 +40,8 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 }
 
 C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_desired, const C3Options& options)
+       const vector<VectorXd>& x_desired, const vector<VectorXd>& u_desired,
+       const C3Options& options)
     : warm_start_(options.warm_start),
       N_((lcs.A_).size()),
       n_x_((lcs.A_)[0].cols()),
@@ -49,6 +50,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       lcs_(lcs),
       cost_matrices_(costs),
       x_desired_(x_desired),
+      u_desired_(u_desired),
       options_(options),
       h_is_zero_(lcs.H_[0].isZero(0)),
       prog_(MathematicalProgram()),
@@ -154,7 +156,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   // initialize the constraint bindings
   initial_state_constraint_ = nullptr;
   dynamics_constraints_.resize(N_);
-  target_cost_.resize(N_ + 1);
+  state_costs_.resize(N_ + 1);
 
   MatrixXd LinEq(n_x_, 2 * n_x_ + n_lambda_ + n_u_);
   LinEq.block(0, n_x_ + n_lambda_ + n_u_, n_x_, n_x_) =
@@ -174,7 +176,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   }
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
-    target_cost_.at(i) =
+    state_costs_.at(i) =
         prog_
             .AddQuadraticCost(2 * cost_matrices_.Q.at(i),
                               -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
@@ -184,7 +186,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       input_costs_.at(i) =
           prog_
               .AddQuadraticCost(2 * cost_matrices_.R.at(i),
-                                VectorXd::Zero(n_u_), u_.at(i), 1)
+                                -2 * cost_matrices_.R.at(i) * u_desired_.at(i), u_.at(i), 1)
               .evaluator();
     }
   }
@@ -238,12 +240,20 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
-void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
+void C3::UpdateTargetStates(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (std::size_t i = 0; i < N_ + 1; i++) {
-    target_cost_[i]->UpdateCoefficients(
+    state_costs_[i]->UpdateCoefficients(
         2 * cost_matrices_.Q.at(i),
         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+  }
+}
+void C3::UpdateTargetInputs(const std::vector<Eigen::VectorXd>& u_des) {
+  u_desired_ = u_des;
+  for (std::size_t i = 0; i < N_; i++) {
+    input_costs_[i]->UpdateCoefficients(
+        2 * cost_matrices_.R.at(i),
+        -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
   }
 }
 

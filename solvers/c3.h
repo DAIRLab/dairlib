@@ -29,7 +29,8 @@ class C3 {
   /// @param LCS LCS parameters
   /// @param Q, R, G, U Cost function parameters
   C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
+     const std::vector<Eigen::VectorXd>& x_desired,
+     const std::vector<Eigen::VectorXd>& u_desired, const C3Options& options);
 
   virtual ~C3() = default;
 
@@ -46,7 +47,8 @@ class C3 {
   /// Update the LCS without needing to reconstruct the C3 object
   void UpdateLCS(const LCS& lcs);
   /// Update the target without needing to reconstruct the C3 object
-  void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+  void UpdateTargetStates(const std::vector<Eigen::VectorXd>& x_des);
+  void UpdateTargetInputs(const std::vector<Eigen::VectorXd>& u_des);
 
   /// allow users to add constraints (adds for all timesteps)
   /// @param A, lower_bound, upper_bound lower_bound <= A x <= upper_bound
@@ -139,6 +141,7 @@ class C3 {
   double AnDn_ = 1.0;  // Scaling factor for lambda
   const CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
+  std::vector<Eigen::VectorXd> u_desired_;
   const C3Options options_;
   double solve_time_ = 0;
   bool h_is_zero_;
@@ -161,7 +164,7 @@ class C3 {
   /// Projection step variables are defined outside of the MathematicalProgram
   /// interface
 
-  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> target_cost_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> state_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 

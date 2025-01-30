@@ -300,7 +300,8 @@ class ResultsAnalyzer:
     def __init__(self, log_filepaths: List[str], channels: List[str],
                  sync_channels: List[str] = None,
                  start_times: List[float] = None, end_times: List[float] = None,
-                 save_folder: str = None, verbose: bool = True):
+                 save_folder: str = None, verbose: bool = True,
+                 trim_bookends: bool = False):
         assert len(channels) > 0, 'Need at least one channel to visualize.'
         if start_times is not None:
             assert len(start_times) == len(log_filepaths), f'Need either no' + \
@@ -318,6 +319,7 @@ class ResultsAnalyzer:
         self.end_times = end_times
         self._channels = channels
         self.save_folder = save_folder
+        self.trim_bookends = trim_bookends
 
         # Load and stitch together each log file.
         self.lcm_t_adj = 0
@@ -385,6 +387,8 @@ class ResultsAnalyzer:
 
         # Read through the log file.
         event = log_file.read_next_event()
+        while event.channel not in self._channels:
+            event = log_file.read_next_event()
         init_lcm_utime = event.timestamp
         init_msg_utime = ALL_CHANNELS_AND_LCMT[
             event.channel].decode(event.data).utime
@@ -393,11 +397,6 @@ class ResultsAnalyzer:
         t_lcm_init = (event.timestamp - init_lcm_utime)*1e-6
         t_msg_init = (ALL_CHANNELS_AND_LCMT[
             event.channel].decode(event.data).utime - init_msg_utime)*1e-6
-
-        print(f'{init_lcm_utime=}')
-        print(f'{init_msg_utime=}')
-        print(f'{int(t_lcm_init)=}')
-        print(f'{t_msg_init=}\n')
 
         lcm_t_of_last_goal_change = 0
         msg_t_of_last_goal_change = 0
@@ -422,7 +421,7 @@ class ResultsAnalyzer:
                 # Cut off initial teleop.
                 if event.channel == 'SAMPLING_C3_DEBUG':
                     if (not experiment_started) and \
-                       (not msg_contents.is_teleop):
+                       (not msg_contents.is_teleop or not self.trim_bookends):
                         experiment_started = True
                         lcm_start_t = lcm_secs
                         msg_start_t = msg_secs
@@ -452,22 +451,27 @@ class ResultsAnalyzer:
             event = log_file.read_next_event()
 
         # Cut off the last goal since it was not achieved.
-        i_cutoff = self.messages_by_channel[
-            'SAMPLING_C3_DEBUG'][LCM_TIME_KEY].index(lcm_t_of_last_goal_change)
-        self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY] = \
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY][:i_cutoff]
-        self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY] = \
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY][:i_cutoff]
-        self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
-            self.messages_by_channel[
-                'SAMPLING_C3_DEBUG'][MESSAGE_KEY][:i_cutoff]
-        self.lcm_t_adj += lcm_t_of_last_goal_change
-        self.msg_t_adj += msg_t_of_last_goal_change
+        if self.trim_bookends:
+            i_cutoff = self.messages_by_channel[
+                'SAMPLING_C3_DEBUG'][LCM_TIME_KEY].index(
+                    lcm_t_of_last_goal_change)
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY] = \
+                self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY][
+                    :i_cutoff]
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY] = \
+                self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY][
+                    :i_cutoff]
+            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
+                self.messages_by_channel[
+                    'SAMPLING_C3_DEBUG'][MESSAGE_KEY][:i_cutoff]
+            self.lcm_t_adj += lcm_t_of_last_goal_change
+            self.msg_t_adj += msg_t_of_last_goal_change
 
         if verbose:
             for channel, contents in self.messages_by_channel.items():
                 print(f'Channel: {channel}')
-                print(f'\tNum messages: {len(contents[LCM_TIME_KEY])}', end = ', ')
+                print(f'\tNum messages: {len(contents[LCM_TIME_KEY])}',
+                      end = ', ')
                 print(f'Time range: {contents[LCM_TIME_KEY][0]:.2f} to ' + \
                     f'{contents[LCM_TIME_KEY][-1]:.2f}')
             print(f'\nFinished processing log file at {log_filepath}.\n')
@@ -661,7 +665,10 @@ class ResultsAnalyzer:
 
             jack_poses.append(np.array(actual.state[3:10]))
 
-        goals_per_log.append(debug.detected_goal_changes + 1)
+        try:
+            goals_per_log.append(debug.detected_goal_changes + 1)
+        except UnboundLocalError:
+            goals_per_log.append(0)
 
         self.is_c3_mode_flags = np.array(is_c3_mode_flags)
         self.n_in_buffers = np.array(n_in_buffers)
@@ -683,7 +690,7 @@ class ResultsAnalyzer:
             self.n_goals_achieved[downhill_i+1:] += goals_per_log[log_i]
         self.goals_per_log = np.array(goals_per_log)
 
-    def _compute_times_to_thesholds(self):
+    def _compute_times_to_thresholds(self):
         if hasattr(self, 'times_to_thresholds'):
             return
 
@@ -750,7 +757,7 @@ class ResultsAnalyzer:
         """Generate time-to-goal histograms."""
         self._extract_information()
         self._get_trajectory_tolerances()
-        self._compute_times_to_thesholds()
+        self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -804,7 +811,7 @@ class ResultsAnalyzer:
         """Generate a debugging-purposed goal success plot."""
         self._extract_information()
         self._get_trajectory_tolerances()
-        self._compute_times_to_thesholds()
+        self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -868,7 +875,7 @@ class ResultsAnalyzer:
         """Generate time to goal versus orientation and position error plots."""
         self._extract_information()
         self._get_trajectory_tolerances()
-        self._compute_times_to_thesholds()
+        self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -904,7 +911,7 @@ class ResultsAnalyzer:
         """Generate CDF plot."""
         self._extract_information()
         self._get_trajectory_tolerances()
-        self._compute_times_to_thesholds()
+        self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -939,8 +946,11 @@ class ResultsAnalyzer:
         fig.suptitle('Time to Goal Cumulative Density')
         save_current_figure('cdf', store_folder=self.save_folder)
 
-    def generate_goal_video(self):
+    def generate_goal_video(self, t_init: float = None, t_final: float = None):
         self._extract_information()
+
+        t_init = 0 if t_init is None else t_init
+        t_final = self.times[-1] if t_final is None else t_final
 
         # Build Drake trajectories for the goals (zero-order hold) and the jack
         # poses (cubic with continuous second derivatives).
@@ -954,7 +964,7 @@ class ResultsAnalyzer:
             breaks=times_of_goals, samples=goal_poses.T)
 
         jack_quats, jack_xyzs = self.jack_poses[:, :4], self.jack_poses[:, 4:7]
-        jack_quat_objects = [Quaternion(q) for q in jack_quats]
+        jack_quaternions = [Quaternion(q/np.linalg.norm(q)) for q in jack_quats]
         position_trajectory = \
             PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
                 breaks=self.times,
@@ -964,7 +974,7 @@ class ResultsAnalyzer:
             )
         orientation_trajectory = PiecewiseQuaternionSlerp(
             breaks=self.times,
-            quaternions=jack_quat_objects
+            quaternions=jack_quaternions
         )
         # Sadly the more fool-proof PiecewisePose outputs 4x4 homogeneous
         # transform matrices, but TrajectorySource needs a column vector.  Use
@@ -977,11 +987,31 @@ class ResultsAnalyzer:
         self.vid = ProgressVideoMaker(
             save_dir=self.save_folder, open_meshcat=True)
         self.vid.visualize(goal_traj, jack_quat_pos_traj,
-                           t_init=0, t_final=self.times[-1])
+                           t_init=t_init, t_final=t_final)
 
     # TODO
     def generate_error_plot_video(self):
         pass
+
+    def generate_demo_video(self):
+        self._extract_information()
+        self._get_trajectory_tolerances()
+
+        # Generate plot with mode shading and switch reasons.
+        inspect_mode_switching_by_goal(
+            times=self.times,
+            is_c3_mode_flags=self.is_c3_mode_flags,
+            switch_reasons=self.switch_reasons,
+            pos_errors=self.pos_errors,
+            rad_errors=self.rad_errors,
+            pos_tol=self.pos_tol,
+            rad_tol=self.rad_tol,
+            goal_num=0,
+            log_folder=self.save_folder
+        )
+
+        breakpoint()
+
 
 class ProgressVideoMaker:
     """Generates videos of the goal and jack poses over time, from the
@@ -1112,6 +1142,102 @@ class ProgressVideoMaker:
         video_writer_jack.Save()
 
 
+class DemoVideoMaker:
+    """Generates videos of the Franka manipulating the jack."""
+    def __init__(self, save_dir: str, open_meshcat: bool = False):
+        self.save_dir = save_dir if save_dir is not None \
+            else 'examples/jacktoy/test/tmp'
+        self.open_meshcat = open_meshcat
+
+    def visualize(self, goal_traj: PiecewisePolynomial,
+                  jack_traj: PiecewisePolynomial, t_init: float,
+                  t_final: float):
+        builder = DiagramBuilder()
+
+        # Add the jack and goal triad to the plant.
+        mbp_config = MultibodyPlantConfig(time_step=0)
+        plant, scene_graph = AddMultibodyPlant(
+            mbp_config, builder)
+        parser = Parser(plant)
+        goal_vis = parser.AddModels(GOAL_JACK_URDF_PATH)[0]
+        jack_vis = parser.AddModels(ACTUAL_JACK_URDF_PATH)[0]
+        goal_camera_vis = parser.AddModels(CAMERA_URDF_PATH)[0]
+        jack_camera_vis = parser.AddModels(SECOND_CAMERA_URDF_PATH)[0]
+        plant.RegisterVisualGeometry(
+            plant.world_body(), RigidTransform(p=np.array([0, 0, -0.029])),
+            HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 0.5]))
+        plant.Finalize()
+        plant.set_name('plant')
+
+        # Add a meshcat visualizer.
+        if self.open_meshcat:
+            if hasattr(self, 'meshcat'):
+                self.meshcat.Delete()
+            else:
+                self.meshcat = StartMeshcat()
+            MeshcatVisualizer.AddToBuilder(
+                builder, scene_graph, self.meshcat)
+
+        # Add a vtk renderer; necessary to add video writers not with the
+        # VideoWriter.AddToBuilder method.
+        if not scene_graph.HasRenderer('vtk'):
+            scene_graph.AddRenderer('vtk', MakeRenderEngineVtk(
+                RenderEngineVtkParams()))
+
+        # Add a goal-locked video writer (with fixed orientation and translation
+        # offset).
+        g_intrinsics = CameraInfo(
+            width=VIDEO_PIXELS[1], height=VIDEO_PIXELS[0], fov_y=CAM_FOV)
+        g_clip = ClippingRange(0.01, 10.0)
+        g_camera = DepthRenderCamera(
+            RenderCameraCore("vtk", g_intrinsics, g_clip, RigidTransform()),
+            DepthRange(0.01, 10.0)
+        )
+        g_sensor = RgbdSensor(
+            plant.GetBodyFrameIdOrThrow(
+                plant.GetBodyByName('invisible_body').index()),
+            RigidTransform(),
+            g_camera
+        )
+        builder.AddSystem(g_sensor)
+        builder.Connect(scene_graph.GetOutputPort('query'),
+                        g_sensor.GetInputPort('geometry_query'))
+        video_writer_goal = VideoWriter(
+            filename=op.join(
+                self.save_dir, f'goal_{int(t_init)}_{int(t_final)}.mp4'),
+            fps=VIDEO_FPS,
+            backend="cv2"
+        )
+        builder.AddSystem(video_writer_goal)
+        video_writer_goal.ConnectRgbdSensor(builder=builder, sensor=g_sensor)
+
+        # Build the diagram.
+        diagram = builder.Build()
+        simulator = Simulator(diagram)
+        context = simulator.get_context()
+        diagram.ForcedPublish(context)
+
+        for t in tqdm(np.arange(t_init, t_final, 1.0/VIDEO_FPS)):
+            # Update the visualization.
+            goal_camera_xyz = goal_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            jack_camera_xyz = jack_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            configs = np.vstack((
+                goal_traj.value(t),
+                jack_traj.value(t),
+                LOCKED_CAMERA_QUAT, goal_camera_xyz,
+                LOCKED_CAMERA_QUAT, jack_camera_xyz
+            ))
+            context = simulator.get_context()
+            plant_context = plant.GetMyMutableContextFromRoot(context)
+            plant.SetPositions(plant_context, configs)
+            diagram.ForcedPublish(context)
+
+            vw_context_front = video_writer_goal.GetMyContextFromRoot(context)
+            video_writer_goal._publish(vw_context_front)
+
+        video_writer_goal.Save()
+
+
 @click.group()
 def cli():
     pass
@@ -1126,10 +1252,12 @@ def cli():
               help='Run in interactive mode')
 @click.option('--video', is_flag=True,
               help='Generate video')
+@click.option('--demo', is_flag=True,
+              help='Generate demonstration video with modes and samples')
 
 def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
-                  video: bool):
-    channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT
+                  video: bool, demo: bool):
+    channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO
 
     # Turn the folders into filepaths.
     log_filepaths = []
@@ -1164,11 +1292,19 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
         log_filepaths=log_filepaths,
         channels=channels_and_lcmt.keys(),
         save_folder=save_folder,
-        verbose=False
+        verbose=False,
+        trim_bookends=not demo
     )
+
+    if demo:
+        if video:
+            results_analyzer.generate_goal_video(t_init=6, t_final=30)
+        results_analyzer.generate_demo_video()
+        breakpoint()
 
     if video:
         results_analyzer.generate_goal_video()
+        exit()
 
     results_analyzer.visualize_cdf()
     results_analyzer.visualize_goal_success()

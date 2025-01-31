@@ -10,6 +10,7 @@ namespace dairlib::systems::controllers::id_mpc {
 struct IDMPCParams {
   int N;
   double dt;
+  double hybrid_mode_duration;
   int num_full_torque_knots;
   double mu = 1.0;
 

@@ -275,7 +275,7 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
 
     # A more presentable plot:  position and rotation errors with mode shading
     # and mode switch lines.
-    fig, axs = plt.subplots(1, 1, figsize=(12, 4))
+    fig, axs = plt.subplots(1, 1, figsize=(14.3, 4))
     ax0 = axs
     ax1 = ax0.twinx()
     ax0.fill_between(double_t, 0, 1.05, where=repos_mask, color=CF_COLOR,
@@ -303,24 +303,25 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
     ax1.axhline(y=rad_tol * 180/np.pi, linestyle='--', color=RAD_ERROR_COLOR,
                 label='Orientation success threshold')
 
-    ax0.set_xlabel('Time (s)')
-    ax0.set_ylabel('Position Error [m]')
+    ax0.set_xlabel('Time (s)', fontsize=16)
+    ax0.set_ylabel('Position Error [m]', fontsize=16)
     ax0.set_ylim([0, np.max(pos_errors) + 0.01])
     ax0.set_xlim([np.min(times), np.max(times)])
-    ax1.set_ylabel('Orientation Error [deg]', color=RAD_ERROR_COLOR)
+    ax1.set_ylabel('Orientation Error [deg]', color=RAD_ERROR_COLOR, fontsize=16)
     ax1.set_ylim([0, np.max(deg_errors) + 10])
     ax1.tick_params(axis='y', labelcolor=RAD_ERROR_COLOR)
-    fig.suptitle(f'Errors over Time with Mode Switching for Goal {goal_num}')
+    fig.suptitle(f'Errors over Time with Mode Switching for Goal {goal_num}', fontsize=18)
 
     # Legend:  need to add patches manually.
     cf_patch = Patch(facecolor=CF_COLOR, alpha=0.5, edgecolor='black',
                      linewidth=1, label='Contact-free mode')
     cr_patch = Patch(facecolor=CR_COLOR, alpha=0.5, edgecolor='black',
                      linewidth=1, label='Contact-rich mode')
+
     ax0.legend(
         handles=ax0.get_legend_handles_labels()[0] + \
             ax1.get_legend_handles_labels()[0] + [cf_patch, cr_patch],
-        bbox_to_anchor=(1.1, 1), loc='upper left')
+        bbox_to_anchor=(1.2, 1), loc='upper left', fontsize=14, title_fontsize=16)
     plt.tight_layout()
     save_current_figure(
         f'shading_goal_{goal_num}' if log_folder is not None else \
@@ -676,6 +677,8 @@ class ResultsAnalyzer:
 
         # Things to keep track of for every goal.
         last_goal_num, last_goal = -1, np.zeros((7))
+        # print('last goal num at init:', last_goal_num)
+        # print('last goal at init:', last_goal)
         times_of_new_goals, goal_poses = [], []
         worst_pos_errors, worst_rad_errors = [], []
         init_pos_errors, init_rad_errors = [], []
@@ -889,14 +892,14 @@ class ResultsAnalyzer:
         for rad_thresh, color in zip(rad_thresholds, colors):
             axs[1].axhline(y=rad_thresh, linestyle='--', color=color,
                         label=f'{rad_thresh:.1f}rad threshold')
-        axs[0].set_xlabel('Time (s)')
-        axs[1].set_xlabel('Time (s)')
-        axs[0].set_ylabel('Error [m]')
-        axs[1].set_ylabel('Error [rad]')
-        axs[0].set_title('Position Error')
-        axs[1].set_title('Orientation Error')
-        axs[0].legend()
-        axs[1].legend()
+        axs[0].set_xlabel('Time (s)', fontsize = 16)
+        axs[1].set_xlabel('Time (s)', fontsize = 16)
+        axs[0].set_ylabel('Error [m]', fontsize = 16)
+        axs[1].set_ylabel('Error [rad]', fontsize = 16)
+        axs[0].set_title('Position Error', fontsize = 18)
+        axs[1].set_title('Orientation Error', fontsize = 18)
+        axs[0].legend(fontsize=14, title_fontsize=16)
+        axs[1].legend(fontsize=14, title_fontsize=16)
         for goal_i in range(times_to_thresholds.shape[0]):
             for thresh_i, color in enumerate(colors):
                 time = times_to_thresholds[goal_i, thresh_i] + \
@@ -917,12 +920,12 @@ class ResultsAnalyzer:
                     width=0.2, color=color,
                     label=f'{pos_thresholds[thresh_i]:.2f}m, ' + \
                         f'{rad_thresholds[thresh_i]:.1f}rad')
-        axs[2].set_ylabel('Time [s]')
-        axs[2].set_title('Time to Reach Goal')
+        axs[2].set_ylabel('Time [s]', fontsize = 16)
+        axs[2].set_title('Time to Reach Goal', fontsize = 18)
         axs[2].set_xticks(x)
         axs[2].set_xticklabels([f'Goal {i+1}' for i in range(n_goals)])
         axs[2].legend(title="Thresholds",
-                    bbox_to_anchor=(1.02, 1), loc='upper left')
+                    bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=14, title_fontsize=16)
         plt.tight_layout()
         save_current_figure('goal_success', store_folder=self.save_folder)
 
@@ -942,6 +945,9 @@ class ResultsAnalyzer:
         # Compute the time it took to reach each threshold level for each goal.
         times_to_thresholds = self.times_to_thresholds
 
+        # Set a general serif font (e.g., Times New Roman or alternative)
+        plt.rcParams.update({'font.family': 'serif'})
+
         # Generate a plot of time to goal versus worst errors incurred over the
         # trajectory.
         fig, axs = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
@@ -955,11 +961,11 @@ class ResultsAnalyzer:
                 times_to_thresholds[:, thresh_i], color=color,
                 label=f'{pos_thresholds[thresh_i]:.2f}m, ' + \
                     f'{rad_thresholds[thresh_i]:.1f}rad')
-        axs[1].legend(title='Success Thresholds')
-        axs[0].set_xlabel('Position Error [m]')
-        axs[1].set_xlabel('Orientation Error [deg]')
-        axs[0].set_ylabel('Time to Goal [s]')
-        fig.suptitle('Time to Goal vs. Worst Error Over Trajectory')
+        axs[1].legend(title='Success Thresholds', fontsize = 14, title_fontsize = 16)
+        axs[0].set_xlabel('Position Error [m]', fontsize = 16)
+        axs[1].set_xlabel('Orientation Error [deg]', fontsize = 16)
+        axs[0].set_ylabel('Time to Goal [s]', fontsize = 16)
+        fig.suptitle('Time to Goal vs. Worst Error Over Trajectory',  fontsize = 18)
         save_current_figure('time_vs_error', store_folder=self.save_folder)
 
     def visualize_cdf(self):
@@ -978,6 +984,9 @@ class ResultsAnalyzer:
         # Compute the time it took to reach each threshold level for each goal.
         times_to_thresholds = self.times_to_thresholds
 
+        # Set a general serif font (e.g., Times New Roman or alternative)
+        plt.rcParams.update({'font.family': 'serif'})
+
         # Generate a plot of cumulative distribution functions.
         fig, axs = plt.subplots(1, 1, figsize=(6,4))
         for thresh_i, color in enumerate(colors):
@@ -991,14 +1000,20 @@ class ResultsAnalyzer:
             axs.plot(bins_count, cdf, color=color, linewidth=5,
                      label=f'{pos_thresholds[thresh_i]:.2f}' + \
                         f'm, {rad_thresholds[thresh_i]:.1f}rad')
-        axs.legend(title='Pose Success Thresholds')
-        axs.set_xlabel('Time Limit [s]')
-        axs.set_ylabel('Fraction of Goals Achieved within Time Limit')
+        axs.legend(title='Pose Success Thresholds', fontsize = 14, title_fontsize = 16)
+        axs.set_xlabel('Time Limit [s]', fontsize = 16)
+        axs.set_ylabel('Fraction of Trials', fontsize = 16)
         axs.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        axs.set_yticks(np.linspace(0, 1, 11))
         axs.set_ylim([0, 1])
         axs.set_xlim([0, CDF_TIME_CUTOFF])
+        axs.tick_params(axis='both', which='major', labelsize=12)
+
+        # Adjust margins to prevent labels from being cut off
+        fig.subplots_adjust(left=0.15, bottom=0.15)
+
         plt.grid()
-        fig.suptitle('Time to Goal Cumulative Density')
+        fig.suptitle('Fraction of Goals Achieved Within Time Limit', fontsize = 18)
         save_current_figure('cdf', store_folder=self.save_folder)
 
     def print_trim_times(self):
@@ -1011,7 +1026,6 @@ class ResultsAnalyzer:
         assert self.log_filepaths[0] in LOG_FILEPATHS_TO_VIDEOS.keys(), \
             f'Only prepared to print ffmpeg commands for log files in ' + \
             f'{LOG_FILEPATHS_TO_VIDEOS.keys()=} but got {self.log_filepaths[0]}'
-
         log_filepath = self.log_filepaths[0]
 
         input_video, output_dir = LOG_FILEPATHS_TO_VIDEOS[log_filepath]
@@ -1052,7 +1066,6 @@ class ResultsAnalyzer:
         assert self.log_filepaths[0] in LOG_FILEPATHS_TO_VIDEOS.keys(), \
             f'Only prepared to print ffmpeg commands for log files in ' + \
             f'{LOG_FILEPATHS_TO_VIDEOS.keys()=} but got {self.log_filepaths[0]}'
-
         log_filepath = self.log_filepaths[0]
 
         input_video, output_dir = LOG_FILEPATHS_TO_VIDEOS[log_filepath]

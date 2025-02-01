@@ -262,6 +262,22 @@ void IDMPC::MakeKinematicConstraints() {
   }
 }
 
+void IDMPC::MakeEEPositionVariablesAndConstraints() {
+  int num_touchdowns = (params_.N / params_.num_intervals_between_impacts);
+  for (int i = 0; i < num_touchdowns; ++i) {
+    point_position_vars_.push_back(prog_.NewContinuousVariables(3));
+  }
+  for (int i = 0; i < params_.N; ++i) {
+    int pos_var_idx = (i+1) / params_.num_intervals_between_impacts;
+    auto pos_constraint = std::make_shared<PointPositionConstraint<AutoDiffXd>>(
+        *dynamics_, "", Eigen::Vector3d::Zero());
+    prog_.AddConstraint(
+        pos_constraint,
+        {position_vars(i+1), point_position_vars_.at(pos_var_idx)});
+    ee_pos_constraints_per_knot_.push_back(pos_constraint);
+  }
+}
+
 void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
   DRAKE_DEMAND(x.rows() == prog_.num_vars());
 
@@ -272,8 +288,6 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
   ParseConstraintsToSQP(x, qp);
 }
 
-
-// TODO (@Brian-Acosta) add support for L2Norm costs
 void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
 
   qp.g = VectorXd::Zero(prog_.num_vars());

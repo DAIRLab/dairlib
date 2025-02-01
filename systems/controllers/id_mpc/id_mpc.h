@@ -4,10 +4,12 @@
 
 #include "core/knot_point_state.h"
 #include "core/constrained_inverse_dynamics_info.h"
-#include "systems/controllers/id_mpc/contraints/collocation_constraint.h"
-#include "systems/controllers/id_mpc/contraints/kinematic_constraint.h"
 #include "core/timeline.h"
-#include "systems/controllers/id_mpc/contraints/quaternion_norm_constraint.h"
+
+#include "contraints/collocation_constraint.h"
+#include "contraints/kinematic_constraint.h"
+#include "contraints/quaternion_norm_constraint.h"
+#include "contraints/point_position_constraint.h"
 
 #include "costs/reference_manager.h"
 #include "costs/mpc_reference.h"
@@ -89,6 +91,7 @@ class IDMPC {
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
   void MakeUnitQuaternionConstraints();
+  void MakeEEPositionVariablesAndConstraints();
 
   void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
@@ -98,7 +101,9 @@ class IDMPC {
   Timeline timeline_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> quat_contraints_;
+  std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
 
+  ee_pos_constraints_per_knot_;
   ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;
 
@@ -106,6 +111,7 @@ class IDMPC {
   drake::solvers::MathematicalProgram prog_;
 
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> point_position_vars_;
   std::shared_ptr<QuaternionNormConstraint<AutoDiffXd>> unit_quat_ = nullptr;
 
   int num_constraints_;

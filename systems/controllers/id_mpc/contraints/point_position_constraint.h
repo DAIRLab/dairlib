@@ -13,24 +13,27 @@ namespace dairlib::systems::controllers::id_mpc {
  */
 template<typename T>
 class PointPositionConstraint : public solvers::NonlinearConstraint<T> {
+ public:
   PointPositionConstraint(const ConstrainedDynamicsInfo& dynamics,
-                          const std::string& frame,
+                          std::string frame,
                           const Eigen::Vector3d& point_in_frame);
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
 
+  void set_point(const std::string& body, const Eigen::Vector3d& point) {
+    DRAKE_DEMAND(plant_.HasBodyNamed(body));
+    body_name_ = body;
+    point_ = point;
+  }
 
-  void set_active(bool active) { active_ = active; }
  private:
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::Frame<double>& frame_;
+  std::string body_name_;
   Eigen::Vector3d point_;
 
   std::unique_ptr<drake::systems::Context<double>> context_;
-
-  bool active_ = false;
 };
 
 }

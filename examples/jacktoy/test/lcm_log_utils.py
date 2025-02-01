@@ -15,6 +15,7 @@ import click
 import os
 import os.path as op
 import shutil
+import subprocess
 from tqdm import tqdm
 from typing import List, Tuple
 
@@ -138,9 +139,63 @@ GOAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/goal_triad.urdf'
 CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model.urdf'
 SECOND_CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model_2.urdf'
 
+# Keyed by the log file, has a tuple of the long video filepath and a directory
+# to which single-goal videos can be written.
+LOG_FILEPATHS_TO_VIDEOS = {
+    # Jack hardware videos, random goals with tight tolerances:
+    '/mnt/data2/sharanya/logs/2025/01_29_25/000007/hwlog-000007':
+        (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump1',
+                 '20250129_124229_log7_cut_2.mp4'),
+         '/mnt/data2/bibit/01_29_25_log_7/'),
+    '/mnt/data2/sharanya/logs/2025/01_29_25/000031/hwlog-000031':
+        (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
+                '20250129_162050_log31_cut_2.mp4'),
+         '/mnt/data2/bibit/01_29_25_log_31/'),
+    '/mnt/data2/sharanya/logs/2025/01_29_25/000032/hwlog-000032':
+        (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
+                '20250129_170022_log32_cut.mp4'),
+         '/mnt/data2/bibit/01_29_25_log_32/'),
+    '/mnt/data2/sharanya/logs/2025/01_29_25/000033/hwlog-000033':
+        (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
+                '20250129_173127_log33_cut_2.mp4'),
+         '/mnt/data2/bibit/01_29_25_log_33/'),
+    # Jack hardware videos, orientation cycling with loose tolerances:
+    '/mnt/data2/sharanya/logs/2025/01_14_25/000029/hwlog-000029':
+        (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/',
+                '20250114_log29_cut_2.MOV'),
+         '/mnt/data2/bibit/01_14_25_log_29/'),
+    # Box sim videos:
+    '/mnt/data2/sharanya/logs/2025/01_24_25/000021/hwlog-000021':
+        ('/mnt/data2/sharanya/sim_videos/Jan24_log21_box.webm',
+         '/mnt/data2/bibit/01_24_25_log_21/'),
+    '/mnt/data2/sharanya/logs/2025/01_24_25/000032/hwlog-000032':
+        ('/mnt/data2/sharanya/sim_videos/Jan24_log32_box.webm',
+         '/mnt/data2/bibit/01_24_25_log_32/'),
+    # One for a local test:
+    '/home/bibit/Videos/franka_experiments/2025/01_29_25/000007/hwlog-000007':
+        (op.join('/home/bibit/Videos/franka_experiments/2025/01_29_25',
+                 '20250129_124229_log7_cut.mp4'),
+         '/home/bibit/Videos/franka_experiments/2025/01_29_25/'),
+}
 
 global_is_interactive = False
 
+
+def get_date_and_log_num_from_log_filepath(log_filepath: str) -> Tuple[str,
+                                                                       int]:
+    """Returns the date and log number as strings."""
+    log_folder, log_filename = op.split(log_filepath)
+    log_num = int(log_filename.split('-')[-1])
+    date_str = op.split(op.split(log_folder)[0])[-1]
+    return date_str, log_num
+
+def get_video_duration(filepath: str) -> float:
+    result = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                             "format=duration", "-of",
+                             "default=noprint_wrappers=1:nokey=1", filepath],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    return float(result.stdout)
 
 def save_current_figure(filename: str, store_folder: str = None):
     if store_folder is not None:
@@ -946,11 +1001,204 @@ class ResultsAnalyzer:
         fig.suptitle('Time to Goal Cumulative Density')
         save_current_figure('cdf', store_folder=self.save_folder)
 
-    def generate_goal_video(self, t_init: float = None, t_final: float = None):
+    def print_trim_times(self):
+        """Generate the ffmpeg commands to run to split the phone videos of the
+        experiments into goal-length snippets.  Note, this does not run those
+        commands, only prints them to terminal output so they can be copy-pasted
+        into a terminal and run as needed."""
+        assert len(self.log_filepaths) == 1, f'Only one log file can be ' + \
+            f'used to print ffmpeg commands since each video is separated.'
+        assert self.log_filepaths[0] in LOG_FILEPATHS_TO_VIDEOS.keys(), \
+            f'Only prepared to print ffmpeg commands for log files in ' + \
+            f'{LOG_FILEPATHS_TO_VIDEOS.keys()=} but got {self.log_filepaths[0]}'
+
+        log_filepath = self.log_filepaths[0]
+
+        input_video, output_dir = LOG_FILEPATHS_TO_VIDEOS[log_filepath]
+        if not op.exists(output_dir):
+            print(f'Making {output_dir}...')
+            os.makedirs(output_dir)
+        else:
+            print(f'Found existing {output_dir}...')
+
+        date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
+
+        self._extract_information()
+        self._get_trajectory_tolerances()
+        self._compute_times_to_thresholds()
+
+        cut_times = np.concatenate((self.times_of_new_goals, self.times[-1:]))
+        n_goals = self.goals_per_log[0]
+        assert cut_times.shape[0] == n_goals + 1
+
+        for i in range(n_goals):
+            t_start, t_end = cut_times[i], cut_times[i+1]
+            h_start, h_end = int(t_start // 3600), int(t_end // 3600)
+            rem_start, rem_end = t_start-h_start*3600, t_end-h_end*3600
+            m_start, m_end = int(rem_start // 60), int(rem_end // 60)
+            s_start, s_end = t_start % 60, t_end % 60
+
+            output_video_name = f'{date}_log_{log_num}_goal_{i+1}.mp4'
+
+            # Note: be careful with -y since this will overwrite things.
+            print(f'ffmpeg -y -i {input_video} -ss {h_start}:{m_start}:' + \
+                  f'{s_start:.3f} -to {h_end}:{m_end}:{s_end:.3f} ' + \
+                  f'-vcodec libx264 {op.join(output_dir, output_video_name)}')
+
+    def overlay_videos(self, per_goal: bool = True):
+        """Prepare to generate overlay videos."""
+        assert len(self.log_filepaths) == 1, f'Only one log file can be ' + \
+            f'used to make overlay videos since each experiment is separated.'
+        assert self.log_filepaths[0] in LOG_FILEPATHS_TO_VIDEOS.keys(), \
+            f'Only prepared to print ffmpeg commands for log files in ' + \
+            f'{LOG_FILEPATHS_TO_VIDEOS.keys()=} but got {self.log_filepaths[0]}'
+
+        log_filepath = self.log_filepaths[0]
+
+        input_video, output_dir = LOG_FILEPATHS_TO_VIDEOS[log_filepath]
+        overlay_dir = op.join(output_dir, 'overlay')
+        if not op.exists(overlay_dir):
+            print(f'Making {overlay_dir}...')
+            os.makedirs(overlay_dir)
+        else:
+            print(f'Found existing {overlay_dir}...')
+
+        self._extract_information()
+        self._get_trajectory_tolerances()
+        self._compute_times_to_thresholds()
+
+        if per_goal:
+            self._per_goal_overlay(log_filepath, output_dir, overlay_dir)
+        else:
+            self._full_video_overlay(
+                log_filepath, output_dir, overlay_dir, input_video)
+
+    def _full_video_overlay(self, log_filepath: str, output_dir: str,
+                            overlay_dir: str, input_video: str):
+        """Make a continuous overlay video with text annotations to count the
+        goals achieved."""
+        print(f'Full video overlay')
+        date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
+        n_goals = self.goals_per_log[0]
+
+        # First overlay the videos.
+        full_meshcat_video = op.join(
+            output_dir, f'goal_times_0_{int(self.times[-1])}.mp4')
+        output_video = op.join(
+            overlay_dir, f'overlay_{date}_log_{log_num}_full.mp4')
+        cmd = f'ffmpeg -y -i {input_video} -i {full_meshcat_video} ' + \
+                f'-filter_complex "[1:v]scale=500:-1[v2];[0:v][v2]' + \
+                f'overlay=main_w-overlay_w-1400:690" -c:v libx264 -c:a ' + \
+                f'copy {output_video}'
+        print(f'\n{cmd}\n')
+        os.system(cmd)
+
+        # Second add text annotations to count the goals achieved.
+        goal_labeled_video = output_video.replace('.mp4', '_labeled.mp4')
+        cmd = f'ffmpeg -y -i {output_video} -vf "'
+        for goal in range(n_goals+1):
+            if goal == n_goals:
+                t_start = self.times[-1]
+                t_end = get_video_duration(input_video)
+            else:
+                t_start = self.times_of_new_goals[goal]
+                t_end = self.times[-1] if goal==n_goals-1 else \
+                    self.times_of_new_goals[goal+1]
+            goal_txt = f'{goal} Goal' if goal==1 else f'{goal} Goals'
+            cmd += f"drawtext=text='{goal_txt}':x=50:y=50:fontsize=150:" + \
+                   f"fontcolor_expr=0x00FFFFFF:enable='between(t," + \
+                   f"{t_start:.3f},{t_end:.3f})',"
+        cmd += f"drawbox=x=10:y=680:w=680:h=395:color=gray@0.5:t=fill:" + \
+               f"enable='between(t,{t_start:.3f},{t_end:3f})'"
+        cmd += f'" -c:a copy {goal_labeled_video}'
+        print(f'\n{cmd}\n')
+        os.system(cmd)
+
+    def _per_goal_overlay(self, log_filepath: str, output_dir: str,
+                          overlay_dir: str):
+        """Make a single overlay video per goal with end screen annotation to
+        express the goal success."""
+        date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
+        n_goals = self.goals_per_log[0]
+
+        for i in range(n_goals):
+            phone_video = op.join(
+                output_dir, f'{date}_log_{log_num}_goal_{i+1}.mp4')
+            meshcat_video = op.join(output_dir, f'goal_goal_{i+1}.mp4')
+            output_video = op.join(
+                overlay_dir, f'overlay_{date}_log_{log_num}_goal_{i+1}.mp4')
+
+            # First overlay the videos.
+            cmd = f'ffmpeg -y -i {phone_video} -i {meshcat_video} ' + \
+                  f'-filter_complex "[1:v]scale=500:-1[v2];[0:v][v2]' + \
+                  f'overlay=main_w-overlay_w-1400:690" -c:v libx264 -c:a ' + \
+                  f'copy {output_video}'
+            print(f'\n{cmd}\n')
+            os.system(cmd)
+
+            # Second extract the last frame.
+            last_frame = output_video.replace('.mp4', '_last_frame.jpg')
+            cmd = f'ffmpeg -y -sseof -3 -i {output_video} -q:v 1 ' + \
+                  f'-update 1 {last_frame}'
+            print(f'\n{cmd}\n')
+            os.system(cmd)
+
+            # Third add rectangle to the last frame and make short video of it.
+            shaded_last_frame = last_frame.replace('.jpg', '_shaded.jpg')
+            tolerance_text = f'within {int(self.pos_tol*100)}cm and ' + \
+                f'{self.rad_tol*180/np.pi:.1f}degrees'
+            cmd = f'convert {last_frame} -fill "rgba(0,255,0,0.5)" ' + \
+                  f'-stroke black -draw "rectangle 0,0 1920,1080" -fill ' + \
+                  f'white -stroke black -pointsize 150 -draw "text 50,500 ' + \
+                  f"'{tolerance_text}'" +  f'" {shaded_last_frame}'
+            print('\n', cmd, '\n')
+            os.system(cmd)
+            still_video = shaded_last_frame.replace('.jpg', '.mp4')
+            # FPS is different for iPhone videos.
+            fps = '29.97' if '01_14_25' in self.log_filepaths[0] else '30'
+            cmd = f'ffmpeg -loop 1 -i {shaded_last_frame} -t 2 -s ' + \
+                  f'1920x1080 -r {fps} -pixel_format yuv420p -y {still_video}'
+            print('\n', cmd, '\n')
+            os.system(cmd)
+
+            # A required intermediate for iPhone videos.
+            if '01_14_25' in self.log_filepaths[0]:
+                original_output_video = output_video
+                output_video = output_video.replace('.mp4', '_29-97fps.mp4')
+                cmd1 = f'ffmpeg -y -i {original_output_video} -c:v copy ' + \
+                      f'-video_track_timescale 29.97 {output_video}'
+                print(f'\n{cmd1}\n')
+                os.system(cmd1)
+                original_still_video = still_video
+                still_video = still_video.replace('.mp4', '_29-97fps.mp4')
+                cmd1 = f'ffmpeg -y -i {original_still_video} -c:v copy ' + \
+                      f'-video_track_timescale 29.97 {still_video}'
+                print(f'\n{cmd1}\n')
+                os.system(cmd1)
+
+            # Fourth add the still frame to the end of the video.
+            success_video = output_video.replace('.mp4', '_success.mp4')
+            cmd = f'ffmpeg -i {output_video} -i {still_video} ' + \
+                   f'-filter_complex "[0:v:0][1:v:0]concat=n=2:v=1[outv]" ' + \
+                   f'-map "[outv]" -y {success_video}'
+            print('\n', cmd, '\n')
+            os.system(cmd)
+
+    def generate_goal_video(self, t_init: float = None, t_final: float = None,
+                            per_goal: bool = False):
         self._extract_information()
 
-        t_init = 0 if t_init is None else t_init
-        t_final = self.times[-1] if t_final is None else t_final
+        if per_goal:
+            assert t_init == t_final == None, f'Not prepared to trim videos' + \
+                f' if exporting videos per goal.'
+            print(f'Generating multiple videos, one for each goal.')
+            t_inits = self.times_of_new_goals
+            t_finals = np.concatenate((t_inits[1:], self.times[-1:]))
+            # cut_times = np.concatenate((self.times_of_new_goals, self.times[-1:]))
+        else:
+            print(f'Generating one continuous video for the whole log.')
+            t_inits = [0] if t_init is None else [t_init]
+            t_finals = [self.times[-1]] if t_final is None else [t_final]
 
         # Build Drake trajectories for the goals (zero-order hold) and the jack
         # poses (cubic with continuous second derivatives).
@@ -985,9 +1233,10 @@ class ResultsAnalyzer:
         jack_quat_pos_traj.Append(position_trajectory)
 
         self.vid = ProgressVideoMaker(
-            save_dir=self.save_folder, open_meshcat=True)
-        self.vid.visualize(goal_traj, jack_quat_pos_traj,
-                           t_init=t_init, t_final=t_final)
+            save_dir=self.save_folder, open_meshcat=True, per_goal=per_goal)
+        for i, (t0, tf) in enumerate(zip(t_inits, t_finals)):
+            self.vid.visualize(goal_traj, jack_quat_pos_traj,
+                               t_init=t0, t_final=tf, goal=i+1)
 
     # TODO
     def generate_error_plot_video(self):
@@ -1012,19 +1261,49 @@ class ResultsAnalyzer:
 
         breakpoint()
 
+    def print_statistics(self):
+        self._extract_information()
+        self._get_trajectory_tolerances()
+        self._compute_times_to_thresholds()
+
+        pos_thresholds = POS_SUCCESS_THRESHOLDS[
+            POS_SUCCESS_THRESHOLDS >= self.pos_tol]
+        rad_thresholds = RAD_SUCCESS_THRESHOLDS[
+            RAD_SUCCESS_THRESHOLDS >= self.rad_tol]
+
+        print(f'Number of trials: {self.times_to_thresholds.shape[0]}')
+
+        for thresh_i, (pos_thresh, rad_thresh) in enumerate(
+            zip(pos_thresholds, rad_thresholds)):
+            print(f'\n=== Thresholds {pos_thresh}m {rad_thresh}rad ===')
+            data = self.times_to_thresholds[:, thresh_i]
+            print(f'Mean time to goal:  {np.mean(data)}')
+            print(f'Standard deviation: {np.std(data)}')
+            print(f'Median time to goal:  {np.median(data)}')
+            print(f'Min time to goal:  {np.min(data)}')
+            print(f'Max time to goal:  {np.max(data)}')
+
 
 class ProgressVideoMaker:
     """Generates videos of the goal and jack poses over time, from the
     perspective of a jack-locked camera view and from a goal-locked camera view.
     """
-    def __init__(self, save_dir: str, open_meshcat: bool = False):
+    def __init__(self, save_dir: str, open_meshcat: bool = False,
+                 per_goal: bool = False):
         self.save_dir = save_dir if save_dir is not None \
             else 'examples/jacktoy/test/tmp'
         self.open_meshcat = open_meshcat
+        self.per_goal = per_goal
 
     def visualize(self, goal_traj: PiecewisePolynomial,
                   jack_traj: PiecewisePolynomial, t_init: float,
-                  t_final: float):
+                  t_final: float, goal: int = None):
+        if self.per_goal:
+            assert goal is not None, f'Goal must be specified if ' + \
+                f'per_goal=True.'
+            filename_end = f'goal_{goal}'
+        else:
+            filename_end = f'times_{int(t_init)}_{int(t_final)}'
         builder = DiagramBuilder()
 
         # Add the jack and goal triad to the plant.
@@ -1077,7 +1356,7 @@ class ProgressVideoMaker:
                         g_sensor.GetInputPort('geometry_query'))
         video_writer_goal = VideoWriter(
             filename=op.join(
-                self.save_dir, f'goal_{int(t_init)}_{int(t_final)}.mp4'),
+                self.save_dir, f'goal_{filename_end}.mp4'),
             fps=VIDEO_FPS,
             backend="cv2"
         )
@@ -1104,7 +1383,7 @@ class ProgressVideoMaker:
                         j_sensor.GetInputPort('geometry_query'))
         video_writer_jack = VideoWriter(
             filename=op.join(
-                self.save_dir, f'current_{int(t_init)}_{int(t_final)}.mp4'),
+                self.save_dir, f'current_{filename_end}.mp4'),
             fps=VIDEO_FPS,
             backend="cv2"
         )
@@ -1254,9 +1533,16 @@ def cli():
               help='Generate video')
 @click.option('--demo', is_flag=True,
               help='Generate demonstration video with modes and samples')
+@click.option('--trim-times', is_flag=True,
+              help='Print ffmpeg trim times for video generation')
+@click.option('--overlay', is_flag=True,
+              help='Overlay the meshcat video on the phone videos')
+@click.option('--delete', is_flag=True,
+              help='Delete the save folder if it exists')
 
 def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
-                  video: bool, demo: bool):
+                  video: bool, demo: bool, trim_times: bool, overlay: bool,
+                  delete: bool):
     channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO
 
     # Turn the folders into filepaths.
@@ -1275,11 +1561,26 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
         log_filepaths.append(log_filepath)
     print('')
 
+    if (trim_times and not video) or overlay:
+        for log_filepath in log_filepaths:
+            print(f'\n#=== {log_filepath} ===#')
+            results_analyzer = ResultsAnalyzer(
+                log_filepaths=[log_filepath],
+                channels=channels_and_lcmt.keys(),
+                trim_bookends=True
+            )
+            if overlay:
+                results_analyzer.overlay_videos(per_goal=trim_times)
+            else:
+                results_analyzer.print_trim_times()
+        exit()
+
     if save_to is not None:
         save_folder = op.join('examples/jacktoy/test/tmp/', save_to)
-        if op.exists(save_folder):
+        if op.exists(save_folder) and delete:
             shutil.rmtree(save_folder)
-        os.makedirs(save_folder)
+        elif not op.exists(save_folder):
+            os.makedirs(save_folder)
     else:
         save_folder = None
 
@@ -1301,9 +1602,10 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
             results_analyzer.generate_goal_video(t_init=6, t_final=30)
         results_analyzer.generate_demo_video()
         breakpoint()
+        exit()
 
     if video:
-        results_analyzer.generate_goal_video()
+        results_analyzer.generate_goal_video(per_goal=trim_times)
         exit()
 
     results_analyzer.visualize_cdf()
@@ -1311,6 +1613,7 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
     results_analyzer.inspect_mode_switching_by_goal()
     results_analyzer.visualize_time_histograms()
     results_analyzer.visualize_time_to_goal_vs_error()
+    results_analyzer.print_statistics()
     breakpoint()
 
 

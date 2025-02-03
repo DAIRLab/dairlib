@@ -151,8 +151,7 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ContactDataSender : public drake::systems::LeafSystem<double>{
     public:
         explicit ContactDataSender(
-            const drake::multibody::MultibodyPlant<double>& plant,
-            drake::systems::Context<double>* plant_context);
+            const drake::multibody::MultibodyPlant<double>& plant);
 
         const drake::systems::InputPort<double>& get_input_port_state() const {
             return this->get_input_port();

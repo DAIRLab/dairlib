@@ -11,7 +11,7 @@ import dairlib
 
 class lcmt_densetact_measurement_data(object):
     """
-      Measured DenseTact Array
+      Collection of DenseTact data
     
     """
 
@@ -19,13 +19,13 @@ class lcmt_densetact_measurement_data(object):
 
     __typenames__ = ["int8_t", "dairlib.lcmt_densetact_measurement"]
 
-    __dimensions__ = [None, [2]]
+    __dimensions__ = [None, ["numSensors"]]
 
     def __init__(self):
         self.numSensors = 0
         """ LCM Type: int8_t """
-        self.sensorData = [ dairlib.lcmt_densetact_measurement() for dim0 in range(2) ]
-        """ LCM Type: dairlib.lcmt_densetact_measurement[2] """
+        self.sensorData = []
+        """ LCM Type: dairlib.lcmt_densetact_measurement[numSensors] """
 
     def encode(self):
         buf = BytesIO()
@@ -35,7 +35,7 @@ class lcmt_densetact_measurement_data(object):
 
     def _encode_one(self, buf):
         buf.write(struct.pack(">b", self.numSensors))
-        for i0 in range(2):
+        for i0 in range(self.numSensors):
             assert self.sensorData[i0]._get_packed_fingerprint() == dairlib.lcmt_densetact_measurement._get_packed_fingerprint()
             self.sensorData[i0]._encode_one(buf)
 
@@ -54,7 +54,7 @@ class lcmt_densetact_measurement_data(object):
         self = lcmt_densetact_measurement_data()
         self.numSensors = struct.unpack(">b", buf.read(1))[0]
         self.sensorData = []
-        for i0 in range(2):
+        for i0 in range(self.numSensors):
             self.sensorData.append(dairlib.lcmt_densetact_measurement._decode_one(buf))
         return self
 
@@ -62,7 +62,7 @@ class lcmt_densetact_measurement_data(object):
     def _get_hash_recursive(parents):
         if lcmt_densetact_measurement_data in parents: return 0
         newparents = parents + [lcmt_densetact_measurement_data]
-        tmphash = (0x32f905fce21983bf+ dairlib.lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
+        tmphash = (0x5eb95ea8bc9c69bf+ dairlib.lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None

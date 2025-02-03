@@ -9,6 +9,8 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 
+#include <drake/multibody/plant/point_pair_contact_info.h>
+
 #include "drake/common/text_logging.h"
 
 namespace dairlib {
@@ -162,9 +164,8 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 }
 ContactDataSender::ContactDataSender(
-  const drake::multibody::MultibodyPlant<double>& plant,
-  drake::systems::Context<double>* plant_context): 
-  plant_(plant), plant_context_(plant_context){
+  const drake::multibody::MultibodyPlant<double>& plant): 
+  plant_(plant){
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
@@ -177,39 +178,62 @@ void ContactDataSender::Output(
   dairlib::lcmt_densetact_measurement_data* contact_output) const
   {
   
-  //const auto& contact_results = this->Eval<drake::multibody::ContactResults<double>>(context);
-  //const drake::AbstractValue* contact_results = this->EvalAbstractInput(context, 0);//.num_point_pair_contacts();
+  // const auto& contact_results = this->Eval<drake::multibody::ContactResults<double>>(context);
+  const drake::AbstractValue* contact_results = this->EvalAbstractInput(context, 0);//.num_point_pair_contacts();
 
-  //const auto& contact_value = contact_results->get_value();
+  const auto& constact_result = contact_results->get_value<drake::multibody::ContactResults<double>>();
 
-  //drake::log()->info(contact_value);
+  const std::string sensor1_name = "densetact_0";
+  const std::string sensor2_name = "densetact_120";
+  //const std::string object_name = "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf";
+  const std::string object_name = "cube";
 
-  const std::string sensor_name = "densetact_0";
-  const std::string object_name = "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf";
+  const drake::multibody::Body<double>& sensor1_body = plant_.GetBodyByName(sensor1_name);
+  const drake::multibody::Body<double>& sensor2_body = plant_.GetBodyByName(sensor2_name);
+  const drake::multibody::Body<double>& object_body = plant_.GetBodyByName(object_name);
+  drake::multibody::BodyIndex sensor1_index = sensor1_body.index();
+  drake::multibody::BodyIndex sensor2_index = sensor2_body.index();
+  drake::multibody::BodyIndex object_index = object_body.index();
   
-  //drake::multibody::BodyIndex sensor_body_index = plant.GetBodyByName(sensor_name).index();
-  //drake::multibody::BodyIndex object_body_index = plant.GetBodyByName(object_name).index();
+  const int num_of_contacts = constact_result.num_point_pair_contacts();
 
-  //drake::multibody::PointPairContactInfo(sensor_body_index, object_body_index);
+  bool contact_bool = false;
 
-  //const auto& contact_results = this->get_input_port(PointPairContactInfo);//.Eval<drake::multibody::ContactResults<double>>(context);
-  //drake::log()->info(contact_results);
+  Eigen::Vector3<double> contact_force = Eigen::Vector3<double>::Zero();
+
+  for (int i = 0; i < num_of_contacts; i++){
+    const auto& contact_instance = constact_result.point_pair_contact_info(i);
+
+    if (((contact_instance.bodyA_index() == sensor1_index) && (contact_instance.bodyB_index() == object_index)) 
+        || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor1_index))){
+          
+          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
+          contact_force =  contact_instance.contact_force();
+
+          // Returns the position p_WC of the contact point C in the world frame W. 
+          //contact_pose_W = contact_instance.point_pair();
+
+          contact_bool = true;
+        }
+    }
+
+
+  contact_output->numSensors = 2;
+  contact_output->sensorData.resize(contact_output->numSensors);
+
+  for (int i = 0; i < contact_output->numSensors; i++){
+    dairlib::lcmt_densetact_measurement contact;
+    contact.utime = context.get_time() * 1e6; 
+    contact.inContact = contact_bool;
+    //contact.contactPose = contact_pose_W;
+
+    contact.scaledNormal = contact_force[0];
+    contact.scaledFriction[0] = contact_force[1];
+    contact.scaledFriction[1] = contact_force[2];
+    contact_output->sensorData[i] = contact;
+  }
   
-  // Using 2 DenseTacts
-  // contact_output->numSensors = 2;
-  // contact_output->sensorData.resize(contact_output->numSensors);
-
-  // for (int i = 0; i < contact_output->numSensors; i++){
-  //   dairlib::lcmt_densetact_measurement contact;
-  //   contact.utime = context.get_time() * 1e6; 
-  //   contact.inContact = 1;
-  //   contact.scaledNormal = 1;
-  //   contact.scaledFriction[0] = 1;
-  //   contact.scaledFriction[1] = 1;
-  //   contact_output->sensorData[i] = contact;
-  // }
-  
-  //plant_.GetPositions(*plant_context_);
+  // plant_.GetPositions(*plant_context_);
 }
 
 
@@ -308,6 +332,7 @@ RobotOutputSender::RobotOutputSender(
 void RobotOutputSender::Output(const Context<double>& context,
                                dairlib::lcmt_robot_output* state_msg) const {
   const auto state = this->EvalVectorInput(context, state_input_port_);
+
 
   // using the time from the context
   state_msg->utime = context.get_time() * 1e6;
@@ -532,7 +557,7 @@ void ObjectStateSender::Output(const Context<double>& context,
 
   // using the time from the context
   state_msg->utime = context.get_time() * 1e6;
-
+  state_msg->object_name = "cube";
   state_msg->num_positions = num_positions_;
   state_msg->num_velocities = num_velocities_;
   state_msg->position_names.resize(num_positions_);

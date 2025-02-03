@@ -84,6 +84,9 @@ class IDMPC {
   void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
   void UpdateFrictionCone(
       int knot_index, const std::vector<std::string>& active_contacts);
+  void UpdateTouchdownEEPosConstraints(
+      const std::vector<std::string>& ee_touchdown_names,
+      const std::vector<Eigen::Vector3d>& ee_points);
 
   void MakeMPCCosts();
   void MakeKnotPoints();

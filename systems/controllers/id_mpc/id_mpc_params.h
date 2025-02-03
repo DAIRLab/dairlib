@@ -10,8 +10,8 @@ namespace dairlib::systems::controllers::id_mpc {
 struct IDMPCParams {
   int N;
   double dt;
-  int num_intervals_between_impacts;
   int num_full_torque_knots;
+  int num_intervals_between_impacts = 0;
   double mu = 1.0;
 
   // cost weights

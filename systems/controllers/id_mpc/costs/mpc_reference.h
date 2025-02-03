@@ -27,5 +27,6 @@ class MPCReference {
    * at each knot point. If a knot point does not contain a touchdown event,
    * the name should be an empty string
    */
-  std::vector<std::string> touchdown_ee_name_;
+  std::vector<std::string> touchdown_ee_names_;
+  std::vector<Eigen::Vector3d> touchdown_ee_points_;
 };

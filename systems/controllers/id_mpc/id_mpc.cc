@@ -73,6 +73,11 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
     UpdateFrictionCone(i, reference.active_contacts_.at(i));
   }
   UpdateCosts(reference);
+
+  if (params_.num_intervals_between_impacts > 0) {
+    UpdateTouchdownEEPosConstraints(
+        reference.touchdown_ee_names_, reference.touchdown_ee_points_);
+  }
 }
 
 void IDMPC::UpdateFrictionCone(
@@ -117,6 +122,16 @@ void IDMPC::UpdateCosts(const MPCReference &reference) {
       "u", reference.u_traj_, reference.knot_times_);
   reference_manager_.UpdateReference(
       "lambda", reference.lambda_traj_, reference.knot_times_);
+}
+
+void IDMPC::UpdateTouchdownEEPosConstraints(
+    const std::vector<std::string> &ee_touchdown_names,
+    const std::vector<Eigen::Vector3d>& ee_points) {
+  // no constraint on the first knot
+  for (int i = 1; i < params_.N + 1;  ++i) {
+    ee_pos_constraints_per_knot_.at(i - 1)->set_point(
+        ee_touchdown_names.at(i), ee_points.at(i));
+  }
 }
 
 void IDMPC::MakeUnitQuaternionConstraints() {
@@ -263,6 +278,11 @@ void IDMPC::MakeKinematicConstraints() {
 }
 
 void IDMPC::MakeEEPositionVariablesAndConstraints() {
+
+  if (params_.num_intervals_between_impacts <= 0) {
+    return;
+  }
+
   int num_touchdowns = (params_.N / params_.num_intervals_between_impacts);
   for (int i = 0; i < num_touchdowns; ++i) {
     point_position_vars_.push_back(prog_.NewContinuousVariables(3));

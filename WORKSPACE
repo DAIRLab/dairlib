@@ -132,6 +132,9 @@ ROS2_PACKAGES = [
     "rmw_fastrtps_cpp",
 ]
 
+# Set ROS_DIR based on distro
+# Bug in Jazzy rosidl, need Humble
+# https://github.com/ros2/rosidl/issues/808
 ros2_local_repository(
     name = "ros2",
     include_packages = ROS2_PACKAGES,

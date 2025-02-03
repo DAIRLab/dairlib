@@ -29,6 +29,7 @@ void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
 
 void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int fsm_state, const std::string& body_name, const Vector3d& pt_on_body) {
   AddFiniteStateToTrack(fsm_state);
+  std::cout << "Required Body: " << body_name << std::endl;
   DRAKE_DEMAND(plant_w_spr_.HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_.HasBodyNamed(body_name));
   body_frames_w_spr_[fsm_state] =

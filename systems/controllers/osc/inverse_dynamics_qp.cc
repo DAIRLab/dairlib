@@ -161,8 +161,8 @@ void InverseDynamicsQp::UpdateDynamics(
   MatrixXd Jh = MatrixXd::Zero(nh_, nv_);
   VectorXd Jh_dot_v = VectorXd::Zero(nh_);
   if (holonomic_constraints_ != nullptr) {
-    Jh = holonomic_constraints_->EvalFullJacobian(*context_);
-    Jh_dot_v = holonomic_constraints_->EvalFullJacobianDotTimesV(*context_);
+     Jh = holonomic_constraints_->EvalFullJacobian(*context_);
+     Jh_dot_v = holonomic_constraints_->EvalFullJacobianDotTimesV(*context_);
   }
 
   MatrixXd Jc_active = MatrixXd::Zero(nc_active_, nv_);

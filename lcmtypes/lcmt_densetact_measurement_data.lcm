@@ -1,10 +1,10 @@
 package dairlib;
 
-/*  Measured DenseTact Array
+/*  Collection of DenseTact data
 */
 
 struct lcmt_densetact_measurement_data
 {
   int8_t numSensors;
-  lcmt_densetact_measurement sensorData [2];
+  lcmt_densetact_measurement sensorData [numSensors];
 }

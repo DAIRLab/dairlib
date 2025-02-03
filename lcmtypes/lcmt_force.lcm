@@ -1,0 +1,12 @@
+package dairlib;
+
+/*  lcmtype containing information to visualize forces in meshcat
+*/
+struct lcmt_force
+{
+  int64_t utime;
+
+  // These are all expressed in the world frame.
+  double contact_point[3];
+  double contact_force[3];
+}

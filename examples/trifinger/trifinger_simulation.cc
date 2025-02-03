@@ -19,6 +19,10 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
+#include "drake/multibody/plant/contact_results.h"
+
+#include "dairlib/lcmt_densetact_measurement_data.hpp"
+
 DEFINE_string(sim_parameters,
               "examples/trifinger/parameters/trifinger_sim_params.yaml",
               "Filepath to simulation configs");
@@ -87,7 +91,8 @@ int SimulateTrifinger(int argc, char* argv[]) {
   }
 
   plant.Finalize();
-  auto plant_context = plant.CreateDefaultContext();
+  //auto plant_context = plant.CreateDefaultContext();
+
 
   // Creates LCM subscriber to controller and also LCM state publisher.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -108,18 +113,24 @@ int SimulateTrifinger(int argc, char* argv[]) {
   builder.Connect(cube_state_sender->get_output_port(),
                   cube_state_pub->get_input_port());
 
+  auto tri_contact_to_lcm =
+      builder.AddSystem<systems::ContactDataSender>(plant);
 
-  auto plant_context_contact = plant.CreateDefaultContext();
+  // publisher block
+  auto tri_contact_pub = builder.AddSystem(
+    LcmPublisherSystem::Make<dairlib::lcmt_densetact_measurement_data>(
+      lcm_channels.densetact_channel, 
+      lcm,
+      1.0 / sim_params.trifinger_publish_rate));
+          
 
-  auto contact_data_sender = builder.AddSystem<systems::ContactDataSender>(plant, plant_context_contact.get());
+  // Connect plant reaction to lcm
+  builder.Connect(plant.get_contact_results_output_port(), 
+    tri_contact_to_lcm->get_input_port());
 
-  builder.Connect(plant.get_contact_results_output_port(), contact_data_sender->get_input_port());
+  builder.Connect(tri_contact_to_lcm->get_output_port(), 
+    tri_contact_pub->get_input_port());
 
-  auto contact_data_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib ::lcmt_densetact_measurement_data>(
-          lcm_channels.contact_force_channel, lcm,
-          1.0 / 30.0));
-  builder.Connect(contact_data_sender->get_output_port(), contact_data_pub->get_input_port());
 
   // Finalize the diagram
   auto diagram = builder.Build();
@@ -130,12 +141,15 @@ int SimulateTrifinger(int argc, char* argv[]) {
   std::unique_ptr<Context<double>> diagram_context = diagram->CreateDefaultContext();
   diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
+  Context<double>& plant_context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
   VectorXd q_init(plant.num_positions());
   q_init << sim_params.q_init_trifinger, GenerateInitialCubePose();
-  plant.SetPositions(plant_context.get(), q_init);
-  plant.SetVelocities(plant_context.get(), VectorXd::Zero(plant.num_velocities()));
+  plant.SetPositions(&plant_context, q_init);
+  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+  
   diagram_context->SetTime(0);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

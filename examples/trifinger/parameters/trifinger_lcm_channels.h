@@ -15,7 +15,7 @@ struct TrifingerLcmChannels {
   std::string fingertips_target_position_channel;
   std::string estimated_friction_torque;
   std::string impedance_debug_channel;
-  std::string contact_force_channel;
+  std::string densetact_channel;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -31,6 +31,6 @@ struct TrifingerLcmChannels {
     a->Visit(DRAKE_NVP(fingertips_target_position_channel));
     a->Visit(DRAKE_NVP(estimated_friction_torque));
     a->Visit(DRAKE_NVP(impedance_debug_channel));
-    a->Visit(DRAKE_NVP(contact_force_channel));
+    a->Visit(DRAKE_NVP(densetact_channel));
   }
 };

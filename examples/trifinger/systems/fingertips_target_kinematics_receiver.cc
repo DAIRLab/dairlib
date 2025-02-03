@@ -90,7 +90,9 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
 
   // Evaluate the current positions of the fingertips.
   Eigen::VectorXd q_trifinger = trifinger_state->GetPositions();
+  Eigen::VectorXd v_trifinger = trifinger_state->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q_trifinger, context_);
+  multibody::SetVelocitiesIfNew<double>(plant_, v_trifinger, context_);
 
   auto fingertip_0_pos =
       plant_
@@ -138,30 +140,29 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
 
   // check if the obtained message from lcm input port is still old one,
   // if so, no update is performed on the discrete states.
-  if (current_msg_timestamp == previous_msg_timestamp) {
-    return drake::systems::EventStatus::Succeeded();
+  if (current_msg_timestamp != previous_msg_timestamp) {
+    if (!fingertips_target_kinematics_lcm_msg->isAbsoluteTargetPos) {
+      fingertips_target_pos += Eigen::VectorXd::Map(
+          fingertips_target_kinematics_lcm_msg->targetPos, 9);
+    } else if (previous_msg_timestamp != -1) {
+      fingertips_target_pos = Eigen::VectorXd::Map(
+          fingertips_target_kinematics_lcm_msg->targetPos, 9);
+    }
+    discrete_state->get_mutable_vector(start_time_traj_idx_)
+        .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
+    discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)
+        .set_value(cur_fingertips_pos);
+    discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
+        .set_value(cur_fingertips_vel);
+    discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
+        .set_value(fingertips_target_pos);
+    discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
+        .set_value(Eigen::VectorXd::Map(
+            fingertips_target_kinematics_lcm_msg->targetVel, 9));
+    discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
+        .set_value((Eigen::VectorXd::Ones(1) *
+                    fingertips_target_kinematics_lcm_msg->utime));
   }
-  if (!fingertips_target_kinematics_lcm_msg->isAbsoluteTargetPos) {
-    fingertips_target_pos += Eigen::VectorXd::Map(
-        fingertips_target_kinematics_lcm_msg->targetPos, 9);
-  } else if (previous_msg_timestamp != -1) {
-    fingertips_target_pos = Eigen::VectorXd::Map(
-        fingertips_target_kinematics_lcm_msg->targetPos, 9);
-  }
-  discrete_state->get_mutable_vector(start_time_traj_idx_)
-      .set_value(Eigen::VectorXd::Ones(1) * trifinger_state->get_timestamp());
-  discrete_state->get_mutable_vector(start_fingertips_pos_traj_idx_)
-      .set_value(cur_fingertips_pos);
-  discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
-      .set_value(cur_fingertips_vel);
-  discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
-      .set_value(fingertips_target_pos);
-  discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
-      .set_value(Eigen::VectorXd::Map(
-          fingertips_target_kinematics_lcm_msg->targetVel, 9));
-  discrete_state->get_mutable_vector(prev_target_timestamp_idx_)
-      .set_value((Eigen::VectorXd::Ones(1) *
-                  fingertips_target_kinematics_lcm_msg->utime));
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -228,11 +229,16 @@ void FingertipTargetKinematicsReceiver::CopytoLCMCurrentFingertipPositions(
     dairlib::lcmt_fingertips_position* lcm_cur_fingertips_pos) const {
   auto cur_fingertips_pos =
       context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
+  auto cur_fingertips_vel =
+      context.get_discrete_state(cur_fingertips_vel_idx_).get_value();
   lcm_cur_fingertips_pos->utime =
       static_cast<int64_t>(context.get_time() * 1e6);
 
   for (int i = 0; i < cur_fingertips_pos.size(); i++) {
     lcm_cur_fingertips_pos->curPos[i] = cur_fingertips_pos[i];
+  }
+  for (int i = 0; i < cur_fingertips_vel.size(); i++) {
+    lcm_cur_fingertips_pos->curVel[i] = cur_fingertips_vel[i];
   }
 }
 

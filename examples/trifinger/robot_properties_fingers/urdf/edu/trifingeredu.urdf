@@ -177,7 +177,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-         <sphere radius="0.01575"/>/>
+         <sphere radius="0.01575"/>
       </geometry>
     </collision>
     <inertial>

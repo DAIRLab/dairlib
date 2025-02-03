@@ -168,7 +168,7 @@ class OpticalFlow:
         sphere_mem_center = np.array([0, 0, 23.85E-3])
 
         CoP_ray = proj_ray
-
+        
         CoP_ray_norm =  CoP_ray/np.linalg.norm(CoP_ray)
         
         #sensor diameter: 32mm

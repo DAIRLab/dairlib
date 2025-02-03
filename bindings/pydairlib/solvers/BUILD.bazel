@@ -11,6 +11,21 @@ load(
     "pybind_py_library",
 )
 
+pybind_py_library(
+    name = "c3_py",
+    cc_deps = [
+        "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "c3",
+    cc_srcs = ["c3_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -22,21 +37,17 @@ py_library(
     ],
     imports = PACKAGE_INFO.py_imports,
     deps = [
+        "//bindings/pydairlib:module_py",
     ],
 )
 
 PY_LIBRARIES = [
-    ":module_py",
-    "//bindings/pydairlib/common",
-    "//bindings/pydairlib/lcm",
-    "//bindings/pydairlib/multibody",
-    "//bindings/pydairlib/systems",
-    "//bindings/pydairlib/solvers",
+    ":c3_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "pydairlib",
-    visibility = ["//visibility:public"],
+    name = "solvers",
+    imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

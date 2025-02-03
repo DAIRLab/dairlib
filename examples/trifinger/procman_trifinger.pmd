@@ -1,71 +1,71 @@
 group "1.director" {
     cmd "drake-director" {
         exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
 group "2. Visualizer" {
     cmd "state-visualizer-floating (from hardware)" {
         exec = "bazel-bin/examples/trifinger/trifinger_visualizer";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "state-visualizer-floating (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_visualizer --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
 group "3.[SIM] Trifinger" {
     cmd "Simulate" {
         exec = "bazel-bin/examples/trifinger/trifinger_simulation";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
 group "4. Controllers" {
     cmd "OSC Controller (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_osc_controller";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "OSC Controller (from hardware)" {
         exec = "taskset -c 3-5 bazel-bin/examples/trifinger/trifinger_osc_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
-        host = "localhost";
+        host = "trifinger";
     }
 
     cmd "Impedance Controller (from simulation)" {
         exec = "bazel-bin/examples/trifinger/run_impedance_controller";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "Impedance Controller (from hardware)" {
         exec = "bazel-bin/examples/trifinger/run_impedance_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
 group "5. ROS-LCM Bridge" {
     cmd "ROS-to-LCM (from hardware)" {
         exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge ";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "ROS-to-LCM (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "LCM-to-ROS (from hardware)" {
         exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge";
-        host = "localhost";
+        host = "trifinger";
     }
     cmd "LCM-to-ROS (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
 group "6.lcm-tools" {
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
+        host = "trifinger";
     }
 }
 
@@ -100,6 +100,13 @@ script "run-osc-controller-simulation" {
     start cmd "Simulate";
     wait ms 1000;
     start cmd "OSC Controller (from simulation)";
+}
+
+script "stop-osc-controller-simulation" {
+    stop cmd "state-visualizer-floating (from simulation)";
+    stop cmd "ROS-to-LCM (from simulation)";
+    stop cmd "LCM-to-ROS (from simulation)";
+    stop cmd "OSC Controller (from simulation)";
 }
 
 script "run-impedance-controller-hardware" {

@@ -67,6 +67,9 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
   UnrestrictedUpdate(const drake::systems::Context<double>& context,
                 drake::systems::State<double>* state) const;
 
+  void CalcReference(
+      double t, const fsm_info& fsm, MPCReference* mpc_reference) const;
+
   fsm_info CalcFSM(double t, const fsm_info& curr_fsm) const;
 
   const drake::multibody::MultibodyPlant<double> &plant_;

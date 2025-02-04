@@ -36,6 +36,11 @@ struct fsm_info {
     if (curr == kRight) return kPostRightDouble;
     return kLeft;
   }
+
+  bool is_double_stance() const {
+    return state == kPostLeftDouble || state == kPostRightDouble;
+  }
+
   fsm_state state = kPostRightDouble;
   double prev_switch_time{};
   double next_switch_time{};
@@ -68,7 +73,7 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
                 drake::systems::State<double>* state) const;
 
   void CalcReference(
-      double t, const fsm_info& fsm, MPCReference* mpc_reference) const;
+      double t, const Eigen::VectorXd& q, const fsm_info& fsm, MPCReference* mpc_reference) const;
 
   fsm_info CalcFSM(double t, const fsm_info& curr_fsm) const;
 

@@ -77,6 +77,26 @@ class IDMPC {
 
   void ProjectToQuaternionConstraint(Eigen::VectorXd& x);
 
+  /*!
+   * Add a cost on the deviation of a kinematic function from a trajectory
+   *
+   * TODO (@Brian-Acosta) support costs which include velocities
+   *
+   * @tparam C type of cost to add
+   * @param name name of the cost
+   * @param args arguments to c's constructor
+   */
+  template<class C, typename... Args>
+  void AddTaskCost(const std::string& name, Args&&... args) {
+    DRAKE_DEMAND(reference_manager_.IsInitialized());
+    reference_manager_.AddRunningStateCost<C>(
+        name, std::forward<Args>(args)...);
+    for (int i = 0; i < params_.N + 1; ++i) {
+      prog_.AddCost(
+          reference_manager_.GetEvaluator(name, i), position_vars(i));
+    }
+  }
+
  private:
 
   void UpdateCosts(const MPCReference& reference);
@@ -93,7 +113,6 @@ class IDMPC {
   void MakeForceLimits();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
-  void MakeUnitQuaternionConstraints();
   void MakeEEPositionVariablesAndConstraints();
 
   void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;

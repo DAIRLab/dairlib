@@ -37,8 +37,9 @@ cc_library(
     srcs = ["walking_reference_system.cc"],
     hdrs = ["walking_reference_system.h"],
     deps = [
-        "//systems/framework:vector",
+        "//systems/controllers/id_mpc",
         "//systems/controllers/id_mpc/costs:id_mpc_costs",
+        "//systems/framework:vector",
     ],
 )
 
@@ -57,13 +58,13 @@ cc_library(
     srcs = ["joint_pd_controller.cc"],
     hdrs = [
         "joint_controller_gains.h",
-        "joint_pd_controller.h"
+        "joint_pd_controller.h",
     ],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-    ]
+    ],
 )

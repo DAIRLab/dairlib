@@ -36,7 +36,6 @@ bool QPData::ValidateDimensions() const {
   return true;
 }
 
-// TODO (@Brian-Acosta) handle BoundingBox Constraints
 QPData QPData::ToQPData(const drake::solvers::MathematicalProgram &prog) {
   QPData qp;
 

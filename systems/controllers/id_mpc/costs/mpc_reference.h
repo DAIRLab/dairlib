@@ -8,13 +8,20 @@
 class MPCReference {
  public:
   /*!
-   * Reference trajectories for various quantities
+   * Default reference trajectories for a floating base robot
    */
   drake::trajectories::PiecewisePolynomial<double> q_traj_;
   drake::trajectories::PiecewisePolynomial<double> quat_traj_;
   drake::trajectories::PiecewisePolynomial<double> v_traj_;
   drake::trajectories::PiecewisePolynomial<double> lambda_traj_;
   drake::trajectories::PiecewisePolynomial<double> u_traj_;
+
+  /*!
+   * Reference trajectories in task space
+   */
+  std::unordered_map<
+    std::string,
+    drake::trajectories::PiecewisePolynomial<double>> task_space_trajs_;
 
   /*! timestamp of each MPC knot */
   std::vector<double> knot_times_;

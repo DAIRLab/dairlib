@@ -49,7 +49,7 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-//  MakeUnitQuaternionConstraints();
+  MakeEEPositionVariablesAndConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -110,7 +110,6 @@ void IDMPC::UpdateActiveContacts(
   timeline_.knot_states.at(knot_index).UpdateActiveContacts(contacts);
 }
 
-// TODO (@Brian-Acosta) correctly implement orientation cost
 void IDMPC::UpdateCosts(const MPCReference &reference) {
   reference_manager_.UpdateReference(
       "q", reference.q_traj_, reference.knot_times_);
@@ -122,6 +121,10 @@ void IDMPC::UpdateCosts(const MPCReference &reference) {
       "u", reference.u_traj_, reference.knot_times_);
   reference_manager_.UpdateReference(
       "lambda", reference.lambda_traj_, reference.knot_times_);
+
+  for (const auto& [name, traj] : reference.task_space_trajs_) {
+    reference_manager_.UpdateReference(name, traj, reference.knot_times_);
+  }
 }
 
 void IDMPC::UpdateTouchdownEEPosConstraints(
@@ -131,21 +134,6 @@ void IDMPC::UpdateTouchdownEEPosConstraints(
   for (int i = 1; i < params_.N + 1;  ++i) {
     ee_pos_constraints_per_knot_.at(i - 1)->set_point(
         ee_touchdown_names.at(i), ee_points.at(i));
-  }
-}
-
-void IDMPC::MakeUnitQuaternionConstraints() {
-  unit_quat_ = std::make_shared<QuaternionNormConstraint<AutoDiffXd>>();
-
-  for (auto index: dynamics_->get_plant().GetFloatingBaseBodies()) {
-    const auto& body = dynamics_->get_plant().get_body(index);
-    DRAKE_DEMAND(body.has_quaternion_dofs());
-    for (int i = 0; i <= params_.N; ++i) {
-      quat_contraints_.push_back(
-      prog_.AddConstraint(
-          unit_quat_,
-          this->position_vars(i).segment(body.floating_positions_start(), 4)));
-    }
   }
 }
 
@@ -230,9 +218,6 @@ void IDMPC::MakeKnotPoints() {
       {}, {}
     };
     if (i > 0) {
-//      cfg.active_constraint_indices.resize(dynamics_->nh(), 0);
-//      std::iota(cfg.active_constraint_indices.begin(),
-//                cfg.active_constraint_indices.end(), 0);
       cfg.active_constraint_dot_indices.resize(
           dynamics_->nh() + dynamics_->nc_active(), 0);
       std::iota(cfg.active_constraint_dot_indices.begin(),

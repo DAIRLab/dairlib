@@ -86,6 +86,12 @@ class ReferenceManager {
     return terminal_evals_.at(name);
   }
 
+  bool IsInitialized() const { return N_ > 0 and dt_ > 0;}
+
+  bool HasReferenceNamed(const std::string& name) const {
+    return evaluators_.contains(name) or terminal_evals_.contains(name);
+  }
+
  private:
   std::unordered_map<
       std::string, std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>>> evaluators_;
@@ -93,8 +99,8 @@ class ReferenceManager {
   std::unordered_map<
       std::string, std::shared_ptr<NonlinearLeastSquaresCost<T>>> terminal_evals_;
 
-  int N_;
-  double dt_;
+  int N_{};
+  double dt_{};
 };
 
 }

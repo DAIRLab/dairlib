@@ -26,6 +26,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "lcs_factory_py",
+    cc_deps = [
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "lcs_factory",
+    cc_srcs = ["lcs_factory_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -43,6 +58,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":c3_py",
+    ":lcs_factory_py"
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -67,15 +67,21 @@ FingertipTargetKinematicsReceiver::FingertipTargetKinematicsReceiver(
   // Discrete state which stores the desired fingertips position.
   fingertips_target_pos_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
   fingertips_target_vel_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  fingertips_target_quat_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+
   start_fingertips_pos_traj_idx_ =
       DeclareDiscreteState(Eigen::VectorXd::Zero(9));
   start_fingertips_vel_traj_idx_ =
       DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  start_fingertips_quat_traj_idx_ =
+      DeclareDiscreteState(Eigen::VectorXd::Zero(12));      
   prev_target_timestamp_idx_ =
       DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
+
   start_time_traj_idx_ = DeclareDiscreteState(Eigen::VectorXd::Ones(1) * (-1));
   cur_fingertips_pos_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
   cur_fingertips_vel_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(9));
+  cur_fingertips_quat_idx_ = DeclareDiscreteState(Eigen::VectorXd::Zero(12));
 }
 
 drake::systems::EventStatus
@@ -91,6 +97,25 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
   // Evaluate the current positions of the fingertips.
   Eigen::VectorXd q_trifinger = trifinger_state->GetPositions();
   Eigen::VectorXd v_trifinger = trifinger_state->GetVelocities();
+
+  // Calculate the pose of the end effector with quaternions
+  const drake::multibody::Body<double>& fingertip_0_body = plant_.GetBodyByName(fingertip_0_name_);
+  const drake::multibody::Body<double>& fingertip_120_body = plant_.GetBodyByName(fingertip_120_name_);
+  const drake::multibody::Body<double>& fingertip_240_body = plant_.GetBodyByName(fingertip_240_name_);
+
+  auto fingertip_0_pose = plant_.EvalBodyPoseInWorld(*context_, fingertip_0_body);
+  auto fingertip_120_pose = plant_.EvalBodyPoseInWorld(*context_, fingertip_120_body);
+  auto fingertip_240_pose = plant_.EvalBodyPoseInWorld(*context_, fingertip_240_body);
+
+  drake::math::RotationMatrix<double> fingertip_0_rot(fingertip_0_pose.GetAsMatrix34().leftCols(3));
+  drake::math::RotationMatrix<double> fingertip_120_rot(fingertip_120_pose.GetAsMatrix34().leftCols(3));
+  drake::math::RotationMatrix<double> fingertip_240_rot(fingertip_240_pose.GetAsMatrix34().leftCols(3));
+
+  // Remember: canonical quaternion q = [scalar, imaginary]
+  Eigen::Vector4d fingertip_0_quat = fingertip_0_rot.ToQuaternionAsVector4();
+  Eigen::Vector4d fingertip_120_quat = fingertip_120_rot.ToQuaternionAsVector4();
+  Eigen::Vector4d fingertip_240_quat = fingertip_240_rot.ToQuaternionAsVector4();
+
   multibody::SetPositionsIfNew<double>(plant_, q_trifinger, context_);
   multibody::SetVelocitiesIfNew<double>(plant_, v_trifinger, context_);
 
@@ -104,6 +129,8 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
           .EvalBodySpatialVelocityInWorld(
               *context_, plant_.GetBodyByName(fingertip_0_name_))
           .translational();
+
+
   auto fingertip_120_pos =
       plant_
           .EvalBodyPoseInWorld(*context_,
@@ -114,6 +141,8 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
           .EvalBodySpatialVelocityInWorld(
               *context_, plant_.GetBodyByName(fingertip_120_name_))
           .translational();
+
+
   auto fingertip_240_pos =
       plant_
           .EvalBodyPoseInWorld(*context_,
@@ -124,14 +153,23 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
           .EvalBodySpatialVelocityInWorld(
               *context_, plant_.GetBodyByName(fingertip_240_name_))
           .translational();
+
   Eigen::VectorXd cur_fingertips_pos(9);
   Eigen::VectorXd cur_fingertips_vel(9);
+  Eigen::VectorXd cur_fingertips_quat(12);
+
   cur_fingertips_pos << fingertip_0_pos, fingertip_120_pos, fingertip_240_pos;
   cur_fingertips_vel << fingertip_0_vel, fingertip_120_vel, fingertip_240_vel;
+  cur_fingertips_quat << fingertip_0_quat, fingertip_120_quat, fingertip_240_quat;
+
+  std::cout << cur_fingertips_quat << std::endl;
+
   discrete_state->get_mutable_vector(cur_fingertips_pos_idx_)
       .set_value(cur_fingertips_pos);
   discrete_state->get_mutable_vector(cur_fingertips_vel_idx_)
       .set_value(cur_fingertips_vel);
+  discrete_state->get_mutable_vector(cur_fingertips_quat_idx_)
+      .set_value(cur_fingertips_quat);
 
   Eigen::VectorXd fingertips_target_pos = cur_fingertips_pos;
   auto current_msg_timestamp = fingertips_target_kinematics_lcm_msg->utime;
@@ -154,6 +192,9 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
         .set_value(cur_fingertips_pos);
     discrete_state->get_mutable_vector(start_fingertips_vel_traj_idx_)
         .set_value(cur_fingertips_vel);
+    discrete_state->get_mutable_vector(start_fingertips_quat_traj_idx_)
+        .set_value(cur_fingertips_quat);
+
     discrete_state->get_mutable_vector(fingertips_target_pos_idx_)
         .set_value(fingertips_target_pos);
     discrete_state->get_mutable_vector(fingertips_target_vel_idx_)
@@ -231,6 +272,9 @@ void FingertipTargetKinematicsReceiver::CopytoLCMCurrentFingertipPositions(
       context.get_discrete_state(cur_fingertips_pos_idx_).get_value();
   auto cur_fingertips_vel =
       context.get_discrete_state(cur_fingertips_vel_idx_).get_value();
+  auto cur_fingertips_quat =
+      context.get_discrete_state(cur_fingertips_quat_idx_).get_value();
+
   lcm_cur_fingertips_pos->utime =
       static_cast<int64_t>(context.get_time() * 1e6);
 
@@ -239,6 +283,9 @@ void FingertipTargetKinematicsReceiver::CopytoLCMCurrentFingertipPositions(
   }
   for (int i = 0; i < cur_fingertips_vel.size(); i++) {
     lcm_cur_fingertips_pos->curVel[i] = cur_fingertips_vel[i];
+  }
+  for (int i = 0; i < cur_fingertips_quat.size(); i++) {
+    lcm_cur_fingertips_pos->curQuat[i] = cur_fingertips_quat[i];
   }
 }
 

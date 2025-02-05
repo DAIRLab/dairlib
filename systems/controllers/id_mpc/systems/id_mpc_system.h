@@ -25,6 +25,10 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_reference_);
   }
 
+  const ConstrainedDynamicsInfo& dynamics() const {
+    return trajopt_.dynamics();
+  }
+
  private:
 
   void SetInitialSolverState(

@@ -12,13 +12,19 @@ struct GaitParams {
   double t_ds;
   double mpc_dt;
   int mpc_N;
+  double stance_width;
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;
   Eigen::VectorXd standing_pose_u;
   std::string left_foot_body_name;
   std::string right_foot_body_name;
+  std::string floating_base_name;
   std::vector<std::string> left_foot_contacts;
   std::vector<std::string> right_foot_contacts;
+  std::vector<int> left_leg_actuator_idxs;
+  std::vector<int> right_leg_actuator_idxs;
+  std::vector<int> left_leg_holonomic_constraint_idxs;
+  std::vector<int> right_leg_holonomic_constraint_idxs;
   Eigen::Vector3d foot_midpoint;
 };
 
@@ -54,7 +60,7 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
  public:
 
   WalkingReferenceSystem(
-      const drake::multibody::MultibodyPlant<double> &plant,
+      const ConstrainedDynamicsInfo& dynamics,
       drake::systems::Context<double> *plant_context,
       const GaitParams& params);
 
@@ -78,7 +84,7 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
 
   fsm_info CalcFSM(double t, const fsm_info& curr_fsm) const;
 
-  void CalcGaitTiming(
+  std::vector<fsm_info::fsm_state> CalcGaitTiming(
       double t, const fsm_info& fsm, MPCReference* mpc_reference) const;
 
   void SetContactsAtKnot(
@@ -87,13 +93,33 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
   // Note that these methods assume the context is up-to-date with the
   // robot's current state
   // TODO (@Brian-Acosta) include yaw rate in the reference
-  drake::trajectories::PiecewisePolynomial<double>CalcPositionTraj() const;
+  // TODO (@Brian-Acosta) add height lookup for position
+  drake::trajectories::PiecewisePolynomial<double> CalcPositionTraj(
+      fsm_info::fsm_state fsm_state, const Eigen::Vector2d& vdes,
+      const std::vector<double>& breaks) const;
   drake::trajectories::PiecewisePolynomial<double> CalcOrientationTraj() const;
-  drake::trajectories::PiecewisePolynomial<double> CalcVelocityTraj() const;
-  drake::trajectories::PiecewisePolynomial<double> CalcInputTraj() const;
-  drake::trajectories::PiecewisePolynomial<double> CalcLambdaTraj() const;
+  drake::trajectories::PiecewisePolynomial<double> CalcVelocityTraj(
+      const Eigen::Vector2d& vdes) const;
 
+  drake::trajectories::PiecewisePolynomial<double> CalcInputTraj(
+      const std::vector<double>& breaks,
+      const std::vector<fsm_info::fsm_state> fsm_states) const;
 
+  drake::trajectories::PiecewisePolynomial<double> CalcLambdaTraj(
+      const std::vector<double>& breaks,
+      const std::vector<fsm_info::fsm_state>& fsm_states,
+      const std::vector<std::vector<std::string>>& active_contacts) const;
+
+  drake::trajectories::PiecewisePolynomial<double> CalcSwingFootTraj(
+      const std::vector<double>& breaks,
+      const std::vector<fsm_info::fsm_state>& fsm_states) const;
+
+  std::vector<double> CalcSSPhaseVector(
+      const fsm_info fsm,
+      const std::vector<double>& breaks,
+      const std::vector<fsm_info::fsm_state>& fsm_vector) const;
+
+  const ConstrainedDynamicsInfo& dynamics_;
   const drake::multibody::MultibodyPlant<double> &plant_;
   drake::systems::Context<double> *plant_context_;
   GaitParams params_;

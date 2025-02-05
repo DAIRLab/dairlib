@@ -48,6 +48,17 @@ class ConstrainedDynamicsInfo {
     return lambda.segment(nh_ + lambda_c_start_idxs_.at(name), 3);
   }
 
+  template <typename T>
+  drake::VectorX<T> get_lambda_for_active_contacts(
+      const std::vector<std::string>& contacts, const drake::VectorX<T>& lambda) const {
+    drake::VectorX<T> out = drake::VectorX<T>::Zero(nlambda());
+    for (const auto& name : contacts) {
+      int idx = nh_ + lambda_c_start_idxs_.at(name);
+      out.segment(idx, 3) = lambda.segment(idx, 3);
+    }
+    return out;
+  }
+
   const std::vector<std::string>& contacts() {
     return contact_names_;
   }

@@ -11,7 +11,7 @@ struct GaitParams {
   double t_ss;
   double t_ds;
   double mpc_dt;
-  double mpc_N;
+  int mpc_N;
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;
   Eigen::VectorXd standing_pose_u;
@@ -39,6 +39,10 @@ struct fsm_info {
 
   bool is_double_stance() const {
     return state == kPostLeftDouble || state == kPostRightDouble;
+  }
+
+  static bool is_double_stance(fsm_state s) {
+    return s == kPostLeftDouble || s == kPostRightDouble;
   }
 
   fsm_state state = kPostRightDouble;
@@ -72,10 +76,23 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
   UnrestrictedUpdate(const drake::systems::Context<double>& context,
                 drake::systems::State<double>* state) const;
 
-  void CalcReference(
-      double t, const Eigen::VectorXd& q, const fsm_info& fsm, MPCReference* mpc_reference) const;
-
   fsm_info CalcFSM(double t, const fsm_info& curr_fsm) const;
+
+  void CalcGaitTiming(
+      double t, const fsm_info& fsm, MPCReference* mpc_reference) const;
+
+  void SetContactsAtKnot(
+      int i, fsm_info::fsm_state state, MPCReference* ref) const;
+
+  // Note that these methods assume the context is up-to-date with the
+  // robot's current state
+  // TODO (@Brian-Acosta) include yaw rate in the reference
+  drake::trajectories::PiecewisePolynomial<double>CalcPositionTraj() const;
+  drake::trajectories::PiecewisePolynomial<double> CalcOrientationTraj() const;
+  drake::trajectories::PiecewisePolynomial<double> CalcVelocityTraj() const;
+  drake::trajectories::PiecewisePolynomial<double> CalcInputTraj() const;
+  drake::trajectories::PiecewisePolynomial<double> CalcLambdaTraj() const;
+
 
   const drake::multibody::MultibodyPlant<double> &plant_;
   drake::systems::Context<double> *plant_context_;
@@ -86,6 +103,9 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
 
   drake::systems::AbstractStateIndex reference_state_idx_;
   drake::systems::AbstractStateIndex fsm_info_idx_;
+
+  int ds_intervals_;
+  int ss_intervals_;
 };
 
 }

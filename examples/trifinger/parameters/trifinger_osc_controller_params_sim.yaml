@@ -1,0 +1,70 @@
+controller_frequency: 1000
+target_kinematics_update_frequency: 20
+
+trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
+cube_model: examples/trifinger/robot_properties_fingers/urdf/cube/cube_v2.urdf
+fingertip_0_name: densetact_0
+fingertip_120_name: densetact_120
+fingertip_240_name: finger_tip_link_240
+
+home_position: [0, -0.8, -1.3, 0, -0.8, -1.3, 0, -0.8, -1.3]
+require_friction_compensation: false
+
+# OSCGains settings
+w_input: 0.00 # unused
+w_accel: 0.00001 # unused
+w_lambda: 0.0 # unused
+w_input_reg: 0.0 # unused
+w_soft_constraint: 0.0 # unused
+impact_threshold: 0.000 # unused
+impact_tau: 0.000 # unused
+mu: 1.0 # unused
+
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 1, 1, 1]
+#W_input_reg: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_lambda_c_reg: [ 0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01 ] # unused
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.001, 0.001 ] # unused
+
+Fingertip0W:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+Fingertip0Kp:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+Fingertip0Kd:
+  [ 5, 0, 0,
+    0, 10, 0,
+    0, 0, 15 ]
+
+Fingertip120W:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+Fingertip120Kp:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+Fingertip120Kd:
+  [ 5, 0, 0,
+    0, 5, 0,
+    0, 0, 5 ]
+
+Fingertip240W:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+Fingertip240Kp:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+Fingertip240Kd:
+  [ 5, 0, 0,
+    0, 5, 0,
+    0, 0, 15 ]

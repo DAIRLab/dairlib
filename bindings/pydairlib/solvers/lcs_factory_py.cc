@@ -4,6 +4,8 @@
 
 #include "solvers/lcs_factory.h"
 
+#include "drake/bindings/pydrake/common/sorted_pair_pybind.h"
+
 namespace py = pybind11;
 
 namespace dairlib {

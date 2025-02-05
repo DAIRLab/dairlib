@@ -134,7 +134,15 @@ PYBIND11_MODULE(c3, m) {
       .def(py::init<const LCS&>(), py::arg("other"))
 
       .def("simulate", &LCS::Simulate, py::arg("x_init"), py::arg("input"),
-           "Simulate the system for one step");
+           "Simulate the system for one step")
+      .def_readwrite("A", &LCS::A_)
+      .def_readwrite("B", &LCS::B_)
+      .def_readwrite("D", &LCS::D_)
+      .def_readwrite("d", &LCS::d_)
+      .def_readwrite("E", &LCS::E_)
+      .def_readwrite("F", &LCS::F_)
+      .def_readwrite("H", &LCS::H_)
+      .def_readwrite("c", &LCS::c_);
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());

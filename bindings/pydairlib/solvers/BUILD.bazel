@@ -31,6 +31,8 @@ pybind_py_library(
     cc_deps = [
         "//solvers:lcs",
         "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:sorted_pair_pybind",
+        "@drake//bindings/pydrake:pydrake_pybind",
     ],
     cc_so_name = "lcs_factory",
     cc_srcs = ["lcs_factory_py.cc"],

@@ -121,7 +121,7 @@ int SimulateTrifinger(int argc, char* argv[]) {
     LcmPublisherSystem::Make<dairlib::lcmt_densetact_measurement_data>(
       lcm_channels.densetact_channel, 
       lcm,
-      1.0 / sim_params.trifinger_publish_rate));
+      1.0 / sim_params.densetact_publish_rate));
           
 
   // Connect plant reaction to lcm

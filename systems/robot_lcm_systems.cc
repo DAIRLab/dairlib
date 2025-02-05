@@ -197,9 +197,12 @@ void ContactDataSender::Output(
   
   const int num_of_contacts = constact_result.num_point_pair_contacts();
 
-  bool contact_bool = false;
 
-  Eigen::Vector3<double> contact_force = Eigen::Vector3<double>::Zero();
+  bool contact_bool_1 = false;
+  bool contact_bool_2 = false;
+
+  Eigen::Vector3<double> contact_force_1 = Eigen::Vector3<double>::Zero();
+  Eigen::Vector3<double> contact_force_2 = Eigen::Vector3<double>::Zero();
 
   for (int i = 0; i < num_of_contacts; i++){
     const auto& contact_instance = constact_result.point_pair_contact_info(i);
@@ -208,12 +211,24 @@ void ContactDataSender::Output(
         || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor1_index))){
           
           // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
-          contact_force =  contact_instance.contact_force();
+          contact_force_1 =  contact_instance.contact_force();
 
           // Returns the position p_WC of the contact point C in the world frame W. 
           //contact_pose_W = contact_instance.point_pair();
 
-          contact_bool = true;
+          contact_bool_1 = true;
+        }
+
+    if (((contact_instance.bodyA_index() == sensor2_index) && (contact_instance.bodyB_index() == object_index)) 
+        || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor2_index))){
+          
+          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
+          contact_force_2 =  contact_instance.contact_force();
+
+          // Returns the position p_WC of the contact point C in the world frame W. 
+          //contact_pose_W = contact_instance.point_pair();
+
+          contact_bool_2 = true;
         }
     }
 
@@ -221,17 +236,39 @@ void ContactDataSender::Output(
   contact_output->numSensors = 2;
   contact_output->sensorData.resize(contact_output->numSensors);
 
-  for (int i = 0; i < contact_output->numSensors; i++){
-    dairlib::lcmt_densetact_measurement contact;
-    contact.utime = context.get_time() * 1e6; 
-    contact.inContact = contact_bool;
-    //contact.contactPose = contact_pose_W;
+  // for (int i = 0; i < contact_output->numSensors; i++){
+  //   dairlib::lcmt_densetact_measurement contact;
+  //   contact.utime = context.get_time() * 1e6; 
+  //   contact.inContact = contact_bool;
+  //   //contact.contactPose = contact_pose_W;
 
-    contact.scaledNormal = contact_force[0];
-    contact.scaledFriction[0] = contact_force[1];
-    contact.scaledFriction[1] = contact_force[2];
-    contact_output->sensorData[i] = contact;
-  }
+  //   contact.scaledNormal = contact_force[0];
+  //   contact.scaledFriction[0] = contact_force[1];
+  //   contact.scaledFriction[1] = contact_force[2];
+  //   contact_output->sensorData[i] = contact;
+  // }
+
+
+  dairlib::lcmt_densetact_measurement contact;
+  // DenseTact 1
+  contact.utime = context.get_time() * 1e6; 
+  contact.inContact = contact_bool_1;
+  //contact.contactPose = contact_pose_W;
+
+  contact.scaledNormal = contact_force_1[0];
+  contact.scaledFriction[0] = contact_force_1[1];
+  contact.scaledFriction[1] = contact_force_1[2];
+  contact_output->sensorData[1] = contact;
+
+  // DenseTact 2
+  contact.utime = context.get_time() * 1e6; 
+  contact.inContact = contact_bool_2;
+  //contact.contactPose = contact_pose_W;
+
+  contact.scaledNormal = contact_force_2[0];
+  contact.scaledFriction[0] = contact_force_2[1];
+  contact.scaledFriction[1] = contact_force_2[2];
+  contact_output->sensorData[2] = contact;
   
   // plant_.GetPositions(*plant_context_);
 }

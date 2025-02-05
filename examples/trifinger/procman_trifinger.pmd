@@ -25,7 +25,7 @@ group "3.[SIM] Trifinger" {
 
 group "4. Controllers" {
     cmd "OSC Controller (from simulation)" {
-        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller";
+        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller --controller_parameters=examples/trifinger/parameters/trifinger_osc_controller_params_sim.yaml";
         host = "trifinger";
     }
     cmd "OSC Controller (from hardware)" {

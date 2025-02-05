@@ -13,6 +13,9 @@
 
 #include "drake/common/text_logging.h"
 
+
+#include <iostream>
+
 namespace dairlib {
 namespace systems {
 
@@ -201,6 +204,7 @@ void ContactDataSender::Output(
   bool contact_bool_1 = false;
   bool contact_bool_2 = false;
 
+  // Initalize force vectors
   Eigen::Vector3<double> contact_force_1 = Eigen::Vector3<double>::Zero();
   Eigen::Vector3<double> contact_force_2 = Eigen::Vector3<double>::Zero();
 
@@ -209,19 +213,19 @@ void ContactDataSender::Output(
 
     if (((contact_instance.bodyA_index() == sensor1_index) && (contact_instance.bodyB_index() == object_index)) 
         || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor1_index))){
-          
+          std::cout << "CONTACT" << std::endl;
           // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
           contact_force_1 =  contact_instance.contact_force();
 
           // Returns the position p_WC of the contact point C in the world frame W. 
-          //contact_pose_W = contact_instance.point_pair();
+          // contact_pose_W_1 = contact_instance.point_pair();
 
           contact_bool_1 = true;
         }
 
     if (((contact_instance.bodyA_index() == sensor2_index) && (contact_instance.bodyB_index() == object_index)) 
         || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor2_index))){
-          
+          std::cout << "CONTACT" << std::endl;
           // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
           contact_force_2 =  contact_instance.contact_force();
 

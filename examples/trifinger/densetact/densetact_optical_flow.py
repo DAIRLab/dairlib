@@ -13,7 +13,9 @@ import os
 
 
 class OpticalFlow:
-    def __init__(self, densetact, data):
+    def __init__(self, 
+        densetact: str, 
+        data: dict[str]):
 
         if data['real_time']:
             for i in range(15):
@@ -94,7 +96,8 @@ class OpticalFlow:
 
 
 
-    def pre_processing(self, image):
+    def pre_processing(self, 
+        image: np.ndarray):
         """
         Helper function designed for any image pre-processing 
         - blurring, sharpening, or changing contrast)
@@ -118,7 +121,10 @@ class OpticalFlow:
 
         return proc_img_gray[by[0]: by[1], bx[0]: bx[1]], proc_img[by[0]: by[1], bx[0]: bx[1]]
 
-    def get_force(self, frame_color, flow_norm_thres, image_diff_thres):
+    def get_force(self, 
+        frame_color: np.ndarray, 
+        flow_norm_thres: int, 
+        image_diff_thres: int) -> dict[str]:
         """
         Each feature has its respective position (i.e. pos) and flow vector (i.e. flow_vec).
         This extracts location of contact (max divergence) and force magnitudes:

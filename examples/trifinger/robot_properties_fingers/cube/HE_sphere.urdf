@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="HE_sphere">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.0190825425568732 0.00261709830668573 0.010320553071324"
+        rpy="0 0 0" />
+      <mass
+        value="0.126919008388386" />
+      <inertia
+        ixx="4.83679116315819E-05"
+        ixy="4.1798412117671E-38"
+        ixz="2.1550612262858E-38"
+        iyy="5.28695936923881E-05"
+        iyz="-8.30454626379232E-22"
+        izz="4.83679116315819E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://HE_sphere/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://HE_sphere/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

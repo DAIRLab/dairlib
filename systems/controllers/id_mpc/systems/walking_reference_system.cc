@@ -3,6 +3,7 @@
 #include "walking_reference_system.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/controllers/id_mpc/costs/relative_position_cost.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -10,6 +11,7 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 
 using drake::systems::State;
@@ -74,10 +76,13 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
   mpc_reference.lambda_traj_ = CalcLambdaTraj(mpc_reference.knot_times_, fsm_vector, mpc_reference.active_contacts_);
   mpc_reference.u_traj_ = CalcInputTraj(mpc_reference.knot_times_, fsm_vector);
 
+  auto phase_vec = CalcSSPhaseVector(
+      next_fsm, mpc_reference.knot_times_, fsm_vector);
+
+  mpc_reference.task_space_trajs_["swing_foot"] = CalcSwingFootTraj(
+      mpc_reference.knot_times_, fsm_vector, phase_vec);
+
   state->get_mutable_abstract_state<fsm_info>(fsm_info_idx_) = next_fsm;
-
-  // TODO (@Brian-Acosta) add the swing foot traj
-
   return EventStatus::Succeeded();
 }
 
@@ -281,15 +286,59 @@ PiecewisePolynomial<double> WalkingReferenceSystem::CalcLambdaTraj(
 }
 
 std::vector<double> WalkingReferenceSystem::CalcSSPhaseVector(
-    const fsm_info fsm,
+    const fsm_info& fsm,
     const std::vector<double>& breaks,
     const std::vector<fsm_info::fsm_state>& fsm_vector) const {
 
+  std::vector<double> phase{};
+  fsm_info curr_fsm = fsm;
+
+  for (int i = 0; i < breaks.size(); ++i) {
+    if (curr_fsm.is_double_stance()) {
+      phase.push_back(0);
+    } else {
+      phase.push_back((breaks.at(i) - fsm.prev_switch_time) / params_.t_ss);
+    }
+    if (i + 1 < breaks.size() && fsm_vector.at(i+1) != curr_fsm.state) {
+      curr_fsm.state = fsm_vector.at(i+1);
+      curr_fsm.prev_switch_time = breaks.at(i+1);
+    }
+  }
+  return phase;
+}
+
+void WalkingReferenceSystem::AddSwingFootTrajCostToMPC(
+    IDMPC *mpc, const Matrix3d& Q) const {
+  mpc->AddTaskCost<RelativePositionCost>(
+      "swing_foot", Q, Vector3d::Zero(), plant_,
+      params_.right_foot_body_name, params_.left_foot_body_name,
+      params_.foot_midpoint, params_.foot_midpoint);
 }
 
 PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
-    const std::vector<double> &breaks, const std::vector<fsm_info::fsm_state> &fsm_states) const {
+    const std::vector<double>& breaks,
+    const std::vector<fsm_info::fsm_state>& fsm_states,
+    const std::vector<double> phases) const {
 
+  std::vector<MatrixXd> knots{};
+
+  auto R_yaw = multibody::GetBodyYawRotation_R_WB<double>(
+      plant_, *plant_context_, params_.floating_base_name);
+
+  Vector3d l = params_.stance_width * Vector3d::UnitY();
+
+  // convention of swing trajectory is the position of the left foot
+  // relative to the right foot
+  for (int i = 0; i < phases.size(); ++i) {
+    Vector3d p = l;
+    p(2) = sin(M_PI * phases.at(i));
+    if (fsm_states.at(i) == fsm_info::kLeft) {
+      p(2) *= -1;
+    }
+    knots.push_back(R_yaw * p);
+  }
+
+  return PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 }
 
 }

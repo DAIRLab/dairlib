@@ -74,7 +74,7 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_vdes_);
   }
 
-  void AddSwingFootTrajCostToMPC(IDMPC* mpc) const;
+  void AddSwingFootTrajCostToMPC(IDMPC* mpc, const Eigen::Matrix3d& Q) const;
 
  private:
 
@@ -112,10 +112,11 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
 
   drake::trajectories::PiecewisePolynomial<double> CalcSwingFootTraj(
       const std::vector<double>& breaks,
-      const std::vector<fsm_info::fsm_state>& fsm_states) const;
+      const std::vector<fsm_info::fsm_state>& fsm_states,
+      const std::vector<double> phases) const;
 
   std::vector<double> CalcSSPhaseVector(
-      const fsm_info fsm,
+      const fsm_info& fsm,
       const std::vector<double>& breaks,
       const std::vector<fsm_info::fsm_state>& fsm_vector) const;
 

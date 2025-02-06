@@ -31,6 +31,14 @@ WalkingReferenceSystem::WalkingReferenceSystem(
 
   input_port_vdes_ = DeclareVectorInputPort("vdes", 2).get_index();
 
+  reference_state_idx_ = DeclareAbstractState(drake::Value<MPCReference>());
+  fsm_info_idx_ = DeclareAbstractState(drake::Value<fsm_info>());
+
+  DeclareStateOutputPort("reference", reference_state_idx_);
+
+  DeclareForcedUnrestrictedUpdateEvent(
+      &WalkingReferenceSystem::UnrestrictedUpdate);
+
   ds_intervals_ = std::round(params_.t_ds / params_.mpc_dt);
   ss_intervals_ = std::round(params_.t_ss / params_.mpc_dt);
 
@@ -65,8 +73,8 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
   const auto &fsm = state->get_abstract_state<fsm_info>(fsm_info_idx_);
   fsm_info next_fsm = CalcFSM(t, fsm);
 
-  auto &mpc_reference =
-      state->get_mutable_abstract_state<MPCReference>(reference_state_idx_);
+  MPCReference mpc_reference =
+      state->get_abstract_state<MPCReference>(reference_state_idx_);
 
   auto fsm_vector = CalcGaitTiming(t, next_fsm, &mpc_reference);
 
@@ -83,6 +91,8 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
       mpc_reference.knot_times_, fsm_vector, phase_vec);
 
   state->get_mutable_abstract_state<fsm_info>(fsm_info_idx_) = next_fsm;
+  state->get_mutable_abstract_state<MPCReference>(reference_state_idx_) = mpc_reference;
+
   return EventStatus::Succeeded();
 }
 
@@ -113,7 +123,7 @@ std::vector<fsm_info::fsm_state> GetFSMStateVector(
 
   int N = params.mpc_N + 1;
 
-  std::vector<fsm_info::fsm_state> states_per_knot;
+  std::vector<fsm_info::fsm_state> states_per_knot(N, fsm_info::kPostRightDouble);
   for (int i = 0; i < intervals; ++i) {
     states_per_knot.at(i) = fsm.state;
   }

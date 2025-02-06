@@ -29,6 +29,10 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
     return trajopt_.dynamics();
   }
 
+  IDMPC* get_mutable_trajopt_ptr() {
+    return &trajopt_;
+  }
+
  private:
 
   void SetInitialSolverState(

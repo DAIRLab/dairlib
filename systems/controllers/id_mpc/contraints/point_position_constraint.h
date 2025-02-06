@@ -22,7 +22,7 @@ class PointPositionConstraint : public solvers::NonlinearConstraint<T> {
                           drake::VectorX<T>* y) const override;
 
   void set_point(const std::string& body, const Eigen::Vector3d& point) {
-    DRAKE_DEMAND(plant_.HasBodyNamed(body));
+    DRAKE_DEMAND(body.empty() || plant_.HasBodyNamed(body));
     body_name_ = body;
     point_ = point;
   }

@@ -268,7 +268,7 @@ void IDMPC::MakeEEPositionVariablesAndConstraints() {
     return;
   }
 
-  int num_touchdowns = (params_.N / params_.num_intervals_between_impacts);
+  int num_touchdowns = (params_.N / params_.num_intervals_between_impacts) + 1;
   for (int i = 0; i < num_touchdowns; ++i) {
     point_position_vars_.push_back(prog_.NewContinuousVariables(3));
   }

@@ -29,6 +29,7 @@ struct IDMPCParamsLoader {
   int N;
   double dt;
   int num_full_torque_knots;
+  int num_intervals_between_impacts;
   double mu = 1.0;
 
   // cost weights
@@ -57,11 +58,13 @@ struct IDMPCParamsLoader {
     a->Visit(DRAKE_NVP(Wq_final));
     a->Visit(DRAKE_NVP(Wrot_final));
     a->Visit(DRAKE_NVP(Wv_final));
+    a->Visit(DRAKE_NVP(num_intervals_between_impacts));
 
     params_out.N = N;
     params_out.dt = dt;
     params_out.num_full_torque_knots = num_full_torque_knots;
     params_out.mu = mu;
+    params_out.num_intervals_between_impacts = num_intervals_between_impacts;
     Eigen::VectorXd Wq_diag = Eigen::Map<Eigen::VectorXd>(Wq.data(), Wq.size());
     Eigen::VectorXd Wrot_diag = Eigen::Map<Eigen::VectorXd>(Wrot.data(), Wrot.size());
     Eigen::VectorXd Wv_diag = Eigen::Map<Eigen::VectorXd>(Wv.data(), Wv.size());

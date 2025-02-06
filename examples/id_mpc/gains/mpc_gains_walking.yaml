@@ -3,7 +3,7 @@ N: 20
 dt: 0.025
 num_full_torque_knots: 3
 mu: 0.1
-num_intervals_between_impacts: 0
+num_intervals_between_impacts: 16
 
 # position weights
 Wq: [

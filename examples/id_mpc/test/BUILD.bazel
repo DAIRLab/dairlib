@@ -1,0 +1,26 @@
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "standing_mpc_profiling_test",
+    srcs = ["standing_mpc_profiling_test.cc"],
+    deps = [
+        "//examples/id_mpc:cassie_mpc_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/framework:lcm_driven_loop",
+    ],
+)
+
+cc_binary(
+    name = "walking_mpc_test",
+    srcs = ["walking_mpc_test.cc"],
+    deps = [
+        "//examples/id_mpc:cassie_mpc_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/framework:lcm_driven_loop",
+    ],
+)

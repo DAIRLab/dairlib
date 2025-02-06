@@ -28,7 +28,6 @@ int DoMain() {
 
   auto dynamics = MakeCassieDynamics();
 
-  // TODO (@Brian-Acosta) YAML-ize this
   IDMPCParams params =
       LoadIDMPCParamsFromYaml("examples/id_mpc/gains/mpc_gains_standing.yaml");
 

@@ -1,12 +1,20 @@
 #include <memory>
 #include "cassie_mpc_utils.h"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 
 
 namespace dairlib {
 
 using systems::controllers::id_mpc::ConstrainedDynamicsInfo;
+using systems::controllers::id_mpc::GaitParams;
+using systems::controllers::id_mpc::IDMPCParams;
+
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+using drake::multibody::MultibodyPlant;
 
 std::unique_ptr<ConstrainedDynamicsInfo> MakeCassieDynamics() {
   std::string urdf = "examples/Cassie/urdf/cassie_fixed_spring_conservative.urdf";
@@ -79,6 +87,59 @@ std::unique_ptr<ConstrainedDynamicsInfo> MakeCassieDynamics() {
   );
 
   return std::move(dynamics_info);
+}
+
+GaitParams MakeCassieGaitParams(const IDMPCParams& mpc_params) {
+  std::string urdf = "examples/Cassie/urdf/cassie_fixed_spring_conservative.urdf";
+  MultibodyPlant<double> plant(0.0);
+  AddCassieMultibody(&plant, nullptr, true, urdf, false, false);
+  plant.Finalize();
+
+  GaitParams params;
+  params.t_ss = 0.35;
+  params.t_ds = 0.05;
+  params.mpc_N = mpc_params.N;
+  params.mpc_dt = mpc_params.dt;
+  params.stance_width = 0.3;
+
+  params.standing_pose_q = VectorXd::Zero(plant.num_positions());
+  params.standing_pose_u = VectorXd::Zero(plant.num_actuators());
+  params.standing_pose_lambda = VectorXd::Zero(3 * 4 + 2);
+
+  CassieFixedPointSolver(plant, 0.9, mpc_params.mu, 20, true, params.stance_width,
+                         &params.standing_pose_q,
+                         &params.standing_pose_u,
+                         &params.standing_pose_lambda, urdf);
+
+  params.left_foot_body_name = "toe_left";
+  params.right_foot_body_name = "toe_right";
+  params.floating_base_name = "pelvis";
+  params.left_foot_contacts = {"toe_left_front", "toe_left_rear"};
+  params.right_foot_contacts = {"toe_right_front", "toe_right_rear"};
+  params.right_leg_holonomic_constraint_idxs = {1};
+  params.left_leg_holonomic_constraint_idxs = {0};
+  params.foot_midpoint =
+      0.5 * (RightToeRear(plant).first + RightToeFront(plant).first);
+
+  auto act_map = multibody::MakeNameToActuatorsMap(plant);
+
+  params.left_leg_actuator_idxs = {
+      act_map["hip_roll_left_motor"],
+      act_map["hip_yaw_left_motor"],
+      act_map["hip_pitch_left_motor"],
+      act_map["knee_left_motor"],
+      act_map["toe_left_motor"]
+  };
+
+  params.right_leg_actuator_idxs = {
+      act_map["hip_roll_right_motor"],
+      act_map["hip_yaw_right_motor"],
+      act_map["hip_pitch_right_motor"],
+      act_map["knee_right_motor"],
+      act_map["toe_right_motor"]
+  };
+
+  return params;
 }
 
 }

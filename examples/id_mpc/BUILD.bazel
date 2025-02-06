@@ -7,7 +7,10 @@ cc_library(
     srcs = ["cassie_mpc_utils.cc"],
     hdrs = ["cassie_mpc_utils.h"],
     deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_utils",
         "//systems/controllers/id_mpc",
+        "//systems/controllers/id_mpc/systems:walking_reference_system",
     ],
 )
 

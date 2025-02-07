@@ -111,6 +111,7 @@ class IDMPC {
   void MakeMPCCosts();
   void MakeKnotPoints();
   void MakeForceLimits();
+  void MakeGroundConstraints();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
   void MakeEEPositionVariablesAndConstraints();

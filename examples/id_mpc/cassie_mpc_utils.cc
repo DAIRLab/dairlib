@@ -109,7 +109,7 @@ GaitParams MakeCassieGaitParams(const IDMPCParams& mpc_params) {
   CassieFixedPointSolver(plant, 0.9, mpc_params.mu, 20, true, params.stance_width,
                          &params.standing_pose_q,
                          &params.standing_pose_u,
-                         &params.standing_pose_lambda, urdf);
+                         &params.standing_pose_lambda);
 
   params.left_foot_body_name = "toe_left";
   params.right_foot_body_name = "toe_right";

@@ -341,7 +341,7 @@ PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
   // relative to the right foot
   for (int i = 0; i < phases.size(); ++i) {
     Vector3d p = l;
-    p(2) = sin(M_PI * phases.at(i));
+    p(2) = 0.15 * sin(M_PI * phases.at(i));
     if (fsm_states.at(i) == fsm_info::kLeft) {
       p(2) *= -1;
     }

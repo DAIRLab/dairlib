@@ -1,0 +1,79 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "walking_reference_test",
+    srcs = ["walking_reference_test.py"],
+    deps = [
+        ":id_mpc",
+        "//bindings/pydairlib/systems:framework_py",
+    ],
+)
+
+pybind_py_library(
+    name = "id_mpc_py",
+    cc_deps = [
+        "//examples/id_mpc:cassie_mpc_utils",
+        "//systems/controllers/id_mpc",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "id_mpc",
+    cc_srcs = ["id_mpc_py.cc"],
+    py_deps = [
+        ":module_py",
+        "@drake//bindings/pydrake",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "systems_py",
+    cc_deps = [
+        "//systems/controllers/id_mpc/systems:walking_reference_system",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "systems",
+    cc_srcs = ["systems_py.cc"],
+    py_deps = [
+        ":module_py",
+        "@drake//bindings/pydrake",
+    ],
+    py_imports = ["."],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":id_mpc_py",
+    ":systems_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "id_mpc",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

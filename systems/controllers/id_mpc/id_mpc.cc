@@ -50,6 +50,7 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeCollocationConstraints();
   MakeKinematicConstraints();
   MakeEEPositionVariablesAndConstraints();
+  MakeGroundConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -280,6 +281,12 @@ void IDMPC::MakeEEPositionVariablesAndConstraints() {
         pos_constraint,
         {position_vars(i+1), point_position_vars_.at(pos_var_idx)});
     ee_pos_constraints_per_knot_.push_back(pos_constraint);
+  }
+}
+
+void IDMPC::MakeGroundConstraints() {
+  for (const auto& p: point_position_vars_) {
+    prog_.AddLinearEqualityConstraint(p(2) == 0);
   }
 }
 

@@ -8,7 +8,6 @@
 #include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/perception/terrain_segmentation_monitor.h"
 #include "systems/perception/ethz_plane_segmentation/plane_segmentation_system.h"
-#include "systems/perception/ori_drs_plane_segmentation/plane_seg_system.h"
 
 namespace py = pybind11;
 using py_rvp = py::return_value_policy;
@@ -20,7 +19,6 @@ using perception::GridMapVisualizer;
 using perception::GridMapSender;
 using perception::GridMapReceiver;
 using perception::PlaneSegmentationSystem;
-using perception::PlaneSegSystem;
 using perception::TerrainSegmentationMonitor;
 using perception::terrain_segmentation_reset_params;
 
@@ -38,10 +36,6 @@ PYBIND11_MODULE(perception, m) {
   py::class_<PlaneSegmentationSystem, drake::systems::LeafSystem<double>>(
       m, "PlaneSegmentationSystem")
       .def(py::init<std::string>(), py::arg("params_yaml"));
-
-  py::class_<PlaneSegSystem, drake::systems::LeafSystem<double>>(
-      m, "PlaneSegSystem")
-      .def(py::init<std::string>(), py::arg("layer"));
 
   py::class_<GridMapSender, drake::systems::LeafSystem<double>>(
       m, "GridMapSender")

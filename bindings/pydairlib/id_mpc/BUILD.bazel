@@ -16,7 +16,7 @@ py_binary(
     srcs = ["walking_reference_test.py"],
     deps = [
         ":id_mpc",
-        "//bindings/pydairlib/systems:framework_py",
+        "//bindings/pydairlib/systems",
     ],
 )
 
@@ -26,6 +26,7 @@ pybind_py_library(
         "//examples/id_mpc:cassie_mpc_utils",
         "//systems/controllers/id_mpc",
         "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:value_pybind",
     ],
     cc_so_name = "id_mpc",
     cc_srcs = ["id_mpc_py.cc"],

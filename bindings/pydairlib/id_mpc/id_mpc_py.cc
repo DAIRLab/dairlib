@@ -6,6 +6,8 @@
 #include "systems/controllers/id_mpc/core/constrained_inverse_dynamics_info.h"
 #include "examples/id_mpc/cassie_mpc_utils.h"
 
+#include "drake/bindings/pydrake/common/value_pybind.h"
+
 namespace py = pybind11;
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -34,6 +36,8 @@ PYBIND11_MODULE(id_mpc, m) {
          py::arg("i"),
          py::arg("contacts"),
          "Append contacts to a specific knot point");
+
+  drake::pydrake::AddValueInstantiation<MPCReference>(m);
 
   py::class_<ConstrainedDynamicsInfo>(m, "ConstrainedDynamicsInfo")
     .def(py::init<std::string>(), py::arg("urdf"))

@@ -55,7 +55,7 @@ int DoMain() {
       ));
 
   auto vdes = builder.AddSystem<ConstantVectorSource<double>>(
-      0.5 * Eigen::Vector2d::Zero());
+      0.5 * Eigen::Vector2d::UnitX());
 
   builder.Connect(
       state_receiver->get_output_port(),

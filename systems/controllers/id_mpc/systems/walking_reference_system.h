@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include "systems/controllers/id_mpc/id_mpc.h"
 
 #include "drake/systems/framework/leaf_system.h"
@@ -41,6 +42,19 @@ struct fsm_info {
     if (curr == kPostLeftDouble) return kRight;
     if (curr == kRight) return kPostRightDouble;
     return kLeft;
+  }
+
+  friend std::ostream& operator<< (std::ostream& out, const fsm_state& state)
+  {
+    switch(state)
+    {
+      case kLeft: out << "kLeft"; break;
+      case kPostLeftDouble: out << "kPostLeftDouble"; break;
+      case kRight: out << "kRight"; break;
+      case kPostRightDouble: out << "kPostRightDouble"; break;
+      default: out << state;
+    }
+    return out;
   }
 
   bool is_double_stance() const {

@@ -90,10 +90,13 @@ py::class_<systems::OutputVector<double>,
          py::arg("num_velocities"), py::arg("num_efforts"))
     .def("SetPositions", &systems::OutputVector<double>::SetPositions,
          py::arg("positions"))
+    .def("set_timestamp", &systems::OutputVector<double>::set_timestamp)
     .def("SetVelocities", &systems::OutputVector<double>::SetVelocities,
          py::arg("velocities"))
     .def("SetState", &systems::OutputVector<double>::SetState,
          py::arg("state"))
+    .def("SetEfforts", &systems::OutputVector<double>::SetEfforts,
+         py::arg("efforts"))
     .def("GetPositions", &systems::OutputVector<double>::GetPositions)
     .def("GetVelocities", &systems::OutputVector<double>::GetVelocities)
     .def("GetState", &systems::OutputVector<double>::GetState);

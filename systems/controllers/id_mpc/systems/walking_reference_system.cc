@@ -107,7 +107,7 @@ void ResetContacts(int N, MPCReference *ref) {
 }
 
 int AdaptiveNumIntervals(double t_remain_this_mode,
-                         const GaitParams& params,
+                         const GaitParams& params,\
                          bool is_double_stance) {
 
   int intervals_this_mode = std::ceil(t_remain_this_mode / params.mpc_dt);
@@ -119,9 +119,7 @@ int AdaptiveNumIntervals(double t_remain_this_mode,
 }
 
 std::vector<fsm_info::fsm_state> GetFSMStateVector(
-    int intervals, fsm_info fsm, const GaitParams& params) {
-
-  int N = params.mpc_N + 1;
+    int intervals, fsm_info fsm, int N, int ss_intervals, int ds_intervals) {
 
   std::vector<fsm_info::fsm_state> states_per_knot(N, fsm_info::kPostRightDouble);
   for (int i = 0; i < intervals; ++i) {
@@ -135,7 +133,7 @@ std::vector<fsm_info::fsm_state> GetFSMStateVector(
     if (i - switch_knot == 0) {
       state = fsm_info::next_fsm(state);
       switch_knot = fsm_info::is_double_stance(state) ?
-                    i + params.t_ds : i + params.t_ss;
+                    i + ds_intervals : i + ss_intervals;
     }
     states_per_knot.at(i) = state;
   }
@@ -163,15 +161,16 @@ std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
     double t_now = mpc_reference->knot_times_.at(intervals) + n * params_.mpc_dt;
     mpc_reference->knot_times_.at(i) = t_now;
   }
-  auto fsm_vector = GetFSMStateVector(intervals, fsm, params_);
+  auto fsm_vector = GetFSMStateVector(intervals, fsm, N, ss_intervals_, ds_intervals_);
 
+  SetContactsAtKnot(0, fsm_vector.front(), mpc_reference);
   for (int i = 1; i <= params_.mpc_N; ++i) {
     SetContactsAtKnot(i, fsm_vector.at(i), mpc_reference);
     if (fsm_vector.at(i - 1) != fsm_vector.at(i)) {
       if (fsm_info::is_double_stance(fsm_vector.at(i))) {
         mpc_reference->touchdown_ee_names_.at(i) =
             fsm_vector.at(i) == fsm_info::kPostRightDouble ?
-            params_.right_foot_body_name : params_.left_foot_body_name;
+            params_.left_foot_body_name : params_.right_foot_body_name;
         mpc_reference->touchdown_ee_points_.at(i) = params_.foot_midpoint;
       }
     }

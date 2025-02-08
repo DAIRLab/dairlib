@@ -64,10 +64,7 @@ EventStatus IDMPCSystem::SolveMPC(
       system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
 
   if (solution.is_initial_solve) {
-    SetInitialSolverState(
-        *state,
-        reference.active_contacts_,
-        solution.sqp_iterate);
+    SetInitialSolverStateBlended(*state, reference, solution.sqp_iterate);
     solution.is_initial_solve = false;
   }
   const Eigen::VectorXd& x = state->GetState();
@@ -92,7 +89,28 @@ void IDMPCSystem::CalcOutput(const Context<double>& context,
   solution->utime = 1e6 * context.get_time();
 }
 
-void IDMPCSystem::SetInitialSolverState(
+void IDMPCSystem::SetInitialSolverStateToReference(
+    const MPCReference &reference, SQPIterate &solver_state) const {
+  for (size_t i = 0; i < reference.knot_times_.size(); ++i) {
+    double t = reference.knot_times_.at(i);
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.position_vars(i), reference.q_traj_.value(t));
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.velocity_vars(i), reference.v_traj_.value(t));
+
+    if (trajopt_.has_lambdas_at_knot(i)) {
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.lambda_vars(i), reference.lambda_traj_.value(t));
+    }
+    if (trajopt_.has_torques_at_knot(i)) {
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.input_vars(i), reference.u_traj_.value(t));
+    }
+  }
+  solver_state.x_sol = trajopt_.get_prog().initial_guess();
+}
+
+void IDMPCSystem::SetInitialSolverStateToCurrent(
     const OutputVector<double> &x_u_t,
     const std::vector<std::vector<std::string>>& contacts,
     SQPIterate &solver_state) const {
@@ -115,6 +133,42 @@ void IDMPCSystem::SetInitialSolverState(
     if (trajopt_.has_torques_at_knot(i)) {
       trajopt_.get_prog().SetInitialGuess(
           trajopt_.input_vars(i), x_u_t.GetEfforts());
+    }
+  }
+  solver_state.x_sol = trajopt_.get_prog().initial_guess();
+}
+
+void IDMPCSystem::SetInitialSolverStateBlended(
+    const OutputVector<double>& x_u_t,
+    const MPCReference &reference, SQPIterate &solver_state) const {
+
+  VectorXd q = x_u_t.GetPositions();
+  VectorXd u = x_u_t.GetEfforts();
+  VectorXd v = x_u_t.GetVelocities();
+
+  for (size_t i = 0; i < reference.knot_times_.size(); ++i) {
+    double t = reference.knot_times_.at(i);
+    double s = std::min(
+        1.0, static_cast<double>(i) / reference.knot_times_.size());
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.position_vars(i),
+        (1.0 - s) * q + s * reference.q_traj_.value(t));
+
+    trajopt_.get_prog().SetInitialGuess(
+        trajopt_.velocity_vars(i),
+        (1.0 - s) * v + s * reference.v_traj_.value(t));
+
+    if (trajopt_.has_lambdas_at_knot(i)) {
+      VectorXd lambda = trajopt_.dynamics().EstimateConstraintForcesForFixedPoint(
+          *plant_context_, x_u_t.GetEfforts(), reference.active_contacts_.at(i));
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.lambda_vars(i),
+          (1.0 - s) * lambda + s * reference.lambda_traj_.value(t));
+    }
+    if (trajopt_.has_torques_at_knot(i)) {
+      trajopt_.get_prog().SetInitialGuess(
+          trajopt_.input_vars(i),
+          (1.0 - s) * u + s * reference.u_traj_.value(t));
     }
   }
   solver_state.x_sol = trajopt_.get_prog().initial_guess();

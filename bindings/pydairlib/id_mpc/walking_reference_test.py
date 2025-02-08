@@ -39,11 +39,17 @@ def main():
     context = ref_gen.CreateDefaultContext()
     ref_gen.get_input_port_state().FixValue(context, state)
     ref_gen.get_input_port_vdes().FixValue(context, np.array([0.5, 0]))
-
     ref_gen.CalcForcedUnrestrictedUpdate(context, context.get_mutable_state())
 
     reference = ref_gen.get_output_port().Eval(context)
+    print_ref(reference)
+    print()
 
+    state.set_timestamp(0.1731)
+    ref_gen.get_input_port_state().FixValue(context, state)
+    ref_gen.CalcForcedUnrestrictedUpdate(context, context.get_mutable_state())
+
+    reference = ref_gen.get_output_port().Eval(context)
     print_ref(reference)
 
 

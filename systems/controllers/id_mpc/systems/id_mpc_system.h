@@ -35,10 +35,17 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
 
  private:
 
-  void SetInitialSolverState(
+  void SetInitialSolverStateToCurrent(
       const OutputVector<double>& x_u_t,
       const std::vector<std::vector<std::string>>& contacts,
       SQPIterate& solver_state) const;
+
+  void SetInitialSolverStateToReference(
+      const MPCReference& reference, SQPIterate& solver_state) const;
+
+  void SetInitialSolverStateBlended(
+      const OutputVector<double>& x_u_t,
+      const MPCReference& reference, SQPIterate& solver_state) const;
 
   drake::systems::EventStatus
   SolveMPC(const drake::systems::Context<double>&context,

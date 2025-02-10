@@ -1,7 +1,6 @@
 shard_sync: false
 directories:
   .
-  -./tools/bazel_ros2_rules
 
 targets:
   //...:all

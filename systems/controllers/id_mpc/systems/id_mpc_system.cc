@@ -64,7 +64,7 @@ EventStatus IDMPCSystem::SolveMPC(
       system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
 
   if (solution.is_initial_solve) {
-    SetInitialSolverStateBlended(*state, reference, solution.sqp_iterate);
+    SetInitialSolverStateToCurrent(*state, reference.active_contacts_, solution.sqp_iterate);
     solution.is_initial_solve = false;
   }
   const Eigen::VectorXd& x = state->GetState();

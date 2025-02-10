@@ -58,6 +58,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "quaternion_error_hessian_py",
+    cc_deps = [
+        "//systems/controllers:quaternion_error_hessian",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "quaternion_error_hessian",
+    cc_srcs = ["quaternion_error_hessian_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

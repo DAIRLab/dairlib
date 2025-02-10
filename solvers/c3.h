@@ -123,6 +123,7 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> GetDualWAfterProjection() {
     return *w_proj_debug_;
   }
+  void UpdateStateCostMatrices(const std::vector<Eigen::MatrixXd>& new_Q);
 
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
@@ -139,7 +140,7 @@ class C3 {
  private:
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambda
-  const CostMatrices cost_matrices_;
+  CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   std::vector<Eigen::VectorXd> u_desired_;
   const C3Options options_;

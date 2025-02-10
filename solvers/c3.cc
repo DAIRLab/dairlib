@@ -186,7 +186,8 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       input_costs_.at(i) =
           prog_
               .AddQuadraticCost(2 * cost_matrices_.R.at(i),
-                                -2 * cost_matrices_.R.at(i) * u_desired_.at(i), u_.at(i), 1)
+                                -2 * cost_matrices_.R.at(i) * u_desired_.at(i),
+                                u_.at(i), 1)
               .evaluator();
     }
   }
@@ -255,6 +256,10 @@ void C3::UpdateTargetInputs(const std::vector<Eigen::VectorXd>& u_des) {
         2 * cost_matrices_.R.at(i),
         -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
   }
+}
+
+void C3::UpdateStateCostMatrices(const std::vector<Eigen::MatrixXd>& new_Q) {
+  cost_matrices_.Q = new_Q;
 }
 
 void C3::Solve(const VectorXd& x0) {

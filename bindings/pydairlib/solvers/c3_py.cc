@@ -100,7 +100,8 @@ PYBIND11_MODULE(c3, m) {
       .def("GetDualWAfterQP", &C3::GetDualWAfterQP)
       .def("GetPrimalZAfterProjection", &C3::GetPrimalZAfterProjection)
       .def("GetDualDeltaAfterProjection", &C3::GetDualDeltaAfterProjection)
-      .def("GetDualWAfterProjection", &C3::GetDualWAfterProjection);
+      .def("GetDualWAfterProjection", &C3::GetDualWAfterProjection)
+      .def("UpdateStateCostMatrices", &C3::UpdateStateCostMatrices, py::arg("new_Q"));
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -146,7 +147,6 @@ PYBIND11_MODULE(c3, m) {
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());
-  //  drake::pydrake::DefAttributesUsingSerialize(&cls);
   cls.def_property(
          "Q", [](C3Options const& self) { return self.Q; },
          [](C3Options& self, const Eigen::MatrixXd& val) { self.Q = val; })

@@ -63,47 +63,48 @@ Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
         q_x*std::pow(r_z, 2) + q_y*r_x*r_y + q_z*r_x*r_z;
 
     // Define the Hessian elements.
+    double epsilon = 1e-10;  // Small value to avoid division by zero.
     double H_ww = 8*(-(2*q_w*(exp_7)*(exp_2 + exp_3) -
         (q_x*r_x + q_y*r_y + q_z*r_z)*(exp_4)*(exp_2 + exp_3) +
         (exp_4)*(q_w*std::pow(r_x, 2) + q_w*std::pow(r_y, 2) +
         q_w*std::pow(r_z, 2) - q_x*r_w*r_x - q_y*r_w*r_y - q_z*r_w*r_z)*
-        (exp_7))*(exp_2 + exp_3)*exp_1 + std::pow(exp_7, 2)*(exp_6))/(exp_5);
+        (exp_7))*(exp_2 + exp_3)*exp_1 + std::pow(exp_7, 2)*(exp_6))/(exp_5 + epsilon);
     double H_xx = 8*((2*q_x*(exp_9)*(exp_2 + exp_3) +
         (q_w*r_w + q_y*r_y + q_z*r_z)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_9)*(exp_13))*(exp_2 + exp_3)*exp_1 +
-        std::pow(exp_9, 2)*(exp_6))/(exp_5);
+        std::pow(exp_9, 2)*(exp_6))/(exp_5 + epsilon);
     double H_yy = 8*((2*q_y*(exp_8)*(exp_2 + exp_3) +
         (q_w*r_w + q_x*r_x + q_z*r_z)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_8)*(exp_12))*(exp_2 + exp_3)*exp_1 +
-        std::pow(exp_8, 2)*(exp_6))/(exp_5);
+        std::pow(exp_8, 2)*(exp_6))/(exp_5 + epsilon);
     double H_zz = 8*((2*q_z*(exp_11)*(exp_2 + exp_3) +
         (q_w*r_w + q_x*r_x + q_y*r_y)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_11)*((exp_10)))*(exp_2 + exp_3)*exp_1 +
-        std::pow(exp_11, 2)*(exp_6))/(exp_5);
+        std::pow(exp_11, 2)*(exp_6))/(exp_5 + epsilon);
     double H_wx = 8*((-2*q_x*(exp_7)*(exp_2 + exp_3) +
         (q_w*r_x - 2*q_x*r_w)*(exp_4)*(exp_2 + exp_3) +
         (exp_4)*(exp_7)*(exp_13))*(exp_2 + exp_3)*exp_1 -
-        (exp_9)*(exp_7)*(exp_6))/(exp_5);
+        (exp_9)*(exp_7)*(exp_6))/(exp_5 + epsilon);
     double H_wy = 8*((-2*q_y*(exp_7)*(exp_2 + exp_3) +
         (q_w*r_y - 2*q_y*r_w)*(exp_4)*(exp_2 + exp_3) +
         (exp_4)*(exp_7)*(exp_12))*(exp_2 + exp_3)*exp_1 -
-        (exp_8)*(exp_7)*(exp_6))/(exp_5);
+        (exp_8)*(exp_7)*(exp_6))/(exp_5 + epsilon);
     double H_wz = 8*((-2*q_z*(exp_7)*(exp_2 + exp_3) +
         (q_w*r_z - 2*q_z*r_w)*(exp_4)*(exp_2 + exp_3) +
         (exp_4)*(exp_7)*((exp_10)))*(exp_2 + exp_3)*exp_1 -
-        (exp_11)*(exp_7)*(exp_6))/(exp_5);
+        (exp_11)*(exp_7)*(exp_6))/(exp_5 + epsilon);
     double H_xy = 8*((2*q_y*(exp_9)*(exp_2 + exp_3) +
         (q_x*r_y - 2*q_y*r_x)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_9)*(exp_12))*(exp_2 + exp_3)*exp_1 +
-        (exp_9)*(exp_8)*(exp_6))/(exp_5);
+        (exp_9)*(exp_8)*(exp_6))/(exp_5 + epsilon);
     double H_xz = 8*((2*q_z*(exp_9)*(exp_2 + exp_3) +
         (q_x*r_z - 2*q_z*r_x)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_9)*((exp_10)))*(exp_2 + exp_3)*exp_1 +
-        (exp_9)*(exp_11)*(exp_6))/(exp_5);
+        (exp_9)*(exp_11)*(exp_6))/(exp_5 + epsilon);
     double H_yz = 8*((2*q_z*(exp_8)*(exp_2 + exp_3) +
         (q_y*r_z - 2*q_z*r_y)*(exp_4)*(exp_2 + exp_3) -
         (exp_4)*(exp_8)*((exp_10)))*(exp_2 + exp_3)*exp_1 +
-        (exp_8)*(exp_11)*(exp_6))/(exp_5);
+        (exp_8)*(exp_11)*(exp_6))/(exp_5 + epsilon);
 
     // Define the Hessian.
     Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(4, 4);

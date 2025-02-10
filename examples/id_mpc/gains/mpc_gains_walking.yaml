@@ -2,7 +2,7 @@
 N: 20
 dt: 0.025
 num_full_torque_knots: 3
-mu: 1.0
+mu: 0.5
 num_intervals_between_impacts: 16
 
 # position weights
@@ -32,7 +32,7 @@ Wlambda: [
 
 # input weights
 Wu: [
-  0.0001, 0.0001, # hip roll
+  0.00001, 0.00001, # hip roll
   0.00001, 0.00001, # hip yaw
   0.00001, 0.00001, # hip pitch
   0.000001, 0.000001, # knee

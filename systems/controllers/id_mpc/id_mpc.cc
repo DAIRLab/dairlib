@@ -49,7 +49,7 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-//  MakeEEPositionVariablesAndConstraints();
+  MakeEEPositionVariablesAndConstraints();
 //  MakeGroundConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(

@@ -124,9 +124,7 @@ class IDMPC {
   Timeline timeline_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>> quat_contraints_;
-  std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
-
-  ee_pos_constraints_per_knot_;
+  std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>> ee_pos_constraints_per_knot_;
   ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;
 

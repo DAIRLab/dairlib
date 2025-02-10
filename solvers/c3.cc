@@ -290,12 +290,6 @@ void C3::Solve(const VectorXd& x0) {
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   vector<MatrixXd> Gv = cost_matrices_.G;
 
-  for (std::size_t i = 0; i < N_; ++i) {
-    input_costs_[i]->UpdateCoefficients(
-        2 * cost_matrices_.R.at(i),
-        -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
-  }
-
   for (std::size_t iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter);
   }

@@ -49,8 +49,8 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-  MakeEEPositionVariablesAndConstraints();
-  MakeGroundConstraints();
+//  MakeEEPositionVariablesAndConstraints();
+//  MakeGroundConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -75,10 +75,11 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
   }
   UpdateCosts(reference);
 
-  if (params_.num_intervals_between_impacts > 0) {
-    UpdateTouchdownEEPosConstraints(
-        reference.touchdown_ee_names_, reference.touchdown_ee_points_);
-  }
+//  if (params_.num_intervals_between_impacts > 0) {
+//    UpdateTouchdownEEPosConstraints(
+//        reference.touchdown_ee_names_, reference.touchdown_ee_points_);
+//  }
+
 }
 
 void IDMPC::UpdateFrictionCone(

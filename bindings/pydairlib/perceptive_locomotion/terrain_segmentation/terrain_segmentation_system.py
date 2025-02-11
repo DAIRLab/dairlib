@@ -7,16 +7,9 @@ from pydrake.systems.all import (
 )
 
 from grid_map import GridMap, InpaintWithMinimumValues
-
-from scipy.ndimage import (sobel, gaussian_filter, gaussian_laplace,
-                           gaussian_gradient_magnitude)
-from scipy.signal import convolve2d
-from scipy.fftpack import fft2, fftshift, ifft2, ifftshift
 import numpy as np
 import cv2
 import time
-
-import matplotlib.pyplot as plt
 
 from typing import Tuple
 

@@ -156,12 +156,8 @@ void AlipComTrajectoryGenerator::CalcComTrajFromCurrent(
   // Read in finite state machine switch time
   double end_time =
       EvalVectorInput(context, next_touchdown_time_port_)->get_value()(0);
-  double start_time =
-      EvalVectorInput(context, prev_liftoff_time_port_)->get_value()(0);
   double timestamp = robot_output->get_timestamp();
 
-  // TODO (@Brian-Acosta standardize walking fsm states with an enum)
-  bool is_ss = fsm_state <= 1;
   double t = std::clamp<double>(timestamp,
                                 -std::numeric_limits<double>::infinity(),
                                 end_time - 0.001);

@@ -1,5 +1,5 @@
-import signal
 import sys
+import signal
 
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
     lcmt_contact, lcmt_profiling
@@ -14,7 +14,6 @@ from pydrake.systems.all import (
 )
 
 from pydrake.lcm import DrakeLcm
-
 from pydrake.common.value import AbstractValue
 
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
@@ -29,9 +28,6 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
     terrain_segmentation_system import TerrainSegmentationSystem
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
-    map_reset_monitor import MapResetMonitor
-
-from pydairlib.perceptive_locomotion.terrain_segmentation. \
     convex_terrain_decomposition_system import \
     ConvexTerrainDecompositionSystem
 
@@ -42,9 +38,6 @@ from pydairlib.systems.perception import (
     TerrainSegmentationMonitor,
     terrain_segmentation_reset_params
 )
-from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
-
-import numpy as np
 
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
@@ -63,8 +56,6 @@ elevation_mapping_params_sim = (
     "/elevation_mapping_params_sim"
     ".yaml"
 )
-
-monitor = False
 
 
 def stop(sig, _):
@@ -122,14 +113,6 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    monitor_params = terrain_segmentation_reset_params(
-        update_period=1.0/30.0,
-        iou_threshold=0.7,
-        area_threshold=0.7,
-        lookback_size=5
-    )
-
-    monitor_system = TerrainSegmentationMonitor(monitor_params)
 
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
@@ -140,13 +123,6 @@ def main():
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
     builder.AddSystem(profiling_pub)
-
-    if monitor:
-        builder.AddSystem(monitor_system)
-        builder.Connect(
-            terrain_segmentation.get_output_port(),
-            monitor_system.get_input_port()
-        )
 
     builder.Connect(
         contact_subscriber.get_output_port(),
@@ -194,13 +170,6 @@ def main():
         is_forced_publish=True, 
         queue_size=100
     )
-
-    if monitor:
-        reset_monitor = MapResetMonitor(
-            monitor=monitor_system,
-            mapper=elevation_mapping
-        )
-        driven_loop.set_monitor(reset_monitor.monitor)
 
     robot_state = driven_loop.WaitForFirstState(plant)
     elevation_mapping.InitializeElevationMap(

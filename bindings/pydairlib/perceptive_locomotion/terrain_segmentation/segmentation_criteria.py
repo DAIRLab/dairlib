@@ -33,6 +33,8 @@ def inclination_criterion(
         denoised_and_inpainted_map: np.ndarray, ksize: Tuple[int, int],
         resolution: float) -> np.ndarray:
 
-    inclination, _ = \
-        utils.CalculateNormalsAndSquaredError(denoised_and_inpainted_map, ksize[0], resolution)
+    inclination, _ = utils.CalculateNormalsAndSquaredError(
+        denoised_and_inpainted_map, ksize[0], resolution
+    )
+    
     return np.power(inclination, 2)

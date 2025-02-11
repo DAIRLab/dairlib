@@ -37,8 +37,6 @@ from pydairlib.systems.framework import LcmOutputDrivenLoop, OutputVector
 from pydairlib.systems.perception import GridMapSender
 from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
-import numpy as np
-
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 

@@ -75,8 +75,6 @@ ConvexPolygon MakeInscribedConvexPolygon(
     const Eigen::MatrixXd &verts,
     const drake::geometry::optimization::VPolytope &convex_hull);
 
-ConvexPolygon MakeFootholdFromConvexPolygon(
-    const Eigen::MatrixXd &vertices);
 
 Eigen::VectorXd centroid(const Eigen::MatrixXd &verts);
 

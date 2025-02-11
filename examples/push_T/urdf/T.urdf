@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot name="t_shape">
+  <!-- Base of the T -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.12 0.03 0.03"/> <!-- dimensions: length, width, height -->
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>      
+      <material>
+          <color rgba="1 0 0 1"/> <!-- red color for visualization -->
+      </material>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.5"/>
+        <inertia ixx="0.0004488" ixy="0" ixz="0" iyy="0.0004488" iyz="0" izz="0.0000363"/>
+    </inertial>
+    <collision>
+      <geometry>
+        <box size="0.12 0.03 0.03"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+  </link>
+
+  <!-- Vertical part of the T -->
+  <link name="vertical_link">
+    <visual>
+      <geometry>
+        <box size="0.12 0.03 0.03"/> <!-- dimensions: length, width, height -->
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/> <!-- offset to sit on top of base -->      
+      <material>
+          <color rgba="0 0 1 1"/> <!-- red color for visualization -->
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.12 0.03 0.03"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+  </link>
+
+  <!-- Joint connecting base and vertical link -->
+  <joint name="fixed_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="vertical_link"/>
+    <origin xyz="0 0.075 0" rpy="0 0 1.5708"/>
+  </joint>
+</robot>

@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="ground">
+    <link name="ground">
+      <inertial>
+        <mass>1</mass>
+        <!-- Inertia values were calculated to be consistent with the mass and
+             geometry size, assuming a uniform density. -->
+        <inertia>
+          <ixx>100</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>100</iyy>
+          <iyz>0</iyz>
+          <izz>100</izz>
+        </inertia>
+      </inertial>
+      <visual name="box">
+        <pose>0 0 -0.05 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>5 0.91 0.1</size>
+          </box>
+        </geometry>
+      </visual>
+      <collision name="ground">
+          <pose>0 0 -0.05 0 0 0</pose>
+            <geometry>
+          <box>
+            <size>5 0.91 0.1</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+          <drake:mu_dynamic>1</drake:mu_dynamic>
+        </drake:proximity_properties>
+      </collision>   
+    </link>     
+      
+  </model>
+</sdf>

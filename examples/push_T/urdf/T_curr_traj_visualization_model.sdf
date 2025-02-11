@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="t_shape">    
+
+    <link name="vertical_link">
+      <visual name="vertical_link">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.20 0.05 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>1 0 0 1</diffuse>
+        </material>
+      </visual> 
+    </link>
+
+    <link name="horizontal_link">
+      <visual name="horizontal_link">
+        <pose>-0.125 0 0 0 0 1.5708</pose>
+        <geometry>
+          <box>
+            <size>0.20 0.05 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0 1 0 1</diffuse>
+        </material>
+      </visual>  
+    </link>
+
+    <joint name="fixed_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>vertical_link</parent>
+      <child>horizontal_link</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>0 0 0 0 0 0</pose>
+    </joint>    
+      
+  </model>
+</sdf>

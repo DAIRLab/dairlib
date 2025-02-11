@@ -13,15 +13,12 @@ class ConvexPolygonSet {
   ConvexPolygonSet() = default;
   ConvexPolygonSet(std::vector<ConvexPolygon> set) : set_(std::move(set)) {};
 
-  /*
+  /*!
    * Get the subset of footholds which contain a point closer than "threshold"
    * to the query point
    */
   ConvexPolygonSet GetSubsetCloseToPoint(
       const Eigen::Vector3d &query_pt, double threshold) const;
-
-  ConvexPolygonSet GetSubsetInForwardLookingCone(
-      const Eigen::Vector3d& query_pt, double cone_angle) const;
 
   const std::vector<ConvexPolygon>& polygons() const { return set_; }
   void clear() { set_.clear(); }

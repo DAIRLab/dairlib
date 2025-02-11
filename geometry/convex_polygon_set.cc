@@ -26,7 +26,7 @@ ConvexPolygonSet ConvexPolygonSet::GetSubsetCloseToPoint(
   drake::solvers::MathematicalProgram prog;
   std::vector<drake::solvers::VectorXDecisionVariable> pp;
 
-  for (int i = 0; i < set_.size(); i++) {
+  for (size_t i = 0; i < set_.size(); i++) {
     auto p = prog.NewContinuousVariables(3);
     const auto& [Aeq, beq] = set_.at(i).GetEqualityConstraintMatrices();
     const auto& [A, b] = set_.at(i).GetConstraintMatrices();
@@ -42,57 +42,13 @@ ConvexPolygonSet ConvexPolygonSet::GetSubsetCloseToPoint(
   DRAKE_ASSERT(result.is_success());
 
   ConvexPolygonSet close;
-  for (int i = 0; i < set_.size(); i++) {
+  for (size_t i = 0; i < set_.size(); i++) {
     auto p = result.GetSolution(pp.at(i));
     if ((query_pt - p).norm() < threshold) {
       close.append(set_.at(i));
     }
   }
   return close;
-}
-
-
-ConvexPolygonSet ConvexPolygonSet::GetSubsetInForwardLookingCone(
-    const Vector3d &query_pt, double cone_angle) const {
-  Matrix2d Aq;
-  Aq << cos(cone_angle), sin(cone_angle), cos(cone_angle), -sin(cone_angle);
-  Vector2d bq = Aq * query_pt.head<2>();
-  Matrix<double, 2, 4> pq;
-  pq.leftCols<2>() = Matrix2d::Identity();
-  pq.rightCols<2>() = -Matrix2d::Identity();
-  Matrix<double, 4, 4> Q = pq.transpose() * pq;
-
-  drake::solvers::MathematicalProgram prog;
-  std::vector<drake::solvers::VectorXDecisionVariable> pp;
-  std::vector<drake::solvers::VectorXDecisionVariable> qq;
-  for (int i = 0; i < set_.size(); i++) {
-    auto p = prog.NewContinuousVariables(2);
-    auto q = prog.NewContinuousVariables(2);
-    const auto& [A, b] = set_.at(i).GetConstraintMatrices();
-    prog.AddLinearConstraint(
-        A.leftCols<2>(),
-        VectorXd::Constant(A.rows(), -numeric_limits<double>::infinity()),
-        b, p);
-    prog.AddLinearConstraint(
-        Aq, bq, Vector2d::Constant(std::numeric_limits<double>::infinity()), q);
-    prog.AddQuadraticCost(Q, Vector4d::Zero(), {p, q});
-    pp.push_back(p);
-    qq.push_back(q);
-  }
-
-  drake::solvers::OsqpSolver solver;
-  const auto result = solver.Solve(prog);
-  DRAKE_ASSERT(result.is_success());
-
-  ConvexPolygonSet ret;
-  for (int i = 0; i < set_.size(); i++) {
-    auto p = result.GetSolution(pp.at(i));
-    auto q = result.GetSolution(qq.at(i));
-    if ((p - q).norm() < 1e-3) {
-      ret.append(set_.at(i));
-    }
-  }
-  return ret;
 }
 
 void ConvexPolygonSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
@@ -115,7 +71,7 @@ void ConvexPolygonSet::CopyToLcm(lcmt_foothold_set *set) const {
     lcmt_convex_foothold foothold_lcm;
     const auto& [Aeq, beq] = polygon.GetEqualityConstraintMatrices();
     const auto& [A, b] = polygon.GetConstraintMatrices();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; ++i) {
       foothold_lcm.Aeq[i] = Aeq(i);
     }
     foothold_lcm.beq = beq(0);

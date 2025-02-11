@@ -48,7 +48,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
    * @brief Returns a meshcat path for the foothold visualizations
    * @param i index of the foothold
    */
-  static std::string make_foothold_path(int i) {
+  static std::string make_foothold_path(size_t i) {
     return "/foothold_meshes/" + std::to_string(i);
   }
 

@@ -160,14 +160,5 @@ double  ConvexPolygonSet::CalcHeightOfPoint(const Eigen::Vector3d& point) const 
   return zmax;
 }
 
-
-bool ConvexPolygonSet::Feasible2d(const Vector3d& pt, double tol) const {
-  return std::any_of(
-      set_.begin(), set_.end(),
-      [&tol, &pt](const ConvexPolygon& f) {
-        return f.Get2dViolation(pt) < tol;
-      });
-}
-
 }
 }

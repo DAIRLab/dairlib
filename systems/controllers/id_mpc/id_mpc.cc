@@ -330,7 +330,7 @@ void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
   qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
 }
 
-void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd *x) {
+void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd *x) const {
   DRAKE_DEMAND(x != nullptr);
   for (int i = 0; i < params_.N + 1; ++i) {
     auto w = position_vars(i)(0);

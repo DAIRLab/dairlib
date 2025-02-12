@@ -131,7 +131,7 @@ class IDMPC {
    *   assuming a single floating base
    *
    */
-  void ProjectToQuaternionConstraint(Eigen::VectorXd* z);
+  void ProjectToQuaternionConstraint(Eigen::VectorXd* z) const;
 
   /*!
    * Add a cost on the deviation of a kinematic function from a trajectory

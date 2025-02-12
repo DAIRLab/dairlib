@@ -1,0 +1,151 @@
+#include "id_mpc_walking_system.h"
+
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/framework/output_vector.h"
+
+namespace dairlib::systems::controllers::id_mpc {
+
+using drake::systems::Context;
+using drake::systems::EventStatus;
+using drake::systems::State;
+
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+using solvers::QPData;
+
+IDMPCWalkingSystem::IDMPCWalkingSystem(
+    IDMPCParams params,
+    std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
+    GaitParams gait_params) :
+    trajopt_(params, std::move(dynamics), gait_params),
+    solver_(trajopt_.mpc().num_vars(), trajopt_.mpc().num_constraints(),
+            [this](const VectorXd& x, QPData* qp) {
+              this->trajopt_.mpc().ConstructSQPProgram(x, qp);
+            },
+            [this](const VectorXd& x) {
+              return this->trajopt_.mpc().EvaluateConstraintViolation(x);
+            },
+            [this](const VectorXd& x) {
+              return this->trajopt_.mpc().EvaluateCost(x);
+            },
+            [this](VectorXd* x){
+              this->trajopt_.mpc().ProjectToQuaternionConstraint(x);
+            }) {
+
+  input_port_state_ = DeclareVectorInputPort(
+      "x, u, t",
+      OutputVector<double>(trajopt_.dynamics().get_plant())
+  ).get_index();
+
+  input_port_reference_ = DeclareAbstractInputPort(
+      "mpc_reference",
+      drake::Value<MPCReference>()).get_index();
+
+  MPCSolution model_solution;
+  model_solution.sqp_iterate = solver_.AllocateIterate();
+  mpc_solution_state_ = DeclareAbstractState(
+      drake::Value<MPCSolution>(model_solution));
+
+  DeclareForcedUnrestrictedUpdateEvent(&IDMPCWalkingSystem::SolveMPC);
+
+  output_port_mpc_solution_ = DeclareAbstractOutputPort(
+      "mpc_solution", lcmt_timestamped_saved_traj(),
+      &IDMPCWalkingSystem::CalcOutput).get_index();
+
+  plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
+
+}
+
+EventStatus IDMPCWalkingSystem::SolveMPC(
+    const Context<double> &context, State<double> *system_state) const {
+  const auto& reference = get_input_port_reference().Eval<MPCReference>(context);
+  const auto& state = EvalVectorInput<OutputVector>(context, input_port_state_);
+
+  auto& solution =
+      system_state->get_mutable_abstract_state<MPCSolution>(mpc_solution_state_);
+
+  if (solution.is_initial_solve) {
+    auto footsteps = CalcInitialFootsteps(state->GetPositions(), reference);
+    trajopt_.SetFootstepInitialGuess(footsteps);
+    SetInitialSolverStateToCurrent(*state, reference.active_contacts_, solution.sqp_iterate);
+    solution.is_initial_solve = false;
+  }
+  const Eigen::VectorXd& x = state->GetState();
+
+  trajopt_.UpdateProblemData(reference, x);
+  solver_.DoSQPStep(solution.sqp_iterate.x_sol, &solution.sqp_iterate);
+  solution.contact_sequence = reference.active_contacts_;
+
+  drake::solvers::MathematicalProgramResult result;
+  result.set_decision_variable_index(
+      trajopt_.mutable_mpc().get_prog().decision_variable_index());
+  result.set_x_val(solution.sqp_iterate.x_sol);
+  solution.solution_trajectories = trajopt_.mpc().GetSolutionAsLcmTrajectory(result);
+
+  return EventStatus::Succeeded();
+}
+
+void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,
+                             lcmt_timestamped_saved_traj *solution) const {
+  auto mpc_solution =
+      context.get_abstract_state<MPCSolution>(mpc_solution_state_);
+  solution->saved_traj = mpc_solution.solution_trajectories.GenerateLcmObject();
+  solution->utime = 1e6 * context.get_time();
+}
+
+std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(
+    const VectorXd &q, const MPCReference &ref) const {
+
+  const auto& plant = trajopt_.dynamics().get_plant();
+  multibody::SetPositionsIfNew<double>(plant, q, plant_context_.get());
+
+  std::vector<Vector3d> pp(trajopt_.n_footsteps(), Vector3d::Zero());
+
+  int idx = 1;
+  for (size_t i = 0; i < ref.touchdown_ee_names_.size(); ++i) {
+    if (not ref.touchdown_ee_names_[i].empty()) {
+      Vector3d p;
+      const std::string& contact_frame = ref.touchdown_ee_names_[i];
+      plant.CalcPointsPositions(
+          *plant_context_, plant.GetBodyByName(contact_frame).body_frame(),
+          ref.touchdown_ee_points_[i], plant.world_frame(), &p);
+      pp.at(idx) = p;
+      ++idx;
+    }
+  }
+  return pp;
+}
+
+void IDMPCWalkingSystem::SetInitialSolverStateToCurrent(
+    const OutputVector<double> &x_u_t,
+    const std::vector<std::vector<std::string>>& contacts,
+    SQPIterate &solver_state) const {
+
+  trajopt_.dynamics().SetPlantStateIfNew(
+      x_u_t.GetState(), plant_context_.get());
+
+  auto& mpc = trajopt_.mutable_mpc();
+
+  for (size_t i = 0; i < contacts.size() ; ++i) {
+    VectorXd lambda = trajopt_.dynamics().EstimateConstraintForcesForFixedPoint(
+        *plant_context_, x_u_t.GetEfforts(), contacts.at(i)
+    );
+    mpc.get_prog().SetInitialGuess(
+        mpc.position_vars(i), x_u_t.GetPositions());
+    mpc.get_prog().SetInitialGuess(
+        mpc.velocity_vars(i), x_u_t.GetVelocities());
+    if (mpc.has_lambdas_at_knot(i)) {
+      mpc.get_prog().SetInitialGuess(
+          mpc.lambda_vars(i), lambda);
+    }
+    if (mpc.has_torques_at_knot(i)) {
+      mpc.get_prog().SetInitialGuess(
+          mpc.input_vars(i), x_u_t.GetEfforts());
+    }
+  }
+  solver_state.x_sol = mpc.get_prog().initial_guess();
+}
+
+}

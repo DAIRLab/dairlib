@@ -14,6 +14,14 @@ IDMPCWalking::IDMPCWalking(
   MakeGroundConstraints();
 }
 
+void IDMPCWalking::UpdateProblemData(
+    const MPCReference &reference, const VectorXd &initial_state) {
+  mpc_.UpdateProblemData(reference, initial_state);
+  UpdateFootstepConstraints(reference.touchdown_ee_names_,
+                            reference.touchdown_ee_points_);
+
+}
+
 void IDMPCWalking::UpdateFootstepConstraints(
     const std::vector<std::string> &foot_names,
     const std::vector<Vector3d> &contact_points) {

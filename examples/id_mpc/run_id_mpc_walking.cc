@@ -1,7 +1,7 @@
 #include "cassie_mpc_utils.h"
 
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/controllers/id_mpc/systems/id_mpc_system.h"
+#include "systems/controllers/id_mpc/systems/id_mpc_walking_system.h"
 #include "systems/controllers/id_mpc/systems/constant_reference_system.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -33,14 +33,15 @@ int DoMain() {
       LoadIDMPCParamsFromYaml("examples/id_mpc/gains/mpc_gains_walking.yaml");
 
   auto plant_context = dynamics->get_plant().CreateDefaultContext();
+  auto gait_params = MakeCassieGaitParams(params);
 
   auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
-      *dynamics, plant_context.get(), MakeCassieGaitParams(params));
+      *dynamics, plant_context.get(), gait_params);
 
   const auto& plant = dynamics->get_plant();
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
-  auto mpc_system = builder.AddSystem<IDMPCSystem>(params, std::move(dynamics));
+  auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(params, std::move(dynamics), gait_params);
 
 
   Eigen::Matrix3d Qfoot = Eigen::Matrix3d::Zero();

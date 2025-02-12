@@ -5,11 +5,14 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "id_mpc",
     srcs = ["id_mpc.cc"],
-    hdrs = ["id_mpc.h", "id_mpc_params.h"],
+    hdrs = [
+        "id_mpc.h",
+        "id_mpc_params.h",
+    ],
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//solvers:qp_data",
-        "//systems/controllers/id_mpc/contraints:id_mpc_constraints",
+        "//systems/controllers/id_mpc/constraints:id_mpc_constraints",
         "//systems/controllers/id_mpc/core:id_mpc_core",
         "//systems/controllers/id_mpc/costs:id_mpc_costs",
         "//systems/controllers/id_mpc/sqp:id_mpc_sqp",

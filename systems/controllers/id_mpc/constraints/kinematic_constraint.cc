@@ -1,4 +1,4 @@
-#include "systems/controllers/id_mpc/contraints/kinematic_constraint.h"
+#include "kinematic_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 

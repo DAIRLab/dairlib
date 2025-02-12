@@ -5,10 +5,11 @@
 namespace dairlib::systems::controllers::id_mpc {
 
 struct GaitParams {
+  int mpc_N;
+  int footstep_horizon;
   double t_ss;
   double t_ds;
   double mpc_dt;
-  int mpc_N;
   double stance_width;
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;
@@ -40,8 +41,8 @@ struct fsm_info {
     return kLeft;
   }
 
-  friend std::ostream &operator<<(std::ostream &out, const fsm_state &state) {
-    switch (state) {
+  friend std::ostream &operator<<(std::ostream &out, const fsm_state &s) {
+    switch (s) {
       case kLeft: out << "kLeft";
         break;
       case kPostLeftDouble: out << "kPostLeftDouble";
@@ -50,7 +51,7 @@ struct fsm_info {
         break;
       case kPostRightDouble: out << "kPostRightDouble";
         break;
-      default: out << state;
+      default: out << s;
     }
     return out;
   }

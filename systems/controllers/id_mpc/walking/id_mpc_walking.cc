@@ -1,1 +1,48 @@
 #include "id_mpc_walking.h"
+
+namespace dairlib::systems::controllers::id_mpc {
+
+IDMPCWalking::IDMPCWalking(
+    IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
+    GaitParams gait_params) :
+    mpc_(params, std::move(dynamics)), params_(gait_params) {
+
+  MakeFootsteps();
+  MakeGroundConstraints();
+}
+
+void IDMPCWalking::MakeFootsteps() {
+  auto& prog = mpc_.get_prog();
+
+  int intervals = std::round((params_.t_ss + params_.t_ds) / params_.mpc_dt);
+  int num_touchdowns = (params_.mpc_N / intervals);
+
+  // unless the number of intervals between touchdowns evenly divides the MPC
+  // horizon, we need to add an extra touchdown event
+  if (num_touchdowns * intervals > params_.mpc_N) {
+    ++num_touchdowns;
+  }
+
+  for (int i = 0; i < params_.footstep_horizon; ++i) {
+    pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
+  }
+
+  // Make the touchdown constraints, noting that the initial footstep should
+  // just be set by FK to the current stance foot (so we skip it here)
+  for (int i = 1; i <= params_.mpc_N; ++i) {
+    int step_idx = i / intervals + 1;
+    auto pos_constraint = std::make_shared<PointPositionConstraint<AutoDiffXd>>(
+        mpc_.dynamics(), "", Eigen::Vector3d::Zero());
+    prog.AddConstraint(
+        pos_constraint, {mpc_.position_vars(i), pp_.at(step_idx)});
+    td_constraints_.push_back(pos_constraint);
+  }
+}
+
+void IDMPCWalking::MakeGroundConstraints() {
+  for (const auto& p : pp_) {
+    mpc_.get_prog().AddLinearEqualityConstraint(p(2) == 0);
+  }
+}
+
+}

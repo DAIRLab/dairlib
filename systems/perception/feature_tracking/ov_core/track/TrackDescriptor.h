@@ -108,7 +108,7 @@ protected:
    * @param ids0 left vector of all new IDs
    * @param ids1 right vector of all new IDs
    *
-   * This does the same logic as the perform_detection_monocular() function, but we also enforce stereo contraints.
+   * This does the same logic as the perform_detection_monocular() function, but we also enforce stereo constraints.
    * We also do STEREO matching from the left to right, and only return good matches that are found in both the left and right.
    * Our vector of IDs will be later overwritten when we match features temporally to the previous frame's features.
    * See robust_match() for the matching.

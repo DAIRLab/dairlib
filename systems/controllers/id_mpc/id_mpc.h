@@ -6,10 +6,9 @@
 #include "core/constrained_inverse_dynamics_info.h"
 #include "core/timeline.h"
 
-#include "contraints/collocation_constraint.h"
-#include "contraints/kinematic_constraint.h"
-#include "contraints/quaternion_norm_constraint.h"
-#include "contraints/point_position_constraint.h"
+#include "constraints/collocation_constraint.h"
+#include "constraints/kinematic_constraint.h"
+#include "constraints/quaternion_norm_constraint.h"
 
 #include "costs/reference_manager.h"
 #include "costs/mpc_reference.h"
@@ -154,7 +153,6 @@ class IDMPC {
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
 
-  std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>> ee_pos_constraints_per_knot_;
   ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;
 

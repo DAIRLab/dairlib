@@ -1,4 +1,4 @@
-#include "systems/controllers/id_mpc/contraints/collocation_constraint.h"
+#include "collocation_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 

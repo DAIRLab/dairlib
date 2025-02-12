@@ -1,4 +1,3 @@
-
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
@@ -21,6 +20,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/controllers/id_mpc/walking:id_mpc_walking",
         "//systems/framework:lcm_driven_loop",
     ],
 )

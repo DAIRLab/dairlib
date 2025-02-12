@@ -1,8 +1,7 @@
 #pragma once
-
-#include "systems/controllers/id_mpc/id_mpc.h"
 #include "walking_utils.h"
-
+#include "systems/controllers/id_mpc/id_mpc.h"
+#include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -24,8 +23,12 @@ class IDMPCWalking {
   void MakeFootsteps();
   void MakeGroundConstraints();
 
-  std::vector<drake::solvers::VectorXDecisionVariable> pp_;
   IDMPC mpc_;
+  GaitParams params_;
+
+  std::vector<drake::solvers::VectorXDecisionVariable> pp_;
+  std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
+  td_constraints_;
 
 };
 

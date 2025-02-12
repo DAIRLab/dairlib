@@ -105,7 +105,7 @@ protected:
    * @param ids0 left vector of feature ids for each currently extracted keypoint
    * @param ids1 right vector of feature ids for each currently extracted keypoint
    *
-   * This does the same logic as the perform_detection_monocular() function, but we also enforce stereo contraints.
+   * This does the same logic as the perform_detection_monocular() function, but we also enforce stereo constraints.
    * So we detect features in the left image, and then KLT track them onto the right image.
    * If we have valid tracks, then we have both the keypoint on the left and its matching point in the right image.
    * Will try to always have the "max_features" being tracked through KLT at each timestep.

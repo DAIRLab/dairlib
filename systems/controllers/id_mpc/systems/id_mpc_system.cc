@@ -18,7 +18,7 @@ IDMPCSystem::IDMPCSystem(
     std::unique_ptr<ConstrainedDynamicsInfo> dynamics) :
     trajopt_(params, std::move(dynamics)),
     solver_(trajopt_.num_vars(), trajopt_.num_constraints(),
-      [this](const VectorXd& x, QPData& qp) {
+      [this](const VectorXd& x, QPData* qp) {
         this->trajopt_.ConstructSQPProgram(x, qp);
       },
       [this](const VectorXd& x) {
@@ -27,7 +27,7 @@ IDMPCSystem::IDMPCSystem(
       [this](const VectorXd& x) {
         return this->trajopt_.EvaluateCost(x);
       },
-      [this](VectorXd& x){
+      [this](VectorXd* x){
         this->trajopt_.ProjectToQuaternionConstraint(x);
     }) {
 
@@ -70,7 +70,7 @@ EventStatus IDMPCSystem::SolveMPC(
   const Eigen::VectorXd& x = state->GetState();
 
   trajopt_.UpdateProblemData(reference, x);
-  solver_.DoSQPStep(solution.sqp_iterate.x_sol, solution.sqp_iterate);
+  solver_.DoSQPStep(solution.sqp_iterate.x_sol, &solution.sqp_iterate);
   solution.contact_sequence = reference.active_contacts_;
 
   drake::solvers::MathematicalProgramResult result;

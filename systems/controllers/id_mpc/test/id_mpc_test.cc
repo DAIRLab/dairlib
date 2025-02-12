@@ -323,7 +323,7 @@ int DoMain() {
 
   solvers::QPData qp;
   auto qp_start = std::chrono::high_resolution_clock::now();
-  mpc.ConstructSQPProgram(result.GetSolution(), qp);
+  mpc.ConstructSQPProgram(result.GetSolution(), &qp);
   auto qp_end = std::chrono::high_resolution_clock::now();
 
   std::cout << "Building the SQP qp took " <<

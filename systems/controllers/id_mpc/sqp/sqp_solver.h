@@ -26,15 +26,15 @@ struct LineSearchParams {
 class SQPSolver {
  public:
   SQPSolver(int n, int m,
-            std::function<void (const Eigen::VectorXd&, solvers::QPData&)>
+            std::function<void (const Eigen::VectorXd&, solvers::QPData*)>
                 make_qp,
             std::function<double (const Eigen::VectorXd&)> eval_constraint_viol,
             std::function<double (const Eigen::VectorXd&)> eval_cost,
-            std::function<void (Eigen::VectorXd&)> proj_to_cspace);
+            std::function<void (Eigen::VectorXd*)> proj_to_cspace);
 
   SQPIterate AllocateIterate() const;
 
-  void DoSQPStep(const Eigen::VectorXd& x, SQPIterate& sol);
+  void DoSQPStep(const Eigen::VectorXd& x, SQPIterate* sol);
 
  private:
 
@@ -47,10 +47,10 @@ class SQPSolver {
    */
   void LineSearch(SQPIterate& sol);
 
-  std::function<void (const Eigen::VectorXd&, solvers::QPData&)> make_qp_;
+  std::function<void (const Eigen::VectorXd&, solvers::QPData*)> make_qp_;
   std::function<double (const Eigen::VectorXd&)> eval_constraint_viol_;
   std::function<double (const Eigen::VectorXd&)> eval_cost_;
-  std::function<void (Eigen::VectorXd&)> proj_to_config_space_;
+  std::function<void (Eigen::VectorXd*)> proj_to_config_space_;
 
   solvers::OsqpWrapper qp_solver_;
   solvers::QPData qp_;

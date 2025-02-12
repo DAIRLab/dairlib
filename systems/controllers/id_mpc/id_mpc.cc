@@ -249,14 +249,15 @@ void IDMPC::MakeKinematicConstraints() {
   }
 }
 
-void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData& qp) const {
+void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData* qp) const {
+  DRAKE_DEMAND(qp != nullptr);
   DRAKE_DEMAND(x.rows() == prog_.num_vars());
 
   // Reset problem size data
-  qp.num_vars = prog_.num_vars();
+  qp->num_vars = prog_.num_vars();
 
-  ParseCostsToSQP(x, qp);
-  ParseConstraintsToSQP(x, qp);
+  ParseCostsToSQP(x, *qp);
+  ParseConstraintsToSQP(x, *qp);
 }
 
 void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
@@ -335,11 +336,12 @@ void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
   qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
 }
 
-void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd &x) {
+void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd *x) {
+  DRAKE_DEMAND(x != nullptr);
   for (int i = 0; i < params_.N + 1; ++i) {
     auto w = position_vars(i)(0);
     int start_idx = prog_.FindDecisionVariableIndex(w);
-    x.segment<4>(start_idx) = x.segment<4>(start_idx).normalized();
+    x->segment<4>(start_idx) = x->segment<4>(start_idx).normalized();
   }
 }
 

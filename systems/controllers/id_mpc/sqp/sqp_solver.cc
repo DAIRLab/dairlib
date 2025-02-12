@@ -7,17 +7,18 @@ using Eigen::VectorXd;
 
 SQPSolver::SQPSolver(
     int n, int m,
-    std::function<void (const VectorXd&, solvers::QPData&)> make_qp,
+    std::function<void (const VectorXd&, solvers::QPData*)> make_qp,
     std::function<double (const VectorXd&)> eval_constraint_viol,
     std::function<double (const VectorXd&)> eval_cost,
-    std::function<void (Eigen::VectorXd&)> proj_to_cspace) :
+    std::function<void (Eigen::VectorXd*)> proj_to_cspace) :
     n_(n), m_(m),
     make_qp_(make_qp), eval_constraint_viol_(eval_constraint_viol),
     eval_cost_(eval_cost), proj_to_config_space_(proj_to_cspace){}
 
-void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate &sol) {
-  sol.x_init = x;
-  make_qp_(x, qp_);
+void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate *sol) {
+  DRAKE_DEMAND(sol != nullptr);
+  sol->x_init = x;
+  make_qp_(x, &qp_);
 
   // TODO (@Brian-Acosta) add solver options constructor arg
   if (not qp_solver_.IsInitialized()) {
@@ -27,8 +28,8 @@ void SQPSolver::DoSQPStep(const VectorXd &x, SQPIterate &sol) {
   qp_solver_.Solve(qp_, result);
 
   if (result.success) {
-    sol.dx = result.x;
-    LineSearch(sol);
+    sol->dx = result.x;
+    LineSearch(*sol);
   } else {
     std::cout << "SQP qp solve failed with status: " << result.solution_result;
   }
@@ -45,7 +46,7 @@ void SQPSolver::LineSearch(SQPIterate &sol) {
   VectorXd candidate = sol.x_init;
   while (not accepted and alpha >= lsparams_.alpha_min) {
     candidate = sol.x_init + alpha * sol.dx;
-    proj_to_config_space_(candidate);
+    proj_to_config_space_(&candidate);
     theta_k_p1 = eval_constraint_viol_(candidate);
     phi_k_p1 = eval_cost_(candidate);
 

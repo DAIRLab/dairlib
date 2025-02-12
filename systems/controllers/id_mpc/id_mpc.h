@@ -27,7 +27,6 @@ using ForceEvaluatorsMap =
     std::unordered_map<std::string,
     std::vector<drake::solvers::LinearConstraint*>>;
 
-
 class IDMPC {
  public:
   IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics);
@@ -59,23 +58,60 @@ class IDMPC {
   int num_vars() const {return prog_.num_vars();}
   int num_constraints() const {return num_constraints_;}
 
+  /*!
+   * Update the costs and constraints to reflect the desired trajectories and
+   * contact constraints specified by reference
+   * @param reference MPCReference object specifying the reference trasjectory
+   * @param initial_state initial state of the MPC
+   */
   void UpdateProblemData(const MPCReference& reference,
                          const Eigen::VectorXd& initial_state);
 
+  /*!
+   * Copy the MPC solution into an LCMTrajectory
+   * @param result mathematical program containing the solution
+   */
   LcmTrajectory GetSolutionAsLcmTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const;
 
   drake::solvers::MathematicalProgram& get_prog() { return prog_; }
 
-  void ConstructSQPProgram(const Eigen::VectorXd& x, solvers::QPData& qp) const;
-  double EvaluateConstraintViolation(const Eigen::VectorXd& x) const;
-  double EvaluateCost(const Eigen::VectorXd& x) const;
+  /*!
+   * Create a quadratic approximation of the MPC problem about z, where z is
+   * a set of stacked decision variables. The QP returned is the quadratic
+   * approximation of the primal problem with dz = (z - z*) as the decision
+   * variable, and all constraints represented as inequalities
+   *
+   * @param z Current value of all the MPC variables
+   * @param qp QPData to hold the resulting QP
+   */
+  void ConstructSQPProgram(const Eigen::VectorXd& z, solvers::QPData* qp) const;
+
+  /*!
+   * Evaluate the maximum constraint violation (for the full nonlinear
+   * constraint set), scaled by the MPC timestep,
+   * for a candidate solution z.
+   */
+  double EvaluateConstraintViolation(const Eigen::VectorXd& z) const;
+
+  /*!
+   * Evaluate the full nonlinear cost for a candidate solution z
+   */
+  double EvaluateCost(const Eigen::VectorXd& z) const;
 
   const ConstrainedDynamicsInfo& dynamics() const {
     return *dynamics_;
   }
 
-  void ProjectToQuaternionConstraint(Eigen::VectorXd& x);
+  /*!
+   * Normalize any variables associated with quaternion position coordinates in
+   * the solution z
+   *
+   *  TODO (@Brian-Acosta) use the plant to do this automatically instead of
+   *   assuming a single floating base
+   *
+   */
+  void ProjectToQuaternionConstraint(Eigen::VectorXd* z);
 
   /*!
    * Add a cost on the deviation of a kinematic function from a trajectory
@@ -97,7 +133,7 @@ class IDMPC {
     }
   }
 
- protected:
+ private:
   void UpdateCosts(const MPCReference& reference);
   void UpdateInitialState(const Eigen::VectorXd& x);
   void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);

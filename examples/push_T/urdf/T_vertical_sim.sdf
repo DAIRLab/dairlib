@@ -9,9 +9,9 @@
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-            <ixx>0.0002083</ixx>
-            <iyy>0.0017708</iyy>
-            <izz>0.0017708</izz>
+            <ixx>0.000075</ixx>
+            <iyy>0.0006375</iyy>
+            <izz>0.0006375</izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>
@@ -22,7 +22,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.12 0.03 0.03</size>
           </box>
         </geometry>
         <material>
@@ -33,7 +33,7 @@
         <pose>0 0 0 0 0 0</pose>
             <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.12 0.03 0.03</size>
           </box>
         </geometry>
         <drake:proximity_properties>
@@ -48,14 +48,14 @@
 
     <link name="horizontal_link">
       <inertial>
-        <pose>-0.125 0 0 0 0 1.5708</pose>
+        <pose>-0.075 0 0 0 0 1.5708</pose>
         <mass>0.5</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-            <ixx>0.0002083</ixx>
-            <iyy>0.0017708</iyy>
-            <izz>0.0017708</izz>
+            <ixx>0.000075</ixx>
+            <iyy>0.0006375</iyy>
+            <izz>0.0006375</izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>
@@ -63,10 +63,10 @@
       </inertial>
 
       <visual name="horizontal_link">
-        <pose>-0.125 0 0 0 0 1.5708</pose>
+        <pose>-0.075 0 0 0 0 1.5708</pose>
         <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.12 0.03 0.03</size>
           </box>
         </geometry>
         <material>
@@ -74,10 +74,10 @@
         </material>
       </visual>
       <collision name="horizontal_link_volume">
-        <pose>-0.125 0 0 0 0 1.5708</pose>
+        <pose>-0.075 0 0 0 0 1.5708</pose>
             <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.12 0.03 0.03</size>
           </box>
         </geometry>
         <drake:proximity_properties>

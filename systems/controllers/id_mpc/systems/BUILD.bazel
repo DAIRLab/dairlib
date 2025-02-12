@@ -33,18 +33,6 @@ cc_library(
 )
 
 cc_library(
-    name = "walking_reference_system",
-    srcs = ["walking_reference_system.cc"],
-    hdrs = ["walking_reference_system.h"],
-    deps = [
-        "//systems/controllers/id_mpc",
-        "//systems/controllers/id_mpc/costs:id_mpc_costs",
-        "//systems/controllers/id_mpc/walking:id_mpc_walking",
-        "//systems/framework:vector",
-    ],
-)
-
-cc_library(
     name = "mpc_solution",
     srcs = ["mpc_solution.cc"],
     hdrs = ["mpc_solution.h"],

@@ -72,12 +72,6 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
     UpdateFrictionCone(i, reference.active_contacts_.at(i));
   }
   UpdateCosts(reference);
-
-//  if (params_.num_intervals_between_impacts > 0) {
-//    UpdateTouchdownEEPosConstraints(
-//        reference.touchdown_ee_names_, reference.touchdown_ee_points_);
-//  }
-
 }
 
 void IDMPC::UpdateFrictionCone(

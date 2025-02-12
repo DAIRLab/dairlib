@@ -40,7 +40,7 @@ pybind_py_library(
 pybind_py_library(
     name = "systems_py",
     cc_deps = [
-        "//systems/controllers/id_mpc/systems:walking_reference_system",
+        "//systems/controllers/id_mpc/walking:id_mpc_walking",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "systems",

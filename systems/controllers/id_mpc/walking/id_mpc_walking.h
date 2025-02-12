@@ -11,9 +11,16 @@ class IDMPCWalking {
                std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
                GaitParams gait_params);
 
-  const IDMPC& mpc() const {
+  [[nodiscard]] const IDMPC& mpc() const {
     return mpc_;
   }
+
+  void UpdateProblemData(const MPCReference& reference,
+                         const Eigen::VectorXd& initial_state);
+
+  void SetFootstepInitialGuess(const std::vector<Eigen::Vector3d>& pp);
+  void UpdateFootstepLocationsInStackedVariables(
+      const std::vector<Eigen::Vector3d>& pp, Eigen::VectorXd* z);
 
  private:
   void UpdateFootstepConstraints(

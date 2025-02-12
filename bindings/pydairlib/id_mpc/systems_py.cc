@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
-#include "systems/controllers/id_mpc/systems/walking_reference_system.h"
+#include "systems/controllers/id_mpc/walking/walking_reference_system.h"
 
 namespace py = pybind11;
 

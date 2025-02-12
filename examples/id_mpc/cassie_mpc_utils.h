@@ -1,7 +1,7 @@
 #pragma once
 
 #include "systems/controllers/id_mpc/id_mpc.h"
-#include "systems/controllers/id_mpc/systems/walking_reference_system.h"
+#include "systems/controllers/id_mpc/walking/walking_reference_system.h"
 
 
 namespace dairlib {

@@ -23,6 +23,23 @@ void IDMPCWalking::UpdateFootstepConstraints(
   }
 }
 
+void IDMPCWalking::SetFootstepInitialGuess(const std::vector<Vector3d>& pp) {
+  DRAKE_DEMAND(pp.size() == pp_.size());
+  for (size_t i = 0; i < pp.size(); ++i) {
+    mpc_.get_prog().SetInitialGuess(pp_.at(i), pp.at(i));
+  }
+}
+
+void IDMPCWalking::UpdateFootstepLocationsInStackedVariables(
+    const std::vector<Vector3d>& pp, VectorXd *z) {
+  for (size_t i = 0; i < pp_.size(); ++i) {
+    const auto& indices = mpc_.get_prog().FindDecisionVariableIndices(pp_.at(i));
+    for (int j = 0; j < pp.at(i).rows(); ++j) {
+      (*z)(indices[j]) = pp.at(i)(j);
+    }
+  }
+}
+
 void IDMPCWalking::MakeFootsteps() {
   auto& prog = mpc_.get_prog();
 
@@ -52,7 +69,7 @@ void IDMPCWalking::MakeFootsteps() {
 }
 
 void IDMPCWalking::MakeGroundConstraints() {
-  for (int i = 1; i < pp_.size(); ++i) {
+  for (size_t i = 1; i < pp_.size(); ++i) {
     mpc_.get_prog().AddLinearEqualityConstraint(pp_[i](2) == 0);
   }
 }

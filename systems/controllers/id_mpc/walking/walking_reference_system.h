@@ -1,6 +1,6 @@
 #pragma once
+#include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
-#include "systems/controllers/id_mpc/walking/walking_utils.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"

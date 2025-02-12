@@ -10,7 +10,7 @@ cc_library(
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
         "//systems/controllers/id_mpc",
-        "//systems/controllers/id_mpc/systems:walking_reference_system",
+        "//systems/controllers/id_mpc/walking:id_mpc_walking",
     ],
 )
 
@@ -34,6 +34,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems/controllers/id_mpc/systems:id_mpc_systems",
+        "//systems/controllers/id_mpc/walking:id_mpc_walking",
         "//systems/framework:lcm_driven_loop",
     ],
 )

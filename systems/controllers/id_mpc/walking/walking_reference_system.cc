@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "walking_reference_system.h"
+#include "systems/controllers/id_mpc/walking/walking_reference_system.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/id_mpc/costs/relative_position_cost.h"

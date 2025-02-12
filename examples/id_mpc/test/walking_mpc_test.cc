@@ -2,7 +2,7 @@
 
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/controllers/id_mpc/systems/id_mpc_system.h"
-#include "systems/controllers/id_mpc/systems/walking_reference_system.h"
+#include "systems/controllers/id_mpc/walking/walking_reference_system.h"
 #include "systems/controllers/id_mpc/walking/id_mpc_walking.h"
 #include "systems/robot_lcm_systems.h"
 

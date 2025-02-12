@@ -2,6 +2,9 @@
 
 namespace dairlib::systems::controllers::id_mpc {
 
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
 IDMPCWalking::IDMPCWalking(
     IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
     GaitParams gait_params) :
@@ -9,6 +12,15 @@ IDMPCWalking::IDMPCWalking(
 
   MakeFootsteps();
   MakeGroundConstraints();
+}
+
+void IDMPCWalking::UpdateFootstepConstraints(
+    const std::vector<std::string> &foot_names,
+    const std::vector<Vector3d> &contact_points) {
+  for (int i = 1; i < params_.mpc_N + 1;  ++i) {
+    td_constraints_.at(i - 1)->set_point(
+        foot_names.at(i), contact_points.at(i));
+  }
 }
 
 void IDMPCWalking::MakeFootsteps() {
@@ -32,7 +44,7 @@ void IDMPCWalking::MakeFootsteps() {
   for (int i = 1; i <= params_.mpc_N; ++i) {
     int step_idx = i / intervals + 1;
     auto pos_constraint = std::make_shared<PointPositionConstraint<AutoDiffXd>>(
-        mpc_.dynamics(), "", Eigen::Vector3d::Zero());
+        mpc_.dynamics(), "", Vector3d::Zero());
     prog.AddConstraint(
         pos_constraint, {mpc_.position_vars(i), pp_.at(step_idx)});
     td_constraints_.push_back(pos_constraint);
@@ -40,8 +52,8 @@ void IDMPCWalking::MakeFootsteps() {
 }
 
 void IDMPCWalking::MakeGroundConstraints() {
-  for (const auto& p : pp_) {
-    mpc_.get_prog().AddLinearEqualityConstraint(p(2) == 0);
+  for (int i = 1; i < pp_.size(); ++i) {
+    mpc_.get_prog().AddLinearEqualityConstraint(pp_[i](2) == 0);
   }
 }
 

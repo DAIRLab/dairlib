@@ -60,6 +60,8 @@ void IDMPCWalking::MakeFootsteps() {
     ++num_touchdowns;
   }
 
+  DRAKE_DEMAND(params_.footstep_horizon >= num_touchdowns);
+
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
   }

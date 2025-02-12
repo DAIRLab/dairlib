@@ -101,6 +101,7 @@ GaitParams MakeCassieGaitParams(const IDMPCParams& mpc_params) {
   params.mpc_N = mpc_params.N;
   params.mpc_dt = mpc_params.dt;
   params.stance_width = 0.3;
+  params.footstep_horizon = 4;
 
   params.standing_pose_q = VectorXd::Zero(plant.num_positions());
   params.standing_pose_u = VectorXd::Zero(plant.num_actuators());

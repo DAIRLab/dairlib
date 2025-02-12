@@ -39,6 +39,7 @@ cc_library(
     deps = [
         "//systems/controllers/id_mpc",
         "//systems/controllers/id_mpc/costs:id_mpc_costs",
+        "//systems/controllers/id_mpc/walking:id_mpc_walking",
         "//systems/framework:vector",
     ],
 )

@@ -116,7 +116,6 @@ PYBIND11_MODULE(id_mpc, m) {
       .def_readwrite("N", &IDMPCParams::N)
       .def_readwrite("dt", &IDMPCParams::dt)
       .def_readwrite("num_full_torque_knots", &IDMPCParams::num_full_torque_knots)
-      .def_readwrite("num_intervals_between_impacts", &IDMPCParams::num_intervals_between_impacts)
       .def_readwrite("mu", &IDMPCParams::mu)
       .def_property("Wq",
                     [](const IDMPCParams& p) { return p.Wq; },
@@ -147,7 +146,6 @@ PYBIND11_MODULE(id_mpc, m) {
              return "IDMPCParams(N=" + std::to_string(p.N) +
                  ", dt=" + std::to_string(p.dt) +
                  ", num_full_torque_knots=" + std::to_string(p.num_full_torque_knots) +
-                 ", num_intervals_between_impacts=" + std::to_string(p.num_intervals_between_impacts) +
                  ", mu=" + std::to_string(p.mu) + ")";
            });
 

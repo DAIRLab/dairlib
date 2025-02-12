@@ -97,24 +97,19 @@ class IDMPC {
     }
   }
 
- private:
-
+ protected:
   void UpdateCosts(const MPCReference& reference);
   void UpdateInitialState(const Eigen::VectorXd& x);
   void UpdateActiveContacts(int knot_index, std::vector<std::string> contacts);
   void UpdateFrictionCone(
       int knot_index, const std::vector<std::string>& active_contacts);
-  void UpdateTouchdownEEPosConstraints(
-      const std::vector<std::string>& ee_touchdown_names,
-      const std::vector<Eigen::Vector3d>& ee_points);
+
 
   void MakeMPCCosts();
   void MakeKnotPoints();
   void MakeForceLimits();
-  void MakeGroundConstraints();
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
-  void MakeEEPositionVariablesAndConstraints();
 
   void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
@@ -122,8 +117,7 @@ class IDMPC {
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;
   Timeline timeline_;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> nonlin_constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::Constraint>> quat_contraints_;
+
   std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>> ee_pos_constraints_per_knot_;
   ForceEvaluatorsMap contact_force_limits_{};
   ReferenceManager<double> reference_manager_;
@@ -132,9 +126,6 @@ class IDMPC {
   drake::solvers::MathematicalProgram prog_;
 
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> point_position_vars_;
-  std::shared_ptr<QuaternionNormConstraint<AutoDiffXd>> unit_quat_ = nullptr;
-
   int num_constraints_;
 };
 

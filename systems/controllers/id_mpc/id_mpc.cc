@@ -49,8 +49,6 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
   MakeForceLimits();
   MakeCollocationConstraints();
   MakeKinematicConstraints();
-  MakeEEPositionVariablesAndConstraints();
-//  MakeGroundConstraints();
 
   initial_state_constraint_ = prog_.AddLinearEqualityConstraint(
       MatrixXd::Identity(dynamics_->nx(), dynamics_->nx()),
@@ -126,16 +124,6 @@ void IDMPC::UpdateCosts(const MPCReference &reference) {
 
   for (const auto& [name, traj] : reference.task_space_trajs_) {
     reference_manager_.UpdateReference(name, traj, reference.knot_times_);
-  }
-}
-
-void IDMPC::UpdateTouchdownEEPosConstraints(
-    const std::vector<std::string> &ee_touchdown_names,
-    const std::vector<Eigen::Vector3d>& ee_points) {
-  // no constraint on the first knot
-  for (int i = 1; i < params_.N + 1;  ++i) {
-    ee_pos_constraints_per_knot_.at(i - 1)->set_point(
-        ee_touchdown_names.at(i), ee_points.at(i));
   }
 }
 
@@ -245,11 +233,9 @@ void IDMPC::MakeCollocationConstraints() {
             &timeline_.knot_states.at(i),
             &timeline_.knot_states.at(i+1)
         );
-    nonlin_constraints_.push_back(
-        prog_.AddConstraint(
-            collocation_constraint,
-            {knot_point_vars_.at(i),
-             knot_point_vars_.at(i+1).head(dynamics_->nx())}));
+    prog_.AddConstraint(
+      collocation_constraint,
+      {knot_point_vars_.at(i), knot_point_vars_.at(i+1).head(dynamics_->nx())});
   }
 }
 
@@ -257,37 +243,9 @@ void IDMPC::MakeKinematicConstraints() {
   for (int i = 0; i < params_.N; ++i) {
     auto kinematic_constraint = std::make_shared<KinematicConstraint<double>>(
         *timeline_.knots.at(i+1), &timeline_.knot_states.at(i+1));
-    nonlin_constraints_.push_back(
-        prog_.AddConstraint(
-            kinematic_constraint,
-            timeline_.knots.at(i+1)->get_x(knot_point_vars_.at(i+1))));
-  }
-}
-
-void IDMPC::MakeEEPositionVariablesAndConstraints() {
-
-  if (params_.num_intervals_between_impacts <= 0) {
-    return;
-  }
-
-  int num_touchdowns = (params_.N / params_.num_intervals_between_impacts) + 1;
-  for (int i = 0; i < num_touchdowns; ++i) {
-    point_position_vars_.push_back(prog_.NewContinuousVariables(3));
-  }
-  for (int i = 0; i < params_.N; ++i) {
-    int pos_var_idx = (i+1) / params_.num_intervals_between_impacts;
-    auto pos_constraint = std::make_shared<PointPositionConstraint<AutoDiffXd>>(
-        *dynamics_, "", Eigen::Vector3d::Zero());
     prog_.AddConstraint(
-        pos_constraint,
-        {position_vars(i+1), point_position_vars_.at(pos_var_idx)});
-    ee_pos_constraints_per_knot_.push_back(pos_constraint);
-  }
-}
-
-void IDMPC::MakeGroundConstraints() {
-  for (const auto& p: point_position_vars_) {
-    prog_.AddLinearEqualityConstraint(p(2) == 0);
+      kinematic_constraint,
+      timeline_.knots.at(i+1)->get_x(knot_point_vars_.at(i+1)));
   }
 }
 

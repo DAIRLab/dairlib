@@ -15,7 +15,7 @@ struct SQPIterate {
 
 struct LineSearchParams {
   double alpha_min = 1e-4;
-  double theta_max = 1e-2;
+  double theta_max = 1e-3;
   double theta_min = 1e-6;
   double eta = 1e-4;
   double gamma_phi = 1e-6;

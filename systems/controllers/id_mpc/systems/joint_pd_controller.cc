@@ -60,28 +60,11 @@ JointPDController::JointPDController(
 
 void JointPDController::CalcTrajs(
     const drake::systems::Context<double>& context,
-    JointPDController::ReferenceTraj* trajs) const {
+    SolutionTraj* trajs) const {
   const auto& lcm_traj = get_input_port_lcm_traj().Eval<lcmt_timestamped_saved_traj>(context);
   LcmTrajectory trajectories(lcm_traj.saved_traj);
-
-  VectorXd breaks = trajectories.GetTrajectory("q").time_vector;
-  MatrixXd q_knots = trajectories.GetTrajectory("q").datapoints;
-  MatrixXd v_knots = trajectories.GetTrajectory("v").datapoints;
-  MatrixXd qdot_knots = MatrixXd::Zero(q_knots.rows(), q_knots.cols());
-
-  for (int i = 0; i < q_knots.cols(); ++i) {
-    plant_.SetPositions(context_.get(), q_knots.col(i));
-    plant_.SetVelocities(context_.get(), v_knots.col(i));
-    VectorXd qdot = VectorXd::Zero(plant_.num_positions());
-    plant_.MapVelocityToQDot(*context_, v_knots.col(i), &qdot);
-    qdot_knots.col(i) = qdot;
-  }
-
-  trajs->q = PiecewisePolynomial<double>::CubicHermite(breaks, q_knots, qdot_knots);
-  trajs->v = PiecewisePolynomial<double>::FirstOrderHold(breaks, v_knots);
-  trajs->u = PiecewisePolynomial<double>::ZeroOrderHold(
-      trajectories.GetTrajectory("u").time_vector,
-      trajectories.GetTrajectory("u").datapoints);
+  *trajs = SolutionTraj::FromLcmTrajectory(
+      trajectories, plant_, context_.get());
 }
 
 void JointPDController::CalcTorques(
@@ -89,7 +72,7 @@ void JointPDController::CalcTorques(
     TimestampedVector<double> *u) const {
   const auto& state = get_input_port_state().Eval<OutputVector<double>>(context);
   const auto& trajs = get_cache_entry(
-      trajectory_cache_).Eval<JointPDController::ReferenceTraj>(context);
+      trajectory_cache_).Eval<SolutionTraj>(context);
 
   double t = state.get_timestamp();
   VectorXd q = state.GetPositions();

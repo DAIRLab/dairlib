@@ -1,7 +1,8 @@
 #include "id_mpc_walking_system.h"
+#include "systems/controllers/id_mpc/core/solution_trajectories.h"
+#include "systems/controllers/id_mpc/costs/mpc_reference.h"
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/id_mpc/costs/mpc_reference.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -56,7 +57,6 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
       &IDMPCWalkingSystem::CalcOutput).get_index();
 
   plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
-
 }
 
 EventStatus IDMPCWalkingSystem::SolveMPC(
@@ -72,6 +72,8 @@ EventStatus IDMPCWalkingSystem::SolveMPC(
     trajopt_.SetFootstepInitialGuess(footsteps);
     SetInitialSolverStateToCurrent(*state, reference.active_contacts_, solution.sqp_iterate);
     solution.is_initial_solve = false;
+  } else {
+    ShiftSolution(reference.knot_times_, &solution);
   }
   const Eigen::VectorXd& x = state->GetState();
 
@@ -147,6 +149,35 @@ void IDMPCWalkingSystem::SetInitialSolverStateToCurrent(
     }
   }
   solver_state.x_sol = mpc.get_prog().initial_guess();
+}
+
+void IDMPCWalkingSystem::ShiftSolution(const std::vector<double> &knots,
+                                       MPCSolution *prev_sol) const {
+
+  SolutionTraj prev_trajs = SolutionTraj::FromLcmTrajectory(
+      prev_sol->solution_trajectories,
+      trajopt_.dynamics().get_plant(),
+      plant_context_.get()
+  );
+
+  auto& mpc = trajopt_.mutable_mpc();
+  VectorXd* z = &prev_sol->sqp_iterate.x_init;
+
+  for (size_t i = 0; i < knots.size() ; ++i) {
+    double t = knots.at(i);
+    mpc.SetDecisionVariableValue(
+        mpc.position_vars(i), prev_trajs.q.value(t), z);
+    mpc.SetDecisionVariableValue(
+        mpc.velocity_vars(i), prev_trajs.v.value(t), z);
+    if (mpc.has_torques_at_knot(i)) {
+      mpc.SetDecisionVariableValue(
+          mpc.input_vars(i), prev_trajs.u.value(t), z);
+    }
+    if (mpc.has_lambdas_at_knot(i)) {
+      mpc.SetDecisionVariableValue(
+          mpc.lambda_vars(i), prev_trajs.lambda.value(t), z);
+    }
+  }
 }
 
 }

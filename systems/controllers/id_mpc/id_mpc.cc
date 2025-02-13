@@ -121,6 +121,16 @@ void IDMPC::UpdateCosts(const MPCReference &reference) {
   }
 }
 
+void IDMPC::SetDecisionVariableValue(
+    const VectorXDecisionVariable &var, const VectorXd& value,
+    VectorXd *z) const {
+  const auto& indices = prog_.FindDecisionVariableIndices(var);
+  DRAKE_DEMAND(indices.size() == value.rows());
+  for (int i = 0; i < value.rows(); ++i) {
+    (*z)(indices[i]) = value(i);
+  }
+}
+
 void IDMPC::MakeForceLimits() {
   for (const auto& c : dynamics_->contacts()) {
     std::vector<LinearConstraint*> evaluators;

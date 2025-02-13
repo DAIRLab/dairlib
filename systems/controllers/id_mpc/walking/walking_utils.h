@@ -10,6 +10,7 @@ struct GaitParams {
   double t_ss;
   double t_ds;
   double mpc_dt;
+  double step_height;
   double stance_width;
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;

@@ -50,7 +50,7 @@ fsm_info WalkingReferenceSystem::CalcFSM(
     double t, const fsm_info &curr_fsm) const {
   fsm_info fsm = curr_fsm;
 
-  if (t >= curr_fsm.next_switch_time) {
+  if (t >= curr_fsm.next_switch_time - 0.05 * params_.mpc_dt) {
     fsm.prev_switch_time = t;
     fsm.next_switch_time =
         curr_fsm.is_double_stance() ? t + params_.t_ss : t + params_.t_ds;
@@ -325,7 +325,7 @@ void WalkingReferenceSystem::AddSwingFootTrajCostToMPC(
   mpc->AddTaskCost<RelativePositionCost>(
       "swing_foot", Q, Vector3d::Zero(), plant_,
       params_.right_foot_body_name, params_.left_foot_body_name,
-      params_.foot_midpoint, params_.foot_midpoint);
+      Vector3d::Zero(), Vector3d::Zero());
 }
 
 PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
@@ -343,7 +343,7 @@ PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
   // relative to the right foot
   for (int i = 0; i < phases.size(); ++i) {
     Vector3d p = l;
-    p(2) = 0.15 * swing_shape(phases.at(i));
+    p(2) = params_.step_height * swing_shape(phases.at(i));
     if (fsm_states.at(i) == fsm_info::kLeft) {
       p(2) *= -1;
     }

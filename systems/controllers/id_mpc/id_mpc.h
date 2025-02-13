@@ -79,6 +79,16 @@ class IDMPC {
   int num_constraints() const {return num_constraints_;}
 
   /*!
+   * Set the value of the indices of the given decision variables within z to
+   * the given value
+   */
+  void SetDecisionVariableValue(
+      const drake::solvers::VectorXDecisionVariable& var,
+      const Eigen::VectorXd& value,
+      Eigen::VectorXd* z) const;
+
+
+  /*!
    * Update the costs and constraints to reflect the desired trajectories and
    * contact constraints specified by reference
    * @param reference MPCReference object specifying the reference trasjectory

@@ -26,7 +26,7 @@ class IDMPCWalking {
 
   void SetFootstepInitialGuess(const std::vector<Eigen::Vector3d>& pp);
   void UpdateFootstepLocationsInStackedVariables(
-      const std::vector<Eigen::Vector3d>& pp, Eigen::VectorXd* z);
+      const std::vector<Eigen::Vector3d>& pp, Eigen::VectorXd* z) const;
 
   int n_footsteps() const { return params_.footstep_horizon; }
 

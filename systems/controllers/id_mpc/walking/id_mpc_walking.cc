@@ -39,12 +39,9 @@ void IDMPCWalking::SetFootstepInitialGuess(const std::vector<Vector3d>& pp) {
 }
 
 void IDMPCWalking::UpdateFootstepLocationsInStackedVariables(
-    const std::vector<Vector3d>& pp, VectorXd *z) {
+    const std::vector<Vector3d>& pp, VectorXd *z) const {
   for (size_t i = 0; i < pp_.size(); ++i) {
-    const auto& indices = mpc_.get_prog().FindDecisionVariableIndices(pp_.at(i));
-    for (int j = 0; j < pp.at(i).rows(); ++j) {
-      (*z)(indices[j]) = pp.at(i)(j);
-    }
+    mpc_.SetDecisionVariableValue(pp_.at(i), pp.at(i), z);
   }
 }
 

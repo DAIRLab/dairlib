@@ -96,10 +96,11 @@ GaitParams MakeCassieGaitParams(const IDMPCParams& mpc_params) {
   plant.Finalize();
 
   GaitParams params;
-  params.t_ss = 0.35;
-  params.t_ds = 0.05;
+  params.t_ss = 0.325;
+  params.t_ds = 0.025;
   params.mpc_N = mpc_params.N;
   params.mpc_dt = mpc_params.dt;
+  params.step_height = 0.1;
   params.stance_width = 0.3;
   params.footstep_horizon = 4;
 

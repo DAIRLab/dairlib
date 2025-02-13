@@ -69,6 +69,7 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
+        "//systems/controllers/id_mpc/core:solution_trajectories",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

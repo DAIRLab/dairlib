@@ -1,10 +1,12 @@
 #pragma once
 
 #include "systems/framework/timestamped_vector.h"
-
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+
+#include "systems/controllers/id_mpc/core/solution_trajectories.h"
+
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -22,16 +24,10 @@ class JointPDController : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_lcm_traj_);
   }
 
-  struct ReferenceTraj {
-    drake::trajectories::PiecewisePolynomial<double> q;
-    drake::trajectories::PiecewisePolynomial<double> v;
-    drake::trajectories::PiecewisePolynomial<double> u;
-  };
-
  private:
 
   void CalcTrajs(const drake::systems::Context<double>& context,
-                 ReferenceTraj* traj) const;
+                 SolutionTraj* traj) const;
 
   void CalcTorques(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* u) const;

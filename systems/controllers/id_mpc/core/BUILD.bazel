@@ -8,6 +8,7 @@ cc_library(
         ":constrained_inverse_dynamics_info",
         ":knot_point",
         ":knot_point_state",
+        ":solution_trajectories",
         ":timeline",
     ],
 )
@@ -50,5 +51,15 @@ cc_library(
     hdrs = ["timeline.h"],
     deps = [
         ":knot_point",
+    ],
+)
+
+cc_library(
+    name = "solution_trajectories",
+    srcs = ["solution_trajectories.cc"],
+    hdrs = ["solution_trajectories.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
     ],
 )

@@ -45,6 +45,9 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
       const std::vector<std::vector<std::string>>& contacts,
       SQPIterate& solver_state) const;
 
+  void ShiftSolution(const std::vector<double>& knots,
+                     MPCSolution* prev_sol) const;
+
   drake::systems::EventStatus
   SolveMPC(const drake::systems::Context<double>&context,
            drake::systems::State<double>* state) const;

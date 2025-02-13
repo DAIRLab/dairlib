@@ -45,8 +45,9 @@ int DoMain() {
 
 
   Eigen::Matrix3d Qfoot = Eigen::Matrix3d::Zero();
-  Qfoot(1, 1) = 10;
-  Qfoot(2, 2) = 100;
+  Qfoot(0, 0) = 5;
+  Qfoot(1, 1) = 5;
+  Qfoot(2, 2) = 50;
   ref_gen->AddSwingFootTrajCostToMPC(
       mpc_system->get_mutable_trajopt_ptr(), Qfoot);
 
@@ -80,7 +81,8 @@ int DoMain() {
   auto diagram = builder.Build();
 
   LcmDrivenLoop<lcmt_robot_output> loop(
-      &lcm_local, std::move(diagram), state_receiver, "CASSIE_STATE_SIMULATION", true);
+      &lcm_local, std::move(diagram), state_receiver, "CASSIE_STATE_SIMULATION",
+      true, 50);
 
   loop.Simulate();
 

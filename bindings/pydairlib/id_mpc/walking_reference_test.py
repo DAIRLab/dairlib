@@ -17,6 +17,8 @@ def print_ref(ref):
     for t, c in zip(ref.knot_times, ref.touchdown_ee_names):
         print(f'{t:.3f}: {c}')
 
+    for t in ref.knot_times:
+        print(f'{t:.3f}: {ref.task_space_trajs["swing_foot"].value(t).ravel()[-1]}')
 
 def main():
     params = LoadIDMPCParamsFromYaml(

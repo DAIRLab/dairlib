@@ -140,6 +140,10 @@ std::vector<fsm_info::fsm_state> GetFSMStateVector(
   return states_per_knot;
 }
 
+double swing_shape(double t) {
+  return 0.5 * (1 + sin(2.0 * M_PI * t - M_PI_2));
+}
+
 }
 
 std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
@@ -333,14 +337,13 @@ PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
 
   auto R_yaw = multibody::GetBodyYawRotation_R_WB<double>(
       plant_, *plant_context_, params_.floating_base_name);
-
   Vector3d l = params_.stance_width * Vector3d::UnitY();
 
   // convention of swing trajectory is the position of the left foot
   // relative to the right foot
   for (int i = 0; i < phases.size(); ++i) {
     Vector3d p = l;
-    p(2) = 0.15 * sin(M_PI * phases.at(i));
+    p(2) = 0.15 * swing_shape(phases.at(i));
     if (fsm_states.at(i) == fsm_info::kLeft) {
       p(2) *= -1;
     }

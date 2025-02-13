@@ -6,8 +6,8 @@ cc_library(
     name = "id_mpc_systems",
     deps = [
         ":constant_reference_system",
-        ":id_mpc_walking_system",
         ":id_mpc_system",
+        ":id_mpc_walking_system",
     ],
 )
 
@@ -31,6 +31,7 @@ cc_library(
     deps = [
         ":mpc_solution",
         "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/controllers/id_mpc",
         "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
         "//systems/controllers/id_mpc/walking:id_mpc_walking",

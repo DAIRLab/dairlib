@@ -57,7 +57,7 @@ void RelativePositionCost::EvaluateInnerTerm(
       *context_, drake::multibody::JacobianWrtVariable::kQDot, frame_to_,
       point_to_, plant_.world_frame(), plant_.world_frame(), &J_to);
 
-  VectorXd yd = p_to - p_from;
+  VectorXd yd = (p_to - p_from) - y_;
   MatrixXd grad = J_to - J_from;
   MatrixXd ddx = ExtractGradient(x);
   if (ddx.isIdentity(1e-16)) {
@@ -78,7 +78,7 @@ void RelativePositionCost::EvaluateInnerTerm(
   plant_.CalcPointsPositions(
       *context_, frame_to_, point_to_, plant_.world_frame(), &p_to);
 
-  *y = p_to - p_from;
+  *y = (p_to - p_from) - y_;
 }
 
 }

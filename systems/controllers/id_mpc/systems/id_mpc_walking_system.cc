@@ -6,9 +6,10 @@
 
 namespace dairlib::systems::controllers::id_mpc {
 
+using drake::systems::State;
 using drake::systems::Context;
 using drake::systems::EventStatus;
-using drake::systems::State;
+using drake::multibody::MultibodyPlant;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -98,8 +99,8 @@ void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,
 std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(
     const VectorXd &q, const MPCReference &ref) const {
 
-  const auto& plant = trajopt_.dynamics().get_plant();
-  multibody::SetPositionsIfNew<double>(plant, q, plant_context_.get());
+  const MultibodyPlant<double>& plant = trajopt_.dynamics().get_plant();
+  plant.SetPositions(plant_context_.get(), q);
 
   std::vector<Vector3d> pp(trajopt_.n_footsteps(), Vector3d::Zero());
 

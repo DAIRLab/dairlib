@@ -45,8 +45,8 @@ int DoMain() {
 
 
   Eigen::Matrix3d Qfoot = Eigen::Matrix3d::Zero();
-  Qfoot(1,1) = 10;
-  Qfoot(2,2) = 100;
+  Qfoot(1, 1) = 10;
+  Qfoot(2, 2) = 100;
   ref_gen->AddSwingFootTrajCostToMPC(
       mpc_system->get_mutable_trajopt_ptr(), Qfoot);
 

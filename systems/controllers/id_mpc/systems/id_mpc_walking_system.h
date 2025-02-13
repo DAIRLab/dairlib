@@ -40,6 +40,9 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::Vector3d> CalcInitialFootsteps(
       const Eigen::VectorXd& q, const MPCReference& ref) const;
 
+  std::vector<Eigen::Vector3d> CalcFootstepLocations(
+      const MPCReference& reference, const Eigen::VectorXd& z) const;
+
   void SetInitialSolverStateToCurrent(
       const OutputVector<double>& x_u_t,
       const std::vector<std::vector<std::string>>& contacts,

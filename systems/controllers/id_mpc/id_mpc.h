@@ -87,6 +87,9 @@ class IDMPC {
       const Eigen::VectorXd& value,
       Eigen::VectorXd* z) const;
 
+  Eigen::VectorXd GetDecisionVariableValue(
+      const drake::solvers::VectorXDecisionVariable& var,
+      const Eigen::VectorXd& z) const;
 
   /*!
    * Update the costs and constraints to reflect the desired trajectories and

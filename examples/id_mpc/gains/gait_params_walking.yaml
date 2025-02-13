@@ -3,5 +3,5 @@ t_ss: 0.3
 t_ds: 0.05
 step_height: 0.15
 stance_width: 0.3
-pelvis_height: 0.8
+pelvis_height: 0.9
 foot_pos_w: [2, 2, 10]

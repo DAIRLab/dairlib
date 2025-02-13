@@ -131,6 +131,16 @@ void IDMPC::SetDecisionVariableValue(
   }
 }
 
+VectorXd IDMPC::GetDecisionVariableValue(
+    const VectorXDecisionVariable &var, const VectorXd &z) const {
+  const auto& indices = prog_.FindDecisionVariableIndices(var);
+  VectorXd x = VectorXd::Zero(indices.size());
+  for (int i = 0; i < x.rows(); ++i) {
+    x(i) = z(indices[i]);
+  }
+  return x;
+}
+
 void IDMPC::MakeForceLimits() {
   for (const auto& c : dynamics_->contacts()) {
     std::vector<LinearConstraint*> evaluators;

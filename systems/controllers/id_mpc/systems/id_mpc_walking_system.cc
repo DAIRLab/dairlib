@@ -75,6 +75,12 @@ EventStatus IDMPCWalkingSystem::SolveMPC(
   } else {
     ShiftSolution(reference.knot_times_, &solution);
   }
+
+  if (not reference.touchdown_ee_names_to_update_.empty()) {
+    const auto pp = CalcFootstepLocations(reference, solution.sqp_iterate.x_sol);
+    trajopt_.UpdateFootstepLocationsInStackedVariables(pp, &solution.sqp_iterate.x_sol);
+  }
+
   const Eigen::VectorXd& x = state->GetState();
 
   trajopt_.UpdateProblemData(reference, x);
@@ -121,6 +127,35 @@ std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(
   return pp;
 }
 
+std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcFootstepLocations(
+    const MPCReference& ref, const Eigen::VectorXd& z) const {
+
+  DRAKE_DEMAND(not ref.touchdown_ee_names_to_update_.empty());
+
+  std::vector<Vector3d> pp = std::vector<Vector3d>(
+      trajopt_.n_footsteps(),Vector3d::Zero());
+
+  int idx = 1;
+  const auto& plant = trajopt_.dynamics().get_plant();
+
+  for (size_t i = 0; i < ref.touchdown_ee_names_to_update_.size(); ++i) {
+    const std::string& contact_frame = ref.touchdown_ee_names_to_update_.at(i);
+    if (not contact_frame.empty()) {
+      Vector3d p;
+      const VectorXd q =
+          trajopt_.mpc().GetDecisionVariableValue(trajopt_.mpc().position_vars(i), z);
+      plant.CalcPointsPositions(
+          *plant_context_, plant.GetBodyByName(contact_frame).body_frame(),
+          ref.touchdown_ee_points_[i], plant.world_frame(), &p);
+      pp.at(idx) = p;
+      ++idx;
+    }
+  }
+
+  return pp;
+}
+
+
 void IDMPCWalkingSystem::SetInitialSolverStateToCurrent(
     const OutputVector<double> &x_u_t,
     const std::vector<std::vector<std::string>>& contacts,
@@ -161,7 +196,7 @@ void IDMPCWalkingSystem::ShiftSolution(const std::vector<double> &knots,
   );
 
   auto& mpc = trajopt_.mutable_mpc();
-  VectorXd* z = &prev_sol->sqp_iterate.x_init;
+  VectorXd* z = &prev_sol->sqp_iterate.x_sol;
 
   for (size_t i = 0; i < knots.size() ; ++i) {
     double t = knots.at(i);

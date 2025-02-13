@@ -104,7 +104,9 @@ GaitParams MakeCassieGaitParams(const std::string& filename, const IDMPCParams& 
   params.standing_pose_u = VectorXd::Zero(plant.num_actuators());
   params.standing_pose_lambda = VectorXd::Zero(3 * 4 + 2);
 
-  CassieFixedPointSolver(plant, 0.9, mpc_params.mu, 20, true,
+  CassieFixedPointSolver(plant,
+                         params.pelvis_height,
+                         mpc_params.mu, 20, true,
                          0.5 * params.stance_width,
                          &params.standing_pose_q,
                          &params.standing_pose_u,

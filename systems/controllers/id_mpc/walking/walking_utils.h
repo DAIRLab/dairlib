@@ -15,6 +15,7 @@ struct GaitParams {
   double mpc_dt;
   double step_height;
   double stance_width;
+  double pelvis_height;
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;
   Eigen::VectorXd standing_pose_u;
@@ -40,6 +41,7 @@ struct GaitParamsLoader {
   double t_ds;
   double step_height;
   double stance_width;
+  double pelvis_height;
   std::vector<double> foot_pos_w;
 
   template<typename Archive>
@@ -49,6 +51,7 @@ struct GaitParamsLoader {
     a->Visit(DRAKE_NVP(t_ds));
     a->Visit(DRAKE_NVP(step_height));
     a->Visit(DRAKE_NVP(stance_width));
+    a->Visit(DRAKE_NVP(pelvis_height));
     a->Visit(DRAKE_NVP(foot_pos_w));
   }
 
@@ -62,6 +65,7 @@ struct GaitParamsLoader {
     out.t_ds = archive.t_ds;
     out.step_height = archive.step_height;
     out.stance_width = archive.stance_width;
+    out.pelvis_height = archive.pelvis_height;
     out.foot_pos_W = Eigen::Matrix3d::Zero();
 
     for (int i = 0; i < 3; ++i) {

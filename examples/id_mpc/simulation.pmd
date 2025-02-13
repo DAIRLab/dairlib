@@ -11,7 +11,7 @@ group "0.operator" {
 
 group "1.cassie-robot" {
     cmd "0.standing-controller (OSC)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.8 --channel_x=CASSIE_STATE_SIMULATION --channel_u=CASSIE_INPUT";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.9 --channel_x=CASSIE_STATE_SIMULATION --channel_u=CASSIE_INPUT";
         host = "localhost";
     }
     cmd "1.standing-mpc" {
@@ -22,11 +22,15 @@ group "1.cassie-robot" {
         exec = "bazel-bin/examples/id_mpc/run_joint_controller";
         host = "localhost";
     }
+    cmd "1.walking-mpc" {
+        exec = "bazel-bin/examples/id_mpc/run_id_mpc_walking";
+        host = "localhost";
+    }
 }
 
 group "2.drake-simulator" {
     cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --spring_model=false --target_realtime_rate=0.1 --publish_rate=1000";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --init_height=0.9 --spring_model=false --target_realtime_rate=0.1 --publish_rate=1000";
         host = "localhost";
     }
 }
@@ -51,9 +55,9 @@ script "initialize_standing" {
     start cmd "0.visualizer";
 }
 
-script "mpc" {
+script "walking-mpc" {
     start cmd "2.pd-controller" wait "running";
-    start cmd "1.standing-mpc" wait "running";
+    start cmd "1.walking-mpc" wait "running";
     stop cmd "0.standing-controller (OSC)";
     wait ms 1000;
     start cmd "0.cassie-lcm-logger";

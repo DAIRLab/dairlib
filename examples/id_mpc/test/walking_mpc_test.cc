@@ -23,6 +23,9 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 
 
+const std::string gains_f = "examples/id_mpc/gains/mpc_gains_walking.yaml";
+const std::string gait_f = "examples/id_mpc/gains/gait_params_walking.yaml";
+
 int DoMain() {
 
   drake::systems::DiagramBuilder<double> builder;
@@ -30,8 +33,7 @@ int DoMain() {
   auto dynamics = MakeCassieDynamics();
 
   // TODO (@Brian-Acosta) YAML-ize this
-  IDMPCParams params =
-      LoadIDMPCParamsFromYaml("examples/id_mpc/gains/mpc_gains_walking.yaml");
+  IDMPCParams params = LoadIDMPCParamsFromYaml(gains_f);
   VectorXd q = VectorXd::Zero(dynamics->nq());
   VectorXd v = VectorXd::Zero(dynamics->nv());
   VectorXd u = VectorXd::Zero(dynamics->nu());
@@ -49,7 +51,7 @@ int DoMain() {
   auto plant_context = dynamics->get_plant().CreateDefaultContext();
 
   auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
-      *dynamics, plant_context.get(), MakeCassieGaitParams(params));
+      *dynamics, plant_context.get(), MakeCassieGaitParams(gait_f, params));
 
   auto mpc_system = builder.AddSystem<IDMPCSystem>(params, std::move(dynamics));
 

@@ -10,7 +10,8 @@ std::unique_ptr<systems::controllers::id_mpc::ConstrainedDynamicsInfo>
     MakeCassieDynamics();
 
 systems::controllers::id_mpc::GaitParams
-MakeCassieGaitParams(const systems::controllers::id_mpc::IDMPCParams&
-                     mpc_params);
+MakeCassieGaitParams(
+    const std::string& filename,
+    const systems::controllers::id_mpc::IDMPCParams& mpc_params);
 
 }

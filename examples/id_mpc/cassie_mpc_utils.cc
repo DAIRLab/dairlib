@@ -9,6 +9,7 @@ namespace dairlib {
 
 using systems::controllers::id_mpc::ConstrainedDynamicsInfo;
 using systems::controllers::id_mpc::GaitParams;
+using systems::controllers::id_mpc::GaitParamsLoader;
 using systems::controllers::id_mpc::IDMPCParams;
 
 using Eigen::Vector3d;
@@ -89,20 +90,15 @@ std::unique_ptr<ConstrainedDynamicsInfo> MakeCassieDynamics() {
   return std::move(dynamics_info);
 }
 
-GaitParams MakeCassieGaitParams(const IDMPCParams& mpc_params) {
+GaitParams MakeCassieGaitParams(const std::string& filename, const IDMPCParams& mpc_params) {
   std::string urdf = "examples/Cassie/urdf/cassie_fixed_spring_conservative.urdf";
   MultibodyPlant<double> plant(0.0);
   AddCassieMultibody(&plant, nullptr, true, urdf, false, false);
   plant.Finalize();
 
-  GaitParams params;
-  params.t_ss = 0.325;
-  params.t_ds = 0.025;
+  GaitParams params = GaitParamsLoader::LoadUserGaitParamsFromYaml(filename);
   params.mpc_N = mpc_params.N;
   params.mpc_dt = mpc_params.dt;
-  params.step_height = 0.1;
-  params.stance_width = 0.3;
-  params.footstep_horizon = 4;
 
   params.standing_pose_q = VectorXd::Zero(plant.num_positions());
   params.standing_pose_u = VectorXd::Zero(plant.num_actuators());

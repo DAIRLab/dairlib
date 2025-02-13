@@ -22,6 +22,8 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::ConstantVectorSource;
 
+const std::string gains_f = "examples/id_mpc/gains/mpc_gains_walking.yaml";
+const std::string gait_f = "examples/id_mpc/gains/gait_params_walking.yaml";
 
 int DoMain() {
 
@@ -29,11 +31,10 @@ int DoMain() {
 
   auto dynamics = MakeCassieDynamics();
 
-  IDMPCParams params =
-      LoadIDMPCParamsFromYaml("examples/id_mpc/gains/mpc_gains_walking.yaml");
+  IDMPCParams params = LoadIDMPCParamsFromYaml(gains_f);
 
   auto plant_context = dynamics->get_plant().CreateDefaultContext();
-  auto gait_params = MakeCassieGaitParams(params);
+  auto gait_params = MakeCassieGaitParams(gait_f, params);
 
   auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
       *dynamics, plant_context.get(), gait_params);
@@ -44,10 +45,7 @@ int DoMain() {
   auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(params, std::move(dynamics), gait_params);
 
 
-  Eigen::Matrix3d Qfoot = Eigen::Matrix3d::Zero();
-  Qfoot(0, 0) = 5;
-  Qfoot(1, 1) = 5;
-  Qfoot(2, 2) = 50;
+  Eigen::Matrix3d Qfoot = gait_params.foot_pos_W;
   ref_gen->AddSwingFootTrajCostToMPC(
       mpc_system->get_mutable_trajopt_ptr(), Qfoot);
 

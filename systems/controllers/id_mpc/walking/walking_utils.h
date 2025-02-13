@@ -1,6 +1,9 @@
 #pragma once
 #include <iostream>
+#include <vector>
 #include "Eigen/Dense"
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -15,6 +18,7 @@ struct GaitParams {
   Eigen::VectorXd standing_pose_q;
   Eigen::VectorXd standing_pose_lambda;
   Eigen::VectorXd standing_pose_u;
+  Eigen::Matrix3d foot_pos_W;
   std::string left_foot_body_name;
   std::string right_foot_body_name;
   std::string floating_base_name;
@@ -25,6 +29,47 @@ struct GaitParams {
   std::vector<int> left_leg_holonomic_constraint_idxs;
   std::vector<int> right_leg_holonomic_constraint_idxs;
   Eigen::Vector3d foot_midpoint;
+};
+
+/*!
+ * Struct to support loading the subset of parameters which are user-set
+ */
+struct GaitParamsLoader {
+  int footstep_horizon;
+  double t_ss;
+  double t_ds;
+  double step_height;
+  double stance_width;
+  std::vector<double> foot_pos_w;
+
+  template<typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(footstep_horizon));
+    a->Visit(DRAKE_NVP(t_ss));
+    a->Visit(DRAKE_NVP(t_ds));
+    a->Visit(DRAKE_NVP(step_height));
+    a->Visit(DRAKE_NVP(stance_width));
+    a->Visit(DRAKE_NVP(foot_pos_w));
+  }
+
+  static GaitParams LoadUserGaitParamsFromYaml(const std::string& filename) {
+    const auto archive = drake::yaml::LoadYamlFile<GaitParamsLoader>(filename);
+    DRAKE_DEMAND(archive.foot_pos_w.size() == 3);
+
+    GaitParams out;
+    out.footstep_horizon = archive.footstep_horizon;
+    out.t_ss = archive.t_ss;
+    out.t_ds = archive.t_ds;
+    out.step_height = archive.step_height;
+    out.stance_width = archive.stance_width;
+    out.foot_pos_W = Eigen::Matrix3d::Zero();
+
+    for (int i = 0; i < 3; ++i) {
+      out.foot_pos_W(i,i) = archive.foot_pos_w.at(i);
+    }
+    return out;
+  }
+
 };
 
 struct fsm_info {

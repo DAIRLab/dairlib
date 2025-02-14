@@ -117,10 +117,9 @@ bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
 
 void ConvexPolygon::ReduceFaces(int max_faces) {
   assert(max_faces >= 3);
+  // Ensure faces are sorted for adjacency
+  SortFacesByYawAngle();
   while (A_.rows() > max_faces) {
-    // Ensure faces are sorted for adjacency
-    SortFacesByYawAngle();
-
     // Find adjacent faces with smallest angle
     int best_i = 0;
     int best_j = 1;
@@ -161,10 +160,8 @@ void ConvexPolygon::Clip(int i, int j) {
   Eigen::Vector3d span_normal = normal_i.dot(normal_j) > 0.999 ?
       A_eq_.transpose() : normal_j.cross(normal_i).normalized();
 
-  Eigen::Vector3d edge = vertex_j_next - vertex_prev_i;
-
   // Cross product gives a normal to the plane containing both edges
-  Eigen::Vector3d new_normal = span_normal.cross(edge).normalized();
+  Eigen::Vector3d new_normal = span_normal.cross(vertex_j_next - vertex_prev_i).normalized();
 
   // If the new normal points inward (check against i's normal as reference),
   // flip it to point outward

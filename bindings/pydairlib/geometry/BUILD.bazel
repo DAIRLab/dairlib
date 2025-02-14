@@ -40,6 +40,7 @@ pybind_py_library(
     cc_srcs = ["convex_polygon_py.cc"],
     py_deps = [
         ":module_py",
+        "@drake//bindings/pydrake",
     ],
     py_imports = ["."],
 )

@@ -40,7 +40,9 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
     .def("GetConstraintMatrices", &ConvexPolygon::GetConstraintMatrices)
     .def("GetEqualityConstraintMatrices", &ConvexPolygon::GetEqualityConstraintMatrices)
     .def("GetVertices", &ConvexPolygon::GetVertices)
-    .def("Get2dViolation", &ConvexPolygon::Get2dViolation);
+    .def("Get2dViolation", &ConvexPolygon::Get2dViolation)
+    .def("ReduceFaces", &ConvexPolygon::ReduceFaces)
+    .def("SortFacesByYawAngle", &ConvexPolygon::SortFacesByYawAngle);
 
 py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))

@@ -115,6 +115,93 @@ bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
 }
 }
 
+void ConvexPolygon::ReduceFaces(int max_faces) {
+  assert(max_faces >= 3);
+  while (A_.rows() > max_faces) {
+    // Ensure faces are sorted for adjacency
+    SortFacesByYawAngle();
+
+    // Find adjacent faces with smallest angle
+    int best_i = 0;
+    int best_j = 1;
+    double smallest_angle = M_PI;
+
+    for (int i = 0; i < A_.rows(); ++i) {
+      int j = (i + 1) % A_.rows();
+
+      double dot_product = A_.row(i).normalized().dot(A_.row(j).normalized());
+      double angle = std::acos(std::min(1.0, std::max(-1.0, dot_product)));
+
+      if (angle < smallest_angle) {
+        smallest_angle = angle;
+        best_i = i;
+        best_j = j;
+      }
+    }
+    Clip(best_i, best_j);
+  }
+}
+
+void ConvexPolygon::Clip(int i, int j) {
+  if (i > j and j != 0) std::swap(i, j);
+  assert(j == i + 1 or (j == 0 and i == A_.rows() -1));
+
+  // Get normalized face normals
+  Eigen::Vector3d normal_i = A_.row(i).normalized();
+  Eigen::Vector3d normal_j = A_.row(j).normalized();
+
+  // Find the neighboring face indices
+  int prev_i = (i == 0) ? A_.rows() - 1 : i - 1;
+  int next_j = (j == A_.rows() - 1) ? 0 : j + 1;
+
+  // Find intersection points of faces i and j with their neighbors
+  Eigen::Vector3d vertex_prev_i = SolveForVertexSharedByFaces(i, prev_i);
+  Eigen::Vector3d vertex_j_next = SolveForVertexSharedByFaces(next_j, j);
+
+  Eigen::Vector3d span_normal = normal_i.dot(normal_j) > 0.999 ?
+      A_eq_.transpose() : normal_j.cross(normal_i).normalized();
+
+  Eigen::Vector3d edge = vertex_j_next - vertex_prev_i;
+
+  // Cross product gives a normal to the plane containing both edges
+  Eigen::Vector3d new_normal = span_normal.cross(edge).normalized();
+
+  // If the new normal points inward (check against i's normal as reference),
+  // flip it to point outward
+  if (new_normal.dot(normal_i) < 0) {
+    new_normal = -new_normal;
+  }
+
+  // Compute the offset by using one of the vertices
+  double b = new_normal.dot(vertex_prev_i);
+
+  // Create new A and b matrices with one fewer row
+  Eigen::MatrixXd new_A(A_.rows() - 1, 3);
+  Eigen::VectorXd new_b(b_.rows() - 1);
+
+  int replacement_idx = std::min(i, j);
+  int removal_idx = replacement_idx + 1;
+  if (removal_idx == i or removal_idx == j) {
+    removal_idx++;
+  }
+  int tail_rows = new_A.rows() - replacement_idx - 1;
+
+  new_A.topRows(replacement_idx) = A_.topRows(replacement_idx);
+  new_A.row(replacement_idx) = new_normal.transpose();
+  new_A.bottomRows(tail_rows) = A_.middleRows(removal_idx, tail_rows);
+
+  new_b.head(replacement_idx) = b_.head(replacement_idx);
+  new_b(replacement_idx) = b;
+  new_b.tail(tail_rows) = b_.segment(replacement_idx, tail_rows);
+
+  // Update matrices
+  A_ = new_A;
+  b_ = new_b;
+
+  // discard bounding box
+  bounding_box_.valid = false;
+}
+
 void ConvexPolygon::SortFacesByYawAngle() {
   const Matrix3d R_FW = R_WF().transpose();
   // Cheeky little insertion sort since these are small matrices

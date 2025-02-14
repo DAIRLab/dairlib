@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "test_convex_polygon",
+    srcs = ["test_convex_polygon.py"],
+    deps = [
+        "//bindings/pydairlib/geometry:geometry"
+    ],
+)

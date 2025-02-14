@@ -82,6 +82,12 @@ class ConvexPolygon {
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
 
   /*
+   * Reduce the number of faces by merging adjacent faces with the smallest
+   * yaw angle between them
+   */
+  void ReduceFaces(int max_faces);
+
+  /*
    * Performs an in place rotation and translation
    * of the constraints Ax <= b such that
    * A (R_WF x + p_OF_W) <= b. In other words, moves the constraint from
@@ -115,6 +121,11 @@ class ConvexPolygon {
   void SortFacesByYawAngle();
 
  private:
+
+  /*
+   * Calculate the new constraint matrix when merging faces i and j
+   */
+  void Clip(int i, int j);
 
   struct bounding_box {
     bool valid = false;

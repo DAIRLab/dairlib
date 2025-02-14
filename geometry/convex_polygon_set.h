@@ -30,6 +30,7 @@ class ConvexPolygonSet {
   void clear() { set_.clear(); }
   bool empty() {return set_.empty(); }
   bool Feasible2d(const Eigen::Vector3d& pt, double tol = -1e-2) const;
+  double CalcViolation(const Eigen::Vector3d& pt) const;
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF,
                            const Eigen::Vector3d& p_OF_W);

@@ -55,6 +55,11 @@ class ConvexPolygon {
   double Get2dViolation(const Eigen::Vector3d& pt) const;
 
   /*
+   * Get violation of the equality constraint
+   */
+  double GetPlaneViolation(const Eigen::Vector3d& pt) const;
+
+  /*
    * Returns true if inequality constraints are violated by the point
    */
   bool PointViolatesInequalities(const Eigen::Vector3d& pt) const;

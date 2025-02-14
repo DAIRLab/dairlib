@@ -24,6 +24,10 @@ class ConvexPolygonSetConstraint : public SetMembershipConstraint {
   CalcClosestConvexRestrictionToQP(
       const Eigen::Ref<const drake::VectorX<double>>& x) const override;
 
+  void EvaluateConstraint(
+      const Eigen::Ref<const drake::VectorX<double>>& x,
+      drake::VectorX<double>* y) const override;
+
  private:
 
   std::pair<Eigen::Vector3d, geometry::ConvexPolygon>

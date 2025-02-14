@@ -14,7 +14,7 @@ using drake::solvers::MathematicalProgramResult;
 
 ConvexPolygonSetConstraint::ConvexPolygonSetConstraint(
     const ConvexPolygonSet& polygons)
-    : SetMembershipConstraint(3, 3, Vector3d::Zero(), Vector3d::Zero()){
+    : SetMembershipConstraint(1, 3, VectorXd::Constant(1, -kInf), VectorXd::Zero(1)){
   set_ = polygons;
   projection_prog_.SetSolverOption(
       drake::solvers::OsqpSolver::id(), "scale", 0);
@@ -49,6 +49,14 @@ ConvexPolygonSetConstraint::CalcClosestConvexRestrictionToQP(
 
   return {Aout, lb, ub};
 }
+
+void ConvexPolygonSetConstraint::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<double>>& x,
+    drake::VectorX<double>* y) const {
+  *y = VectorXd::Constant(1, set_.CalcViolation(x));
+}
+
+
 
 void ConvexPolygonSetConstraint::BuildProjectionProg() {
   for (const auto& binding : projection_prog_.GetAllCosts()) {

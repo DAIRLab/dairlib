@@ -80,6 +80,10 @@ double ConvexPolygon::Get2dViolation(const Eigen::Vector3d &pt) const {
   return viol.maxCoeff();
 }
 
+double ConvexPolygon::GetPlaneViolation(const Eigen::Vector3d &pt) const {
+  return std::abs((A_eq_ * pt - b_eq_)(0));
+}
+
 bool ConvexPolygon::PointViolatesInequalities(const Eigen::Vector3d &pt) const {
   if (bounding_box_.valid) {
     if (pt(0) < bounding_box_.xmin_ or pt(0) > bounding_box_.xmax_ or

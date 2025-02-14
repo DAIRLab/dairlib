@@ -32,6 +32,14 @@ class SetMembershipConstraint : public NonlinearConstraint<double> {
   CalcClosestConvexRestrictionToQP(
           const Eigen::Ref<const drake::VectorX<double>>& x) const = 0;
 
+  void SetShift(const Eigen::VectorXd& shift) {
+    DRAKE_DEMAND(shift_.rows() == num_vars());
+    shift_ = shift;
+  }
+
+ protected:
+  Eigen::VectorXd shift_;
+
 };
 
 }

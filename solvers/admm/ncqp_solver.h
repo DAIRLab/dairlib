@@ -95,6 +95,10 @@ class NCQPSolver {
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       feasibility_constraints) const;
 
+  void Solve(const QPData &qp, QPResult &result,
+             const std::vector<std::vector<int>>& constraint_indices,
+             const std::vector<std::shared_ptr<SetMembershipConstraint>> nc_constraints) const;
+
  private:
 
   std::pair<QPData, QPData> InitializeQPData(

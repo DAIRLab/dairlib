@@ -24,14 +24,16 @@ ConvexPolygonSetConstraint::ConvexPolygonSetConstraint(
 void ConvexPolygonSetConstraint::ProjectToFeasibleSet(
     const Eigen::Ref<const drake::VectorX<double>> &x,
     drake::VectorX<double> *y) const {
-  const auto [proj, _] = this->DoProjection(x);
-  *y = proj;
+  const auto [proj, _] = this->DoProjection(x + shift_);
+  *y = proj - shift_;
 }
 
 std::tuple<Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXd>
 ConvexPolygonSetConstraint::CalcClosestConvexRestrictionToQP(
     const Eigen::Ref<const drake::VectorX<double>>& x) const {
-  const auto [_, poly] = this->DoProjection(x);
+  auto [_, poly] = this->DoProjection(x + shift_);
+
+  poly.ReExpressInNewFrame(Eigen::Matrix3d::Identity(), shift_);
 
   const auto& [Aeq, beq] = poly.GetEqualityConstraintMatrices();
   const auto& [A, b] = poly.GetConstraintMatrices();
@@ -53,7 +55,7 @@ ConvexPolygonSetConstraint::CalcClosestConvexRestrictionToQP(
 void ConvexPolygonSetConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& x,
     drake::VectorX<double>* y) const {
-  *y = VectorXd::Constant(1, set_.CalcViolation(x));
+  *y = VectorXd::Constant(1, set_.CalcViolation(x + shift_));
 }
 
 

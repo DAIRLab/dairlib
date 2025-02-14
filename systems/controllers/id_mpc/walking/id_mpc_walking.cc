@@ -4,6 +4,7 @@ namespace dairlib::systems::controllers::id_mpc {
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 IDMPCWalking::IDMPCWalking(
     IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
@@ -76,8 +77,10 @@ void IDMPCWalking::MakeFootsteps() {
 }
 
 void IDMPCWalking::MakeGroundConstraints() {
+  MatrixXd A = MatrixXd::Identity(1,1);
   for (size_t i = 1; i < pp_.size(); ++i) {
-    mpc_.get_prog().AddLinearEqualityConstraint(pp_[i](2) == 0);
+    mpc_.get_prog().AddLinearConstraint(
+        A, VectorXd::Zero(1), VectorXd::Constant(1, 0.01), pp_[i].tail<1>());
   }
 }
 

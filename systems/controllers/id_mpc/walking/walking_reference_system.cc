@@ -50,7 +50,7 @@ fsm_info WalkingReferenceSystem::CalcFSM(
     double t, const fsm_info &curr_fsm) const {
   fsm_info fsm = curr_fsm;
 
-  if (t >= curr_fsm.next_switch_time - 0.05 * params_.mpc_dt) {
+  if (t >= curr_fsm.next_switch_time - 1e-3) {
     fsm.prev_switch_time = t;
     fsm.next_switch_time =
         curr_fsm.is_double_stance() ? t + params_.t_ss : t + params_.t_ds;

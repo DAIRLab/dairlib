@@ -30,6 +30,8 @@ struct GaitParams {
   std::vector<int> left_leg_holonomic_constraint_idxs;
   std::vector<int> right_leg_holonomic_constraint_idxs;
   Eigen::Vector3d foot_midpoint;
+  Eigen::Vector3d foot_front;
+  Eigen::Vector3d foot_rear;
 };
 
 /*!

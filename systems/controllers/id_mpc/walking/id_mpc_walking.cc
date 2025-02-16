@@ -1,4 +1,5 @@
 #include "id_mpc_walking.h"
+#include "systems/controllers/id_mpc/costs/relative_position_cost.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -12,7 +13,9 @@ IDMPCWalking::IDMPCWalking(
     mpc_(params, std::move(dynamics)), params_(gait_params) {
 
   MakeFootsteps();
+  MakeSwingTrajCosts();
   MakeGroundConstraints();
+  MakeFootLevelingCosts();
 }
 
 void IDMPCWalking::UpdateProblemData(
@@ -82,6 +85,29 @@ void IDMPCWalking::MakeGroundConstraints() {
     mpc_.get_prog().AddLinearConstraint(
         A, VectorXd::Zero(1), VectorXd::Constant(1, 0.01), pp_[i].tail<1>());
   }
+}
+
+void IDMPCWalking::MakeSwingTrajCosts() {
+  mpc_.AddTaskCost<RelativePositionCost>(
+      "swing_foot", params_.foot_pos_W, Vector3d::Zero(),
+      mpc().dynamics().get_plant(),
+      params_.right_foot_body_name, params_.left_foot_body_name,
+      Vector3d::Zero(), Vector3d::Zero());
+}
+
+void IDMPCWalking::MakeFootLevelingCosts() {
+  Eigen::Matrix3d Q = Eigen::Matrix3d::Zero();
+  Q(2,2) = params_.foot_pos_W(2,2);
+  mpc_.AddTaskCost<RelativePositionCost>(
+      "foot_level_left", Q, Vector3d::Zero(),
+      mpc().dynamics().get_plant(),
+      params_.left_foot_body_name, params_.left_foot_body_name,
+      params_.foot_rear, params_.foot_front);
+  mpc_.AddTaskCost<RelativePositionCost>(
+      "foot_level_right", Q, Vector3d::Zero(),
+      mpc().dynamics().get_plant(),
+      params_.right_foot_body_name, params_.right_foot_body_name,
+      params_.foot_rear, params_.foot_front);
 }
 
 }

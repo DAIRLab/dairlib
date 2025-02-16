@@ -326,14 +326,6 @@ std::vector<double> WalkingReferenceSystem::CalcSSPhaseVector(
   return phase;
 }
 
-void WalkingReferenceSystem::AddSwingFootTrajCostToMPC(
-    IDMPC *mpc, const Matrix3d& Q) const {
-  mpc->AddTaskCost<RelativePositionCost>(
-      "swing_foot", Q, Vector3d::Zero(), plant_,
-      params_.right_foot_body_name, params_.left_foot_body_name,
-      Vector3d::Zero(), Vector3d::Zero());
-}
-
 PiecewisePolynomial<double> WalkingReferenceSystem::CalcSwingFootTraj(
     const std::vector<double>& breaks,
     const std::vector<fsm_info::fsm_state>& fsm_states,

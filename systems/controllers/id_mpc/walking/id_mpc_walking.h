@@ -36,7 +36,9 @@ class IDMPCWalking {
       const std::vector<Eigen::Vector3d>& contact_points);
 
   void MakeFootsteps();
+  void MakeSwingTrajCosts();
   void MakeGroundConstraints();
+  void MakeFootLevelingCosts();
 
   IDMPC mpc_;
   GaitParams params_;

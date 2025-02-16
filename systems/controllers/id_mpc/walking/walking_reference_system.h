@@ -25,8 +25,6 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_vdes_);
   }
 
-  void AddSwingFootTrajCostToMPC(IDMPC* mpc, const Eigen::Matrix3d& Q) const;
-
  private:
 
   drake::systems::EventStatus

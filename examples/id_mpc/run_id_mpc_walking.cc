@@ -44,11 +44,6 @@ int DoMain() {
 
   auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(params, std::move(dynamics), gait_params);
 
-
-  Eigen::Matrix3d Qfoot = gait_params.foot_pos_W;
-  ref_gen->AddSwingFootTrajCostToMPC(
-      mpc_system->get_mutable_trajopt_ptr(), Qfoot);
-
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_timestamped_saved_traj>(

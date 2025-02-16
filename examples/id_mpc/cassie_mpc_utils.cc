@@ -121,6 +121,8 @@ GaitParams MakeCassieGaitParams(const std::string& filename, const IDMPCParams& 
   params.left_leg_holonomic_constraint_idxs = {0};
   params.foot_midpoint =
       0.5 * (RightToeRear(plant).first + RightToeFront(plant).first);
+  params.foot_front = RightToeFront(plant).first;
+  params.foot_rear = RightToeRear(plant).first;
 
   auto act_map = multibody::MakeNameToActuatorsMap(plant);
 

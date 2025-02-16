@@ -55,9 +55,6 @@ int DoMain() {
 
   auto mpc_system = builder.AddSystem<IDMPCSystem>(params, std::move(dynamics));
 
-  ref_gen->AddSwingFootTrajCostToMPC(
-      mpc_system->get_mutable_trajopt_ptr(), Eigen::Matrix3d::Identity());
-
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_timestamped_saved_traj>(

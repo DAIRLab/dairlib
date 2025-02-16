@@ -63,11 +63,7 @@ PYBIND11_MODULE(systems, m) {
     .def("get_input_port_state", &WalkingReferenceSystem::get_input_port_state,
          py::return_value_policy::reference_internal)
     .def("get_input_port_vdes", &WalkingReferenceSystem::get_input_port_vdes,
-         py::return_value_policy::reference_internal)
-    .def("add_swing_foot_traj_cost_to_mpc", &WalkingReferenceSystem::AddSwingFootTrajCostToMPC,
-         py::arg("mpc"),
-         py::arg("Q"));
-
+         py::return_value_policy::reference_internal);
 
 }
 }

@@ -113,8 +113,8 @@ NCQPSolver::ExtractSetMembershipConstraints(
     const drake::solvers::MathematicalProgram &prog,
     const std::vector<Binding<Constraint>> &set_membership_bindings) {
 
-  SetMembershipConstraints out{{}, {}};
-  for (const auto binding: set_membership_bindings) {
+  SetMembershipConstraints out{};
+  for (const auto& binding: set_membership_bindings) {
     const auto& variables = binding.variables();
     out.first.push_back(prog.FindDecisionVariableIndices(variables));
     out.second.push_back(
@@ -126,9 +126,9 @@ NCQPSolver::ExtractSetMembershipConstraints(
 QPResult NCQPSolver::Solve(const MathematicalProgram &qp,
                            const std::vector<Binding<Constraint>> &feasibility_constraints) const {
   QPResult result;
-  Solve(QPData::ToQPData(qp),
-        result,
-        ExtractSetMembershipConstraints(qp, feasibility_constraints));
+  SetMembershipConstraints constraints = ExtractSetMembershipConstraints(
+      qp, feasibility_constraints);
+  Solve(QPData::ToQPData(qp), result, constraints);
   return result;
 }
 
@@ -228,6 +228,9 @@ VectorXd NCQPSolver::DoProjectionStep(
 
   VectorXd out = d;
   for (size_t i = 0; i < constraint_indices.size(); ++i) {
+
+    DRAKE_DEMAND(evaluators[i] != nullptr);
+
     // TODO (@Brian-Acosta) make sure there are no repeated variables here
     const auto& indices = constraint_indices.at(i);
     VectorXd y = VectorXd::Zero(indices.size());
@@ -269,9 +272,10 @@ QPResult NCQPSolver::QPPolish(
   const auto& evaluators = nc_constraints.second;
 
   for (size_t i = 0; i < indices.size(); ++i) {
-    VectorXd y = VectorXd::Zero(indices[i].size());
-    for (size_t j = 0; j < indices[i].size(); ++i) {
-      y(j) = sol.x(indices[i][j]);
+    DRAKE_DEMAND(evaluators.at(i) != nullptr);
+    VectorXd y = VectorXd::Zero(indices.at(i).size());
+    for (size_t j = 0; j < indices.at(i).size(); ++j) {
+      y(j) = sol.x(indices.at(i).at(j));
     }
     const auto [A, lb, ub] = evaluators[i]->CalcClosestConvexRestrictionToQP(y);
     copy.num_ineq += A.rows();
@@ -281,7 +285,7 @@ QPResult NCQPSolver::QPPolish(
     copy.lb.tail(lb.rows()) = lb;
     copy.ub.tail(ub.rows()) = ub;
     warm_start_dual.tail(A.rows()) = VectorXd::Zero(A.rows());
-    AppendRowsToSparse(copy.A, A, indices[i]);
+    AppendRowsToSparse(copy.A, A, indices.at(i));
   }
   copy.A.makeCompressed();
 

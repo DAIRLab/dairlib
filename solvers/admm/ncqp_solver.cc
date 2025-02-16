@@ -55,13 +55,27 @@ NCQPSolution initialize_sol(const MathematicalProgram& qp_prog) {
   return sol;
 }
 
+NCQPSolution initialize_sol(const QPData& qp) {
+  NCQPSolution sol(qp.num_vars);
+  sol.x = VectorXd::Zero(qp.num_vars);
+  sol.z = sol.x;
+  sol.w = sol.x - sol.z;
+  sol.primal_solve_time = 0;
+  sol.projection_time = 0;
+  sol.total_solve_time = 0;
+  sol.is_solved = false;
+  sol.slack_res = VectorXd::Zero(qp.num_vars);
+  sol.slack_res_norm = kInf;
+  sol.n_iter = 0;
+  return sol;
+}
+
 }
 
 NCQPSolver::NCQPSolver(){}
 
-std::pair<QPData, QPData> NCQPSolver::InitializeQPData(
-    const MathematicalProgram &qp_prog) const {
-  QPData cvx_qp = QPData::ToQPData(qp_prog);
+std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
+  QPData cvx_qp = qp;
   QPData al_qp = cvx_qp;
 
   // Add the Augmented lagrangian cost
@@ -73,8 +87,9 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(
     cvx_qp.H.makeCompressed();
   }
 
+  // TODO (@Brian-Acosta) set solver options somehow
   if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(cvx_qp, qp_prog.solver_options());
+    qp_solver_.InitializeSolver(cvx_qp, drake::solvers::SolverOptions());
   }
   return {cvx_qp, al_qp};
 }
@@ -93,17 +108,40 @@ void NCQPSolver::SolveALQP(
   }
 }
 
+NCQPSolver::SetMembershipConstraints
+NCQPSolver::ExtractSetMembershipConstraints(
+    const drake::solvers::MathematicalProgram &prog,
+    const std::vector<Binding<Constraint>> &set_membership_bindings) {
+
+  SetMembershipConstraints out{{}, {}};
+  for (const auto binding: set_membership_bindings) {
+    const auto& variables = binding.variables();
+    out.first.push_back(prog.FindDecisionVariableIndices(variables));
+    out.second.push_back(
+        dynamic_cast<SetMembershipConstraint*>(binding.evaluator().get()));
+  }
+  return out;
+}
+
+QPResult NCQPSolver::Solve(const MathematicalProgram &qp,
+                           const std::vector<Binding<Constraint>> &feasibility_constraints) const {
+  QPResult result;
+  Solve(QPData::ToQPData(qp),
+        result,
+        ExtractSetMembershipConstraints(qp, feasibility_constraints));
+  return result;
+}
+
 // TODO (@Brian-Acosta) warmstart the duals
 // TODO (@Brian-Acosta) result a mathematicalprogram result with appropriate
 //  solution details
-QPResult NCQPSolver::Solve(
-    const MathematicalProgram &qp_prog,
-    const std::vector<Binding<Constraint>>& constraints) const {
+void NCQPSolver::Solve(const QPData &qp, QPResult &result,
+                       const SetMembershipConstraints& constraints) const {
 
   Timer global_timer;
 
-  NCQPSolution sol = initialize_sol(qp_prog);
-  auto [cvx_qp, al_qp] = InitializeQPData(qp_prog);
+  NCQPSolution sol = initialize_sol(qp);
+  auto [cvx_qp, al_qp] = InitializeQPData(qp);
 
   QPResult init_result;
   QPResult primal_result;
@@ -125,22 +163,23 @@ QPResult NCQPSolver::Solve(
     // Slack update - project to the feasible set
     timer.tick();
     VectorXd d = sol.x + sol.w;
-    d = DoProjectionStep(d, qp_prog, constraints);
+    d = DoProjectionStep(d, constraints);
     double slack_cost = eval_cost(d, cvx_qp);
 
     if (slack_cost > sol.slack_cost) {
       QPResult out;
       switch (params_.polish_type) {
         case kProject:
-          out = ProjectionPolish(sol, qp_prog, constraints);
+          out = ProjectionPolish(sol, constraints);
           out.solution_result = drake::solvers::kSolutionFound;
           break;
         case kConvexRestriction:
           out = QPPolish(
-              sol, cvx_qp, primal_result, qp_prog, constraints);
+              sol, cvx_qp, primal_result, constraints);
       }
       out.run_time = global_timer.tock();
-      return out;
+      result = out;
+      return;
     } else {
       sol.z = d;
       sol.slack_cost = slack_cost;
@@ -169,41 +208,39 @@ QPResult NCQPSolver::Solve(
   QPResult out;
   switch (params_.polish_type) {
     case kProject:
-      out = ProjectionPolish(sol, qp_prog, constraints);
+      out = ProjectionPolish(sol, constraints);
       out.solution_result = drake::solvers::kSolutionFound;
       break;
     case kConvexRestriction:
       const QPResult& polish_warmstarter = sol.n_iter > 1 ? primal_result : init_result;
-      out = QPPolish(sol, cvx_qp, polish_warmstarter, qp_prog,constraints);
+      out = QPPolish(sol, cvx_qp, polish_warmstarter, constraints);
   }
   out.run_time = global_timer.tock();
-  return out;
+  result = out;
 }
 
 VectorXd NCQPSolver::DoProjectionStep(
     const Eigen::VectorXd &d,
-    const MathematicalProgram& qp,
-    const std::vector<Binding<Constraint>> &constraints) const {
+    const SetMembershipConstraints& constraints) const {
+
+  const auto& constraint_indices = constraints.first;
+  const auto& evaluators = constraints.second;
 
   VectorXd out = d;
-  for (const auto& binding: constraints) {
+  for (size_t i = 0; i < constraint_indices.size(); ++i) {
     // TODO (@Brian-Acosta) make sure there are no repeated variables here
-    const auto& variables = binding.variables();
-    const auto& indices = qp.FindDecisionVariableIndices(variables);
-    VectorXd y = VectorXd::Zero(variables.size());
+    const auto& indices = constraint_indices.at(i);
+    VectorXd y = VectorXd::Zero(indices.size());
 
-    for (int i = 0; i < variables.size(); ++i) {
-      y(i) = d(indices[i]);
+    for (int j = 0; j < indices.size(); ++j) {
+      y(j) = d(indices[j]);
     }
 
     VectorXd y_proj = VectorXd::Zero(y.rows());
-    auto evaluator = dynamic_cast<SetMembershipConstraint*>(
-        binding.evaluator().get());
-    DRAKE_DEMAND(evaluator != nullptr);
-    evaluator->ProjectToFeasibleSet(y, &y_proj);
+    evaluators[i]->ProjectToFeasibleSet(y, &y_proj);
 
-    for (int i = 0; i < variables.size(); ++i) {
-      out(indices[i]) = y_proj(i);
+    for (int j = 0; j < indices.size(); ++j) {
+      out(indices[j]) = y_proj(j);
     }
   }
   return out;
@@ -211,10 +248,9 @@ VectorXd NCQPSolver::DoProjectionStep(
 
 QPResult NCQPSolver::ProjectionPolish(
     const NCQPSolution& sol,
-    const drake::solvers::MathematicalProgram &qp,
-    const std::vector<Binding<Constraint>> &constraints) const {
+    const NCQPSolver::SetMembershipConstraints& nc_constraints) const {
   QPResult out;
-  out.x = DoProjectionStep(sol.x, qp, constraints);
+  out.x = DoProjectionStep(sol.x, nc_constraints);
   return out;
 }
 
@@ -222,22 +258,22 @@ QPResult NCQPSolver::QPPolish(
     const NCQPSolution& sol,
     const QPData &cvx_qp,
     const QPResult& most_recent_result,
-    const MathematicalProgram &qp,
-    const std::vector<Binding<Constraint>> &feasibility_constraints) const {
+    const NCQPSolver::SetMembershipConstraints& nc_constraints) const {
 
   const VectorXd& warm_start_primal = sol.x;
   VectorXd warm_start_dual = most_recent_result.y;
 
   QPData copy = cvx_qp;
-  for (const auto& binding : feasibility_constraints) {
-    const auto& variables = binding.variables();
-    const auto& indices = qp.FindDecisionVariableIndices(variables);
-    VectorXd y = VectorXd::Zero(variables.size());
-    for (int i = 0; i < variables.size(); ++i) {
-      y(i) = sol.x(indices[i]);
+
+  const auto& indices = nc_constraints.first;
+  const auto& evaluators = nc_constraints.second;
+
+  for (size_t i = 0; i < indices.size(); ++i) {
+    VectorXd y = VectorXd::Zero(indices[i].size());
+    for (size_t j = 0; j < indices[i].size(); ++i) {
+      y(j) = sol.x(indices[i][j]);
     }
-    const auto [A, lb, ub] = dynamic_cast<SetMembershipConstraint*>(
-        binding.evaluator().get())->CalcClosestConvexRestrictionToQP(y);
+    const auto [A, lb, ub] = evaluators[i]->CalcClosestConvexRestrictionToQP(y);
     copy.num_ineq += A.rows();
     copy.lb.conservativeResize(copy.num_ineq);
     copy.ub.conservativeResize(copy.num_ineq);
@@ -245,12 +281,12 @@ QPResult NCQPSolver::QPPolish(
     copy.lb.tail(lb.rows()) = lb;
     copy.ub.tail(ub.rows()) = ub;
     warm_start_dual.tail(A.rows()) = VectorXd::Zero(A.rows());
-    AppendRowsToSparse(copy.A, A, indices);
+    AppendRowsToSparse(copy.A, A, indices[i]);
   }
   copy.A.makeCompressed();
 
   OsqpWrapper tmp_solver;
-  tmp_solver.InitializeSolver(copy, qp.solver_options());
+  tmp_solver.InitializeSolver(copy, drake::solvers::SolverOptions());
   tmp_solver.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
   tmp_solver.Solve(copy, out);

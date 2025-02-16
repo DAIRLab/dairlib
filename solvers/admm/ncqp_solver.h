@@ -78,6 +78,11 @@ struct NCQPSolution {
  */
 class NCQPSolver {
  public:
+
+  typedef std::pair<std::vector<std::vector<int>>,
+                    std::vector<SetMembershipConstraint*>>
+                    SetMembershipConstraints;
+
   explicit NCQPSolver();
 
   /*!
@@ -96,35 +101,32 @@ class NCQPSolver {
       feasibility_constraints) const;
 
   void Solve(const QPData &qp, QPResult &result,
-             const std::vector<std::vector<int>>& constraint_indices,
-             const std::vector<std::shared_ptr<SetMembershipConstraint>> nc_constraints) const;
+             const SetMembershipConstraints& constraints) const;
+
+  static SetMembershipConstraints ExtractSetMembershipConstraints(
+      const drake::solvers::MathematicalProgram& prog,
+      const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
+      set_membership_bindings);
 
  private:
 
-  std::pair<QPData, QPData> InitializeQPData(
-      const drake::solvers::MathematicalProgram& qp_prog) const;
+  std::pair<QPData, QPData> InitializeQPData(const QPData& qp) const;
 
   void SolveALQP(const QPData& cvx_qp, QPData& al_qp,
                  QPResult* al_result, NCQPSolution* sol, int iter) const;
 
   Eigen::VectorXd DoProjectionStep(
       const Eigen::VectorXd& d,
-      const drake::solvers::MathematicalProgram& qp,
-      const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
-      feasibility_constraints) const;
+      const SetMembershipConstraints& nc_constraints) const;
 
-  QPResult QPPolish(const NCQPSolution& sol,
-                  const QPData& cvx_qp,
-                  const QPResult& most_recent_result,
-                  const drake::solvers::MathematicalProgram& qp,
-                  const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
-                         feasibility_constraints) const;
+  QPResult QPPolish(
+      const NCQPSolution& sol, const QPData& cvx_qp,
+      const QPResult& most_recent_result,
+      const SetMembershipConstraints& nc_constraints) const;
 
   QPResult ProjectionPolish(
       const NCQPSolution& sol,
-      const drake::solvers::MathematicalProgram& qp,
-      const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
-                            feasibility_constraints) const;
+      const SetMembershipConstraints& nc_constraints) const;
 
   class Timer {
    public:

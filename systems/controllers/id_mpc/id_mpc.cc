@@ -2,6 +2,7 @@
 #include "id_mpc.h"
 #include "common/eigen_utils.h"
 #include "costs/orientation_error_cost.h"
+#include "systems/controllers/id_mpc/sqp/sqp_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -269,85 +270,8 @@ void IDMPC::ConstructSQPProgram(const VectorXd &x, QPData* qp) const {
 
   // Reset problem size data
   qp->num_vars = prog_.num_vars();
-
-  ParseCostsToSQP(x, *qp);
-  ParseConstraintsToSQP(x, *qp);
-}
-
-void IDMPC::ParseCostsToSQP(const VectorXd& x, QPData &qp) const {
-
-  qp.g = VectorXd::Zero(prog_.num_vars());
-
-  std::vector<Eigen::Triplet<double>> cost_triplets;
-  cost_triplets.reserve(prog_.num_vars() * params_.N);
-
-  for (const auto& binding : prog_.GetAllCosts()) {
-    const auto& v = binding.variables();
-    const auto& indices = prog_.FindDecisionVariableIndices(v);
-
-    VectorXd xval = VectorXd::Zero(v.rows());
-    for (int i = 0; i < v.rows(); ++i) {
-      xval(i) = x(indices[i]);
-    }
-    GaussNewtonApproximation cost_data;
-    if (dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(binding.evaluator().get())) {
-      cost_data = dynamic_cast<NonlinearLeastSquaresCost<AutoDiffXd>*>(
-          binding.evaluator().get()
-      )->CalcGaussNewtonApproximation(xval);
-    } else if (dynamic_cast<NonlinearLeastSquaresCost<double>*>(binding.evaluator().get())) {
-      cost_data = dynamic_cast<NonlinearLeastSquaresCost<double>*>(
-          binding.evaluator().get()
-      )->CalcGaussNewtonApproximation(xval);
-    } else {
-      throw std::runtime_error("IDMPC only supports NonlinearLeastSquares costs "
-                               "To ensure that the SQP gauss newton "
-                               "approximation is properly implemented");
-    }
-    AppendQuadraticCost(indices, cost_data.H, cost_data.g, cost_data.c,
-                        cost_triplets, qp.g, &qp.c, cost_data.diagonal_hessian);
-  }
-  qp.H.resize(prog_.num_vars(), prog_.num_vars());
-  qp.H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());
-}
-
-
-// TODO (@Brian-Acosta)
-//  Can maybe make this more efficient by handling constraints differently
-//   Depending on their type. Also likely want to denote true equality vs
-//   inequality constraints
-void IDMPC::ParseConstraintsToSQP(const VectorXd& x, QPData &qp) const {
-
-  qp.num_eq = 0;
-  qp.num_ineq = 0;
-
-  std::vector<Eigen::Triplet<double>> inequality_triplets;
-
-  for (const auto& binding : prog_.GetAllConstraints()) {
-    const auto& v = binding.variables();
-    const auto& indices = prog_.FindDecisionVariableIndices(v);
-    VectorXd xval = VectorXd::Zero(v.rows());
-
-    for (int i = 0; i < v.rows(); ++i) {
-      xval(i) = x(indices[i]);
-    }
-
-    AutoDiffVecXd xval_ad = InitializeAutoDiff(xval);
-    AutoDiffVecXd y_ad;
-    binding.evaluator()->Eval(xval_ad, &y_ad);
-    MatrixXd dydx = ExtractGradient(y_ad);
-    VectorXd yval = ExtractValue(y_ad);
-    // SQP constraint: lb <= y(x) <= ub -->  lb <= dydx * dx + y* <= ub
-    // subtract y* from the above equation
-    VectorXd lb = binding.evaluator()->lower_bound() - yval;
-    VectorXd ub = binding.evaluator()->upper_bound() - yval;
-    AppendLinearConstraint(
-        indices, qp.num_ineq, dydx, lb, ub, inequality_triplets,
-        qp.lb, qp.ub
-    );
-    qp.num_ineq += binding.evaluator()->num_constraints();
-  }
-  qp.A.resize(qp.num_ineq, x.rows());
-  qp.A.setFromTriplets(inequality_triplets.begin(), inequality_triplets.end());
+  ParseCostsToSQP(x, prog_, qp);
+  ParseConstraintsToSQP(x, prog_, qp);
 }
 
 void IDMPC::ProjectToQuaternionConstraint(Eigen::VectorXd *x) const {

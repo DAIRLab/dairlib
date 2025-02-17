@@ -9,6 +9,8 @@ cc_library(
     deps = [
         "//solvers:osqp_wrapper",
         "//solvers:qp_data",
+        "//solvers/admm:set_membership_constraint",
+        "//systems/controllers/id_mpc/costs:id_mpc_costs",
         "@drake//:drake_shared_library",
     ],
 )

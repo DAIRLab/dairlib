@@ -1,27 +1,9 @@
 #pragma once
 
 #include "solvers/osqp_wrapper.h"
+#include "sqp_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
-
-struct SQPIterate {
-  Eigen::VectorXd x_init;
-  Eigen::VectorXd dx;
-  Eigen::VectorXd x_sol;
-  bool accepted;
-  double constraint_viol;
-  double cost;
-};
-
-struct LineSearchParams {
-  double alpha_min = 1e-4;
-  double theta_max = 1e-2;
-  double theta_min = 1e-6;
-  double eta = 1e-4;
-  double gamma_phi = 1e-6;
-  double gamma_theta = 1e-6;
-  double gamma_alpha = 0.5;
-};
 
 class SQPSolver {
  public:

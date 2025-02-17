@@ -180,8 +180,6 @@ class IDMPC {
   void MakeKinematicConstraints();
   void MakeCollocationConstraints();
 
-  void ParseCostsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
-  void ParseConstraintsToSQP(const Eigen::VectorXd& x, solvers::QPData& qp) const;
   const IDMPCParams params_;
 
   std::unique_ptr<ConstrainedDynamicsInfo> dynamics_;

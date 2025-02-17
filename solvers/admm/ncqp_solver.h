@@ -60,12 +60,12 @@ struct NCQPSolution {
 
 /*!
  * A generic solver for optimization problems of the form
- *      minimize   f(x) + Ilin(x) + Inc(x)
+ *      minimize   f(x) + Ilin(x) + Ism(x)
  *        x
  *
  *  where f is quadratic and positive semidefinite, Ilin(x) is the 0-inf
- *  indicator function for linear constraints, and Inc(x) is the 0-inf
- *  indicator function for the general nonconvex constraints.
+ *  indicator function for linear constraints, and Ism(x) is the 0-inf
+ *  indicator function for the general set membership constraints.
  *
  *  We use the consensus formulation
  *
@@ -74,6 +74,12 @@ struct NCQPSolution {
  *      subject to x = z
  *
  *  to solve the problem via ADMM.
+ *
+ *  NB: Setting the polish type to kConvexRestriction assumes that for any
+ *  possible convex restriction, each set membership constraint is always
+ *  converted into a set of linear inequalities with a consistent number of
+ *  rows. This allows the osqp workspace for the polishing step to be
+ *  warm-started and re-used.
  *
  */
 class NCQPSolver {

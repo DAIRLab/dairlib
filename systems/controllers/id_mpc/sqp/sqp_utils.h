@@ -31,6 +31,11 @@ void ParseConstraintsToSQP(const Eigen::VectorXd& x,
                            const drake::solvers::MathematicalProgram& prog,
                            solvers::QPData* qp);
 
+/*!
+ * line search assuming x_init and dx have already been properly set,
+ * where x_init is the initial solution/iterate value, and dx is the
+ * descent direction.
+ */
 void DoLineSearch(
     std::function<double (const Eigen::VectorXd&)> eval_constraint_viol,
     std::function<double (const Eigen::VectorXd&)> eval_cost,

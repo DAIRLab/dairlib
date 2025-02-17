@@ -17,7 +17,7 @@ IDMPCSystem::IDMPCSystem(
     IDMPCParams params,
     std::unique_ptr<ConstrainedDynamicsInfo> dynamics) :
     trajopt_(params, std::move(dynamics)),
-    solver_(trajopt_.num_vars(), trajopt_.num_constraints(),
+    solver_(
       [this](const VectorXd& x, QPData* qp) {
         this->trajopt_.ConstructSQPProgram(x, qp);
       },

@@ -22,20 +22,20 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
     std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
     GaitParams gait_params) :
     trajopt_(params, std::move(dynamics), gait_params),
-    solver_(trajopt_.mpc().num_vars(), trajopt_.mpc().num_constraints(),
-            [this](const VectorXd& x, QPData* qp) {
-              this->trajopt_.mpc().ConstructSQPProgram(x, qp);
-            },
-            [this](const VectorXd& x) {
-              return this->trajopt_.mpc().EvaluateConstraintViolation(x);
-            },
-            [this](const VectorXd& x) {
-              return this->trajopt_.mpc().EvaluateCost(x);
-            },
-            [this](VectorXd* x){
-              this->trajopt_.mpc().ProjectToQuaternionConstraint(x);
-            }) {
-
+    solver_(
+        [this](const VectorXd& x, QPData* qp) {
+          this->trajopt_.mpc().ConstructSQPProgram(x, qp);
+        },
+        [this](const VectorXd& x) {
+          return this->trajopt_.mpc().EvaluateConstraintViolation(x);
+        },
+        [this](const VectorXd& x) {
+          return this->trajopt_.mpc().EvaluateCost(x);
+        },
+        [this](VectorXd* x){
+          this->trajopt_.mpc().ProjectToQuaternionConstraint(x);
+    }) {
+  
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",
       OutputVector<double>(trajopt_.dynamics().get_plant())

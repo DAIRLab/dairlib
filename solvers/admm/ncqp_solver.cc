@@ -39,22 +39,6 @@ inline double eval_cost(const Eigen::VectorXd& v, const QPData& qp) {
   return 0.5 * v.dot(qp.H * v) + v.dot(qp.g) + qp.c;
 }
 
-NCQPSolution initialize_sol(const MathematicalProgram& qp_prog) {
-  NCQPSolution sol(qp_prog.num_vars());
-  sol.x = qp_prog.initial_guess().hasNaN() ?
-          VectorXd::Zero(qp_prog.num_vars()) : qp_prog.initial_guess();
-  sol.z = sol.x;
-  sol.w = sol.x - sol.z;
-  sol.primal_solve_time = 0;
-  sol.projection_time = 0;
-  sol.total_solve_time = 0;
-  sol.is_solved = false;
-  sol.slack_res = VectorXd::Zero(qp_prog.num_vars());
-  sol.slack_res_norm = kInf;
-  sol.n_iter = 0;
-  return sol;
-}
-
 NCQPSolution initialize_sol(const QPData& qp) {
   NCQPSolution sol(qp.num_vars);
   sol.x = VectorXd::Zero(qp.num_vars);

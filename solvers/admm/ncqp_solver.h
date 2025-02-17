@@ -146,6 +146,7 @@ class NCQPSolver {
 
   ADMMParams params_;
   mutable OsqpWrapper qp_solver_;
+  mutable OsqpWrapper polish_solver_;
 
 };
 

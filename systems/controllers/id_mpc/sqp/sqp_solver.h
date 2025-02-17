@@ -14,8 +14,6 @@ class SQPSolver {
             std::function<double (const Eigen::VectorXd&)> eval_cost,
             std::function<void (Eigen::VectorXd*)> proj_to_cspace);
 
-  SQPIterate AllocateIterate() const;
-
   void DoSQPStep(const Eigen::VectorXd& x, SQPIterate* sol);
 
  private:

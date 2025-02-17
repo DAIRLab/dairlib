@@ -41,7 +41,7 @@ IDMPCSystem::IDMPCSystem(
       drake::Value<MPCReference>()).get_index();
 
   MPCSolution model_solution;
-  model_solution.sqp_iterate = solver_.AllocateIterate();
+  model_solution.sqp_iterate = AllocateSQPIterate(trajopt_.num_vars());
   mpc_solution_state_ = DeclareAbstractState(
       drake::Value<MPCSolution>(model_solution));
 

@@ -38,5 +38,7 @@ void DoLineSearch(
     const solvers::QPData& qp, const LineSearchParams& params,
     SQPIterate* sol);
 
+SQPIterate AllocateSQPIterate(int n);
+
 }
 

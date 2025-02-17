@@ -142,4 +142,15 @@ void DoLineSearch(std::function<double (const Eigen::VectorXd&)> eval_constraint
   sol->cost = accepted ? phi_k_p1 : phi_k;
 }
 
+SQPIterate AllocateSQPIterate(int n) {
+  SQPIterate ret;
+  ret.x_init = VectorXd::Zero(n);
+  ret.dx = VectorXd::Zero(n);
+  ret.x_sol = VectorXd::Zero(n);
+  ret.constraint_viol = 0;
+  ret.cost = 0;
+  return ret;
+}
+
+
 }

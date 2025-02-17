@@ -175,7 +175,7 @@ void NCQPSolver::Solve(const QPData &qp, QPResult &result,
           break;
         case kConvexRestriction:
           out = QPPolish(
-              sol, cvx_qp, primal_result, constraints);
+              sol, qp, primal_result, constraints);
       }
       out.run_time = global_timer.tock();
       result = out;
@@ -213,7 +213,7 @@ void NCQPSolver::Solve(const QPData &qp, QPResult &result,
       break;
     case kConvexRestriction:
       const QPResult& polish_warmstarter = sol.n_iter > 1 ? primal_result : init_result;
-      out = QPPolish(sol, cvx_qp, polish_warmstarter, constraints);
+      out = QPPolish(sol, qp, polish_warmstarter, constraints);
   }
   out.run_time = global_timer.tock();
   result = out;
@@ -289,11 +289,12 @@ QPResult NCQPSolver::QPPolish(
   }
   copy.A.makeCompressed();
 
-  OsqpWrapper tmp_solver;
-  tmp_solver.InitializeSolver(copy, drake::solvers::SolverOptions());
-  tmp_solver.WarmStart(warm_start_primal, warm_start_dual);
+  if (not polish_solver_.IsInitialized()){
+    polish_solver_.InitializeSolver(copy, drake::solvers::SolverOptions());
+  }
+  polish_solver_.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
-  tmp_solver.Solve(copy, out);
+  polish_solver_.Solve(copy, out);
 
   if (params_.verbose) {
     std::cout << "Polish result:\n" << out << std::endl;

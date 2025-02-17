@@ -40,14 +40,4 @@ void SQPSolver::LineSearch(SQPIterate &sol) {
                lsparams_, &sol);
 }
 
-SQPIterate SQPSolver::AllocateIterate() const {
-  SQPIterate ret;
-  ret.x_init = VectorXd::Zero(n_);
-  ret.dx = VectorXd::Zero(n_);
-  ret.x_sol = VectorXd::Zero(n_);
-  ret.constraint_viol = 0;
-  ret.cost = 0;
-  return ret;
-}
-
 }

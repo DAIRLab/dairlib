@@ -121,6 +121,10 @@ void IDMPCWalking::MakeFootLevelingCosts() {
 
 solvers::NCQPSolver::SetMembershipConstraints
 IDMPCWalking::GetFootholdConstraints(const VectorXd &z) {
+  if (footholds_.empty()) {
+    return {{}, {}};
+  }
+
   for (size_t i = 0; i < footholds_.size(); ++i) {
     footholds_.at(i)->SetShift(
         mpc().GetDecisionVariableValue(pp_.at(i + 1), z));

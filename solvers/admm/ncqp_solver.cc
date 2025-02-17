@@ -276,7 +276,6 @@ QPResult NCQPSolver::QPPolish(
   if (not polish_solver_.IsInitialized()){
     polish_solver_.InitializeSolver(copy, drake::solvers::SolverOptions());
   }
-  polish_solver_.WarmStart(warm_start_primal, warm_start_dual);
   QPResult out;
   polish_solver_.Solve(copy, out);
 

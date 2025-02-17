@@ -1,3 +1,4 @@
+#include <iostream>
 #include "sqp_utils.h"
 #include "solvers/qp_data.h"
 #include "systems/controllers/id_mpc/costs/nonlinear_least_squares_cost.h"

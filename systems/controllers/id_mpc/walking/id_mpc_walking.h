@@ -1,4 +1,8 @@
 #pragma once
+
+#include "solvers/admm/convex_polygon_set_constraint.h"
+#include "solvers/admm/ncqp_solver.h"
+
 #include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
 #include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
@@ -40,6 +44,9 @@ class IDMPCWalking {
   void MakeGroundConstraints();
   void MakeFootLevelingCosts();
 
+  solvers::NCQPSolver::SetMembershipConstraints GetFootholdConstraints(
+      const Eigen::VectorXd& z);
+
   IDMPC mpc_;
   GaitParams params_;
 
@@ -47,6 +54,9 @@ class IDMPCWalking {
   std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
   td_constraints_;
 
+  std::vector<std::shared_ptr<solvers::ConvexPolygonSetConstraint>> footholds_;
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+  foothold_bindings_;
 };
 
 }

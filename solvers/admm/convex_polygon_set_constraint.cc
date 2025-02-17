@@ -59,7 +59,7 @@ ConvexPolygonSetConstraint::CalcClosestConvexRestrictionToQP(
 void ConvexPolygonSetConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& x,
     drake::VectorX<double>* y) const {
-  *y = VectorXd::Constant(1, set_.CalcViolation(x + shift_));
+  *y = VectorXd::Constant(1, set_.CalcViolation(x));
 }
 
 

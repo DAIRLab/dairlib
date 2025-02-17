@@ -7,6 +7,10 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
+using geometry::ConvexPolygon;
+using geometry::ConvexPolygonSet;
+using solvers::ConvexPolygonSetConstraint;
+
 IDMPCWalking::IDMPCWalking(
     IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
     GaitParams gait_params) :
@@ -80,10 +84,15 @@ void IDMPCWalking::MakeFootsteps() {
 }
 
 void IDMPCWalking::MakeGroundConstraints() {
+  auto terrain = ConvexPolygonSet({ConvexPolygon::MakeFlatGround()});
   MatrixXd A = MatrixXd::Identity(1,1);
   for (size_t i = 1; i < pp_.size(); ++i) {
     mpc_.get_prog().AddLinearConstraint(
         A, VectorXd::Zero(1), VectorXd::Constant(1, 0.01), pp_[i].tail<1>());
+    footholds_.push_back(
+        std::make_shared<ConvexPolygonSetConstraint>(terrain));
+    foothold_bindings_.push_back(
+        mpc_.get_prog().AddConstraint(footholds_.back(), pp_.at(i)));
   }
 }
 
@@ -108,6 +117,16 @@ void IDMPCWalking::MakeFootLevelingCosts() {
       mpc().dynamics().get_plant(),
       params_.right_foot_body_name, params_.right_foot_body_name,
       params_.foot_rear, params_.foot_front);
+}
+
+solvers::NCQPSolver::SetMembershipConstraints
+IDMPCWalking::GetFootholdConstraints(const VectorXd &z) {
+  for (size_t i = 0; i < footholds_.size(); ++i) {
+    footholds_.at(i)->SetShift(
+        mpc().GetDecisionVariableValue(pp_.at(i + 1), z));
+  }
+  return solvers::NCQPSolver::ExtractSetMembershipConstraints(
+      mpc_.get_prog(), foothold_bindings_);
 }
 
 }

@@ -34,6 +34,9 @@ class IDMPCWalking {
 
   int n_footsteps() const { return params_.footstep_horizon; }
 
+  solvers::NCQPSolver::SetMembershipConstraints GetFootholdConstraints(
+      const Eigen::VectorXd& z);
+
  private:
   void UpdateFootstepConstraints(
       const std::vector<std::string>& foot_names,
@@ -44,8 +47,7 @@ class IDMPCWalking {
   void MakeGroundConstraints();
   void MakeFootLevelingCosts();
 
-  solvers::NCQPSolver::SetMembershipConstraints GetFootholdConstraints(
-      const Eigen::VectorXd& z);
+
 
   IDMPC mpc_;
   GaitParams params_;

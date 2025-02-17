@@ -1,5 +1,6 @@
-#include "sqp_solver.h"
 #include <iostream>
+
+#include "sqp_solver.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 

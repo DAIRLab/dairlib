@@ -3,7 +3,7 @@
 #include "mpc_solution.h"
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/id_mpc/walking/id_mpc_walking.h"
-#include "systems/controllers/id_mpc/sqp/sqp_solver.h"
+#include "systems/controllers/id_mpc/sqp/nc_sqp_solver.h"
 
 #include "drake/solvers/snopt_solver.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -59,7 +59,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
                   lcmt_timestamped_saved_traj* solution) const;
 
   mutable IDMPCWalking trajopt_;
-  mutable SQPSolver solver_;
+  mutable NCSQPSolver solver_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
   drake::systems::InputPortIndex input_port_state_;

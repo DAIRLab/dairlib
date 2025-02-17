@@ -85,10 +85,7 @@ void IDMPCWalking::MakeFootsteps() {
 
 void IDMPCWalking::MakeGroundConstraints() {
   auto terrain = ConvexPolygonSet({ConvexPolygon::MakeFlatGround()});
-  MatrixXd A = MatrixXd::Identity(1,1);
   for (size_t i = 1; i < pp_.size(); ++i) {
-    mpc_.get_prog().AddLinearConstraint(
-        A, VectorXd::Zero(1), VectorXd::Constant(1, 0.01), pp_[i].tail<1>());
     footholds_.push_back(
         std::make_shared<ConvexPolygonSetConstraint>(terrain));
     foothold_bindings_.push_back(

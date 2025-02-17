@@ -34,7 +34,10 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
         },
         [this](VectorXd* x){
           this->trajopt_.mpc().ProjectToQuaternionConstraint(x);
-    }) {
+        },
+        [this](const VectorXd& z) {
+          return this->trajopt_.GetFootholdConstraints(z);
+        }) {
   
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",

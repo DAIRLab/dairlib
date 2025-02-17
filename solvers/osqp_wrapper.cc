@@ -207,6 +207,11 @@ void OsqpWrapper::InitializeSolver(
   workspace_ = nullptr;
   const c_int osqp_setup_err =
       osqp_setup(&workspace_, osqp_data_, osqp_settings_);
+
+  if (osqp_setup_err != 0) {
+    std::cout << "QP:\n" << qp << std::endl;
+  }
+
   DRAKE_DEMAND(osqp_setup_err == 0);
 
   is_init_ = true;

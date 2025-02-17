@@ -1,3 +1,4 @@
+#include <iostream>
 #include "nonlinear_least_squares_cost.h"
 #include "drake/math/autodiff_gradient.h"
 
@@ -22,6 +23,7 @@ NonlinearLeastSquaresCost<T>::NonlinearLeastSquaresCost(
   DRAKE_DEMAND(eps_ > 0);
   DRAKE_DEMAND(Q_.cols() == Q_.rows());
   DRAKE_DEMAND(Q_.rows() == ny_);
+  DRAKE_DEMAND(not Q_.hasNaN());
 }
 
 template <>
@@ -75,6 +77,9 @@ template <typename T>
 GaussNewtonApproximation NonlinearLeastSquaresCost<T>::CalcGaussNewtonApproximation(
     const Eigen::Ref<const Eigen::VectorXd>& x) const {
 
+  DRAKE_DEMAND(not x.hasNaN());
+  DRAKE_DEMAND(x.rows() == num_vars());
+
   AutoDiffVecXd y;
   AutoDiffVecXd x_ad = InitializeAutoDiff(x);
 
@@ -87,8 +92,8 @@ GaussNewtonApproximation NonlinearLeastSquaresCost<T>::CalcGaussNewtonApproximat
   // Guass-Newton SQP cost is (J * dx + y)^TQ(J * dx + y)
 
   return {
-      2 * J.transpose() * Q_ * J,
-      2 * J.transpose() * Q_ * yval,
+      2.0 * J.transpose() * Q_ * J,
+      2.0 * J.transpose() * Q_ * yval,
       yval.transpose() * Q_ * yval,
       false
   };

@@ -23,8 +23,8 @@ class SQPSolver {
   std::function<double (const Eigen::VectorXd&)> eval_cost_;
   std::function<void (Eigen::VectorXd*)> proj_to_config_space_;
 
-  solvers::OsqpWrapper qp_solver_;
-  solvers::QPData qp_;
+  solvers::OsqpWrapper qp_solver_{};
+  solvers::QPData qp_{};
 
   LineSearchParams lsparams_;
 };

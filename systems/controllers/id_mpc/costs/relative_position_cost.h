@@ -33,8 +33,8 @@ class RelativePositionCost : public NonlinearLeastSquaresCost<double> {
 
   const drake::multibody::Frame<double>& frame_from_;
   const drake::multibody::Frame<double>& frame_to_;
-  const Eigen::Vector3d& point_from_;
-  const Eigen::Vector3d& point_to_;
+  const Eigen::Vector3d point_from_;
+  const Eigen::Vector3d point_to_;
 
   Eigen::Vector3d y_;
 

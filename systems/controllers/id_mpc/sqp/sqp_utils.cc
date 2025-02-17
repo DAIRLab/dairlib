@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 #include "sqp_utils.h"
 #include "solvers/qp_data.h"
@@ -22,6 +23,8 @@ using solvers::QPData;
 
 void ParseCostsToSQP(const VectorXd& x, const MathematicalProgram& prog,
                      QPData* qp) {
+
+  DRAKE_DEMAND(not x.hasNaN());
 
   qp->g = VectorXd::Zero(prog.num_vars());
 
@@ -49,9 +52,14 @@ void ParseCostsToSQP(const VectorXd& x, const MathematicalProgram& prog,
                                "To ensure that the SQP gauss newton "
                                "approximation is properly implemented");
     }
+
+    DRAKE_DEMAND(not cost_data.H.hasNaN());
+    DRAKE_DEMAND(not cost_data.g.hasNaN());
+    DRAKE_DEMAND(not std::isnan(cost_data.c));
+
     solvers::AppendQuadraticCost(
         indices, cost_data.H, cost_data.g, cost_data.c, cost_triplets, qp->g,
-        &qp->c, cost_data.diagonal_hessian);
+        &(qp->c), cost_data.diagonal_hessian);
   }
   qp->H.resize(prog.num_vars(), prog.num_vars());
   qp->H.setFromTriplets(cost_triplets.begin(), cost_triplets.end());

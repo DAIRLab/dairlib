@@ -1,3 +1,4 @@
+#include <iostream>
 #include "relative_position_cost.h"
 #include "multibody/multibody_utils.h"
 #include "drake/math/autodiff.h"
@@ -35,6 +36,8 @@ RelativePositionCost::RelativePositionCost(
 void RelativePositionCost::EvaluateInnerTerm(
     const Eigen::Ref<const drake::AutoDiffVecXd> &x,
     drake::AutoDiffVecXd *y) const{
+
+  DRAKE_DEMAND(not y_.hasNaN());
 
   VectorXd q = ExtractValue(x);
   multibody::SetPositionsIfNew<double>(plant_, q, context_.get());

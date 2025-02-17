@@ -32,13 +32,6 @@ struct QPData {
   friend
   std::ostream& operator<<(std::ostream& os, const QPData& data) {
     os << "{vars:" << data.num_vars << " eq:" << data.num_eq << " ineq:" << data.num_ineq
-       << "\nH:\n" << Eigen::MatrixXd(data.H)
-       << "\nA:\n" << Eigen::MatrixXd(data.A)
-       << "\nA_eq\n:" << Eigen::MatrixXd(data.A_eq)
-       << "\ng:" << data.g.transpose()
-       << "\nlb:" << data.lb.transpose()
-       << "\nub:" << data.ub.transpose()
-       << "\nb_eq:" << data.b_eq.transpose()
        << "\nc:" << data.c << "}";
     return os;
   }

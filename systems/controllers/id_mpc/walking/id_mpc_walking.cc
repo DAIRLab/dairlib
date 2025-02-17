@@ -101,7 +101,8 @@ void IDMPCWalking::MakeSwingTrajCosts() {
       "swing_foot", params_.foot_pos_W, Vector3d::Zero(),
       mpc().dynamics().get_plant(),
       params_.right_foot_body_name, params_.left_foot_body_name,
-      Vector3d::Zero(), Vector3d::Zero());
+      Vector3d::Zero(), Vector3d::Zero(),
+      "swing_foot");
 }
 
 void IDMPCWalking::MakeFootLevelingCosts() {
@@ -111,12 +112,14 @@ void IDMPCWalking::MakeFootLevelingCosts() {
       "foot_level_left", Q, Vector3d::Zero(),
       mpc().dynamics().get_plant(),
       params_.left_foot_body_name, params_.left_foot_body_name,
-      params_.foot_rear, params_.foot_front);
+      params_.foot_rear, params_.foot_front,
+      "foot_level_left");
   mpc_.AddTaskCost<RelativePositionCost>(
       "foot_level_right", Q, Vector3d::Zero(),
       mpc().dynamics().get_plant(),
       params_.right_foot_body_name, params_.right_foot_body_name,
-      params_.foot_rear, params_.foot_front);
+      params_.foot_rear, params_.foot_front,
+      "foot_level_left");
 }
 
 solvers::NCQPSolver::SetMembershipConstraints

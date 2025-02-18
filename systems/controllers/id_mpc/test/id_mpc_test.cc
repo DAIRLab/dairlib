@@ -2,6 +2,7 @@
 #include "systems/controllers/id_mpc/id_mpc.h"
 #include "systems/controllers/id_mpc/costs/quadratic_error_cost.h"
 #include "systems/controllers/id_mpc/costs/orientation_error_cost.h"
+#include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
 
 #include "common/eigen_utils.h"
 
@@ -118,6 +119,34 @@ void CostTest() {
       (0) + gn.c;
   drake_quad->Eval(x_star + dx, &result);
   DRAKE_DEMAND(abs(gn_approx - result(0)) < 1e-8);
+}
+
+void PointPositionConstraintTest(const ConstrainedDynamicsInfo& dynamics,
+                                 const Eigen::VectorXd& q) {
+  Eigen::Vector3d test_pt = Eigen::Vector3d(0, 0.088, .01);
+
+  PointPositionConstraint<double> constraintd(dynamics, "toe_left", test_pt);
+  PointPositionConstraint<AutoDiffXd> constrainta(
+      dynamics, "toe_left", test_pt);
+
+  Eigen::Vector3d p = Eigen::Vector3d(0.01, 0.14, 0.05);
+
+  Eigen::VectorXd vars = Eigen::VectorXd::Zero(dynamics.nq() + 3);
+  vars.head(dynamics.nq()) = q;
+  vars.tail<3>() = p;
+
+  VectorX<AutoDiffXd> vars_ad = drake::math::InitializeAutoDiff(vars);
+  VectorX<AutoDiffXd> yd;
+  VectorX<AutoDiffXd> ya;
+
+  constraintd.Eval(vars_ad, &yd);
+  constrainta.Eval(vars_ad, &ya);
+
+  std::cout << "PointPositionConstraint Test:\nyd: " <<
+    drake::math::ExtractValue(yd).transpose() << "\nya: " <<
+    drake::math::ExtractValue(ya).transpose() << "\nJd:\n" <<
+    drake::math::ExtractGradient(yd) << "\nJa:" <<
+    drake::math::ExtractGradient(ya) << std::endl;
 }
 
 void OrientationCostTest() {
@@ -242,6 +271,8 @@ int DoMain() {
                                        "toe_right_rear"};
 
   TestInverseDynamics(*dynamics_info, q, u, lambda, contacts);
+
+  PointPositionConstraintTest(*dynamics_info, q);
 
   vars.head(dynamics_info->nq()) = q;
   vars.segment(dynamics_info->nx(), dynamics_info->nh() + dynamics_info->nc()) = lambda;

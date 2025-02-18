@@ -1,0 +1,44 @@
+package dairlib;
+
+struct lcmt_id_mpc_reference {
+    // Timestamp when message was created
+    int64_t  utime;
+
+    // Vector of knot times
+    int32_t  num_knots;
+    double   knot_times[num_knots];
+
+    // Dimensions for trajectories
+    int32_t  num_q;    // Number of configuration variables
+    int32_t  num_v;    // Number of velocity variables
+    int32_t  num_u;    // Number of control inputs
+    int32_t  num_lambda;  // Number of contact force variables
+
+    // Main trajectory matrices (each column represents state at a knot point)
+    // Matrix dimensions are [num_vars x num_knots]
+    double   q_traj[num_q][num_knots];      // Configuration trajectory
+    double   quat_traj[4][num_knots];       // Quaternion trajectory
+    double   v_traj[num_v][num_knots];      // Velocity trajectory
+    double   lambda_traj[num_lambda][num_knots];  // Contact force trajectory
+    double   u_traj[num_u][num_knots];      // Control input trajectory
+
+    // Task space trajectories
+    int32_t  num_task_space_trajs;
+    string   task_space_names[num_task_space_trajs];
+    int32_t  task_space_dims[num_task_space_trajs];
+    double   task_space_trajs[num_task_space_trajs][num_knots];
+
+    // Active contacts at each knot
+    int32_t  max_contacts_per_knot;
+    int32_t  num_contacts_at_knot[num_knots];
+    string   active_contacts[num_knots][max_contacts_per_knot];
+
+    // Touchdown information
+    int32_t  num_touchdowns;
+    string   touchdown_ee_names[num_touchdowns];
+    double   touchdown_ee_points[num_touchdowns][3];  // 3D points
+
+    // Touchdown updates
+    int32_t  num_touchdown_updates;
+    string   touchdown_ee_names_to_update[num_touchdown_updates];
+}

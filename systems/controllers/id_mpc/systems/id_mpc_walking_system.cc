@@ -59,6 +59,10 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
       "mpc_solution", lcmt_timestamped_saved_traj(),
       &IDMPCWalkingSystem::CalcOutput).get_index();
 
+  output_port_mpc_debug_ = DeclareAbstractOutputPort(
+      "lcmt_id_mpc_walking_debug", lcmt_id_mpc_walking_debug(),
+      &IDMPCWalkingSystem::CalcDebug).get_index();
+
   plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
 }
 
@@ -105,6 +109,15 @@ void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,
       context.get_abstract_state<MPCSolution>(mpc_solution_state_);
   solution->saved_traj = mpc_solution.solution_trajectories.GenerateLcmObject();
   solution->utime = 1e6 * context.get_time();
+}
+
+void IDMPCWalkingSystem::CalcDebug(const Context<double> &context,
+                                   lcmt_id_mpc_walking_debug *debug) const {
+  CalcOutput(context, &debug->solution);
+  debug->reference = ConvertToLcm(
+      get_input_port_reference().Eval<MPCReference>(context),
+          context.get_time());
+  debug->utime = debug->solution.utime;
 }
 
 std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(

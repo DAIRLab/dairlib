@@ -1,6 +1,6 @@
 package dairlib;
 
-
 struct lcmt_id_mpc_debug {
+    lcmt_id_mpc_reference reference;
     lcmt_timestamped_saved_traj solution;
 }

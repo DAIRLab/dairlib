@@ -49,6 +49,10 @@ int DoMain() {
       LcmPublisherSystem::Make<lcmt_timestamped_saved_traj>(
           "ID_MPC", &lcm_local, TriggerTypeSet({TriggerType::kForced})
       ));
+  auto debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_id_mpc_walking_debug>(
+          "ID_MPC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})
+      ));
 
   auto vdes = builder.AddSystem<ConstantVectorSource<double>>(
       1.2 * Eigen::Vector2d::UnitX());
@@ -69,8 +73,15 @@ int DoMain() {
       vdes->get_output_port(),
       ref_gen->get_input_port_vdes()
   );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_solution(),
+      solution_pub->get_input_port()
+  );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_debug(),
+      debug_pub->get_input_port()
+  );
 
-  builder.Connect(*mpc_system, *solution_pub);
   auto diagram = builder.Build();
 
   LcmDrivenLoop<lcmt_robot_output> loop(

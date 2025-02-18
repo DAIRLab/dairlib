@@ -21,8 +21,8 @@ CollocationConstraint<T>::CollocationConstraint(
   DRAKE_DEMAND(x1_ != nullptr);
   DRAKE_DEMAND(k0_.index() == k1_.index() - 1);
 
-  // Constraint evaluation code assumes that lambda is well defined for
-  // the first knot point so we can call x0.UpdateDynamics()
+  // Constraint evaluation code assumes that lambda is well-defined for
+  // the first knot point, so we can call x0.UpdateDynamics()
   const auto& dynamics = x0->get_dynamics();
   DRAKE_DEMAND(k0_.num_input_variables() >= dynamics.nc() + dynamics.nh());
 }

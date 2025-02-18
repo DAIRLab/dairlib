@@ -174,7 +174,8 @@ std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
   auto fsm_vector = GetFSMStateVector(intervals, fsm, N, ss_intervals_, ds_intervals_);
 
   SetContactsAtKnot(0, fsm_vector.front(), mpc_reference);
-  for (int i = 1; i <= params_.mpc_N; ++i) {
+  SetContactsAtKnot(1, fsm_vector.at(1), mpc_reference);
+  for (int i = 2; i <= params_.mpc_N; ++i) {
     SetContactsAtKnot(i, fsm_vector.at(i), mpc_reference);
     if (fsm_vector.at(i - 1) != fsm_vector.at(i)) {
       if (fsm_info::is_double_stance(fsm_vector.at(i))) {

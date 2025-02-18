@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_id_mpc_walking_debug {
+    int64_t utime;
+    lcmt_id_mpc_reference reference;
+    lcmt_timestamped_saved_traj solution;
+
+    int32_t n_footsteps;
+    double footsteps[n_footsteps][3];
+}

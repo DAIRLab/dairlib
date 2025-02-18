@@ -1,9 +1,9 @@
 #pragma once
 
+#include "dairlib/lcmt_id_mpc_reference.hpp"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-// TODO (Brian-Acosta) - Support more general reference
-//  trajectories, including task-space references
+namespace dairlib::systems::controllers::id_mpc {
 
 class MPCReference {
  public:
@@ -20,8 +20,8 @@ class MPCReference {
    * Reference trajectories in task space
    */
   std::unordered_map<
-    std::string,
-    drake::trajectories::PiecewisePolynomial<double>> task_space_trajs_;
+      std::string,
+      drake::trajectories::PiecewisePolynomial<double>> task_space_trajs_;
 
   /*! timestamp of each MPC knot */
   std::vector<double> knot_times_;
@@ -38,9 +38,13 @@ class MPCReference {
   std::vector<Eigen::Vector3d> touchdown_ee_points_;
   std::vector<std::string> touchdown_ee_names_to_update_;
 
-  void AppendContactsToKnot(int i, const std::vector<std::string>& contacts) {
+  void AppendContactsToKnot(int i, const std::vector<std::string> &contacts) {
     active_contacts_.at(i).insert(active_contacts_.at(i).end(),
                                   contacts.begin(), contacts.end());
   }
 
 };
+
+lcmt_id_mpc_reference ConvertToLcm(const MPCReference& ref, double timestamp);
+
+}

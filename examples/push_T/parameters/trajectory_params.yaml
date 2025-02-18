@@ -12,7 +12,7 @@ random_goal_x_limits: [0.42, 0.5]  #0.27, 0.5]
 random_goal_y_limits: [0.02, 0.25]   # 0.35]
 random_goal_radius_limits: [0.48, 0.5]
 
-resting_object_height: -0.014002952           # currently being used by the goal randomization code.
+resting_object_height: -0.004           # currently being used by the goal randomization code.
 
 prevent_three_topples_for_random_goal_gen: false
 
@@ -29,7 +29,7 @@ lead_angle: 40
 # fixed_target_position: [0.45, 0.2, 0.00589]    # 0) for orientation cycling
 # fixed_target_orientation: [ 0, 1, 0, 0]
 
-fixed_target_position: [0.5, 0.2, -0.014002952]    # 1) slide to front
+fixed_target_position: [0.5, 0.2, -0.004]    # 1) slide to front
 fixed_target_orientation: [1, 0, 0, 0]
 
 # fixed_target_position: [0.4, 0.1, -0.014002952]    # 2) slide to right
@@ -107,4 +107,4 @@ max_step_size: 0.15           # if error is smaller or equal to this max step si
 # Sampling parameters
 ee_goal_height: 0.06          # height of the end effector above the jack
 # TODO: Rename this from object half width to object resting COM z height in the world frame
-object_half_width: -0.014002952     # half width of the object. Make sure to match with urdf of object.
+object_half_width: -0.004     # half width of the object. Make sure to match with urdf of object.

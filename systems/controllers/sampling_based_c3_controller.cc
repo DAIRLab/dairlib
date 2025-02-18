@@ -69,6 +69,7 @@ SamplingC3Controller::SamplingC3Controller(
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
+  // std::cout<<"Q size read from c3 options : "<<c3_options_.Q_position.rows()<<","<<c3_options_.Q_position.cols()<<std::endl;
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * c3_options_.Q_position);
     R_.push_back(discount_factor * c3_options_.R);
@@ -81,6 +82,12 @@ SamplingC3Controller::SamplingC3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
+  // std::cout<<"in sampling_based_c3_controller.cc"<<std::endl;
+  // std::cout<<"\tn_q: "<<n_q_<<std::endl;
+  // std::cout<<"\tn_v: "<<n_v_<<std::endl;
+  // std::cout<<"\tn_u: "<<n_u_<<std::endl;
+  // std::cout<<"Q size: "<<Q_[0].rows()<<","<<Q_[0].cols()<<std::endl;
+  // std::cout<<"R size: "<<R_[0].rows()<<","<<R_[0].cols()<<std::endl;
 
   n_x_ = n_q_ + n_v_;
 
@@ -390,6 +397,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+  // std::cout<<"x_lcs_curr size: "<<x_lcs_curr.size()<<std::endl;
+  // This is currently the quaternion from the object.
+  // std::cout<<"x_lcs z value: "<<lcs_x_curr->get_data()[2]<<std::endl;
 
   if(verbose_){
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
@@ -1246,6 +1256,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::cout<< "\t" << i << ": " <<lambda.dot(E*x + F*lambda + H*u + c)<<std::endl;
     }
 
+    std::cout<< "Dynamically feasible ee current plan: " << std::endl;
+    for (int i=0; i<N_+1; i++){
+      std::cout << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(0,3).transpose() << std::endl;
+    }
+
     std::cout << "Dynamically feasible object current plan: " << std::endl;
     for (int i=0; i<N_+1; i++){
       std::cout << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i].segment(3,7).transpose() << std::endl;
@@ -1458,10 +1473,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   double total_travel_time = travel_distance/sampling_params_.reposition_speed;
 
   // Use a straight line trajectory if close to the target (where "close"
-  // depends on whether using spline or arc trajectory type).
+  // depends on whether using spline or arc trajectory type). 
   if ((travel_distance < sampling_params_.use_straight_line_traj_under &&
-      !sampling_params_.use_spherical_repositioning) ||
-      (sampling_params_.use_spherical_repositioning &&
+      sampling_params_.repositioning_trajectory_type == 0) ||
+      ((sampling_params_.repositioning_trajectory_type == 1 || sampling_params_.repositioning_trajectory_type == 2) &&
        travel_angle < sampling_params_.use_straight_line_traj_within_angle)) {
     Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
     times[0] = 0;
@@ -1490,7 +1505,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   }
 
   // Otherwise, uphold a spherical arc repositioning trajectory.
-  else if (sampling_params_.use_spherical_repositioning) {
+  else if (sampling_params_.repositioning_trajectory_type == 1) {
     // Get the two waypoints as the ends of the arc trajectory.
     Eigen::Vector3d waypoint1 = current_object_location +
       v1 * sampling_params_.spherical_repositioning_radius;
@@ -1586,7 +1601,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   }
 
   // Use a spline trajectory.
-  else {
+  else if (sampling_params_.repositioning_trajectory_type == 0) {
     // Compute spline waypoints.
     Vector3d p0 = current_ee_location;
     Vector3d p3 = best_sample_location;
@@ -1631,6 +1646,117 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
       knots.col(i) = next_lcs_state;
     }
+  }
+
+  // use circular trajectory.
+  else if (sampling_params_.repositioning_trajectory_type == 2){
+    // TODO: Find a way to get it to pick the shorter direction around the circle.
+    // std::cout << "Using circular trajectory for repositioning." << std::endl;
+
+    // Current object projection onto the plane of the circle.
+    Vector3d current_object_projection = current_object_location;
+    current_object_projection(2) = sampling_params_.circular_repositioning_height;
+
+    // Project current ee location onto the plane of the circle.
+    Vector3d curr_ee_projection = current_ee_location;
+    curr_ee_projection(2) = sampling_params_.circular_repositioning_height;
+    
+    // project best sample onto the repositioning plane.
+    Vector3d best_sample_projection = best_sample_location;
+    best_sample_projection(2) = sampling_params_.circular_repositioning_height;
+
+    Vector3d v1 = (curr_ee_projection - current_object_projection).normalized();
+    Vector3d v2 = (best_sample_projection - current_object_projection).normalized();
+
+    // Compute travel angle
+    double travel_angle = std::acos(v1.dot(v2));
+
+
+    // Define the waypoints for the circular trajectory.
+    Eigen::Vector3d waypoint1 = current_object_projection +
+      sampling_params_.circular_repositioning_radius * v1;
+    Eigen::Vector3d waypoint2 = current_object_projection +
+      sampling_params_.circular_repositioning_radius * v2;
+    
+    // Compute tangent vector to the circle at waypoint1.
+    Eigen::Vector3d v3 = v1.cross(v2).normalized();
+    Eigen::Vector3d v4 = v3.cross(v1).normalized();
+
+    if(travel_angle > M_PI){
+      travel_angle = 2*M_PI - travel_angle;
+      v4 = -v4;
+    }
+
+
+    // The arc is defined by the equation: x = x_c + r*cos(theta) + r*sin(theta)
+    // the relation between the linear velocity and the angular velocity is given by
+    // v = r*omega, where v is the linear velocity and omega is the angular velocity.
+    // The angular velocity is given by omega = v/r. The angular velocity is given by
+    // omega = dtheta/dt. Therefore, dtheta = v/r*dt. This is the increment in the angle
+    // in the time dt.
+    double dtheta = sampling_params_.reposition_speed*dt_ /
+      sampling_params_.circular_repositioning_radius;
+    double step_size = sampling_params_.reposition_speed*dt_;
+
+    knots.col(0) = x_lcs;
+    int i = 1;
+    // Handle the first leg:  straight line from current EE location to
+    // waypoint1.
+    double dist_to_wp1 = (current_ee_location - waypoint1).norm();
+    while ((i*step_size < dist_to_wp1) && (i < N_)) {
+      // The division by dist_to_wp1 is to normalize the direction vector from the current
+      // ee location to waypoint1.
+      Eigen::Vector3d straight_line_point = current_ee_location +
+        i*step_size/dist_to_wp1 * (waypoint1 - current_ee_location);
+
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = straight_line_point;
+      knots.col(i) = next_lcs_state;
+      i++;
+    }
+
+    // Handle the second leg:  arc from waypoint1 to waypoint2.
+    int leg1_i = i;
+    double dtheta0 = (i*step_size - dist_to_wp1)/step_size * dtheta;
+    while (((i - leg1_i)*dtheta < travel_angle) && (i < N_)) {
+      Eigen::Vector3d arc_point = current_object_projection +
+        sampling_params_.circular_repositioning_radius *
+        (std::cos(dtheta0 + (i - leg1_i)*dtheta)*v1 +
+         std::sin(dtheta0 + (i - leg1_i)*dtheta)*v4 );
+      arc_point(2) = sampling_params_.circular_repositioning_height;
+
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = arc_point;
+      knots.col(i) = next_lcs_state;
+      i++;
+    }
+
+    // Handle the last leg:  straight line from waypoint2 to goal EE location.
+    int leg2_i = i;
+    double dstep = (dtheta0 + (i-leg1_i)*dtheta - travel_angle)/dtheta *
+      step_size;
+    double dist_wp2_to_goal = (waypoint2 - best_sample_location).norm();
+    while ((dstep + (i-leg2_i)*step_size < dist_wp2_to_goal) && (i < N_)) {
+      Eigen::Vector3d straight_line_point = waypoint2 +
+        (dstep + (i-leg2_i)*step_size)/dist_wp2_to_goal*
+        (best_sample_location - waypoint2);
+
+      VectorXd next_lcs_state = x_lcs;
+      next_lcs_state.head(3) = straight_line_point;
+      knots.col(i) = next_lcs_state;
+      i++;
+    }
+    
+    // Fill in the rest of the knots with the goal EE location.
+    for (int j = i; j < N_; j++) {
+      Eigen::Vector3d x_lcs_goal = x_lcs;
+      x_lcs_goal.head(3) = best_sample_location;
+      knots.col(j) = x_lcs_goal;
+      if (j == 1 && !is_doing_c3_) {
+        finished_reposition_flag_ = true;
+      }
+    }
+
   }
 
   // Set predicted end effector state in preparation for next control loop, if

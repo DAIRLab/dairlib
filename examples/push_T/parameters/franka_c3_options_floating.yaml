@@ -79,7 +79,7 @@ u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
 
 # minimum end effector z-state constraint in c3
-ee_z_state_min: -0.01
+ee_z_state_min: 0.00
 
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
@@ -157,7 +157,7 @@ qp_projection_scaling: 1
 q_vector_position_and_orientation: [
            0.01, 0.01, 0.01,        # end effector position
            0.1, 0.1, 0.1, 0.1,              # object orientation
-           120, 120, 120,    # object position
+           150, 150, 150,    # object position
            5, 5, 5,              # end effector linear velocity
            0.05, 0.05, 0.05,                 # object angular velocity
            0.05, 0.05, 0.05]           # object linear velocity

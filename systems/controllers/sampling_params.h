@@ -28,10 +28,12 @@ struct SamplingC3SamplingParams {
   bool consider_best_buffer_sample_when_leaving_c3;
   double spline_width;
   double spherical_repositioning_radius;
+  double circular_repositioning_radius;
+  double circular_repositioning_height;
   double reposition_speed;
   double use_straight_line_traj_under;
   double use_straight_line_traj_within_angle;
-  bool use_spherical_repositioning;
+  int repositioning_trajectory_type;
   int N_sample_buffer;
   double pos_error_sample_retention;
   double ang_error_sample_retention;
@@ -73,10 +75,12 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(spherical_repositioning_radius));
+    a->Visit(DRAKE_NVP(circular_repositioning_radius));
+    a->Visit(DRAKE_NVP(circular_repositioning_height));
     a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
-    a->Visit(DRAKE_NVP(use_spherical_repositioning));
+    a->Visit(DRAKE_NVP(repositioning_trajectory_type));
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));

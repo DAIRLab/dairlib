@@ -1,5 +1,5 @@
 #include "solvers/qp_data.h"
-#include "solvers/qpalm_solver.h"
+#include "solvers/qpalm_wrapper.h"
 
 #include "drake/solvers/osqp_solver.h"
 
@@ -18,13 +18,15 @@ int DoMain() {
   auto qpdata = QPData::ToQPData(prog);
 
   drake::solvers::OsqpSolver osqp_solver;
-  QPALMSolver qpalm_solver(qpdata);
+  QpalmWrapper qpalm_solver;
+
+  qpalm_solver.InitializeSolver(qpdata, drake::solvers::SolverOptions());
 
   auto osqp_result = osqp_solver.Solve(prog);
-  Eigen::VectorXd qpalm_solution = qpalm_solver.Solve(qpdata);
+  auto qpalm_solution = qpalm_solver.Solve(prog);
 
   std::cout << "OSQP: " << osqp_result.GetSolution(x).transpose()
-            << "\nQPALM: " << qpalm_solution.transpose() << std::endl;
+            << "\nQPALM: " << qpalm_solution.GetSolution(x).transpose() << std::endl;
 
   return 0;
 }

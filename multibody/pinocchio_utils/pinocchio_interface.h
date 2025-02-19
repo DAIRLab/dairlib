@@ -19,33 +19,49 @@ class PinocchioInterface {
       const std::string& urdf);
 
   template <typename T>
-  void MapPositionsToPinocchio(drake::VectorX<T>& drake_positions) const;
+  drake::VectorX<T> MapPositionsToPinocchio(
+      const drake::VectorX<T>& drake_positions) const;
 
   template <typename T>
-  void MapPositionsToDrake(drake::VectorX<T>& pinocchio_positions) const;
+  drake::VectorX<T> MapPositionsToDrake(
+      const drake::VectorX<T>& pinocchio_positions) const;
 
   template <typename T>
-  void MapVelocitiesToPinocchio(
+  drake::VectorX<T> MapVelocitiesToPinocchio(
       const drake::VectorX<T>& drake_positions,
-      drake::VectorX<T>& drake_velocities) const;
+      const drake::VectorX<T>& drake_velocities) const;
 
   template <typename T>
-  void MapVelocitiesToDrake(
+  drake::VectorX<T> MapVelocitiesToDrake(
       const drake::VectorX<T>& drake_positions,
-      drake::VectorX<T>& pinocchio_velocities) const;
+      const drake::VectorX<T>& pinocchio_velocities) const;
+
+  template <typename T>
+  drake::VectorX<T> MapVDotToPinocchio(
+      const drake::VectorX<T>& drake_positions,
+      const drake::VectorX<T>& drake_velocities,
+      const drake::VectorX<T>& drake_vdot) const;
 
 
   /*!
    * Given a Jacobian, J, representing a task y(q), where ydot = Jv, where
-   * v is the generalized velocity in pinochio coordinates, map it to the
+   * v is the generalized velocity in pinocchio coordinates, map it to the
    * jacobian such that ydot = Jv , where v is in drake coordinates.
    * @param drake_positions
    * @param pinocchio_jacobian
    */
-  template <typename T>
-  void MapJacobianToDrake(
+  template <typename T, int rows>
+  void MapJvToDrake(
       const drake::VectorX<T>& drake_positions,
-      drake::MatrixX<T>& pinocchio_jacobian) const;
+      Eigen::Matrix<T, rows, Eigen::Dynamic>* Jv_pin) const;
+
+  template <typename T, int rows>
+  void MapJvToDrake(
+      const drake::VectorX<T>& drake_positions,
+      drake::EigenPtr<Eigen::Matrix<T, rows, Eigen::Dynamic>> Jv_pin) const;
+
+  template <typename T, int rows>
+  void MapJqToDrake(Eigen::Matrix<T, rows, Eigen::Dynamic>* Jq_pin) const;
 
   pinocchio::Data PinocchioData() {
     return pinocchio::Data(pinocchio_model_);
@@ -53,6 +69,15 @@ class PinocchioInterface {
 
   const pinocchio::Model& get_model() const {
     return pinocchio_model_;
+  }
+
+  const Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic>& q_perm()
+  const {
+    return q_perm_p2d_;
+  }
+  const Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic>& v_perm()
+  const {
+    return v_perm_p2d_;
   }
 
  private:

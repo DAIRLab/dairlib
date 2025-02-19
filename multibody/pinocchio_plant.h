@@ -5,6 +5,7 @@
 #include "pinocchio/multibody/model.hpp"
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "multibody/pinocchio_utils/pinocchio_interface.h"
 
 // TODO: Needs a fixed vs. floating base mechanism
 // Move test methods here as self-verification steps
@@ -21,45 +22,14 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   PinocchioPlant(double time_step, const std::string& urdf);
   PinocchioPlant(const drake::multibody::MultibodyPlant<double>& plant, const std::string& urdf);
 
-  void BuildPermutations();
 
   void FinalizePlant();
 
-  drake::VectorX<double> MapPositionFromDrakeToPinocchio(
-      const drake::VectorX<double>& q) const;
-  drake::VectorX<T> MapVelocityFromDrakeToPinocchio(
-      const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
-  drake::VectorX<T> MapVelocityFromPinocchioToDrake(
-      const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
-  drake::VectorX<T> MapVDotFromDrakeToPinocchio(
-      const drake::VectorX<T>& q, const drake::VectorX<T>& v,
-      const drake::VectorX<T>& vdot) const;
 
   drake::MatrixX<T> GetVelocityMapFromDrakeToPinocchio(
       const drake::VectorX<T>& quat) const;
   drake::MatrixX<double> GetVelocityMapFromPinocchioToDrake(
       const drake::VectorX<double>& quat) const;
-
-
-  /**
-   * This function updates the pinocchio data struct with forward kinematics.
-   * If derivatives are needed, call the function with Derivatives
-   * @param q
-   * @param v
-   */
-  void UpdateForwardKinematics(const drake::systems::Context<double>& context);
-
-  /**
-   * Computes ForwardKinematics and ComputeJointJacobians
-   * @param q
-   * @param v
-   */
-  void UpdateForwardKinematicsDerivatives(
-      const drake::systems::Context<drake::AutoDiffXd>& context);
-
-  void RightMultiplicationFromDrakeToPinocchio(
-      const drake::VectorX<double>& quat,
-      drake::EigenPtr<drake::MatrixX<double>> M) const;
 
   drake::VectorX<T> CalcInverseDynamics(
       const drake::systems::Context<T>& context,
@@ -117,6 +87,11 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   drake::Vector6<T> MapVDotToBodyFrame(const drake::VectorX<T>& q,
                                        const drake::VectorX<T>& v,
                                        const drake::VectorX<T>& vdot) const;
+
+  mutable drake::Matrix6X<T> J_work_;
+
+  void DoFinalizePinocchioPlant();
+
   std::string urdf_;
   bool is_floating_base_;
 
@@ -131,9 +106,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   int n_q_;
   int n_v_;
 
-  // permutation matrices maps from Pinocchio to MBP
-  Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> q_perm_;
-  Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> v_perm_;
+  std::unique_ptr<PinocchioInterface> interface_;
+
   // Maps from pinocchio v to drake q
   Eigen::MatrixXd vq_perm_;
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> u_perm_;

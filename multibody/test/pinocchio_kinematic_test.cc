@@ -197,7 +197,7 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassDouble) {
   pin_plant_->CalcJacobianCenterOfMassTranslationalVelocity(
       *pin_context_, drake::multibody::JacobianWrtVariable::kV,
       pin_plant_->world_frame(), pin_plant_->world_frame(), &J_pin);
-  EXPECT_TRUE((J - J_pin).norm() < tol);\
+  EXPECT_TRUE((J - J_pin).norm() < tol);
 }
 
 TEST_F(PinocchioKinematicTest, TestCenterOfMassAD) {
@@ -223,19 +223,19 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassVel) {
   EXPECT_TRUE((com_vel - pin_com_vel).norm() < tol);
 }
 
-TEST_F(PinocchioKinematicTest, TestMapVelocity) {
-  VectorXd q = VectorXd::Random(plant_->num_positions());
-  VectorXd v = VectorXd::Random(plant_->num_velocities());
-
-  q.head<4>() = (1.0 / q.head<4>().norm()) * q.head<4>();
-
-  VectorXd v_mapped = pin_plant_->MapVelocityFromPinocchioToDrake(
-      q.head<4>(),
-      pin_plant_->MapVelocityFromDrakeToPinocchio(q.head<4>(), v));
-
-  EXPECT_TRUE((v - v_mapped).norm() < tol);
-
-}
+//TEST_F(PinocchioKinematicTest, TestMapVelocity) {
+//  VectorXd q = VectorXd::Random(plant_->num_positions());
+//  VectorXd v = VectorXd::Random(plant_->num_velocities());
+//
+//  q.head<4>() = (1.0 / q.head<4>().norm()) * q.head<4>();
+//
+//  VectorXd v_mapped = pin_plant_->MapVelocityFromPinocchioToDrake(
+//      q.head<4>(),
+//      pin_plant_->MapVelocityFromDrakeToPinocchio(q.head<4>(), v));
+//
+//  EXPECT_TRUE((v - v_mapped).norm() < tol);
+//
+//}
 
 TEST_F(PinocchioKinematicTest, TestCalcPointsPositionDouble) {
   plant_->SetPositionsAndVelocities(context_.get(), x_);

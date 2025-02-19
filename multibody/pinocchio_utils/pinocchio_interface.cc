@@ -8,9 +8,17 @@ namespace dairlib::multibody {
 using Eigen::VectorXd;
 using Eigen::Quaternion;
 
-using drake::multibody::MultibodyPlant;
-using drake::VectorX;
 using drake::MatrixX;
+using drake::Matrix3X;
+using drake::Matrix6X;
+
+using drake::Matrix3;
+using drake::VectorX;
+using drake::Vector3;
+using drake::Vector6;
+using drake::EigenPtr;
+using drake::AutoDiffXd;
+using drake::multibody::MultibodyPlant;
 
 PinocchioInterface::PinocchioInterface(
     const MultibodyPlant<double> &plant,
@@ -100,52 +108,150 @@ void PinocchioInterface::BuildPermutations() {
 }
 
 template <typename T>
-void PinocchioInterface::MapPositionsToDrake(
-    VectorX<T> &positions) const {
-  positions = v_perm_p2d_ * positions;
+VectorX<T> PinocchioInterface::MapPositionsToDrake(
+    const VectorX<T> &positions) const {
+  return q_perm_p2d_ * positions;
 }
 
 template <typename T>
-void PinocchioInterface::MapPositionsToPinocchio(
-    VectorX<T> &positions) const {
-  positions = v_perm_p2d_.inverse() * positions;
+VectorX<T> PinocchioInterface::MapPositionsToPinocchio(
+    const VectorX<T> &positions) const {
+  return q_perm_p2d_.inverse() * positions;
 }
 
 template <typename T>
-void PinocchioInterface::MapVelocitiesToDrake(
-    const VectorX<T> &q, VectorX<T> &v) const {
+VectorX<T> PinocchioInterface::MapVelocitiesToDrake(
+    const VectorX<T> &q, const VectorX<T> &v_pin) const {
+  VectorX<T> v = v_pin;
   if (is_floating_base_) {
     MatrixX<T> rot =
         Eigen::Quaternion<T>(q(0), q(1), q(2), q(3)).toRotationMatrix();
     v.template head<3>() = rot * v.template head<3>();
-    v.template segment<3>(3) = v.template segment<3>(3);
+    v.template segment<3>(3) = rot * v.template segment<3>(3);
   }
   v = v_perm_p2d_ * v;
+  return v;
 }
 
 template <typename T>
-void PinocchioInterface::MapVelocitiesToPinocchio(
-    const VectorX<T> &q, VectorX<T> &v) const {
+VectorX<T> PinocchioInterface::MapVelocitiesToPinocchio(
+    const VectorX<T> &q, const VectorX<T> &v_drake) const {
+  VectorX<T> v = v_drake;
   if (is_floating_base_) {
     MatrixX<T> rot =
         Eigen::Quaternion<T>(q(0), q(1), q(2), q(3)).toRotationMatrix()
         .transpose();
     v.template head<3>() = rot * v.template head<3>();
-    v.template segment<3>(3) = v.template segment<3>(3);
+    v.template segment<3>(3) = rot * v.template segment<3>(3);
   }
   v = v_perm_p2d_.inverse() * v;
+  return v;
 }
 
 template <typename T>
-void PinocchioInterface::MapJacobianToDrake(
-    const VectorX<T> &q, MatrixX<T> &J) const {
-  J = J * v_perm_p2d_.inverse();
+VectorX<T> PinocchioInterface::MapVDotToPinocchio(
+    const drake::VectorX<T> &q, const drake::VectorX<T> &v,
+    const drake::VectorX<T> &vdot) const {
+  VectorX<T> vd = vdot;
+  if (is_floating_base_) {
+    Matrix3<T> R_BW = Eigen::Quaternion<T>(q(0), q(1), q(2), q(3))
+        .toRotationMatrix().transpose();
+    Vector3<T> offset = -v.template head<3>().cross(v.template segment<3>(3));
+    vd.template head<3>() = R_BW * vdot.template head<3>();
+    vd.template segment<3>(3) = R_BW * (vdot.template segment<3>(3) + offset);
+  }
+  return v_perm_p2d_.inverse() * vd;
+}
+
+template <typename T, int rows>
+void PinocchioInterface::MapJvToDrake(
+    const VectorX<T> &q, Eigen::Matrix<T, rows, Eigen::Dynamic>* J) const {
+  *J = (*J) * v_perm_p2d_.inverse();
   if (is_floating_base_) {
     MatrixX<T> rot =
         Eigen::Quaternion<T>(q(0), q(1), q(2), q(3)).toRotationMatrix()
         .transpose();
-    J.template leftCols<3>() = J.template leftCols<3>() * rot;
-    J.template middleCols<3>(3) = J.template middleCols<3>(3) * rot;
+    J->template leftCols<3>() = J->template leftCols<3>() * rot;
+    J->template middleCols<3>(3) = J->template middleCols<3>(3) * rot;
   }
 }
+
+template <typename T, int rows>
+void PinocchioInterface::MapJvToDrake(
+    const VectorX<T> &q, EigenPtr<Eigen::Matrix<T, rows, Eigen::Dynamic>> J)
+    const {
+  *J = (*J) * v_perm_p2d_.inverse();
+  if (is_floating_base_) {
+    MatrixX<T> rot =
+        Eigen::Quaternion<T>(q(0), q(1), q(2), q(3)).toRotationMatrix()
+            .transpose();
+    J->template leftCols<3>() = J->template leftCols<3>() * rot;
+    J->template middleCols<3>(3) = J->template middleCols<3>(3) * rot;
+  }
+}
+
+template <typename T, int rows>
+void PinocchioInterface::MapJqToDrake(
+    Eigen::Matrix<T, rows, Eigen::Dynamic>* J) const {
+  *J = (*J) * q_perm_p2d_.inverse();
+}
+
+template VectorX<double> PinocchioInterface::MapPositionsToPinocchio(
+    const VectorX<double>&) const;
+
+template VectorX<double> PinocchioInterface::MapPositionsToDrake(
+    const VectorX<double>&) const;
+
+template VectorX<double> PinocchioInterface::MapVelocitiesToPinocchio(
+    const VectorX<double> &, const VectorX<double> &) const;
+
+template VectorX<double> PinocchioInterface::MapVelocitiesToDrake(
+    const VectorX<double> &, const VectorX<double> &) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, MatrixX<double>*) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, Matrix3X<double>*) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, Matrix6X<double>*) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, EigenPtr<MatrixX<double>>) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, EigenPtr<Matrix3X<double>>) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<double> &, EigenPtr<Matrix6X<double>>) const;
+
+template void PinocchioInterface::MapJqToDrake(
+    MatrixX<double>*) const;
+
+template VectorX<double> PinocchioInterface::MapVDotToPinocchio(
+    const VectorX<double> &, const VectorX<double> &,
+    const VectorX<double> &) const;
+
+template VectorX<AutoDiffXd> PinocchioInterface::MapPositionsToPinocchio(
+    const VectorX<AutoDiffXd>&) const;
+
+template VectorX<AutoDiffXd> PinocchioInterface::MapPositionsToDrake(
+    const VectorX<AutoDiffXd>&) const;
+
+template VectorX<AutoDiffXd> PinocchioInterface::MapVelocitiesToPinocchio(
+    const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
+
+template VectorX<AutoDiffXd> PinocchioInterface::MapVelocitiesToDrake(
+    const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
+
+template void PinocchioInterface::MapJvToDrake(
+    const VectorX<AutoDiffXd> &, MatrixX<AutoDiffXd>*) const;
+
+template void PinocchioInterface::MapJqToDrake(MatrixX<AutoDiffXd>*) const;
+
+template VectorX<AutoDiffXd> PinocchioInterface::MapVDotToPinocchio(
+    const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &,
+    const VectorX<AutoDiffXd> &) const;
+
 }

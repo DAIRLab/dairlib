@@ -49,7 +49,10 @@ using std::string;
 template <>
 PinocchioPlant<AutoDiffXd>::PinocchioPlant(const MultibodyPlant<double>& plant,
                                            const std::string& urdf)
-    : MultibodyPlant<AutoDiffXd>(plant), urdf_(urdf) {}
+    : MultibodyPlant<AutoDiffXd>(plant), urdf_(urdf) {
+  interface_ = std::make_unique<PinocchioInterface>(plant, urdf_);
+  J_work_ = Matrix6X<AutoDiffXd>::Zero(6, plant.num_velocities());
+}
 
 template <>
 PinocchioPlant<double>::PinocchioPlant(double time_step,
@@ -57,8 +60,20 @@ PinocchioPlant<double>::PinocchioPlant(double time_step,
     : MultibodyPlant<double>(time_step), urdf_(urdf) {}
 
 
+template <>
+void PinocchioPlant<double>::FinalizePlant() {
+  interface_ = std::make_unique<PinocchioInterface>(*this, urdf_);
+  this->DoFinalizePinocchioPlant();
+  J_work_ = Matrix6X<double>::Zero(6, this->num_velocities());
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::FinalizePlant() {
+  this->DoFinalizePinocchioPlant();
+}
+
 template <typename T>
-void PinocchioPlant<T>::FinalizePlant() {
+void PinocchioPlant<T>::DoFinalizePinocchioPlant() {
   DRAKE_DEMAND(this->is_finalized());
 
   is_floating_base_ = HasQuaternion(*this);
@@ -69,31 +84,11 @@ void PinocchioPlant<T>::FinalizePlant() {
     pinocchio::urdf::buildModel(urdf_, pinocchio_model_);
   }
 
-  // Do i need to buildReducedModel? Do What about joints?
+  pinocchio_model_.rotorInertia = interface_->get_model().rotorInertia;
+  pinocchio_model_.rotorGearRatio = interface_->get_model().rotorGearRatio;
+  pinocchio_model_.armature = interface_->get_model().armature;
+
   pinocchio_data_ = pinocchio::Data(pinocchio_model_);
-
-  BuildPermutations();
-
-  // Add reflected inertia
-  VectorXd gear_ratios = VectorXd::Ones(this->num_velocities());
-  VectorXd rotor_inertias = VectorXd::Zero(this->num_velocities());
-  VectorXd armature = VectorXd::Zero(this->num_velocities());
-  auto vel_map = MakeNameToVelocitiesMap(*this);
-
-  for (int i = 0; i < this->num_actuators(); ++i) {
-    auto& joint_actuator = this->get_mutable_joint_actuator(
-        drake::multibody::JointActuatorIndex(i));
-    auto name = joint_actuator.joint().name();
-    int idx = vel_map.at(name + "dot");
-    gear_ratios(idx) = joint_actuator.default_gear_ratio();
-    rotor_inertias(idx) = joint_actuator.default_rotor_inertia();
-    armature(idx) = gear_ratios(idx) * gear_ratios(idx) * rotor_inertias(idx);
-  }
-
-  pinocchio_model_.rotorInertia = v_perm_.transpose() * rotor_inertias;
-  pinocchio_model_.rotorGearRatio = v_perm_.transpose() * gear_ratios;
-  pinocchio_model_.armature = pinocchio_model_.armature +
-      v_perm_.transpose() * armature;
 
   // Check that models match
   int nq = this->num_positions();
@@ -101,86 +96,6 @@ void PinocchioPlant<T>::FinalizePlant() {
 
   n_q_ = nq;
   n_v_ = nv;
-}
-
-template <typename T>
-void PinocchioPlant<T>::BuildPermutations() {
-  map<string, int> pos_map = MakeNameToPositionsMap(*this);
-  map<string, int> vel_map = MakeNameToVelocitiesMap(*this);
-  int nq = this->num_positions();
-  int nv = this->num_velocities();
-  Eigen::VectorXi pos_indices(nq);
-  Eigen::VectorXi vel_indices(nv);
-  vq_perm_ = MatrixXd::Zero(nv, nq);
-
-  int q_idx = 0;
-  int v_idx = 0;
-  for (int name_idx = 1; name_idx < pinocchio_model_.names.size(); name_idx++) {
-    // TODO: floating base options
-    // Skipping i=0 for the world (TODO--doesn't handle floating base yet)
-    // Assumes that URDF root is welded to the world
-    const auto& name = pinocchio_model_.names[name_idx];
-
-    if (name == "root_joint") {
-      // Pinocchio's floating base position is (x, y, z, qx,qy,qz,qw)
-      // Pinocchio's floating base velocity is (vx,vy,vz,wx,wy,wz)
-      // Note that
-      // 1. the first element of quaternion is qx instead of qw.
-      // 2. the velocity seems to be expressed in local frame
-      pos_indices.head<7>() << 4, 5, 6, 1, 2, 3, 0;
-      vel_indices.head<6>() << 3, 4, 5, 0, 1, 2;
-      vq_perm_(3, 1) = 1;
-      vq_perm_(4, 2) = 1;
-      vq_perm_(5, 3) = 1;
-      vq_perm_(0, 4) = 1;
-      vq_perm_(1, 5) = 1;
-      vq_perm_(2, 6) = 1;
-      q_idx += 7;
-      v_idx += 6;
-    } else {
-      if (pos_map.count(name) == 0) {
-        throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
-                                 " was not found in the position map.");
-      }
-
-      if (vel_map.count(name + "dot") == 0) {
-        throw std::runtime_error("PinocchioPlant::BuildPermutations: " + name +
-                                 " was not found in the velocity map.");
-      }
-
-      pos_indices(q_idx) = pos_map[name];
-      vq_perm_(vel_map[name + "dot"], q_idx) = 1;
-      vel_indices(v_idx) = vel_map[name + "dot"];
-      q_idx++;
-      v_idx++;
-    }
-  }
-
-  q_perm_.indices() = pos_indices;
-  v_perm_.indices() = vel_indices;
-}
-
-template <typename T>
-drake::VectorX<double> PinocchioPlant<T>::MapPositionFromDrakeToPinocchio(
-    const drake::VectorX<double>& q) const {
-  return q_perm_.inverse() * q;
-}
-
-template <typename T>
-drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromDrakeToPinocchio(
-    const drake::VectorX<T>& quat, const drake::VectorX<T>& v) const {
-  if (is_floating_base_) {
-    drake::MatrixX<T> rot =
-        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
-            .toRotationMatrix()
-            .transpose();
-    drake::VectorX<T> v_rotated = v;
-    v_rotated.template head<3>() = rot * v_rotated.template head<3>();
-    v_rotated.template segment<3>(3) = rot * v_rotated.template segment<3>(3);
-    return v_perm_.inverse() * v_rotated;
-  } else {
-    return v_perm_.inverse() * v;
-  }
 }
 
 template <typename T>
@@ -213,34 +128,6 @@ Vector6<T> PinocchioPlant<T>::MapVDotToBodyFrame(
 }
 
 template <typename T>
-drake::VectorX<T> PinocchioPlant<T>::MapVDotFromDrakeToPinocchio(
-    const VectorX<T>& quat, const VectorX<T>& v, const VectorX<T>& vdot) const {
-  VectorX<T> vdot_tmp = vdot;
-  if (is_floating_base_) {
-    Vector6<T> vdot_base = MapVDotToBodyFrame(
-        quat, v.template head<6>(), vdot.template head<6>());
-    vdot_tmp.template head<6>() = vdot_base;
-  }
-  return v_perm_.inverse() * vdot_tmp;
-}
-
-template <typename T>
-drake::VectorX<T> PinocchioPlant<T>::MapVelocityFromPinocchioToDrake(
-    const drake::VectorX<T>& quat, const drake::VectorX<T>& v) const {
-  if (is_floating_base_) {
-    drake::MatrixX<T> rot =
-        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
-            .toRotationMatrix();
-    drake::VectorX<T> v_rotated = v;
-    v_rotated.template head<3>() = rot * v_rotated.template head<3>();
-    v_rotated.template segment<3>(3) = rot * v_rotated.template segment<3>(3);
-    return v_perm_ * v_rotated;
-  } else {
-    return v_perm_ * v;
-  }
-}
-
-template <typename T>
 drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromDrakeToPinocchio(
     const drake::VectorX<T>& quat) const {
   drake::MatrixX<T> ret = drake::MatrixX<T>::Identity(this->num_velocities(),
@@ -253,7 +140,7 @@ drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromDrakeToPinocchio(
     ret.template block<3, 3>(0, 0) = rot;
     ret.template block<3, 3>(3, 3) = rot;
   }
-  return v_perm_.inverse() * ret;
+  return interface_->v_perm().inverse() * ret;
 }
 
 template <typename T>
@@ -268,161 +155,7 @@ drake::MatrixX<double> PinocchioPlant<T>::GetVelocityMapFromPinocchioToDrake(
     ret.template block<3, 3>(0, 0) = rot;
     ret.template block<3, 3>(3, 3) = rot;
   }
-  return v_perm_ * ret;
-}
-
-template <typename T>
-void PinocchioPlant<T>::RightMultiplicationFromDrakeToPinocchio(
-    const drake::VectorX<double>& quat,
-    drake::EigenPtr<drake::MatrixX<double>> M) const {
-  (*M) = (*M) * v_perm_.inverse();
-  if (is_floating_base_) {
-    drake::MatrixX<double> rot =
-        Eigen::Quaternion<double>(quat(0), quat(1), quat(2), quat(3))
-            .toRotationMatrix()
-            .transpose();
-    M->leftCols(3) = M->leftCols(3) * rot;
-    M->middleCols(3, 3) = M->middleCols(3, 3) * rot;
-  }
-}
-
-template <>
-void PinocchioPlant<AutoDiffXd>::UpdateForwardKinematicsDerivatives(
-    const Context<AutoDiffXd>& context) {
-  drake::VectorX<double> a = drake::VectorX<double>::Zero(n_v_);
-  drake::VectorX<double> q =
-      MapPositionFromDrakeToPinocchio(ExtractValue(GetPositions(context)));
-  drake::VectorX<double> v = ExtractValue(MapVelocityFromDrakeToPinocchio(
-      GetPositions(context).head<4>(), GetVelocities(context)));
-  pinocchio::computeForwardKinematicsDerivatives(pinocchio_model_,
-                                                 pinocchio_data_, q, v, a);
-}
-
-template <>
-VectorXd PinocchioPlant<double>::CalcInverseDynamics(
-    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
-    const drake::multibody::MultibodyForces<double>& external_forces) const {
-
-  for (const auto& f : external_forces.body_forces()) {
-    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
-    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
-  }
-
-  VectorXd fp = pinocchio::rnea(
-      pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)),
-      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                      GetVelocities(context)),
-      MapVDotFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                  GetVelocities(context), known_vdot));
-
-  // At this point, f_pin = M vdot + C + g
-  // Drake doesn't include gravity, so we will subtract it out.
-  VectorXd g = pinocchio::computeGeneralizedGravity(
-      pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)));
-  // subract gravity
-  fp = MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(), fp - g);
-  fp = fp - external_forces.generalized_forces();
-  return fp;
-}
-
-template <>
-void PinocchioPlant<double>::CalcJacobianTranslationalVelocity(
-    const drake::systems::Context<double>& context,
-    drake::multibody::JacobianWrtVariable with_respect_to,
-    const drake::multibody::Frame<double>& frame_B,
-    const Eigen::Ref<const drake::Matrix3X<double>>& p_BoBi_B,
-    const drake::multibody::Frame<double>& frame_A, const
-    drake::multibody::Frame<double>& frame_E,
-    drake::EigenPtr<drake::MatrixX<double>> Js_v_ABi_E) const {
-  MultibodyPlant<double>::CalcJacobianTranslationalVelocity(
-      context, with_respect_to, frame_B, p_BoBi_B, frame_A, frame_E,
-      Js_v_ABi_E);
-}
-
-template <>
-void PinocchioPlant<AutoDiffXd>::CalcJacobianTranslationalVelocity(
-    const drake::systems::Context<AutoDiffXd>& context,
-    drake::multibody::JacobianWrtVariable with_respect_to,
-    const drake::multibody::Frame<AutoDiffXd>& frame_B,
-    const Eigen::Ref<const drake::Matrix3X<AutoDiffXd>>& p_BoBi_B,
-    const drake::multibody::Frame<AutoDiffXd>& frame_A, const
-    drake::multibody::Frame<AutoDiffXd>& frame_E,
-    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> Js_v_ABi_E) const {
-  throw std::runtime_error("not implemented yet");
-}
-
-template <>
-VectorXd PinocchioPlant<double>::CalcInverseDynamicsWithGravity(
-    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
-    const drake::multibody::MultibodyForces<double>& external_forces) const {
-
-  for (const auto& f : external_forces.body_forces()) {
-    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
-    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
-  }
-
-  VectorXd fp = pinocchio::rnea(
-      pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)),
-      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                      GetVelocities(context)),
-      MapVDotFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                  GetVelocities(context), known_vdot));
-
-  // subract gravity
-  fp = MapVelocityFromPinocchioToDrake(GetPositions(context).head<4>(), fp);
-  fp = fp - external_forces.generalized_forces();
-  return fp;
-}
-
-template<>
-VectorX<AutoDiffXd> PinocchioPlant<AutoDiffXd>::CalcInverseDynamicsWithGravity(
-    const drake::systems::Context<AutoDiffXd> &context,
-    const drake::VectorX<AutoDiffXd> &known_vdot,
-    const drake::multibody::MultibodyForces<AutoDiffXd> &external_forces) const {
-  throw std::runtime_error("CalcInverseDynamicsWithGravity not implemented "
-                           "for AutoDiffXd yet.");
-  return VectorX<AutoDiffXd>::Zero(known_vdot.rows());
-}
-
-template <>
-void PinocchioPlant<double>::CalcMassMatrix(
-    const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> M) const {
-  pinocchio::crba(pinocchio_model_, pinocchio_data_,
-                  MapPositionFromDrakeToPinocchio(GetPositions(context)));
-
-  // Pinocchio builds an upper triangular matrix, skipping the parts
-  // below the diagonal. Fill those in here.
-  *M = pinocchio_data_.M;
-  for (int i = 0; i < M->cols(); i++) {
-    for (int j = i + 1; j < M->rows(); j++) {
-      (*M)(j, i) = (*M)(i, j);
-    }
-  }
-  // TODO: we can speed this up by not doing full matrix multiplication here.
-  // Similar to RightMultiplicationFromDrakeToPinocchio
-  *M = GetVelocityMapFromPinocchioToDrake(GetPositions(context).head<4>()) *
-       (*M) *
-       GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
-}
-
-template <>
-void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
-    const Context<AutoDiffXd>& context,
-    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> M) const {
-  throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
-}
-
-template <>
-drake::Vector3<double> PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
-    const Context<double>& context) const {
-  pinocchio::centerOfMass(
-      pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)));
-
-  return pinocchio_data_.com[0];
+  return interface_->v_perm() * ret;
 }
 
 // Copied from Drake QuaternionFloatingMobilizer, since the
@@ -465,18 +198,192 @@ Eigen::Matrix<double, 4, 3> CalcLMatrix(const Eigen::Quaternion<double>& q_FM) {
   // in which we store the quaternion in the state, with the scalar component
   // first followed by the vector component.
   return (Eigen::Matrix<double, 4, 3>() << mqv.transpose(), qs, qv.z(), mqv.y(),
-          mqv.z(), qs, qv.x(), qv.y(), mqv.x(), qs)
-          .finished();
+      mqv.z(), qs, qv.x(), qv.y(), mqv.x(), qs)
+      .finished();
 }
 
 Eigen::Matrix<double, 4, 3> AngularVelocityToQuaternionRateMatrix(
-  const Eigen::Quaternion<double>& q_FM) {
+    const Eigen::Quaternion<double>& q_FM) {
   // With L given by CalcLMatrix we have:
   // N(q) = L(q_FM/2)
   return CalcLMatrix(
-    {q_FM.w() / 2.0, q_FM.x() / 2.0, q_FM.y() / 2.0, q_FM.z() / 2.0}
+      {q_FM.w() / 2.0, q_FM.x() / 2.0, q_FM.y() / 2.0, q_FM.z() / 2.0}
   );
 }
+}
+
+template <>
+VectorXd PinocchioPlant<double>::CalcInverseDynamics(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces) const {
+
+  for (const auto& f : external_forces.body_forces()) {
+    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
+    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
+  }
+
+  const VectorXd& q = GetPositions(context);
+  const VectorXd& v = GetVelocities(context);
+
+  VectorXd fp = pinocchio::rnea(
+      pinocchio_model_, pinocchio_data_,
+      interface_->MapPositionsToPinocchio(q),
+      interface_->MapVelocitiesToPinocchio(q, v),
+      interface_->MapVDotToPinocchio(q, v, known_vdot));
+
+  // At this point, f_pin = M vdot + C + g
+  // Drake doesn't include gravity, so we will subtract it out.
+  VectorXd g = pinocchio::computeGeneralizedGravity(
+      pinocchio_model_, pinocchio_data_,
+      interface_->MapPositionsToPinocchio(q));
+  // subract gravity
+  VectorXd fnet = fp - g;
+  fp = interface_->MapVelocitiesToDrake(q, fnet);
+  fp = fp - external_forces.generalized_forces();
+  return fp;
+}
+
+template <>
+void PinocchioPlant<double>::CalcJacobianTranslationalVelocity(
+    const drake::systems::Context<double>& context,
+    drake::multibody::JacobianWrtVariable with_respect_to,
+    const drake::multibody::Frame<double>& frame_B,
+    const Eigen::Ref<const drake::Matrix3X<double>>& p_BoBi_B,
+    const drake::multibody::Frame<double>& frame_A, const
+    drake::multibody::Frame<double>& frame_E,
+    drake::EigenPtr<drake::MatrixX<double>> Js_v_ABi_E) const {
+
+  bool wrt_q =
+      (with_respect_to == drake::multibody::JacobianWrtVariable::kQDot);
+  int cols = wrt_q ? n_q_ : n_v_;
+
+  DRAKE_DEMAND(Js_v_ABi_E->cols() == cols and
+               Js_v_ABi_E->rows() == 3 * p_BoBi_B.cols());
+
+  DRAKE_DEMAND(frame_A.is_world_frame());
+
+  pinocchio::ReferenceFrame rf = pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED;
+
+  pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(
+      frame_B.name(), pinocchio::BODY);
+
+
+  J_work_.setZero();
+
+  const VectorXd& q = GetPositions(context);
+  pinocchio::computeFrameJacobian(
+      pinocchio_model_, pinocchio_data_, interface_->MapPositionsToPinocchio(q),
+      frame_id, rf, J_work_);
+
+  // Hack to deal with return type issues by maxing this fully dynamic sized
+  interface_->MapJvToDrake(q, &J_work_);
+
+  const Matrix3X<double>& J_translation = J_work_.topRows<3>();
+  const Matrix3X<double>& J_rotation = J_work_.bottomRows<3>();
+
+  Eigen::Quaternion<double> quat(
+      2.0 * q(0), 2.0 * q(1), 2.0 * q(2), 2.0 * q(3));
+  MatrixX<double> Nplus = CalcLMatrix(quat).transpose();
+
+  for (int i = 0; i < p_BoBi_B.cols(); ++i) {
+    Vector3d p_w = pinocchio_data_.oMf[frame_id].rotation() * p_BoBi_B.col(i);
+    Js_v_ABi_E->block(i * 3, cols - n_v_, 3, n_v_) =
+        J_translation + J_rotation.colwise().cross(p_w);
+    if (wrt_q and is_floating_base_) {
+      Js_v_ABi_E->block(i*3, 0, 3, 4) = Js_v_ABi_E->block(i*3, 1, 3, 3) * Nplus;
+    }
+  }
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcJacobianTranslationalVelocity(
+    const drake::systems::Context<AutoDiffXd>& context,
+    drake::multibody::JacobianWrtVariable with_respect_to,
+    const drake::multibody::Frame<AutoDiffXd>& frame_B,
+    const Eigen::Ref<const drake::Matrix3X<AutoDiffXd>>& p_BoBi_B,
+    const drake::multibody::Frame<AutoDiffXd>& frame_A, const
+    drake::multibody::Frame<AutoDiffXd>& frame_E,
+    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> Js_v_ABi_E) const {
+  throw std::runtime_error("not implemented yet");
+}
+
+template <>
+VectorXd PinocchioPlant<double>::CalcInverseDynamicsWithGravity(
+    const drake::systems::Context<double>& context, const VectorXd& known_vdot,
+    const drake::multibody::MultibodyForces<double>& external_forces) const {
+
+  for (const auto& f : external_forces.body_forces()) {
+    // We don't support body forces in PinocchioPlant CalcInverseDynamics yet
+    DRAKE_ASSERT(f.get_coeffs() == Vector6<double>::Zero());
+  }
+
+  const VectorXd& q = GetPositions(context);
+  const VectorXd& v = GetVelocities(context);
+
+  VectorXd fp = pinocchio::rnea(
+      pinocchio_model_, pinocchio_data_,
+      interface_->MapPositionsToPinocchio(q),
+      interface_->MapVelocitiesToPinocchio(q, v),
+      interface_->MapVDotToPinocchio(q, v, known_vdot));
+
+  fp = interface_->MapVelocitiesToDrake(q, fp);
+  fp = fp - external_forces.generalized_forces();
+  return fp;
+}
+
+template<>
+VectorX<AutoDiffXd> PinocchioPlant<AutoDiffXd>::CalcInverseDynamicsWithGravity(
+    const drake::systems::Context<AutoDiffXd> &context,
+    const drake::VectorX<AutoDiffXd> &known_vdot,
+    const drake::multibody::MultibodyForces<AutoDiffXd> &external_forces) const {
+  throw std::runtime_error("CalcInverseDynamicsWithGravity not implemented "
+                           "for AutoDiffXd yet.");
+  return VectorX<AutoDiffXd>::Zero(known_vdot.rows());
+}
+
+template <>
+void PinocchioPlant<double>::CalcMassMatrix(
+    const Context<double>& context, drake::EigenPtr<Eigen::MatrixXd> M) const {
+
+  const VectorXd& q = GetPositions(context);
+  const VectorXd& v = GetVelocities(context);
+
+  pinocchio::crba(pinocchio_model_, pinocchio_data_,
+                  interface_->MapPositionsToPinocchio(q));
+
+  // Pinocchio builds an upper triangular matrix, skipping the parts
+  // below the diagonal. Fill those in here.
+  *M = pinocchio_data_.M;
+  for (int i = 0; i < M->cols(); i++) {
+    for (int j = i + 1; j < M->rows(); j++) {
+      (*M)(j, i) = (*M)(i, j);
+    }
+  }
+  // TODO: we can speed this up by not doing full matrix multiplication here.
+  // Similar to RightMultiplicationFromDrakeToPinocchio
+  *M = GetVelocityMapFromPinocchioToDrake(GetPositions(context).head<4>()) *
+       (*M) *
+       GetVelocityMapFromDrakeToPinocchio(GetPositions(context).head<4>());
+}
+
+template <>
+void PinocchioPlant<AutoDiffXd>::CalcMassMatrix(
+    const Context<AutoDiffXd>& context,
+    drake::EigenPtr<drake::MatrixX<AutoDiffXd>> M) const {
+  throw std::domain_error("CalcMassMatrix not implemented with AutoDiffXd");
+}
+
+template <>
+drake::Vector3<double> PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
+    const Context<double>& context) const {
+
+  const VectorXd& q = GetPositions(context);
+
+  pinocchio::centerOfMass(
+      pinocchio_model_, pinocchio_data_,
+      interface_->MapPositionsToPinocchio(q));
+
+  return pinocchio_data_.com[0];
 }
 
 template <>
@@ -484,7 +391,7 @@ drake::Vector3<AutoDiffXd>
 PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
     const Context<AutoDiffXd>& context) const {
   VectorXd q_drake = ExtractValue(GetPositions(context));
-  VectorXd q_pin = MapPositionFromDrakeToPinocchio(q_drake);
+  VectorXd q_pin = interface_->MapPositionsToPinocchio(q_drake);
   auto drake_quat =
       Eigen::Quaternion<double>(q_drake(0), q_drake(1), q_drake(2), q_drake(3));
   drake::MatrixX<double> rot = drake_quat.toRotationMatrix().transpose();
@@ -508,11 +415,12 @@ template <>
 drake::Vector3<double>
 PinocchioPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
     const Context<double>& context) const {
+  const VectorXd& q = GetPositions(context);
+  const VectorXd& v = GetVelocities(context);
   pinocchio::centerOfMass(
       pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)),
-      MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
-                                      GetVelocities(context)));
+      interface_->MapPositionsToPinocchio(q),
+      interface_->MapVelocitiesToPinocchio(q, v));
   return pinocchio_data_.vcom[0];
 }
 
@@ -532,10 +440,11 @@ void PinocchioPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
     drake::EigenPtr<drake::Matrix3X<double>> J) const {
   DRAKE_DEMAND(frame_A.is_world_frame());
   DRAKE_DEMAND(frame_E.is_world_frame());
+  const VectorXd& q = GetPositions(context);
   *J = pinocchio::jacobianCenterOfMass(
       pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(GetPositions(context)));
-  RightMultiplicationFromDrakeToPinocchio(GetPositions(context).head<4>(), J);
+      interface_->MapPositionsToPinocchio(q));
+  interface_->MapJvToDrake(q, J);
 }
 
 template <>
@@ -559,7 +468,10 @@ void PinocchioPlant<double>::CalcPointsPositions(
   } else {
     rf = pinocchio::ReferenceFrame::LOCAL;
   }
-  pinocchio::framesForwardKinematics(pinocchio_model_, pinocchio_data_, MapPositionFromDrakeToPinocchio(GetPositions(context)));
+  const VectorXd& q = GetPositions(context);
+
+  pinocchio::framesForwardKinematics(pinocchio_model_, pinocchio_data_,
+                                     interface_->MapPositionsToPinocchio(q));
   pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(
       frame_B.name(), pinocchio::BODY);
   DRAKE_DEMAND(p_AQi);
@@ -583,9 +495,9 @@ void PinocchioPlant<AutoDiffXd>::CalcPointsPositions(
       frame_B.name(), pinocchio::BODY);
   Matrix6X<double> J = MatrixXd::Zero(6, n_v_);
 
+  const VectorXd& q = ExtractValue(GetPositions(context));
   pinocchio::computeFrameJacobian(
-      pinocchio_model_, pinocchio_data_,
-      MapPositionFromDrakeToPinocchio(ExtractValue(GetPositions(context))),
+      pinocchio_model_, pinocchio_data_, interface_->MapPositionsToPinocchio(q),
       frame_id, rf, J);
 
   Matrix3X<double> J_translation = J.topRows<3>();

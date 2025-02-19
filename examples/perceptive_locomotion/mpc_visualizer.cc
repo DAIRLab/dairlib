@@ -42,7 +42,7 @@ int do_main(int argc, char* argv[]) {
           FLAGS_channel_x, lcm)
   );
   auto mpc_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_alip_s2s_mpfc_debug>(
+      LcmSubscriberSystem::Make<lcmt_alip_mpfc_debug_complete>(
           FLAGS_channel_mpc, lcm)
   );
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(

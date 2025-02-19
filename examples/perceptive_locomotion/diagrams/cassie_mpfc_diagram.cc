@@ -42,7 +42,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 template <mpfc MPC>
 CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const std::string& gains_filename,
+    const systems::controllers::alip_s2s_mpfc_params& params,
     double debug_publish_period) :
     lcm_local("udpm://239.255.76.67:7667?ttl=0"),
     plant_(plant),
@@ -63,8 +63,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 
   auto foot_placement_controller = builder.AddSystem<MPC>(
       plant_, plant_context_.get(), left_right_fsm_states,
-      post_left_right_fsm_states, left_right_toe, gains_filename,
-      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml");
+      post_left_right_fsm_states, left_right_toe, gains_mpc);
 
   foot_placement_controller->MakeDrivenByStandaloneSimulator(0.005);
 
@@ -112,7 +111,6 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 }
 
 template class CassieMPFCDiagram<Alips2sMPFCSystem>;
-template class CassieMPFCDiagram<CFMPFCSystem>;
 
 } // dairlib
 } // perceptive_locomotion

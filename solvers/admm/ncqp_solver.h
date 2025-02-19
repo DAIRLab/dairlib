@@ -3,6 +3,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "solvers/qp_data.h"
 #include "solvers/osqp_wrapper.h"
+#include "solvers/qpalm_wrapper.h"
 #include "set_membership_constraint.h"
 
 namespace dairlib::solvers {
@@ -15,7 +16,6 @@ enum PolishType {
 struct ADMMParams {
   double rho{0.1};         // Penalty parameter
   int max_iterations{5};  // Maximum number of outer iterations
-  int max_inner_iterations{100};
   double tolerance{1e-3};    // Convergence tolerance
   bool verbose = false;
   PolishType polish_type = kConvexRestriction;
@@ -90,6 +90,8 @@ class NCQPSolver {
                     SetMembershipConstraints;
 
   explicit NCQPSolver();
+  explicit NCQPSolver(const drake::solvers::SolverOptions& inner_qp_options,
+                      const drake::solvers::SolverOptions& polish_qp_options);
 
   /*!
    * Solve the optimization problem
@@ -153,6 +155,9 @@ class NCQPSolver {
   ADMMParams params_;
   mutable OsqpWrapper qp_solver_;
   mutable OsqpWrapper polish_solver_;
+
+  drake::solvers::SolverOptions inner_qp_options_{};
+  drake::solvers::SolverOptions polish_qp_options_{};
 
 };
 

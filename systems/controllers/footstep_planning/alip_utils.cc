@@ -257,7 +257,7 @@ std::vector<Eigen::Vector2d> MakeP2Orbit(const AlipGaitParams& gait_params) {
           gait_params.double_stance_duration
   );
   Vector2d u1 = u0;
-  u1(1) = - 2 * (s * gait_params.stance_width);
+  u1(1) -= 2 * (s * gait_params.stance_width);
   return {u0, u1};
 }
 

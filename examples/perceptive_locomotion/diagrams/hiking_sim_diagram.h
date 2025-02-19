@@ -67,7 +67,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   get_depth_camera_info(std::string sensor_name) {
     return GetDowncastSubsystemByName<drake::systems::sensors::RgbdSensor>(
         sensor_name
-    ).depth_camera_info();
+    ).default_depth_render_camera().core().intrinsics();
   }
 
   void SetPlantInitialCondition(

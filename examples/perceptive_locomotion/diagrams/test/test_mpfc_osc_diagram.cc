@@ -40,6 +40,8 @@ int DoMain() {
       AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
+  auto plant_context = plant.CreateDefaultContext();
+
 
   std::string gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
@@ -56,9 +58,13 @@ int DoMain() {
       "elevation_mapping_params_simulation.yaml";
 
 
+  auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
+      gains_mpc_file, "", "", plant, *plant_context);
+
+
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc_file, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc, -1);
 
   std::vector<ConvexPolygon> footholds =
         multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;

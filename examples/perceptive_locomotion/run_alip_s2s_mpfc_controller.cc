@@ -74,8 +74,12 @@ DEFINE_string(mpfc_gains_filename,
               "Filepath to alip mpfc gains");
 
 DEFINE_string(solver_options_filename,
-              "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml",
-              "Filepath to the gurobi solver options");
+              "examples/perceptive_locomotion/gains/osqp_options_planner.yaml",
+              "Filepath to the MPC solver options");
+
+DEFINE_string(solver_options_polish_filename,
+              "examples/perceptive_locomotion/gains/osqp_options_planner_polish_step.yaml",
+              "filepath to OSQP solver options for polish step of NCQP solver if not using MIQP mode");
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds for simulation");
 
@@ -128,7 +132,9 @@ int DoMain(int argc, char* argv[]) {
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
-      FLAGS_mpfc_gains_filename, FLAGS_solver_options_filename,
+      FLAGS_mpfc_gains_filename,
+      FLAGS_solver_options_filename,
+      FLAGS_solver_options_polish_filename,
       plant_w_spr, *context_w_spr
   );
 

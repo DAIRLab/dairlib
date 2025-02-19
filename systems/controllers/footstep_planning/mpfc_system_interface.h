@@ -5,6 +5,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/diagram.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
 
 template <class C>
 concept mpfc = requires(C mpc) {
@@ -15,7 +16,7 @@ concept mpfc = requires(C mpc) {
       std::vector<int>,
       std::vector<int>,
       std::vector<std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>,
-      const std::string&, const std::string&>
+      const dairlib::systems::controllers::alip_s2s_mpfc_params&>
   };
   { mpc.MakeDrivenByStandaloneSimulator(0.01)};
   { mpc.get_input_port_state() } -> std::same_as<const drake::systems::InputPort<double>&>;

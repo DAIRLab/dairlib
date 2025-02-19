@@ -1,7 +1,7 @@
 #pragma once
 
 // lcmtypes
-#include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
+#include "dairlib/lcmt_alip_mpfc_debug_complete.hpp"
 
 // dairlib
 #include "geometry/convex_polygon_set.h"
@@ -65,7 +65,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
 //      const Eigen::Matrix3d& R_yaw,
 //      const double z_com) const;
 
-  void DrawFootsteps(const dairlib::lcmt_alip_s2s_mpfc_debug& solution,
+  void DrawFootsteps(const dairlib::lcmt_alip_mpfc_debug_complete& solution,
                      const Eigen::Matrix3d& R_yaw) const;
 
   drake::systems::EventStatus UnrestrictedUpdate(

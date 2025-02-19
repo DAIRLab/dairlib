@@ -67,6 +67,9 @@ int DoMain(int argc, char **argv) {
       "examples/perceptive_locomotion/camera_calib/"
       "elevation_mapping_params_simulation.yaml";
 
+  auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
+      gains_mpc_file, "", "", plant, *plant_context);
+
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
           FindResourceOrThrow(
@@ -77,7 +80,7 @@ int DoMain(int argc, char **argv) {
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc_file, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc, -1);
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;

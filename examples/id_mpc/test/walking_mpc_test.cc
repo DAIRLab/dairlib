@@ -1,7 +1,7 @@
 #include "examples/id_mpc/cassie_mpc_utils.h"
 
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/controllers/id_mpc/systems/id_mpc_system.h"
+#include "systems/controllers/id_mpc/systems/id_mpc_walking_system.h"
 #include "systems/controllers/id_mpc/walking/walking_reference_system.h"
 #include "systems/controllers/id_mpc/walking/id_mpc_walking.h"
 #include "systems/robot_lcm_systems.h"
@@ -49,11 +49,12 @@ int DoMain() {
   OutputVector<double> state(q, v, u);
 
   auto plant_context = dynamics->get_plant().CreateDefaultContext();
+  auto gait_params = MakeCassieGaitParams(gait_f, params);
 
   auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
-      *dynamics, plant_context.get(), MakeCassieGaitParams(gait_f, params));
+      *dynamics, plant_context.get(), gait_params);
 
-  auto mpc_system = builder.AddSystem<IDMPCSystem>(params, std::move(dynamics));
+  auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(params, std::move(dynamics), gait_params);
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(
@@ -64,15 +65,28 @@ int DoMain() {
       ref_gen->get_output_port(),
       mpc_system->get_input_port_reference()
   );
-  builder.Connect(*mpc_system, *solution_pub);
+  auto debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_id_mpc_walking_debug>(
+          "ID_MPC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})
+      ));
+
+  builder.Connect(
+      mpc_system->get_output_port_mpc_solution(),
+      solution_pub->get_input_port()
+  );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_debug(),
+      debug_pub->get_input_port()
+  );
+
   auto diagram = builder.Build();
 
   auto context = diagram->CreateDefaultContext();
 
-  const double dt = 0.025;
+  const double dt = 0.015;
   double t = 0;
 
-  while (t < 5.0) {
+  while (t < 0.5) {
     state.set_timestamp(t);
     context->SetTime(t);
 

@@ -13,6 +13,7 @@ using Eigen::VectorXd;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::OsqpSolver;
+using drake::solvers::SolverOptions;
 using drake::solvers::MathematicalProgram;
 
 constexpr double kInf = std::numeric_limits<double>::infinity();
@@ -58,6 +59,12 @@ NCQPSolution initialize_sol(const QPData& qp) {
 
 NCQPSolver::NCQPSolver(){}
 
+NCQPSolver::NCQPSolver(const SolverOptions& inner_qp_options,
+                       const SolverOptions& polish_qp_options) {
+  inner_qp_options_ = inner_qp_options;
+  polish_qp_options_ = polish_qp_options;
+}
+
 std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
   QPData cvx_qp = qp;
   QPData al_qp = cvx_qp;
@@ -73,7 +80,7 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
 
   // TODO (@Brian-Acosta) set solver options somehow
   if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(cvx_qp, drake::solvers::SolverOptions());
+    qp_solver_.InitializeSolver(cvx_qp, inner_qp_options_);
   }
   return {cvx_qp, al_qp};
 }
@@ -269,7 +276,7 @@ QPResult NCQPSolver::QPPolish(
   copy.A.makeCompressed();
 
   if (not polish_solver_.IsInitialized()){
-    polish_solver_.InitializeSolver(copy, drake::solvers::SolverOptions());
+    polish_solver_.InitializeSolver(copy, polish_qp_options_);
   }
   QPResult out;
   polish_solver_.Solve(copy, out);

@@ -1,11 +1,4 @@
 #include "qpalm_wrapper.h"
-#include "qpalm.h"
-
-// QPalm defines a mod macro that interferes with fmt
-#ifdef mod
-#undef mod
-#endif
-
 #include <vector>
 #include <unordered_map>
 
@@ -14,6 +7,11 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
 
+
+// qpalm includes have to come after drake bc qpalm defines a mod
+// macro that interferes with fmt :(
+#include "qpalm.hpp"
+#include "qpalm.h"
 
 
 using drake::solvers::Binding;
@@ -40,6 +38,20 @@ void SetQpalmSetting(
   }
 }
 
+template<typename T1, typename T2>
+void SetQpalmSettingWithDefaultValue(
+    const std::unordered_map<std::string, T1> &options,
+    const std::string &option_name, T2 *qpalm_setting_field,
+    const T1 &default_field_value) {
+  const auto it = options.find(option_name);
+  if (it != options.end()) {
+    *qpalm_setting_field = it->second;
+  } else {
+    *qpalm_setting_field = default_field_value;
+  }
+}
+
+
 void SetQpalmSettings(const SolverOptions& solver_options,
                       QPALMSettings* settings) {
   const std::unordered_map<std::string, double>& options_double =
@@ -57,74 +69,116 @@ void SetQpalmSettings(const SolverOptions& solver_options,
   SetQpalmSetting(options_double, "gamma_max", &(settings->gamma_max));
   SetQpalmSetting(options_int, "scaling", &(settings->scaling));
   SetQpalmSetting(options_int, "warm_start", &(settings->warm_start));
-  SetQpalmSetting(options_int, "verbose", &(settings->verbose));
   SetQpalmSetting(options_double, "delta", &(settings->delta));
   SetQpalmSetting(options_double, "time_limit", &(settings->time_limit));
+  SetQpalmSettingWithDefaultValue(options_int, "verbose", &(settings->verbose), 0);
 }
 
 }  // namespace
 
+class QpalmWrapper::Impl {
+ public:
+  Impl() = default;
+  ~Impl() = default;
+
+  // QPALM data structures
+  mutable QPALMData* qpalm_data_ = nullptr;
+  mutable QPALMSettings* qpalm_settings_ = nullptr;
+  mutable QPALMWorkspace* qpalm_work_ = nullptr;
+
+  // Problem matrices in CSC format (compressed sparse column)
+  mutable qpalm::ladel_sparse_matrix_ptr P_csc_ = nullptr;
+  mutable qpalm::ladel_sparse_matrix_ptr A_csc_ = nullptr;
+
+  // Solver state
+  mutable bool warm_start_ = true;
+  mutable bool is_init_ = false;
+
+  void FreeProblemData() {
+    if (qpalm_work_ != nullptr) {
+      qpalm_cleanup(qpalm_work_);
+      qpalm_work_ = nullptr;
+    }
+    if (qpalm_data_ != nullptr) {
+      P_csc_ = nullptr;
+      A_csc_ = nullptr;
+      qpalm_free(qpalm_data_);
+      qpalm_data_ = nullptr;
+    }
+
+    if (qpalm_settings_ != nullptr) {
+      qpalm_free(qpalm_settings_);
+      qpalm_settings_ = nullptr;
+    }
+  }
+
+  void Initialize(QPData& qp, const SolverOptions& solver_options) {
+    FreeProblemData();
+
+    const qpalm::sparse_mat_t& qp_H = qp.H;
+    const qpalm::sparse_mat_t& qp_A = qp.A;
+
+    // Convert matrices to CSC format
+    P_csc_ = qpalm::eigen_to_ladel_copy(
+        qp_H.triangularView<Eigen::Upper>(), UPPER);
+    A_csc_ = qpalm::eigen_to_ladel_copy(qp_A, UNSYMMETRIC);
+
+    // Initialize QPALM data structure
+    qpalm_data_ = static_cast<QPALMData*>(qpalm_malloc(sizeof(QPALMData)));
+
+    qpalm_data_->c = 0;
+    qpalm_data_->n = qp.num_vars;
+    qpalm_data_->m = qp.num_ineq;
+    qpalm_data_->Q = P_csc_.get();
+    qpalm_data_->q = qp.g.data();
+    qpalm_data_->A = A_csc_.get();
+    qpalm_data_->bmin = qp.lb.data();
+    qpalm_data_->bmax = qp.ub.data();
+
+    // Initialize settings
+    qpalm_settings_ = static_cast<QPALMSettings*>(qpalm_malloc(sizeof(QPALMSettings)));
+    qpalm_set_default_settings(qpalm_settings_);
+    SetQpalmSettings(solver_options, qpalm_settings_);
+
+    // Setup workspace
+    qpalm_work_ = qpalm_setup(qpalm_data_, qpalm_settings_);
+
+    DRAKE_DEMAND(qpalm_work_ != nullptr);
+
+    is_init_ = true;
+  }
+
+};
+
+QpalmWrapper::QpalmWrapper() : pimpl_(std::make_unique<Impl>()) {}
+
 QpalmWrapper::~QpalmWrapper() {
-  FreeProblemData();
+  pimpl_->FreeProblemData();
+}
+
+// Warm starting controls
+void QpalmWrapper::DisableWarmStart() const {
+  if (pimpl_->qpalm_settings_) pimpl_->qpalm_settings_->warm_start = false;
+  pimpl_->warm_start_ = false;
+}
+
+void QpalmWrapper::EnableWarmStart() const {
+  if (pimpl_->qpalm_settings_) pimpl_->qpalm_settings_->warm_start = true;
+  pimpl_->warm_start_ = true;
 }
 
 void QpalmWrapper::FreeProblemData() {
-  if (qpalm_work_ != nullptr) {
-    qpalm_cleanup(qpalm_work_);
-    qpalm_work_ = nullptr;
-  }
-  if (qpalm_data_ != nullptr) {
-    ladel_sparse_free(qpalm_data_->Q);
-    ladel_sparse_free(qpalm_data_->A);
-    qpalm_free(qpalm_data_);
-    qpalm_data_ = nullptr;
-  }
-  P_csc_ = nullptr;
-  A_csc_ = nullptr;
-
-  if (qpalm_settings_ != nullptr) {
-    qpalm_free(qpalm_settings_);
-    qpalm_settings_ = nullptr;
-  }
+  pimpl_->FreeProblemData();
 }
 
 void QpalmWrapper::InitializeSolver(
-    QPData& qp, const drake::solvers::SolverOptions& solver_options) {
-
-  FreeProblemData();
-
-  qpalm::sparse_mat_t qp_H = qp.H;
-  qpalm::sparse_mat_t qp_A = qp.A;
-
-  // Convert matrices to CSC format
-  P_csc_ = qpalm::eigen_to_ladel_copy(
-      qp_H.triangularView<Eigen::Upper>(), UPPER);
-  A_csc_ = qpalm::eigen_to_ladel_copy(qp_A, UNSYMMETRIC);
-
-  // Initialize QPALM data structure
-  qpalm_data_ = static_cast<QPALMData*>(qpalm_malloc(sizeof(QPALMData)));
-
-  qpalm_data_->n = qp.num_vars;
-  qpalm_data_->m = qp.num_ineq;
-  qpalm_data_->Q = P_csc_.get();
-  qpalm_data_->q = qp.g.data();
-  qpalm_data_->A = A_csc_.get();
-  qpalm_data_->bmin = qp.lb.data();
-  qpalm_data_->bmax = qp.ub.data();
-
-  // Initialize settings
-  qpalm_settings_ = static_cast<QPALMSettings*>(qpalm_malloc(sizeof(QPALMSettings)));
-  qpalm_set_default_settings(qpalm_settings_);
-  SetQpalmSettings(solver_options, qpalm_settings_);
-
-  // Setup workspace
-  qpalm_work_ = qpalm_setup(qpalm_data_, qpalm_settings_);
-
-  DRAKE_DEMAND(qpalm_work_ != nullptr);
-
-  is_init_ = true;
+    QPData& qp, const SolverOptions& solver_options) {
+  pimpl_->Initialize(qp, solver_options);
 }
 
+bool QpalmWrapper::IsInitialized() const {
+  return pimpl_->is_init_;
+}
 void QpalmWrapper::WarmStart(const Eigen::VectorXd& primal,
                              const Eigen::VectorXd& dual) {
   std::vector<c_float> x, y;
@@ -138,42 +192,42 @@ void QpalmWrapper::WarmStart(const Eigen::VectorXd& primal,
     y.push_back(dual(i));
   }
 
-  qpalm_warm_start(qpalm_work_, x.data(), y.data());
+  qpalm_warm_start(pimpl_->qpalm_work_, x.data(), y.data());
 }
 
 void QpalmWrapper::Solve(QPData& qp, QPResult& result,
                          bool has_matrix_update) const {
-  DRAKE_DEMAND(is_init_);
+  DRAKE_DEMAND(pimpl_->is_init_);
 
   if (has_matrix_update) {
-    qpalm::sparse_mat_t qp_H = qp.H;
-    qpalm::sparse_mat_t qp_A = qp.A;
+    const qpalm::sparse_mat_t& qp_H = qp.H;
+    const qpalm::sparse_mat_t& qp_A = qp.A;
 
     // Convert matrices to CSC format
-    P_csc_ = qpalm::eigen_to_ladel_copy(
+    pimpl_->P_csc_ = qpalm::eigen_to_ladel_copy(
         qp_H.triangularView<Eigen::Upper>(), UPPER);
-    A_csc_ = qpalm::eigen_to_ladel_copy(qp_A, UNSYMMETRIC);
-    qpalm_update_Q_A(qpalm_work_, P_csc_->x, A_csc_->x);
+    pimpl_->A_csc_ = qpalm::eigen_to_ladel_copy(qp_A, UNSYMMETRIC);
+    qpalm_update_Q_A(pimpl_->qpalm_work_, pimpl_->P_csc_->x, pimpl_->A_csc_->x);
   }
 
-  qpalm_update_q(qpalm_work_, qp.g.data());
-  qpalm_update_bounds(qpalm_work_, qp.lb.data(), qp.ub.data());
+  qpalm_update_q(pimpl_->qpalm_work_, qp.g.data());
+  qpalm_update_bounds(pimpl_->qpalm_work_, qp.lb.data(), qp.ub.data());
 
   DisableWarmStart();  // will only be re-enabled if the solve was successful
 
   // Solve the problem
-  qpalm_solve(qpalm_work_);
+  qpalm_solve(pimpl_->qpalm_work_);
 
   // Store results
-  result.primal_res = qpalm_work_->info->pri_res_norm;
-  result.dual_res = qpalm_work_->info->dua_res_norm;
+  result.primal_res = pimpl_->qpalm_work_->info->pri_res_norm;
+  result.dual_res = pimpl_->qpalm_work_->info->dua_res_norm;
 
-  switch (qpalm_work_->info->status_val) {
+  switch (pimpl_->qpalm_work_->info->status_val) {
     case QPALM_SOLVED: {
       EnableWarmStart();
-      result.x = Eigen::Map<Eigen::VectorXd>(qpalm_work_->solution->x, qp.num_vars);
-      result.y = Eigen::Map<Eigen::VectorXd>(qpalm_work_->solution->y, qp.num_ineq);
-      result.objective = qpalm_work_->info->objective + qp.c;
+      result.x = Eigen::Map<Eigen::VectorXd>(pimpl_->qpalm_work_->solution->x, qp.num_vars);
+      result.y = Eigen::Map<Eigen::VectorXd>(pimpl_->qpalm_work_->solution->y, qp.num_ineq);
+      result.objective = pimpl_->qpalm_work_->info->objective + qp.c;
       result.solution_result = SolutionResult::kSolutionFound;
       result.success = true;
       break;
@@ -190,16 +244,16 @@ void QpalmWrapper::Solve(QPData& qp, QPResult& result,
     }
     case QPALM_MAX_ITER_REACHED: {
       EnableWarmStart();
-      result.x = Eigen::Map<Eigen::VectorXd>(qpalm_work_->solution->x, qp.num_vars);
-      result.y = Eigen::Map<Eigen::VectorXd>(qpalm_work_->solution->y, qp.num_ineq);
-      result.objective = qpalm_work_->info->objective + qp.c;
+      result.x = Eigen::Map<Eigen::VectorXd>(pimpl_->qpalm_work_->solution->x, qp.num_vars);
+      result.y = Eigen::Map<Eigen::VectorXd>(pimpl_->qpalm_work_->solution->y, qp.num_ineq);
+      result.objective = pimpl_->qpalm_work_->info->objective + qp.c;
       result.solution_result = SolutionResult::kIterationLimit;
       result.success = true;
       break;
     }
     default: {
       throw std::runtime_error("Undefined QPALM return status " +
-          std::to_string(qpalm_work_->info->status_val));
+          std::to_string(pimpl_->qpalm_work_->info->status_val));
     }
   }
 }

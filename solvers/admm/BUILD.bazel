@@ -10,6 +10,7 @@ cc_library(
     deps = [
         ":set_membership_constraint",
         "//solvers:osqp_wrapper",
+        "//solvers:qpalm_wrapper",
         "//solvers:qp_data",
         "@drake//:drake_shared_library",
         "@qpalm",

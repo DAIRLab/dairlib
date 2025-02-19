@@ -14,7 +14,7 @@ enum PolishType {
 
 struct ADMMParams {
   double rho{0.1};         // Penalty parameter
-  int max_iterations{0};  // Maximum number of outer iterations
+  int max_iterations{5};  // Maximum number of outer iterations
   int max_inner_iterations{100};
   double tolerance{1e-3};    // Convergence tolerance
   bool verbose = false;

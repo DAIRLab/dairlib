@@ -247,9 +247,6 @@ QPResult NCQPSolver::QPPolish(
     const QPResult& most_recent_result,
     const NCQPSolver::SetMembershipConstraints& nc_constraints) const {
 
-  const VectorXd& warm_start_primal = sol.x;
-  VectorXd warm_start_dual = most_recent_result.y;
-
   QPData copy = cvx_qp;
 
   const auto& indices = nc_constraints.first;
@@ -265,10 +262,8 @@ QPResult NCQPSolver::QPPolish(
     copy.num_ineq += A.rows();
     copy.lb.conservativeResize(copy.num_ineq);
     copy.ub.conservativeResize(copy.num_ineq);
-    warm_start_dual.conservativeResize(copy.num_ineq);
     copy.lb.tail(lb.rows()) = lb;
     copy.ub.tail(ub.rows()) = ub;
-    warm_start_dual.tail(A.rows()) = VectorXd::Zero(A.rows());
     AppendRowsToSparse(copy.A, A, indices.at(i));
   }
   copy.A.makeCompressed();

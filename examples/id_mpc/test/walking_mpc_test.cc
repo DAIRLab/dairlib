@@ -9,6 +9,10 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_value_source.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/solvers/osqp_solver.h"
+
+#include "drake/common/yaml/yaml_io.h"
+#include "solvers/solver_options_io.h"
 
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -21,10 +25,14 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::yaml::LoadYamlFile;
 
+using solvers::SolverOptionsFromYaml;
 
 const std::string gains_f = "examples/id_mpc/gains/mpc_gains_walking.yaml";
 const std::string gait_f = "examples/id_mpc/gains/gait_params_walking.yaml";
+const std::string solver_opts_in = "examples/id_mpc/gains/osqp_opts_ncqp.yaml";
+const std::string solver_opts_p = "examples/id_mpc/gains/osqp_opts_tight.yaml";
 
 int DoMain() {
 
@@ -54,7 +62,11 @@ int DoMain() {
   auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
       *dynamics, plant_context.get(), gait_params);
 
-  auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(params, std::move(dynamics), gait_params);
+  auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(
+      params, std::move(dynamics), gait_params, LoadYamlFile<SolverOptionsFromYaml>(
+          solver_opts_in).GetAsSolverOptions(drake::solvers::OsqpSolver::id()),
+      LoadYamlFile<SolverOptionsFromYaml>(
+          solver_opts_p).GetAsSolverOptions(drake::solvers::OsqpSolver::id()));
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(

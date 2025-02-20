@@ -16,8 +16,11 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(IDMPCWalkingSystem);
 
   IDMPCWalkingSystem(
-      IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
-      GaitParams gait_params);
+      IDMPCParams params,
+      std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
+      GaitParams gait_params,
+      const drake::solvers::SolverOptions& ncqp_inner_solver_options,
+      const drake::solvers::SolverOptions& ncqp_polish_solver_options);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);

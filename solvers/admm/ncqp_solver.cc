@@ -57,8 +57,6 @@ NCQPSolution initialize_sol(const QPData& qp) {
 
 }
 
-NCQPSolver::NCQPSolver(){}
-
 NCQPSolver::NCQPSolver(const SolverOptions& inner_qp_options,
                        const SolverOptions& polish_qp_options) {
   inner_qp_options_ = inner_qp_options;

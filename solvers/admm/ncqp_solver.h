@@ -89,7 +89,6 @@ class NCQPSolver {
                     std::vector<SetMembershipConstraint*>>
                     SetMembershipConstraints;
 
-  explicit NCQPSolver();
   explicit NCQPSolver(const drake::solvers::SolverOptions& inner_qp_options,
                       const drake::solvers::SolverOptions& polish_qp_options);
 

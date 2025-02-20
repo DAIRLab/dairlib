@@ -32,6 +32,7 @@ cc_binary(
     deps = [
         ":cassie_mpc_utils",
         "//lcmtypes:lcmt_robot",
+        "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems/controllers/id_mpc/systems:id_mpc_systems",
         "//systems/controllers/id_mpc/walking:id_mpc_walking",

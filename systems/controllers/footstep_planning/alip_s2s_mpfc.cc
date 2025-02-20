@@ -31,7 +31,9 @@ using geometry::ConvexPolygonSet;
 
 static constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
-AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
+AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) :
+  params_(params),
+  ncqp_solver_(params.solver_options, params.solver_options_polish) {
   ValidateParams();
   MakeMPCVariables();
   MakeMPCCosts();

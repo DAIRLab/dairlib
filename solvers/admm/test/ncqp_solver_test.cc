@@ -55,7 +55,8 @@ int DoMain() {
 
   set_constraints.push_back(prog.AddConstraint(square_constraint, p));
 
-  NCQPSolver solver;
+  drake::solvers::SolverOptions opts;
+  NCQPSolver solver(opts, opts);
   auto sol = solver.Solve(prog, set_constraints);
 
   std::cout << sol << std::endl;

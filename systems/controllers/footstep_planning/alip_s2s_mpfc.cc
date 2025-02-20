@@ -313,7 +313,7 @@ void AlipS2SMPFC::MakeStateConstraints() {
 }
 
 void AlipS2SMPFC::MakeDynamicsConstraint() {
-  MatrixXd M(nx_ * (params_.nmodes - 1), (nx_ + np_) * params_.nmodes);
+  MatrixXd M(nx_, 2 * (nx_ + np_));
   M.setZero();
 
   const auto[A, B] = AlipStepToStepDynamics(
@@ -324,15 +324,14 @@ void AlipS2SMPFC::MakeDynamicsConstraint() {
       params_.gait_params.reset_discretization_method
   );
 
+  M.leftCols<4>() = A;
+  M.middleCols<4>(4) = -Matrix4d::Identity();
+  M.middleCols<2>(2 * nx_) = -B;
+  M.middleCols<2>(2 * nx_ + np_) = B;
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    M.block<4,4>(nx_ * i, nx_ * i) = A;
-    M.block<4,4>(nx_ * i, nx_ * (i + 1)) = -Matrix4d::Identity();
-    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * (i+1)) = B;
-    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = - B;
+    prog_->AddLinearEqualityConstraint(
+        M, VectorXd::Zero(nx_), {xx_.at(i), xx_.at(i+1), pp_.at(i), pp_.at(i+1)});
   }
-  dynamics_c_ = prog_->AddLinearEqualityConstraint(
-      M, VectorXd::Zero(nx_ * (params_.nmodes - 1)), {stack(xx_), stack(pp_)}
-  ).evaluator();
 }
 
 void AlipS2SMPFC::MakeInitialConditionsConstraints() {
@@ -396,7 +395,7 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
     c.evaluator()->UpdateCoefficients(
         Eigen::RowVector2d(-s, s),
         VectorXd::Constant(1, -kInfinity),
-        VectorXd::Constant(1, -0.04)
+        VectorXd::Constant(1, -0.05)
     );
     s *= -1.0;
   }

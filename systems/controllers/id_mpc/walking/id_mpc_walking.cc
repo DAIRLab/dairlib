@@ -82,7 +82,7 @@ void IDMPCWalking::MakeALIPTerms() {
 
 void IDMPCWalking::MakeGroundConstraints() {
   auto terrain = ConvexPolygonSet({ConvexPolygon::MakeFlatGround()});
-  for (size_t i = 1; i < pp_.size(); ++i) {
+  for (size_t i = 0; i < pp_.size(); ++i) {
     footholds_.push_back(
         std::make_shared<ConvexPolygonSetConstraint>(terrain));
     foothold_bindings_.push_back(
@@ -124,7 +124,7 @@ IDMPCWalking::GetFootholdConstraints(const VectorXd &z) {
 
   for (size_t i = 0; i < footholds_.size(); ++i) {
     footholds_.at(i)->SetShift(
-        mpc().GetDecisionVariableValue(pp_.at(i + 1), z));
+        mpc().GetDecisionVariableValue(pp_.at(i), z));
   }
   return solvers::NCQPSolver::ExtractSetMembershipConstraints(
       mpc_.get_prog(), foothold_bindings_);

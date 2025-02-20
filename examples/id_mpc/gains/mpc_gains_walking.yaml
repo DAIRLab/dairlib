@@ -1,7 +1,7 @@
 # Horizon params
-N: 20
-dt: 0.025
-num_full_torque_knots: 3
+N: 10
+dt: 0.05
+num_full_torque_knots: 2
 mu: 0.8
 
 # position weights

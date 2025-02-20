@@ -1,6 +1,6 @@
-footstep_horizon: 4
-t_ss: 0.35
-t_ds: 0.05
+footstep_horizon: 3
+t_ss: 0.3
+t_ds: 0.1
 step_height: 0.15
 stance_width: 0.3
 pelvis_height: 0.9

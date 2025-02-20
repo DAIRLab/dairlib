@@ -112,8 +112,7 @@ void ResetContacts(int N, MPCReference *ref) {
       N, std::vector<std::string>{});
 }
 
-int AdaptiveNumIntervals(double t_remain_this_mode,
-                         const GaitParams& params,\
+int AdaptiveNumIntervals(double t_remain_this_mode, const GaitParams& params,
                          bool is_double_stance) {
 
   int intervals_this_mode = std::ceil(t_remain_this_mode / params.mpc_dt);
@@ -173,10 +172,18 @@ std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
   }
   auto fsm_vector = GetFSMStateVector(intervals, fsm, N, ss_intervals_, ds_intervals_);
 
-  SetContactsAtKnot(0, fsm_vector.front(), mpc_reference);
-  SetContactsAtKnot(1, fsm_vector.at(1), mpc_reference);
-  for (int i = 2; i <= params_.mpc_N; ++i) {
+
+  for (int i = 0; i <= params_.mpc_N; ++i) {
     SetContactsAtKnot(i, fsm_vector.at(i), mpc_reference);
+  }
+
+  if (intervals == ds_intervals_) {
+    mpc_reference->touchdown_ee_names_.at(0) = fsm_vector.at(0) == fsm_info::kPostRightDouble ?
+                                               params_.left_foot_body_name : params_.right_foot_body_name;
+    mpc_reference->touchdown_ee_points_.at(0) = params_.foot_midpoint;
+  }
+
+  for (int i = 1; i <= params_.mpc_N; ++i) {
     if (fsm_vector.at(i - 1) != fsm_vector.at(i)) {
       if (fsm_info::is_double_stance(fsm_vector.at(i))) {
         mpc_reference->touchdown_ee_names_.at(i) =
@@ -186,6 +193,7 @@ std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
       }
     }
   }
+
   return fsm_vector;
 }
 

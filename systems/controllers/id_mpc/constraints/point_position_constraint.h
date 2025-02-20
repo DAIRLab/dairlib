@@ -18,7 +18,6 @@ class PointPositionConstraint : public solvers::NonlinearConstraint<T> {
    * @param dynamics ConstrainedDynamicsInfo with the relevant plant
    * @param frame the name of the frame to which the constraint point is rigidly attached
    * @param point_in_frame the constraint point's position in frame
-   * soft constraint
    */
   PointPositionConstraint(const ConstrainedDynamicsInfo& dynamics,
                           std::string frame,

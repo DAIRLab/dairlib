@@ -3,7 +3,7 @@ log_file_name: ""
 int_options:
   max_iter: 175
   linsys_solver: 0
-  verbose: 1
+  verbose: 0
   warm_start: 1
   polish: 1
   scaled_termination: 1

@@ -33,8 +33,8 @@ void IDMPCWalking::UpdateProblemData(
 void IDMPCWalking::UpdateFootstepConstraints(
     const std::vector<std::string> &foot_names,
     const std::vector<Vector3d> &contact_points) {
-  for (int i = 1; i < params_.mpc_N + 1;  ++i) {
-    td_constraints_.at(i - 1)->set_point(
+  for (int i = 2; i < params_.mpc_N + 1;  ++i) {
+    td_constraints_.at(i - 2)->set_point(
         foot_names.at(i), contact_points.at(i));
   }
 }
@@ -57,30 +57,27 @@ void IDMPCWalking::MakeFootsteps() {
   auto& prog = mpc_.get_prog();
 
   int intervals = std::round((params_.t_ss + params_.t_ds) / params_.mpc_dt);
-  int num_touchdowns = (params_.mpc_N / intervals);
 
-  // unless the number of intervals between touchdowns evenly divides the MPC
-  // horizon, we need to add an extra touchdown event
-  if (num_touchdowns * intervals > params_.mpc_N) {
-    ++num_touchdowns;
-  }
-
-  DRAKE_DEMAND(params_.footstep_horizon >= num_touchdowns);
+  DRAKE_DEMAND(params_.footstep_horizon * intervals > params_.mpc_N);
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
   }
 
-  // Make the touchdown constraints, noting that the initial footstep should
-  // just be set by FK to the current stance foot (so we skip it here)
-  for (int i = 1; i <= params_.mpc_N; ++i) {
-    int step_idx = i / intervals + 1;
+  // Make the touchdown constraints, noting that adding the constraint to the
+  // first 2 timesteps would make the problem overconstrained
+  for (int i = 2; i <= params_.mpc_N; ++i) {
+    int step_idx = i / intervals ;
     auto pos_constraint = std::make_shared<PointPositionConstraint<AutoDiffXd>>(
         mpc_.dynamics(), "", Vector3d::Zero());
     prog.AddConstraint(
         pos_constraint, {mpc_.position_vars(i), pp_.at(step_idx)});
     td_constraints_.push_back(pos_constraint);
   }
+}
+
+void IDMPCWalking::MakeALIPTerms() {
+
 }
 
 void IDMPCWalking::MakeGroundConstraints() {

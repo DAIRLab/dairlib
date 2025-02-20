@@ -43,16 +43,17 @@ class IDMPCWalking {
       const std::vector<Eigen::Vector3d>& contact_points);
 
   void MakeFootsteps();
+  void MakeALIPTerms();
   void MakeSwingTrajCosts();
   void MakeGroundConstraints();
   void MakeFootLevelingCosts();
 
 
-
   IDMPC mpc_;
   GaitParams params_;
 
-  std::vector<drake::solvers::VectorXDecisionVariable> pp_;
+  std::vector<drake::solvers::VectorXDecisionVariable> pp_; // Footstep pos
+  std::vector<drake::solvers::VectorXDecisionVariable> xa_; // ALIP states
   std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
   td_constraints_;
 

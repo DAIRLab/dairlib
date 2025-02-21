@@ -23,7 +23,7 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
     meshcat_(std::move(meshcat)) {
 
   mpc_debug_input_port_ = DeclareAbstractInputPort(
-      "mpc_debug", drake::Value<lcmt_alip_s2s_mpfc_debug>()
+      "mpc_debug", drake::Value<lcmt_alip_mpfc_debug_complete>()
     ).get_index();
 
   foothold_input_port_ = DeclareAbstractInputPort(
@@ -44,7 +44,7 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
 
 
 void AlipMPFCMeshcatVisualizer::DrawFootsteps(
-    const dairlib::lcmt_alip_s2s_mpfc_debug  &solution,
+    const dairlib::lcmt_alip_mpfc_debug_complete  &solution,
     const Eigen::Matrix3d &R_yaw) const {
 
   std::vector<drake::geometry::Rgba> rgb = {
@@ -71,7 +71,7 @@ void AlipMPFCMeshcatVisualizer::DrawFootholds(ConvexPolygonSet& foothold_set,
       drake::geometry::Rgba(0, 1, 0, 0.5),
       drake::geometry::Rgba(0, 0, 1, 0.5)
   };
-  for (size_t i = 0; i < foothold_set.size(); i++) {
+  for (int i = 0; i < foothold_set.size(); i++) {
     auto foothold = foothold_set.polygons().at(i);
     const auto [verts, faces] = foothold.GetSurfaceMesh();
     auto faces_reversed = faces;
@@ -113,7 +113,7 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
   const Eigen::Matrix3d R_yaw = R_WB(quat);
 
   const auto& mpc_debug = EvalAbstractInput(
-      context, mpc_debug_input_port_)->get_value<lcmt_alip_s2s_mpfc_debug>();
+      context, mpc_debug_input_port_)->get_value<lcmt_alip_mpfc_debug_complete>();
 
   ConvexPolygonSet foothold_set;
   if (get_input_port_terrain().HasValue(context)) {
@@ -121,7 +121,7 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
         context, foothold_input_port_)->get_value<lcmt_foothold_set>();
     foothold_set = ConvexPolygonSet::CopyFromLcm(foothold_set_msg);
   } else {
-    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.foothold_sequence);
+    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.all_footholds);
     foothold_set.ReExpressInNewFrame(R_yaw.transpose());
   }
 

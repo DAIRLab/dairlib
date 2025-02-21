@@ -1,7 +1,7 @@
 #pragma once
 
 // lcmtypes
-#include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
+#include "dairlib/lcmt_alip_mpfc_debug_complete.hpp"
 
 // dairlib
 #include "geometry/convex_polygon_set.h"
@@ -48,7 +48,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
    * @brief Returns a meshcat path for the foothold visualizations
    * @param i index of the foothold
    */
-  static std::string make_foothold_path(size_t i) {
+  static std::string make_foothold_path(int i) {
     return "/foothold_meshes/" + std::to_string(i);
   }
 
@@ -59,7 +59,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
   // Matrix from robot yaw frame to world frame
   static Eigen::Matrix3d R_WB(const Eigen::Vector4d& wxyz);
 
-  void DrawFootsteps(const dairlib::lcmt_alip_s2s_mpfc_debug& solution,
+  void DrawFootsteps(const dairlib::lcmt_alip_mpfc_debug_complete& solution,
                      const Eigen::Matrix3d& R_yaw) const;
 
   drake::systems::EventStatus UnrestrictedUpdate(

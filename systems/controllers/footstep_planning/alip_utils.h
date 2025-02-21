@@ -148,7 +148,3 @@ void MakeProjectionToP2Orbit(
     Eigen::Matrix<double, 4, 2>& g_0, Eigen::Matrix<double, 4, 2>& g_1);
 
 }
-
-Eigen::Vector4d CalcAlipStateBasedOnPositions(
-    const Eigen::Vector4d &x0, const Eigen::Vector4d& x1,
-    double com_z, double mass, double T);

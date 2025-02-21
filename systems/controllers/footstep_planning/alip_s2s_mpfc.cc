@@ -437,6 +437,7 @@ void AlipS2SMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes, Stance stance
     const Matrix<double, 4, 2>& g = gs_.at((start_period + i) % 2);
     Matrix4d Q = PI.transpose() * params_.Q * PI;
     Vector4d q = -2 * Q * g * vdes;
+    Q += 1e-5 * Matrix4d::Identity();
     tracking_cost_.at(i).evaluator()->UpdateCoefficients(
         2 * Q, q, 0, true // we know it's convex
     );
@@ -449,6 +450,7 @@ void AlipS2SMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes, Stance stance
   const Matrix<double, 4, 2>& g = gs_.at((final_period) % 2);
   Matrix4d Q = PI.transpose() * params_.Qf * PI;
   Vector4d q = -2 * Q * g * vdes;
+  Q += 1e-5 * Matrix4d::Identity();
   terminal_cost_->UpdateCoefficients(Q, q, 0, true);
 }
 

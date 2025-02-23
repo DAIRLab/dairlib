@@ -198,6 +198,10 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   double CalcMapOffsetFromContactState(
       lcmt_contact contact_msg, const grid_map::GridMap& map) const;
 
+  double CalcMapOffsetFromPointCloud(
+      const elevation_mapping::PointCloudType::Ptr pc,
+      const grid_map::GridMap& map) const;
+
   std::map<std::string, elevation_mapping::PointCloudType::Ptr>
   CollectNewPointClouds(const drake::systems::Context<double>&,
                         drake::systems::State<double>*) const;

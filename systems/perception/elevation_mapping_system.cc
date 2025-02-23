@@ -243,6 +243,37 @@ double ElevationMappingSystem::CalcMapOffsetFromContactState(
   return map_offset;
 }
 
+double ElevationMappingSystem::CalcMapOffsetFromPointCloud(
+    const PointCloudType::Ptr pc, const GridMap &map) const {
+  double err_sum = 0;
+  int err_count = 0;
+
+  const std::string steppability_layer = "segmentation";
+  const std::string elevation_layer = "elevation";
+
+  const auto interp_method =  grid_map::InterpolationMethods::INTER_NEAREST;
+
+  for (const auto & pt : pc->points) {
+    bool use_point = map.exists(steppability_layer);
+    // if the steppability segmentation exists, check it to determine if the
+    // point is steppable, otherwise just assume it is
+    use_point = use_point ? map.atPosition(
+        steppability_layer,
+        pt.getArray3fMap().head<2>().cast<double>(), interp_method) != 0 : true;
+
+    if (use_point) {
+      double err = pt.z - map.atPosition(
+          elevation_layer, pt.getArray3fMap().head<2>().cast<double>(),
+          interp_method);
+      if (not isnan(err)) {
+        err_sum += err;
+        ++err_count;
+      }
+    }
+  }
+  return err_count == 0 ? 0 : err_sum / err_count;
+}
+
 std::map<std::string, PointCloudType::Ptr>
 ElevationMappingSystem::CollectNewPointClouds(
     const Context<double>& context, State<double>* state) const {
@@ -370,6 +401,10 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
+    if (not has_contacts()) {
+      map.shift_map_z(
+          CalcMapOffsetFromPointCloud(pc_processed, map.getRawGridMap()));
+    }
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
   auto end = std::chrono::high_resolution_clock::now();

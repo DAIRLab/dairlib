@@ -33,11 +33,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import LcmOutputDrivenLoop, OutputVector
-from pydairlib.systems.perception import (
-    GridMapSender,
-    TerrainSegmentationMonitor,
-    terrain_segmentation_reset_params
-)
+from pydairlib.systems.perception import GridMapSender
 
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria

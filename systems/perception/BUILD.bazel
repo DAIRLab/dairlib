@@ -48,6 +48,7 @@ cc_library(
         "//common:time_series_buffer",
         "//multibody:utils",
         "//systems/framework:vector",
+        "//systems/perception/pointcloud:point_cloud_conversions",
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:elevation_map",
         "@elevation_mapping//elevation_mapping:robot_motion_map_updater",

@@ -38,11 +38,15 @@ ConvexPolygonVisualizer::ConvexPolygonVisualizer(
 
 }
 
-void ConvexPolygonVisualizer::DrawPolygons(ConvexPolygonSet& foothold_set,
+void ConvexPolygonVisualizer::DrawPolygons(ConvexPolygonSet &polygons) const {
+  DrawPolygonsInternal(polygons, 0);
+}
+
+void ConvexPolygonVisualizer::DrawPolygonsInternal(ConvexPolygonSet& foothold_set,
                                             int n_prev,
                                             const std::string& prefix) const {
-  drake::geometry::Rgba green(1, 0, 0, 0.5);
-  drake::geometry::Rgba black(0, 0, 0, 0);
+  drake::geometry::Rgba green(0, 1, 0, 0.75);
+  drake::geometry::Rgba black(0, 0, 0, 1);
 
   for (int i = 0; i < foothold_set.size(); i++) {
     auto polygon = foothold_set.polygons().at(i);
@@ -72,7 +76,7 @@ drake::systems::EventStatus ConvexPolygonVisualizer::UnrestrictedUpdate(
       context, polygon_input_port_)->get_value<ConvexPolygonSet>();
 
   int n_prev = state->get_discrete_state(n_polygons_idx_).get_value()(0);
-  DrawPolygons(polygons, n_prev);
+  DrawPolygonsInternal(polygons, n_prev);
   state->get_mutable_discrete_state(n_polygons_idx_).set_value(
       Eigen::VectorXd::Constant(1, polygons.size())
   );

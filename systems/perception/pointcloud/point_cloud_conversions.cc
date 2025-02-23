@@ -53,11 +53,45 @@ void AssignFields(
   to_pc.resize(nfinite);
 }
 
+template <typename PointT>
+void AssignFields(const grid_map::GridMap& map,
+                  const std::string& layer,
+                  typename pcl::PointCloud<PointT>::Ptr& cloud) {
+
+  cloud->points.clear();
+
+  for (grid_map::GridMapIterator it(map); !it.isPastEnd(); ++it) {
+    // Get the position of the current grid cell in map coordinates
+    grid_map::Position position;
+    map.getPosition(*it, position);
+
+    // Check if the current cell has a valid value for the specified layer
+    if (!map.isValid(*it, layer)) {
+      continue;  // Skip invalid cells
+    }
+
+    // Get the height value from the specified layer
+    float height = map.at(layer, *it);
+
+    // Create a 3D point (x, y, z)
+    pcl::PointXYZL point;
+    point.x = position.x();  // X-coordinate in the map
+    point.y = position.y();  // Y-coordinate in the map
+    point.z = height;        // Z-coordinate (height) from the specified layer
+
+    // Add the point to the point cloud
+    cloud->points.push_back(point);
+  }
+  cloud->width = cloud->points.size();
+  cloud->height = 1;
+  cloud->is_dense = false;
+}
+
 template void AssignFields<pcl::PointXYZ>(const drake::perception::PointCloud&, pcl::PointCloud<pcl::PointXYZ>::Ptr&); // NOLINT
 template void AssignFields<pcl::PointXYZRGB>(const drake::perception::PointCloud&, pcl::PointCloud<pcl::PointXYZRGB>::Ptr&); // NOLINT
 template void AssignFields<pcl::PointXYZRGBConfidenceRatio>(const drake::perception::PointCloud&, pcl::PointCloud<pcl::PointXYZRGBConfidenceRatio>::Ptr&); // NOLINT
 template void AssignFields<pcl::PointXYZ>(const pcl::PointCloud<pcl::PointXYZ>::Ptr&, drake::perception::PointCloud&); // NOLINT
 template void AssignFields<pcl::PointXYZRGB>(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr&, drake::perception::PointCloud&); // NOLINT
 template void AssignFields<pcl::PointXYZRGBConfidenceRatio>(const pcl::PointCloud<pcl::PointXYZRGBConfidenceRatio>::Ptr&, drake::perception::PointCloud&); // NOLINT
-
+template void AssignFields<pcl::PointXYZL>(const grid_map::GridMap&, const std::string&, pcl::PointCloud<pcl::PointXYZL>::Ptr&); // NOLINT
 }

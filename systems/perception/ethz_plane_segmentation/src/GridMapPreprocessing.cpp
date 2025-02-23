@@ -6,30 +6,20 @@
 
 #include <grid_map_filters_rsl/inpainting.hpp>
 #include <grid_map_filters_rsl/smoothing.hpp>
-#include <grid_map_filters_rsl/processing.hpp>
 
 namespace convex_plane_decomposition {
 
 GridMapPreprocessing::GridMapPreprocessing(const PreprocessingParameters& parameters) : parameters_(parameters) {}
 
 void GridMapPreprocessing::preprocess(grid_map::GridMap& gridMap, const std::string& layer) const {
-  // inpaint(gridMap, layer);
-  erode(gridMap, layer);
+  inpaint(gridMap, layer);
   denoise(gridMap, layer);
-  smooth(gridMap, layer);
-  // changeResolution(gridMap, layer);
+  changeResolution(gridMap, layer);
 }
 
 void GridMapPreprocessing::denoise(grid_map::GridMap& gridMap, const std::string& layer) const {
   int kernelSize = std::max(1, std::min(parameters_.kernelSize, 5));  // must be 1, 3 or 5 for current image type, see doc of cv::medianBlur
   grid_map::smoothing::median(gridMap, layer, layer, kernelSize, 0, parameters_.numberOfRepeats);
-}
-
-void GridMapPreprocessing::smooth(grid_map::GridMap& gridMap, const std::string& layer) const {
-  if (parameters_.gaussBlur > 0) {
-    int kernelSize = std::max(1, std::min(parameters_.kernelSize, 5));
-    grid_map::smoothing::gaussianBlur(gridMap, layer, layer, kernelSize, 0.025);
-  }
 }
 
 void GridMapPreprocessing::changeResolution(grid_map::GridMap& gridMap, const std::string& layer) const {
@@ -43,15 +33,6 @@ void GridMapPreprocessing::changeResolution(grid_map::GridMap& gridMap, const st
 void GridMapPreprocessing::inpaint(grid_map::GridMap& gridMap, const std::string& layer) const {
   const std::string& layerOut = "tmp";
   grid_map::inpainting::minValues(gridMap, layer, layerOut);
-
-  gridMap.get(layer) = std::move(gridMap.get(layerOut));
-  gridMap.erase(layerOut);
-}
-
-void GridMapPreprocessing::erode(grid_map::GridMap& gridMap, const std::string& layer) const {
-  const std::string& layerOut = "tmp";
-  int kernelSize = std::max(1, std::min(parameters_.kernelSize, 5));
-  grid_map::processing::erode(gridMap, layer, layerOut, grid_map::Matrix::Zero(0,0), kernelSize);
 
   gridMap.get(layer) = std::move(gridMap.get(layerOut));
   gridMap.erase(layerOut);

@@ -1,0 +1,33 @@
+package dairlib;
+
+struct lcmt_alip_mpfc_debug_complete
+{
+    int64_t utime;
+    int32_t fsm_state;
+
+    int64_t solve_time_us;
+    int64_t optimizer_time_us;
+    string  solution_result;
+
+    int32_t nx;
+    int32_t np;
+    int32_t nmodes;
+    int32_t nmodes_minus_1;
+
+    // problem setup data
+    double T_nominal;
+    double initial_state[nx];
+    double desired_velocity[2];
+    double initial_stance_foot[np];
+    lcmt_foothold_set all_footholds;
+
+    // solution
+    double u;
+    double T;
+    double pp[nmodes][np];
+    double xx[nmodes][nx];
+    double ee[nmodes_minus_1]; // soft constraint slack;
+    lcmt_foothold_set foothold_solution;
+
+    double max_foothold_violation;
+}

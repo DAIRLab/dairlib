@@ -32,25 +32,12 @@ pybind_py_library(
         "//geometry:convex_polygon",
         "//geometry:convex_polygon_lcm_systems",
         "//geometry:convex_polygon_set",
+        "//geometry:convex_polygon_visualizer",
         "@drake//:drake_shared_library",
         "@drake//bindings/pydrake/common:value_pybind",
     ],
     cc_so_name = "convex_polygon",
     cc_srcs = ["convex_polygon_py.cc"],
-    py_deps = [
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
-
-pybind_py_library(
-    name = "meshcat_utils_py",
-    cc_deps = [
-        "//geometry:meshcat_utils",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "meshcat_utils",
-    cc_srcs = ["meshcat_utils_py.cc"],
     py_deps = [
         ":module_py",
     ],

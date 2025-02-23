@@ -50,6 +50,7 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@grid_map//grid_map_core",
         "@pcl//:common",
         "@pcl//:filters",
     ],

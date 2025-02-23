@@ -1,7 +1,6 @@
 import numpy as np
 from math import nan
 
-
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
     def __init__(self, gap_threshold=0.01):

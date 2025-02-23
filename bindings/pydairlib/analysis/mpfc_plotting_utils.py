@@ -45,7 +45,7 @@ def process_alip_mpfc_debug_data(data):
         'fsm': fsm,
         'solve_time': solve_time,
         'optimizer_time': optimizer_time,
-        'initial_state': initial_state,
+        'initial_alip_state': initial_state,
         'initial_stance_foot': initial_stance_foot,
         'desired_velocity': desired_velocity,
         'nominal_first_stance_time': nominal_first_stance_time,
@@ -176,7 +176,7 @@ def plot_initial_alip_state(mpc_data, time_slice=None):
         {'initial_alip_state': ['x', 'y', 'Lx', 'Ly']},
         {'xlabel': 'Time (s)',
          'ylabel': 'Initial Alip State',
-         'title': 'Initial ALip State'},
+         'title': 'Initial Alip State'},
         ps
     )
     add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)

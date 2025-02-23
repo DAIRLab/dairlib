@@ -44,6 +44,24 @@ class PerceptiveLocomotionPreprocessor : public elevation_mapping::StructuredLig
   drake::systems::Context<double>* context() {return context_;}
 
  public:
+
+  bool RunPreprocessorForDebug(const elevation_mapping::PointCloudType::ConstPtr pointCloudInput,
+                               elevation_mapping::PointCloudType::Ptr pointCloudOut,
+                               const drake::math::RigidTransformd& sensorPoseInBaseFrame,
+                               const drake::math::RigidTransformd& robotBaseFramePoseInMapFrame) {
+    updateTransformations(sensorPoseInBaseFrame, robotBaseFramePoseInMapFrame);
+
+    pcl::copyPointCloud(*pointCloudInput, *pointCloudOut);
+    //  transformPointCloud(pointCloudInput, pointCloudSensorFrame, sensorFrameId_);
+
+    // Remove Nans (optional voxel grid filter)
+    filterPointCloud(pointCloudOut);
+
+    // Specific filtering per sensor type
+    filterPointCloudSensorType(pointCloudOut);
+    return true;
+  }
+
   bool TestFilter(elevation_mapping::PointCloudType::Ptr pointCloud) {
     return filterPointCloudSensorType(pointCloud);
   }

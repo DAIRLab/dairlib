@@ -45,28 +45,24 @@ void PlaneSegmentationSystem::CalcOutput(
   grid_map.convertToDefaultStartIndex();
 
   preprocessor_->preprocess(grid_map, "elevation");
-
   plane_extractor_->runExtraction(grid_map, "elevation");
 
   cv::Mat binary_image;
-  if (plane_extractor_->has_plane_extraction()) {
-    cv::Mat local_binary_image;
-    const auto& planesMap = plane_extractor_->getSegmentedPlanesMap();
-    for (const auto& label_plane : planesMap.labelPlaneParameters) {
-      const int label = label_plane.first;
-      local_binary_image = planesMap.labeledImage == label;
+  cv::Mat local_binary_image;
 
-      // Try with safety margin
-      cv::erode(local_binary_image, local_binary_image, margin_kernel_,
-                cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+  const auto& planesMap = plane_extractor_->getSegmentedPlanesMap();
+  for (const auto& label_plane : planesMap.labelPlaneParameters) {
+    const int label = label_plane.first;
+    local_binary_image = planesMap.labeledImage == label;
 
-      binary_image = binary_image.empty() ?
-          local_binary_image : binary_image | local_binary_image;
-    }
-  } else {
-    binary_image = plane_extractor_->getBinaryLabeledImage();
-    cv::erode(binary_image, binary_image, margin_kernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+    // Try with safety margin
+    cv::erode(local_binary_image, local_binary_image, margin_kernel_,
+              cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+
+    binary_image = binary_image.empty() ?
+        local_binary_image : binary_image | local_binary_image;
   }
+
 
   MatrixXf segmentation = MatrixXf::Zero(grid_map.getSize()(0), grid_map.getSize()(1));
   cv::cv2eigen(binary_image, segmentation);
@@ -79,8 +75,6 @@ void PlaneSegmentationSystem::CalcOutput(
       }
     }
   }
-
-  InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted");
 
   grid_map["segmentation"] = segmentation;
   grid_map["segmented_elevation"] = segmented_elevation;

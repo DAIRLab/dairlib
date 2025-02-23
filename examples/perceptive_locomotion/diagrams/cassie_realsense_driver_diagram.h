@@ -10,7 +10,6 @@
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/perception/realsense/single_rs_interface.h"
 #include "systems/perception/realsense/realsense_point_cloud_subscriber.h"
-#include "systems/perception/realsense/realsense_image_pair_subscriber.h"
 
 
 #include "examples/perceptive_locomotion/cassie_perception_utils.h"
@@ -27,6 +26,10 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   void InitializeElevationMap(const Eigen::VectorXd& robot_state,
                               drake::systems::Context<double>* root_context) const;
 
+  void ReInitilizeElevationMap(drake::systems::Context<double>* root_context,
+                               const grid_map::GridMap& init_map,
+                               std::string layer) const;
+
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_robot_state_);
   }
@@ -40,8 +43,8 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
     return get_output_port(output_port_grid_map_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_landmarks() const {
-    return get_output_port(output_port_landmarks_);
+  const drake::systems::OutputPort<double>& get_output_port_profiling() const {
+    return get_output_port(output_port_profiling_);
   }
 
   drake::lcm::DrakeLcm* lcm() {return &lcm_local_;}
@@ -65,8 +68,6 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   // realsense
   rs2_systems::SingleRSInterface realsense_{};
   perception::RealsensePointCloudSubscriber<pcl::PointXYZRGBConfidenceRatio>* point_cloud_subscriber_;
-  perception::RealsenseImagePairSubscriber* image_pair_subscriber_;
-
 
   // elevation_mapping
   std::shared_ptr<perception::PerceptiveLocomotionPreprocessor> sensor_processor_;
@@ -76,8 +77,7 @@ class CassieRealSenseDriverDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_robot_state_;
   drake::systems::InputPortIndex input_port_contact_;
   drake::systems::OutputPortIndex output_port_grid_map_;
-  drake::systems::OutputPortIndex output_port_landmarks_;
-
+  drake::systems::OutputPortIndex output_port_profiling_;
 
 };
 

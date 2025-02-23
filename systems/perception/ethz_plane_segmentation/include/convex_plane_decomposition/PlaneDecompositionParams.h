@@ -31,7 +31,6 @@ struct PlaneDecompositionParams {
   bool include_ransac_refinement;
   double global_plane_fit_distance_error_threshold;
   double global_plane_fit_angle_error_threshold_degrees;
-  bool skip_plane_extraction;
 
   // ransac
   double probability;
@@ -69,7 +68,6 @@ struct PlaneDecompositionParams {
     a->Visit(DRAKE_NVP(cluster_epsilon));
     a->Visit(DRAKE_NVP(normal_threshold));
     a->Visit(DRAKE_NVP(marginSize));
-    a->Visit(DRAKE_NVP(skip_plane_extraction));
 
     preprocessing_params.resolution = resolution;
     preprocessing_params.kernelSize = kernelSize;
@@ -78,15 +76,14 @@ struct PlaneDecompositionParams {
 
     sliding_window_params.kernel_size = kernel_size;
     sliding_window_params.planarity_opening_filter = planarity_opening_filter;
-    sliding_window_params.plane_inclination_threshold = M_PI * plane_inclination_threshold_degrees / 180.0;
-    sliding_window_params.local_plane_inclination_threshold = M_PI * local_plane_inclination_threshold_degrees / 180.0;
+    sliding_window_params.plane_inclination_threshold = std::cos(M_PI * plane_inclination_threshold_degrees / 180.0);
+    sliding_window_params.local_plane_inclination_threshold = std::cos(M_PI * local_plane_inclination_threshold_degrees / 180.0);
     sliding_window_params.plane_patch_error_threshold = plane_patch_error_threshold;
     sliding_window_params.min_number_points_per_label = min_number_points_per_label;
     sliding_window_params.connectivity = connectivity;
     sliding_window_params.include_ransac_refinement = include_ransac_refinement;
     sliding_window_params.global_plane_fit_distance_error_threshold = global_plane_fit_distance_error_threshold;
     sliding_window_params.global_plane_fit_angle_error_threshold_degrees = global_plane_fit_angle_error_threshold_degrees;
-    sliding_window_params.skip_plane_extraction = skip_plane_extraction;
 
     ransac_params.probability = probability;
     ransac_params.min_points = min_points;

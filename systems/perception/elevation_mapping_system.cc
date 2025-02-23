@@ -1,10 +1,14 @@
 //dairlib
-#include "dairlib/lcmt_contact.hpp"
+#include "dairlib/lcmt_profiling.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
+#include "systems/perception/pointcloud/point_cloud_conversions.h"
 #include "systems/framework/output_vector.h"
 #include "common/time_series_buffer.h"
+
+#include <drake/lcmt_point_cloud.hpp>
+#include <lcm/lcm-cpp.hpp>
 
 namespace dairlib {
 namespace perception {
@@ -22,6 +26,7 @@ using drake::systems::EventStatus;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::MultibodyPlant;
+using drake::perception::PointCloudToLcm;
 
 using grid_map::GridMap;
 using elevation_mapping::ElevationMap;
@@ -43,12 +48,19 @@ ElevationMappingSystem::ElevationMappingSystem(
     track_point_(params.track_point),
     params_(params) {
 
+  double pitch_offset = params.sensor_poses.size() > 1 ?
+    0 : params.pitch_bias * M_PI / 180.0;
+  auto X_offset = RigidTransformd(
+    RotationMatrixd::MakeXRotation(pitch_offset), Vector3d::Zero());
+
   // configure sensors
   drake::Vector1d prev_time_model_vector{-1};
   for (const auto& pose_param : params.sensor_poses) {
     DRAKE_DEMAND(plant_.HasBodyNamed(pose_param.sensor_parent_body_));
     DRAKE_DEMAND(sensor_poses_.count(pose_param.sensor_name_) == 0);
-    sensor_poses_.insert({pose_param.sensor_name_, pose_param});
+    auto pose_param_temp = pose_param;
+    pose_param_temp.sensor_pose_in_parent_body_ = pose_param.sensor_pose_in_parent_body_ * X_offset;
+    sensor_poses_.insert({pose_param.sensor_name_, pose_param_temp});
     input_ports_pcl_.insert({pose_param.sensor_name_, DeclareAbstractInputPort(
         "Point_cloud_" + pose_param.sensor_name_,
         drake::Value<PointCloudType::Ptr>()).get_index()
@@ -87,12 +99,17 @@ ElevationMappingSystem::ElevationMappingSystem(
   auto model_value_updater = drake::Value<RobotMotionMapUpdater>();
   elevation_map_state_index_ = DeclareAbstractState(model_value_map);
   motion_updater_state_index_ = DeclareAbstractState(model_value_updater);
+  profiling_info_index_ = DeclareAbstractState(drake::Value<lcmt_profiling>());
 
   state_buffer_index_ = DeclareAbstractState(
       drake::Value<std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(nullptr));
 
   output_port_elevation_map_ = DeclareStateOutputPort(
       "elevation_map", elevation_map_state_index_
+  ).get_index();
+
+  output_port_profiling_ = DeclareStateOutputPort(
+      "lcmt_profiling", profiling_info_index_
   ).get_index();
 
   output_port_grid_map_ = DeclareAbstractOutputPort(
@@ -120,6 +137,12 @@ ElevationMappingSystem::ElevationMappingSystem(
   }
   DeclarePerStepUnrestrictedUpdateEvent(
       &ElevationMappingSystem::UpdateStateBuffer);
+
+  if (publish_debug_clouds_) {
+    pc_debug_sender_ = std::make_unique<PointCloudToLcm>(
+        params.sensor_poses.front().sensor_name_);
+    pc_debug_context_ = pc_debug_sender_->CreateDefaultContext();
+  }
 }
 
 void ElevationMappingSystem::SetDefaultState(const Context<double> &context,
@@ -173,11 +196,59 @@ void ElevationMappingSystem::AddSensorPreProcessor(
   sensor_preprocessors_.insert({sensor_name, processor});
 }
 
-drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
+double ElevationMappingSystem::CalcMapOffsetFromContactState(
+    lcmt_contact contact_msg, const grid_map::GridMap& map) const {
+
+  double map_offset = 0;
+  int n_valid_contacts = 0;
+
+  for (int i = 0; i < contact_msg.num_contacts; i++) {
+    if (contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
+
+      const auto& contact = contacts_.at(contact_msg.contact_names[i]);
+      const Vector3d stance_pos = plant_.EvalBodyPoseInWorld(
+          *context_,
+          plant_.GetBodyByName(contact.first)
+      ) * contact.second;
+      try {
+
+        double sub_map_length = 4.0 * map.getResolution();
+        grid_map::Position center_sub_map = stance_pos.head<2>();
+        grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
+        bool success;
+
+        // Getting the submap of where the foot location is
+        auto sub_map = map.getSubmap(center_sub_map, length_sub_map, success);
+
+        if (success) {
+          // Retrieving the data and making the median of the values
+          const auto& mat = sub_map.get("elevation");
+          std::vector<double> zvals(mat.data(), mat.data() + mat.rows() * mat.cols());
+          std::sort(zvals.begin(), zvals.end());
+          int n = zvals.size() / 2;
+          double map_z = (zvals.size() % 2 == 0) ?
+                         0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
+
+          if (not std::isnan(map_z)) {
+            map_offset += stance_pos(2) - map_z;
+            ++n_valid_contacts;
+          }
+        }
+      } catch (std::out_of_range& ex) {
+        drake::log()->warn("{}", ex.what());
+      }
+    }
+  }
+  map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
+  return map_offset;
+}
+
+std::map<std::string, PointCloudType::Ptr>
+ElevationMappingSystem::CollectNewPointClouds(
     const Context<double>& context, State<double>* state) const {
 
-  // Get any new pointclouds from input ports
   std::map<std::string, PointCloudType::Ptr> new_pointclouds{};
+
   for (const auto& [name, input_port_idx_pcl] : input_ports_pcl_) {
 
     // Get the timestamp of the previous pointcloud
@@ -186,8 +257,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     ).value()(0);
 
     auto pointcloud = EvalAbstractInput(
-        context, input_port_idx_pcl
-    )->get_value<PointCloudType::Ptr>();
+        context, input_port_idx_pcl)->get_value<PointCloudType::Ptr>();
 
     // Only do anything if the timestamp has been updated
     if (pointcloud->header.stamp * 1e-6 > prev_pointcloud_stamp and pointcloud->size() > 0) {
@@ -200,29 +270,35 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     }
   }
 
-  // Skip the rest of this function if no new point clouds
+  return new_pointclouds;
+}
+
+drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
+    const Context<double>& context, State<double>* state) const {
+
+  auto start = std::chrono::high_resolution_clock::now();
+
+  auto new_pointclouds = CollectNewPointClouds(context, state);
+
   if (new_pointclouds.empty()) {
     return drake::systems::EventStatus::DidNothing();
   }
 
   // Get the elevation map
   auto& map = state->get_mutable_abstract_state<ElevationMap>(
-      elevation_map_state_index_
-  );
+      elevation_map_state_index_);
   auto& motion_updater = state->get_mutable_abstract_state<RobotMotionMapUpdater>(
-      motion_updater_state_index_
-  );
+      motion_updater_state_index_);
 
   // 1. Get the robot base pose and covariance
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      EvalVectorInput(context, input_port_state_)
-  );
+      EvalVectorInput(context, input_port_state_));
+
   VectorXd q_v = robot_output->GetState();
   double timestamp = robot_output->get_timestamp();
 
   MatrixXd pose_covariance = EvalVectorInput(
-      context, input_port_pose_covariance_
-  )->get_value();
+      context, input_port_pose_covariance_)->get_value();
   pose_covariance.resize(6,6);
   multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v, context_);
   const auto base_pose = plant_.EvalBodyPoseInWorld(*context_, robot_base_);
@@ -236,54 +312,11 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
   // 4. If contact information is provided, update the map using contact points
   //    as a reference
-  double map_offset = 0;
-
-  if (has_contacts()) {
+  if (has_contacts() and get_input_port_contact().HasValue(context)) {
     const auto& contact_msg = EvalAbstractInput(
         context, input_port_contact_)->get_value<lcmt_contact>();
-    int n_valid_contacts = 0;
-
-    for (int i = 0; i < contact_msg.num_contacts; i++) {
-      if (contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
-        const auto& grid_map = map.getRawGridMap();
-
-        const auto& contact = contacts_.at(contact_msg.contact_names[i]);
-        const Vector3d stance_pos = plant_.EvalBodyPoseInWorld(
-            *context_,
-            plant_.GetBodyByName(contact.first)
-        ) * contact.second;
-        try {
-
-          double sub_map_length = 3.0 * grid_map.getResolution();
-          grid_map::Position center_sub_map = stance_pos.head<2>();
-          grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
-          bool success;
-
-          // Getting the submap of where the foot location is
-          auto sub_map = grid_map.getSubmap(
-              center_sub_map, length_sub_map, success
-          );
-
-          if (success) {
-            // Retrieving the data and making the median of the values
-            const auto& mat = sub_map.get("elevation");
-            std::vector<double> zvals(mat.data(), mat.data() + mat.rows() * mat.cols());
-            std::sort(zvals.begin(), zvals.end());
-            int n = zvals.size() / 2;
-            double map_z = (zvals.size() % 2 == 0) ?
-                0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
-
-            if (not std::isnan(map_z)) {
-              map_offset += stance_pos(2) - map_z;
-              ++n_valid_contacts;
-            }
-          }
-        } catch (std::out_of_range& ex) {
-          drake::log()->warn("{}", ex.what());
-        }
-      }
-    }
-    map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
+    double map_offset =
+        CalcMapOffsetFromContactState(contact_msg, map.getRawGridMap());
     map.shift_map_z(map_offset);
   }
 
@@ -291,7 +324,9 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
       std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(state_buffer_index_);
 
   // 5. add the point clouds to the map
+  int num_points = 0;
   for (const auto& [name, cloud] : new_pointclouds) {
+    num_points += cloud->size();
     // allocate data for processing
     Eigen::VectorXf measurement_variances;
     PointCloudType::Ptr pc_processed(new PointCloudType);
@@ -313,6 +348,19 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     );
     const auto& X_PS =  sensor_poses_.at(name).sensor_pose_in_parent_body_;
 
+    if (publish_debug_clouds_) {
+      PointCloudType::Ptr pc_filtered(new PointCloudType);
+      auto pre = dynamic_cast<PerceptiveLocomotionPreprocessor*>(sensor_preprocessors_.at(name).get());
+      pre->RunPreprocessorForDebug(cloud, pc_filtered, X_PS, X_WP);
+      drake::perception::PointCloud drake_cloud;
+      AssignFields<elevation_mapping::PointCloudType::PointType>(pc_filtered, drake_cloud);
+      pc_debug_context_->SetTime(1e-6 * cloud->header.stamp);
+      pc_debug_sender_->get_input_port().FixValue(pc_debug_context_.get(), drake_cloud);
+      drake::lcmt_point_cloud msg = pc_debug_sender_->get_output_port().Eval<drake::lcmt_point_cloud>(*pc_debug_context_);
+      lcm::LCM lcm("udpm://239.255.76.67:7667?ttl=0");
+      lcm.publish("CALIBRATION_PC", &msg);
+    }
+
     // apply preprocessor
     sensor_preprocessors_.at(name)->process(
         cloud,
@@ -322,13 +370,34 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
-
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto& profiling = state->get_mutable_abstract_state<lcmt_profiling>(profiling_info_index_);
 
-  // TODO (@Brian-Acosta) decide how to go about fusing if needed
-  //  map.fuseAll();
+  profiling.utime = 1e6 * context.get_time();
+  profiling.process_name = "elevation_mapping_point_cloud_update";
+  profiling.process_inputs = "points";
+  profiling.num_inputs = num_points;
+  profiling.process_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
   return drake::systems::EventStatus::Succeeded();
+}
+
+void ElevationMappingSystem::ReInitialize(
+    Context<double>* root_context, const GridMap &init_map, std::string layer) const {
+
+  Context<double>& context = this->GetMyMutableContextFromRoot(root_context);
+
+  auto& map = context.get_mutable_abstract_state<ElevationMap>(
+      elevation_map_state_index_);
+
+  GridMap tmp_map_in(init_map);
+  tmp_map_in["elevation"] = tmp_map_in[layer];
+
+  GridMap tmp_map_out = map.getRawGridMap();
+  tmp_map_out.addDataFrom(tmp_map_in, false, true, false, {"elevation"});
+  map.setRawGridMap(tmp_map_out);
 }
 
 void ElevationMappingSystem::InitializeFlatTerrain(
@@ -353,7 +422,6 @@ void ElevationMappingSystem::InitializeFlatTerrain(
   float half_len = static_cast<float>(params_.initialization_radius);
 
   for (const auto& contact : contacts) {
-
     Vector3d point_pos;
     plant_.CalcPointsPositions(
         *context_, contact.second, contact.first, plant_.world_frame(),

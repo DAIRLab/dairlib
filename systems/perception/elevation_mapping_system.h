@@ -3,11 +3,13 @@
 // dairlib
 #include "camera_utils.h"
 #include "common/find_resource.h"
+#include "dairlib/lcmt_contact.hpp"
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
 
 // Drake
+#include "drake/perception/point_cloud_to_lcm.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -37,6 +39,7 @@ struct elevation_mapping_params {
   double resolution;
   double initialization_offset;
   double initialization_radius;
+  double pitch_bias;
   Eigen::Vector3d point_cloud_bias;
 };
 
@@ -53,6 +56,7 @@ struct elevation_mapping_params_io {
   double resolution;
   double initialization_offset;
   double initialization_radius;
+  double pitch_bias;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -68,6 +72,7 @@ struct elevation_mapping_params_io {
     a->Visit(DRAKE_NVP(initialization_offset));
     a->Visit(DRAKE_NVP(initialization_radius));
     a->Visit(DRAKE_NVP(point_cloud_bias));
+    a->Visit(DRAKE_NVP(pitch_bias));
   }
 
   static elevation_mapping_params ReadElevationMappingParamsFromYaml(
@@ -106,6 +111,7 @@ struct elevation_mapping_params_io {
     params_out.initialization_offset = params_io.initialization_offset;
     params_out.initialization_radius = params_io.initialization_radius;
     params_out.point_cloud_bias = Eigen::Vector3d::Map(params_io.point_cloud_bias.data());
+    params_out.pitch_bias = params_io.pitch_bias;
 
     for (const auto& [k, v] : params_io.contact_frames) {
       DRAKE_DEMAND(params_io.contact_points.count(k) == 1);
@@ -147,6 +153,9 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_grid_map_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_profiling() const {
+    return get_output_port(output_port_profiling_);
+  }
   bool has_contacts() const {
     return (not contacts_.empty());
   }
@@ -160,6 +169,15 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
       std::vector<std::pair<const Eigen::Vector3d,
                 const drake::multibody::Frame<double>&>> contacts,
       drake::systems::Context<double>&) const;
+
+
+  /*!
+ * Re-initalize the elevation map to match the specified layer of init_map
+ * @param context
+ * @param layer
+ */
+  void ReInitialize(drake::systems::Context<double>* root_context,
+                    const grid_map::GridMap& init_map, std::string layer) const;
 
  private:
 
@@ -176,6 +194,13 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   void SetDefaultState(const drake::systems::Context<double>& context,
                        drake::systems::State<double>* state) const final;
+
+  double CalcMapOffsetFromContactState(
+      lcmt_contact contact_msg, const grid_map::GridMap& map) const;
+
+  std::map<std::string, elevation_mapping::PointCloudType::Ptr>
+  CollectNewPointClouds(const drake::systems::Context<double>&,
+                        drake::systems::State<double>*) const;
 
   drake::systems::EventStatus Initialize(
       const drake::systems::Context<double>&,
@@ -199,17 +224,25 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   drake::systems::OutputPortIndex output_port_elevation_map_;
   drake::systems::OutputPortIndex output_port_grid_map_;
+  drake::systems::OutputPortIndex output_port_profiling_;
 
   // states
   drake::systems::AbstractStateIndex elevation_map_state_index_;
   drake::systems::AbstractStateIndex motion_updater_state_index_;
   drake::systems::AbstractStateIndex state_buffer_index_;
+  drake::systems::AbstractStateIndex profiling_info_index_;
 
   std::map<std::string,
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;
 
   std::map<std::string,
            std::shared_ptr<elevation_mapping::SensorProcessorBase>> sensor_preprocessors_;
+
+  const bool publish_debug_clouds_ = false;
+  std::unique_ptr<drake::perception::PointCloudToLcm> pc_debug_sender_ = nullptr;
+  std::unique_ptr<drake::systems::Context<double>> pc_debug_context_ = nullptr;
+
+
 };
 
 }

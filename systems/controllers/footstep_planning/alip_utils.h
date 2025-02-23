@@ -137,18 +137,14 @@ std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
 std::vector<Eigen::Vector2d>
 MakeP2Orbit(const alip_utils::AlipGaitParams& gait_params);
 
+Eigen::Matrix<double, 2, 4>
+CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params);
 
-void MakeAlipStepToStepCostMatrices(
+// Convention for definition of the P2 orbit subspace
+// PI_i * x_{i} = PI_i * g_i * vdes
+void MakeProjectionToP2Orbit(
     const alip_utils::AlipGaitParams& gait_params,
-    const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,
-    Eigen::Matrix4d& Q_proj,
-    Eigen::Matrix4d& Q_proj_f,
-    Eigen::Matrix<double, 4, 2>& g_proj_p1,
-    Eigen::Matrix<double, 4, 2>& g_proj_p2,
-    Eigen::Matrix4d& p2o_premul,
-    Eigen::Matrix4d& projection_to_p2o_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_orthogonal_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_basis);
-
+    Eigen::Matrix4d& PI_0, Eigen::Matrix4d& PI_1,
+    Eigen::Matrix<double, 4, 2>& g_0, Eigen::Matrix<double, 4, 2>& g_1);
 
 }

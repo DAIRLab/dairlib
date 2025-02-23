@@ -3,7 +3,7 @@
 #include <Eigen/Dense>
 
 double blend_sigmoid(double t, double tau, double window) {
-  double x = (window - abs(t)) / tau;
+  double x = (t + window) / tau;
   return exp(x) / (1 + exp(x));
 }
 

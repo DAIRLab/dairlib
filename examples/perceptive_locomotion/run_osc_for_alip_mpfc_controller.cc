@@ -34,7 +34,6 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/controllers/bipedal_walking_impact_info.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -80,7 +79,6 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::BipedalWalkingImpactInfo;
 
 using multibody::FixedJointEvaluator;
 using multibody::MakeNameToVelocitiesMap;
@@ -120,7 +118,7 @@ DEFINE_bool(add_camera_inertia, true,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  const std::string urdf = "examples/Cassie/urdf/cassie_v2_conservative.urdf";
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -525,7 +523,7 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  if (gains.W_com(0,0) == 0){
+  if (gains.W_com(0,0) == 0) {
     double w_ankle_tracking = 10;
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_left_motor", left_stance_state, w_ankle_tracking);

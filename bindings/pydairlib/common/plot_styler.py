@@ -124,6 +124,11 @@ class PlotStyler():
         self.axes[subplot_index].add_artist(legend)
         return
 
+    def extend_legend(self, labels):
+        old_labels = [] if self.axes[0].get_legend() is None else \
+            [text.get_text() for text in self.axes[0].get_legend().get_texts()]
+        plt.legend(old_labels + labels)
+
     def annotate(self, text, x, y, x_text, y_text, arrowprops=None,
                  subplot_index=0):
         if not arrowprops:

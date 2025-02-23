@@ -1,8 +1,8 @@
-import signal
 import sys
+import signal
 
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
-    lcmt_contact, lcmt_landmark_array
+    lcmt_contact, lcmt_profiling
 
 from pydrake.systems.all import (
     Diagram,
@@ -14,7 +14,6 @@ from pydrake.systems.all import (
 )
 
 from pydrake.lcm import DrakeLcm
-
 from pydrake.common.value import AbstractValue
 
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
@@ -34,10 +33,11 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import LcmOutputDrivenLoop, OutputVector
-from pydairlib.systems.perception import GridMapSender
-from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
-
-import numpy as np
+from pydairlib.systems.perception import (
+    GridMapSender,
+    TerrainSegmentationMonitor,
+    terrain_segmentation_reset_params
+)
 
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
@@ -76,13 +76,11 @@ def main():
     terrain_segmentation = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
         }
     )
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
-    network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
-
     contact_subscriber = LcmSubscriberSystem.Make(
         channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
         lcm_type=lcmt_contact,
@@ -98,14 +96,6 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    foothold_publisher_network = LcmPublisherSystem.Make(
-        channel="NETWORK_FOOTHOLDS_PROCESSED",
-        lcm_type=lcmt_foothold_set,
-        lcm=network_lcm,
-        publish_triggers={TriggerType.kPeriodic},
-        publish_period=1.0 / 5.0,
-        use_cpp_serializer=True
-    )
     elevation_map_sender = GridMapSender()
     elevation_map_publisher_local = LcmPublisherSystem.Make(
         channel="CASSIE_ELEVATION_MAP",
@@ -115,34 +105,24 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    landmark_pub = LcmPublisherSystem.Make(
-        channel="CASSIE_EKF_LANDMARKS",
-        lcm_type=lcmt_landmark_array,
-        lcm=network_lcm,
+    profiling_pub = LcmPublisherSystem.Make(
+        channel="ELEVATION_MAP_PROFILING",
+        lcm_type=lcmt_profiling,
+        lcm=elevation_mapping.lcm(),
         publish_triggers={TriggerType.kPeriodic},
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    # elevation_map_publisher_network = LcmPublisherSystem.Make(
-    #     channel="NETWORK_CASSIE_ELEVATION_MAP",
-    #     lcm_type=lcmt_grid_map,
-    #     lcm=network_lcm,
-    #     publish_triggers={TriggerType.kPeriodic},
-    #     publish_period=1.0 / 5.0,
-    #     use_cpp_serializer=True
-    # )
 
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
     builder.AddSystem(convex_decomposition)
     builder.AddSystem(contact_subscriber)
     builder.AddSystem(foothold_publisher_local)
-    builder.AddSystem(foothold_publisher_network)
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
-    builder.AddSystem(landmark_pub)
-    # builder.AddSystem(elevation_map_publisher_network)
+    builder.AddSystem(profiling_pub)
 
     builder.Connect(
         contact_subscriber.get_output_port(),
@@ -151,6 +131,10 @@ def main():
     builder.Connect(
         elevation_mapping.get_output_port_grid_map(),
         terrain_segmentation.get_input_port()
+    )
+    builder.Connect(
+        elevation_mapping.get_output_port_profiling(),
+        profiling_pub.get_input_port()
     )
     builder.Connect(
         terrain_segmentation.get_output_port(),
@@ -165,37 +149,26 @@ def main():
         foothold_publisher_local.get_input_port()
     )
     builder.Connect(
-        foothold_sender.get_output_port(),
-        foothold_publisher_network.get_input_port()
-    )
-    builder.Connect(
         terrain_segmentation.get_output_port(),
         elevation_map_sender.get_input_port()
     )
+    
     builder.Connect(
         elevation_map_sender.get_output_port(),
         elevation_map_publisher_local.get_input_port()
     )
-    builder.Connect(
-        elevation_mapping.get_output_port_landmarks(),
-        landmark_pub.get_input_port()
-    )
-    # builder.Connect(
-    #     elevation_map_sender.get_output_port(),
-    #     elevation_map_publisher_network.get_input_port()
-    # )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(
         diagram,
         '../elevation_mapping_and_convex_decomposition'
     )
-
     driven_loop = LcmOutputDrivenLoop(
         drake_lcm=elevation_mapping.lcm(),
         diagram=diagram,
         lcm_parser=elevation_mapping,
         input_channel=cassie_state_channel,
-        is_forced_publish=True
+        is_forced_publish=True, 
+        queue_size=100
     )
 
     robot_state = driven_loop.WaitForFirstState(plant)

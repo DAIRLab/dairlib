@@ -67,6 +67,16 @@ cc_library(
 )
 
 cc_library(
+    name = "legendre_coefficient_variables",
+    srcs = ["legendre_coefficient_variables.cc"],
+    hdrs = ["legendre_coefficient_variables.h"],
+    deps = [
+        "//common:legendre",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "nonlinear_constraint",
     srcs = [
         "nonlinear_constraint.cc",

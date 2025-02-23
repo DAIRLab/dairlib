@@ -257,21 +257,40 @@ std::vector<Eigen::Vector2d> MakeP2Orbit(const AlipGaitParams& gait_params) {
           gait_params.double_stance_duration
   );
   Vector2d u1 = u0;
-  u1(1) = - 2 * (s * gait_params.stance_width);
+  u1(1) -= 2 * (s * gait_params.stance_width);
   return {u0, u1};
 }
 
-void MakeAlipStepToStepCostMatrices(
+Eigen::Matrix<double, 2, 4>
+CalcStateToCapturePointMatrix(const alip_utils::AlipGaitParams& gait_params) {
+  Matrix<double, 2, 4> ret;
+  double omega = sqrt(9.81 / gait_params.height);
+  double xc = 1.0 / (gait_params.mass * gait_params.height * omega);
+  ret.setZero();
+  ret(0, 0) = 1;
+  ret(0, 3) = xc;
+  ret(1, 1) = 1;
+  ret(1, 2) = -xc;
+  return ret;
+}
+
+
+namespace {
+
+Eigen::Matrix4d GetProjectionToBPerp(const Eigen::Matrix<double, 4, 2>& B) {
+  Eigen::Matrix<double, 4, 2> B_perp =
+      Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
+          B.transpose()).kernel();
+  Matrix4d P = B_perp * (B_perp.transpose() * B_perp).inverse() * B_perp.transpose();
+  return P;
+}
+
+}
+
+void MakeProjectionToP2Orbit(
     const alip_utils::AlipGaitParams& gait_params,
-    const Eigen::Matrix4d& Q, const Eigen::Matrix4d& Qf,
-    Eigen::Matrix4d& Q_proj,
-    Eigen::Matrix4d& Q_proj_f,
-    Eigen::Matrix<double, 4, 2>& g_proj_p1,
-    Eigen::Matrix<double, 4, 2>& g_proj_p2,
-    Eigen::Matrix4d& p2o_premul,
-    Eigen::Matrix4d& projection_to_p2o_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_orthogonal_complement,
-    Eigen::Matrix<double, 4, 2>& p2o_basis) {
+    Eigen::Matrix4d& PI_0, Eigen::Matrix4d& PI_1,
+    Eigen::Matrix<double, 4, 2>& g_0, Eigen::Matrix<double, 4, 2>& g_1) {
 
   const auto[A, B] = AlipStepToStepDynamics(
       gait_params.height,
@@ -281,24 +300,15 @@ void MakeAlipStepToStepCostMatrices(
       gait_params.reset_discretization_method
   );
 
-  p2o_premul = (Matrix4d::Identity() - A * A).inverse();
-  p2o_basis = p2o_premul * (A* B - B);
-  p2o_orthogonal_complement = Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
-      p2o_basis.transpose()
-  ).kernel();
+  double Ts2s = gait_params.single_stance_duration +
+                gait_params.double_stance_duration;
 
-  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
-  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
-
-  Matrix4d bases_in_R4 = Matrix4d::Zero();
-  bases_in_R4.leftCols<2>() = p2o_orthogonal_complement;
-  bases_in_R4.rightCols<2>() = p2o_basis;
-
-  projection_to_p2o_complement = bases_in_R4 * projection_in_basis_coords * bases_in_R4.inverse();
-  Q_proj = projection_to_p2o_complement.transpose() * Q * projection_to_p2o_complement;
-  Q_proj_f = projection_to_p2o_complement.transpose() * Qf * projection_to_p2o_complement;
-  g_proj_p1 = p2o_premul * B;
-  g_proj_p2 = A * p2o_premul * B;
+  Matrix4d p2o_premul = (Matrix4d::Identity() - A * A).inverse();
+  Eigen::Matrix<double, 4, 2> p2o_basis = p2o_premul * (A * B - B);
+  PI_0 = GetProjectionToBPerp(p2o_basis);
+  PI_1 = GetProjectionToBPerp(A * p2o_basis + B);
+  g_0 = 2 * Ts2s * p2o_premul * B;
+  g_1 = A * g_0;
 }
 
 }

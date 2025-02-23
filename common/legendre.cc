@@ -74,6 +74,10 @@ Eigen::VectorXd EvalLegendreBasis(int order, double t) {
 Eigen::VectorXd EvalLegendreBasisDerivative(int order, int deriv, double t) {
   assert(fabs(t) <= 1);
 
+  if (deriv == 0) {
+    return EvalLegendreBasis(order, t);
+  }
+
   int N = order + 1;
 
   Eigen::VectorXd d = Eigen::VectorXd::Zero(N);

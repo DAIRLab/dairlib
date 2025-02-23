@@ -61,7 +61,8 @@ class AlipS2SMPFC {
       double t, double tmin, double tmax,
       const Eigen::Vector2d& vdes,
       alip_utils::Stance stance,
-      const geometry::ConvexPolygonSet& footholds
+      const geometry::ConvexPolygonSet& footholds,
+      const Eigen::Vector3d& p_prev_stance
   );
 
   const alip_utils::AlipGaitParams& gait_params() const {
@@ -88,11 +89,12 @@ class AlipS2SMPFC {
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
-  void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes);
-  void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
+  void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
+  void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTimeRegularization(double t);
+  void UpdateTrustRegionConstraint(double t, const Eigen::Vector3d& p);
 
   void ValidateParams() const {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
@@ -143,6 +145,8 @@ class AlipS2SMPFC {
   vector<Binding<LinearConstraint>> workspace_c_{};
   vector<Binding<LinearConstraint>> no_crossover_c_{};
   vector<Binding<LinearConstraint>> reachability_c_{};
+  vector<Binding<LinearConstraint>> capturability_c_{};
+  std::shared_ptr<LinearConstraint> trust_region_ = nullptr;
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 
@@ -153,17 +157,12 @@ class AlipS2SMPFC {
   vector<Binding<QuadraticCost>> input_cost_{};
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};
 
-  // some useful matrices and dynamics quantities
-  Eigen::Matrix4d A_;
-  Eigen::Matrix<double, 4, 2> B_;
-  Eigen::Matrix4d Q_proj_;
-  Eigen::Matrix4d Q_proj_f_;
-  Eigen::Matrix<double, 4, 2> g_proj_p1_;
-  Eigen::Matrix<double, 4, 2> g_proj_p2_;
-  Eigen::Matrix4d p2o_premul_;
-  Eigen::Matrix4d projection_to_p2o_complement_;
-  Eigen::Matrix<double, 4, 2> p2o_orthogonal_complement_;
-  Eigen::Matrix<double, 4, 2> p2o_basis_;
-
+  // Matrices defining the velocity cost
+  Eigen::Matrix4d PI_0_;
+  Eigen::Matrix4d PI_1_;
+  Eigen::Matrix<double, 4, 2> g_0_;
+  Eigen::Matrix<double, 4, 2> g_1_;
+  std::vector<Eigen::Matrix4d> PIs_;
+  std::vector<Eigen::Matrix<double, 4, 2>> gs_;
 };
 }

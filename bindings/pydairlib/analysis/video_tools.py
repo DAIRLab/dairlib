@@ -65,18 +65,8 @@ def extract_frames(start_time, end_time, num_frames, video_filename,
         ret, frame = video.read()
 
         if frame_edits is not None:
-            aspect = frame_edits['aspect']
-            yshift = -frame_edits['yshift']
-            h = frame.shape[0]
             w = frame.shape[1]
-            h_new = w / aspect
-            center_y = int(h / 2)
-            dy = int(h_new / 2)
-            offset = int(yshift * h)
-            frame = frame[offset + center_y - dy: offset + center_y + dy, :]
-
-            if frame_edits['mirror']:
-                frame = np.fliplr(frame)
+            frame = frame[:, int(w/4.0):int(3.0*w/4.0), :]
 
         if ret:
             # Save the frame as a JPEG image

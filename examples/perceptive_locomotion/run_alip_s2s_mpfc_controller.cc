@@ -13,7 +13,6 @@
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
-#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -44,7 +43,6 @@ using perception::GridMapReceiver;
 
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
@@ -194,8 +192,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr,
       context_w_spr.get(),
       2.0,  // rotational velocity command scaling
-      1.0,  // sagittal velocity command scaling
-      -0.5, // lateral vel scaling
+      0.5,  // sagittal velocity command scaling
+      -0.9, // lateral vel scaling
       0.5   // stick filter time constant
   );
 
@@ -206,7 +204,7 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   auto mpc_debug_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
+      LcmPublisherSystem::Make<lcmt_alip_mpfc_debug_complete>(
           "ALIP_S2S_MPFC_DEBUG", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
@@ -283,7 +281,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
-      true);
+      true, 10);
 
   loop.Simulate();
   return 0;

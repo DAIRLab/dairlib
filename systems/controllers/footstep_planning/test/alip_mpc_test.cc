@@ -79,7 +79,7 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
   auto x0 = Vector4d::Zero();
   auto sol = trajopt_s2s.Solve(
       x0, p0, 0.3, 0.3, 0.3,
-      test_gait.desired_velocity, test_gait.initial_stance_foot, footholds);
+      test_gait.desired_velocity, test_gait.initial_stance_foot, footholds, Vector3d::Zero());
 
   times.miqp_runtime = sol.total_time;
   times.miqp_solve_time = sol.optimizer_time;

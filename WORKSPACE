@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "a2f0bbd0181cb3d16f9613a453b84ee09b3b1af8"
+DRAKE_COMMIT = "v1.34.0"
 
-DRAKE_CHECKSUM = "73eed6895f604d8fee55f834022ac23668442df41c2fbc1e5577f9e26ea1bfdb"
+DRAKE_CHECKSUM = "0b57df077192a9480b799320c1edee3cc524d5e9b97aaa6861de09681542175f"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -76,7 +76,7 @@ fcc_qp_repository(name = "fcc_qp")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "3b7c5b34d4b20a2770fb69df46e06fbf87c4db55adf85e3c4c1746bab643f5a8"
+ELEVATION_MAPPING_CHECKSUM = "0500dfbb8a9c6d847b677a38bfe9d1d9b1e56fa6fd1672ab39cae66903893087"
 
 http_archive(
     name = "elevation_mapping",
@@ -107,7 +107,6 @@ pcl_repositories(
     excludes = [
         "gtest",
         "eigen",
-        "libpng",
         "zlib",
     ],
 )
@@ -134,7 +133,7 @@ add_perception_repositories()
 # Choose a revision of InEKF to use.
 INEKF_COMMIT = "bazel-opt"
 
-INEKF_CHECKSUM = "aeb7dd42db648fa3e09fb8f7b6dea2cd284bec382f7d1cd96426a6ee8b5aa871"
+INEKF_CHECKSUM = "4624cb0af1fe42004282141706b05514dfb40997b49aee5602e5df40afd1ea67"
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -228,6 +227,7 @@ http_archive(
     ],
 )
 
+# Apple support
 http_archive(
     name = "build_bazel_apple_support",
     sha256 = "02f7456e589471dcfc73f1b9ca7f2c2ea5ca4aea999674abea9aebe818700b6e",

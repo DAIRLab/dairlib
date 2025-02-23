@@ -24,7 +24,7 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 from grid_map import GridMap
 
-from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
+from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem, PlaneSegSystem
 
 from pydairlib.analysis.process_lcm_log import get_log_data
 
@@ -82,12 +82,13 @@ def build_diagram(mode: str, lcm: DrakeLcm, profiling=None) -> Diagram:
         if mode == 'planar' else TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
             'inclination_criterion': seg_criteria.inclination_criterion
         },
         profiling
     )
 
+    if mode != 'planar':
+        terrain_segmentation.safety_hysteresis = 0.4
     convex_decomposition = ConvexTerrainDecompositionSystem(profiling)
     foothold_sender = ConvexPolygonSender()
 
@@ -137,6 +138,38 @@ def build_diagram(mode: str, lcm: DrakeLcm, profiling=None) -> Diagram:
         grid_map_publisher.get_input_port()
     )
 
+    builder.ExportInput(
+        terrain_segmentation.get_input_port(),
+        "grid_map"
+    )
+    diagram = builder.Build()
+    return diagram
+
+
+def build_plane_seg_diagram(lcm: DrakeLcm):
+    builder = DiagramBuilder()
+    terrain_segmentation = PlaneSegSystem("elevation")
+    foothold_sender = ConvexPolygonSender()
+    foothold_publisher = LcmPublisherSystem.Make(
+        channel="FOOTHOLDS_PROCESSED",
+        lcm_type=lcmt_foothold_set,
+        lcm=lcm,
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
+    builder.AddSystem(terrain_segmentation)
+    builder.AddSystem(foothold_publisher)
+    builder.AddSystem(foothold_sender)
+
+    builder.Connect(
+        terrain_segmentation.get_output_port(),
+        foothold_sender.get_input_port(),
+    )
+    builder.Connect(
+        foothold_sender.get_output_port(),
+        foothold_publisher.get_input_port()
+    )
     builder.ExportInput(
         terrain_segmentation.get_input_port(),
         "grid_map"
@@ -236,7 +269,6 @@ def run_segmentation_profiling(logfile):
     s3 = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
-            'variance_criterion': seg_criteria.variance_criterion,
             'inclination_criterion': seg_criteria.inclination_criterion
         }
     )
@@ -357,7 +389,8 @@ def visualize(logfile):
 
     states_per_gm = round(len(robot_output) / len(grid_maps))
     s = 0
-    for map in grid_maps:
+    for i, map in enumerate(grid_maps):
+        print(f'map #{i}')
         diagram.get_input_port().FixValue(context, map)
         start = time.time()
         diagram.CalcForcedUnrestrictedUpdate(
@@ -380,9 +413,10 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--logfile', type=str)
     args = parser.parse_args()
-    # visualize(args.logfile)
+    visualize(args.logfile)
     # run_segmentation_profiling(args.logfile)
-    profile_full_pipeline(args.logfile)
+    # profile_full_pipeline(args.logfile)
+
 
 if __name__ == '__main__':
     main()

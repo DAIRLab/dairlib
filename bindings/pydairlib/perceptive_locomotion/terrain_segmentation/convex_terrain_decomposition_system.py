@@ -14,36 +14,27 @@ from pydrake.systems.all import (
 )
 
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
-
-try:
-    from pydairlib.geometry.polygon_utils import ProcessTerrain2d
-except ImportError:
-    print('ERROR: when built against ros, you need to source the ros environment before '
-          'importing from polygon_utils, or python may not be able to find some necessary libraries. '
-          'Please source ros and try again')
-    exit(0)
+from pydairlib.geometry.polygon_utils import ProcessTerrain2d, GetAcdComponents
 
 import matplotlib.pyplot as plt
-import pydairlib.perceptive_locomotion.terrain_segmentation.whittling_solver as whittling_solver
 
 
-def plot_polygon(verts, linestyle='solid', color='color'):
+def plot_polygon(verts, linestyle='solid', color='black'):
     # plot a polygon (for debugging)
     assert(verts.shape[0] == 2)
     tmp = np.vstack((verts.T, verts[:, 0]))
-    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, color=color)
+    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, linewidth=2.5, color=color)
 
 
 def plot_polygon_with_holes(poly):
     plot_polygon(poly[0], linestyle='solid', color='black')
     for p in poly[1]:
-        plot_polygon(p, linestyle='dashed', color='grey')
+        plot_polygon(p, linestyle='solid', color='black')
 
 
 def plot_polygons_with_holes(polys):
     for p in polys:
         plot_polygon_with_holes(p)
-    plt.show()
 
 
 def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
@@ -108,13 +99,16 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             }
         )
         self.profiling = profiling
+        self.debug = False
+        self.debug_info = {}
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
         try:
             verts3d = polygon.GetVertices().squeeze().transpose()
         except RuntimeError:
-            import pdb; pdb.set_trace()
+            print("error getting vertices")
+            return None, None
 
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
@@ -124,7 +118,9 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         try:
             plane = Plane.best_fit(verts3d)
         except ValueError:
-            import pdb; pdb.set_trace()
+            print("error fitting plane to points:")
+            print(verts3d)
+            return None, None
 
         return plane.normal, plane.point
 
@@ -154,12 +150,21 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                 self.profiling['num_polygons'].append(0)
             return
 
+        valid_polys = []
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
-            polygon.SetPlane(normal, point)
+            if normal is not None:
+                polygon.SetPlane(normal, point)
+                valid_polys.append(polygon)
 
         end_plane_fitting = time.time()
-        out.set_value(ConvexPolygonSet(convex_polygons))
+        out.set_value(ConvexPolygonSet(valid_polys))
+
+        if self.debug:
+            self.debug_info['unprocessed_polygons'] = polygons
+            self.debug_info['segmentation'] = safe_terrain_image
+            self.debug_info['acd_components'] = GetAcdComponents(polygons, 0.25)
+            self.debug_info['convex_polygons'] = convex_polygons
 
         if self.profiling:
             self.profiling['decomposition'].append(end_convexity - start)

@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_profiling
+{
+  int64_t utime;
+  string process_name;
+  string process_inputs;
+
+  int64_t num_inputs;
+  int64_t process_us;
+}

@@ -13,8 +13,7 @@ namespace dairlib {
 namespace geometry {
 
 /*!
- * LeafSystem for visualizing foothold constraints, footstep solutions, and CoM
- * traj solutions for the alip_mpfc controller
+ * LeafSystem for visualizing convex polygons
  */
 class ConvexPolygonVisualizer : public drake::systems::LeafSystem<double> {
  public:
@@ -35,16 +34,18 @@ class ConvexPolygonVisualizer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(polygon_input_port_);
   }
 
+  void DrawPolygons(geometry::ConvexPolygonSet& polygons) const;
+
  private:
   /*!
    * @brief Returns a meshcat path for the foothold visualizations
-   * @param i index of the foothold
+   * @param i index of the polygon
    */
   static std::string make_polygon_path(int i) {
     return "/dairlib_convex_polygon_meshes/" + std::to_string(i);
   }
 
-  void DrawPolygons(geometry::ConvexPolygonSet& polygons,
+  void DrawPolygonsInternal(geometry::ConvexPolygonSet& polygons,
                      int n_prev_polygons,
                      const std::string& prefix="") const;
 

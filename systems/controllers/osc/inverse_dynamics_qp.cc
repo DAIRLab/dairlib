@@ -22,7 +22,6 @@ using drake::multibody::MultibodyPlant;
 using drake::solvers::VariableRefList;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
-using drake::solvers::LinearEqualityConstraint;
 
 InverseDynamicsQp::InverseDynamicsQp(
     const MultibodyPlant<double> &plant, Context<double> *context) :
@@ -102,15 +101,6 @@ void InverseDynamicsQp::Build(bool add_pyramidal_friction_cones) {
     ordered_friction_coeffs_.at(i) = mu_map_.at(n);
   }
 
-  VectorXd u_min(nu_);
-  VectorXd u_max(nu_);
-  for (drake::multibody::JointActuatorIndex i(0); i < nu_; ++i) {
-    u_min[i] = -plant_.get_joint_actuator(i).effort_limit();
-    u_max[i] = plant_.get_joint_actuator(i).effort_limit();
-  }
-
-  input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
-
   if (add_pyramidal_friction_cones) {
     for (const auto& [cname, eval] : contact_constraint_evaluators_) {
       double mu = mu_map_.at(cname);
@@ -125,6 +115,15 @@ void InverseDynamicsQp::Build(bool add_pyramidal_friction_cones) {
      });
     }
   }
+
+  VectorXd u_min(nu_);
+  VectorXd u_max(nu_);
+  for (drake::multibody::JointActuatorIndex i(0); i < nu_; ++i) {
+    u_min[i] = -plant_.get_joint_actuator(i).effort_limit();
+    u_max[i] = plant_.get_joint_actuator(i).effort_limit();
+  }
+
+  input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
 
   built_ = true;
 }
@@ -167,9 +166,14 @@ void InverseDynamicsQp::UpdateDynamics(
   // TODO (@Brian-Acosta) add option to turn off gravity comp
   bias = bias - grav;
 
-  MatrixXd Jh = holonomic_constraints_->EvalFullJacobian(*context_);
-  VectorXd
-      Jh_dot_v = holonomic_constraints_->EvalFullJacobianDotTimesV(*context_);
+  MatrixXd Jh = MatrixXd::Zero(nh_, nv_);
+  VectorXd Jh_dot_v = VectorXd::Zero(nh_);
+
+  if (holonomic_constraints_ != nullptr) {
+     Jh = holonomic_constraints_->EvalFullJacobian(*context_);
+     Jh_dot_v = holonomic_constraints_->EvalFullJacobianDotTimesV(*context_);
+  }
+
   MatrixXd Jc_active = MatrixXd::Zero(nc_active_, nv_);
   VectorXd Jc_active_dot_v = VectorXd::Zero(nc_active_);
   MatrixXd Jc = MatrixXd::Zero(nc_, nv_);

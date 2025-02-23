@@ -7,16 +7,9 @@ from pydrake.systems.all import (
 )
 
 from grid_map import GridMap, InpaintWithMinimumValues
-
-from scipy.ndimage import (sobel, gaussian_filter, gaussian_laplace,
-                           gaussian_gradient_magnitude)
-from scipy.signal import convolve2d
-from scipy.fftpack import fft2, fftshift, ifft2, ifftshift
 import numpy as np
 import cv2
 import time
-
-import matplotlib.pyplot as plt
 
 from typing import Tuple
 
@@ -53,8 +46,6 @@ class TerrainSegmentationSystem(LeafSystem):
                     [
                         "elevation",
                         "elevation_inpainted",
-                        "raw_safety_score",
-                        "safety_score",
                         "segmentation",
                         "interpolated",
                         "segmented_elevation"
@@ -70,34 +61,43 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         self.safety_hysteresis = 0.6
         self.kernel_length = 0.17
-        self.erosion_kernel_length = self.kernel_length / 1.33
+        self.erosion_kernel_length = self.kernel_length / 1.2
         self.safety_threshold = 0.7
 
         self.safety_criterion_callbacks = safety_callbacks
         self.profiling = profiling
+        self.debug = False
+        self.safety_scores = {}
 
     def get_raw_safety_score(
-            self, elevation: np.ndarray, elevation_inpainted: np.ndarray,
+            self, elevation: np.ndarray, denoised_and_inpainted_map: np.ndarray,
             resolution: float) -> np.ndarray:
 
-        raw_safety = np.ones_like(elevation_inpainted)
+        raw_safety = np.ones_like(denoised_and_inpainted_map)
         kernel = self.get_kernel_size(resolution)
 
         i = 0
         for name, callback in self.safety_criterion_callbacks.items():
             start = time.time()
             raw_safety = raw_safety * callback(
-                elevation_inpainted, kernel, resolution
+                denoised_and_inpainted_map, kernel, resolution
             )
             end = time.time()
             if self.profiling:
                 self.profiling['seg_callbacks'][i].append(end - start)
             i += 1
+            if self.debug:
+                self.safety_scores[name] = callback(
+                    denoised_and_inpainted_map, kernel, resolution)
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
-        raw_safety[np.isnan(elevation)] = 0
+        
+        # To assume that terrain with no information is safe, keep this commented out. 
+        # To assume that unseen terrain is unsafe, uncomment.
+        # raw_safety[np.isnan(elevation)] = 0
 
-
+        if self.debug:
+            self.safety_scores['combined'] = raw_safety
 
         return raw_safety
 
@@ -121,6 +121,19 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         return cv2.erode(final_safety_score, erosion_kernel)
 
+    def inpaint(self, elevation_map: GridMap):
+        raw_map = elevation_map["elevation"]
+        mask = np.zeros_like(raw_map, dtype=np.uint8)
+        mask[np.isnan(raw_map)] = 255
+        if not elevation_map.exists("elevation_inpainted"):
+            elevation_map.add("elevation_inpainted")
+        elevation_map["elevation_inpainted"][:] = cv2.inpaint(
+            raw_map, mask, 1, flags=cv2.INPAINT_NS)
+
+        InpaintWithMinimumValues(
+            elevation_map, "elevation_inpainted", "elevation_inpainted"
+        )
+
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
 
@@ -131,9 +144,7 @@ class TerrainSegmentationSystem(LeafSystem):
         ).get_value()
         elevation_map.convertToDefaultStartIndex()
 
-        InpaintWithMinimumValues(
-            elevation_map, "elevation", "elevation_inpainted"
-        )
+        self.inpaint(elevation_map)
 
         # get previous segmentation
         segmented_map = state.get_mutable_abstract_state(
@@ -154,34 +165,35 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
+        denoised_and_inpainted_map = cv2.medianBlur(
+            elevation_map['elevation_inpainted'], 5)
+
         raw_safety_score = self.get_raw_safety_score(
             elevation_map['elevation'],
-            elevation_map['elevation_inpainted'],
+            denoised_and_inpainted_map,
             elevation_map.getResolution()
         )
 
         smoothed = cv2.boxFilter(
-            elevation_map['elevation_inpainted'],
+            denoised_and_inpainted_map,
             -1,
             self.get_kernel_size(elevation_map.getResolution()),
-            normalize=True)
+            normalize=True
+        )
 
         segmented_map['interpolated'][:] = smoothed
-        segmented_map["raw_safety_score"][:] = raw_safety_score
-        segmented_map['safety_score'][:] = self.cleanup_and_add_hysteresis(
+        final_safety_score = self.cleanup_and_add_hysteresis(
             raw_safety_score, prev_segmentation, elevation_map.getResolution()
         )
 
-        safe = (
-            segmented_map['safety_score'] > self.safety_threshold
-        ).astype(float)
+        safe = (final_safety_score > self.safety_threshold).astype(float)
 
         # clean up small holes in the safe regions
         safe = clopen(safe)
 
         segmented_map['segmentation'][:] = safe
 
-        safe_elevation = np.copy(elevation_map['elevation'])
+        safe_elevation = np.copy(elevation_map['elevation_inpainted'])
         safe_elevation[~(safe > 0)] = np.nan
         segmented_map['segmented_elevation'][:] = safe_elevation
 

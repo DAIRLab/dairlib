@@ -3,6 +3,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "drake/bindings/pydrake/common/wrap_pybind.h"
+
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
@@ -19,15 +21,19 @@ using LcmOutputDrivenLoop = systems::LcmDrivenLoop<dairlib::lcmt_robot_output>;
 using Eigen::VectorXd;
 using py_rvp = py::return_value_policy;
 
+using MonitorCallback =
+    std::function<std::optional<drake::systems::EventStatus>(const drake::systems::Context<double>&)>;
+
 PYBIND11_MODULE(framework, m) {
+py::module::import("pydrake.systems.framework");
 
 py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
     .def(py::init<drake::lcm::DrakeLcm*,
                   std::unique_ptr<drake::systems::Diagram<double>>,
                   const drake::systems::System<double>*,
-                  const std::string&, bool>(), py::arg("drake_lcm"),
+                  const std::string&, bool, int>(), py::arg("drake_lcm"),
                   py::arg("diagram"), py::arg("lcm_parser"),
-                  py::arg("input_channel"),  py::arg("is_forced_publish"))
+                  py::arg("input_channel"),  py::arg("is_forced_publish"), py::arg("queue_size")=1)
     .def("Simulate", &LcmOutputDrivenLoop::Simulate,
          py::arg("end_time") = std::numeric_limits<double>::infinity())
     .def("get_diagram_mutable_context",
@@ -57,7 +63,16 @@ py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
       output.SetVelocities(velocities);
 
       return output.GetState();
-    });
+    }).def(
+        "set_monitor",
+        drake::pydrake::WrapCallbacks(
+            [](LcmOutputDrivenLoop* self, MonitorCallback monitor) {
+              self->set_monitor(
+                [monitor](const drake::systems::Context<double> &context) {
+                  return monitor(context).value_or(drake::systems::EventStatus::DidNothing());
+                });
+            })
+    );
 
 py::class_<systems::TimestampedVector<double>,
            drake::systems::BasicVector<double>>(m, "TimestampedVector")

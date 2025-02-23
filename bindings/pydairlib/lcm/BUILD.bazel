@@ -29,6 +29,14 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+py_library(
+    name = "log_playback",
+    srcs = ["log_playback.py"],
+    deps = [
+        "@drake//bindings/pydrake"
+    ],
+)
+
 pybind_py_library(
     name = "lcm_trajectory_py",
     cc_deps = [
@@ -84,6 +92,7 @@ PY_LIBRARIES = [
     ":lcm_trajectory_plotter",
     ":lcm_trajectory_py",
     ":lcm_py",
+    ":log_playback",
 ]
 
 # Package roll-up (for Bazel dependencies).

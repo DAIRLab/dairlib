@@ -31,10 +31,13 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
             legend.extend(legend_entries[key])
 
     # plt.legend(legend)
-    ps.add_legend(legend)
-    plt.xlabel(plot_labels['xlabel'])
-    plt.ylabel(plot_labels['ylabel'])
-    plt.title(plot_labels['title'])
+    ps.extend_legend(legend)
+    if 'xlabel' in plot_labels:
+        plt.xlabel(plot_labels['xlabel'])
+    if 'ylabel' in plot_labels:
+        plt.ylabel(plot_labels['ylabel'])
+    if 'title' in plot_labels:
+        plt.title(plot_labels['title'])
 
 
 def make_plot_of_entire_series(data_dictionary, time_key, legend_entries,

@@ -23,20 +23,7 @@ cc_library(
         ":alip_s2s_mpfc",
         "//lcm:lcm_trajectory_saver",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@grid_map//grid_map_core",
-    ],
-)
-
-cc_library(
-    name = "cf_mpfc_system",
-    srcs = ["cf_mpfc_system.cc"],
-    hdrs = ["cf_mpfc_system.h"],
-    deps = [
-        ":cf_mpfc",
-        ":cf_mpfc_utils",
-        "//lcm:lcm_trajectory_saver",
-        "//systems/framework:vector",
+        "//systems/filters:s2s_kalman_filter",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],
@@ -69,38 +56,6 @@ cc_library(
 )
 
 cc_library(
-    name = "cf_mpfc_output_receiver",
-    srcs = ["cf_mpfc_output_receiver.cc"],
-    hdrs = ["cf_mpfc_output_receiver.h"],
-    deps = [
-        ":alip_utils",
-        ":contact_modes",
-        "//common:eigen_utils",
-        "//common:polynomial_utils",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cf_mpfc",
-    srcs = ["cf_mpfc.cc"],
-    hdrs = ["cf_mpfc.h"],
-    deps = [
-        ":alip_utils",
-        ":nonlinear_pendulum_utils",
-        "//common:eigen_utils",
-        "//geometry:convex_polygon_set",
-        "//solvers:constraints",
-        "//solvers:optimization_utils",
-        "//solvers:solver_options_io",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_s2s_mpfc",
     srcs = ["alip_s2s_mpfc.cc"],
     hdrs = [
@@ -114,32 +69,6 @@ cc_library(
         "//solvers:constraints",
         "//solvers:optimization_utils",
         "//solvers:solver_options_io",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cf_mpfc_utils",
-    srcs = ["cf_mpfc_utils.cc"],
-    hdrs = ["cf_mpfc_utils.h"],
-    deps = [
-        ":alip_utils",
-        "//common:eigen_utils",
-        "//multibody:utils",
-        "//solvers:nonlinear_constraint",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "nonlinear_pendulum_utils",
-    srcs = ["nonlinear_pendulum_utils.cc"],
-    hdrs = ["nonlinear_pendulum_utils.h"],
-    deps = [
-        ":alip_utils",
-        "//common:eigen_utils",
-        "//multibody:utils",
-        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
@@ -197,7 +126,8 @@ cc_library(
         "//common:eigen_utils",
         "//common:legendre_polynomial_trajectory",
         "//solvers:fcc_qp_solver",
-        "//common:polynomial_utils",
+        "//solvers:legendre_coefficient_variables",
+        "//common:legendre",
         "@drake//:drake_shared_library",
     ],
 )
@@ -209,22 +139,9 @@ cc_library(
     deps = [
         ":alip_utils",
         ":swing_foot_traj_solver",
-        "//common:polynomial_utils",
         "//multibody:utils",
-        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "footstep_lcm_systems",
-    srcs = ["footstep_lcm_systems.cc"],
-    hdrs = ["footstep_lcm_systems.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

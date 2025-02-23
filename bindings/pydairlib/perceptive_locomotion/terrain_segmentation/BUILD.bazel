@@ -15,12 +15,13 @@ py_binary(
     name = "test_segmentation_on_log",
     srcs = ["test_segmentation_on_log.py"],
     deps = [
-        ":segmentation_criteria",
         ":convex_terrain_decomposition_system",
+        ":segmentation_criteria",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/perceptive_locomotion/results:analysis_utils",
         "//bindings/pydairlib/systems",
         "//lcmtypes:lcmtypes_robot_py",
     ],
@@ -49,11 +50,24 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "lcm_elevation_mapping_and_terrain_decomposition",
+    srcs = ["lcm_elevation_mapping_and_terrain_decomposition.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
 py_library(
     name = "terrain_segmentation_system",
     srcs = ["terrain_segmentation_system.py"],
     deps = [
-        ":vision_utils",
         ":segmentation_criteria",
         "//bindings/grid_map",
         "@drake//bindings/pydrake",
@@ -64,33 +78,18 @@ py_library(
     name = "segmentation_criteria",
     srcs = ["segmentation_criteria.py"],
     deps = [
-        ":utils_py"
+        ":utils_py",
     ],
-)
-
-
-py_library(
-    name = "whittling_solver",
-    srcs = ["whittling_solver.py"],
-    deps = [],
 )
 
 py_library(
     name = "convex_terrain_decomposition_system",
     srcs = ["convex_terrain_decomposition_system.py"],
     deps = [
-        ":vision_utils",
-        ":whittling_solver",
         "//bindings/grid_map",
         "//bindings/pydairlib/geometry",
         "@drake//bindings/pydrake",
     ],
-)
-
-py_library(
-    name = "vision_utils",
-    srcs = ["vision_utils.py"],
-    deps = [],
 )
 
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -109,7 +108,7 @@ py_library(
 pybind_py_library(
     name = "utils_py",
     cc_deps = [
-        "@eigen"
+        "@eigen",
     ],
     cc_so_name = "segmentation_utils",
     cc_srcs = ["utils_py.cc"],
@@ -121,11 +120,9 @@ pybind_py_library(
 
 PY_LIBRARIES = [
     ":segmentation_criteria",
-    ":whittling_solver",
     ":utils_py",
     ":terrain_segmentation_system",
     ":convex_terrain_decomposition_system",
-    ":vision_utils",
 ]
 
 # Package roll-up (for Bazel dependencies).

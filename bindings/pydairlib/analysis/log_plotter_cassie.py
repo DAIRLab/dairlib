@@ -47,6 +47,15 @@ def plotter_main(plot_config, log):
                      mbp_plots.load_default_channels,  # processing callback
                      plant, controller_plant, channel_x, channel_u, channel_osc)
 
+    cassie_output = get_log_data(
+        log,
+        {plot_config.channel_cassie_out: dairlib.lcmt_cassie_out},
+        plot_config.start_time,
+        plot_config.duration,
+        cassie_plots.load_cassie_out,
+        plot_config.channel_cassie_out
+    )
+
     ps = PlotStyler()
     ps.set_default_styling()
 
@@ -115,6 +124,10 @@ def plotter_main(plot_config, log):
         mbp_plots.add_fsm_to_plot(plot,
             osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
+        plot = mbp_plots.plot_motor_power(robot_output, act_names, plant, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot,
+            osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     if plot_config.plot_commanded_efforts:
         plot = mbp_plots.plot_commanded_efforts(robot_input, act_names, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot,
@@ -143,6 +156,11 @@ def plotter_main(plot_config, log):
                         osc_debug['t_osc'],
                         osc_debug['fsm'], plot_config.fsm_state_names)
 
+    if plot_config.plot_battery_voltage:
+        plot = cassie_plots.plot_battery_voltage(cassie_output)
+        mbp_plots.add_fsm_to_plot(
+            plot, osc_debug['t_osc'],
+            osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
@@ -159,6 +177,13 @@ def plotter_main(plot_config, log):
             osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names
         )
 
+    if plot_config.act_names_to_validate:
+        plot = mbp_plots.plot_measured_vs_commanded_efforts_by_name(
+            robot_output, robot_input, plot_config.act_names_to_validate,
+            act_map)
+        mbp_plots.add_fsm_to_plot(
+            plot,
+            osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:

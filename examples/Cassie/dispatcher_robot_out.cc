@@ -1,6 +1,6 @@
 #include <memory>
 #include <iostream>
-#include <signal.h>
+
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -32,19 +32,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "examples/Cassie/cassie_state_estimator_settings.h"
-
-#ifdef DAIR_ROS_ON
-#include "ros/ros.h"
-#include "systems/ros/ros_publisher_system.h"
-#include "systems/ros/robot_state_to_ros_pose.h"
-#include "systems/ros/multibody_plant_tf_broadcaster_system.h"
-
-void SigintHandler(int sig) {
-  ros::shutdown();
-  exit(0);
-}
-
-#endif
 
 namespace dairlib {
 
@@ -107,6 +94,11 @@ DEFINE_string(landmark_channel, "", "lcm channel for receiving EKF landmarks");
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
+
+DEFINE_bool(publish_cassie_output, false,
+            "whether to publish cassie_output over LCM"
+            "for debugging the state estimator later");
+
 void setInitialEkfState(double t0, const cassie_out_t& cassie_output,
                         const drake::multibody::MultibodyPlant<double>& plant,
                         const drake::systems::Diagram<double>& diagram,
@@ -234,6 +226,13 @@ int do_main(int argc, char* argv[]) {
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
 
+  if (FLAGS_publish_cassie_output) {
+    auto fast_output_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT_DISPATCHER", lcm, {TriggerType::kForced}));
+    builder.Connect(*output_sender, *fast_output_pub);
+  }
+
   // Connect appropriate input receiver for simulation
   systems::CassieOutputReceiver* input_receiver = nullptr;
   if (FLAGS_simulation) {
@@ -287,59 +286,6 @@ int do_main(int argc, char* argv[]) {
                   imu_passthrough->get_input_port());
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
-
-
-#ifdef DAIR_ROS_ON
-  if (FLAGS_publish_ros){
-    DRAKE_ASSERT(FLAGS_ros_pub_period > 0);
-    ros::init(argc, argv, "dispatcher_robot_out");
-    ros::NodeHandle node_handle;
-    signal(SIGINT, SigintHandler);
-
-    const auto& pose_sender = builder.AddSystem<systems::RobotStateToRosPose>(
-            plant, plant_context.get(), "pelvis");
-    const auto& pose_publisher = builder.AddSystem<
-            systems::RosPublisherSystem<geometry_msgs::PoseWithCovarianceStamped>>
-            ("/geometry_msgs/PoseWithCovarianceStamped",
-             &node_handle,
-             drake::systems::TriggerTypeSet(
-                 {drake::systems::TriggerType::kPeriodic}),
-             FLAGS_ros_pub_period);
-
-    std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
-    bff.push_back({
-      "camera_depth_optical_frame",
-      camera::ReadCameraPoseFromYaml(FLAGS_camera_pose_calib)
-    });
-    bff.push_back({
-      "map_center",
-      drake::math::RigidTransformd(drake::math::RotationMatrixd(),
-                                   0.5 * Vector3d::UnitX())
-    });
-    std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
-
-    const auto& tf_broadcaster =
-        builder.AddSystem<systems::MultibodyPlantTfBroadcasterSystem>(
-            plant,
-            plant_context.get(),
-            frames,
-            "pelvis",
-            "map",
-            bff,
-            drake::systems::TriggerTypeSet(
-                {drake::systems::TriggerType::kPeriodic}),
-            FLAGS_ros_pub_period);
-
-    builder.Connect(state_passthrough->get_output_port(),
-                    pose_sender->get_input_port_state());
-    builder.Connect(state_passthrough->get_output_port(),
-                    tf_broadcaster->get_input_port());
-    builder.Connect(state_estimator->get_covariance_output_port(),
-                    pose_sender->get_input_port_covariance());
-    builder.Connect(*pose_sender, *pose_publisher);
-  }
-#endif
-
   if (FLAGS_broadcast_robot_state) {
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(

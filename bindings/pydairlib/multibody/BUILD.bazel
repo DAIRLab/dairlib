@@ -16,6 +16,7 @@ pybind_py_library(
     cc_deps = [
         "//multibody:multipose_visualizer",
         "//multibody:utils",
+        "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "multibody",
@@ -40,14 +41,6 @@ pybind_py_library(
         ":module_py",
     ],
     py_imports = ["."],
-)
-
-py_library(
-    name = "plant_traj_visualizer",
-    srcs = ["plant_traj_visualizer.py"],
-    deps = [
-        "@drake//bindings/pydrake",
-    ],
 )
 
 py_binary(

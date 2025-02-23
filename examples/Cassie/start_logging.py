@@ -17,11 +17,6 @@ def mpc_debug_logging_main():
     logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
     dair = f"{os.getenv('HOME')}/workspace/brian/dairlib/"
 
-    # mpc_gains = os.path.join(
-    #     dair,
-    #     "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml"
-    # )
-
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 

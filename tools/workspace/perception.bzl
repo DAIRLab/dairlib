@@ -12,6 +12,7 @@ load("//tools/workspace/cgal:repository.bzl", "cgal_repository")
 load("//tools/workspace/realsense2:repository.bzl", "realsense2_repository")
 load("//tools/workspace/realsense2_pkgconfig:repository.bzl", "realsense2_pkgconfig_repository")
 load("//tools/workspace/acd2d:repository.bzl", "acd2d_repository")
+load("//tools/workspace/plane_seg:repository.bzl", "plane_seg_repository")
 load("@os_type//:os.bzl", "OSTYPE")
 
 def add_perception_repositories(excludes = [], mirrors = DEFAULT_MIRRORS):
@@ -25,6 +26,8 @@ def add_perception_repositories(excludes = [], mirrors = DEFAULT_MIRRORS):
         opencv_repository(name = "opencv")
     if "cgal" not in excludes:
         cgal_repository(name = "cgal")
+    if "plane_seg" not in excludes:
+        plane_seg_repository("plane_seg")
     if "realsense2" not in excludes and "macos" not in os:
         realsense2_repository(name = "realsense2")
     if "realsense2" not in excludes and "macos" in os:

@@ -3,6 +3,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/filters/s2s_kalman_filter.h"
 
 #include "grid_map_core/grid_map_core.hpp"
 
@@ -76,6 +77,23 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       drake::Value<ConvexPolygonSet>(ConvexPolygonSet::MakeFlatGround())
   );
 
+  MatrixXd A = alip_utils::CalcA(mpfc_params.gait_params.height,
+                                 mpfc_params.gait_params.mass);
+  MatrixXd B = -MatrixXd::Identity(4,2);
+  MatrixXd C = MatrixXd::Identity(4,4);
+  MatrixXd G = MatrixXd::Identity(4,4);
+  MatrixXd Q = 0.1 * Eigen::Matrix4d::Identity();
+  MatrixXd R = 0.01 * MatrixXd::Identity(4, 4);
+  R(2,2) = 1;
+  R(3,3) = 0.2;
+
+  S2SKalmanFilterData filter_data = {A, B, C, Q, R, G};
+  S2SKalmanFilter filter = S2SKalmanFilter(filter_data);
+  std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter =
+      {filter, filter_data};
+
+  alip_state_estimator_idx_ = DeclareAbstractState(
+      drake::Value<std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(model_filter));
 
   // State Update
   this->DeclareForcedUnrestrictedUpdateEvent(
@@ -101,6 +119,21 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   ).get_index();
   fsm_output_port_ = DeclareVectorOutputPort(
       "fsm", 1, &Alips2sMPFCSystem::CopyFsmOutput).get_index();
+}
+
+Eigen::Vector4d Alips2sMPFCSystem::HandleAlipKalmanFilter(
+    const Context<double>& context, State<double>* state,
+    Vector4d raw_alip_state, bool is_mode_switch, double timestamp) const {
+  auto& [filter, filter_data] = state->get_mutable_abstract_state<
+          std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(alip_state_estimator_idx_);
+  if (is_mode_switch) {
+    Vector4d x = filter.x();
+    x.head<2>() = raw_alip_state.head<2>();
+    filter.Initialize(timestamp, x);
+  } else {
+    filter.Update(filter_data, Vector2d::Zero(), raw_alip_state, timestamp);
+  }
+  return filter.x();
 }
 
 drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
@@ -187,6 +220,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
   x.tail<2>() = L_b.head<2>();
 
+  x = HandleAlipKalmanFilter(context, state, x, t_prev_impact == t, t);
 
   VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
   init_alip_state_and_stance_pos.head<4>() = x;
@@ -210,9 +244,19 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
     footholds_filt = prev_footholds;
   }
 
+
+  const auto& prev_mpc_sol =
+      context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
+  // TODO (@Brian-Acosta) set the default state instead of this hack
+  Vector3d footstep_in_stance_frame = Vector3d::Zero();
+  if (prev_mpc_sol.pp.size() > 0) {
+    footstep_in_stance_frame = prev_mpc_sol.pp.at(1) - prev_mpc_sol.pp.at(0);
+  }
+
   const auto mpc_solution = trajopt_.Solve(
       x, p_b, tnom_remaining, tmin_remaining,
-      tmax_remaining, vdes, stance, footholds_filt
+      tmax_remaining, vdes, stance, footholds_filt,
+      footstep_in_stance_frame
   );
 
   // Update discrete states
@@ -321,7 +365,7 @@ ConvexPolygonSet get_foothold_sequence(const vector<VectorXd>& binary_vars,
 }
 
 void Alips2sMPFCSystem::CopyMpcDebugToLcm(
-    const Context<double> &context, lcmt_alip_s2s_mpfc_debug *mpc_debug) const {
+    const Context<double> &context, lcmt_alip_mpfc_debug_complete *mpc_debug) const {
 
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
@@ -345,6 +389,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->nx = 4;
   mpc_debug->np = 3;
   mpc_debug->nmodes = mpc_sol.xx.size();
+  mpc_debug->nmodes_minus_1 = mpc_sol.xx.size() - 1;
 
   mpc_debug->initial_state.reserve(4);
   Eigen::Map<Vector4d>(mpc_debug->initial_state.data(), 4) = ic.head<4>();
@@ -352,11 +397,12 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->initial_stance_foot.reserve(3);
   Eigen::Map<Vector3d>(mpc_debug->initial_stance_foot.data(), 3) = ic.tail<3>();
 
-  mpc_debug->nominal_first_stance_time = mpc_sol.t_nom;
-  mpc_debug->solution_first_stance_time = mpc_sol.t_sol;
+  mpc_debug->T_nominal = mpc_sol.t_nom;
+  mpc_debug->T = mpc_sol.t_sol;
 
   mpc_debug->pp.clear();
   mpc_debug->xx.clear();
+  mpc_debug->ee.clear();
 
   for (int i = 0; i < mpc_sol.xx.size() ; ++i) {
     vector<double> x(4);
@@ -367,10 +413,24 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
     mpc_debug->pp.push_back(p);
   }
 
+  for (const auto& e: mpc_sol.ee) {
+    mpc_debug->ee.push_back(e(0));
+  }
+
+  mpc_sol.input_footholds.CopyToLcm(&(mpc_debug->all_footholds));
+
   Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;
-  get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds).CopyToLcm(
-      &(mpc_debug->foothold_sequence)
-  );
+  ConvexPolygonSet foothold_sol = get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds);
+  foothold_sol.CopyToLcm(&(mpc_debug->foothold_solution));
+
+  double max_foothold_violation = -std::numeric_limits<double>::infinity();
+  for (int i = 0; i < mpc_sol.pp.size() - 1; ++i) {
+    max_foothold_violation = std::max(
+        max_foothold_violation,
+        foothold_sol.polygons().at(i).Get2dViolation(mpc_sol.pp.at(i+1))
+    );
+  }
+  mpc_debug->max_foothold_violation = max_foothold_violation;
 }
 
 
@@ -410,7 +470,7 @@ void Alips2sMPFCSystem::CopyAnkleTorque(
       context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
 
   double t_sol = std::clamp(mpc_sol.t_sol, 0.001, trajopt_.params().tmax);
-  double u_sol = std::clamp(mpc_sol.u_sol / t_sol, -trajopt_.params().umax, trajopt_.params().umax);
+  double u_sol = std::clamp(mpc_sol.u_sol, -trajopt_.params().umax, trajopt_.params().umax);
 
   LcmTrajectory::Trajectory input_traj;
   input_traj.traj_name = "input_traj";

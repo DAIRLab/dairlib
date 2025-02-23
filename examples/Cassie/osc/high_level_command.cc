@@ -105,6 +105,17 @@ HighLevelCommand::HighLevelCommand(
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
 }
 
+namespace {
+double deadband(double value, double radius) {
+  if (fabs(value) < radius) {
+    return 0;
+  }
+  double offset = radius * value / fabs(value);
+  return value - offset;
+}
+}
+
+
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -117,8 +128,12 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     //                  2: lateral_vel (left joystick left/right)
 
     // Side dial sets the scale
-    double vel_scale_trans_sagittal =
-        (radio_out->channel[6] + 1.0) * vel_scale_trans_sagittal_;
+    double side_dial = radio_out->channel[6] + 1.0;
+    double vel_scale_trans_sagittal = side_dial * vel_scale_trans_sagittal_;
+
+    double deadband_lateral = deadband(
+        radio_out->channel[1], 0.4);
+
     // approximately 1KHz sampling rate - no need to be too precise
     double a = .001 / (stick_filter_dt_ + .001);
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
@@ -126,7 +141,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
     des_vel << vel_scale_rot_ * radio_out->channel[3],
         vel_scale_trans_sagittal * radio_out->channel[0],
-        vel_scale_trans_lateral_ * radio_out->channel[1];
+        vel_scale_trans_lateral_ * deadband_lateral;
     Vector3d des_vel_filt;
     des_vel_filt(0) = des_vel(0);
     des_vel_filt.tail(2) = a * des_vel.tail(2) + (1 - a) * des_vel_prev.tail(2);
@@ -138,6 +153,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
   return EventStatus::Succeeded();
 }
+
 
 VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     const Context<double>& context) const {

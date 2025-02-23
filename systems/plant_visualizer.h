@@ -31,7 +31,7 @@ class MeshcatCameraManager : public drake::systems::LeafSystem<double> {
 
   drake::systems::EventStatus UpdateMeshcat(
       const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+      drake::systems::State<double>* discrete_state) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
@@ -40,13 +40,16 @@ class MeshcatCameraManager : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_cam_pos_;
+  drake::systems::AbstractStateIndex prev_time_index_;
+  drake::systems::DiscreteStateIndex prev_track_frame_pos_;
 };
 
 class PlantVisualizer : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PlantVisualizer);
   explicit PlantVisualizer(const std::string& urdf,
-                           const std::string& body_to_track="");
+                           const std::string& body_to_track="",
+                           Eigen::Vector3d cam_pos_local=Eigen::Vector3d(0, -2.5, 0.1));
 
   std::shared_ptr<drake::geometry::Meshcat> get_meshcat() {
     return meshcat_;

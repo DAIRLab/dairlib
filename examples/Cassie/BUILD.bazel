@@ -137,15 +137,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "find_initial_states",
-    srcs = ["find_initial_states.cc"],
-    deps = [
-        ":cassie_fixed_point_solver",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "run_lqr_balancing",
     srcs = ["run_lqr_balancing.cc"],
     deps = [
@@ -199,25 +190,6 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:geared_motor",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "multibody_sim_w_cam",
-    srcs = ["multibody_sim_w_cam.cc"],
-    deps = [
-        ":cassie_fixed_point_solver",
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//examples/Cassie/systems:cassie_encoder",
-        "//solvers:optimization_utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:vector",
-        "//systems/perception:camera_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -304,6 +276,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers:linear_controller",
         "//systems/controllers:pd_config_lcm",
+        "//systems/filters:notch_filter",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

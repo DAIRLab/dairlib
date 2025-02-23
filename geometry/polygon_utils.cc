@@ -25,24 +25,6 @@ using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::OsqpSolver;
 
-ConvexPolygon MakeFootholdFromConvexPolygon(const MatrixXd& convex_poly2d) {
-  // Append the first vertex to the end of the list to make the H
-  // representation closed
-  MatrixXd convex_hull = convex_poly2d;
-  convex_hull.conservativeResize(3, convex_hull.cols() + 1);
-  convex_hull.bottomRows<1>().setZero();
-  convex_hull.rightCols(1) = convex_hull.col(0);
-
-  ConvexPolygon poly_out{};
-  poly_out.SetPlane(Vector3d::UnitZ(), 0);
-
-  for (int i = 0; i < convex_hull.cols() - 1; i++) {
-    poly_out.AddVertices(convex_hull.col(i), convex_hull.col(i+1));
-  }
-  return poly_out;
-}
-
-
 namespace {
 std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
   const auto& verts = poly_in.vertices();
@@ -115,7 +97,7 @@ vector<Vector2d> get_sorted_interior_points(
     return p1.second > p2.second;
   });
 
-  int i = 0;
+  size_t i = 0;
   std::vector<Vector2d> verts_sorted;
   while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
     verts_sorted.push_back(verts.col(vert_distances[i].first));
@@ -127,7 +109,7 @@ vector<Vector2d> get_sorted_interior_points(
 void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   std::vector<int> idx_redundant;
   std::vector<int> idx_intersect;
-  for (int i = 0; i < facets.size(); i++) {
+  for (size_t i = 0; i < facets.size(); i++) {
     if (facets.at(i).redundant(a, b)) {
       idx_redundant.push_back(i);
     } else if (facets.at(i).intersects(a, b)) {
@@ -135,7 +117,7 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
     }
   }
   if (idx_redundant.empty()) {
-    int delta = idx_intersect.back() - idx_intersect.front();
+    size_t delta = idx_intersect.back() - idx_intersect.front();
     DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
   } else if (idx_intersect.empty()) {
     DRAKE_DEMAND(idx_redundant.size() == 0);
@@ -166,7 +148,7 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   facets.insert(facets.begin() + new_facet_idx, new_facet);
   cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
 
-  for (int i = 0; i < idx_redundant.size(); i++) {
+  for (size_t i = 0; i < idx_redundant.size(); i++) {
     idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
   }
 
@@ -176,69 +158,12 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
     }
   }
   std::sort(idx_redundant.begin(), idx_redundant.end());
-  for (int i = 0; i < idx_redundant.size(); i++) {
+  for (size_t i = 0; i < idx_redundant.size(); i++) {
     idx_redundant.at(i) -= i;
   }
   for (const auto &i : idx_redundant) {
     facets.erase(facets.begin() + i);
   }
-}
-
-std::pair<Vector2d, double> GetBestSupportAsRayToBoundary(
-    Vector2d p, const std::vector<facet>& facets ) {
-  Vector2d a =  normal_of_closest_face(facets, p);
-  double b = a.dot(p);
-  return {a, b};
-}
-
-std::pair<Vector2d, double> SolveForBestApproximateSupport(
-    Vector2d p, const std::vector<facet>& facets, const MatrixXd& all_verts) {
-  MatrixXd points = MatrixXd::Zero(2, facets.size());
-  for (int i = 0; i < facets.size(); i++) {
-    points.col(i) = facets.at(i).v1_;
-  }
-  const int n = all_verts.cols();
-  auto prog = MathematicalProgram();
-  auto solver = OsqpSolver();
-
-  auto a = prog.NewContinuousVariables(2);
-  auto u = prog.NewContinuousVariables(n);
-
-  prog.AddQuadraticErrorCost(MatrixXd::Identity(n,n), VectorXd::Zero(n), u);
-  prog.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(), u);
-  prog.AddLinearConstraint(
-      (p - centroid(points)).transpose(),
-      Vector1d::Constant(0.01),
-      Vector1d::Constant(std::numeric_limits<double>::infinity()),
-      a);
-  MatrixXd A = MatrixXd::Zero(n, n+2);
-  A.rightCols(n) = -MatrixXd::Identity(n, n);
-  for (int i = 0; i < all_verts.cols(); i++) {
-    A.block<1,2>(i,0) = (all_verts.col(i) - p).transpose();
-  }
-  prog.AddLinearConstraint(
-      A,
-      VectorXd::Constant(n, -std::numeric_limits<double>::infinity()),
-      VectorXd::Zero(n),
-      {a, u});
-  auto result = solver.Solve(prog);
-
-  DRAKE_DEMAND(result.is_success());
-
-  Vector2d a_sol = result.GetSolution(a);
-
-  DRAKE_DEMAND(not a_sol.hasNaN());
-
-  a_sol.normalize();
-  return {a_sol, a_sol.dot(p)};
-}
-
-MatrixXd get_vertices(const std::vector<facet>& f) {
-  MatrixXd verts = MatrixXd::Zero(2, f.size());
-  for (int i = 0; i < f.size(); i++) {
-    verts.col(i) = f.at(i).v1_;
-  }
-  return verts;
 }
 
 ConvexPolygon MakeFootholdFromFacetList(const std::vector<facet>& f) {
@@ -266,17 +191,10 @@ ConvexPolygon MakeInscribedConvexPolygon(
   WhittlingSolver solver;
 
   while (not verts_sorted.empty()) {
-    // To avoid numerical issues, ignore violations of less than 1mm
+    // To avoid numerical issues, ignore non-convexities of less than 1mm
     if (distance_to_boundary(facets, verts_sorted.front()) < 0.001) {
       break;
     }
-
-//    auto start = std::chrono::high_resolution_clock::now();
-//    auto [a, b] = GetBestSupportAsRayToBoundary(
-//        verts_sorted.front(), facet_hull);
-
-//    auto [a, b] = SolveForBestApproximateSupport(
-//        verts_sorted.front(), facets, verts);
 
     auto [a, b] = solver.SolveForBestCut(
         verts_sorted.front(),
@@ -284,7 +202,6 @@ ConvexPolygon MakeInscribedConvexPolygon(
         normal_of_closest_face(facets, verts_sorted.front())
     );
 
-//    auto end = std::chrono::high_resolution_clock::now();
     insert(facets, a, b);
     verts_sorted = get_sorted_interior_points(facets, verts);
   }
@@ -292,29 +209,46 @@ ConvexPolygon MakeInscribedConvexPolygon(
 }
 
 std::vector<MatrixXd> GetAcdComponents(
-    const std::pair<MatrixXd, std::vector<MatrixXd>>& planar_region,
+    const std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>>& terrain,
     double convexity_thresh) {
-  std::unique_ptr<acd2d::IConcavityMeasure> measure =
-      std::make_unique<acd2d::StraightLineMeasurement>();
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::StraightLineMeasurement>();
   acd2d::cd_2d cd;
-
-  acd2d::cd_polygon poly;
-  if (ValidateHoles(planar_region.first, planar_region.second)) {
-    poly = MakeAcdPolygon(planar_region, cd.buf());
-  } else {
-    poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
-  }
-  cd.addPolygon(poly);
-
-  std::vector<MatrixXd> polylist;
-  for (const auto& poly_out : cd.getDoneList()) {
-    auto poly_eigen = Acd2d2Eigen(poly_out.front());
-    // Only push back valid polygons (3 or more vertices)
-    if (poly_eigen.cols() > 2) {
-      polylist.push_back(poly_eigen);
+  for (const auto& planar_region : terrain) {
+    if (is_degenerate(planar_region.first)) {
+      continue;
     }
+    double area = PolygonArea(planar_region.first);
+    if (area < 0.05) {
+      continue;
+    }
+
+    acd2d::cd_polygon poly;
+    if (ValidateHoles(planar_region.first, planar_region.second)) {
+      poly = MakeAcdPolygon(planar_region, cd.buf());
+    } else {
+      poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
+    }
+    cd.addPolygon(poly);
   }
-  return polylist;
+
+  try {
+    cd.maybe_decomposeAll(convexity_thresh, measure.get());
+  } catch (const std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return {};
+  }
+
+  std::vector<MatrixXd> out;
+
+  for (const auto& poly_out : cd.getDoneList()) {
+    MatrixXd verts = Acd2d2Eigen(poly_out.front());
+    if (verts.cols() < 3) {
+      continue;
+    }
+    out.push_back(verts);
+  }
+
+  return out;
 }
 
 std::vector<ConvexPolygon> ProcessTerrain2d(
@@ -337,7 +271,12 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     } else {
       poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
     }
-    cd.addPolygon(poly);
+    try {
+      cd.addPolygon(poly);
+    } catch (const std::exception& e) {
+      std::cout << e.what() << std::endl;
+      return {};
+    }
   }
 
   try {

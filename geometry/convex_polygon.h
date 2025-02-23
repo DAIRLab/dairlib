@@ -4,23 +4,22 @@
 
 namespace dairlib::geometry {
 
-constexpr int kMaxFootholdFaces = 10;
 
-/// Class representing a convex foothold consisting of a single
-/// equality constraint a'x = b defining the contact plane, and up to
-/// kMaxFootholdFaces inequality constraints defining the extents of the
-/// foothold. No effort is made to check feasibility or reasonableness of any
+/// Class representing a convex polygon consisting of a single
+/// equality constraint a'x = b defining the polygon plane, and
+/// arbitrary inequality constraints defining the extents of the
+/// polygon. No effort is made to check feasibility or reasonableness of any
 /// combination of constraints. No frame information is supplied.
 class ConvexPolygon {
  public:
   ConvexPolygon()= default;
 
-  /*
+  /*!
    * Set the polygon plane by supplying a normal and a point on the plane
    */
   void SetPlane(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
 
-  /*
+  /*!
    * Set the polygon's plane to a'x = b
    */
   void SetPlane(const Eigen::Vector3d& a, double b) {
@@ -29,19 +28,19 @@ class ConvexPolygon {
     b_eq_ = Eigen::VectorXd::Constant(1, b / norm_a);
   }
 
-  /*
+  /*!
    * Make the convex polygon the intersection of itself with the halfspace
    * a'x <= b
    */
   void AddHalfspace(Eigen::Vector3d a, Eigen::VectorXd b);
 
-  /*
+  /*!
    * Add a face with an outward facing normal which intersects with
    * pt
    */
   void AddFace(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
 
-  /*
+  /*!
    * Add a face by adding two vertices. v1 and v2 should be unique points
    * in the contact plane, and with the contact normal pointing toward the
    * observer, v2 should be counterclockwise from v1. These conditions are not
@@ -49,34 +48,34 @@ class ConvexPolygon {
    */
   void AddVertices(const Eigen::Vector3d& v1, const Eigen::Vector3d& v2);
 
-  /*
+  /*!
    * Get the violation of the inequality constraints
    */
   double Get2dViolation(const Eigen::Vector3d& pt) const;
 
-  /*
+  /*!
    * Returns true if inequality constraints are violated by the point
    */
   bool PointViolatesInequalities(const Eigen::Vector3d& pt) const;
 
-  /*
+  /*!
    * Get the inequality constraints, Ax <= b, as a pair {A, b}
    */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetConstraintMatrices() const;
 
-  /*
+  /*!
    * Get the equality constraints Aeq*x == b as a pair {Aeq, b}
    */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetEqualityConstraintMatrices() const;
 
-  /*
+  /*!
    * Performs an in place rotation of the constraints Ax <= b such that
    * A (R_WF) x <= b. In other words, moves the constraint from applying to
    * vectors in frame W, to vectors in frame F
    */
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
 
-  /*
+  /*!
    * Performs an in place rotation and translation
    * of the constraints Ax <= b such that
    * A (R_WF x + p_OF_W) <= b. In other words, moves the constraint from

@@ -11,6 +11,24 @@ load(
     "pybind_py_library",
 )
 
+py_binary(
+    name = "multipose_visualizer_from_lcm_log",
+    srcs = ["multipose_visualizer_from_lcm_log.py"],
+    data = [
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

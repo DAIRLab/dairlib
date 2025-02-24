@@ -311,7 +311,13 @@ ElevationMappingSystem::CollectNewPointClouds(
 drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     const Context<double>& context, State<double>* state) const {
 
-  auto start = std::chrono::high_resolution_clock::now();INTER_LINEAR
+  auto start = std::chrono::high_resolution_clock::now();
+
+  auto new_pointclouds = CollectNewPointClouds(context, state);
+
+  if (new_pointclouds.empty()) {
+    return drake::systems::EventStatus::DidNothing();
+  }
 
   // Get the elevation map
   auto& map = state->get_mutable_abstract_state<ElevationMap>(

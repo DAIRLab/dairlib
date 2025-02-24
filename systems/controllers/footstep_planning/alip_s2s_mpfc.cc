@@ -359,7 +359,7 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
     c.evaluator()->UpdateCoefficients(
         Eigen::RowVector2d(-s, s),
         VectorXd::Constant(1, -kInfinity),
-        VectorXd::Constant(1, -0.04)
+        VectorXd::Constant(1, -0.03)
     );
     s *= -1.0;
   }

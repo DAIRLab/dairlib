@@ -275,7 +275,11 @@ double ElevationMappingSystem::CalcMapOffsetFromPointCloud(
       }
     }
   }
-  return err_count == 0 ? 0 : err_sum / err_count;
+  double err_avg = err_count == 0 ? 0 : err_sum / err_count;
+  if (std::isnan(err_avg) or std::isinf(err_avg) or abs(err_avg) > 0.1) {
+    return 0;
+  }
+  return err_avg;
 }
 
 std::map<std::string, PointCloudType::Ptr>

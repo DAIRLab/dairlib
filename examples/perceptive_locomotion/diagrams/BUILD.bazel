@@ -41,9 +41,102 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_mpfc_diagram",
+    srcs = ["cassie_mpfc_diagram.cc"],
+    hdrs = ["cassie_mpfc_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//geometry:convex_polygon",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
+        "//systems/controllers/footstep_planning:alip_utils",
+        "//systems/controllers/footstep_planning:mpfc_system_interface",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "mpfc_osc_diagram",
+    srcs = ["mpfc_osc_diagram.cc"],
+    hdrs = ["mpfc_osc_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//examples/Cassie/systems:simulator_drift",
+        "//examples/perceptive_locomotion/systems:alip_input_receiver",
+        "//multibody:utils",
+        "//multibody:view_frame",
+        "//multibody/kinematic",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_mpc_interface_system",
+        "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
+        "//systems/controllers/footstep_planning:alip_s2s_mpfc",
+        "//systems/controllers/footstep_planning:alip_state_calculator_system",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/primitives:fsm_lcm_systems",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "hiking_sim_diagram",
+    srcs = ["hiking_sim_diagram.cc"],
+    hdrs = ["hiking_sim_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:vector",
+        "//systems/perception:camera_utils",
+        "//systems/primitives",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "perception_module_diagram",
+    srcs = ["perception_module_diagram.cc"],
+    hdrs = ["perception_module_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_state_estimator",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception/pointcloud:drake_to_pcl_point_cloud",
+        "//systems/perception/pointcloud:voxel_grid_filter",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "diagrams",
     deps = [
         ":cassie_elevation_mapping_lcm_diagram",
+        ":cassie_mpfc_diagram",
         ":cassie_realsense_driver_diagram",
+        ":hiking_sim_diagram",
+        ":mpfc_osc_diagram",
+        ":perception_module_diagram",
     ],
 )

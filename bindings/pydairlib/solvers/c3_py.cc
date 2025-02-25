@@ -171,7 +171,8 @@ PYBIND11_MODULE(c3, m) {
           "u_vector", [](C3Options const& self) { return self.u_vector; },
           [](C3Options& self, const std::vector<double>& val) {
             self.u_vector = val;
-          });
+          })
+      .def_readwrite("rho_scale", &C3Options::rho_scale);
 
   m.def("LoadC3Options", &LoadC3Options);
 }

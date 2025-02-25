@@ -7,21 +7,21 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.16 0.04 0.04</size>
           </box>
         </geometry>
         <material>
           <diffuse>1 0 0 1</diffuse>
         </material>
-      </visual> 
+      </visual>  
     </link>
 
     <link name="horizontal_link">
       <visual name="horizontal_link">
-        <pose>-0.125 0 0 0 0 1.5708</pose>
+        <pose>-0.10 0 0 0 0 1.5708</pose>
         <geometry>
           <box>
-            <size>0.20 0.05 0.05</size>
+            <size>0.16 0.04 0.04</size>
           </box>
         </geometry>
         <material>

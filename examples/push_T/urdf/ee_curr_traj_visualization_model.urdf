@@ -15,25 +15,11 @@
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.0195"/>
+        <sphere radius="0.0145"/>
       </geometry>
       <material>
         <color rgba="1.0 1.0 1.0 1.0"/>
       </material>
     </visual>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.01"/>
-    </inertial>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <sphere radius="0.0195"/>
-      </geometry>
-                  <drake:proximity_properties>
-        <drake:mu_static value="1"/>
-        <drake:mu_dynamic value="1"/>
-      </drake:proximity_properties>
-    </collision>
   </link>
 </robot>

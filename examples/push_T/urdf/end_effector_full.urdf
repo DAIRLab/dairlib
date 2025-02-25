@@ -25,20 +25,20 @@
   </link>
   <link name="end_effector_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 -0.0508"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0553"/>
       <mass value="0.1340688"/>
       <inertia ixx="0.000005405989188" iyy="0.000005405989188" izz="0.000010811978376" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 -0.0508"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0553"/>
       <geometry>
-        <cylinder radius="0.0127" length="0.1016"/>
+        <cylinder radius="0.0117" length="0.1106"/>
       </geometry>
     </collision>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 -0.0508"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0553"/>
       <geometry>
-        <cylinder radius="0.0127" length="0.1016"/>
+        <cylinder radius="0.0117" length="0.1106"/>
       </geometry>
     </visual>
   </link>
@@ -56,14 +56,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <sphere radius="0.0195"/>
+        <sphere radius="0.0145"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <sphere radius="0.0195"/>
+        <sphere radius="0.0145"/>
       </geometry>
       <drake:proximity_properties>
         <drake:mu_static value="1"/>

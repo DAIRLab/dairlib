@@ -42,7 +42,7 @@ spherical_repositioning_radius: 0.12
 reposition_speed: 0.13    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
-use_spherical_repositioning: true   # alternative is a spline
+repositioning_trajectory_type: 1   # 0 is spline, 1 is spherical, 2 is circular.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc
@@ -64,7 +64,7 @@ use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
 # switching to repositioning.
-num_control_loops_to_wait: 12
+num_control_loops_to_wait: 14
 num_control_loops_to_wait_position_tracking: 20
 
 # How to measure C3's progress.

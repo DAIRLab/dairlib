@@ -38,7 +38,7 @@ spherical_repositioning_radius: 0.17
 reposition_speed: 0.10    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
-use_spherical_repositioning: true   # alternative is a spline
+repositioning_trajectory_type: 1   # 0 is spline, 1 is spherical, 2 is circular.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc

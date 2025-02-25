@@ -26,7 +26,7 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
 params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_beam.yaml"
-terrain = "bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/beam.yaml"
+terrain = "bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/stones.yaml"
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
         }
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
-    terrain_segmentation.inpaint_unseen_terrain = False
+    terrain_segmentation.safety_hysteresis = 0.2
     convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = FullSimDiagram(terrain, params)
 
@@ -71,7 +71,7 @@ def main():
     simulator = Simulator(diagram, context)
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
-    simulator.set_target_realtime_rate(1.0)
+    # simulator.set_target_realtime_rate(1.0)
 
     input("\n\n-- Press Enter to start the simulation --")
 

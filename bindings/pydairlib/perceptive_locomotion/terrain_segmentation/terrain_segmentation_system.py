@@ -61,7 +61,7 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         self.safety_hysteresis = 0.6
         self.kernel_length = 0.17
-        self.erosion_kernel_length = self.kernel_length
+        self.erosion_kernel_length = self.kernel_length / 1.2
         self.safety_threshold = 0.7
 
         self.safety_criterion_callbacks = safety_callbacks
@@ -69,6 +69,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.debug = False
         self.safety_scores = {}
         self.inpaint_unseen_terrain = True
+        self.opencv_inpaint = True
 
     def get_raw_safety_score(
             self, elevation: np.ndarray, denoised_and_inpainted_map: np.ndarray,
@@ -129,8 +130,12 @@ class TerrainSegmentationSystem(LeafSystem):
         mask[np.isnan(raw_map)] = 255
         if not elevation_map.exists("elevation_inpainted"):
             elevation_map.add("elevation_inpainted")
-        elevation_map["elevation_inpainted"][:] = cv2.inpaint(
-            raw_map, mask, 1, flags=cv2.INPAINT_NS)
+            
+        if self.opencv_inpaint:
+            elevation_map["elevation_inpainted"][:] = cv2.inpaint(
+                raw_map, mask, 1, flags=cv2.INPAINT_NS)
+        else:
+            elevation_map["elevation_inpainted"][:] = raw_map
 
         InpaintWithMinimumValues(
             elevation_map, "elevation_inpainted", "elevation_inpainted"

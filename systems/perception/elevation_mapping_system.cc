@@ -407,7 +407,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
-    double visual_map_offset = CalcMapOffsetFromPointCloud(pc_processed, map.getRawGridMap());
+    double visual_map_offset = 0; //CalcMapOffsetFromPointCloud(pc_processed, map.getRawGridMap());
     double map_offset = 0.5 * (visual_map_offset + proprioceptive_map_offset);
     map.shift_map_z(map_offset);
     

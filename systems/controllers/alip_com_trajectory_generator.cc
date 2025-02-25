@@ -80,7 +80,7 @@ EventStatus AlipComTrajectoryGenerator::UnrestrictedUpdate(
   auto fsm_state = static_cast<int>(
       this->EvalVectorInput(context, fsm_port_)->value()(0));
 
-  double alpha = 0.25;
+  double alpha = 0.1;
   // in single stance, save the current slope parameters to use during double
   // stance
   if (fsm_state <= 1) {

@@ -33,7 +33,7 @@ using systems::controllers::Alips2sMPFCSystem;
 FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
                                const std::string &sim_params_yaml) {
 
-  const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   auto _ = AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
@@ -122,7 +122,7 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
   meshcat_ = plant_visualizer->get_meshcat();
 
   // need to help template deduction out by declaring the type of this vector
-  std::vector<std::string> layers = {"elevation"};
+  std::vector<std::string> layers = {"elevation", "segmented_elevation", "elevation_inpainted"};
   auto grid_map_visualizer = builder.AddSystem<GridMapVisualizer>(
       meshcat_, (1.0 / 30.0), layers
   );

@@ -28,7 +28,7 @@ void DrakeToPclPointCloud<PointT>::Calc(
       context, 0)->template get_value<drake::perception::PointCloud>();
   auto& pcl_cloud = *ptr;
   pcl_cloud->header.frame_id = "";
-  pcl_cloud->header.stamp = 1e6 * context.get_time();
+  pcl_cloud->header.stamp = 1e6 * std::max(0.0, (context.get_time() - 1.0 / 30.0));
   AssignFields<PointT>(drake_cloud, pcl_cloud);
 }
 

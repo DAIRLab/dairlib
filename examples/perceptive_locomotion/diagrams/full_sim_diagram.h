@@ -3,6 +3,8 @@
 #include "cassie_mpfc_diagram.h"
 #include "hiking_sim_diagram.h"
 #include "mpfc_osc_diagram.h"
+#include "perception_module_diagram.h"
+
 #include "lcm/lcm_log_sink.h"
 
 namespace dairlib::perceptive_locomotion {
@@ -17,6 +19,18 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
 
   void SaveLcmLog(const std::string& fname);
 
+  const drake::systems::InputPort<double>& get_input_port_footholds() const {
+    return get_input_port(input_port_footholds_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
+    return get_output_port(output_port_elevation_map_);
+  }
+
+  std::shared_ptr<drake::geometry::Meshcat> meshcat() {
+    return meshcat_;
+  }
+
  private:
   lcm::LcmLogSink lcm_log_sink{};
 
@@ -24,9 +38,11 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
   drake::systems::InputPortIndex input_port_footholds_;
-  drake::systems::OutputPortIndex outpput_port_elevation_map_;
+  drake::systems::OutputPortIndex output_port_elevation_map_;
   HikingSimDiagram* sim_diagram;
+  PerceptionModuleDiagram* perception;
 
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 };
 
 }

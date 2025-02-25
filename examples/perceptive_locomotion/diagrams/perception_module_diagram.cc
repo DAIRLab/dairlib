@@ -65,7 +65,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // state estimator
   // TODO: Add option to set joint offsets in state estimator
   state_estimator_ = builder.AddSystem<systems::CassieStateEstimator>(
-      *plant_, joint_offsets_, 2
+      *plant_, joint_offsets_
   );
   state_estimator_->MakeDrivenBySimulator(ekf_update_period_);
 
@@ -162,6 +162,8 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
                   effort_passthrough->get_input_port());
   builder.Connect(state_estimator_->get_robot_output_port(),
                   imu_passthrough->get_input_port());
+  builder.Connect(state_estimator_->get_contact_output_port(),
+                  elevation_mapping_system_->get_input_port_contact());
   builder.Connect(state_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_state());
   builder.Connect(effort_passthrough->get_output_port(),

@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "full_sim",
+    srcs = ["full_sim.py"],
+    data = [],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/systems",
+    ],
+)

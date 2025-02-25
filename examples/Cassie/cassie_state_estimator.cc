@@ -636,14 +636,6 @@ EventStatus CassieStateEstimator::Update(
     }
     state->get_mutable_abstract_state<lcmt_landmark_array>(
         prev_landmarks_idx_) = landmarks;
-  } else if (fmod(context.get_time(), 2.0) < 0.001 and context.get_time() > 5.0){
-    // fake gps update every 1 sec to limit the global position covariance
-    inekf::ExternalPositionMeasurement gps_measurement{
-        ekf_state.getPosition(),
-        Vector3d::Zero(),
-        0.01 * Matrix3d::Identity()
-    };
-    ekf.CorrectExternalPositionMeasurement(gps_measurement);
   }
 
   // Save the EKF state to history buffer for later use if needed
@@ -705,6 +697,7 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
     AssignFloatingBaseStateToOutputVector(
         context.get_discrete_state(fb_state_idx_).get_value(), output);
   }
+  output->set_timestamp(context.get_time());
 }
 
 void CassieStateEstimator::CopyContact(

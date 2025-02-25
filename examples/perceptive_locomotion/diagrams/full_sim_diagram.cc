@@ -4,6 +4,7 @@
 #include "examples/perceptive_locomotion/systems/cassie_radio_operator.h"
 #include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
+#include "systems/perception/grid_map_visualizer.h"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -26,6 +27,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 using geometry::ConvexPolygonSet;
 using systems::CassieRadioOperator;
+using perception::GridMapVisualizer;
 using systems::controllers::Alips2sMPFCSystem;
 
 FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
@@ -71,6 +73,16 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
       terrain_yaml, camera_yaml
   );
 
+  std::map<std::string, drake::systems::sensors::CameraInfo> sensor_info;
+  for (const auto& sensor_name : {"pelvis_depth"}) {
+    sensor_info.insert(
+        {sensor_name, sim_diagram->get_depth_camera_info(sensor_name)}
+    );
+  }
+
+  perception = builder.AddSystem(PerceptionModuleDiagram::Make(
+      elevation_mapping_params_yaml, sensor_info));
+
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION",
@@ -106,16 +118,37 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
   multibody::AddSteppingStonesToMeshcatFromYaml(
       plant_visualizer->get_meshcat(), terrain_yaml
   );
+
+  meshcat_ = plant_visualizer->get_meshcat();
+
+  // need to help template deduction out by declaring the type of this vector
+  std::vector<std::string> layers = {"elevation"};
+  auto grid_map_visualizer = builder.AddSystem<GridMapVisualizer>(
+      meshcat_, (1.0 / 30.0), layers
+  );
+
   auto goal_position = builder.AddSystem<ConstantVectorSource<double>>(
       goal_location
   );
 
   builder.Connect(
+      sim_diagram->get_output_port_cassie_out(),
+      perception->get_input_port_cassie_out()
+  );
+  builder.Connect(
+      perception->get_output_port_robot_output(),
+      osc_diagram->get_input_port_state()
+  );
+  builder.Connect(
+      sim_diagram->get_output_port_depth_image(),
+      perception->get_input_port_depth_image("pelvis_depth")
+  );
+  builder.Connect(
       goal_position->get_output_port(),
       radio_operator->get_input_port_target_xy()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      perception->get_output_port_state(),
       radio_operator->get_input_port_state()
   );
   builder.Connect(
@@ -123,15 +156,11 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
       mpfc->get_input_port_vdes()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
-      osc_diagram->get_input_port_state()
-  );
-  builder.Connect(
       sim_diagram->get_output_port_lcm_radio(),
       osc_diagram->get_input_port_radio()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      perception->get_output_port_robot_output(),
       mpfc->get_input_port_state()
   );
   builder.Connect(
@@ -147,8 +176,12 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
       sim_diagram->get_input_port_radio()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      perception->get_output_port_state(),
       plant_visualizer->get_input_port()
+  );
+  builder.Connect(
+      perception->get_output_port_elevation_map(),
+      grid_map_visualizer->get_input_port()
   );
   builder.Connect(
       sim_diagram->get_output_port_state(),
@@ -172,15 +205,25 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
       mpfc->get_input_port_footholds(),
       "footholds"
   );
+  output_port_elevation_map_ = builder.ExportOutput(
+      perception->get_output_port_elevation_map(),
+      "grid_map"
+  );
 
   builder.BuildInto(this);
 }
 
 void FullSimDiagram::SetPlantInitialConditions(
     Diagram<double> *diagram, Context<double> *context) {
-  sim_diagram->SetPlantInitialConditionFromIK(
+  auto [q, v] = sim_diagram->SetPlantInitialConditionFromIK(
       diagram, context, Eigen::Vector3d::Zero(), 0.1, 0.95
   );
+  perception->InitializeEkf(context, q, v);
+
+  Eigen::VectorXd x = Eigen::VectorXd::Zero(q.rows() + v.rows());
+  x.head(q.rows()) = q;
+  v.tail(v.rows()) = v;
+  perception->InitializeElevationMap(x, context);
 }
 
 void FullSimDiagram::SaveLcmLog(const std::string &fname) {

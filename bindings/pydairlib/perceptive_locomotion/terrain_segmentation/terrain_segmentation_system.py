@@ -61,13 +61,14 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         self.safety_hysteresis = 0.6
         self.kernel_length = 0.17
-        self.erosion_kernel_length = self.kernel_length / 1.2
+        self.erosion_kernel_length = self.kernel_length
         self.safety_threshold = 0.7
 
         self.safety_criterion_callbacks = safety_callbacks
         self.profiling = profiling
         self.debug = False
         self.safety_scores = {}
+        self.inpaint_unseen_terrain = True
 
     def get_raw_safety_score(
             self, elevation: np.ndarray, denoised_and_inpainted_map: np.ndarray,
@@ -94,7 +95,8 @@ class TerrainSegmentationSystem(LeafSystem):
         
         # To assume that terrain with no information is safe, keep this commented out. 
         # To assume that unseen terrain is unsafe, uncomment.
-        # raw_safety[np.isnan(elevation)] = 0
+        if not self.inpaint_unseen_terrain:
+            raw_safety[np.isnan(elevation)] = 0
 
         if self.debug:
             self.safety_scores['combined'] = raw_safety
@@ -132,6 +134,12 @@ class TerrainSegmentationSystem(LeafSystem):
 
         InpaintWithMinimumValues(
             elevation_map, "elevation_inpainted", "elevation_inpainted"
+        )
+
+    def MakeDrivenByStandaloneSimulator(self, dt: float):
+        assert(dt > 0)
+        self.DeclarePeriodicUnrestrictedUpdateEvent(
+            dt, 0.0, self.UpdateTerrainSegmentation
         )
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):

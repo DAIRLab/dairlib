@@ -157,6 +157,7 @@ cc_library(
         ":cassie_elevation_mapping_lcm_diagram",
         ":cassie_mpfc_diagram",
         ":cassie_realsense_driver_diagram",
+        ":full_sim_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",

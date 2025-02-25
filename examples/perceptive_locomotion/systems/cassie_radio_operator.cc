@@ -59,8 +59,13 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
       EvalVectorInput(context, input_port_state_));
   Eigen::VectorXd q = robot_output->GetPositions();
   Eigen::VectorXd v = robot_output->GetVelocities();
+
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
+  DRAKE_DEMAND(not q.hasNaN());
+  DRAKE_DEMAND(not v.hasNaN());
+  DRAKE_DEMAND(not target_xy.hasNaN());
+  DRAKE_DEMAND(not std::isnan(robot_output->get_timestamp()));
 
   drake::math::RigidTransformd pose =
       plant_.GetBodyByName("pelvis").EvalPoseInWorld(*context_);
@@ -79,6 +84,8 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
   double yaw_rate = std::clamp(heading_error, -rot_vel_to_radio, rot_vel_to_radio);
 
   double ramp_factor = std::min(robot_output->get_timestamp(), 1.0);
+
+
 
   // map from world to yaw coordinates
   Eigen::Matrix2d R_BW = Eigen::Quaternion(

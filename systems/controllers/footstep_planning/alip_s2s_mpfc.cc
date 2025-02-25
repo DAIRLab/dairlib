@@ -65,6 +65,10 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
               << result.get_solution_result() << std::endl;
     std::cout << "x: " << x.transpose() << std::endl;
     std::cout << "t: " << t << std::endl;
+    std::cout << "p: " << p.transpose() << std::endl;
+    std::cout << "p_prev: " << p_prev_stance.transpose() << std::endl;
+    std::cout << "[tmin, tmax]: [" << tmin << ", " << tmax << "]" << std::endl;
+    std::cout << "vdes: " << vdes.transpose() << std::endl;
   }
 
   alip_s2s_mpfc_solution mpfc_solution;

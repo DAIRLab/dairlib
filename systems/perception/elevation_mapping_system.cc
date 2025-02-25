@@ -85,11 +85,10 @@ ElevationMappingSystem::ElevationMappingSystem(
   // covariance of the floating base pose in column major order
   input_port_pose_covariance_ = DeclareVectorInputPort("cov", 36).get_index();
 
-  if (not contacts_.empty()) {
-    input_port_contact_ = DeclareAbstractInputPort(
+  input_port_contact_ = DeclareAbstractInputPort(
         "lcmt_contact", drake::Value<lcmt_contact>()
-    ).get_index();
-  }
+  ).get_index();
+
 
   // create the elevation map
   ElevationMap map;

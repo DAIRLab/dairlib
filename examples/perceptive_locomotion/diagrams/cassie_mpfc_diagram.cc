@@ -105,8 +105,6 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 
   // Create the diagram
   builder.BuildInto(this);
-  DrawAndSaveDiagramGraph(*this, "../alip_mpfc_diagram");
-
 }
 
 template class CassieMPFCDiagram<Alips2sMPFCSystem>;

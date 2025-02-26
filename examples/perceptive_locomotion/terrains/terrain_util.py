@@ -248,9 +248,44 @@ def make_block_perlin(grid_size, bins):
     plt.show()
 
 
+def random_stepping_stones(seed, rows, cols):
+    rng = np.random.default_rng(seed)
+    base_len = 1.5
+
+    xs = []
+    ys = []
+    zs = []
+    normals = []
+    lxs = []
+    lys = []
+    lzs = []
+    yaws = []
+
+    z = 0
+    for r in range(rows):
+        x = base_len + 0.5 * r + rng.uniform(-0.03, 0.03)
+        for c in range(cols):
+            row_offset = rng.uniform(-0.25, 0.25)
+            y = row_offset - 0.5 * (0.5 * cols - c) + rng.uniform(-0.02, 0.02)
+            dz = rng.uniform(-0.1, 0.1)
+            z += dz
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+            normals.append(rng.uniform([-0.05, -0.05, 1.0], [0.05, 0.05, 1.0]))
+            lxs.append(rng.uniform(0.35, 0.45))
+            lys.append(rng.uniform(0.35, 0.45))
+            lzs.append(0.3)
+            yaws.append(rng.uniform(-0.1, 0.1))
+
+    print_block_list(xs, ys, zs, normals, lxs, lys, lzs, yaws)
+
+
 if __name__ == '__main__':
-    sine_wave(50, 6.29, 1.0, 0.4)
-    simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)
+    random_stepping_stones(0, 5, 3)
+
+    # sine_wave(50, 6.29, 1.0, 0.4)
+    # simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)
     # make_block_perlin(25.0, 27)
     # make_stair_curriculum(81, 40)
     # def hfun(t):

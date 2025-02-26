@@ -250,8 +250,9 @@ def make_block_perlin(grid_size, bins):
 
 def random_stepping_stones(seed, rows, cols):
     rng = np.random.default_rng(seed)
-    base_len = (1.0 - 0.05)
-
+    base_len = 1.45
+    y_spread = 0.15
+    x_spread = 0.03
     xs = []
     ys = []
     zs = []
@@ -263,9 +264,9 @@ def random_stepping_stones(seed, rows, cols):
 
     z = 0
     for r in range(rows):
-        x = base_len + 0.5 * r + rng.uniform(-0.03, 0.03)
+        x = base_len + 0.5 * r + rng.uniform(-x_spread, x_spread)
         for c in range(cols):
-            y = rng.uniform(-0.2, 0.2) + 0.6 * (c - 0.5 * (cols - 1))
+            y = rng.uniform(-y_spread, y_spread) + 0.5 * (c - 0.5 * (cols - 1))
             dz = rng.uniform(-0.1, 0.1)
             z += dz
             xs.append(x)

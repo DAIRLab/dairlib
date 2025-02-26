@@ -263,16 +263,15 @@ def random_stepping_stones(seed, rows, cols):
 
     z = 0
     for r in range(rows):
-        x = base_len + 0.5 * r + rng.uniform(-0.03, 0.03)
+        x = base_len + 0.52 * r + rng.uniform(-0.03, 0.03)
         for c in range(cols):
-            row_offset = rng.uniform(-0.25, 0.25)
-            y = row_offset - 0.5 * (0.5 * cols - c) + rng.uniform(-0.02, 0.02)
+            y = rng.uniform(-0.25, 0.25) + 0.6 * (c - 0.5 * cols)
             dz = rng.uniform(-0.1, 0.1)
             z += dz
             xs.append(x)
             ys.append(y)
             zs.append(z)
-            normals.append(rng.uniform([-0.05, -0.05, 1.0], [0.05, 0.05, 1.0]))
+            normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
             lxs.append(rng.uniform(0.35, 0.45))
             lys.append(rng.uniform(0.35, 0.45))
             lzs.append(0.3)

@@ -99,7 +99,7 @@ def random_stepping_stones(seed, savefile=None):
             fp.write(block_str)
 
 
-def build_and_run_sim(gains: str, terrain: str, params: str):
+def build_and_run_sim(gains: str, terrain: str, params: str, log_name: str=None):
     
     terrain_segmentation = TerrainSegmentationSystem(
         {
@@ -154,6 +154,11 @@ def build_and_run_sim(gains: str, terrain: str, params: str):
     success = pelvis_pose.translation().ravel()[-1] > 0.8 and \
               pelvis_pose.translation().ravel()[0] > 4.0
     
+    if success and log_name:
+        sim_diagram.SaveLcmLog(log_name + '_success')
+    elif log_name:
+        sim_diagram.SaveLcmLog(log_name + '_fail')
+    
     # we consider the simulation to be a success if the robot stays upright
     # and makes it to the final stepping stone within the allotted time
     return success
@@ -162,9 +167,11 @@ def build_and_run_sim(gains: str, terrain: str, params: str):
 def run_single_trial(trial_idx, gains, params):
     """Run a single simulation trial"""
     terrain_file = tempfile.NamedTemporaryFile(delete=False)
+    save_log = f'../stepping_stone_trial_{trial_idx}' if trial_idx % 3 == 0 else None
     try:
         random_stepping_stones(trial_idx, terrain_file.name)
-        return 1 if build_and_run_sim(gains, terrain_file.name, params) else 0
+        return 1 if build_and_run_sim(
+            gains, terrain_file.name, params, save_log) else 0
     finally:
         terrain_file.close()
         try:

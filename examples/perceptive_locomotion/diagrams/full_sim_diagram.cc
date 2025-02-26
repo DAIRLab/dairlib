@@ -5,6 +5,7 @@
 #include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/perception/grid_map_visualizer.h"
+#include "systems/perception/grid_map_lcm_systems.h"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -27,6 +28,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 using geometry::ConvexPolygonSet;
 using systems::CassieRadioOperator;
+using perception::GridMapSender;
 using perception::GridMapVisualizer;
 using systems::controllers::Alips2sMPFCSystem;
 
@@ -109,6 +111,15 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
           {TriggerType::kPeriodic},
           0.01)
   );
+  auto grid_map_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_grid_map>(
+          "CASSIE_ELEVATION_MAP",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          1.0 / 30.0)
+  );
+
+  auto grid_map_sender = builder.AddSystem<GridMapSender>();
 
   auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
   auto mpfc_visualizer = builder.AddSystem<AlipMPFCMeshcatVisualizer>(
@@ -198,6 +209,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
                   state_pub->get_input_port());
   builder.Connect(mpfc->get_output_port_mpfc_debug(),
                   mpc_pub->get_input_port());
+  builder.Connect(*grid_map_sender, *grid_map_pub);
 
   input_port_footholds_ = builder.ExportInput(
       mpfc->get_input_port_footholds(),
@@ -211,7 +223,10 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       perception->get_output_port_elevation_map(),
       "grid_map"
   );
-
+  builder.ConnectInput(
+      input_port_grid_map_,
+      grid_map_sender->get_input_port()
+  );
   builder.BuildInto(this);
 }
 

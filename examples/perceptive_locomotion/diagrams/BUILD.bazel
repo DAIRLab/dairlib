@@ -144,6 +144,7 @@ cc_library(
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",
         "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
         "//lcm:lcm_log_sink",
+        "//systems/perception:grid_map_lcm_systems",
         "//systems:plant_visualizer",
         "//systems/perception:grid_map_visualizer",
         "@drake//:drake_shared_library",

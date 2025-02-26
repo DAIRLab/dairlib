@@ -122,6 +122,13 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             print("error fitting plane to points:")
             print(verts3d)
             return None, None
+        
+        if np.isnan(plane.normal).any() or np.isnan(plane.point).any() or \
+           np.isinf(plane.normal).any() or np.isinf(plane.point).any():
+            print("Found invalid plane parameters: ")
+            print(f'normal: {plane.normal}, point: {plane.point}')
+            return None, None
+        
 
         return plane.normal, plane.point
 

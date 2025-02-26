@@ -53,8 +53,7 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
-          FindResourceOrThrow(
-              "examples/perceptive_locomotion/standalone_sim_params.yaml"));
+          FindResourceOrThrow(sim_params_yaml));
 
   Eigen::Vector2d goal_location = Eigen::Vector2d::Map(
       sim_options.at("goal_location").data());
@@ -228,6 +227,13 @@ void FullSimDiagram::SetPlantInitialConditions(
   x.head(q.rows()) = q;
   v.tail(v.rows()) = v;
   perception->InitializeElevationMap(x, context);
+}
+
+drake::math::RigidTransformd FullSimDiagram::GetCassiePelvisPoseInWorld(
+    const Context<double>& context) const {
+  const auto& sim_plant = sim_diagram->get_plant();
+  const auto& plant_context = sim_plant.GetMyContextFromRoot(context);
+  return plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
 }
 
 void FullSimDiagram::SaveLcmLog(const std::string &fname) {

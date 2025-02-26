@@ -64,6 +64,7 @@ PYBIND11_MODULE(diagrams, m) {
            py_rvp::reference_internal)
       .def("get_output_port_grid_map", &FullSimDiagram::get_output_port_grid_map,
            py_rvp::reference_internal)
+      .def("GetCassiePelvisPoseInWorld", &FullSimDiagram::GetCassiePelvisPoseInWorld)
       .def("meshcat", &FullSimDiagram::meshcat);
   }
 

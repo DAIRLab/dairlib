@@ -40,6 +40,9 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
     return meshcat_;
   }
 
+  drake::math::RigidTransformd GetCassiePelvisPoseInWorld(
+      const drake::systems::Context<double>& root_context) const;
+
  private:
   lcm::LcmLogSink lcm_log_sink{};
 

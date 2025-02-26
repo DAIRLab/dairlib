@@ -62,10 +62,9 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
-  DRAKE_DEMAND(not q.hasNaN());
-  DRAKE_DEMAND(not v.hasNaN());
-  DRAKE_DEMAND(not target_xy.hasNaN());
-  DRAKE_DEMAND(not std::isnan(robot_output->get_timestamp()));
+  if (q.hasNaN()) {
+    throw std::runtime_error("NaNs in state message");
+  }
 
   drake::math::RigidTransformd pose =
       plant_.GetBodyByName("pelvis").EvalPoseInWorld(*context_);
@@ -92,7 +91,7 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
       q(0), 0., 0., q(3)).normalized().toRotationMatrix().topLeftCorner<2,2>().transpose();
 
   // proportional control
-  Eigen::Vector2d vdes = ramp_factor * 0.4 * R_BW * to_target;
+  Eigen::Vector2d vdes = ramp_factor * 0.375 * R_BW * to_target;
   vdes(1) = 0;
 
   discrete_values->get_mutable_value(vdes_state_index_) << yaw_rate, vdes(0), vdes(1);

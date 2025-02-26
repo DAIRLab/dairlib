@@ -11,8 +11,10 @@ namespace dairlib::perceptive_locomotion {
 
 class FullSimDiagram : public drake::systems::Diagram<double> {
  public:
-  explicit FullSimDiagram(const std::string& terrain_yaml,
-                          const std::string& sim_params_yaml);
+  explicit FullSimDiagram(
+      const std::string& mpc_gains_yaml,
+      const std::string& terrain_yaml,
+      const std::string& sim_params_yaml);
 
   void SetPlantInitialConditions(drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* context);

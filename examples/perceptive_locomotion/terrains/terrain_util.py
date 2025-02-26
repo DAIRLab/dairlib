@@ -267,9 +267,10 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
     x_variation = 0.03
     z_variation = 0.05
     x_dist = 0.6
-    y_dist = 0.6
+    y_dist = 0.65
     
-    xs = [0.0, 5.1, 5.0]
+    # initialize stepping stone geometry with the start, end, and floor blocks
+    xs = [0.0, 1.5 + (rows + 1) * x_dist, 5.0]
     ys = [0.0, 0.0, 0.0]
     zs = [0.0, 0.0, -0.5]
     normals = [np.array([0, 0, 1]), np.array([0, 0, 1]), np.array([0, 0, 1])]
@@ -277,7 +278,7 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
     lys = [2.5, 2.5, 20.0]
     lzs = [0.2, 0.2, 0.2]
     yaws = [0.0, 0.0, 0.0]
-
+    
     z = 0
     for r in range(rows):
         x = base_len + x_dist * r + rng.uniform(-x_variation, x_variation)
@@ -289,10 +290,10 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
             zs.append(z)
             normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
             lxs.append(rng.uniform(0.4, 0.45))
-            lys.append(rng.uniform(0.4, 0.45))
+            lys.append(rng.uniform(0.45, 0.5))
             lzs.append(0.3)
             yaws.append(rng.uniform(-0.1, 0.1))
-
+    
     block_str = get_blocks_string(xs, ys, zs, normals, lxs, lys, lzs, yaws)
     if savefile is None:
         print(block_str)

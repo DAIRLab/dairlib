@@ -30,7 +30,8 @@ using systems::CassieRadioOperator;
 using perception::GridMapVisualizer;
 using systems::controllers::Alips2sMPFCSystem;
 
-FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
+FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
+                               const std::string &terrain_yaml,
                                const std::string &sim_params_yaml) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
@@ -41,8 +42,6 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
 
   std::string gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
-  std::string gains_mpc_file =
-      "examples/perceptive_locomotion/gains/alip_s2s_mpfc_gains_simulation.yaml";
   std::string osqp_options =
       "solvers/fcc_qp_options_default.yaml";
   std::string camera_yaml =
@@ -60,13 +59,13 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc_file, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
       plant, plant_context.get());
 
   auto osc_diagram = builder.AddSystem<MpfcOscDiagram>(
-      plant, gains_file, gains_mpc_file, osqp_options
+      plant, gains_file, mpc_gains_yaml, osqp_options
   );
   sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
@@ -233,7 +232,7 @@ drake::math::RigidTransformd FullSimDiagram::GetCassiePelvisPoseInWorld(
     const Context<double>& context) const {
   const auto& sim_plant = sim_diagram->get_plant();
   const auto& plant_context = sim_plant.GetMyContextFromRoot(context);
-  return plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
+  return sim_plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
 }
 
 void FullSimDiagram::SaveLcmLog(const std::string &fname) {

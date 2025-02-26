@@ -22,7 +22,16 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
   const drake::systems::InputPort<double>& get_input_port_footholds() const {
     return get_input_port(input_port_footholds_);
   }
+  /*
+   * Input port for the processed (segmented) elevation map
+   */
+  const drake::systems::InputPort<double>& get_input_port_grid_map() const {
+    return get_input_port(input_port_grid_map_);
+  }
 
+  /*
+   * input port for the raw elevation map
+   */
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_elevation_map_);
   }
@@ -38,6 +47,8 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
   drake::systems::InputPortIndex input_port_footholds_;
+  drake::systems::InputPortIndex input_port_grid_map_;
+
   drake::systems::OutputPortIndex output_port_elevation_map_;
   HikingSimDiagram* sim_diagram;
   PerceptionModuleDiagram* perception;

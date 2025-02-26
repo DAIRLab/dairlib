@@ -205,6 +205,10 @@ FullSimDiagram::FullSimDiagram(const std::string &terrain_yaml,
       mpfc->get_input_port_footholds(),
       "footholds"
   );
+  input_port_grid_map_ = builder.ExportInput(
+      mpfc->get_input_port_grid_map(),
+      "elevation"
+  );
   output_port_elevation_map_ = builder.ExportOutput(
       perception->get_output_port_elevation_map(),
       "grid_map"

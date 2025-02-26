@@ -60,6 +60,8 @@ PYBIND11_MODULE(diagrams, m) {
       .def("SaveLcmLog", &FullSimDiagram::SaveLcmLog, py::arg("fname"))
       .def("get_input_port_footholds", &FullSimDiagram::get_input_port_footholds,
            py_rvp::reference_internal)
+      .def("get_input_port_grid_map", &FullSimDiagram::get_input_port_grid_map,
+           py_rvp::reference_internal)
       .def("get_output_port_grid_map", &FullSimDiagram::get_output_port_grid_map,
            py_rvp::reference_internal)
       .def("meshcat", &FullSimDiagram::meshcat);

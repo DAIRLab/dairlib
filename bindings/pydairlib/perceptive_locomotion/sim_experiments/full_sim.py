@@ -56,6 +56,10 @@ def main():
         convex_decomposition.get_input_port()
     )
     builder.Connect(
+        terrain_segmentation.get_output_port(),
+        sim_diagram.get_input_port_grid_map()
+    )
+    builder.Connect(
         convex_decomposition.get_output_port(),
         sim_diagram.get_input_port_footholds()
     )

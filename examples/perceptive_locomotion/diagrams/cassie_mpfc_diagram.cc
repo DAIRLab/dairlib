@@ -94,6 +94,9 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
   input_port_vdes_ = builder.ExportInput(
       foot_placement_controller->get_input_port_vdes(), "desired_velocity"
   );
+  input_port_grid_map_ = builder.ExportInput(
+      foot_placement_controller->get_input_port_elevation(), "elevation_map"
+  );
   output_port_mpc_output_ = builder.ExportOutput(
       foot_placement_controller->get_output_port_mpc_output(),
       "lcmt_alip_mpc_output"

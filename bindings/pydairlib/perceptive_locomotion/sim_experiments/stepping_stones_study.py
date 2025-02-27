@@ -1,4 +1,6 @@
 import os
+import sys
+import signal
 import tempfile
 import numpy as np
 import multiprocessing as mp
@@ -167,7 +169,8 @@ def build_and_run_sim(gains: str, terrain: str, params: str, log_name: str=None)
 def run_single_trial(trial_idx, gains, params):
     """Run a single simulation trial"""
     terrain_file = tempfile.NamedTemporaryFile(delete=False)
-    save_log = f'../stepping_stone_trial_{trial_idx}' if trial_idx % 3 == 0 else None
+    logname = gains.split('/')[-1].strip('.yaml')
+    save_log = f'../{logname}_{trial_idx}_lcm_log' if trial_idx % 20 == 0 else None
     try:
         random_stepping_stones(trial_idx, terrain_file.name)
         return 1 if build_and_run_sim(
@@ -180,28 +183,61 @@ def run_single_trial(trial_idx, gains, params):
             pass
 
 
+# Global executor for cleanup on signal
+executor = None
+
+
+def signal_handler(sig, frame):
+    """Handle Ctrl+C by shutting down all worker processes"""
+    print("\nKeyboard interrupt received. Shutting down worker processes...")
+    if executor:
+        executor.shutdown(wait=False)
+    sys.exit(1)
+
+
 def run_study_parallel(gains: str, params: str, num_trials: int, num_workers: int = 3):
-    """Parallelized version of run_study"""
+    """Parallelized version of run_study with signal handling"""
+    global executor
     worker_fn = partial(run_single_trial, gains=gains, params=params)
     success_count = 0
     fail_count = 0
-    
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        for success in executor.map(worker_fn, range(num_trials)):
-            success_count += success
-            fail_count += (1 - success)
-            print(f'successes: {success_count}\nfailures: {fail_count}')
-    
+
+    # Set up signal handler before creating processes
+    signal.signal(signal.SIGINT, signal_handler)
+
+    try:
+        with ProcessPoolExecutor(max_workers=num_workers) as exec:
+            executor = exec
+            for success in executor.map(worker_fn, range(num_trials)):
+                success_count += success
+                fail_count += (1 - success)
+                print(f'successes: {success_count}\nfailures: {fail_count}')
+    except KeyboardInterrupt:
+        # This will be caught by the signal handler
+        pass
+    finally:
+        executor = None
+
     return {'success': success_count, 'fail': fail_count}
 
 
 def main():
-    n_trials = 20
+    n_trials = 100
     params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
+    gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"
 
-    results = run_study_parallel(gains, params, n_trials)
-    print(results)
+    try:
+        results = run_study_parallel(gains, params, n_trials)
+        results_no_timing = run_study_parallel(gains_no_timing, params, n_trials)
+
+        print('Results with timing adaptation:')
+        print(results)
+
+        print('\nResults without timing adaptation:')
+        print(results_no_timing)
+    except KeyboardInterrupt:
+        print("\nStudy terminated by user.")
     
     
 if __name__ == '__main__':

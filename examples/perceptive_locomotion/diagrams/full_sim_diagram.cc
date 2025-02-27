@@ -90,6 +90,13 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
           {TriggerType::kPeriodic},
           0.001)
   );
+  auto state_pub_dispatcher = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_robot_output>(
+          "NETWORK_CASSIE_STATE_DISPATCHER",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          0.005)
+  );
   auto osc_debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_osc_output>(
           "OSC_DEBUG_WALKING",
@@ -147,6 +154,10 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
   builder.Connect(
       perception->get_output_port_robot_output(),
       osc_diagram->get_input_port_state()
+  );
+  builder.Connect(
+      perception->get_output_port_robot_output(),
+      state_pub_dispatcher->get_input_port()
   );
   builder.Connect(
       sim_diagram->get_output_port_depth_image(),

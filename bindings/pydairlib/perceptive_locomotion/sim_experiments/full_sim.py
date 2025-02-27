@@ -25,8 +25,9 @@ from pydairlib.systems.framework import OutputVector
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
-params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
-terrain = "bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/random_stones_3.yaml"
+params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_beam.yaml"
+terrain = "bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/beam.yaml"
+gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
 
 
 def main():
@@ -39,7 +40,7 @@ def main():
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     convex_decomposition = ConvexTerrainDecompositionSystem()
-    sim_diagram = FullSimDiagram(terrain, params)
+    sim_diagram = FullSimDiagram(gains, terrain, params)
 
     builder = DiagramBuilder()
     builder.AddSystem(terrain_segmentation)

@@ -9,6 +9,14 @@
 
 namespace dairlib::perceptive_locomotion {
 
+/*!
+ * Drake diagram including all non-python components of the perceptive
+ * locomotion stack, including MPFC, OSC, Drake simulator, Cassie State
+ * estimator, and elevation mapping.
+ *
+ * Simulations incorporating this diagram must provide the convex polygon
+ * footholds via the supplied input port
+ */
 class FullSimDiagram : public drake::systems::Diagram<double> {
  public:
   explicit FullSimDiagram(

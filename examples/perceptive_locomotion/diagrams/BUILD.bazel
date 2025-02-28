@@ -144,9 +144,29 @@ cc_library(
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",
         "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
         "//lcm:lcm_log_sink",
-        "//systems/perception:grid_map_lcm_systems",
         "//systems:plant_visualizer",
+        "//systems/perception:grid_map_lcm_systems",
         "//systems/perception:grid_map_visualizer",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "sim_diagram",
+    srcs = ["sim_diagram.cc"],
+    hdrs = ["sim_diagram.h"],
+    deps = [
+        ":cassie_mpfc_diagram",
+        ":hiking_sim_diagram",
+        ":mpfc_osc_diagram",
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc:high_level_command",
+        "//examples/perceptive_locomotion/systems:cassie_radio_operator",
+        "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
+        "//lcm:lcm_log_sink",
+        "//systems:plant_visualizer",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -162,5 +182,6 @@ cc_library(
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
+        ":sim_diagram",
     ],
 )

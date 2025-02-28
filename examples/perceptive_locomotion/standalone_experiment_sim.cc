@@ -1,6 +1,6 @@
 #include <gflags/gflags.h>
 
-#include "examples/perceptive_locomotion/diagrams/sim_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/full_sim_diagram.h"
 #include "drake/systems/analysis/simulator.h"
 
 
@@ -31,7 +31,7 @@ int DoMain(int argc, char **argv) {
 
   drake::systems::DiagramBuilder<double> builder;
 
-  auto sim_diagram = builder.AddSystem<SimDiagram>(gains_mpc_file, terrain_yaml, sim_params_file);
+  auto sim_diagram = builder.AddSystem<FullSimDiagram>(gains_mpc_file, terrain_yaml, sim_params_file);
 
   auto diagram = builder.Build();
   diagram->set_name("mpfc_osc_with_sim");

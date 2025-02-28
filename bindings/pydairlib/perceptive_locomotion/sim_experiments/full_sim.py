@@ -31,38 +31,11 @@ gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gai
 
 
 def main():
-
-    terrain_segmentation = TerrainSegmentationSystem(
-        {
-            'curvature_criterion': seg_criteria.curvature_criterion,
-            'inclination_criterion': seg_criteria.inclination_criterion,
-        }
-    )
-    terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
-    convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = FullSimDiagram(gains, terrain, params)
 
     builder = DiagramBuilder()
-    builder.AddSystem(terrain_segmentation)
-    builder.AddSystem(convex_decomposition)
     builder.AddSystem(sim_diagram)
-
-    builder.Connect(
-        sim_diagram.get_output_port_grid_map(),
-        terrain_segmentation.get_input_port()
-    )
-    builder.Connect(
-        terrain_segmentation.get_output_port(),
-        convex_decomposition.get_input_port()
-    )
-    builder.Connect(
-        terrain_segmentation.get_output_port(),
-        sim_diagram.get_input_port_grid_map()
-    )
-    builder.Connect(
-        convex_decomposition.get_output_port(),
-        sim_diagram.get_input_port_footholds()
-    )
+    
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(
         diagram,

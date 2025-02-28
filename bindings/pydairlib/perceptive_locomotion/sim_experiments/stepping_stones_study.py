@@ -27,7 +27,7 @@ from pydrake.math import RigidTransform
 
 from pydrake.common.value import AbstractValue
 
-from pydairlib.perceptive_locomotion import FullSimDiagram
+from pydairlib.perceptive_locomotion import PerceptiveFullSimDiagram
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
     terrain_segmentation_system import TerrainSegmentationSystem
@@ -111,7 +111,7 @@ def build_and_run_sim(gains: str, terrain: str, params: str, log_name: str=None)
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     convex_decomposition = ConvexTerrainDecompositionSystem()
-    sim_diagram = FullSimDiagram(gains, terrain, params)
+    sim_diagram = PerceptiveFullSimDiagram(gains, terrain, params)
     
     builder = DiagramBuilder()
     builder.AddSystem(terrain_segmentation)

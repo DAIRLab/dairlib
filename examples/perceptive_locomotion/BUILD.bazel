@@ -169,7 +169,7 @@ cc_binary(
     name = "standalone_experiment_sim",
     srcs = ["standalone_experiment_sim.cc"],
     deps = [
-        "//examples/perceptive_locomotion/diagrams:sim_diagram",
+        "//examples/perceptive_locomotion/diagrams:full_sim_diagram",
         "@gflags",
     ],
 )

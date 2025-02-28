@@ -106,7 +106,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
     return left_right_stance_fsm_states_.at(fsm_idx);
   }
   int next_fsm(int fsm_idx) const {
-    int next= fsm_idx + 1;
+    int next = fsm_idx + 1;
     if (next >= left_right_stance_fsm_states_.size()) {
       return curr_fsm(0);
     }

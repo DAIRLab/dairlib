@@ -22,6 +22,7 @@ namespace dairlib::perceptive_locomotion {
 using drake::systems::Context;
 using drake::systems::Diagram;
 using drake::systems::TriggerType;
+using drake::systems::ConstantValueSource;
 using drake::systems::ConstantVectorSource;
 using drake::systems::lcm::LcmPublisherSystem;
 
@@ -34,7 +35,8 @@ SimDiagram::SimDiagram(const std::string& mpc_gains_yaml,
                        const std::string &sim_params_yaml) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
-  auto _ = AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
+  [[maybe_unused]] auto instance = AddCassieMultibody(
+      &plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
   plant_context = plant.CreateDefaultContext();
@@ -59,6 +61,12 @@ SimDiagram::SimDiagram(const std::string& mpc_gains_yaml,
   auto builder = drake::systems::DiagramBuilder<double>();
 
   auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
+
+  std::vector<ConvexPolygon> footholds =
+      multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;
+
+  auto foothold_source = builder.AddSystem<ConstantValueSource<double>>(
+      drake::Value<ConvexPolygonSet>(footholds));
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
       plant, plant_context.get());
@@ -112,6 +120,10 @@ SimDiagram::SimDiagram(const std::string& mpc_gains_yaml,
       goal_location
   );
 
+  builder.Connect(
+      foothold_source->get_output_port(),
+      mpfc->get_input_port_footholds()
+  );
   builder.Connect(
       sim_diagram->get_output_port_state_lcm(),
       osc_diagram->get_input_port_state()

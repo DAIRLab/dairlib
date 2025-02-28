@@ -160,7 +160,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   // Impose constraint for timestep 1 and beyond to ensure that the plan doesn't go below the safe threshold/ground
   // but allow the 0th timestep to be where the ee currently is in order to not invalidate the x_[0] == x0 constraint.
   for (int i = 1; i < N_; i++) {
-    prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
+    prog_.AddLinearConstraint(x_.at(i)[2] == options_.ee_z_state_min);
   }
 
   input_costs_.resize(N_);
@@ -410,14 +410,15 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose); 
   }
   else if(cost_type == 4){
-    // // This is same as cost type 3 except the end effector position and velocity plans are replaced with the plan from C3 at the end.
+    // This is same as cost type 3 except the end effector position and 
+    // velocity plans are replaced with the plan from C3 at the end.
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 4"<<std::endl;
     }
-
     std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose);
 
-    // Replace the ee trajectory and velocity with the one from the C3 plan.
+    // Replace the end effector position and velocity plans with the ones from
+    // the C3 plan.
     for(int i = 0; i < N_; i++){
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
       XX[i].segment(10,3) = zfin_[i].segment(10,3);
@@ -425,15 +426,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
         XX[i+1].segment(0,3) = zfin_[i].segment(0,3);
         XX[i+1].segment(10,3) = zfin_[i].segment(10,3);
       }
-        }
-        }
-        if(LCS_for_cost_computation_){
     }
-        if(LCS_for_cost_computation_){
-
   }
   else if (cost_type == 5){
-    // // This is same as cost type 3 and 4 except we later include only object terms in the final cost. 
+  // This is same as cost type 3 and 4 except we later include only object terms in the final cost. 
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 5"<<std::endl;
     }
@@ -535,7 +531,6 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   }
 
   if(cost_type == 5){
-    std::cout<<"Deleting non object terms from the cost. "<<std::endl;
     cost = cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
   }
 
@@ -641,7 +636,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
       verbose_delta.col(i) = delta->at(i);
       // verbose_w.col(i) = w[i];
     }
-    std::cout<<"delta: \n"<<verbose_delta.block(10, 0, 9, 5)<<std::endl;
+    std::cout<<"delta: \n"<<verbose_delta<<std::endl;
   }
 
   for (int i = 0; i < N_; i++) {

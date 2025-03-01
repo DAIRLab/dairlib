@@ -232,7 +232,12 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   );
 
   if (not foothold_set.empty()) {
-    footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, 1.8);
+    double radius = (
+        trajopt_.params().gait_params.single_stance_duration +
+        trajopt_.params().gait_params.double_stance_duration
+    ) * trajopt_.params().nmodes * std::max(vdes.norm(), 2 * trajopt_.params().com_pos_bound[0]);
+
+    footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, radius);
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }

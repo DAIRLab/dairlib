@@ -43,6 +43,11 @@ void CalcAlipState(const MultibodyPlant<double> &plant,
                               plant.world_frame(), &position);
     stance_foot_pos += cop_weights.at(i) * position;
   }
+
+  if (stance_foot_pos[2] > CoM[2]) {
+    throw std::runtime_error("the robot has fallen over");
+  }
+
   Vector3d L = plant.CalcSpatialMomentumInWorldAboutPoint(
       *context, stance_foot_pos).rotational();
 

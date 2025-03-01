@@ -271,7 +271,7 @@ def run_study_parallel(gains: str, params: str, num_trials: int, terrain_size: f
 
 
 def main(fname):
-    n_trials = 100
+    n_trials = 50
     params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
     gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"

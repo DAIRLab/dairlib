@@ -18,7 +18,9 @@ py_binary(
     srcs = ["stepping_stones_study.py"],
     data = [],
     deps = [
+        "//bindings/pydairlib/perceptive_locomotion",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/results:analysis_utils",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",

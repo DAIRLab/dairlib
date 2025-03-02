@@ -30,17 +30,13 @@ from pydrake.math import RigidTransform
 from pydrake.common.value import AbstractValue
 
 from pydairlib.perceptive_locomotion import (
+    ConvexTerrainDecompositionSystem,
+    TerrainSegmentationSystem,
     PerceptiveFullSimDiagram,
     FullSimDiagram
 )
 
-from pydairlib.perceptive_locomotion.terrain_segmentation. \
-    terrain_segmentation_system import TerrainSegmentationSystem
-
-from pydairlib.perceptive_locomotion import ConvexTerrainDecompositionSystem
-
-from pydairlib.systems import DrawAndSaveDiagramGraph
-from pydairlib.systems.framework import OutputVector
+from pydairlib.perceptive_locomotion.results.analysis_utils import setup_plots
 
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
@@ -93,7 +89,7 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
             ys.append(y)
             zs.append(z)
             normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
-            lxs.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
+            lxs.append(0.4)
             lys.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lzs.append(0.3)
             yaws.append(rng.uniform(-0.1, 0.1))
@@ -281,7 +277,7 @@ def main(fname):
     results_perceptive = {}
     results_perceptive_no_timing = {}
 
-    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5]:
+    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
         try:
             results_gt[terrain_size] = run_study_parallel(
                 gains, params, n_trials, terrain_size, perceptive=False
@@ -310,22 +306,35 @@ def main(fname):
 def plot_results(fname):
     data = np.load(fname, allow_pickle=True)
     conditions = {
-        "results_gt": "GT",
-        "results_gt_no_timing": "GT (No Timing Adaptation)",
-        "results_perceptive": "Perceptive",
-        "results_perceptive_no_timing": "Perceptive (No Timing Adaptation)"
+        "results_gt": "Ground Truth Terrain",
+        "results_gt_no_timing": "Ground Truth Terrain (No Timing Adaptation)",
+        "results_perceptive": "Perceptive Terrain",
+        "results_perceptive_no_timing": "Perceptive Terrain (No Timing Adaptation)"
     }
 
+    markers = {
+        "results_gt": "*",
+        "results_gt_no_timing": "x",
+        "results_perceptive": "^",
+        "results_perceptive_no_timing": "o"
+    }
+
+    setup_plots()
+
+    terrain_sizes = list(data["results_gt"].item().keys())
     for condition, title in conditions.items():
-        terrain_sizes = []
         success_rates = []
         terrain_size_data = data[condition].item()
         for terrain_size in terrain_size_data.keys():
             trial_data = terrain_size_data[terrain_size]
-            success_rate = float(trial_data['success']) / float(trial_data['success'] + trial_data['fail'])
-            terrain_sizes.append(terrain_size)
+            success_rate = 100 * float(trial_data['success']) / float(trial_data['success'] + trial_data['fail'])
             success_rates.append(success_rate)
-        plt.plot(terrain_sizes, success_rates, label=title)
+        plt.plot(terrain_sizes, success_rates, label=title, marker=markers[condition])
+
+    plt.title('Success Rates for Randomly Generated Stepping Stones')
+    plt.xticks(terrain_sizes, terrain_sizes)
+    plt.xlabel('Minimum Stepping Stone Side Length (m)')
+    plt.ylabel('Success Rate (\\%)')
     plt.legend()
 
     plt.show()
@@ -344,7 +353,7 @@ if __name__ == '__main__':
         "--results_file",
         type=str,
         help='Filename to save results at',
-        default='../stepping_stone_study_results/results.npz',
+        default='../stepping_stone_study_results/fixed_depth_results.npz',
     )
     args = parser.parse_args()
 

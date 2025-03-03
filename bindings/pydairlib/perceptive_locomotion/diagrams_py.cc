@@ -5,6 +5,8 @@
 
 #include "examples/perceptive_locomotion/diagrams/cassie_elevation_mapping_lcm_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/cassie_realsense_driver_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/perceptive_full_sim_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/full_sim_diagram.h"
 
 namespace py = pybind11;
 
@@ -13,6 +15,8 @@ namespace pydairlib{
 
 using perceptive_locomotion::CassieRealSenseDriverDiagram;
 using perceptive_locomotion::CassieElevationMappingLcmDiagram;
+using perceptive_locomotion::PerceptiveFullSimDiagram;
+using perceptive_locomotion::FullSimDiagram;
 
 
 PYBIND11_MODULE(diagrams, m) {
@@ -45,7 +49,39 @@ PYBIND11_MODULE(diagrams, m) {
         .def("get_output_port_profiling", &CassieRealSenseDriverDiagram::get_output_port_profiling, py_rvp::reference_internal)
         .def("start_rs", &CassieRealSenseDriverDiagram::start_rs)
         .def("stop_rs", &CassieRealSenseDriverDiagram::stop_rs);
-  }
+
+  py::class_<PerceptiveFullSimDiagram, drake::systems::Diagram<double>>(
+      m, "PerceptiveFullSimDiagram")
+    .def(py::init<const std::string&, const std::string&, const std::string&>(),
+         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
+      .def("SetPlantInitialConditions",
+           &dairlib::perceptive_locomotion::PerceptiveFullSimDiagram::SetPlantInitialConditions,
+           py::arg("diagram"),
+           py::arg("context"),
+           "Set initial conditions for the plant")
+      .def("SaveLcmLog", &PerceptiveFullSimDiagram::SaveLcmLog, py::arg("fname"))
+      .def("get_input_port_footholds", &PerceptiveFullSimDiagram::get_input_port_footholds,
+           py_rvp::reference_internal)
+      .def("get_input_port_grid_map", &PerceptiveFullSimDiagram::get_input_port_grid_map,
+           py_rvp::reference_internal)
+      .def("get_output_port_grid_map", &PerceptiveFullSimDiagram::get_output_port_grid_map,
+           py_rvp::reference_internal)
+      .def("GetCassiePelvisPoseInWorld", &PerceptiveFullSimDiagram::GetCassiePelvisPoseInWorld)
+      .def("meshcat", &PerceptiveFullSimDiagram::meshcat);
+
+  py::class_<FullSimDiagram, drake::systems::Diagram<double>>(
+      m, "FullSimDiagram")
+    .def(py::init<const std::string&, const std::string&, const std::string&>(),
+         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
+      .def("SetPlantInitialConditions",
+           &dairlib::perceptive_locomotion::FullSimDiagram::SetPlantInitialConditions,
+           py::arg("diagram"),
+           py::arg("context"),
+           "Set initial conditions for the plant")
+      .def("SaveLcmLog", &FullSimDiagram::SaveLcmLog, py::arg("fname"))
+      .def("GetCassiePelvisPoseInWorld", &FullSimDiagram::GetCassiePelvisPoseInWorld)
+      .def("meshcat", &FullSimDiagram::meshcat);
+   }
 
 
 }

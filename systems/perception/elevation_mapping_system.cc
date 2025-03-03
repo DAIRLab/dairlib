@@ -85,11 +85,10 @@ ElevationMappingSystem::ElevationMappingSystem(
   // covariance of the floating base pose in column major order
   input_port_pose_covariance_ = DeclareVectorInputPort("cov", 36).get_index();
 
-  if (not contacts_.empty()) {
-    input_port_contact_ = DeclareAbstractInputPort(
+  input_port_contact_ = DeclareAbstractInputPort(
         "lcmt_contact", drake::Value<lcmt_contact>()
-    ).get_index();
-  }
+  ).get_index();
+
 
   // create the elevation map
   ElevationMap map;
@@ -229,7 +228,7 @@ double ElevationMappingSystem::CalcMapOffsetFromContactState(
           double map_z = (zvals.size() % 2 == 0) ?
                          0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
 
-          if (not std::isnan(map_z)) {
+          if (not std::isnan(map_z) and not std::isinf(map_z)) {
             map_offset += stance_pos(2) - map_z;
             ++n_valid_contacts;
           }
@@ -241,6 +240,45 @@ double ElevationMappingSystem::CalcMapOffsetFromContactState(
   }
   map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
   return map_offset;
+}
+
+double ElevationMappingSystem::CalcMapOffsetFromPointCloud(
+    const PointCloudType::Ptr pc, const GridMap &map) const {
+  double err_sum = 0;
+  int err_count = 0;
+
+  const std::string steppability_layer = "segmentation";
+  const std::string elevation_layer = "elevation";
+
+  const auto interp_method_check =  grid_map::InterpolationMethods::INTER_NEAREST;
+  const auto interp_method_height = grid_map::InterpolationMethods::INTER_NEAREST;
+
+  for (const auto & pt : pc->points) {
+    if (not map.isInside(pt.getArray3fMap().head<2>().cast<double>())) {
+      continue;
+    }
+    bool use_point = map.exists(steppability_layer);
+    // if the steppability segmentation exists, check it to determine if the
+    // point is steppable, otherwise just assume it is
+    use_point = use_point ? map.atPosition(
+        steppability_layer,
+        pt.getArray3fMap().head<2>().cast<double>(), interp_method_check) != 0 : true;
+
+    if (use_point) {
+      double err = pt.z - map.atPosition(
+          elevation_layer, pt.getArray3fMap().head<2>().cast<double>(),
+          interp_method_height);
+      if (not std::isnan(err) and not std::isinf(err)) {
+        err_sum += err;
+        ++err_count;
+      }
+    }
+  }
+  double err_avg = err_count == 0 ? 0 : err_sum / err_count;
+  if (std::isnan(err_avg) or std::isinf(err_avg) or abs(err_avg) > 0.1) {
+    return 0;
+  }
+  return err_avg;
 }
 
 std::map<std::string, PointCloudType::Ptr>
@@ -312,12 +350,11 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
 
   // 4. If contact information is provided, update the map using contact points
   //    as a reference
+  double proprioceptive_map_offset = 0.0;
   if (has_contacts() and get_input_port_contact().HasValue(context)) {
     const auto& contact_msg = EvalAbstractInput(
         context, input_port_contact_)->get_value<lcmt_contact>();
-    double map_offset =
-        CalcMapOffsetFromContactState(contact_msg, map.getRawGridMap());
-    map.shift_map_z(map_offset);
+    proprioceptive_map_offset = CalcMapOffsetFromContactState(contact_msg, map.getRawGridMap());
   }
 
   const auto& state_buffer = state->get_abstract_state<
@@ -370,6 +407,10 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
+    double visual_map_offset = 0; //CalcMapOffsetFromPointCloud(pc_processed, map.getRawGridMap());
+    double map_offset = 0.5 * (visual_map_offset + proprioceptive_map_offset);
+    map.shift_map_z(map_offset);
+    
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
   auto end = std::chrono::high_resolution_clock::now();

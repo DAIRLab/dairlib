@@ -566,7 +566,7 @@
 
         <collision>
             <geometry>
-                <box size="0.15 0.001 0.001"/>
+                <box size="0.15 0.01 0.01"/>
             </geometry>
             <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
@@ -580,25 +580,25 @@
         <!-- Toe spheres -->
         <visual>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>
@@ -634,25 +634,25 @@
         <!-- Toe spheres -->
         <visual>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0025"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>

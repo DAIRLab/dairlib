@@ -60,11 +60,15 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   auto solver_end = std::chrono::steady_clock::now();
 
-  if (not result.is_success()) {
+  if (not result.is_success() and params_.solver_options.get_print_to_console()) {
     std::cout << "Solve failed wth code "
               << result.get_solution_result() << std::endl;
     std::cout << "x: " << x.transpose() << std::endl;
     std::cout << "t: " << t << std::endl;
+    std::cout << "p: " << p.transpose() << std::endl;
+    std::cout << "p_prev: " << p_prev_stance.transpose() << std::endl;
+    std::cout << "[tmin, tmax]: [" << tmin << ", " << tmax << "]" << std::endl;
+    std::cout << "vdes: " << vdes.transpose() << std::endl;
   }
 
   alip_s2s_mpfc_solution mpfc_solution;
@@ -163,24 +167,30 @@ void AlipS2SMPFC::MakeMPCCosts() {
 void AlipS2SMPFC::MakeInputConstraints() {
   constexpr double bigM = 20.0;
 
-  Matrix<double, 2, 6> A_reach = Matrix<double, 2, 6>::Zero();
-  A_reach.leftCols<2>() = -Matrix2d ::Identity();
-  A_reach.block<2, 2>(0, 2) = -Matrix2d::Identity();
-  A_reach.rightCols<2>() = Matrix2d::Identity();
+  Matrix<double, 3, 8> A_reach = Matrix<double, 3, 8>::Zero();
+  A_reach.topLeftCorner<2,2>() = -Matrix2d ::Identity();
+  A_reach.block<3, 3>(0, 2) = -Matrix3d::Identity();
+  A_reach.block<3, 3>(0, 5) = Matrix3d::Identity();
+  Vector3d lb_reach = Vector3d::Zero();
+  Vector3d ub_reach = Vector3d::Zero();
+  lb_reach.head<2>() = -params_.com_pos_bound;
+  ub_reach.head<2>() = params_.com_pos_bound;
+  lb_reach(2) = -0.25;
+  ub_reach(2) = 0.25;
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     reachability_c_.push_back(
         prog_->AddLinearConstraint(
             A_reach,
-            -params_.com_pos_bound,
-            params_.com_pos_bound,
-            {xx_.at(i).head<2>(), pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}
+            lb_reach,
+            ub_reach,
+            {xx_.at(i).head<2>(), pp_.at(i), pp_.at(i+1)}
         ));
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(
-            MatrixXd::Ones(1, 2),
+            MatrixXd::Ones(1, 3),
             VectorXd::Constant(1, -kInfinity),
             VectorXd::Constant(1, kInfinity),
-            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
+            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1), ee_.at(i)}
         ));
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
@@ -357,7 +367,7 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
   double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
   for (auto& c : no_crossover_c_) {
     c.evaluator()->UpdateCoefficients(
-        Eigen::RowVector2d(-s, s),
+        Eigen::RowVector3d(-s, s, -1),
         VectorXd::Constant(1, -kInfinity),
         VectorXd::Constant(1, -0.04)
     );

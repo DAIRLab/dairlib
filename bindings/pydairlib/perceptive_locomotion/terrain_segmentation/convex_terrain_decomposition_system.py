@@ -101,6 +101,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         self.profiling = profiling
         self.debug = False
         self.debug_info = {}
+        self.acd_thresh =0.15
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
@@ -121,6 +122,13 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             print("error fitting plane to points:")
             print(verts3d)
             return None, None
+        
+        if np.isnan(plane.normal).any() or np.isnan(plane.point).any() or \
+           np.isinf(plane.normal).any() or np.isinf(plane.point).any():
+            print("Found invalid plane parameters: ")
+            print(f'normal: {plane.normal}, point: {plane.point}')
+            return None, None
+        
 
         return plane.normal, plane.point
 
@@ -140,7 +148,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         if not polygons:
             return
 
-        convex_polygons = ProcessTerrain2d(polygons, 0.25)
+        convex_polygons = ProcessTerrain2d(polygons, self.acd_thresh)
         end_convexity = time.time()
 
         if not convex_polygons:
@@ -163,7 +171,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         if self.debug:
             self.debug_info['unprocessed_polygons'] = polygons
             self.debug_info['segmentation'] = safe_terrain_image
-            self.debug_info['acd_components'] = GetAcdComponents(polygons, 0.25)
+            self.debug_info['acd_components'] = GetAcdComponents(polygons, self.acd_thresh)
             self.debug_info['convex_polygons'] = convex_polygons
 
         if self.profiling:

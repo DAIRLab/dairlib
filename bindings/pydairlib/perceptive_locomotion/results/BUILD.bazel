@@ -52,6 +52,7 @@ py_library(
         "//bindings/grid_map",
         "//bindings/pydairlib/analysis:cassie_plotting_utils",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",

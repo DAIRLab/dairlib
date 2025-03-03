@@ -57,7 +57,7 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   nv_ = plant_.num_velocities();
   nu_ = plant_.num_actuators();
 
-  for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
+  for (size_t i = 0; i < left_right_stance_fsm_states_.size(); i++){
     stance_foot_map_.insert(
         {left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
   }
@@ -232,7 +232,12 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   );
 
   if (not foothold_set.empty()) {
-    footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, 1.8);
+    double radius = (
+        trajopt_.params().gait_params.single_stance_duration +
+        trajopt_.params().gait_params.double_stance_duration
+    ) * trajopt_.params().nmodes * std::max(vdes.norm(), 2 * trajopt_.params().com_pos_bound[0]);
+
+    footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, radius);
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }
@@ -404,7 +409,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->xx.clear();
   mpc_debug->ee.clear();
 
-  for (int i = 0; i < mpc_sol.xx.size() ; ++i) {
+  for (size_t i = 0; i < mpc_sol.xx.size() ; ++i) {
     vector<double> x(4);
     vector<double> p(3);
     Vector4d::Map(x.data()) = mpc_sol.xx.at(i);
@@ -424,7 +429,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   foothold_sol.CopyToLcm(&(mpc_debug->foothold_solution));
 
   double max_foothold_violation = -std::numeric_limits<double>::infinity();
-  for (int i = 0; i < mpc_sol.pp.size() - 1; ++i) {
+  for (size_t i = 0; i < mpc_sol.pp.size() - 1; ++i) {
     max_foothold_violation = std::max(
         max_foothold_violation,
         foothold_sol.polygons().at(i).Get2dViolation(mpc_sol.pp.at(i+1))

@@ -261,7 +261,7 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
       continue;
     }
     double area = PolygonArea(planar_region.first);
-    if (area < 0.05) {
+    if (area < 0.02) {
       continue;
     }
 

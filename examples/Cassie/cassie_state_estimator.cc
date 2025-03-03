@@ -325,7 +325,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetPositionAtIndex(position_idx_map_.at("toe_left"),
                              cassie_out.leftLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_left"),
-                             cassie_out.leftLeg.shinJoint.position);
+                             0.0);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_left"),
                              cassie_out.leftLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
@@ -342,7 +342,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetPositionAtIndex(position_idx_map_.at("toe_right"),
                              cassie_out.rightLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_right"),
-                             cassie_out.rightLeg.shinJoint.position);
+                             0.0);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_right"),
                              cassie_out.rightLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
@@ -359,7 +359,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_leftdot"),
                              cassie_out.leftLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_leftdot"),
-                             cassie_out.leftLeg.shinJoint.velocity);
+                             0.0);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_leftdot"),
                              cassie_out.leftLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_leftdot"),
@@ -376,7 +376,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_rightdot"),
                              cassie_out.rightLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_rightdot"),
-                             cassie_out.rightLeg.shinJoint.velocity);
+                             0.0);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_rightdot"),
                              cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(
@@ -430,21 +430,14 @@ void CassieStateEstimator::EstimateContactForEkf(
   *left_contact = 0;
   *right_contact = 0;
 
-  // We say a foot is in contact with the ground if knee and heel spring
-  // deflections are *both* over some thresholds. We don't update anything
-  // if it's under the threshold.
-  const double& left_knee_spring =
-      output.GetPositionAtIndex(position_idx_map_.at("knee_joint_left"));
-  const double& right_knee_spring =
-      output.GetPositionAtIndex(position_idx_map_.at("knee_joint_right"));
+  // We say a foot is in contact with the ground  heel spring
+  // deflections are over a threshold.
   const double& left_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_left"));
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
-  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-                              left_heel_spring < ankle_spring_threshold_ekf_);
-  bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-                               right_heel_spring < ankle_spring_threshold_ekf_);
+  bool left_contact_spring = left_heel_spring < ankle_spring_threshold_ekf_;
+  bool right_contact_spring = right_heel_spring < ankle_spring_threshold_ekf_;
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {

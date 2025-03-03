@@ -61,7 +61,7 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         self.safety_hysteresis = 0.4
         self.kernel_length = 0.17
-        self.erosion_kernel_length = self.kernel_length / 1.5
+        self.erosion_kernel_length = self.kernel_length / 1.2
         self.safety_threshold = 0.7
 
         self.safety_criterion_callbacks = safety_callbacks

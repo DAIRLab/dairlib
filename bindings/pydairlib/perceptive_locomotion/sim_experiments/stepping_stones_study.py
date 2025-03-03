@@ -266,7 +266,7 @@ def run_study_parallel(gains: str, params: str, num_trials: int, terrain_size: f
     return {'success': success_count, 'fail': fail_count}
 
 
-def main(fname):
+def timing_study_main(fname):
     n_trials = 50
     params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
@@ -301,6 +301,33 @@ def main(fname):
         results_perceptive=results_perceptive,
         results_perceptive_no_timing=results_perceptive_no_timing
     )
+
+
+def cost_study_main(fname):
+    n_trials = 50
+    params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
+    gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
+    gains_gait_cost = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_gait_cost.yaml"
+
+    results_vel = {}
+    results_gait = {}
+    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5]:
+        try:
+            results_vel[terrain_size] = run_study_parallel(
+                gains, params, n_trials, terrain_size, perceptive=False
+            )
+            results_gait[terrain_size] = run_study_parallel(
+                gains_gait_cost, params, n_trials, terrain_size, perceptive=False
+            )
+        except KeyboardInterrupt:
+            print("\nStudy terminated by user.")
+
+    np.savez(
+        fname,
+        results_vel=results_vel,
+        results_gait=results_gait
+    )
+
 
 
 def plot_results(fname):
@@ -353,11 +380,11 @@ if __name__ == '__main__':
         "--results_file",
         type=str,
         help='Filename to save results at',
-        default='../stepping_stone_study_results/fixed_depth_results.npz',
+        default='../stepping_stone_study_results/gait_study_results.npz',
     )
     args = parser.parse_args()
 
     if args.saved_results_file:
         plot_results(args.saved_results_file)
     else:
-        main(args.results_file)
+        cost_study_main(args.results_file)

@@ -35,8 +35,8 @@ def process_alip_mpfc_debug_data(data):
         initial_state[i] = msg.initial_state
         initial_stance_foot[i] = msg.initial_stance_foot
         desired_velocity[i] = msg.desired_velocity
-        nominal_first_stance_time[i][0] = msg.nominal_first_stance_time
-        solution_first_stance_time[i][0] = msg.solution_first_stance_time
+        nominal_first_stance_time[i][0] = msg.T_nominal
+        solution_first_stance_time[i][0] = msg.T
         pp[i] = np.array(msg.pp)
         xx[i] = np.array(msg.xx)
 

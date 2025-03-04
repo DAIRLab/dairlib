@@ -76,8 +76,7 @@ int DoMain() {
       Eigen::Vector2d::Zero());
 
   auto osc_diagram = builder.AddSystem<MpfcOscDiagram>(
-      plant, gains_file, gains_mpc_file, osqp_options,
-      MpfcOscDiagramInputType::kLcmtAlipMpcOutput
+      plant, gains_file, gains_mpc_file, osqp_options
   );
   auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml

@@ -47,7 +47,6 @@ HikingSimDiagram::HikingSimDiagram(
     const std::string& camera_pose_yaml)
     : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
 
-
   // magic numbers:
   static constexpr double sim_dt = 1e-3;
   static constexpr double terrain_friction = 0.8;
@@ -98,7 +97,7 @@ HikingSimDiagram::HikingSimDiagram(
   // camera model
   const auto cam_transform = camera::ReadCameraPoseFromYaml(camera_pose_yaml);
   const auto& [color_camera, depth_camera] = camera::MakeDairD455CameraModel(
-      renderer_name, camera::D455ImageSize::k424x240
+      renderer_name, camera::D455ImageSize::k480x270
   );
   const auto parent_body_id = plant_->GetBodyFrameIdIfExists(
       plant_->GetFrameByName("pelvis").body().index()

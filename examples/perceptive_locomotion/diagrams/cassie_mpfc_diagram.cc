@@ -65,7 +65,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
       plant_, plant_context_.get(), left_right_fsm_states,
       post_left_right_fsm_states, left_right_toe, gains_mpc);
 
-  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.005);
+  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 

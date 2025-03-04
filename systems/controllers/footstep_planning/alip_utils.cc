@@ -281,14 +281,8 @@ Eigen::Matrix4d GetProjectionToBPerp(const Eigen::Matrix<double, 4, 2>& B) {
   Eigen::Matrix<double, 4, 2> B_perp =
       Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
           B.transpose()).kernel();
-
-  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
-  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
-
-  Matrix4d new_basis = Matrix4d::Zero();
-  new_basis.leftCols<2>() = B_perp;
-  new_basis.rightCols<2>() = B;
-  return new_basis * projection_in_basis_coords * new_basis.inverse();
+  Matrix4d P = B_perp * (B_perp.transpose() * B_perp).inverse() * B_perp.transpose();
+  return P;
 }
 
 }
@@ -313,7 +307,7 @@ void MakeProjectionToP2Orbit(
   Eigen::Matrix<double, 4, 2> p2o_basis = p2o_premul * (A * B - B);
   PI_0 = GetProjectionToBPerp(p2o_basis);
   PI_1 = GetProjectionToBPerp(A * p2o_basis + B);
-  g_0 = Ts2s * p2o_premul * B;
+  g_0 = 2 * Ts2s * p2o_premul * B;
   g_1 = A * g_0;
 }
 

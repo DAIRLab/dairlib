@@ -5,7 +5,6 @@
 
 // MPC related
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
-#include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
@@ -66,8 +65,7 @@ using multibody::MakeNameToPositionsMap;
 MpfcOscDiagram::MpfcOscDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gains_filename, const string& mpc_gains_filename,
-    const string& osqp_settings_filename, MpfcOscDiagramInputType input_type) :
-    input_type_(input_type),
+    const string& osqp_settings_filename) :
     plant_(&plant),
     left_toe(LeftToeFront(plant)),
     left_heel(LeftToeRear(plant)),
@@ -124,42 +122,12 @@ MpfcOscDiagram::MpfcOscDiagram(
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
   auto fsm = builder.AddSystem<FsmReceiver>(plant);
 
-  if (input_type_ == MpfcOscDiagramInputType::kFootstepCommand) {
-    auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
-    auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-        gains_mpc.gait_params.single_stance_duration,
-        gains_mpc.gait_params.double_stance_duration,
-        plant
-    );
-    auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-        gains_mpc.gait_params.single_stance_duration,
-        gains_mpc.gait_params.double_stance_duration,
-        plant
-    );
-    builder.Connect(state_receiver->get_output_port(0),
-                    footstep_passthrough->get_input_port_state());
-    builder.Connect(*footstep_passthrough, *mpc_receiver);
-    builder.Connect(state_receiver->get_output_port(0),
-                    fsm_passthrough->get_input_port_state());
-    builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
-    auto dummy_foothold_source =
-        builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
-    builder.Connect(dummy_foothold_source->get_output_port(),
-                    fsm_passthrough->get_input_port_footstep());
-    builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
-                    fsm->get_input_port_fsm_info());
+  builder.Connect(mpc_receiver->get_output_port_fsm(),
+                  fsm->get_input_port_fsm_info());
+  input_port_alip_mpc_output_ = builder.ExportInput(
+      mpc_receiver->get_input_port(), "lcmt_alip_mpc_output"
+  );
 
-    input_port_footstep_command_ = builder.ExportInput(
-        footstep_passthrough->get_input_port_footstep(), "footstep"
-    );
-
-  } else {
-    builder.Connect(mpc_receiver->get_output_port_fsm(),
-                    fsm->get_input_port_fsm_info());
-    input_port_alip_mpc_output_ = builder.ExportInput(
-        mpc_receiver->get_input_port(), "lcmt_alip_mpc_output"
-    );
-  }
 
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());

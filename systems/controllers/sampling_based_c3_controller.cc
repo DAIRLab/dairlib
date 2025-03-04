@@ -1650,7 +1650,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   // use circular trajectory.
   else if (sampling_params_.repositioning_trajectory_type == 2){
-    // TODO: Find a way to get it to pick the shorter direction around the circle.
     // std::cout << "Using circular trajectory for repositioning." << std::endl;
 
     // Current object projection onto the plane of the circle.
@@ -2127,6 +2126,12 @@ void SamplingC3Controller::OutputAllSampleCosts(
     const drake::systems::Context<double>& context,
     std::vector<double>* all_sample_costs) const {
   *all_sample_costs = all_sample_costs_;
+  if(verbose_){
+    std::cout << "All sample costs as per output port: " << std::endl;
+    for (int i = 0; i < all_sample_costs_.size(); i++) {
+      std::cout << all_sample_costs_[i] << std::endl;
+    }
+  }
 }
 
 void SamplingC3Controller::OutputCurrAndBestSampleCost(

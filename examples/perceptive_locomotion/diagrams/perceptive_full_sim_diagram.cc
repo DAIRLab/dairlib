@@ -201,10 +201,6 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       plant_visualizer->get_input_port()
   );
   builder.Connect(
-      perception->get_output_port_elevation_map(),
-      grid_map_visualizer->get_input_port()
-  );
-  builder.Connect(
       sim_diagram->get_output_port_state(),
       mpfc_visualizer->get_input_port_state()
   );
@@ -238,6 +234,10 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   builder.ConnectInput(
       input_port_grid_map_,
       grid_map_sender->get_input_port()
+  );
+  builder.ConnectInput(
+      input_port_grid_map_,
+      grid_map_visualizer->get_input_port()
   );
   builder.BuildInto(this);
 }

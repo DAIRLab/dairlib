@@ -33,7 +33,7 @@ from pydairlib.multibody import MultiposeVisualizer
 def main():
     use_springs = True
     channel_x = "CASSIE_STATE_SIMULATION"
-    num_poses = 30
+    num_poses = 15
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -51,16 +51,21 @@ def main():
 def multipose_visualizer_main(robot_output, fname_yaml, num_poses):
 
     n = robot_output['q'].shape[0]
-    q_idx = np.linspace(0, n, num_poses, dtype=int)
+    q_idx = np.linspace(0, int(0.7 * n), num_poses, dtype=int)
     q_idx[-1] -= 1
     poses = robot_output['q'][q_idx]
 
-    alpha_scale = np.linspace(0.5, 0.5, num_poses)
+    alpha_scale = np.linspace(1.0, 1.0, num_poses)
     visualizer = MultiposeVisualizer(
         FindResourceOrThrow(cassie_plots.cassie_urdf),
         num_poses,
         np.square(alpha_scale), ""
     )
+    
+    visualizer.GetMeshcat().SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
+    visualizer.GetMeshcat().SetProperty("/Lights/SpotLight/<object>", "castShadow", True)
+    visualizer.GetMeshcat().SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0)
+    visualizer.GetMeshcat().SetProperty("/Lights/SpotLight/<object>", "intensity", 100.0)
 
     ortho_camera = Meshcat.OrthographicCamera()
     ortho_camera.top = 1
@@ -71,7 +76,8 @@ def multipose_visualizer_main(robot_output, fname_yaml, num_poses):
     ortho_camera.far = 500
     ortho_camera.zoom = 1
 
-    # visualizer.GetMeshcat().SetCamera(ortho_camera)
+    visualizer.GetMeshcat().SetCamera(ortho_camera)
+    visualizer.GetMeshcat().SetProperty("/Cameras/default/rotated/<object>", "position", [1.0, 0.0, 0.0])
     visualizer.AddSteppingStonesFromYaml(fname_yaml)
     visualizer.DrawPoses(poses.T)
     while(True):

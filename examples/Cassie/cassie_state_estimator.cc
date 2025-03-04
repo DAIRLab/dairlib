@@ -325,7 +325,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetPositionAtIndex(position_idx_map_.at("toe_left"),
                              cassie_out.leftLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_left"),
-                             0.0);
+                             cassie_out.leftLeg.shinJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_left"),
                              cassie_out.leftLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
@@ -342,7 +342,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetPositionAtIndex(position_idx_map_.at("toe_right"),
                              cassie_out.rightLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_right"),
-                             0.0);
+                             cassie_out.rightLeg.shinJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_right"),
                              cassie_out.rightLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
@@ -359,7 +359,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_leftdot"),
                              cassie_out.leftLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_leftdot"),
-                             0.0);
+                             cassie_out.leftLeg.shinJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_leftdot"),
                              cassie_out.leftLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_leftdot"),
@@ -376,7 +376,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_rightdot"),
                              cassie_out.rightLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_rightdot"),
-                             0.0);
+                             cassie_out.rightLeg.shinJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_rightdot"),
                              cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(

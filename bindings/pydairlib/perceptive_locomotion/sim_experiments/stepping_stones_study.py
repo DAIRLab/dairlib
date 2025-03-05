@@ -89,7 +89,7 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
             ys.append(y)
             zs.append(z)
             normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
-            lxs.append(0.4)
+            lxs.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lys.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lzs.append(0.3)
             yaws.append(rng.uniform(-0.1, 0.1))
@@ -311,7 +311,7 @@ def cost_study_main(fname):
 
     results_vel = {}
     results_gait = {}
-    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5]:
+    for terrain_size in [0.25, 0.3, 0.35, 0.4, 0.45]:
         try:
             results_vel[terrain_size] = run_study_parallel(
                 gains, params, n_trials, terrain_size, perceptive=False
@@ -327,7 +327,6 @@ def cost_study_main(fname):
         results_vel=results_vel,
         results_gait=results_gait
     )
-
 
 
 def plot_results(fname):
@@ -380,11 +379,11 @@ if __name__ == '__main__':
         "--results_file",
         type=str,
         help='Filename to save results at',
-        default='../stepping_stone_study_results/gait_study_results.npz',
+        default='../stepping_stone_study_results/results.npz',
     )
     args = parser.parse_args()
 
     if args.saved_results_file:
         plot_results(args.saved_results_file)
     else:
-        cost_study_main(args.results_file)
+        timing_study_main(args.results_file)

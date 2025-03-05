@@ -413,11 +413,13 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     for i, msg in enumerate(map_msgs):
         grid_maps[i].setTimestamp(int(1e3 * msg.info.utime))
         grid_maps[i].setFrameId(msg.info.parent_frame)
-        grid_maps[i].setGeometry(
-            length=np.array([msg.info.length_x, msg.info.length_y]),
-            resolution=msg.info.resolution,
-            position=np.array(msg.info.position)
-        )
+        
+        if msg.info.resolution > 0:
+            grid_maps[i].setGeometry(
+                length=np.array([msg.info.length_x, msg.info.length_y]),
+                resolution=msg.info.resolution,
+                position=np.array(msg.info.position)
+            )
 
         grid_maps[i].setStartIndex(
             np.array([msg.outer_start_index, msg.inner_start_index])

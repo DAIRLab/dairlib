@@ -187,10 +187,10 @@ void AlipS2SMPFC::MakeInputConstraints() {
         ));
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(
-            MatrixXd::Ones(1, 3),
+            MatrixXd::Ones(1, 2),
             VectorXd::Constant(1, -kInfinity),
             VectorXd::Constant(1, kInfinity),
-            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1), ee_.at(i)}
+            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
         ));
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
@@ -367,7 +367,7 @@ void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
   double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
   for (auto& c : no_crossover_c_) {
     c.evaluator()->UpdateCoefficients(
-        Eigen::RowVector3d(-s, s, -1),
+        Eigen::RowVector2d(-s, s),
         VectorXd::Constant(1, -kInfinity),
         VectorXd::Constant(1, -0.04)
     );

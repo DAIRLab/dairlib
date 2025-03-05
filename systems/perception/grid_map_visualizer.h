@@ -16,7 +16,8 @@ class GridMapVisualizer : public drake::systems::LeafSystem<double> {
                     std::vector<std::string> layers = {});
 
   void DrawGridMap(const grid_map::GridMap& map,
-                   const std::vector<std::string>& layers) const;
+                   const std::vector<std::string>& layers,
+                   const std::string& prefix ="") const;
 
  private:
   drake::systems::EventStatus UpdateVisualization(

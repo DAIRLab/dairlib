@@ -63,14 +63,15 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
 }
 
 void GridMapVisualizer::DrawGridMap(
-    const GridMap &map, const std::vector<std::string> &layers) const {
+    const GridMap &map, const std::vector<std::string> &layers,
+    const std::string& prefix) const {
 
   const auto [X, Y] = GridMapToMeshGrid(map);
   for (const auto& layer : map.getLayers()) {
     if (layers.empty() or
         std::find(layers.begin(), layers.end(), layer) != layers.end()) {
       const MatrixXd& Z = map.get(layer).cast<double>();
-      meshcat_->PlotSurface("grid_map_" + layer, X, Y, Z);
+      meshcat_->PlotSurface(prefix + "grid_map_" + layer, X, Y, Z);
     }
   }
 

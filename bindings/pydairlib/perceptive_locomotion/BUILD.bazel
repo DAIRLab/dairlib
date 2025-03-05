@@ -19,6 +19,8 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
+        "//bindings/pydairlib/systems",
+        "//bindings/pydairlib/perceptive_locomotion/results:analysis_utils",
         "//bindings/pydairlib/analysis:cassie_plotting_utils",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
         "//bindings/pydairlib/analysis:process_lcm_log",

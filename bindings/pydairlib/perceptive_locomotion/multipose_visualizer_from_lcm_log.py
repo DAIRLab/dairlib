@@ -12,6 +12,7 @@ from pydairlib.common import FindResourceOrThrow
 from pydrake.all import (
     PiecewisePolynomial,
     Box,
+    RotationMatrix,
     RigidTransform,
     Meshcat,
     DiagramBuilder,
@@ -29,11 +30,14 @@ import pydairlib.analysis.mbp_plotting_utils as mbp_plots
 from pydairlib.analysis.process_lcm_log import get_log_data
 from pydairlib.multibody import MultiposeVisualizer
 
+from pydairlib.systems import GridMapVisualizer
+from pydairlib.geometry import ConvexPolygonVisualizer
+from pydairlib.perceptive_locomotion.results import analysis_utils
 
-def main():
-    use_springs = True
+
+def ground_truth_main():
     channel_x = "CASSIE_STATE_SIMULATION"
-    num_poses = 15
+    num_poses = 6
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -45,13 +49,66 @@ def main():
         lcmlog, default_channels, 0, -1, mbp_plots.load_state_channel,  # processing callback
         plant, channel_x)
 
-    multipose_visualizer_main(robot_output, filename_stones, num_poses)
+    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.18, 0.6)
+    visualizer.AddSteppingStonesFromYaml(filename_stones)
+    while(True):
+        continue
 
 
-def multipose_visualizer_main(robot_output, fname_yaml, num_poses):
+def perceptive_main():
+    filename_log = sys.argv[1]
+    grid_maps, robot_output = analysis_utils.get_grid_maps_from_log(filename_log)
+    
+    start_fraction = 0.15
+    end_fraction = 0.55
+    num_poses = 6
+    visualizer = multipose_visualizer_main(
+        robot_output,
+        num_poses,
+        start_fraction,
+        end_fraction
+    )
+    
+    grid_map_visualizer = GridMapVisualizer(visualizer.GetMeshcat(), 0.1, [])
+    n = len(grid_maps)
+    map_idx = np.linspace(
+        int(start_fraction * n),
+        int(end_fraction * n),
+        num_poses,
+        dtype=int
+    )
+    for idx in map_idx:
+        grid_map_visualizer.DrawGridMap(grid_maps[idx], ['segmented_elevation'], f'{idx}_')
+    
+    while True:
+        continue
+
+
+def look_at(meshcat, point_of_interest, cam_pos_local):
+    # point the camera at the poit of interest
+    meshcat.SetCameraPose(
+        point_of_interest + cam_pos_local, point_of_interest)
+    
+    # Set the lighting positions
+    meshcat.SetTransform(
+        "/Lights/PointLightPositiveX/<object>",
+        RigidTransform(
+            RotationMatrix(), point_of_interest + np.array([2.0, 0.0, 2.0])))
+    meshcat.SetTransform(
+        "/Lights/PointLightNegativeX/<object>",
+        RigidTransform(
+            RotationMatrix(), point_of_interest + np.array([-2.0, 0.0, 2.0])))
+
+
+def multipose_visualizer_main(robot_output, num_poses, start_fraction, end_fraction):
 
     n = robot_output['q'].shape[0]
-    q_idx = np.linspace(0, int(0.7 * n), num_poses, dtype=int)
+    q_idx = np.linspace(
+        int(start_fraction * n),
+        int(end_fraction * n),
+        num_poses,
+        dtype=int
+    )
     q_idx[-1] -= 1
     poses = robot_output['q'][q_idx]
 
@@ -62,27 +119,14 @@ def multipose_visualizer_main(robot_output, fname_yaml, num_poses):
         np.square(alpha_scale), ""
     )
     
-    visualizer.GetMeshcat().SetProperty("/Lights/PointLightPositiveX/<object>", "castShadow", True)
-    visualizer.GetMeshcat().SetProperty("/Lights/SpotLight/<object>", "castShadow", True)
-    visualizer.GetMeshcat().SetProperty("/Lights/PointLightPositiveX/<object>", "intensity", 100.0)
-    visualizer.GetMeshcat().SetProperty("/Lights/SpotLight/<object>", "intensity", 100.0)
-
-    ortho_camera = Meshcat.OrthographicCamera()
-    ortho_camera.top = 1
-    ortho_camera.bottom = -0.1
-    ortho_camera.left = -1
-    ortho_camera.right = 2
-    ortho_camera.near = -10
-    ortho_camera.far = 500
-    ortho_camera.zoom = 1
-
-    visualizer.GetMeshcat().SetCamera(ortho_camera)
-    visualizer.GetMeshcat().SetProperty("/Cameras/default/rotated/<object>", "position", [1.0, 0.0, 0.0])
-    visualizer.AddSteppingStonesFromYaml(fname_yaml)
+    look_at(visualizer.GetMeshcat(), np.array([4.0, 0.0, 0.5]), np.array([0.0, 2.0, 0.5]))
+    
     visualizer.DrawPoses(poses.T)
-    while(True):
-        continue
+    return visualizer
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 2:
+        ground_truth_main()
+    else:
+        perceptive_main()

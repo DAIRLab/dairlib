@@ -66,6 +66,7 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     y_variation = 0.05
     x_variation = 0.05
     z_variation = 0.05
+    yaw_variation = 45.0 * np.pi / 180.0
     x_dist = 0.6
     y_dist = 0.6
     
@@ -88,11 +89,11 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
             xs.append(x)
             ys.append(y)
             zs.append(z)
-            normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
+            normals.append(rng.uniform([-0.09, -0.06, 1.0], [0.09, 0.09, 1.0]))
             lxs.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lys.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lzs.append(0.3)
-            yaws.append(rng.uniform(-0.1, 0.1))
+            yaws.append(rng.uniform(-yaw_variation, yaw_variation))
     
     block_str = get_blocks_string(xs, ys, zs, normals, lxs, lys, lzs, yaws)
     if savefile is None:
@@ -277,7 +278,7 @@ def timing_study_main(fname):
     results_perceptive = {}
     results_perceptive_no_timing = {}
 
-    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+    for terrain_size in [0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
         try:
             results_gt[terrain_size] = run_study_parallel(
                 gains, params, n_trials, terrain_size, perceptive=False

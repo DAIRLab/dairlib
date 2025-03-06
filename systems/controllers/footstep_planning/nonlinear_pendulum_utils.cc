@@ -100,7 +100,7 @@ void LinearizeTrapezoidalCollocationConstraint(
   MatrixXd B0 = J0.rightCols<nu>();
   MatrixXd B1 = J1.rightCols<nu>();
 
-  A.block<nx, nx>(0,0) = Matrix<double, nx, nx>::Identity() + 0.5 * h * A0;
+  A.block<nx, nx>(0, 0) = Matrix<double, nx, nx>::Identity() + 0.5 * h * A0;
   A.block<nx, nx>(0, nx) = -Matrix<double, nx, nx>::Identity() + 0.5 * h * A1;
 
   B.block(0, 0, nx, nu) = 0.5 * h * B0;
@@ -146,6 +146,32 @@ Vector6<T> CalcPendulumDynamics(
   return xdot;
 }
 
+namespace {
+template<typename T>
+T sec(T theta) {
+  return 1.0 / cos(theta);
+}
+
+template<typename T>
+T dz_dr(T r, T theta_y, T theta_x) {
+  return 1.0
+      / sqrt(1.0 + tan(theta_y) * tan(theta_y) + tan(-theta_x) * tan(-theta_x));
+}
+
+template<typename T>
+T dz_dtheta_y(T r, T theta_y, T theta_x) {
+  T denom =
+      sqrt(1.0 + tan(theta_y) * tan(theta_y) + tan(-theta_x) * tan(-theta_x));
+  return -r * tan(theta_y) * sec(-theta_y) * sec(theta_y)
+      / (denom * denom * denom);
+}
+
+template<typename T>
+T dz_dtheta_x(T r, T theta_y, T theta_x) {
+  return dz_dtheta_y(r, theta_x, theta_y);
+}
+}
+
 template <typename T>
 Vector4<T> CalcALIPReset(
     const Vector6<T>& x_pre, const Vector3d& p_pre, const Vector3<T>& p_post, double m) {
@@ -153,13 +179,21 @@ Vector4<T> CalcALIPReset(
   const T& theta_y = x_pre(theta_y_idx);
   const T& theta_x = x_pre(theta_x_idx);
   const T& rdot = x_pre(rdot_idx);
-  const T theta_y_dot = x_pre(l_y_idx) / (m * r * r * cos(theta_x) * cos(theta_x));
-  const T theta_x_dot = x_pre(l_x_idx) / (m * r * r * cos(theta_y) * cos(theta_y));
-  const T x = r * cos(theta_x) * sin(theta_y);
-  const T y = -r * cos(theta_y) * sin(theta_x);
-  const T xdot = rdot * sin(theta_y) * cos(theta_x) + r * theta_y_dot * cos(theta_y) * cos(theta_x) - r * theta_x_dot * sin(theta_y) * sin(theta_x);
-  const T ydot = -rdot * sin(theta_x) * cos(theta_y) - r * theta_x_dot * cos(theta_x) * cos(theta_y) + r * theta_y_dot * sin(theta_x) * sin(theta_y);
-  const T zdot = (rdot * r - xdot*x - ydot * y) / sqrt(r*r - x*x - y*y);
+
+  T z = r / sqrt(1.0 + tan(theta_y) * tan(theta_y) + tan(-theta_x) * tan(-theta_x));
+  T x = z * tan(theta_y);
+  T y = -z * tan(theta_x);
+
+
+  const T theta_y_dot = x_pre(l_y_idx) / (m * (x * x + z * z));
+  const T theta_x_dot = x_pre(l_x_idx) / (m * (y * y + z * z));
+
+  const T zdot = dz_dr(r, theta_y, theta_x) * rdot +
+                 dz_dtheta_y(r, theta_y, theta_x) * theta_y_dot +
+                 dz_dtheta_x(r, theta_y, theta_x) * theta_x_dot;
+
+  const T xdot = zdot * tan(theta_y) + z * sec(theta_y) * sec(theta_y) * theta_y_dot;
+  const T ydot = -zdot * tan(theta_x) - z * sec(theta_x) * sec(theta_x) * theta_x_dot;
 
   Vector3<T> v(xdot, ydot, zdot);
 

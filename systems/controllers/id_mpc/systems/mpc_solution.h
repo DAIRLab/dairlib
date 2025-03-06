@@ -1,6 +1,6 @@
 #pragma once
 
-#include "systems/controllers/id_mpc/sqp/sqp_solver.h"
+#include "solvers/sqp/sqp_solver.h"
 #include "lcm/lcm_trajectory.h"
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -11,7 +11,7 @@ namespace dairlib::systems::controllers::id_mpc {
  */
 class MPCSolution {
  public:
-  SQPIterate sqp_iterate;
+  solvers::sqp::SQPIterate sqp_iterate;
   LcmTrajectory solution_trajectories;
   std::vector<std::vector<std::string>> contact_sequence;
   std::vector<double> breaks;

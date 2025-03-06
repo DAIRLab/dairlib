@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "sqp_solver.h"
+#include "solvers/sqp/sqp_solver.h"
 
-namespace dairlib::systems::controllers::id_mpc {
+namespace dairlib::solvers::sqp {
 
 using Eigen::VectorXd;
 

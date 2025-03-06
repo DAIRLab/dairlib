@@ -1,7 +1,7 @@
 #include <iostream>
 #include "systems/controllers/id_mpc/id_mpc.h"
-#include "systems/controllers/id_mpc/costs/quadratic_error_cost.h"
-#include "systems/controllers/id_mpc/costs/orientation_error_cost.h"
+#include "solvers/sqp/quadratic_error_cost.h"
+#include "solvers/sqp/orientation_error_cost.h"
 #include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
 
 #include "common/eigen_utils.h"
@@ -18,6 +18,10 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::MatrixXd;
 using drake::trajectories::PiecewisePolynomial;
+
+using solvers::sqp::OrientationErrorCost;
+using solvers::sqp::QuadraticErrorCost;
+
 
 void TestInverseDynamics(
     const ConstrainedDynamicsInfo& info, const VectorXd q, const VectorXd& u,

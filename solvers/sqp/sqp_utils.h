@@ -2,7 +2,7 @@
 
 #include "solvers/qp_data.h"
 
-namespace dairlib::systems::controllers::id_mpc {
+namespace dairlib::solvers::sqp {
 
 struct SQPIterate {
   Eigen::VectorXd x_init;

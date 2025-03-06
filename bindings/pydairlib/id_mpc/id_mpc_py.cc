@@ -2,7 +2,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 
-#include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/controllers/id_mpc/references/mpc_reference.h"
 #include "systems/controllers/id_mpc/core/constrained_inverse_dynamics_info.h"
 #include "examples/id_mpc/cassie_mpc_utils.h"
 

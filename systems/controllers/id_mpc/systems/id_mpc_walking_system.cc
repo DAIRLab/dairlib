@@ -1,6 +1,6 @@
 #include "id_mpc_walking_system.h"
 #include "systems/controllers/id_mpc/core/solution_trajectories.h"
-#include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/controllers/id_mpc/references/mpc_reference.h"
 
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -16,6 +16,9 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using solvers::QPData;
+using solvers::sqp::SQPIterate;
+using solvers::sqp::AllocateSQPIterate;
+
 using drake::solvers::SolverOptions;
 
 IDMPCWalkingSystem::IDMPCWalkingSystem(

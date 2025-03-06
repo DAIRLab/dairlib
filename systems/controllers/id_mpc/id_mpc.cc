@@ -1,8 +1,8 @@
 #include <numeric>
 #include "id_mpc.h"
 #include "common/eigen_utils.h"
-#include "costs/orientation_error_cost.h"
-#include "systems/controllers/id_mpc/sqp/sqp_utils.h"
+#include "solvers/sqp/orientation_error_cost.h"
+#include "solvers/sqp/sqp_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -24,6 +24,11 @@ using drake::AutoDiffVecXd;
 using drake::math::ExtractValue;
 using drake::math::ExtractGradient;
 using drake::math::InitializeAutoDiff;
+
+using solvers::sqp::QuadraticErrorCost;
+using solvers::sqp::OrientationErrorCost;
+using solvers::sqp::ParseCostsToSQP;
+using solvers::sqp::ParseConstraintsToSQP;
 
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
 

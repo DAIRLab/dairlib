@@ -1,7 +1,7 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/controllers/id_mpc/references/mpc_reference.h"
 
 
 namespace dairlib::systems::controllers::id_mpc {

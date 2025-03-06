@@ -1,0 +1,34 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "sqp_costs",
+    srcs = glob(["*_cost.cc"]),
+    hdrs = glob(["*_cost.h"]),
+    deps = [
+        "//multibody:utils",
+        "//solvers:nonlinear_cost",
+    ],
+)
+
+cc_library (
+    name = "sqp",
+    srcs = [
+        "nc_sqp_solver.cc",
+        "sqp_solver.cc",
+        "sqp_utils.cc",
+    ],
+    hdrs = [
+        "nc_sqp_solver.h",
+        "sqp_solver.h",
+        "sqp_utils.h",
+    ],
+    deps = [
+        ":sqp_costs",
+        "//solvers:osqp_wrapper",
+        "//solvers:qp_data",
+        "//solvers/admm:ncqp_solver",
+        "//solvers/admm:set_membership_constraint",
+    ]
+)

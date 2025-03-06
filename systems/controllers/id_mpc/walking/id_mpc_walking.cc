@@ -1,5 +1,5 @@
 #include "id_mpc_walking.h"
-#include "systems/controllers/id_mpc/costs/relative_position_cost.h"
+#include "solvers/sqp/relative_position_cost.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -9,6 +9,7 @@ using Eigen::MatrixXd;
 
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
+using solvers::sqp::RelativePositionCost;
 using solvers::ConvexPolygonSetConstraint;
 
 IDMPCWalking::IDMPCWalking(

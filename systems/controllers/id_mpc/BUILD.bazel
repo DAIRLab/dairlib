@@ -14,7 +14,7 @@ cc_library(
         "//solvers:qp_data",
         "//systems/controllers/id_mpc/constraints:id_mpc_constraints",
         "//systems/controllers/id_mpc/core:id_mpc_core",
-        "//systems/controllers/id_mpc/costs:id_mpc_costs",
-        "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
+        "//systems/controllers/id_mpc/references:id_mpc_references",
+        "//solvers/sqp",
     ],
 )

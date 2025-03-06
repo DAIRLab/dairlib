@@ -1,7 +1,7 @@
 #include "id_mpc_system.h"
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/id_mpc/costs/mpc_reference.h"
+#include "systems/controllers/id_mpc/references/mpc_reference.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib::systems::controllers::id_mpc {
@@ -12,6 +12,9 @@ using drake::systems::State;
 
 using Eigen::VectorXd;
 using solvers::QPData;
+
+using solvers::sqp::SQPIterate;
+using solvers::sqp::AllocateSQPIterate;
 
 IDMPCSystem::IDMPCSystem(
     IDMPCParams params,

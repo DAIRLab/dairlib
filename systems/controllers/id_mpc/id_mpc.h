@@ -10,8 +10,8 @@
 #include "constraints/kinematic_constraint.h"
 #include "constraints/quaternion_norm_constraint.h"
 
-#include "costs/reference_manager.h"
-#include "costs/mpc_reference.h"
+#include "references/reference_manager.h"
+#include "references/mpc_reference.h"
 
 #include "solvers/qp_data.h"
 

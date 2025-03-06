@@ -1,13 +1,13 @@
 #include <cmath>
 #include <iostream>
-#include "sqp_utils.h"
+#include "solvers/sqp/sqp_utils.h"
 #include "solvers/qp_data.h"
-#include "systems/controllers/id_mpc/costs/nonlinear_least_squares_cost.h"
+#include "solvers/sqp/nonlinear_least_squares_cost.h"
 #include "solvers/admm/set_membership_constraint.h"
 
 #include "drake/math/autodiff_gradient.h"
 
-namespace dairlib::systems::controllers::id_mpc {
+namespace dairlib::solvers::sqp {
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;

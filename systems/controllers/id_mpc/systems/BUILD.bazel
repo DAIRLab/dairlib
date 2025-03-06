@@ -19,7 +19,7 @@ cc_library(
         ":mpc_solution",
         "//lcmtypes:lcmt_robot",
         "//systems/controllers/id_mpc",
-        "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
+        "//solvers/sqp",
         "@drake//:drake_shared_library",
     ],
 )
@@ -33,7 +33,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers/id_mpc",
-        "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
+        "//solvers/sqp",
         "//systems/controllers/id_mpc/walking:id_mpc_walking",
         "@drake//:drake_shared_library",
     ],
@@ -44,7 +44,7 @@ cc_library(
     srcs = ["constant_reference_system.cc"],
     hdrs = ["constant_reference_system.h"],
     deps = [
-        "//systems/controllers/id_mpc/costs:id_mpc_costs",
+        "//systems/controllers/id_mpc/references:id_mpc_references",
     ],
 )
 
@@ -54,7 +54,7 @@ cc_library(
     hdrs = ["mpc_solution.h"],
     deps = [
         "//lcm:lcm_trajectory_saver",
-        "//systems/controllers/id_mpc/sqp:id_mpc_sqp",
+        "//solvers/sqp",
     ],
 )
 

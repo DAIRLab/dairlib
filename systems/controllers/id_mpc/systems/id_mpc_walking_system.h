@@ -3,7 +3,7 @@
 #include "mpc_solution.h"
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/id_mpc/walking/id_mpc_walking.h"
-#include "systems/controllers/id_mpc/sqp/nc_sqp_solver.h"
+#include "solvers/sqp/nc_sqp_solver.h"
 
 #include "drake/solvers/snopt_solver.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -59,7 +59,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
   void SetInitialSolverStateToCurrent(
       const OutputVector<double>& x_u_t,
       const std::vector<std::vector<std::string>>& contacts,
-      SQPIterate& solver_state) const;
+      solvers::sqp::SQPIterate& solver_state) const;
 
   void ShiftSolution(const std::vector<double>& knots,
                      MPCSolution* prev_sol) const;
@@ -75,7 +75,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
                  lcmt_id_mpc_walking_debug* debug) const;
 
   mutable IDMPCWalking trajopt_;
-  mutable NCSQPSolver solver_;
+  mutable solvers::sqp::NCSQPSolver solver_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
   drake::systems::InputPortIndex input_port_state_;

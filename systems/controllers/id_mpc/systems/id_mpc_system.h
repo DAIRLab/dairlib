@@ -3,7 +3,7 @@
 #include "mpc_solution.h"
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
-#include "systems/controllers/id_mpc/sqp/sqp_solver.h"
+#include "solvers/sqp/sqp_solver.h"
 
 #include "drake/solvers/snopt_solver.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -38,14 +38,14 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
   void SetInitialSolverStateToCurrent(
       const OutputVector<double>& x_u_t,
       const std::vector<std::vector<std::string>>& contacts,
-      SQPIterate& solver_state) const;
+      solvers::sqp::SQPIterate& solver_state) const;
 
   void SetInitialSolverStateToReference(
-      const MPCReference& reference, SQPIterate& solver_state) const;
+      const MPCReference& reference, solvers::sqp::SQPIterate& solver_state) const;
 
   void SetInitialSolverStateBlended(
       const OutputVector<double>& x_u_t,
-      const MPCReference& reference, SQPIterate& solver_state) const;
+      const MPCReference& reference, solvers::sqp::SQPIterate& solver_state) const;
 
   drake::systems::EventStatus
   SolveMPC(const drake::systems::Context<double>&context,
@@ -56,7 +56,7 @@ class IDMPCSystem : public drake::systems::LeafSystem<double> {
                   lcmt_timestamped_saved_traj* solution) const;
 
   mutable IDMPC trajopt_;
-  mutable SQPSolver solver_;
+  mutable solvers::sqp::SQPSolver solver_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
   drake::systems::InputPortIndex input_port_state_;

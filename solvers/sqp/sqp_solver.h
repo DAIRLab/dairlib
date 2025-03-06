@@ -1,42 +1,32 @@
 #pragma once
 
-#include "sqp_utils.h"
-#include "solvers/admm/ncqp_solver.h"
+#include "solvers/osqp_wrapper.h"
+#include "solvers/sqp/sqp_utils.h"
 
-namespace dairlib::systems::controllers::id_mpc {
+namespace dairlib::solvers::sqp {
 
-class NCSQPSolver {
-
+class SQPSolver {
  public:
-  NCSQPSolver(
+  SQPSolver(
       std::function<void (const Eigen::VectorXd&, solvers::QPData*)> make_qp,
       std::function<double (const Eigen::VectorXd&)> eval_constraint_viol,
       std::function<double (const Eigen::VectorXd&)> eval_cost,
-      std::function<void (Eigen::VectorXd*)> proj_to_cspace,
-      std::function<solvers::NCQPSolver::SetMembershipConstraints(
-          const Eigen::VectorXd&)> get_sm_constraints,
-      const drake::solvers::SolverOptions& ncqp_inner_solver_options,
-      const drake::solvers::SolverOptions& ncqp_polish_solver_options);
+      std::function<void (Eigen::VectorXd*)> proj_to_cspace);
 
   void DoSQPStep(const Eigen::VectorXd& x, SQPIterate* sol);
 
  private:
 
   drake::solvers::SolverOptions drake_solver_options_;
-
   std::function<void (const Eigen::VectorXd&, solvers::QPData*)> make_qp_;
   std::function<double (const Eigen::VectorXd&)> eval_constraint_viol_;
   std::function<double (const Eigen::VectorXd&)> eval_cost_;
   std::function<void (Eigen::VectorXd*)> proj_to_config_space_;
-  std::function<solvers::NCQPSolver::SetMembershipConstraints(
-      const Eigen::VectorXd&)> get_sm_constraints_;
 
-  solvers::NCQPSolver ncqp_solver_;
-  solvers::QPData qp_;
+  solvers::OsqpWrapper qp_solver_{};
+  solvers::QPData qp_{};
 
   LineSearchParams lsparams_;
-
 };
 
 }
-

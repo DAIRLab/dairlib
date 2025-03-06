@@ -3,8 +3,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "nonlinear_least_squares_cost.h"
-#include "quadratic_error_cost.h"
+#include "solvers/sqp/nonlinear_least_squares_cost.h"
+#include "solvers/sqp/quadratic_error_cost.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
@@ -31,10 +31,10 @@ class ReferenceManager {
   template<class C, typename... Args>
   void AddRunningStateCost(const std::string& name, Args&&... args) {
     static_assert(
-        std::derived_from<C, NonlinearLeastSquaresCost<T>> == true);
+        std::derived_from<C, solvers::sqp::NonlinearLeastSquaresCost<T>> == true);
 
     DRAKE_DEMAND(not evaluators_.contains(name));
-    std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>> costs;
+    std::vector<std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>>> costs;
 
     for (int i = 0; i < N_ + 1; ++i) {
       // trapezoidal integration
@@ -49,9 +49,9 @@ class ReferenceManager {
   template<typename... Args>
   void AddRunningInputCost(const std::string& name, Args&&... args) {
     DRAKE_DEMAND(not evaluators_.contains(name));
-    std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>> costs;
+    std::vector<std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>>> costs;
     for (int i = 0; i < N_; ++i) {
-      auto ptr = std::make_shared<QuadraticErrorCost<T>>(
+      auto ptr = std::make_shared<solvers::sqp::QuadraticErrorCost<T>>(
           std::forward<Args>(args)...);
       ptr->MultiplyByScalar(dt_);
       costs.push_back(std::move(ptr));
@@ -62,7 +62,7 @@ class ReferenceManager {
   template<class C, typename... Args>
   void AddTerminalStateCost(const std::string& name, Args&&... args) {
     static_assert(
-        std::derived_from<C, NonlinearLeastSquaresCost<T>> == true);
+        std::derived_from<C, solvers::sqp::NonlinearLeastSquaresCost<T>> == true);
 
     DRAKE_DEMAND(not terminal_evals_.contains(name));
 
@@ -75,13 +75,13 @@ class ReferenceManager {
       const drake::trajectories::Trajectory<double>& traj,
       const std::vector<double>& breaks);
 
-  std::shared_ptr<NonlinearLeastSquaresCost<T>> GetEvaluator(
+  std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>> GetEvaluator(
       const std::string& name, int i) {
     DRAKE_DEMAND(i <= N_);
     return evaluators_.at(name).at(i);
   }
 
-  std::shared_ptr<NonlinearLeastSquaresCost<T>> GetTerminalEvaluator(
+  std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>> GetTerminalEvaluator(
       const std::string& name) {
     return terminal_evals_.at(name);
   }
@@ -94,10 +94,10 @@ class ReferenceManager {
 
  private:
   std::unordered_map<
-      std::string, std::vector<std::shared_ptr<NonlinearLeastSquaresCost<T>>>> evaluators_;
+      std::string, std::vector<std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>>>> evaluators_;
 
   std::unordered_map<
-      std::string, std::shared_ptr<NonlinearLeastSquaresCost<T>>> terminal_evals_;
+      std::string, std::shared_ptr<solvers::sqp::NonlinearLeastSquaresCost<T>>> terminal_evals_;
 
   int N_{};
   double dt_{};

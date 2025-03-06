@@ -126,7 +126,7 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
       alip_utils::reset_discretization(params_io.reset_discretization_method);
   params_out.miqp = params_io.miqp;
   params_out.com_pos_bound =
-      Eigen::Vector2d::Map(params_io.com_vel_bound.data());
+      Eigen::Vector2d::Map(params_io.com_pos_bound.data());
   params_out.com_vel_bound =
       Eigen::Vector2d::Map(params_io.com_vel_bound.data());
   params_out.Q = Eigen::Map <

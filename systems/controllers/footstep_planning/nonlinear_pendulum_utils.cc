@@ -130,14 +130,15 @@ Vector6<T> CalcPendulumDynamics(
   T r = xp(r_idx);
   T theta_y = xp(theta_y_idx);
   T theta_x = xp(theta_x_idx);
-  T x = r * cos(theta_x) * sin(theta_y);
-  T y = -r * cos(theta_y) * sin(theta_x);
+  T z = r / sqrt(1.0 + tan(theta_y) * tan(theta_y) + tan(-theta_x) * tan(-theta_x));
+  T x = z * tan(theta_y);
+  T y = -z * tan(theta_x);
 
   double g = 9.81;
 
   Vector6<T> xdot;
-  xdot(theta_y_idx) = xp(l_y_idx) / (m * r * r * cos(theta_x) * cos(theta_x));
-  xdot(theta_x_idx) = xp(l_x_idx) / (m * r * r * cos(theta_y) * cos(theta_y));
+  xdot(theta_y_idx) = xp(l_y_idx) / (m * (x * x + z * z));
+  xdot(theta_x_idx) = xp(l_x_idx) / (m * (y * y + z * z));
   xdot(r_idx) = xp(rdot_idx);
   xdot(l_y_idx) = m * g * x + u(0);
   xdot(l_x_idx) = -m * g * y;

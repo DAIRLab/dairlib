@@ -1,0 +1,10 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+cc_library(
+    name = "cf_mpfc_constraints",
+    srcs = ["cf_mpfc_constraints.cc"],
+    hdrs = ["cf_mpfc_constraints.h"],
+    deps = [
+        "//solvers:nonlinear_constraint",
+    ],
+)

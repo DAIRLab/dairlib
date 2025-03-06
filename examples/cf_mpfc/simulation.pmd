@@ -1,0 +1,92 @@
+group "0.operator" {
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time_hardware.py --script examples/Cassie/director_scripts/set_channel_network.py --script examples/Cassie/director_scripts/controller_status.py";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer(simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION --stepping_stone_yaml=\"examples/perceptive_locomotion/terrains/test.yaml\"";
+        host = "localhost";
+    }
+    cmd "2.cassie-xbox-remote" {
+        exec = "bazel-bin/examples/Cassie/operator/cassie_xbox_remote";
+        host = "localhost";
+    }
+}
+
+group "1.cassie-robot" {
+    cmd "0.dispatcher-robot-out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --floating_base --simulation";
+        host = "localhost";
+    }
+    cmd "3.0 standing-controller(dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.95 --channel_x=CASSIE_STATE_SIMULATION --channel_u=OSC_STANDING";
+        host = "localhost";
+    }
+    cmd "1.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_initial=OSC_STANDING --port 25000 --sim";
+        host = "localhost";
+    }
+    cmd "5.0 cf_mpfc" {
+        exec = "bazel-bin/examples/cf_mpfc/run_cf_mpfc --channel_x=CASSIE_STATE_SIMULATION --foothold_yaml=examples/perceptive_locomotion/terrains/test.yaml --gains_yaml=examples/cf_mpfc/gains/mpfc_gains.yaml";
+        host = "localhost";
+    }
+    cmd "5.1 cf_mpfc tracking controller" {
+        exec = "bazel-bin/examples/cf_mpfc/run_osc_for_cf_mpfc --channel_x=CASSIE_STATE_SIMULATION --gains_filename=examples/cf_mpfc/gains/osc_gains.yaml";
+        host = "localhost";
+    }
+}
+
+group "2.drake-simulator" {
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/perceptive_locomotion/multibody_sim_hiking --floating_base=true --publish_rate=2000 --init_height=0.95 --stepping_stone_filename=\"examples/perceptive_locomotion/terrains/test.yaml\" --publish_points=false";
+        host = "localhost";
+    }
+}
+
+group "4.controller-switch-commands" {
+    cmd "cf_mpfc_switch" {
+        exec = "bazel-bin/examples/cf_mpfc/run_controller_switch --fsm_offset=0.05";
+        host = "localhost";
+    }
+}
+
+group "5.lcm-tools" {
+    cmd "0.cassie-lcm-logger" {
+        exec = "python3 examples/Cassie/start_logging.py";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+}
+
+
+script "initialize_standing" {
+    stop group "1.cassie-robot";
+    stop cmd "0.cassie-lcm-logger";
+    stop group "2.drake-simulator" wait "stopped";
+    restart cmd "1.state-visualizer(simulation)";
+    start cmd "0.dispatcher-robot-out";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "3.0 standing-controller(dispatched)";
+}
+
+script "switch_to_walking" {
+    start cmd "controller-switch-to-walking";
+    wait ms 2000;
+    stop cmd "3.0 standing-controller(dispatched)";
+    stop cmd "3.1 standing-controller(dispatched, radio)";
+}
+
+script "switch_to_walking_start_logging" {
+    start cmd "0.cassie-lcm-logger";
+    wait ms 100;
+    start cmd "alip_minp_switch";
+    wait ms 2000;
+    stop cmd "3.0 standing-controller(dispatched)";
+}

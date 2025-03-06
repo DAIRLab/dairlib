@@ -6,5 +6,6 @@ cc_library(
     hdrs = ["cf_mpfc_constraints.h"],
     deps = [
         "//solvers:nonlinear_constraint",
+        "//systems/controllers/footstep_planning:nonlinear_pendulum_utils",
     ],
 )

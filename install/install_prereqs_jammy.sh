@@ -23,6 +23,8 @@ touch install_prereqs_user_environment.sh
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}-clang.txt"
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}-test-only.txt"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_bazelisk.sh"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_bazel.sh"
 cd ..
 mkdir binary_distribution
 cd binary_distribution
@@ -30,7 +32,7 @@ wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/se
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/binary_distribution/packages-${ubuntu_codename}.txt"
 cd ..
 chmod +x install_prereqs.sh
-./install_prereqs.sh
+./install_prereqs.sh --with-bazel
 cd ..
 rm -rf tmp/
 # In addition to drake, install lcm and libbot2

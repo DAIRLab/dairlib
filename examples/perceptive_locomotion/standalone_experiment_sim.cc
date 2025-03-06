@@ -70,6 +70,15 @@ int DoMain(int argc, char **argv) {
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
       gains_mpc_file, "", "", plant, *plant_context);
 
+  std::string mpc_solver_options = gains_mpc.miqp ?
+      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml" :
+      "examples/perceptive_locomotion/gains/osqp_options_planner.yaml";
+
+  std::string mpc_solver_options_polish = gains_mpc.miqp ?
+      "" :
+      "examples/perceptive_locomotion/gains/osqp_options_planner_polish_step"
+      ".yaml";
+
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
           FindResourceOrThrow(
@@ -80,7 +89,8 @@ int DoMain(int argc, char **argv) {
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, gains_mpc, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant,
+      gains_mpc_file, mpc_solver_options, mpc_solver_options_polish, -1);
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;
@@ -121,7 +131,7 @@ int DoMain(int argc, char **argv) {
           0.001)
   );
   auto mpc_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
+      LcmPublisherSystem::Make<lcmt_alip_mpfc_debug_complete>(
           "ALIP_S2S_MPFC_DEBUG",
           &lcm_log_sink,
           {TriggerType::kPeriodic},

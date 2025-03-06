@@ -26,6 +26,16 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<PointOnFramed> left_right_foot,
       const alip_s2s_mpfc_params& mpfc_params);
 
+  Alips2sMPFCSystem(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* plant_context,
+      std::vector<int> left_right_stance_fsm_states,
+      std::vector<int> post_left_right_fsm_states,
+      std::vector<PointOnFramed> left_right_foot,
+      const std::string& params_yaml,
+      const std::string& solver_options_yaml,
+      const std::string& polish_solver_options_yaml);
+
   void MakeDrivenByStandaloneSimulator(double update_period) {
     DeclareInitializationUnrestrictedUpdateEvent(
         &Alips2sMPFCSystem::UnrestrictedUpdate);

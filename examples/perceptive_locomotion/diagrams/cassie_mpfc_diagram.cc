@@ -33,6 +33,7 @@ using geometry::ConvexPolygonSet;
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::CFMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
+using systems::controllers::alip_s2s_mpfc_params;
 
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
@@ -42,7 +43,9 @@ using drake::systems::lcm::LcmPublisherSystem;
 template <mpfc MPC>
 CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const systems::controllers::alip_s2s_mpfc_params& params,
+    const std::string& gains_yaml,
+    const std::string& solver_options_yaml,
+    const std::string& solver_options_yaml_polish,
     double debug_publish_period) :
     lcm_local("udpm://239.255.76.67:7667?ttl=0"),
     plant_(plant),
@@ -63,7 +66,8 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 
   auto foot_placement_controller = builder.AddSystem<MPC>(
       plant_, plant_context_.get(), left_right_fsm_states,
-      post_left_right_fsm_states, left_right_toe, gains_mpc);
+      post_left_right_fsm_states, left_right_toe, gains_yaml,
+      solver_options_yaml, solver_options_yaml_polish);
 
   foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
 
@@ -106,7 +110,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 
   // Create the diagram
   builder.BuildInto(this);
-  DrawAndSaveDiagramGraph(*this, "../alip_mpfc_diagram");
+  DrawAndSaveDiagramGraph(*this, "../mpfc_diagram");
 
 }
 

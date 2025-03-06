@@ -16,7 +16,9 @@ concept mpfc = requires(C mpc) {
       std::vector<int>,
       std::vector<int>,
       std::vector<std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>,
-      const dairlib::systems::controllers::alip_s2s_mpfc_params&>
+      const std::string&,
+      const std::string&,
+      const std::string&>
   };
   { mpc.MakeDrivenByStandaloneSimulator(0.01)};
   { mpc.get_input_port_state() } -> std::same_as<const drake::systems::InputPort<double>&>;

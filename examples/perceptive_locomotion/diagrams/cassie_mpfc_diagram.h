@@ -17,7 +17,9 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
 
  public:
   CassieMPFCDiagram(const drake::multibody::MultibodyPlant<double>& plant,
-                    const systems::controllers::alip_s2s_mpfc_params& params,
+                    const std::string& gains_yaml,
+                    const std::string& solver_options_yaml,
+                    const std::string& solver_options_yaml_polish,
                     double debug_publish_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {

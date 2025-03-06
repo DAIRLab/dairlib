@@ -121,6 +121,21 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       "fsm", 1, &Alips2sMPFCSystem::CopyFsmOutput).get_index();
 }
 
+Alips2sMPFCSystem::Alips2sMPFCSystem(
+    const MultibodyPlant<double> &plant,
+    Context<double> *plant_context,
+    std::vector<int> left_right_stance_fsm_states,
+    std::vector<int> post_left_right_fsm_states,
+    std::vector<PointOnFramed> left_right_foot,
+    const std::string& gains_yaml,
+    const std::string& solver_options_yaml,
+    const std::string& polish_solver_options_yaml) :
+    Alips2sMPFCSystem(plant, plant_context, left_right_stance_fsm_states,
+                      post_left_right_fsm_states, left_right_foot,
+                      MakeAlipS2SMPFCParamsFromYaml(
+                          gains_yaml, solver_options_yaml,
+                          polish_solver_options_yaml, plant, *plant_context)){}
+
 Eigen::Vector4d Alips2sMPFCSystem::HandleAlipKalmanFilter(
     const Context<double>& context, State<double>* state,
     Vector4d raw_alip_state, bool is_mode_switch, double timestamp) const {

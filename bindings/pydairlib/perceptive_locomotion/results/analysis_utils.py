@@ -56,7 +56,18 @@ state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
+
 plotting_palette = ["#011f5b", "#9f642d", "#af0000", "#b99aa0", "#666666", "#5583ab"]
+
+
+def make_dir_if_missing(directory_path: str):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Output directory created: {directory_path}")
+        return False
+    else:
+        print(f"Output directory already exists - skipping creation: {directory_path}")
+        return True
 
 
 def binary_search_closest(arr: List[float], target: float) -> int:

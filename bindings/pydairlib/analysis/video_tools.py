@@ -32,6 +32,9 @@ def extract_frames(start_time, end_time, num_frames, video_filename,
 
     # Open the video file
     video = cv2.VideoCapture(video_filename)
+    
+    if not video.isOpened():
+        raise FileNotFoundError(f"Invalid video file specified: {video_filename}")
 
     # Get video properties
     fps = video.get(cv2.CAP_PROP_FPS)

@@ -13,3 +13,4 @@ attic/multibody/solver_log/
 /examples/Cassie/saved_trajectories/
 /venv/
 MODULE.bazel*
+/perceptive_locomotion_results_figures

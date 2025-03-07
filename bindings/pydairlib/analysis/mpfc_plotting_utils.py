@@ -35,11 +35,55 @@ def process_alip_mpfc_debug_data(data):
         initial_state[i] = msg.initial_state
         initial_stance_foot[i] = msg.initial_stance_foot
         desired_velocity[i] = msg.desired_velocity
+        nominal_first_stance_time[i][0] = msg.nominal_first_stance_time
+        solution_first_stance_time[i][0] = msg.solution_first_stance_time
+        pp[i] = np.array(msg.pp)
+        xx[i] = np.array(msg.xx)
+
+    return {
+        't_mpc': t_mpc,
+        'fsm': fsm,
+        'solve_time': solve_time,
+        'optimizer_time': optimizer_time,
+        'initial_alip_state': initial_state,
+        'initial_stance_foot': initial_stance_foot,
+        'desired_velocity': desired_velocity,
+        'nominal_first_stance_time': nominal_first_stance_time,
+        'solution_first_stance_time': solution_first_stance_time,
+        'pp': pp,
+        'xx': xx,
+    }
+
+
+def process_alip_mpfc_debug_complete_data(data):
+    n = len(data)
+    nmodes = data[0].nmodes
+    
+    t_mpc = np.zeros((n,))
+    fsm = np.zeros((n,), dtype=int)
+    solve_time = np.zeros((n,))
+    optimizer_time = np.zeros((n,))
+    initial_state = np.zeros((n, 4))
+    initial_stance_foot = np.zeros((n, 3))
+    desired_velocity = np.zeros((n, 2))
+    nominal_first_stance_time = np.zeros((n, 1))
+    solution_first_stance_time = np.zeros((n, 1))
+    pp = [np.zeros((nmodes, 3))] * n
+    xx = [np.zeros((nmodes, 4))] * n
+    
+    for i, msg in enumerate(data):
+        t_mpc[i] = msg.utime * 1e-6
+        fsm[i] = msg.fsm_state
+        solve_time[i] = msg.solve_time_us * 1e-6
+        optimizer_time[i] = msg.optimizer_time_us * 1e-6
+        initial_state[i] = msg.initial_state
+        initial_stance_foot[i] = msg.initial_stance_foot
+        desired_velocity[i] = msg.desired_velocity
         nominal_first_stance_time[i][0] = msg.T_nominal
         solution_first_stance_time[i][0] = msg.T
         pp[i] = np.array(msg.pp)
         xx[i] = np.array(msg.xx)
-
+    
     return {
         't_mpc': t_mpc,
         'fsm': fsm,

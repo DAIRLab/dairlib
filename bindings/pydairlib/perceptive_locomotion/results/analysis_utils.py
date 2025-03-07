@@ -352,7 +352,6 @@ def profile_full_perception_pipeline(logfile):
         )
         diagram.ForcedPublish(context)
         end = time.time()
-        print(end - start)
         profiling_results['total'].append(end - start)
 
     return profiling_results

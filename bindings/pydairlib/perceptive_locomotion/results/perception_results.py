@@ -72,6 +72,11 @@ elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 
+# Outputs
+output_folder = 'perceptive_locomotion_results_figures/'
+
+precomputed_results_fname = 'precomputed_segmentation_results.npz'
+
 
 def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
@@ -350,8 +355,11 @@ def plot_iou_results(results, title, savefile, edges=None):
 
 def make_segmentation_videos(logfile, start_time, duration, env_name=''):
     systems = utils.make_segmentation_systems()
+    save_folder = os.path.join(output_folder, 'segmentation_videos')
+    utils.make_dir_if_missing(save_folder)
+    
     for s in systems:
-        savefile = f'../segmentation_videos/{env_name}_{s.get_name()}.mp4'
+        savefile = os.path.join(save_folder, f'{env_name}_{s.get_name()}.mp4')
         write_segmentation_results_video(s, logfile, savefile, duration)
 
 
@@ -374,7 +382,12 @@ def save_all_results(logfolder):
         results = pool.map(runner, config.values())
 
     data = dict(zip(config.keys(), results))
-    np.savez(os.path.join(logfolder, 'processed_results.npz'), data=data)
+    
+    # save processed results to the output folder to avoid overwriting source
+    np.savez(
+        os.path.join(output_folder, precomputed_results_fname),
+        data=data
+    )
 
 
 def make_all_segmentation_videos(logfolder):
@@ -404,7 +417,7 @@ def plot_segmentation_profiling(results, env_name='', save_prefix=None):
 
 
 def make_all_results_figures(logfolder, savefolder):
-    all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
+    all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
     data = all_results['data'].item()
     for env, results in data.items():
         plot_segmentation_profiling(
@@ -416,7 +429,7 @@ def make_all_results_figures(logfolder, savefolder):
 
 
 def make_segmentation_tiles(logfolder, savefolder):
-    all_results = np.load(os.path.join(logfolder, 'processed_results.npz'), allow_pickle=True)
+    all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
     data = all_results['data'].item()
     N = 15
     offset = 450
@@ -449,8 +462,7 @@ def make_segmentation_tiles(logfolder, savefolder):
                 ax.set_yticks([])
         fig.tight_layout(pad=1.01)
         plt.savefig(os.path.join(savefolder, f'{env.replace(" ", "_")}_segmentation_tiles.svg'))
-    plt.show()
-
+        
 
 def crop_perception_results_svgs(savefolder):
     current = os.getcwd()
@@ -458,6 +470,7 @@ def crop_perception_results_svgs(savefolder):
     files = glob.glob('*.svg')
     for f in files:
         subprocess.run(['inkscape', '--export-type=svg', '--export-id=axes_1', f, '-o', f])
+    os.chdir(current)
 
 
 def run_pipeline_figure_script(logfile):
@@ -468,8 +481,12 @@ def run_pipeline_figure_script(logfile):
         duration=1
     )
     q = robot_output['q'][0]
+    
+    save_folder = os.path.join(output_folder, 'terrain_seg_figures')
+    utils.make_dir_if_missing(save_folder)
+    
     make_pipeline_figures_from_map(
-        grid_maps[example_idx], q, '../terrain_seg_figures')
+        grid_maps[example_idx], q, save_folder)
 
 
 def make_full_profiling_plot(logfile, savefile):
@@ -501,9 +518,9 @@ def make_full_profiling_plot(logfile, savefile):
         'plane_fitting': 'Plane Fitting'
     }
 
-    alpha=0.7
+    alpha = 0.7
 
-    # Plot each label as a segment with error bars
+    # Plot each label as a segment
     for label in data:
         if label in merged:
             width = x_values[-1] - x_values[0] + 1
@@ -550,8 +567,6 @@ def plot_hysteresis_comparison(logfile, savefile=None):
     edges = np.linspace(np.min(results[0]['iou']), 1, 16)
     fig = plt.figure()
 
-    for r in results:
-        print(f'{r["name"]}: {np.min(r["iou"])}')
     make_hist_figure(results, None, 'iou', edges)
     plt.title('Temporal Consistency vs $k_{hyst}$')
     plt.xlabel('Frame-to-Frame IoU')
@@ -560,40 +575,108 @@ def plot_hysteresis_comparison(logfile, savefile=None):
         plt.savefig(savefile)
 
 
+def acknowledge_rerun_option(rerun: bool):
+    message = ''
+    if rerun:
+        message = (
+            f'You have chosen to re-run the segmentation analysis.\n'
+            f'The results comparing IoU and run time against EM_cupy'
+            f' and EM_cupy_NR will be recomputed and saved to '
+            f'{output_folder}/{precomputed_results_fname}.\n'
+            f'The timing results, may not exactly match those reported in'
+            f' the paper due to system differences.'
+        )
+    else:
+        message = (
+            f'You are using the pre-computed results to generate the IoU '
+            f'and run time comparison against EM_cupy and EM_cupy_NR,'
+            f' and the perception stack detailed profiling. \n'
+            f'To recompute the comparisons, rerun this '
+            f'script with the option --rerun_plane_segmentation_comparisons'
+        )
+        
+    message = message + (
+        '\n\nThe non-elevation mapping full stack profiling results will be '
+        'recomputed for either option. \n'
+        'The elevation mapping profiling results are computed '
+        'online and saved to the log to avoid the overhead of publishing and '
+        'logging point cloud data\n')
+    
+    print(message)
+    response = input('Continue? (y/[n]): ')
+    
+    if response.lower().strip() != 'y':
+        print('exiting.')
+        exit(0)
+    
+
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--logfolder', type=str, default='')
-    parser.add_argument('--logfile', type=str, default='')
-
-    args = parser.parse_args()
-
-    # plot_hysteresis_comparison(
-    #     args.logfile,
-    #     '../manuscripts/perceptive_walking_tro/figures/hysteresis_comparison.svg'
-    # )
-
-    # save_all_results(args.logfolder)
-    # make_full_profiling_plot(
-    #     args.logfile,
-    #     os.path.join(
-    #         args.logfolder,
-    #         'cassie_laptop_profiling_figures/detailed_profiling.svg'
-    #     )
-    # )
-    # make_all_segmentation_videos(args.logfolder)
-    # run_pipeline_figure_script(args.logfile)
-    make_all_results_figures(
-        args.logfolder,
-        os.path.join(args.logfolder, 'cassie_laptop_profiling_figures/')
+    parser.add_argument(
+        '--data_root',
+        type=str,
+        default=''
     )
-    # make_segmentation_tiles(
-    #     args.logfolder,
-    #     os.path.join(args.logfolder, 'cassie_laptop_profiling_figures')
-    # )
+    parser.add_argument(
+        '--rerun_plane_segmentation_comparisons',
+        type=bool,
+        default=False
+    )
+    
+    args = parser.parse_args()
+    if not args.data_root:
+        raise RuntimeError(
+            "Please provide the location of the data via the"
+            " --data_root argument"
+        )
 
-    # write_segmented_elevation_meshcat_video(args.logfile, duration=60.0)
-    # write_mpfc_debug_video(args.logfile, 60)
-    # test_iou_plot()
+    acknowledge_rerun_option(args.rerun_plane_segmentation_comparisons)
+    
+    # define relevant data files
+    hysteresis_comparison_log = os.path.join(
+        args.data_root, 'brick_steps/lcmlog-laptop-21'
+    )
+    detailed_profiling_log = os.path.join(
+        args.data_root, 'elevation_mapping_profiling_log/lcmlog-laptop-16'
+    )
+    demo_reel_log = os.path.join(
+        args.data_root, 'other/stairs_and_grass/lcmlog-laptop-01'
+    )
+    pipeline_figure_log = os.path.join(args.data_root, 'lcmlog-vision-demo-sim')
+    
+    plot_hysteresis_comparison(
+        hysteresis_comparison_log,
+        os.path.join(output_folder, 'hysteresis_comparison.svg')
+    )
+    
+    results_folder = args.data_root
+    
+    # If recomputing, we put the recomputed resutls into the output folder
+    if args.rerun_plane_segmentation_comparisons:
+        save_all_results(output_folder)
+        results_folder = output_folder
+    
+    make_all_results_figures(results_folder, output_folder)
+    make_segmentation_tiles(results_folder, output_folder)
+    run_pipeline_figure_script(pipeline_figure_log)
+
+    make_full_profiling_plot(
+        detailed_profiling_log,
+        os.path.join(output_folder, 'perception_stack_full_profiling.svg')
+    )
+    
+    # Do the videos
+    make_all_segmentation_videos(args.data_root)
+    write_segmented_elevation_meshcat_video(
+        demo_reel_log,
+        os.path.join(output_folder, 'segmented_elevation_demo_animation.mp4'),
+        duration=60
+    )
+    write_mpfc_debug_video(
+        demo_reel_log,
+        os.path.join(output_folder, 'mpfc_output_demo_animation.mp4'),
+        duration=60
+    )
 
 
 if __name__ == '__main__':

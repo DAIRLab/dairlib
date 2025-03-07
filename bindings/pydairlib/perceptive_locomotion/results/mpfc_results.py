@@ -43,6 +43,10 @@ terrain_channel = 'FOOTHOLDS_PROCESSED'
 
 # Relevant data paths (relative to the root of the data folder)
 demo_trial_path = 'other/stairs_and_grass_11_16_24/'
+demo_trial_log = os.path.join(demo_trial_path, 'lcmlog-laptop-01')
+demo_trial_video = os.path.join(demo_trial_path, 'IMG_9136.MOV')
+demo_trial_duration = 100.5
+
 solve_time_results_config_path = 'solve_time_results_config.yaml'
 
 # Outputs
@@ -58,7 +62,7 @@ def process_mpc_data(data_dict):
     return robot_output, mpc_debug
 
 
-def load_log(logfile: str, start_time=0, duration=-1):
+def load_log(logfile: str, start_time: float = 0, duration: float = -1):
     log = None
     try:
         log = lcm.EventLog(logfile, "r")
@@ -109,15 +113,15 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
 
 
 def vel_tracking_and_tiles(base_data_folder):
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    video_path = os.path.join(base_data_folder, demo_trial_path + 'IMG_9136.MOV')
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    video_path = os.path.join(base_data_folder, demo_trial_video)
     
     print(f'Extracting motion tiles from {video_path}')
     
     motion_tile_folder = os.path.join(output_folder, 'motion_tiles')
     utils.make_dir_if_missing(motion_tile_folder)
     
-    robot_output, mpc_debug = load_log(logpath, 1, 100.5)
+    robot_output, mpc_debug = load_log(logpath, 1, demo_trial_duration)
     velocity_tracking_plot(
         robot_output,
         mpc_debug,
@@ -137,8 +141,8 @@ def vel_tracking_and_tiles(base_data_folder):
 def solve_time_series_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    robot_output, mpc_debug = load_log(logpath, 1, 100.5)
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    robot_output, mpc_debug = load_log(logpath, 1, demo_trial_duration)
     plt.plot(
         mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0],
         mpc_debug['optimizer_time'],
@@ -170,8 +174,8 @@ def solve_time_series_plot(base_data_folder):
 def elevation_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    robot_output, _ = load_log(logpath, 1, 100.5)
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    robot_output, _ = load_log(logpath, 1, demo_trial_duration)
     plt.plot(
         robot_output['t_x'] - robot_output['t_x'][0],
         robot_output['q'][:, 6] - robot_output['q'][0, 6],

@@ -101,7 +101,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         self.profiling = profiling
         self.debug = False
         self.debug_info = {}
-        self.acd_thresh =0.15
+        self.acd_thresh = 0.25
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None

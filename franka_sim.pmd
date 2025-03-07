@@ -37,6 +37,14 @@ group "controllers" {
         exec = "bazel-bin/examples/jacktoy/franka_c3_controller";
         host = "localhost";
     }
+    cmd "franka_c3_no_controller" {
+        exec = "bazel-bin/examples/jacktoy/franka_c3_no_controller";
+        host = "localhost";
+    }
+    cmd "mujoco_mpc" {
+        exec = "../mujoco_mpc/build/bin/standalone_jack_controller";
+        host = "localhost";
+    }
 }
 
 group "debug" {
@@ -60,6 +68,16 @@ script "start_experiment_with_logs"{
     restart cmd "franka_osc";
     wait ms 50;
     restart cmd "franka_c3";
+}
+
+script "start_mjpc_experiment_no_logs"{
+    stop cmd "start_logging";
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
+    wait ms 50;
+    restart cmd "franka_c3_no_controller";
+    wait ms 50;
+    restart cmd "mujoco_mpc";
 }
 
 script "end_experiment"{

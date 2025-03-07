@@ -124,6 +124,31 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_c3_no_controller",
+    srcs = ["franka_c3_no_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_c3_controller_params",
+        ":franka_sim_params",
+        ":trajectory_params",
+        ":franka_lcm_channels",
+        "//common",
+        "//examples/jacktoy/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers:lcs_factory_system",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
     data = [

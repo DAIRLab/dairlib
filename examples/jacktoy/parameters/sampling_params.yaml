@@ -17,6 +17,13 @@ sampling_radius: 0.10
 # Height of sampling circle; used for circle perimeter (0, 1).
 sampling_height: 0.04
 
+# Grid limits for random sampling on grid.
+grid_x_limits: [-0.16, 0.16]
+grid_y_limits: [-0.16, 0.16]
+
+# clearance for sample projection.
+sample_projection_clearance: 0.008
+
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
 min_angle_from_vertical: 0.2  #0.785
@@ -39,6 +46,8 @@ consider_best_buffer_sample_when_leaving_c3: true
 # Repositioning parameters.
 spline_width: 0.17
 spherical_repositioning_radius: 0.12
+circular_repositioning_radius: 0.20
+circular_repositioning_height: 0.00
 reposition_speed: 0.13    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline

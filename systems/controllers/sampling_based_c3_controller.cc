@@ -648,7 +648,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
-    n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_);
+    n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
+    plant_, context_, plant_ad_, context_ad_, contact_pairs_);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)

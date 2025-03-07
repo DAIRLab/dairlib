@@ -92,6 +92,8 @@ cc_library(
         "@drake//:drake_shared_library",
         ":sampling_params",
         "//solvers:c3",
+        "//multibody:utils",
+        "//multibody:geom_geom_collider",
     ],
 )
 

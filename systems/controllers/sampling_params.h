@@ -8,7 +8,8 @@
 enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         RANDOM_ON_CIRCLE_SAMPLING,
                         RANDOM_ON_SPHERE_SAMPLING, 
-                        FIXED_SAMPLE };
+                        FIXED_SAMPLE,
+                        SAMPLE_ON_GRID };
 
 enum ProgressMetric { C3_COST,
                       CURRENT_POSITION_AND_ORIENTATION_COST,
@@ -23,6 +24,9 @@ struct SamplingC3SamplingParams {
   double min_angle_from_vertical;
   double max_angle_from_vertical;
   double sampling_height;
+  std::vector<double> grid_x_limits;
+  std::vector<double> grid_y_limits;
+  double sample_projection_clearance;
   int num_additional_samples_repos;
   int num_additional_samples_c3;
   bool consider_best_buffer_sample_when_leaving_c3;
@@ -70,6 +74,9 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(min_angle_from_vertical));
     a->Visit(DRAKE_NVP(max_angle_from_vertical));
     a->Visit(DRAKE_NVP(sampling_height));
+    a->Visit(DRAKE_NVP(grid_x_limits));
+    a->Visit(DRAKE_NVP(grid_y_limits));
+    a->Visit(DRAKE_NVP(sample_projection_clearance));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));

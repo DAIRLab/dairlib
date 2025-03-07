@@ -3,8 +3,10 @@
 # 1 means random sampling on a 2D circle.
 # 2 means random sampling on a 3D sphere.
 # 3 means a fixed sample location. Currently allows for 3 fixed sample.
+# 4 means random sampling on a 2D grid and projecting it to the nearest point on the object surface on a fixed plane at 
+# the sampling height.
 control_loop_delay_ms: 0
-sampling_strategy: 1
+sampling_strategy: 4
 filter_samples_for_safety: true
 
 # This is the fixed sample location for sampling strategy 3.
@@ -12,10 +14,17 @@ fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
 
 # Size of sampling circle; used for both circle perimeter (0, 1) and spherical
 # surface sampling (2).
-sampling_radius: 0.20 #0.235
+sampling_radius: 0.16 #0.235
 
 # Height of sampling circle; used for circle perimeter (0, 1).
 sampling_height: 0.00
+
+# Grid limits for random sampling on grid.
+grid_x_limits: [-0.16, 0.16]
+grid_y_limits: [-0.16, 0.16]
+
+# clearance for sample projection.
+sample_projection_clearance: 0.008
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
@@ -60,8 +69,8 @@ ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
 # 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
-cost_type: 3
-cost_type_position_tracking: 2
+cost_type: 5
+cost_type_position_tracking: 5
 use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before

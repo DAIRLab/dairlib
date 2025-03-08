@@ -452,6 +452,7 @@ def make_convex_polygon_iou_figure(logfolder, savefolder, env_name):
     assert results['name'] == 'S3 (Ours)'
 
     utils.calc_polygon_iou(results)
+    utils.setup_plots()
     plot_iou_vs_poly_iou(
         results,
         f'Segmentation and Decomposition IoU :\n{env_name}',

@@ -367,6 +367,7 @@ def plot_iou_vs_poly_iou(results, title, savefile):
         )
     plt.legend(['Convex Decomposition IoU', 'Segmentation IoU'])
     plt.title(title)
+    plt.xlabel('Frame-to-Frame IoU')
     plt.savefig(savefile)
 
 
@@ -455,8 +456,8 @@ def make_convex_polygon_iou_figure(logfolder, savefolder, env_name):
     utils.setup_plots()
     plot_iou_vs_poly_iou(
         results,
-        f'Segmentation and Decomposition IoU :\n{env_name}',
-        os.path.join(savefolder, 'Decomposition_IoU.svg')
+        f'Convex Decomposition IoU: {env_name}',
+        os.path.join(savefolder, f'Decomposition_IoU_{env_name.replace(" ", "_")}.svg')
     )
     
 

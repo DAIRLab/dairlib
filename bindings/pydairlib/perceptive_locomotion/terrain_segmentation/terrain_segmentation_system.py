@@ -94,8 +94,6 @@ class TerrainSegmentationSystem(LeafSystem):
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         
-        # To assume that terrain with no information is safe, keep this commented out. 
-        # To assume that unseen terrain is unsafe, uncomment.
         if not self.inpaint_unseen_terrain:
             raw_safety[np.isnan(elevation)] = 0
 

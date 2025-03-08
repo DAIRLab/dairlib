@@ -2,6 +2,7 @@
 import os
 import time
 import glob
+import shutil
 import subprocess
 from time import sleep
 from copy import deepcopy
@@ -261,7 +262,7 @@ def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder
     capture.look_at(poi, np.array([0, -2.0, 1.5]))
 
     for layer in grid_map.getLayers():
-        map_vis.DrawGridMap(grid_map, [layer])
+        map_vis.DrawGridMap(grid_map, [layer], "")
         meshcat.Flush()
         capture.grab(os.path.join(save_folder, f'{layer}_meshcat.png'))
         sleep(0.5)
@@ -353,6 +354,22 @@ def plot_iou_results(results, title, savefile, edges=None):
         plt.savefig(savefile)
 
 
+def plot_iou_vs_poly_iou(results, title, savefile):
+    edges = np.linspace(0.75, 1.0, 20)
+    for i, k in enumerate(['poly_iou', 'iou']):
+        alpha = 0.8 * (1.0 - float(i) / len(results))
+        sns.histplot(
+            data=results[k],
+            bins=edges,
+            element='step',
+            alpha=alpha,
+            stat='proportion'
+        )
+    plt.legend(['Convex Decomposition IoU', 'Segmentation IoU'])
+    plt.title(title)
+    plt.savefig(savefile)
+
+
 def make_segmentation_videos(logfile, start_time, duration, env_name=''):
     systems = utils.make_segmentation_systems()
     save_folder = os.path.join(output_folder, 'segmentation_videos')
@@ -427,6 +444,20 @@ def make_all_results_figures(logfolder, savefolder):
         )
     crop_perception_results_svgs(savefolder)
 
+
+def make_convex_polygon_iou_figure(logfolder, savefolder, env_name):
+    all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
+    data = all_results['data'].item()
+    results = data[env_name][-1]
+    assert results['name'] == 'S3 (Ours)'
+
+    utils.calc_polygon_iou(results)
+    plot_iou_vs_poly_iou(
+        results,
+        f'Segmentation and Decomposition IoU :\n{env_name}',
+        os.path.join(savefolder, 'Decomposition_IoU.svg')
+    )
+    
 
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
@@ -582,7 +613,7 @@ def acknowledge_rerun_option(rerun: bool):
             f'You have chosen to re-run the segmentation analysis.\n'
             f'The results comparing IoU and run time against EM_cupy'
             f' and EM_cupy_NR will be recomputed and saved to '
-            f'{output_folder}/{precomputed_results_fname}.\n'
+            f'{output_folder}{precomputed_results_fname}.\n'
             f'The timing results, may not exactly match those reported in'
             f' the paper due to system differences.'
         )
@@ -644,6 +675,12 @@ def main():
     )
     pipeline_figure_log = os.path.join(args.data_root, 'lcmlog-vision-demo-sim')
     
+    
+    # Run the figure scripts
+    make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
+    
+    exit(0)
+    
     plot_hysteresis_comparison(
         hysteresis_comparison_log,
         os.path.join(output_folder, 'hysteresis_comparison.svg')
@@ -653,7 +690,7 @@ def main():
     
     # If recomputing, we put the recomputed resutls into the output folder
     if args.rerun_plane_segmentation_comparisons:
-        save_all_results(output_folder)
+        save_all_results(args.data_root)
         results_folder = output_folder
     
     make_all_results_figures(results_folder, output_folder)

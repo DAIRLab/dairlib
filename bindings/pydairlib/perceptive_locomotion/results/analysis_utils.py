@@ -187,6 +187,35 @@ def profile_segmentation(system, grid_maps):
     }
 
 
+def calc_polygon_iou(results):
+    """
+        Calculate the IoU between the union of the convex polygon terrain
+        representation of consecutive safe terrain segmentations
+        :param results: The IoUs are appended to results under the key 'poly_iou'
+        :return: None
+    """
+    poly_iou = []
+    decomposer = ConvexTerrainDecompositionSystem()
+    
+    for i in range(len(results['grid_maps']) - 1):
+        poly_iou.append(
+            convex_polyon_iou(
+                results['grid_maps'][i],
+                results['grid_maps'][i+1],
+                decomposer
+            )
+        )
+        
+        # iou of 0 caused by ACD non-robustness - discard
+        if poly_iou[-1] == 0:
+            poly_iou[-1] = np.nan
+            
+        if i % 5 == 0:
+            print(f'{100.0 * float(i) / float(len(results["grid_maps"])):.2f}')
+    
+    results[f'poly_iou'] = poly_iou
+
+
 def hysteresis_comparison(logfile):
     grid_maps, _ = get_grid_maps_from_log(logfile)
 
@@ -381,6 +410,8 @@ def get_worst_case_data_by_num_polygons(results):
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     # move frame0 to remove any pixels which the maps do not have in common
     frame0.move(frame1.getPosition())
+    frame0.convertToDefaultStartIndex()
+    frame1.convertToDefaultStartIndex()
 
     frame0_safe = np.nan_to_num(frame0[layer]).astype(bool)
     frame1_safe = np.nan_to_num(frame1[layer]).astype(bool)
@@ -394,22 +425,44 @@ def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     return float(intersection.sum()) / float(union.sum())
 
 
-def write_arrays_to_video(sequence, video_out_path):
-    with tempfile.TemporaryDirectory() as folder:
-        for frame, data in enumerate(sequence):
-            im = Image.fromarray(data)
-            frame_filename = os.path.join(folder, f"frame_{frame:06d}.png")
-            im.save(frame_filename)
-        subprocess.run([
-            'ffmpeg',
-            '-framerate',
-            '30',
-            '-i',
-            os.path.join(folder, f"frame_%06d.png"),
-            '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-            video_out_path
-        ], check=True)
-
+def convex_polyon_iou(
+        frame0: GridMap,
+        frame1: GridMap,
+        decomp: ConvexTerrainDecompositionSystem, layer='segmentation'):
+    # align the grid maps
+    frame0.move(frame1.getPosition())
+    frame0.convertToDefaultStartIndex()
+    frame1.convertToDefaultStartIndex()
+    
+    polys_0 = decomp.calc_convex_polygons(frame0)
+    polys_1 = decomp.calc_convex_polygons(frame1)
+    
+    contained_in_p0_sampled = np.zeros_like(frame0[layer])
+    contained_in_p1_sampled = np.zeros_like(frame1[layer])
+    
+    dims = frame0.getSize()
+    for i in range(dims[0]):
+        for j in range(dims[1]):
+            index = np.array([i, j], dtype=int)
+            pos = np.zeros((3,))
+            pos[:2] = frame0.getPosition(index)
+            
+            violates_p0 = [p.PointViolatesInequalities(pos) for p in polys_0]
+            violates_p1 = [p.PointViolatesInequalities(pos) for p in polys_1]
+            
+            contained_in_p0_sampled[index[0], index[1]] = ~np.all(violates_p0)
+            contained_in_p1_sampled[index[0], index[1]] = ~np.all(violates_p1)
+    
+    intersection = np.logical_and(contained_in_p0_sampled,  contained_in_p1_sampled)
+    union = np.logical_or(contained_in_p0_sampled, contained_in_p1_sampled)
+    
+    if union.sum() == 0:
+        return 0
+    
+    return float(intersection.sum()) / float(union.sum())
+    
+    
+    
 
 def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     map_msgs = data_dict[elevation_map_channel]
@@ -462,98 +515,6 @@ def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=N
     new_limits = {'x': plt.xlim(), 'y': plt.ylim()}
     plt.close(fig)
     return new_limits
-
-
-def create_position_direction_animation(arrays, positions, directions, interval=500, save_path=None):
-    """
-    Create an animation of arrays with position and direction markers.
-
-    Parameters:
-    - arrays: List of 2D numpy arrays to display as images
-    - positions: List of (x, y) tuples for circle positions
-    - directions: List of (dx, dy) tuples for direction vectors
-    - interval: Time between frames in milliseconds (default 500)
-    - save_path: Optional path to save the animation (e.g., 'animation.gif')
-
-    Returns:
-    - Matplotlib animation object
-    """
-    # Validate input lengths
-    if not (len(arrays) == len(positions) == len(directions)):
-        raise ValueError("arrays, positions, and directions must have the same length")
-
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    # Determine global min and max for consistent color scaling
-    vmin = min(arr.min() for arr in arrays)
-    vmax = max(arr.max() for arr in arrays)
-
-    # Initialize the image and markers
-    im = ax.imshow(arrays[0], cmap='viridis', vmin=vmin, vmax=vmax)
-    plt.colorbar(im)
-
-    # Create circle and arrow for first position and direction
-    circle = plt.Circle(positions[0], radius=0.5, color='red', fill=False)
-    ax.add_artist(circle)
-
-    # Calculate arrow properties
-    arrow_scale = 1  # Adjust for longer/shorter arrows
-    dx, dy = directions[0]
-    arrow = patches.FancyArrowPatch(
-        positions[0],
-        (positions[0][0] + dx * arrow_scale, positions[0][1] + dy * arrow_scale),
-        mutation_scale=20,
-        color='red',
-        edgecolor='red'
-    )
-    ax.add_artist(arrow)
-
-    # Update function for animation
-    def update(frame):
-        # Update image
-        im.set_array(arrays[frame])
-
-        # Update circle position
-        circle.center = positions[frame]
-
-        # Update arrow
-        dx, dy = directions[frame]
-        new_arrow = patches.FancyArrowPatch(
-            positions[frame],
-            (positions[frame][0] + dx * arrow_scale, positions[frame][1] + dy * arrow_scale),
-            mutation_scale=20,
-            color='red',
-            edgecolor='red'
-        )
-
-        # Remove previous arrow and add new one
-        ax.collections.pop()
-        ax.add_artist(new_arrow)
-
-        return im, circle, new_arrow
-
-    # Create animation
-    anim = animation.FuncAnimation(
-        fig,
-        update,
-        frames=len(arrays),
-        interval=interval,
-        blit=False  # Set to False to ensure all artists update
-    )
-
-    # Save animation if path provided
-    if save_path:
-        anim.save(save_path, writer='pillow')
-
-    plt.tight_layout()
-    plt.show()
-
-    return anim
-
-
-def plot_elevation_map_with_robot(ax, map: GridMap, robot_position: np.ndarray, robot_yaw: float):
-    ax.imshow(map['elevation'])
 
 
 def setup_plots():

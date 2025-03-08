@@ -129,8 +129,19 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             print(f'normal: {plane.normal}, point: {plane.point}')
             return None, None
         
-
         return plane.normal, plane.point
+
+    def calc_convex_polygons(self, grid: GridMap):
+        safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
+        
+        polygons = get_polygons_by_contour_extraction(
+            safe_terrain_image, grid
+        )
+        
+        if not polygons:
+            return None
+        
+        return ProcessTerrain2d(polygons, self.acd_thresh)
 
     def calc(self, context: Context, out: Value) -> None:
         # Get the safe terrain segmentation grid map
@@ -138,17 +149,18 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         grid = self.EvalAbstractInput(
             context, self.input_port_safe_terrain
         ).get_value()
-
+        
         safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
-
+    
         polygons = get_polygons_by_contour_extraction(
             safe_terrain_image, grid
         )
-
+        
         if not polygons:
-            return
-
+            return None
+        
         convex_polygons = ProcessTerrain2d(polygons, self.acd_thresh)
+        
         end_convexity = time.time()
 
         if not convex_polygons:

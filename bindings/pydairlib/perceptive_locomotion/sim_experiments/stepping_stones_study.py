@@ -3,8 +3,10 @@ import sys
 import signal
 import tempfile
 import numpy as np
+from copy import deepcopy
 import multiprocessing as mp
 from functools import partial
+from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from concurrent.futures import ProcessPoolExecutor
@@ -42,6 +44,17 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
     segmentation_criteria as seg_criteria
 
 
+@dataclass
+class TrialParams:
+    gains: str
+    terrain: str
+    sim_params: str
+    perceptive: bool
+    terrain_size: float
+    log_name: str = None
+    safety_margin: float = None
+
+
 # Utils for generating random stepping stones
 def get_block_string(x, y, z, n, lx, ly, lz, yaw):
     return f'  - [[{x}, {y}, {z}], [{n[0]}, {n[1]}, {n[2]}], ' \
@@ -62,16 +75,16 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     rng = np.random.default_rng(seed)
     rows = 5
     cols = 3
-    base_len = 1.35
-    y_variation = 0.05
-    x_variation = 0.05
-    z_variation = 0.05
+    base_len = 1.0 - min_sidelength
+    y_variation = 0.1
+    x_variation = 0.1
+    z_variation = 0.1
     yaw_variation = 45.0 * np.pi / 180.0
-    x_dist = 0.6
-    y_dist = 0.6
+    x_dist = min_sidelength + 0.25
+    y_dist = min_sidelength + 0.25
     
     # initialize stepping stone geometry with the start, end, and floor blocks
-    xs = [0.0, 1.5 + (rows + 1) * x_dist, 5.0]
+    xs = [0.0, base_len * 2 + (rows + 1) * x_dist, 5.0]
     ys = [0.0, 0.0, 0.0]
     zs = [0.0, 0.0, -0.5]
     normals = [np.array([0, 0, 1]), np.array([0, 0, 1]), np.array([0, 0, 1])]
@@ -79,10 +92,9 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     lys = [2.5, 2.5, 20.0]
     lzs = [0.2, 0.2, 0.2]
     yaws = [0.0, 0.0, 0.0]
-    
-    z = 0
+
     for r in range(rows):
-        x = base_len + x_dist * r + rng.uniform(-x_variation, x_variation)
+        x = base_len + x_dist * (r + 1) + rng.uniform(-x_variation, x_variation)
         for c in range(cols):
             y = rng.uniform(-y_variation, y_variation) + y_dist * (c - 0.5 * (cols - 1))
             z = rng.uniform(-z_variation, z_variation)
@@ -103,8 +115,14 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
             fp.write(block_str)
 
 
-def build_and_run_sim(gains: str, terrain: str, params: str, log_name: str=None):
-    sim_diagram = FullSimDiagram(gains, terrain, params)
+def goal_x(terrain_size: float):
+    base_len = 1.0 - terrain_size
+    x_dist = terrain_size + 0.25
+    return base_len * 2.0 + x_dist * 6.0 - 1.0
+
+
+def build_and_run_sim(trial_params: TrialParams):
+    sim_diagram = FullSimDiagram(trial_params.gains, trial_params.terrain, trial_params.sim_params)
 
     builder = DiagramBuilder()
     builder.AddSystem(sim_diagram)
@@ -117,30 +135,32 @@ def build_and_run_sim(gains: str, terrain: str, params: str, log_name: str=None)
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
 
-    sim_params = load(open(params, 'r'), Loader=Loader)
+    sim_params = load(open(trial_params.sim_params, 'r'), Loader=Loader)
     run_time = sim_params['time'][0]
 
     try:
         simulator.AdvanceTo(run_time)
     except:
+        if trial_params.log_name:
+            sim_diagram.SaveLcmLog(trial_params.log_name + '_fail')
         return False
 
     pelvis_pose = sim_diagram.GetCassiePelvisPoseInWorld(context)
 
     success = pelvis_pose.translation().ravel()[-1] > 0.8 and \
-              pelvis_pose.translation().ravel()[0] > 4.0
+              pelvis_pose.translation().ravel()[0] > goal_x(trial_params.terrain_size)
 
-    if success and log_name:
-        sim_diagram.SaveLcmLog(log_name + '_success')
-    elif log_name:
-        sim_diagram.SaveLcmLog(log_name + '_fail')
+    if success and trial_params.log_name:
+        sim_diagram.SaveLcmLog(trial_params.log_name + '_success')
+    elif trial_params.log_name:
+        sim_diagram.SaveLcmLog(trial_params.log_name + '_fail')
 
     # we consider the simulation to be a success if the robot stays upright
     # and makes it to the final stepping stone within the allotted time
     return success
 
 
-def build_and_run_perceptive_sim(gains: str, terrain: str, params: str, log_name: str=None):
+def build_and_run_perceptive_sim(trial_params: TrialParams):
     
     terrain_segmentation = TerrainSegmentationSystem(
         {
@@ -150,7 +170,7 @@ def build_and_run_perceptive_sim(gains: str, terrain: str, params: str, log_name
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     convex_decomposition = ConvexTerrainDecompositionSystem()
-    sim_diagram = PerceptiveFullSimDiagram(gains, terrain, params)
+    sim_diagram = PerceptiveFullSimDiagram(trial_params.gains, trial_params.terrain, trial_params.sim_params)
     
     builder = DiagramBuilder()
     builder.AddSystem(terrain_segmentation)
@@ -182,7 +202,7 @@ def build_and_run_perceptive_sim(gains: str, terrain: str, params: str, log_name
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
     
-    sim_params = load(open(params, 'r'), Loader=Loader)
+    sim_params = load(open(trial_params.sim_params, 'r'), Loader=Loader)
     run_time = sim_params['time'][0]
     
     try:
@@ -191,40 +211,60 @@ def build_and_run_perceptive_sim(gains: str, terrain: str, params: str, log_name
         return False
     
     pelvis_pose = sim_diagram.GetCassiePelvisPoseInWorld(context)
-    
+
     success = pelvis_pose.translation().ravel()[-1] > 0.8 and \
-              pelvis_pose.translation().ravel()[0] > 4.0
+              pelvis_pose.translation().ravel()[0] > goal_x(trial_params.terrain_size)
     
-    if success and log_name:
-        sim_diagram.SaveLcmLog(log_name + '_success')
-    elif log_name:
-        sim_diagram.SaveLcmLog(log_name + '_fail')
+    if success and trial_params.log_name:
+        sim_diagram.SaveLcmLog(trial_params.log_name + '_success')
+    elif trial_params.log_name:
+        sim_diagram.SaveLcmLog(trial_params.log_name + '_fail')
     
     # we consider the simulation to be a success if the robot stays upright
     # and makes it to the final stepping stone within the allotted time
     return success
 
 
-def run_single_trial(trial_idx: int, gains: str, params: str, perceptive: bool, terrain_size: float):
-    """Run a single simulation trial"""
-    logname = gains.split('/')[-1].strip('.yaml')
-    save_log = None
+def make_log_name(trial_idx: int, trial_params: TrialParams):
+    gains_prefix = trial_params.gains.split("/")[-1].replace(".yaml", "")
+    size = str(trial_params.terrain_size).replace("0.", "") + "_cm"
+    perceptive = 'perceptive' if trial_params.perceptive else 'gt_terrain'
+    return f'{gains_prefix}_{size}_trial_{perceptive}_{trial_idx}'
 
-    terrain_file = tempfile.NamedTemporaryFile(delete=False)
-    random_stepping_stones(trial_idx, terrain_size, savefile=terrain_file.name)
+
+def run_single_trial(trial_idx: int, trial_params: TrialParams):
+    """Run a single simulation trial"""
+    logfolder = '../stepping_stone_study_results/logs/'
+
+    logname = make_log_name(trial_idx, trial_params)
+    os.makedirs(logfolder, exist_ok=True)
+    save_log = os.path.join(logfolder, logname)
+
+    terrain_file = tempfile.NamedTemporaryFile(delete=False, prefix=f'{trial_idx}_terrain')
+    random_stepping_stones(trial_idx, trial_params.terrain_size, savefile=terrain_file.name)
+
+    sim_params_text = f'goal_location: [{goal_x(trial_params.terrain_size) + 0.5}, 0]\ntime: [30]\nrealtime_rate: [-1]'
+    sim_params_file = tempfile.NamedTemporaryFile(delete=False, prefix=f'{trial_idx}_sim_params')
+    with open(sim_params_file.name, 'w') as fp:
+        fp.write(sim_params_text)
+
+    params = trial_params
+    params.log_name = save_log
+    params.sim_params = sim_params_file.name
+    params.terrain = terrain_file.name
 
     try:
-        if perceptive:
-            return 1 if build_and_run_perceptive_sim(
-                gains, terrain_file.name, params, save_log) else 0
+        if params.perceptive:
+            return 1 if build_and_run_perceptive_sim(params) else 0
         else:
-            return 1 if build_and_run_sim(
-                gains, terrain_file.name, params, save_log) else 0
+            return 1 if build_and_run_sim(params) else 0
 
     finally:
         terrain_file.close()
+        sim_params_file.close()
         try:
             os.unlink(terrain_file.name)
+            os.unlink(sim_params_file.name)
         except FileNotFoundError:
             pass
 
@@ -241,10 +281,10 @@ def signal_handler(sig, frame):
     sys.exit(1)
 
 
-def run_study_parallel(gains: str, params: str, num_trials: int, terrain_size: float, perceptive: bool, num_workers: int=3):
+def run_study_parallel(trial_params_template: TrialParams,  num_trials: int, num_workers: int = 8):
     """Parallelized version of run_study with signal handling"""
     global executor
-    worker_fn = partial(run_single_trial, gains=gains, params=params, perceptive=perceptive, terrain_size=terrain_size)
+    worker_fn = partial(run_single_trial, trial_params=trial_params_template)
     success_count = 0
     fail_count = 0
 
@@ -269,39 +309,63 @@ def run_study_parallel(gains: str, params: str, num_trials: int, terrain_size: f
 
 def timing_study_main(fname):
     n_trials = 50
-    params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
     gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"
 
     results_gt = {}
     results_gt_no_timing = {}
-    results_perceptive = {}
-    results_perceptive_no_timing = {}
 
-    for terrain_size in [0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+    study_params = TrialParams(
+        gains="",
+        terrain="",
+        sim_params="",
+        perceptive=False,
+        terrain_size=0,
+    )
+
+    for terrain_size in [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
         try:
-            results_gt[terrain_size] = run_study_parallel(
-                gains, params, n_trials, terrain_size, perceptive=False
-            )
-            results_gt_no_timing[terrain_size] = run_study_parallel(
-                gains_no_timing, params, n_trials, terrain_size, perceptive=False
-            )
-            results_perceptive[terrain_size] = run_study_parallel(
-                gains, params, n_trials, terrain_size, perceptive=True
-            )
-            results_perceptive_no_timing[terrain_size] = run_study_parallel(
-                gains_no_timing, params, n_trials, terrain_size, perceptive=True
-            )
+            study_params.terrain_size = terrain_size
+            study_params.gains = gains
+            results_gt[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.gains = gains_no_timing
+            results_gt_no_timing[terrain_size] = run_study_parallel(study_params, n_trials)
         except KeyboardInterrupt:
             print("\nStudy terminated by user.")
 
     np.savez(
         fname,
         results_gt=results_gt,
-        results_gt_no_timing=results_gt_no_timing,
-        results_perceptive=results_perceptive,
-        results_perceptive_no_timing=results_perceptive_no_timing
+        results_gt_no_timing=results_gt_no_timing
     )
+
+
+def perception_study_main(fname):
+    n_trials = 50
+    gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
+
+    results = {}
+
+    study_params = TrialParams(
+        gains=gains,
+        terrain="",
+        sim_params="",
+        perceptive=True,
+        terrain_size=0,
+    )
+
+    for margin in [0.0, 0.5, 0.1, 0.15]:
+        results[margin] = {}
+        study_params.safety_margin = margin
+        for terrain_size in [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+            try:
+                study_params.terrain_size = terrain_size
+                results[margin][terrain_size] = run_study_parallel(study_params, n_trials)
+            except KeyboardInterrupt:
+                print("\nStudy terminated by user.")
+
+    np.savez(fname, results=results)
 
 
 def cost_study_main(fname):
@@ -369,22 +433,5 @@ def plot_results(fname):
 
 if __name__ == '__main__':
 
-    parser = ArgumentParser()
-    parser.add_argument(
-        "--saved_results_file",
-        type=str,
-        help='Filename of study results that have already been saved for plotting. Leave empy to run the study',
-        default=None
-    )
-    parser.add_argument(
-        "--results_file",
-        type=str,
-        help='Filename to save results at',
-        default='../stepping_stone_study_results/results.npz',
-    )
-    args = parser.parse_args()
-
-    if args.saved_results_file:
-        plot_results(args.saved_results_file)
-    else:
-        timing_study_main(args.results_file)
+    timing_study_main('../stepping_stone_study_results/timing_adaptation_results.npz')
+    perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')

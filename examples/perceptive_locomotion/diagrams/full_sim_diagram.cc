@@ -53,7 +53,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
-          FindResourceOrThrow(sim_params_yaml));
+          sim_params_yaml);
 
   Eigen::Vector2d goal_location = Eigen::Vector2d::Map(
       sim_options.at("goal_location").data());

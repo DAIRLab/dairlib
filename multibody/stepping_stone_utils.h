@@ -26,7 +26,7 @@ struct SquareSteppingStoneList {
   template<typename Archive>
   void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(stones));
-    std::tie(this->footholds, this->cubes) = GetFootholdsWithMargin(stones, 0.13);
+    std::tie(this->footholds, this->cubes) = GetFootholdsWithMargin(stones, 0.12);
   }
 
   static std::pair<std::vector<ConvexPolygon>,
@@ -81,8 +81,8 @@ struct SquareSteppingStoneList {
       // stepping stone boundaries
       foothold.AddFace(nx, center + 0.5 * (dims(0) - 2 * e) * Bx);
       foothold.AddFace(-nx, center - 0.5 * (dims(0) - 2 * e) * Bx);
-      foothold.AddFace(ny, center + 0.5 * (dims(1) -  2 * e) * By);
-      foothold.AddFace(-ny, center - 0.5 * (dims(1) - 2 * e) * By);
+      foothold.AddFace(ny, center + 0.5 * (dims(1) - e) * By);
+      foothold.AddFace(-ny, center - 0.5 * (dims(1) - e) * By);
       foothold.CalcBoundingBox();
       footholds.push_back(foothold);
     }

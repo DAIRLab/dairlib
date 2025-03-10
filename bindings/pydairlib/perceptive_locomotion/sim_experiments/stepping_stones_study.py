@@ -369,7 +369,7 @@ def perception_study_main(fname):
     for margin in [0.15, 0.12, 0.09, 0.06]:
         results[margin] = {}
         study_params.safety_margin = margin
-        for terrain_size in [0.5, 0.45, 0.4, 0.35, 0.3]:
+        for terrain_size in [0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]:
             try:
                 study_params.terrain_size = terrain_size
                 results[margin][terrain_size] = run_study_parallel(study_params, n_trials)

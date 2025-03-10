@@ -76,7 +76,7 @@ def main():
 
     input("\n\n-- Press Enter to start the simulation --")
 
-    simulator.AdvanceTo(20.0)
+    simulator.AdvanceTo(30.0)
 
 
 if __name__ == '__main__':

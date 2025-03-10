@@ -26,7 +26,8 @@ from dairlib import(
     lcmt_grid_map,
     lcmt_foothold_set,
     lcmt_robot_output,
-    lcmt_alip_s2s_mpfc_debug
+    lcmt_alip_s2s_mpfc_debug,
+    lcmt_alip_mpfc_debug_complete,
 )
 
 # pydrake
@@ -79,6 +80,15 @@ output_folder = 'perceptive_locomotion_results_figures/'
 precomputed_results_fname = 'precomputed_segmentation_results.npz'
 
 
+def check_mpfc_debug_version(event):
+    try:
+        lcmt_alip_mpfc_debug_complete.decode(event.data)
+    except:
+        return lcmt_alip_s2s_mpfc_debug
+
+    return lcmt_alip_mpfc_debug_complete
+
+
 def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
 
@@ -101,15 +111,25 @@ def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
 
     diagram = builder.Build()
 
+    # we have multiple debug types - check which one is being used
+    lcm_log = lcm.EventLog(logfile)
+    mpfc_debug_type = None
+    for event in lcm_log:
+        if event.channel == mpfc_debug_channel:
+            mpfc_debug_type = check_mpfc_debug_version(event)
+            break
+
     types = {
         state_channel: lcmt_robot_output,
         terrain_channel: lcmt_foothold_set,
-        mpfc_debug_channel: lcmt_alip_s2s_mpfc_debug
+        mpfc_debug_channel: mpfc_debug_type
     }
     ports = {
         state_channel: state_receiver.get_input_port(),
         terrain_channel: mpc_visualizer.get_input_port_terrain(),
-        mpfc_debug_channel: mpc_visualizer.get_input_port_mpc()
+        mpfc_debug_channel: mpc_visualizer.get_input_port_mpc() if
+                            mpfc_debug_type == lcmt_alip_mpfc_debug_complete else
+                            mpc_visualizer.get_input_port_mpc_legacy()
     }
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
@@ -375,7 +395,7 @@ def make_segmentation_videos(logfile, start_time, duration, env_name=''):
     systems = utils.make_segmentation_systems()
     save_folder = os.path.join(output_folder, 'segmentation_videos')
     utils.make_dir_if_missing(save_folder)
-    
+
     for s in systems:
         savefile = os.path.join(save_folder, f'{env_name}_{s.get_name()}.mp4')
         write_segmentation_results_video(s, logfile, savefile, duration)
@@ -400,7 +420,7 @@ def save_all_results(logfolder):
         results = pool.map(runner, config.values())
 
     data = dict(zip(config.keys(), results))
-    
+
     # save processed results to the output folder to avoid overwriting source
     np.savez(
         os.path.join(output_folder, precomputed_results_fname),
@@ -459,7 +479,7 @@ def make_convex_polygon_iou_figure(logfolder, savefolder, env_name):
         f'Convex Decomposition IoU: {env_name}',
         os.path.join(savefolder, f'Decomposition_IoU_{env_name.replace(" ", "_")}.svg')
     )
-    
+
 
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
@@ -495,7 +515,7 @@ def make_segmentation_tiles(logfolder, savefolder):
                 ax.set_yticks([])
         fig.tight_layout(pad=1.01)
         plt.savefig(os.path.join(savefolder, f'{env.replace(" ", "_")}_segmentation_tiles.svg'))
-        
+
 
 def crop_perception_results_svgs(savefolder):
     current = os.getcwd()
@@ -514,10 +534,10 @@ def run_pipeline_figure_script(logfile):
         duration=1
     )
     q = robot_output['q'][0]
-    
+
     save_folder = os.path.join(output_folder, 'terrain_seg_figures')
     utils.make_dir_if_missing(save_folder)
-    
+
     make_pipeline_figures_from_map(
         grid_maps[example_idx], q, save_folder)
 
@@ -627,21 +647,21 @@ def acknowledge_rerun_option(rerun: bool):
             f'To recompute the comparisons, rerun this '
             f'script with the option --rerun_plane_segmentation_comparisons'
         )
-        
+
     message = message + (
         '\n\nThe non-elevation mapping full stack profiling results will be '
         'recomputed for either option. \n'
         'The elevation mapping profiling results are computed '
         'online and saved to the log to avoid the overhead of publishing and '
         'logging point cloud data\n')
-    
+
     print(message)
     response = input('Continue? (y/[n]): ')
-    
+
     if response.lower().strip() != 'y':
         print('exiting.')
         exit(0)
-    
+
 
 def main():
     parser = ArgumentParser()
@@ -655,7 +675,7 @@ def main():
         type=bool,
         default=False
     )
-    
+
     args = parser.parse_args()
     if not args.data_root:
         raise RuntimeError(
@@ -664,7 +684,7 @@ def main():
         )
 
     acknowledge_rerun_option(args.rerun_plane_segmentation_comparisons)
-    
+
     # define relevant data files
     hysteresis_comparison_log = os.path.join(
         args.data_root, 'brick_steps/lcmlog-laptop-21'
@@ -676,25 +696,25 @@ def main():
         args.data_root, 'other/stairs_and_grass/lcmlog-laptop-01'
     )
     pipeline_figure_log = os.path.join(args.data_root, 'lcmlog-vision-demo-sim')
-    
-    
+
+
     # Run the figure scripts
     make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
-    
+
     exit(0)
-    
+
     plot_hysteresis_comparison(
         hysteresis_comparison_log,
         os.path.join(output_folder, 'hysteresis_comparison.svg')
     )
-    
+
     results_folder = args.data_root
-    
+
     # If recomputing, we put the recomputed resutls into the output folder
     if args.rerun_plane_segmentation_comparisons:
         save_all_results(args.data_root)
         results_folder = output_folder
-    
+
     make_all_results_figures(results_folder, output_folder)
     make_segmentation_tiles(results_folder, output_folder)
     run_pipeline_figure_script(pipeline_figure_log)
@@ -703,7 +723,7 @@ def main():
         detailed_profiling_log,
         os.path.join(output_folder, 'perception_stack_full_profiling.svg')
     )
-    
+
     # Do the videos
     make_all_segmentation_videos(args.data_root)
     write_segmented_elevation_meshcat_video(

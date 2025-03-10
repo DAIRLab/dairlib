@@ -50,12 +50,11 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
   std::string elevation_mapping_params_yaml =
-      "examples/perceptive_locomotion/camera_calib/"
-      "elevation_mapping_params_simulation.yaml";
+      "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml";
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
-          FindResourceOrThrow(sim_params_yaml));
+          sim_params_yaml);
 
   Eigen::Vector2d goal_location = Eigen::Vector2d::Map(
       sim_options.at("goal_location").data());

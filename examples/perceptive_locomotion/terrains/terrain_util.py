@@ -148,7 +148,7 @@ def make_stair_curriculum(n: int, length: float):
     plt.show()
 
 
-def sine_wave(n: int, length: float, x_start: float, a: float):
+def sine_wave(n: int, length: float, x_start: float, a: float, w: float):
     x = []
     y = []
     z = []
@@ -169,8 +169,8 @@ def sine_wave(n: int, length: float, x_start: float, a: float):
         y.append(0)
         x0 = dx * i
         x1 = dx * (i + 1)
-        z0 = a * np.cos(x0) - a
-        z1 = a * np.cos(x1) - a
+        z0 = a * np.cos(w * x0) - a
+        z1 = a * np.cos(w * x1) - a
         slope = (z1 - z0) / dx
         n = np.array([1, 0, -1 / slope])
         n *= np.sign(n[2])
@@ -303,10 +303,13 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
 
 
 if __name__ == '__main__':
-    for i in range(20):
-        fname = (f'bindings/pydairlib/perceptive_locomotion/sim_experiments/'
-                 f'terrains/random_stones_{i}.yaml')
-        random_stepping_stones(i, 5, 3, fname)
+    length = 12.0
+    sine_wave(int(length / 0.1), length, 1.0, 0.1, np.pi)
+
+    # for i in range(20):
+    #     fname = (f'bindings/pydairlib/perceptive_locomotion/sim_experiments/'
+    #              f'terrains/random_stones_{i}.yaml')
+    #     random_stepping_stones(i, 5, 3, fname)
 
     # sine_wave(50, 6.29, 1.0, 0.4)
     # simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)

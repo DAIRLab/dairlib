@@ -461,8 +461,6 @@ def convex_polyon_iou(
     
     return float(intersection.sum()) / float(union.sum())
     
-    
-    
 
 def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     map_msgs = data_dict[elevation_map_channel]

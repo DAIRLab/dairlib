@@ -75,11 +75,11 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     rng = np.random.default_rng(seed)
     rows = 5
     cols = 3
-    base_len = 1.0 - min_sidelength
-    y_variation = 0.1
-    x_variation = 0.1
-    z_variation = 0.1
-    yaw_variation = 45.0 * np.pi / 180.0
+    base_len = 1.0 + 0.25 - min_sidelength
+    y_variation = 0.075
+    x_variation = 0.075
+    z_variation = 0.075
+    yaw_variation = 10.0 * np.pi / 180.0
     x_dist = min_sidelength + 0.25
     y_dist = min_sidelength + 0.25
     
@@ -116,7 +116,7 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
 
 
 def goal_x(terrain_size: float):
-    base_len = 1.0 - terrain_size
+    base_len = 1.0 + 0.25 - terrain_size
     x_dist = terrain_size + 0.25
     return base_len * 2.0 + x_dist * 6.0 - 1.0
 
@@ -169,6 +169,8 @@ def build_and_run_perceptive_sim(trial_params: TrialParams):
         }
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
+    terrain_segmentation.erosion_kernel_length = trial_params.safety_margin
+
     convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = PerceptiveFullSimDiagram(trial_params.gains, trial_params.terrain, trial_params.sim_params)
     
@@ -204,10 +206,12 @@ def build_and_run_perceptive_sim(trial_params: TrialParams):
     
     sim_params = load(open(trial_params.sim_params, 'r'), Loader=Loader)
     run_time = sim_params['time'][0]
-    
+
     try:
         simulator.AdvanceTo(run_time)
     except:
+        if trial_params.log_name:
+            sim_diagram.SaveLcmLog(trial_params.log_name + f'_margin_{100 * trial_params.safety_margin:.0f}_cm_fail')
         return False
     
     pelvis_pose = sim_diagram.GetCassiePelvisPoseInWorld(context)
@@ -216,9 +220,9 @@ def build_and_run_perceptive_sim(trial_params: TrialParams):
               pelvis_pose.translation().ravel()[0] > goal_x(trial_params.terrain_size)
     
     if success and trial_params.log_name:
-        sim_diagram.SaveLcmLog(trial_params.log_name + '_success')
+        sim_diagram.SaveLcmLog(trial_params.log_name + f'margin_{100 * trial_params.safety_margin:.0f}_cm_success')
     elif trial_params.log_name:
-        sim_diagram.SaveLcmLog(trial_params.log_name + '_fail')
+        sim_diagram.SaveLcmLog(trial_params.log_name + f'margin_{100 * trial_params.safety_margin:.0f}_cm_fail')
     
     # we consider the simulation to be a success if the robot stays upright
     # and makes it to the final stepping stone within the allotted time
@@ -264,10 +268,12 @@ def run_single_trial(trial_idx: int, trial_params: TrialParams):
         sim_params_file.close()
         try:
             os.unlink(terrain_file.name)
+        except FileNotFoundError:
+            pass
+        try:
             os.unlink(sim_params_file.name)
         except FileNotFoundError:
             pass
-
 
 # Global executor for cleanup on signal
 executor = None
@@ -297,7 +303,6 @@ def run_study_parallel(trial_params_template: TrialParams,  num_trials: int, num
             for success in executor.map(worker_fn, range(num_trials)):
                 success_count += success
                 fail_count += (1 - success)
-                print(f'successes: {success_count}\nfailures: {fail_count}')
     except KeyboardInterrupt:
         # This will be caught by the signal handler
         pass
@@ -314,23 +319,29 @@ def timing_study_main(fname):
 
     results_gt = {}
     results_gt_no_timing = {}
-
-    study_params = TrialParams(
-        gains="",
-        terrain="",
-        sim_params="",
-        perceptive=False,
-        terrain_size=0,
-    )
+    results_perceptive = {}
+    results_perceptive_no_timing = {}
 
     for terrain_size in [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+        study_params = TrialParams(
+            gains="",
+            terrain="",
+            sim_params="",
+            perceptive=False,
+            terrain_size=terrain_size,
+        )
         try:
-            study_params.terrain_size = terrain_size
             study_params.gains = gains
             results_gt[terrain_size] = run_study_parallel(study_params, n_trials)
 
             study_params.gains = gains_no_timing
             results_gt_no_timing[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.perceptive = True
+            results_perceptive_no_timing[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.gains = gains
+            results_perceptive[terrain_size] = run_study_parallel(study_params, n_trials)
         except KeyboardInterrupt:
             print("\nStudy terminated by user.")
 
@@ -354,11 +365,10 @@ def perception_study_main(fname):
         perceptive=True,
         terrain_size=0,
     )
-
-    for margin in [0.0, 0.5, 0.1, 0.15]:
+    for margin in [0.15, 0.12, 0.09, 0.06]:
         results[margin] = {}
         study_params.safety_margin = margin
-        for terrain_size in [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+        for terrain_size in [0.5, 0.45, 0.4, 0.35, 0.3]:
             try:
                 study_params.terrain_size = terrain_size
                 results[margin][terrain_size] = run_study_parallel(study_params, n_trials)
@@ -394,13 +404,12 @@ def cost_study_main(fname):
     )
 
 
-def plot_results(fname):
+def plot_timing_results(folder):
+    fname = os.path.join(folder, 'timing_adaptation_results.npz')
     data = np.load(fname, allow_pickle=True)
     conditions = {
-        "results_gt": "Ground Truth Terrain",
-        "results_gt_no_timing": "Ground Truth Terrain (No Timing Adaptation)",
-        "results_perceptive": "Perceptive Terrain",
-        "results_perceptive_no_timing": "Perceptive Terrain (No Timing Adaptation)"
+        "results_gt": "Timing Adaptation",
+        "results_gt_no_timing": "No Timing Adaptation",
     }
 
     markers = {
@@ -428,10 +437,53 @@ def plot_results(fname):
     plt.ylabel('Success Rate (\\%)')
     plt.legend()
 
-    plt.show()
+
+def plot_margin_results(folder):
+    fname = os.path.join(folder, 'margin_adaptation_results.npz')
+    data = np.load(fname, allow_pickle=True)
+    results = data['results'].item()
+    margins = [*results]
+    margins.sort()
+
+    markers = {
+        0.06: "*",
+        0.09: "x",
+        0.12: "^",
+        0.15: "o"
+    }
+
+    for margin in margins:
+        label = f'{margin:.2f} m'
+        sizes = [*results[margin]]
+        sizes.sort()
+
+        success_rates = []
+        for size in sizes:
+            trial_data = results[margin][size]
+            success_rate = 100 * float(trial_data['success']) / float(trial_data['success'] + trial_data['fail'])
+            success_rates.append(success_rate)
+        plt.plot(sizes, success_rates, label=label, marker=markers[margin])
+        plt.title('Stepping Stone Success vs. S3 Safety Margin')
+        plt.xlabel('$d_{min}$')
+        plt.ylabel('Success Rate')
+        plt.legend()
 
 
 if __name__ == '__main__':
 
-    timing_study_main('../stepping_stone_study_results/timing_adaptation_results.npz')
-    perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--saved_results_folder",
+        type=str,
+        help='Filename of study results that have already been saved for plotting. Leave empy to run the study',
+        default=None
+    )
+    args = parser.parse_args()
+    if args.saved_results_folder:
+        plot_timing_results(args.saved_results_folder)
+        plt.figure()
+        plot_margin_results(args.saved_results_folder)
+        plt.show()
+    else:
+        perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')
+        timing_study_main('../stepping_stone_study_results/timing_adaptation_results.npz')

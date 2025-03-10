@@ -2,6 +2,7 @@
 
 // lcmtypes
 #include "dairlib/lcmt_alip_mpfc_debug_complete.hpp"
+#include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
 
 // dairlib
 #include "geometry/convex_polygon_set.h"
@@ -39,6 +40,9 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_mpc() const {
     return this->get_input_port(mpc_debug_input_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_mpc_legacy() const {
+    return this->get_input_port(legacy_mpc_debug_input_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_terrain() const {
     return this->get_input_port(foothold_input_port_);
   }
@@ -59,7 +63,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
   // Matrix from robot yaw frame to world frame
   static Eigen::Matrix3d R_WB(const Eigen::Vector4d& wxyz);
 
-  void DrawFootsteps(const dairlib::lcmt_alip_mpfc_debug_complete& solution,
+  void DrawFootsteps(const std::vector<std::vector<double>>& footstep_sol,
                      const Eigen::Matrix3d& R_yaw) const;
 
   drake::systems::EventStatus UnrestrictedUpdate(
@@ -68,6 +72,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex state_input_port_;
   drake::systems::InputPortIndex mpc_debug_input_port_;
+  drake::systems::InputPortIndex legacy_mpc_debug_input_port_;
   drake::systems::InputPortIndex foothold_input_port_;
   drake::systems::DiscreteStateIndex n_footholds_idx_;
   mutable std::shared_ptr<drake::geometry::Meshcat> meshcat_;

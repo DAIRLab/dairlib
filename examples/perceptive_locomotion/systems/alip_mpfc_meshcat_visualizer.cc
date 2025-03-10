@@ -26,6 +26,10 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
       "mpc_debug", drake::Value<lcmt_alip_mpfc_debug_complete>()
     ).get_index();
 
+  legacy_mpc_debug_input_port_ = DeclareAbstractInputPort(
+      "legacy_mpc_debug", drake::Value<lcmt_alip_s2s_mpfc_debug>()
+  ).get_index();
+
   foothold_input_port_ = DeclareAbstractInputPort(
       "terrain", drake::Value<lcmt_foothold_set>()
   ).get_index();
@@ -44,7 +48,7 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
 
 
 void AlipMPFCMeshcatVisualizer::DrawFootsteps(
-    const dairlib::lcmt_alip_mpfc_debug_complete  &solution,
+    const std::vector<std::vector<double>>& footstep_sol,
     const Eigen::Matrix3d &R_yaw) const {
 
   std::vector<drake::geometry::Rgba> rgb = {
@@ -52,11 +56,11 @@ void AlipMPFCMeshcatVisualizer::DrawFootsteps(
       drake::geometry::Rgba(0, 0, 1, 0.8)
   };
 
-  for (int n = 1; n < solution.nmodes; n++) {
+  for (size_t n = 1; n < footstep_sol.size(); n++) {
     Eigen::Matrix4d X = Eigen::Matrix4d::Identity();
     std::string path = "footstep_sol_" + std::to_string(n);
     X.block<3, 1>(0, 3) =
-        R_yaw * Eigen::Vector3d::Map(solution.pp.at(n).data());
+        R_yaw * Eigen::Vector3d::Map(footstep_sol.at(n).data());
     const auto sphere = drake::geometry::Sphere(.025);
     meshcat_->SetObject(path, sphere, rgb.at(n % 2));
     meshcat_->SetTransform(path, X);
@@ -112,8 +116,20 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
   Eigen::Vector4d quat = robot_output->GetState().head<4>();
   const Eigen::Matrix3d R_yaw = R_WB(quat);
 
-  const auto& mpc_debug = EvalAbstractInput(
-      context, mpc_debug_input_port_)->get_value<lcmt_alip_mpfc_debug_complete>();
+  bool use_legacy = false;
+  lcmt_alip_mpfc_debug_complete mpc_debug;
+  lcmt_alip_s2s_mpfc_debug mpc_debug_legacy;
+
+  if (get_input_port_mpc().HasValue(context)) {
+    mpc_debug = EvalAbstractInput(
+        context, mpc_debug_input_port_
+    )->get_value<lcmt_alip_mpfc_debug_complete>();
+  } else {
+    use_legacy = true;
+    mpc_debug_legacy = EvalAbstractInput(
+        context, legacy_mpc_debug_input_port_
+    )->get_value<lcmt_alip_s2s_mpfc_debug>();
+  }
 
   ConvexPolygonSet foothold_set;
   if (get_input_port_terrain().HasValue(context)) {
@@ -121,12 +137,20 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
         context, foothold_input_port_)->get_value<lcmt_foothold_set>();
     foothold_set = ConvexPolygonSet::CopyFromLcm(foothold_set_msg);
   } else {
-    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.all_footholds);
+    if (not use_legacy) {
+      foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.all_footholds);
+    } else {
+      foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug_legacy.foothold_sequence);
+    }
+
     foothold_set.ReExpressInNewFrame(R_yaw.transpose());
   }
 
-//  DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);
-  DrawFootsteps(mpc_debug, R_yaw);
+  if (not use_legacy) {
+    DrawFootsteps(mpc_debug.pp, R_yaw);
+  } else {
+    DrawFootsteps(mpc_debug_legacy.pp, R_yaw);
+  }
 
   int n_prev = state->get_discrete_state(n_footholds_idx_).get_value()(0);
   DrawFootholds(foothold_set, n_prev);

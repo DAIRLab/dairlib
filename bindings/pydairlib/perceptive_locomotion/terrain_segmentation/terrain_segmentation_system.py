@@ -59,7 +59,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
-        self.safety_hysteresis = 0.4
+        self.safety_hysteresis = 0.6
         self.kernel_length = 0.17
         self.erosion_kernel_length = self.kernel_length / 1.2
         self.safety_threshold = 0.7

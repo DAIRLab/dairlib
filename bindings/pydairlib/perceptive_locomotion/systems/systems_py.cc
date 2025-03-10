@@ -24,6 +24,7 @@ PYBIND11_MODULE(systems, m) {
                         py::arg("meshcat"), py::arg("plant"))
       .def("get_input_port_state", &AlipMPFCMeshcatVisualizer::get_input_port_state, py_rvp::reference_internal)
       .def("get_input_port_mpc", &AlipMPFCMeshcatVisualizer::get_input_port_mpc, py_rvp::reference_internal)
+      .def("get_input_port_mpc_legacy", &AlipMPFCMeshcatVisualizer::get_input_port_mpc_legacy, py_rvp::reference_internal)
       .def("get_input_port_terrain", &AlipMPFCMeshcatVisualizer::get_input_port_terrain, py_rvp::reference_internal);
 }
 

@@ -14,11 +14,6 @@ from pydrake.common.value import AbstractValue
 
 from pydairlib.perceptive_locomotion import FullSimDiagram
 
-from pydairlib.perceptive_locomotion.terrain_segmentation. \
-    terrain_segmentation_system import TerrainSegmentationSystem
-
-from pydairlib.perceptive_locomotion import ConvexTerrainDecompositionSystem
-
 from pydairlib.systems import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import OutputVector
 

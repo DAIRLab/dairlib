@@ -71,7 +71,7 @@ void GridMapVisualizer::DrawGridMap(
     if (layers.empty() or
         std::find(layers.begin(), layers.end(), layer) != layers.end()) {
       const MatrixXd& Z = map.get(layer).cast<double>();
-      meshcat_->PlotSurface(prefix + "grid_map_" + layer, X, Y, Z);
+      meshcat_->PlotSurface(prefix + "grid_map_" + layer, X, Y, Z, rgba_);
     }
   }
 

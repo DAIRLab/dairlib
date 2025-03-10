@@ -55,7 +55,7 @@ void AddSteppingStonesToMeshcatFromYaml(
   for (const auto& box_params : boxes) {
     std::string path = "box" + std::to_string(++i);
     const auto box = drake::geometry::Box(box_params.second);
-    meshcat->SetObject(path,box);
+    meshcat->SetObject(path, box, drake::geometry::Rgba(0.3, 0.3, 0.3, 1.0));
     meshcat->SetTransform(path, box_params.first);
   }
 }

@@ -50,11 +50,11 @@ def select_terrain_and_log_file():
     if choice == '2':
         return os.path.join(base_folder, terrains['stairs']), \
             os.path.join(base_folder, 'sim_opts_stairs.yaml'), \
-            os.path.join(log_folder, 'stairs')
-    if choice == '3':
-        return os.path.join(base_folder, terrains['stairs']), \
-            os.path.join(base_folder, 'sim_opts_beam.yaml'), \
             os.path.join(log_folder, 'perceptive_stairs')
+    if choice == '3':
+        return os.path.join(base_folder, terrains['sine']), \
+            os.path.join(base_folder, 'sim_opts_beam.yaml'), \
+            os.path.join(log_folder, 'perceptive_sine')
     
     raise RuntimeError("invalid or no terrain specified")
 
@@ -70,9 +70,7 @@ def main():
         }
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
-    terrain_segmentation.safety_hysteresis = 0.3
-    terrain_segmentation.erosion_kernel_length = 0.09
-
+    
     convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = PerceptiveFullSimDiagram(gains, terrain, params)
 

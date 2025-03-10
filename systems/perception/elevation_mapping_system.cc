@@ -99,6 +99,7 @@ ElevationMappingSystem::ElevationMappingSystem(
   elevation_map_state_index_ = DeclareAbstractState(model_value_map);
   motion_updater_state_index_ = DeclareAbstractState(model_value_updater);
   profiling_info_index_ = DeclareAbstractState(drake::Value<lcmt_profiling>());
+  prev_contact_index_ = DeclareAbstractState(drake::Value<std::string>(""));
 
   state_buffer_index_ = DeclareAbstractState(
       drake::Value<std::shared_ptr<TimeSeriesBuffer<VectorXd, kBufSize>>>(nullptr));
@@ -196,13 +197,15 @@ void ElevationMappingSystem::AddSensorPreProcessor(
 }
 
 double ElevationMappingSystem::CalcMapOffsetFromContactState(
-    lcmt_contact contact_msg, const grid_map::GridMap& map) const {
+    lcmt_contact contact_msg, const std::string& prev_contact,
+    const grid_map::GridMap& map) const {
 
   double map_offset = 0;
   int n_valid_contacts = 0;
 
   for (int i = 0; i < contact_msg.num_contacts; i++) {
-    if (contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
+    bool valid_contact = prev_contact.empty() or contact_msg.contact_names[i] == prev_contact;
+    if (valid_contact and contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
 
       const auto& contact = contacts_.at(contact_msg.contact_names[i]);
       const Vector3d stance_pos = plant_.EvalBodyPoseInWorld(
@@ -354,7 +357,29 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   if (has_contacts() and get_input_port_contact().HasValue(context)) {
     const auto& contact_msg = EvalAbstractInput(
         context, input_port_contact_)->get_value<lcmt_contact>();
-    proprioceptive_map_offset = CalcMapOffsetFromContactState(contact_msg, map.getRawGridMap());
+
+    std::string prev_contact = state->get_abstract_state<std::string>(
+        prev_contact_index_);
+
+    // if previous contact is no longer active, switch to null contact
+    for (int i = 0; i < contact_msg.num_contacts; ++i) {
+      if (contact_msg.contact_names[i] == prev_contact and not contact_msg.contact[i]) {
+        prev_contact = "";
+      }
+    }
+
+    proprioceptive_map_offset = CalcMapOffsetFromContactState(
+        contact_msg, prev_contact, map.getRawGridMap());
+
+    // update the previous contact
+    if (prev_contact.empty()) {
+      for (int i = 0; i < contact_msg.num_contacts; ++i) {
+        if (contact_msg.contact[i]) {
+          prev_contact = contact_msg.contact_names[i];
+        }
+      }
+    }
+    state->get_mutable_abstract_state<std::string>(prev_contact_index_) = prev_contact;
   }
 
   const auto& state_buffer = state->get_abstract_state<

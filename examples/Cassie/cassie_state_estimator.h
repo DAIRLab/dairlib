@@ -215,8 +215,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Matrix<double, 16, 16> cov_w_;
 
   // Contact Estimation Parameters
-  double knee_spring_threshold_ekf_ = -0.03;
-  double ankle_spring_threshold_ekf_ = -0.03;
+  double knee_spring_threshold_ekf_ = -0.05;
+  double ankle_spring_threshold_ekf_ = -0.05;
 
   // flag for testing and tuning
   mutable int hardware_test_mode_ = 0;

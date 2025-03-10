@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from pydrake.systems.all import (
@@ -27,12 +28,41 @@ import pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 base_folder = "bindings/pydairlib/perceptive_locomotion/sim_experiments/"
 
-params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_beam.yaml"
-terrain = "bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/perceptive_sine.yaml"
-gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
+terrains = {
+    'sine': 'terrains/perceptive_sine.yaml',
+    'beam': 'terrains/perceptive_beam.yaml',
+    'stairs': 'terrains/perceptive_stairs.yaml'
+}
+
+log_folder = "../sim_experiment_logs"
+
+gains = os.path.join(base_folder, "gains/mpfc_gains_default.yaml")
+
+
+def select_terrain_and_log_file():
+    choice = input('pick terrain type:\n(1) beam\n(2) stairs\n(3) sine\n\nSelection: ')
+    choice = choice.strip()
+    if choice == '1':
+        return os.path.join(base_folder, terrains['beam']), \
+            os.path.join(base_folder, 'sim_opts_beam.yaml'), \
+            os.path.join(log_folder, 'perceptive_beam'),
+        
+    if choice == '2':
+        return os.path.join(base_folder, terrains['stairs']), \
+            os.path.join(base_folder, 'sim_opts_stairs.yaml'), \
+            os.path.join(log_folder, 'stairs')
+    if choice == '3':
+        return os.path.join(base_folder, terrains['stairs']), \
+            os.path.join(base_folder, 'sim_opts_beam.yaml'), \
+            os.path.join(log_folder, 'perceptive_stairs')
+    
+    raise RuntimeError("invalid or no terrain specified")
 
 
 def main():
+    
+    terrain, params, logfile = select_terrain_and_log_file()
+    
     terrain_segmentation = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,
@@ -40,6 +70,8 @@ def main():
         }
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
+    terrain_segmentation.safety_hysteresis = 0.3
+    terrain_segmentation.erosion_kernel_length = 0.09
 
     convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = PerceptiveFullSimDiagram(gains, terrain, params)
@@ -76,7 +108,9 @@ def main():
 
     input("\n\n-- Press Enter to start the simulation --")
 
-    simulator.AdvanceTo(30.0)
+    simulator.AdvanceTo(20.0)
+    
+    sim_diagram.SaveLcmLog(logfile)
 
 
 if __name__ == '__main__':

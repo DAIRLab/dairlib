@@ -196,7 +196,9 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
                        drake::systems::State<double>* state) const final;
 
   double CalcMapOffsetFromContactState(
-      lcmt_contact contact_msg, const grid_map::GridMap& map) const;
+      lcmt_contact contact_msg,
+      const std::string& prev_contact,
+      const grid_map::GridMap& map) const;
 
   double CalcMapOffsetFromPointCloud(
       const elevation_mapping::PointCloudType::Ptr pc,
@@ -235,6 +237,8 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::AbstractStateIndex motion_updater_state_index_;
   drake::systems::AbstractStateIndex state_buffer_index_;
   drake::systems::AbstractStateIndex profiling_info_index_;
+  drake::systems::AbstractStateIndex prev_contact_index_;
+
 
   std::map<std::string,
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;

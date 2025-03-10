@@ -59,9 +59,9 @@ def perceptive_main():
     filename_log = sys.argv[1]
     grid_maps, robot_output = analysis_utils.get_grid_maps_from_log(filename_log)
     
-    start_fraction = 0.15
-    end_fraction = 0.55
-    num_poses = 6
+    start_fraction = 0.1
+    end_fraction = 0.95
+    num_poses = 4
     visualizer = multipose_visualizer_main(
         robot_output,
         num_poses,

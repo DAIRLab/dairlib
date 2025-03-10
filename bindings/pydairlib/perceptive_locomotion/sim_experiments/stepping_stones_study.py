@@ -313,7 +313,7 @@ def run_study_parallel(trial_params_template: TrialParams,  num_trials: int, num
 
 
 def timing_study_main(fname):
-    n_trials = 100
+    n_trials = 60
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
     gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"
 
@@ -322,7 +322,7 @@ def timing_study_main(fname):
     results_perceptive = {}
     results_perceptive_no_timing = {}
 
-    for terrain_size in [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55]:
         study_params = TrialParams(
             gains="",
             terrain="",
@@ -354,7 +354,7 @@ def timing_study_main(fname):
 
 
 def perception_study_main(fname):
-    n_trials = 100
+    n_trials = 60
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
 
     results = {}
@@ -369,7 +369,7 @@ def perception_study_main(fname):
     for margin in [0.15, 0.12, 0.09, 0.06]:
         results[margin] = {}
         study_params.safety_margin = margin
-        for terrain_size in [0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]:
+        for terrain_size in [0.55, 0.5, 0.45, 0.4, 0.35, 0.3]:
             try:
                 study_params.terrain_size = terrain_size
                 results[margin][terrain_size] = run_study_parallel(study_params, n_trials)

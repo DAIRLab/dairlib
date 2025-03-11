@@ -1478,7 +1478,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   if ((travel_distance < sampling_params_.use_straight_line_traj_under &&
       sampling_params_.repositioning_trajectory_type == 0) ||
       ((sampling_params_.repositioning_trajectory_type == 1 || sampling_params_.repositioning_trajectory_type == 2) &&
-       travel_angle < sampling_params_.use_straight_line_traj_within_angle)) {
+       travel_angle < sampling_params_.use_straight_line_traj_within_angle) || (sampling_params_.repositioning_trajectory_type == 3 && (current_ee_location.head(2) - best_sample_location.head(2)).norm() < 5*1e-3)) {
     Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
     times[0] = 0;
     // Ensure the times used to define PiecewisePolynomial are increasing.
@@ -1757,6 +1757,72 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       }
     }
 
+  }
+  // use piecewise linear trajectory. Go up, go to point above sample, go back down to sample.
+  else if(sampling_params_.repositioning_trajectory_type == 3){
+    // std::cout << "Using piecewise linear trajectory for repositioning." << std::endl;
+
+        // Define the waypoints for the three-leg repositioning.
+        Eigen::Vector3d waypoint_above_ee = current_ee_location;
+        waypoint_above_ee(2) = sampling_params_.sampling_height + sampling_params_.repositioning_waypoint_height;
+    
+        Eigen::Vector3d waypoint_above_sample = best_sample_location;
+        waypoint_above_sample(2) = sampling_params_.sampling_height + sampling_params_.repositioning_waypoint_height;
+    
+        knots.col(0) = x_lcs;
+        int i = 1;
+        double step_size = sampling_params_.reposition_speed * dt_;
+    
+        // First leg: straight line from current EE location to waypoint_above_ee.
+        double dist_to_wp1 = (current_ee_location - waypoint_above_ee).norm();
+        while ((i * step_size < dist_to_wp1) && (i < N_)) {
+            Eigen::Vector3d straight_line_point = current_ee_location +
+                i * step_size / dist_to_wp1 * (waypoint_above_ee - current_ee_location);
+            
+            VectorXd next_lcs_state = x_lcs;
+            next_lcs_state.head(3) = straight_line_point;
+            knots.col(i) = next_lcs_state;
+            i++;
+        }
+    
+        // Second leg: straight line from waypoint_above_ee to waypoint_above_sample.
+        int leg1_i = i;
+        double dstep0 = i*step_size - dist_to_wp1;
+        double dist_to_wp2 = (waypoint_above_ee - waypoint_above_sample).norm();
+        while ((dstep0 + (i - leg1_i) * step_size < dist_to_wp2) && (i < N_)) {
+            Eigen::Vector3d straight_line_point = waypoint_above_ee +
+                (dstep0 + (i - leg1_i) * step_size) / dist_to_wp2 * (waypoint_above_sample - waypoint_above_ee);
+            
+            VectorXd next_lcs_state = x_lcs;
+            next_lcs_state.head(3) = straight_line_point;
+            knots.col(i) = next_lcs_state;
+            i++;
+        }
+    
+        // Third leg: straight line from waypoint_above_sample to best_sample_location.
+        // Really this doesn't even get used because it enters the use_straight_line condition before then.
+        int leg2_i = i;
+        double dstep1 = (i-leg1_i)*step_size - dist_to_wp2;
+        double dist_to_goal = (waypoint_above_sample - best_sample_location).norm();
+        while ((dstep1 + (i - leg2_i) * step_size < dist_to_goal) && (i < N_)) {
+            Eigen::Vector3d straight_line_point = waypoint_above_sample +
+            (dstep1 + (i - leg2_i) * step_size) / dist_to_goal * (best_sample_location - waypoint_above_sample);
+            
+            VectorXd next_lcs_state = x_lcs;
+            next_lcs_state.head(3) = straight_line_point;
+            knots.col(i) = next_lcs_state;
+            i++;
+        }
+    
+        // Fill in the rest of the knots with the goal EE location.
+        for (int j = i; j < N_; j++) {
+            Eigen::Vector3d x_lcs_goal = x_lcs;
+            x_lcs_goal.head(3) = best_sample_location;
+            knots.col(j) = x_lcs_goal;
+            if (j == 1 && !is_doing_c3_) {
+                finished_reposition_flag_ = true;
+            }
+        }
   }
 
   // Set predicted end effector state in preparation for next control loop, if

@@ -38,6 +38,7 @@ struct SamplingC3SamplingParams {
   double use_straight_line_traj_under;
   double use_straight_line_traj_within_angle;
   int repositioning_trajectory_type;
+  double repositioning_waypoint_height;
   int N_sample_buffer;
   double pos_error_sample_retention;
   double ang_error_sample_retention;
@@ -88,6 +89,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
     a->Visit(DRAKE_NVP(repositioning_trajectory_type));
+    a->Visit(DRAKE_NVP(repositioning_waypoint_height));
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));

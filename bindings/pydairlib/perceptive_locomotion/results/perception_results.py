@@ -484,8 +484,8 @@ def make_convex_polygon_iou_figure(logfolder, savefolder, env_name):
 def make_segmentation_tiles(logfolder, savefolder):
     all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
     data = all_results['data'].item()
-    N = 15
-    offset = 450
+    N = 10
+    offset = 600
     interval = 30
     envs = ['Lab', 'Brick Steps', 'Grass']
     utils.setup_plots()

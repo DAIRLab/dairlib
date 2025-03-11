@@ -107,7 +107,6 @@ MpfcOscDiagram::MpfcOscDiagram(
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
       mpc_gains_filename,
       "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml",
-      "",
       plant, *plant_context
   );
 

@@ -15,8 +15,7 @@ class NCSQPSolver {
       std::function<void (Eigen::VectorXd*)> proj_to_cspace,
       std::function<solvers::NCQPSolver::SetMembershipConstraints(
           const Eigen::VectorXd&)> get_sm_constraints,
-      const drake::solvers::SolverOptions& ncqp_inner_solver_options,
-      const drake::solvers::SolverOptions& ncqp_polish_solver_options);
+      const std::string& ncqp_solver_options_yaml);
 
   void DoSQPStep(const Eigen::VectorXd& x, SQPIterate* sol);
 

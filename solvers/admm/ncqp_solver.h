@@ -4,13 +4,19 @@
 #include "solvers/qp_data.h"
 #include "solvers/osqp_wrapper.h"
 #include "solvers/qpalm_wrapper.h"
+#include "solvers/solver_options_io.h"
 #include "set_membership_constraint.h"
+
+#include "drake/common/yaml/yaml_io.h"
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/solvers/osqp_solver.h"
+
 
 namespace dairlib::solvers {
 
 enum PolishType {
   kProject = 0,
-  kConvexRestriction
+  kConvexRestriction = 1
 };
 
 struct ADMMParams {
@@ -18,7 +24,19 @@ struct ADMMParams {
   int max_iterations{5};  // Maximum number of outer iterations
   double tolerance{1e-3};    // Convergence tolerance
   bool verbose = false;
+  int polish_type_int = 1;
   PolishType polish_type = kConvexRestriction;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(rho));
+    a->Visit(DRAKE_NVP(max_iterations));
+    a->Visit(DRAKE_NVP(tolerance));
+    a->Visit(DRAKE_NVP(verbose));
+    a->Visit(DRAKE_NVP(polish_type_int));
+    polish_type = polish_type_int == 0 ? kProject : kConvexRestriction;
+  }
+
 };
 
 struct NCQPSolution {
@@ -90,7 +108,14 @@ class NCQPSolver {
                     SetMembershipConstraints;
 
   explicit NCQPSolver(const drake::solvers::SolverOptions& inner_qp_options,
-                      const drake::solvers::SolverOptions& polish_qp_options);
+                      const drake::solvers::SolverOptions& polish_qp_options,
+                      const ADMMParams& params);
+
+  explicit NCQPSolver(const std::string& params_yaml) {
+    *this = NCQPSolver::Make(params_yaml);
+  }
+
+  NCQPSolver() = default;
 
   /*!
    * Solve the optimization problem
@@ -114,6 +139,21 @@ class NCQPSolver {
       const drake::solvers::MathematicalProgram& prog,
       const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>&
       set_membership_bindings);
+
+  static NCQPSolver Make(const std::string& params_parent_file) {
+
+    const auto child_yaml_paths =
+        drake::yaml::LoadYamlFile<std::map<std::string, std::string>>(params_parent_file);
+
+    const auto admm_params = drake::yaml::LoadYamlFile<ADMMParams>(child_yaml_paths.at("admm_params"));
+    const auto inner_qp_options_loader = drake::yaml::LoadYamlFile<SolverOptionsFromYaml>(child_yaml_paths.at("inner_qp_options"));
+    const auto polish_qp_options_loader = drake::yaml::LoadYamlFile<SolverOptionsFromYaml>(child_yaml_paths.at("polish_qp_options"));
+
+    const auto inner_qp_options =  inner_qp_options_loader.GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+    const auto polish_qp_options = polish_qp_options_loader.GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+    return NCQPSolver(inner_qp_options, polish_qp_options, admm_params);
+  }
 
  private:
 
@@ -152,8 +192,8 @@ class NCQPSolver {
   };
 
   ADMMParams params_;
-  mutable OsqpWrapper qp_solver_;
-  mutable OsqpWrapper polish_solver_;
+  std::unique_ptr<OsqpWrapper> qp_solver_ = nullptr;
+  std::unique_ptr<OsqpWrapper> polish_solver_ = nullptr;
 
   drake::solvers::SolverOptions inner_qp_options_{};
   drake::solvers::SolverOptions polish_qp_options_{};

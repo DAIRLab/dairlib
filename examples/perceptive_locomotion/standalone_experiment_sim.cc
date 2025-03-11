@@ -68,7 +68,7 @@ int DoMain(int argc, char **argv) {
       "elevation_mapping_params_simulation.yaml";
 
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
-      gains_mpc_file, "", "", plant, *plant_context);
+      gains_mpc_file, "", plant, *plant_context);
 
   std::string mpc_solver_options = gains_mpc.miqp ?
       "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml" :

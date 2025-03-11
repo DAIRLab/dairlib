@@ -139,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
-      FLAGS_mpfc_gains_filename, "", "", plant, *context);
+      FLAGS_mpfc_gains_filename, "dummy", plant, *context);
 
 
   // Build the controller diagram

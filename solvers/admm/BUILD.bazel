@@ -12,6 +12,7 @@ cc_library(
         "//solvers:osqp_wrapper",
         "//solvers:qpalm_wrapper",
         "//solvers:qp_data",
+        "//solvers:solver_options_io",
         "@drake//:drake_shared_library",
         "@qpalm",
     ],

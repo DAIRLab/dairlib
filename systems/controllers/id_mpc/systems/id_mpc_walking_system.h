@@ -19,8 +19,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
       IDMPCParams params,
       std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
       GaitParams gait_params,
-      const drake::solvers::SolverOptions& ncqp_inner_solver_options,
-      const drake::solvers::SolverOptions& ncqp_polish_solver_options);
+      const std::string& ncqp_solver_options_yaml);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);

@@ -25,8 +25,7 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
     IDMPCParams params,
     std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
     GaitParams gait_params,
-    const SolverOptions& ncqp_inner_solver_options,
-    const SolverOptions& ncqp_polish_solver_options) :
+    const std::string& ncqp_solver_options_yaml) :
     trajopt_(params, std::move(dynamics), gait_params),
     solver_(
         [this](const VectorXd& x, QPData* qp) {
@@ -44,8 +43,7 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
         [this](const VectorXd& z) {
           return this->trajopt_.GetFootholdConstraints(z);
         },
-        ncqp_inner_solver_options,
-        ncqp_polish_solver_options) {
+        ncqp_solver_options_yaml) {
   
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",

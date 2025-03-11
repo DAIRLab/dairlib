@@ -1,0 +1,3 @@
+admm_params: "examples/id_mpc/gains/admm_opts_ncqp.yaml"
+inner_qp_options: "examples/id_mpc/gains/osqp_opts_ncqp.yaml"
+polish_qp_options: "examples/id_mpc/gains/osqp_opts_tight.yaml"

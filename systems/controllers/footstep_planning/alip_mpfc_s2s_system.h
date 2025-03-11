@@ -33,8 +33,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<int> post_left_right_fsm_states,
       std::vector<PointOnFramed> left_right_foot,
       const std::string& params_yaml,
-      const std::string& solver_options_yaml,
-      const std::string& polish_solver_options_yaml);
+      const std::string& solver_params_yaml);
 
   void MakeDrivenByStandaloneSimulator(double update_period) {
     DeclareInitializationUnrestrictedUpdateEvent(

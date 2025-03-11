@@ -67,7 +67,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
   auto foot_placement_controller = builder.AddSystem<MPC>(
       plant_, plant_context_.get(), left_right_fsm_states,
       post_left_right_fsm_states, left_right_toe, gains_yaml,
-      solver_options_yaml, solver_options_yaml_polish);
+      solver_options_yaml);
 
   foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
 

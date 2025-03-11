@@ -2,7 +2,6 @@
 
 #include "solvers/solver_options_io.h"
 #include "drake/solvers/gurobi_solver.h"
-#include "drake/solvers/osqp_solver.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -25,7 +24,7 @@ struct alip_s2s_mpfc_params {
   Eigen::MatrixXd R;
   Eigen::MatrixXd Qf;
   drake::solvers::SolverOptions solver_options;
-  drake::solvers::SolverOptions solver_options_polish;
+  std::string ncqp_solver_options_path;
   double umax = 25.0;
   double ankle_torque_regularization = 1.0;
   alip_utils::AlipTrackingCostType tracking_cost_type =
@@ -81,29 +80,30 @@ struct alip_s2s_mpfc_params_io {
 inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
     const std::string &gains_yaml_path,
     const std::string &solver_options_yaml_path,
-    const std::string &solver_options_polish_yaml_path,
     const drake::multibody::MultibodyPlant<double> &plant,
     const drake::systems::Context<double> &context) {
 
   auto params_io = drake::yaml::LoadYamlFile<alip_s2s_mpfc_params_io>(
       gains_yaml_path
   );
-  solvers::SolverOptionsFromYaml solver_options_io;
-  solvers::SolverOptionsFromYaml solver_options_io_polish;
-  if (!solver_options_yaml_path.empty()) {
-    solver_options_io =
-        drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-            solver_options_yaml_path
-        );
-  }
-  if (!solver_options_polish_yaml_path.empty()) {
-    solver_options_io_polish =
-        drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-            solver_options_polish_yaml_path
-        );
-  }
 
   alip_s2s_mpfc_params params_out;
+  if (params_io.miqp) {
+    solvers::SolverOptionsFromYaml solver_options_io;
+    if (!solver_options_yaml_path.empty()) {
+      solver_options_io =
+          drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+              solver_options_yaml_path
+          );
+    }
+    params_out.solver_options = solver_options_io.GetAsSolverOptions(
+        drake::solvers::GurobiSolver::id()
+    );
+  } else {
+    DRAKE_DEMAND(not solver_options_yaml_path.empty());
+    params_out.ncqp_solver_options_path = solver_options_yaml_path;
+  }
+
   params_out.nmodes = params_io.nmodes;
   params_out.tmin = params_io.tmin;
   params_out.tmax = params_io.tmax;
@@ -135,15 +135,6 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
       Eigen::Matrix < double, 4, 4, Eigen::RowMajor >> (params_io.Qf.data());
   params_out.R = Eigen::Map <
       Eigen::Matrix < double, 3, 3, Eigen::RowMajor >> (params_io.R.data());
-  if (params_io.miqp) {
-    params_out.solver_options = solver_options_io.GetAsSolverOptions(
-        drake::solvers::GurobiSolver::id());
-  } else {
-    params_out.solver_options = solver_options_io.GetAsSolverOptions(
-        drake::solvers::OsqpSolver::id());
-    params_out.solver_options_polish = solver_options_io_polish.GetAsSolverOptions(
-        drake::solvers::OsqpSolver::id());
-  }
 
   return params_out;
 }

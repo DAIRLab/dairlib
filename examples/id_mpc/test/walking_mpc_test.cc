@@ -31,8 +31,7 @@ using solvers::SolverOptionsFromYaml;
 
 const std::string gains_f = "examples/id_mpc/gains/mpc_gains_walking.yaml";
 const std::string gait_f = "examples/id_mpc/gains/gait_params_walking.yaml";
-const std::string solver_opts_in = "examples/id_mpc/gains/osqp_opts_ncqp.yaml";
-const std::string solver_opts_p = "examples/id_mpc/gains/osqp_opts_tight.yaml";
+const std::string solver_opts = "examples/id_mpc/gains/ncqp_opts.yaml";
 
 int DoMain() {
 
@@ -63,10 +62,7 @@ int DoMain() {
       *dynamics, plant_context.get(), gait_params);
 
   auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(
-      params, std::move(dynamics), gait_params, LoadYamlFile<SolverOptionsFromYaml>(
-          solver_opts_in).GetAsSolverOptions(drake::solvers::OsqpSolver::id()),
-      LoadYamlFile<SolverOptionsFromYaml>(
-          solver_opts_p).GetAsSolverOptions(drake::solvers::OsqpSolver::id()));
+      params, std::move(dynamics), gait_params, solver_opts);
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto solution_pub = builder.AddSystem(

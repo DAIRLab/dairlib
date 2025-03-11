@@ -58,9 +58,13 @@ NCQPSolution initialize_sol(const QPData& qp) {
 }
 
 NCQPSolver::NCQPSolver(const SolverOptions& inner_qp_options,
-                       const SolverOptions& polish_qp_options) {
+                       const SolverOptions& polish_qp_options,
+                       const ADMMParams& params) {
   inner_qp_options_ = inner_qp_options;
   polish_qp_options_ = polish_qp_options;
+  params_ = params;
+  qp_solver_ = std::make_unique<OsqpWrapper>();
+  polish_solver_ = std::make_unique<OsqpWrapper>();
 }
 
 std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
@@ -77,8 +81,8 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
   }
 
   // TODO (@Brian-Acosta) set solver options somehow
-  if (not qp_solver_.IsInitialized()) {
-    qp_solver_.InitializeSolver(cvx_qp, inner_qp_options_);
+  if (not qp_solver_->IsInitialized()) {
+    qp_solver_->InitializeSolver(cvx_qp, inner_qp_options_);
   }
   return {cvx_qp, al_qp};
 }
@@ -89,7 +93,7 @@ void NCQPSolver::SolveALQP(
   VectorXd g_al = -params_.rho * (sol->z - sol->w);
   al_qp.g = cvx_qp.g + g_al;
 
-  qp_solver_.Solve(al_qp, *al_result, iter <= 1);
+  qp_solver_->Solve(al_qp, *al_result, iter <= 1);
   sol->x = al_result->x;
 
   if (params_.verbose) {
@@ -136,7 +140,7 @@ void NCQPSolver::Solve(const QPData &qp, QPResult &result,
   QPResult primal_result;
   Timer timer;
 
-  qp_solver_.Solve(cvx_qp, init_result);
+  qp_solver_->Solve(cvx_qp, init_result);
   sol.x = init_result.x;
   sol.primal_solve_time += timer.tock();
   
@@ -273,11 +277,11 @@ QPResult NCQPSolver::QPPolish(
   }
   copy.A.makeCompressed();
 
-  if (not polish_solver_.IsInitialized()){
-    polish_solver_.InitializeSolver(copy, polish_qp_options_);
+  if (not polish_solver_->IsInitialized()){
+    polish_solver_->InitializeSolver(copy, polish_qp_options_);
   }
   QPResult out;
-  polish_solver_.Solve(copy, out);
+  polish_solver_->Solve(copy, out);
 
   if (params_.verbose) {
     std::cout << "Polish result:\n" << out << std::endl;

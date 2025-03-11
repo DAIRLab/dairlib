@@ -45,7 +45,7 @@ struct SolverOptionsFromYaml {
     a->Visit(DRAKE_NVP(string_options));
   }
 
-  SolverOptions GetAsSolverOptions(const drake::solvers::SolverId& id) {
+  SolverOptions GetAsSolverOptions(const drake::solvers::SolverId& id) const {
     SolverOptions options;
     options.SetOption(CommonSolverOption::kPrintToConsole, print_to_console);
     options.SetOption(CommonSolverOption::kPrintFileName, log_file_name);

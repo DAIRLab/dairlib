@@ -75,13 +75,12 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     rng = np.random.default_rng(seed)
     rows = 5
     cols = 3
-    base_len = 1.0 + 0.25 - min_sidelength
-    y_variation = 0.075
-    x_variation = 0.075
+    base_len = 1.0 + 0.21 - min_sidelength
+    y_variation = 0.05
+    x_variation = 0.05
     z_variation = 0.075
-    yaw_variation = 10.0 * np.pi / 180.0
-    x_dist = min_sidelength + 0.25
-    y_dist = min_sidelength + 0.25
+    x_dist = min_sidelength + 0.21
+    y_dist = min_sidelength + 0.21
     
     # initialize stepping stone geometry with the start, end, and floor blocks
     xs = [0.0, base_len * 2 + (rows + 1) * x_dist, 5.0]
@@ -94,19 +93,19 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
     yaws = [0.0, 0.0, 0.0]
 
     for r in range(rows):
-        x = base_len + x_dist * (r + 1) + rng.uniform(-x_variation, x_variation)
         for c in range(cols):
+            x = base_len + x_dist * (r + 1) + rng.uniform(-x_variation, x_variation)
             y = rng.uniform(-y_variation, y_variation) + y_dist * (c - 0.5 * (cols - 1))
             z = rng.uniform(-z_variation, z_variation)
             xs.append(x)
             ys.append(y)
             zs.append(z)
-            normals.append(rng.uniform([-0.09, -0.06, 1.0], [0.09, 0.09, 1.0]))
+            normals.append(np.array([0, 0, 1]))
             lxs.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lys.append(rng.uniform(min_sidelength, min_sidelength + 0.05))
             lzs.append(0.3)
-            yaws.append(rng.uniform(-yaw_variation, yaw_variation))
-    
+            yaws.append(0)
+
     block_str = get_blocks_string(xs, ys, zs, normals, lxs, lys, lzs, yaws)
     if savefile is None:
         print(block_str)
@@ -116,8 +115,8 @@ def random_stepping_stones(seed, min_sidelength, savefile=None):
 
 
 def goal_x(terrain_size: float):
-    base_len = 1.0 + 0.25 - terrain_size
-    x_dist = terrain_size + 0.25
+    base_len = 1.0 + 0.21 - terrain_size
+    x_dist = terrain_size + 0.21
     return base_len * 2.0 + x_dist * 6.0 - 1.0
 
 
@@ -240,14 +239,16 @@ def run_single_trial(trial_idx: int, trial_params: TrialParams):
     """Run a single simulation trial"""
     logfolder = '../stepping_stone_study_results/logs/'
 
-    logname = make_log_name(trial_idx, trial_params)
-    os.makedirs(logfolder, exist_ok=True)
-    save_log = os.path.join(logfolder, logname)
+    save_log = None
+    if trial_idx % 10 == 0:
+        logname = make_log_name(trial_idx, trial_params)
+        os.makedirs(logfolder, exist_ok=True)
+        save_log = os.path.join(logfolder, logname)
 
     terrain_file = tempfile.NamedTemporaryFile(delete=False, prefix=f'{trial_idx}_terrain')
     random_stepping_stones(trial_idx, trial_params.terrain_size, savefile=terrain_file.name)
 
-    sim_params_text = f'goal_location: [{goal_x(trial_params.terrain_size) + 0.5}, 0]\ntime: [30]\nrealtime_rate: [-1]'
+    sim_params_text = f'goal_location: [{goal_x(trial_params.terrain_size) + 0.5}, 0]\ntime: [20]\nrealtime_rate: [-1]'
     sim_params_file = tempfile.NamedTemporaryFile(delete=False, prefix=f'{trial_idx}_sim_params')
     with open(sim_params_file.name, 'w') as fp:
         fp.write(sim_params_text)
@@ -256,12 +257,12 @@ def run_single_trial(trial_idx: int, trial_params: TrialParams):
     params.log_name = save_log
     params.sim_params = sim_params_file.name
     params.terrain = terrain_file.name
-
+    success = 0
     try:
         if params.perceptive:
-            return 1 if build_and_run_perceptive_sim(params) else 0
+            success = 1 if build_and_run_perceptive_sim(params) else 0
         else:
-            return 1 if build_and_run_sim(params) else 0
+            success = 1 if build_and_run_sim(params) else 0
 
     finally:
         terrain_file.close()
@@ -274,6 +275,10 @@ def run_single_trial(trial_idx: int, trial_params: TrialParams):
             os.unlink(sim_params_file.name)
         except FileNotFoundError:
             pass
+
+    print(f'finished trial {trial_idx}')
+
+    return success
 
 # Global executor for cleanup on signal
 executor = None
@@ -313,7 +318,7 @@ def run_study_parallel(trial_params_template: TrialParams,  num_trials: int, num
 
 
 def timing_study_main(fname):
-    n_trials = 60
+    n_trials = 50
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
     gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"
 
@@ -322,7 +327,7 @@ def timing_study_main(fname):
     results_perceptive = {}
     results_perceptive_no_timing = {}
 
-    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55]:
+    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
         study_params = TrialParams(
             gains="",
             terrain="",
@@ -349,12 +354,14 @@ def timing_study_main(fname):
     np.savez(
         fname,
         results_gt=results_gt,
-        results_gt_no_timing=results_gt_no_timing
+        results_gt_no_timing=results_gt_no_timing,
+        results_perceptive=results_perceptive,
+        results_perceptive_no_timing=results_perceptive_no_timing
     )
 
 
 def perception_study_main(fname):
-    n_trials = 60
+    n_trials = 50
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
 
     results = {}
@@ -369,7 +376,7 @@ def perception_study_main(fname):
     for margin in [0.15, 0.12, 0.09, 0.06]:
         results[margin] = {}
         study_params.safety_margin = margin
-        for terrain_size in [0.55, 0.5, 0.45, 0.4, 0.35, 0.3]:
+        for terrain_size in [0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]:
             try:
                 study_params.terrain_size = terrain_size
                 results[margin][terrain_size] = run_study_parallel(study_params, n_trials)
@@ -380,7 +387,7 @@ def perception_study_main(fname):
 
 
 def cost_study_main(fname):
-    n_trials = 50
+    n_trials = 60
     params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
     gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
     gains_gait_cost = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_gait_cost.yaml"
@@ -411,6 +418,8 @@ def plot_timing_results(folder):
     conditions = {
         "results_gt": "Timing Adaptation",
         "results_gt_no_timing": "No Timing Adaptation",
+        "results_perceptive": "Timing Adaptation (Perceptive)",
+        "results_perceptive_no_timing": "No Timing Adaptation (Perceptive)"
     }
 
     markers = {
@@ -486,5 +495,5 @@ if __name__ == '__main__':
         plot_margin_results(args.saved_results_folder)
         plt.show()
     else:
-        perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')
         timing_study_main('../stepping_stone_study_results/timing_adaptation_results.npz')
+        perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')

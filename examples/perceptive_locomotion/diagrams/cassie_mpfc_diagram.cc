@@ -45,7 +45,6 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& gains_yaml,
     const std::string& solver_options_yaml,
-    const std::string& solver_options_yaml_polish,
     double debug_publish_period) :
     lcm_local("udpm://239.255.76.67:7667?ttl=0"),
     plant_(plant),
@@ -99,6 +98,9 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
   input_port_vdes_ = builder.ExportInput(
       foot_placement_controller->get_input_port_vdes(), "desired_velocity"
   );
+  input_port_grid_map_ = builder.ExportInput(
+      foot_placement_controller->get_input_port_elevation(), "elevation_map"
+  );
   output_port_mpc_output_ = builder.ExportOutput(
       foot_placement_controller->get_output_port_mpc_output(),
       "lcmt_alip_mpc_output"
@@ -110,8 +112,6 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
 
   // Create the diagram
   builder.BuildInto(this);
-  DrawAndSaveDiagramGraph(*this, "../mpfc_diagram");
-
 }
 
 template class CassieMPFCDiagram<Alips2sMPFCSystem>;

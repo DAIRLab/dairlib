@@ -13,7 +13,6 @@
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
-#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -44,7 +43,6 @@ using perception::GridMapReceiver;
 
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
@@ -74,7 +72,7 @@ DEFINE_string(mpfc_gains_filename,
               "Filepath to alip mpfc gains");
 
 DEFINE_string(solver_options_filename,
-              "examples/perceptive_locomotion/gains/osqp_options_planner.yaml",
+              "examples/perceptive_locomotion/gains/ncqp_params.yaml",
               "Filepath to the MPC solver options");
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds for simulation");
@@ -128,8 +126,7 @@ int DoMain(int argc, char* argv[]) {
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
-      FLAGS_mpfc_gains_filename,
-      FLAGS_solver_options_filename,
+      FLAGS_mpfc_gains_filename, FLAGS_solver_options_filename,
       plant_w_spr, *context_w_spr
   );
 

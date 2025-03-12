@@ -88,7 +88,7 @@ std::pair<Vector3d, ConvexPolygon> ConvexPolygonSet::ProjectPointToPolygonSet(
 }
 
 ConvexPolygonSet ConvexPolygonSet::GetSubsetInForwardLookingCone(
-     const Vector3d &query_pt, double cone_angle) const {
+    const Vector3d &query_pt, double cone_angle) const {
   Matrix2d Aq;
   Aq << cos(cone_angle), sin(cone_angle), cos(cone_angle), -sin(cone_angle);
   Vector2d bq = Aq * query_pt.head<2>();

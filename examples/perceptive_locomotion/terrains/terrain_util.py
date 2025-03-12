@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from dataclasses import dataclass
 from matplotlib import pyplot as plt
@@ -147,7 +148,7 @@ def make_stair_curriculum(n: int, length: float):
     plt.show()
 
 
-def sine_wave(n: int, length: float, x_start: float, a: float):
+def sine_wave(n: int, length: float, x_start: float, a: float, w: float):
     x = []
     y = []
     z = []
@@ -168,8 +169,8 @@ def sine_wave(n: int, length: float, x_start: float, a: float):
         y.append(0)
         x0 = dx * i
         x1 = dx * (i + 1)
-        z0 = a * np.cos(x0) - a
-        z1 = a * np.cos(x1) - a
+        z0 = a * np.cos(w * x0) - a
+        z1 = a * np.cos(w * x1) - a
         slope = (z1 - z0) / dx
         n = np.array([1, 0, -1 / slope])
         n *= np.sign(n[2])
@@ -208,13 +209,25 @@ def simple_stairs(start_xyz, n, depth, rise):
     print_block_list(x, y, z, normal, lx, ly, lz, yaw)
 
 
+def get_block_string(x, y, z, n, lx, ly, lz, yaw):
+    return f'  - [[{x}, {y}, {z}], [{n[0]}, {n[1]}, {n[2]}], ' \
+           f'[{lx}, {ly}, {lz}], [{yaw}]]'
+
+
+def get_blocks_string(x, y, z, normal, lx, ly, lz, yaw):
+    out = 'stones:\n'
+    for i in range(len(x)):
+        n = normal[i]
+        out = out + get_block_string(
+            x[i], y[i], z[i], n, lx[i], ly[i], lz[i], yaw[i]
+        ) + '\n'
+    return out
+
+
 def print_block_list(x, y, z, normal, lx, ly, lz, yaw):
     for i in range(len(x)):
         n = normal[i]
-        print(
-            f'- [[{x[i]}, {y[i]}, {z[i]}], [{n[0]}, {n[1]}, {n[2]}], '
-            f'[{lx[i]}, {ly[i]}, {lz[i]}], [{yaw[i]}]]'
-        )
+        print(get_block_string(x[i], y[i], z[i], n, lx[i], ly[i], lz[i], yaw[i]))
 
 
 def make_block_perlin(grid_size, bins):
@@ -241,16 +254,65 @@ def make_block_perlin(grid_size, bins):
             print(f'- [[{x[i]}, {y[j]}, {terrain[i, j]}], [0, 0, 1], '
                   f'[{res}, {res}, {zmax}], [0]]')
 
-
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     ax.plot_surface(X, Y, terrain)
     print(f'max step: {zmax}')
     plt.show()
 
 
+def random_stepping_stones(seed, rows, cols, savefile = None):
+    rng = np.random.default_rng(seed)
+    base_len = 1.35
+    y_variation = 0.05
+    x_variation = 0.03
+    z_variation = 0.05
+    x_dist = 0.6
+    y_dist = 0.65
+
+    # initialize stepping stone geometry with the start, end, and floor blocks
+    xs = [0.0, 1.5 + (rows + 1) * x_dist, 5.0]
+    ys = [0.0, 0.0, 0.0]
+    zs = [0.0, 0.0, -0.5]
+    normals = [np.array([0, 0, 1]), np.array([0, 0, 1]), np.array([0, 0, 1])]
+    lxs = [2.0, 2.0, 20.0]
+    lys = [2.5, 2.5, 20.0]
+    lzs = [0.2, 0.2, 0.2]
+    yaws = [0.0, 0.0, 0.0]
+
+    z = 0
+    for r in range(rows):
+        x = base_len + x_dist * r + rng.uniform(-x_variation, x_variation)
+        for c in range(cols):
+            y = rng.uniform(-y_variation, y_variation) + y_dist * (c - 0.5 * (cols - 1))
+            z = rng.uniform(-z_variation, z_variation)
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+            normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
+            lxs.append(rng.uniform(0.4, 0.45))
+            lys.append(rng.uniform(0.45, 0.5))
+            lzs.append(0.3)
+            yaws.append(rng.uniform(-0.1, 0.1))
+
+    block_str = get_blocks_string(xs, ys, zs, normals, lxs, lys, lzs, yaws)
+    if savefile is None:
+        print(block_str)
+    else:
+        with open(savefile, 'w') as fp:
+            fp.write(block_str)
+
+
 if __name__ == '__main__':
-    sine_wave(50, 6.29, 1.0, 0.4)
-    simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)
+    length = 12.0
+    sine_wave(int(length / 0.1), length, 1.0, 0.1, np.pi)
+
+    # for i in range(20):
+    #     fname = (f'bindings/pydairlib/perceptive_locomotion/sim_experiments/'
+    #              f'terrains/random_stones_{i}.yaml')
+    #     random_stepping_stones(i, 5, 3, fname)
+
+    # sine_wave(50, 6.29, 1.0, 0.4)
+    # simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)
     # make_block_perlin(25.0, 27)
     # make_stair_curriculum(81, 40)
     # def hfun(t):

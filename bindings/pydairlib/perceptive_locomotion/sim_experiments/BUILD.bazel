@@ -1,0 +1,42 @@
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "run_ground_truth_sim",
+    srcs = ["run_ground_truth_sim.py"],
+    data = [],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_binary(
+    name = "run_perceptive_sim",
+    srcs = ["run_perceptive_sim.py"],
+    data = [],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_binary(
+    name = "stepping_stones_study",
+    srcs = ["stepping_stones_study.py"],
+    data = [],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/results:analysis_utils",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/systems",
+    ],
+)

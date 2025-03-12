@@ -76,8 +76,8 @@ struct PlaneDecompositionParams {
 
     sliding_window_params.kernel_size = kernel_size;
     sliding_window_params.planarity_opening_filter = planarity_opening_filter;
-    sliding_window_params.plane_inclination_threshold = M_PI * plane_inclination_threshold_degrees / 180.0;
-    sliding_window_params.local_plane_inclination_threshold = M_PI * local_plane_inclination_threshold_degrees / 180.0;
+    sliding_window_params.plane_inclination_threshold = std::cos(M_PI * plane_inclination_threshold_degrees / 180.0);
+    sliding_window_params.local_plane_inclination_threshold = std::cos(M_PI * local_plane_inclination_threshold_degrees / 180.0);
     sliding_window_params.plane_patch_error_threshold = plane_patch_error_threshold;
     sliding_window_params.min_number_points_per_label = min_number_points_per_label;
     sliding_window_params.connectivity = connectivity;

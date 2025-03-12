@@ -11,8 +11,8 @@ cc_binary(
     name = "rs_interface_test",
     srcs = ["test/test_rs_interface.cc"],
     deps = [
-        ":rs_interface",
         ":realsense_point_cloud_subscriber",
+        ":rs_interface",
     ],
 )
 
@@ -24,18 +24,6 @@ cc_library(
         ":rs_interface",
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
-        "@pcl//:common",
-    ],
-)
-
-cc_library(
-    name = "realsense_image_pair_subscriber",
-    srcs = ["realsense_image_pair_subscriber.cc"],
-    hdrs = ["realsense_image_pair_subscriber.h"],
-    deps = [
-        ":rs_interface",
-        "//systems/perception:image_pair",
-        "@drake//:drake_shared_library",
         "@pcl//:common",
     ],
 )

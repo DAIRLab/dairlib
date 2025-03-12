@@ -22,7 +22,6 @@ cc_library(
         "//systems/controllers:lcm_trajectory_receiver",
         "//systems/controllers/footstep_planning:cf_mpfc_output_receiver",
         "//systems/controllers/footstep_planning:cf_mpfc_system",
-        "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/controllers/footstep_planning:swing_foot_trajectory_generator",
         "//systems/primitives",
         "//systems/primitives:fsm_lcm_systems",

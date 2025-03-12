@@ -21,10 +21,6 @@ enum D455ImageSize {
   k480x270 = 7,
   k1280x800 = 8,
   k960x540 = 9,
-  k640x400 = 12,
-  k576x576 = 13,
-  k720x720 = 14,
-  k1152x1152 = 15
 };
 
 /// Returns a rotation matrix which will make a drake rgbd sensor "look"
@@ -46,22 +42,10 @@ drake::math::RigidTransformd ReadCameraPoseFromYaml(const std::string& fname);
 std::map<int, drake::systems::sensors::CameraInfo>
     LoadRealsenseCalibrationsAsCameraInfo(const std::string& yaml_filename);
 
-std::pair<drake::geometry::render::ColorRenderCamera,
-drake::geometry::render::DepthRenderCamera> MakeD415CameraModel(
-    const std::string &renderer_name);
 
 std::pair<drake::geometry::render::ColorRenderCamera,
 drake::geometry::render::DepthRenderCamera> MakeDairD455CameraModel(
     const std::string& renderer_name, D455ImageSize image_size);
-
-
-std::pair<drake::geometry::render::ColorRenderCamera,
-drake::geometry::render::DepthRenderCamera> MakeGenericCameraModel(
-    const std::string &renderer_name, const int kHeight, const int kWidth);
-
-std::pair <drake::geometry::render::ColorRenderCamera,
-drake::geometry::render::DepthRenderCamera> MakeWideCameraModel(
-    const std::string &renderer_name);
 
 }
 }

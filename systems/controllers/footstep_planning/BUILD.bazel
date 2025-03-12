@@ -77,7 +77,6 @@ cc_library(
         ":alip_utils",
         ":contact_modes",
         "//common:eigen_utils",
-        "//common:polynomial_utils",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
@@ -198,8 +197,8 @@ cc_library(
     hdrs = ["swing_foot_traj_solver.h"],
     deps = [
         "//common:eigen_utils",
+        "//common:legendre",
         "//common:legendre_polynomial_trajectory",
-        "//common:polynomial_utils",
         "//solvers:fcc_qp_solver",
         "//solvers:legendre_coefficient_variables",
         "@drake//:drake_shared_library",
@@ -213,22 +212,9 @@ cc_library(
     deps = [
         ":alip_utils",
         ":swing_foot_traj_solver",
-        "//common:polynomial_utils",
         "//multibody:utils",
-        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "footstep_lcm_systems",
-    srcs = ["footstep_lcm_systems.cc"],
-    hdrs = ["footstep_lcm_systems.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

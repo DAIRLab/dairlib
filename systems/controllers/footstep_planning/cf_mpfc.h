@@ -1,7 +1,8 @@
 #pragma once
+#include <map>
 #include <array>
 #include <chrono>
-#include <map>
+#include <iostream>
 
 #include "nonlinear_pendulum_utils.h"
 #include "geometry/convex_polygon_set.h"

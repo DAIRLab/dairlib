@@ -82,7 +82,7 @@ cc_library(
     srcs = ["legendre_coefficient_variables.cc"],
     hdrs = ["legendre_coefficient_variables.h"],
     deps = [
-        "//common:polynomial_utils",
+        "//common:legendre",
         "@drake//:drake_shared_library",
     ],
 )

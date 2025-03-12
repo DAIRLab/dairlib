@@ -35,25 +35,40 @@ from pydairlib.analysis.video_tools import extract_frames
 
 from pydairlib.perceptive_locomotion.results import analysis_utils as utils
 
+
+# LCM Channels
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 
-demo_trial_path = 'others/stairs_and_grass_11_16_24/'
+# Relevant data paths (relative to the root of the data folder)
+demo_trial_path = 'other/stairs_and_grass_11_16_24/'
+demo_trial_log = os.path.join(demo_trial_path, 'lcmlog-laptop-01')
+demo_trial_video = os.path.join(demo_trial_path, 'IMG_9136.MOV')
+demo_trial_duration = 100.5
+
 solve_time_results_config_path = 'solve_time_results_config.yaml'
+
+# Outputs
+output_folder = 'perceptive_locomotion_results_figures/'
 
 
 def process_mpc_data(data_dict):
     plant, _ = make_plant_and_context()
-
+    
     robot_output = process_state_channel(data_dict[state_channel], plant)
     mpc_debug = process_alip_mpfc_debug_data(data_dict[mpfc_debug_channel])
-
+    
     return robot_output, mpc_debug
 
 
-def load_log(logfile: str, start_time=0, duration=-1):
-    log = lcm.EventLog(logfile, "r")
+def load_log(logfile: str, start_time: float = 0, duration: float = -1):
+    log = None
+    try:
+        log = lcm.EventLog(logfile, "r")
+    except FileNotFoundError:
+        print(f'Log not found: {logfile}')
+        exit(-1)
     robot_output, mpc_data = get_log_data(
         log,
         {
@@ -73,7 +88,7 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
         robot_output, plant, context, plant.GetBodyByName("pelvis").body_frame()
     )
     utils.setup_plots()
-
+    
     mpc_time = mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0]
     robot_output_time = robot_output['t_x'] - robot_output['t_x'][0]
     vdes = mpc_debug['desired_velocity']
@@ -90,7 +105,7 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
     plt.ylabel('Pelvis Velocity (m/s)')
     plt.legend(ncol=4, fontsize=20, columnspacing=0.5)
     fig.tight_layout()
-
+    
     if not savefile:
         plt.show()
     else:
@@ -98,20 +113,26 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
 
 
 def vel_tracking_and_tiles(base_data_folder):
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    video_path = os.path.join(base_data_folder, demo_trial_path + 'IMG_9136.mov')
-    robot_output, mpc_debug = load_log(logpath, 1, 100.5)
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    video_path = os.path.join(base_data_folder, demo_trial_video)
+    
+    print(f'Extracting motion tiles from {video_path}')
+    
+    motion_tile_folder = os.path.join(output_folder, 'motion_tiles')
+    utils.make_dir_if_missing(motion_tile_folder)
+    
+    robot_output, mpc_debug = load_log(logpath, 1, demo_trial_duration)
     velocity_tracking_plot(
         robot_output,
         mpc_debug,
-        savefile='../manuscripts/perceptive_walking_tro/figures/velocity_tracking.svg'
+        savefile=os.path.join(output_folder, 'velocity_tracking.svg')
     )
     extract_frames(
         8.0,
         108.0,
         40,
         video_path,
-        '../manuscripts/perceptive_walking_tro/figures/motion_tiles',
+        motion_tile_folder,
         prefix='stairs_and_grass',
         frame_edits='crop_square'
     )
@@ -120,8 +141,8 @@ def vel_tracking_and_tiles(base_data_folder):
 def solve_time_series_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    robot_output, mpc_debug = load_log(logpath, 1, 100.5)
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    robot_output, mpc_debug = load_log(logpath, 1, demo_trial_duration)
     plt.plot(
         mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0],
         mpc_debug['optimizer_time'],
@@ -145,7 +166,7 @@ def solve_time_series_plot(base_data_folder):
     plt.ylabel('Solve Time (s)')
     fig.tight_layout()
     plt.savefig(
-        '../manuscripts/perceptive_walking_tro/figures/solve_time_series.svg',
+        os.path.join(output_folder, 'solve_time_series.svg'),
         bbox_inches='tight'
     )
 
@@ -153,8 +174,8 @@ def solve_time_series_plot(base_data_folder):
 def elevation_plot(base_data_folder):
     utils.setup_plots()
     fig = plt.figure(figsize=(8, 6))
-    logpath = os.path.join(base_data_folder, demo_trial_path + 'lcmlog-laptop-01')
-    robot_output, _ = load_log(logpath, 1, 100.5)
+    logpath = os.path.join(base_data_folder, demo_trial_log)
+    robot_output, _ = load_log(logpath, 1, demo_trial_duration)
     plt.plot(
         robot_output['t_x'] - robot_output['t_x'][0],
         robot_output['q'][:, 6] - robot_output['q'][0, 6],
@@ -168,7 +189,7 @@ def elevation_plot(base_data_folder):
     plt.ylabel('Elevation Change (m)')
     fig.tight_layout()
     plt.savefig(
-        '../manuscripts/perceptive_walking_tro/figures/pelvis_height_series.svg',
+        os.path.join(output_folder, 'pelvis_height_series.svg'),
         bbox_inches='tight'
     )
 
@@ -186,7 +207,7 @@ def solve_time_proportions_plot(base_data_folder):
         )
         total_sec += log['duration']
         mpc_debugs.append(mpc_debug)
-
+    
     data = np.concatenate([d['optimizer_time'] for d in mpc_debugs])
     utils.setup_plots()
     fig = plt.figure(figsize=(11, 5))
@@ -199,13 +220,13 @@ def solve_time_proportions_plot(base_data_folder):
     plt.title('Solve Time Distribution')
     plt.xlabel('Solve Time (s)')
     plt.savefig(
-        '../manuscripts/perceptive_walking_tro/figures/solve_times.svg',
+        os.path.join(output_folder, 'solve_times.svg'),
         bbox_inches='tight'
     )
     numpy_stats_to_latex(
         data,
         'MPFC Solve Time',
-        '../manuscripts/perceptive_walking_tro/results/solve_time_stats.tex'
+        os.path.join(output_folder, 'solve_time_stats.tex')
     )
 
 
@@ -222,7 +243,7 @@ def numpy_stats_to_latex(data, name, save_path=None):
         '99.9th Percentile': np.percentile(data, 99.9),
         'Maximum': np.max(data)
     }
-
+    
     # Create LaTeX table
     latex_table = "\\begin{table}[h!]\n"
     latex_table += "\\centering\n"
@@ -231,19 +252,19 @@ def numpy_stats_to_latex(data, name, save_path=None):
     latex_table += "\\hline\n"
     latex_table += "\\textbf{Statistic} & \\textbf{Value} \\\\\n"
     latex_table += "\\hline\n"
-
+    
     # Add rows for each statistic
     for stat, value in stats.items():
         if stat == 'N':
             latex_table += f"{stat} & {value} \\\\\n"
         else:
             latex_table += f"{stat} & {value:.4f} \\\\\n"
-
+    
     latex_table += "\\hline\n"
     latex_table += ("\\end{tabular}\n")
     latex_table += ("\\label{tab:" + snake_case(name) +"_stats}\n")
     latex_table += "\\end{table}"
-
+    
     # Save to file if output path is provided
     if save_path is not None:
         with open(save_path, 'w') as f:
@@ -257,10 +278,13 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--data_root', type=str, default='')
     args = parser.parse_args()
+    
+    utils.make_dir_if_missing(output_folder)
+    
     solve_time_proportions_plot(args.data_root)
-    # solve_time_series_plot(args.data_root)
-    # vel_tracking_and_tiles(args.data_root)
-    # elevation_plot(args.data_root)
+    solve_time_series_plot(args.data_root)
+    vel_tracking_and_tiles(args.data_root)
+    elevation_plot(args.data_root)
 
 
 if __name__ == '__main__':

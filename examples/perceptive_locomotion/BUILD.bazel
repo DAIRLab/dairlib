@@ -24,16 +24,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_feature_tracking",
-    srcs = ["run_feature_tracking.cc"],
-    tags = ["manual"],
-    deps = [
-        "//systems/perception/feature_tracking:feature_tracking_node",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "cassie_perception_visualizer",
     srcs = ["cassie_perception_visualizer.cc"],
     deps = [
@@ -89,30 +79,9 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
         "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
-        "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
         "//systems/perception:grid_map_lcm_systems",
-        "//systems/primitives:fsm_lcm_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_alip_one_step_controller",
-    srcs = ["run_alip_one_step_controller.cc"],
-    tags = ["manual"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/osc",
-        "//examples/Cassie/systems:cassie_out_to_radio",
-        "//lcmtypes:lcmt_robot",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers/footstep_planning:alip_one_step_footstep_controller",
-        "//systems/controllers/footstep_planning:footstep_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
         "//systems/primitives:fsm_lcm_systems",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -135,8 +104,6 @@ cc_binary(
         "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/controllers:bipedal_walking_impact_info",
-        "//systems/controllers:lcm_trajectory_receiver",
         "//systems/controllers/footstep_planning:alip_mpc_interface_system",
         "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
         "//systems/controllers/footstep_planning:alip_s2s_mpfc",
@@ -202,18 +169,7 @@ cc_binary(
     name = "standalone_experiment_sim",
     srcs = ["standalone_experiment_sim.cc"],
     deps = [
-        "//examples/Cassie:cassie_fixed_point_solver",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie/osc:high_level_command",
-        "//examples/perceptive_locomotion/diagrams:cassie_mpfc_diagram",
-        "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
-        "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
-        "//examples/perceptive_locomotion/systems:cassie_radio_operator",
-        "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
-        "//lcm:lcm_log_sink",
-        "//systems:plant_visualizer",
-        "//systems/perception:grid_map_visualizer",
-        "@drake//:drake_shared_library",
+        "//examples/perceptive_locomotion/diagrams:full_sim_diagram",
         "@gflags",
     ],
 )

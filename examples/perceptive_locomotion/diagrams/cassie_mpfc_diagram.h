@@ -19,7 +19,6 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   CassieMPFCDiagram(const drake::multibody::MultibodyPlant<double>& plant,
                     const std::string& gains_yaml,
                     const std::string& solver_options_yaml,
-                    const std::string& solver_options_yaml_polish,
                     double debug_publish_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -30,6 +29,9 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_vdes() const {
       return get_input_port(input_port_vdes_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_grid_map() const {
+    return get_input_port(input_port_grid_map_);
   }
   const drake::systems::OutputPort<double>& get_output_port_mpc_output() const {
       return get_output_port(output_port_mpc_output_);
@@ -69,6 +71,7 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_footholds_;
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_vdes_;
+  drake::systems::InputPortIndex input_port_grid_map_;
   drake::systems::OutputPortIndex output_port_mpc_output_;
   drake::systems::OutputPortIndex output_port_mpfc_debug_;
 

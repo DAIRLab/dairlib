@@ -87,7 +87,6 @@ DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 
-DEFINE_int32(solver_choice, 1, "0 for FCCQP, 1 for OSQP");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -270,10 +269,7 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
-  auto osc_solver_choice =
-      FLAGS_solver_choice == 0 ?
-      systems::controllers::OscSolverChoice::kFCCQP :
-      systems::controllers::OscSolverChoice::kFastOSQP;
+  auto osc_solver_choice = systems::controllers::OscSolverChoice::kFastOSQP;
 
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant_context.get(), true, osc_solver_choice);
@@ -480,6 +476,9 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
+  osc->SetSolverOptionsFromYaml(
+      "examples/Cassie/osc/solver_settings/osqp_options_walking.yaml");
+
   if (gains.W_com(0,0) == 0){
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_left_motor", left_stance_state, 1.0);
@@ -530,7 +529,7 @@ int DoMain(int argc, char* argv[]) {
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("osc walking controller");
-  DrawAndSaveDiagramGraph(*owned_diagram, "../osc_walking_controller_alip");
+
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,

@@ -101,6 +101,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         self.profiling = profiling
         self.debug = False
         self.debug_info = {}
+        self.acd_thresh = 0.25
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
         verts3d = None
@@ -122,7 +123,25 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             print(verts3d)
             return None, None
 
+        if np.isnan(plane.normal).any() or np.isnan(plane.point).any() or \
+           np.isinf(plane.normal).any() or np.isinf(plane.point).any():
+            print("Found invalid plane parameters: ")
+            print(f'normal: {plane.normal}, point: {plane.point}')
+            return None, None
+
         return plane.normal, plane.point
+
+    def calc_convex_polygons(self, grid: GridMap):
+        safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
+
+        polygons = get_polygons_by_contour_extraction(
+            safe_terrain_image, grid
+        )
+
+        if not polygons:
+            return None
+
+        return ProcessTerrain2d(polygons, self.acd_thresh)
 
     def calc(self, context: Context, out: Value) -> None:
         # Get the safe terrain segmentation grid map
@@ -138,9 +157,10 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         )
 
         if not polygons:
-            return
+            return None
 
-        convex_polygons = ProcessTerrain2d(polygons, 0.25)
+        convex_polygons = ProcessTerrain2d(polygons, self.acd_thresh)
+
         end_convexity = time.time()
 
         if not convex_polygons:
@@ -163,7 +183,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         if self.debug:
             self.debug_info['unprocessed_polygons'] = polygons
             self.debug_info['segmentation'] = safe_terrain_image
-            self.debug_info['acd_components'] = GetAcdComponents(polygons, 0.25)
+            self.debug_info['acd_components'] = GetAcdComponents(polygons, self.acd_thresh)
             self.debug_info['convex_polygons'] = convex_polygons
 
         if self.profiling:

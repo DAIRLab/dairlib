@@ -2,7 +2,6 @@
 
 #include "systems/framework/output_vector.h"
 #include "common/eigen_utils.h"
-#include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include <iostream>

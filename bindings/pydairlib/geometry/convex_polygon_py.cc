@@ -42,7 +42,8 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
     .def("GetVertices", &ConvexPolygon::GetVertices)
     .def("Get2dViolation", &ConvexPolygon::Get2dViolation)
     .def("ReduceFaces", &ConvexPolygon::ReduceFaces)
-    .def("SortFacesByYawAngle", &ConvexPolygon::SortFacesByYawAngle);
+    .def("SortFacesByYawAngle", &ConvexPolygon::SortFacesByYawAngle)
+    .def("PointViolatesInequalities", &ConvexPolygon::PointViolatesInequalities);
 
 py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))

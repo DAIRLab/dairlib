@@ -66,8 +66,7 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
   double tk = -1 + 2 * (prev_time - t_start) / (t_end - t_start);
   std::vector<double> knots = {-1, tk, 1};
 
-  double z_vel_final_scaled = (t_end - t_start) * (t_end - t_start) * z_vel_final / 4.0;
-  z_vel_final_scaled *= (t_end - t_start) * 0.5;
+  double z_vel_final_scaled = 0.5 * (t_end - t_start)  * z_vel_final;
 
   // update constraints
   std::array<Vector3d, 3> end_vals = {

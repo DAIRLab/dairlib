@@ -29,36 +29,12 @@ def curvature_criterion(
     )
 
 
-def variance_criterion(
-        elevation_inpainted: np.ndarray, ksize: Tuple[int, int],
-        resolution: float) -> np.ndarray:
-
-    # User specified parameters
-    variance_blur = 0.045
-    safe_inf_norm = 0.04
-    scaling = 25.0
-
-    lowpass = cv2.boxFilter(elevation_inpainted, -1, ksize, normalize=True)
-
-    stddev = gaussian_filter(
-        np.abs(elevation_inpainted - lowpass), variance_blur
-    )
-
-    dilation_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
-    stddev = cv2.dilate(stddev, dilation_kernel)
-
-    var_safety_score = np.minimum(
-        np.ones_like(stddev),
-        np.exp(scaling * (safe_inf_norm - stddev))
-    )
-
-    return var_safety_score
-
-
 def inclination_criterion(
         denoised_and_inpainted_map: np.ndarray, ksize: Tuple[int, int],
         resolution: float) -> np.ndarray:
 
-    inclination, _ = \
-        utils.CalculateNormalsAndSquaredError(denoised_and_inpainted_map, ksize[0], resolution)
+    inclination, _ = utils.CalculateNormalsAndSquaredError(
+        denoised_and_inpainted_map, ksize[0], resolution
+    )
+
     return np.power(inclination, 2)

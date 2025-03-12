@@ -7,16 +7,9 @@ from pydrake.systems.all import (
 )
 
 from grid_map import GridMap, InpaintWithMinimumValues
-
-from scipy.ndimage import (sobel, gaussian_filter, gaussian_laplace,
-                           gaussian_gradient_magnitude)
-from scipy.signal import convolve2d
-from scipy.fftpack import fft2, fftshift, ifft2, ifftshift
 import numpy as np
 import cv2
 import time
-
-import matplotlib.pyplot as plt
 
 from typing import Tuple
 
@@ -75,6 +68,8 @@ class TerrainSegmentationSystem(LeafSystem):
         self.profiling = profiling
         self.debug = False
         self.safety_scores = {}
+        self.inpaint_unseen_terrain = True
+        self.opencv_inpaint = True
 
     def get_raw_safety_score(
             self, elevation: np.ndarray, denoised_and_inpainted_map: np.ndarray,
@@ -99,9 +94,8 @@ class TerrainSegmentationSystem(LeafSystem):
 
         raw_safety = np.power(raw_safety, 1./len(self.safety_criterion_callbacks))
         
-        # To assume that terrain with no information is safe, keep this commented out. 
-        # To assume that unseen terrain is unsafe, uncomment.
-        # raw_safety[np.isnan(elevation)] = 0
+        if not self.inpaint_unseen_terrain:
+            raw_safety[np.isnan(elevation)] = 0
 
         if self.debug:
             self.safety_scores['combined'] = raw_safety
@@ -134,11 +128,21 @@ class TerrainSegmentationSystem(LeafSystem):
         mask[np.isnan(raw_map)] = 255
         if not elevation_map.exists("elevation_inpainted"):
             elevation_map.add("elevation_inpainted")
-        elevation_map["elevation_inpainted"][:] = cv2.inpaint(
-            raw_map, mask, 1, flags=cv2.INPAINT_NS)
+
+        if self.opencv_inpaint:
+            elevation_map["elevation_inpainted"][:] = cv2.inpaint(
+                raw_map, mask, 1, flags=cv2.INPAINT_NS)
+        else:
+            elevation_map["elevation_inpainted"][:] = raw_map
 
         InpaintWithMinimumValues(
             elevation_map, "elevation_inpainted", "elevation_inpainted"
+        )
+
+    def MakeDrivenByStandaloneSimulator(self, dt: float):
+        assert(dt > 0)
+        self.DeclarePeriodicUnrestrictedUpdateEvent(
+            dt, 0.0, self.UpdateTerrainSegmentation
         )
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
@@ -171,7 +175,6 @@ class TerrainSegmentationSystem(LeafSystem):
 
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
-
 
         denoised_and_inpainted_map = cv2.medianBlur(
             elevation_map['elevation_inpainted'], 5)

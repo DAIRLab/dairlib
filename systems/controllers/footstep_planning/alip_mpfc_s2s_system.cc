@@ -57,7 +57,7 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   nv_ = plant_.num_velocities();
   nu_ = plant_.num_actuators();
 
-  for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
+  for (size_t i = 0; i < left_right_stance_fsm_states_.size(); i++){
     stance_foot_map_.insert(
         {left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
   }
@@ -142,7 +142,7 @@ Eigen::Vector4d Alips2sMPFCSystem::HandleAlipKalmanFilter(
   if (is_mode_switch) {
     Vector4d x = filter.x();
     x.head<2>() = raw_alip_state.head<2>();
-    filter.Initialize(timestamp, x, MatrixXd::Identity(4, 4));
+    filter.Initialize(timestamp, x);
   } else {
     filter.Update(filter_data, Vector2d::Zero(), raw_alip_state, timestamp);
   }

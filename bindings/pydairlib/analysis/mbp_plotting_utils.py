@@ -288,6 +288,10 @@ def load_default_channels(data, plant, controller_plant,
     return robot_output, robot_input, osc_debug, imu
 
 
+def load_state_channel(data, plant, state_channel):
+    return process_state_channel(data[state_channel], plant)
+
+
 def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info

@@ -80,7 +80,7 @@ EventStatus AlipComTrajectoryGenerator::UnrestrictedUpdate(
   auto fsm_state = static_cast<int>(
       this->EvalVectorInput(context, fsm_port_)->value()(0));
 
-  double alpha = 0.25;
+  double alpha = 0.1;
   // in single stance, save the current slope parameters to use during double
   // stance
   if (fsm_state <= 1) {
@@ -111,7 +111,7 @@ AlipComTrajectoryGenerator::ConstructAlipComTraj(
   // clip the desired height to limit error
   Vector3d com_rel = com_pos - stance_foot_pos;
   double height_error = com_rel(2) - kx_ky.dot(com_rel.head<2>()) - desired_com_height_;
-  double max_height_error = 0.075;
+  double max_height_error = 0.025;
   if (fabs(height_error) > max_height_error) {
     double offset = max_height_error - height_error;
     height += offset;
@@ -156,12 +156,8 @@ void AlipComTrajectoryGenerator::CalcComTrajFromCurrent(
   // Read in finite state machine switch time
   double end_time =
       EvalVectorInput(context, next_touchdown_time_port_)->get_value()(0);
-  double start_time =
-      EvalVectorInput(context, prev_liftoff_time_port_)->get_value()(0);
   double timestamp = robot_output->get_timestamp();
 
-  // TODO (@Brian-Acosta standardize walking fsm states with an enum)
-  bool is_ss = fsm_state <= 1;
   double t = std::clamp<double>(timestamp,
                                 -std::numeric_limits<double>::infinity(),
                                 end_time - 0.001);

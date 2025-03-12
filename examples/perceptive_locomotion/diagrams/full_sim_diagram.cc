@@ -51,16 +51,23 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       "examples/perceptive_locomotion/camera_calib/"
       "elevation_mapping_params_simulation.yaml";
 
+  std::string solver_options_yaml = "dummy";
+
+  throw std::runtime_error("Need to implement solver options argument for "
+                           "this file");
+
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
-          FindResourceOrThrow(sim_params_yaml));
+          sim_params_yaml);
 
   Eigen::Vector2d goal_location = Eigen::Vector2d::Map(
       sim_options.at("goal_location").data());
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(
+      plant, mpc_gains_yaml, solver_options_yaml, -1
+  );
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;

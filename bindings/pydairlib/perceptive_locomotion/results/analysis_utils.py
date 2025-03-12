@@ -8,14 +8,17 @@ import numpy as np
 from PIL import Image
 from typing import List
 from copy import deepcopy
+import matplotlib.animation
 from grid_map import GridMap
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patches
+
 from pydairlib.analysis.mbp_plotting_utils import process_state_channel
 from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 
 # lcmtypes
 from dairlib import(
     lcmt_grid_map,
+    lcmt_profiling,
     lcmt_foothold_set,
     lcmt_robot_output,
     lcmt_alip_s2s_mpfc_debug
@@ -53,7 +56,18 @@ state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
 elevation_map_channel = 'CASSIE_ELEVATION_MAP'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
+
 plotting_palette = ["#011f5b", "#9f642d", "#af0000", "#b99aa0", "#666666", "#5583ab"]
+
+
+def make_dir_if_missing(directory_path: str):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Output directory created: {directory_path}")
+        return False
+    else:
+        print(f"Output directory already exists - skipping creation: {directory_path}")
+        return True
 
 
 def binary_search_closest(arr: List[float], target: float) -> int:
@@ -101,6 +115,26 @@ def get_grid_maps_from_log(logfile: str, start_time=0, duration=-1):
         state_channel,
     )
     return grid_maps, robot_output
+
+
+def get_elevation_map_profiling(
+        logfile: str, start_time: float = 0, duration: float = -1):
+    channel = 'ELEVATION_MAP_PROFILING'
+
+    def process_profiling(data):
+        _times = [d.process_us * 1e-6 for d in data[channel]]
+        return np.array(_times)
+
+    log = lcm.EventLog(logfile, "r")
+    times = get_log_data(
+        log,
+        {
+            channel: lcmt_profiling
+        },
+        start_time, duration,
+        process_profiling
+    )
+    return times
 
 
 def profile_worker_wrapper(args):
@@ -151,6 +185,80 @@ def profile_segmentation(system, grid_maps):
         'segmentations': segmentations,
         'grid_maps': grid_maps
     }
+
+
+def calc_polygon_iou(results):
+    """
+        Calculate the IoU between the union of the convex polygon terrain
+        representation of consecutive safe terrain segmentations
+        :param results: The IoUs are appended to results under the key 'poly_iou'
+        :return: None
+    """
+    poly_iou = []
+    decomposer = ConvexTerrainDecompositionSystem()
+    
+    for i in range(len(results['grid_maps']) - 1):
+        poly_iou.append(
+            convex_polyon_iou(
+                results['grid_maps'][i],
+                results['grid_maps'][i+1],
+                decomposer
+            )
+        )
+        
+        # iou of 0 caused by ACD non-robustness - discard
+        if poly_iou[-1] == 0:
+            poly_iou[-1] = np.nan
+            
+        if i % 5 == 0:
+            print(f'{100.0 * float(i) / float(len(results["grid_maps"])):.2f}')
+    
+    results[f'poly_iou'] = poly_iou
+
+
+def hysteresis_comparison(logfile):
+    grid_maps, _ = get_grid_maps_from_log(logfile)
+
+    hysts = [0.0, 0.1, 0.3, 0.6]
+    results = []
+    for h in hysts:
+        s3 = TerrainSegmentationSystem(
+            {
+                'curvature_criterion': seg_criteria.curvature_criterion,
+                'inclination_criterion': seg_criteria.inclination_criterion,
+            }
+        )
+        s3.safety_hysteresis = h
+        s3.set_name(f'$k_{{hyst}}$ = {h:.1f}')
+        results.append(profile_segmentation(s3, grid_maps))
+
+    return results
+
+
+def make_segmentation_systems():
+    params_folder = \
+        'bindings/pydairlib/perceptive_locomotion/terrain_segmentation/plane_segmentation_results_params/'
+    s3 = TerrainSegmentationSystem(
+        {
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
+        }
+    )
+    s3.set_name('S3 (Ours)')
+
+    yamls = [
+        os.path.join(params_folder, f'{y}.yaml') for y in
+        ['ransac_and_preprocessing', 'no_ransac_with_preprocessing']
+    ]
+    configs = ['', '_NR']
+    system_names = ['EM_cupy' + config for config in configs]
+
+    systems = []
+    for params, name in zip (yamls, system_names):
+        systems.append(PlaneSegmentationSystem(params))
+        systems[-1].set_name(name)
+    systems.append(s3)
+    return systems
 
 
 def run_segmentation_comparison_on_log(logfile, duration, start_time=0):
@@ -273,15 +381,37 @@ def profile_full_perception_pipeline(logfile):
         )
         diagram.ForcedPublish(context)
         end = time.time()
-        print(end - start)
         profiling_results['total'].append(end - start)
 
     return profiling_results
 
 
+def get_worst_case_data_by_num_polygons(results):
+    data = {
+        'segmentation': {},
+        'decomposition': {},
+        'plane_fitting': {}
+    }
+
+    for r in results:
+        for key in data:
+            for n_poly, val in zip(r['num_polygons'], r[key]):
+                if n_poly not in data[key]:
+                    data[key][n_poly] = 0
+                data[key][n_poly] = np.maximum(val, data[key][n_poly])
+
+    for key in data:
+        nums = sorted(set(data[key].keys()))
+        data[key] = np.array([data[key][n] for n in nums])
+
+    return data
+
+
 def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     # move frame0 to remove any pixels which the maps do not have in common
     frame0.move(frame1.getPosition())
+    frame0.convertToDefaultStartIndex()
+    frame1.convertToDefaultStartIndex()
 
     frame0_safe = np.nan_to_num(frame0[layer]).astype(bool)
     frame1_safe = np.nan_to_num(frame1[layer]).astype(bool)
@@ -295,22 +425,42 @@ def safe_terrain_iou(frame0: GridMap, frame1: GridMap, layer='segmentation'):
     return float(intersection.sum()) / float(union.sum())
 
 
-def write_arrays_to_video(sequence, video_out_path):
-    with tempfile.TemporaryDirectory() as folder:
-        for frame, data in enumerate(sequence):
-            im = Image.fromarray(data)
-            frame_filename = os.path.join(folder, f"frame_{frame:06d}.png")
-            im.save(frame_filename)
-        subprocess.run([
-            'ffmpeg',
-            '-framerate',
-            '30',
-            '-i',
-            os.path.join(folder, f"frame_%06d.png"),
-            '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-            video_out_path
-        ], check=True)
-
+def convex_polyon_iou(
+        frame0: GridMap,
+        frame1: GridMap,
+        decomp: ConvexTerrainDecompositionSystem, layer='segmentation'):
+    # align the grid maps
+    frame0.move(frame1.getPosition())
+    frame0.convertToDefaultStartIndex()
+    frame1.convertToDefaultStartIndex()
+    
+    polys_0 = decomp.calc_convex_polygons(frame0)
+    polys_1 = decomp.calc_convex_polygons(frame1)
+    
+    contained_in_p0_sampled = np.zeros_like(frame0[layer])
+    contained_in_p1_sampled = np.zeros_like(frame1[layer])
+    
+    dims = frame0.getSize()
+    for i in range(dims[0]):
+        for j in range(dims[1]):
+            index = np.array([i, j], dtype=int)
+            pos = np.zeros((3,))
+            pos[:2] = frame0.getPosition(index)
+            
+            violates_p0 = [p.PointViolatesInequalities(pos) for p in polys_0]
+            violates_p1 = [p.PointViolatesInequalities(pos) for p in polys_1]
+            
+            contained_in_p0_sampled[index[0], index[1]] = ~np.all(violates_p0)
+            contained_in_p1_sampled[index[0], index[1]] = ~np.all(violates_p1)
+    
+    intersection = np.logical_and(contained_in_p0_sampled,  contained_in_p1_sampled)
+    union = np.logical_or(contained_in_p0_sampled, contained_in_p1_sampled)
+    
+    if union.sum() == 0:
+        return 0
+    
+    return float(intersection.sum()) / float(union.sum())
+    
 
 def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     map_msgs = data_dict[elevation_map_channel]
@@ -324,11 +474,13 @@ def process_grid_maps(data_dict, elevation_map_channel, state_channel):
     for i, msg in enumerate(map_msgs):
         grid_maps[i].setTimestamp(int(1e3 * msg.info.utime))
         grid_maps[i].setFrameId(msg.info.parent_frame)
-        grid_maps[i].setGeometry(
-            length=np.array([msg.info.length_x, msg.info.length_y]),
-            resolution=msg.info.resolution,
-            position=np.array(msg.info.position)
-        )
+        
+        if msg.info.resolution > 0:
+            grid_maps[i].setGeometry(
+                length=np.array([msg.info.length_x, msg.info.length_y]),
+                resolution=msg.info.resolution,
+                position=np.array(msg.info.position)
+            )
 
         grid_maps[i].setStartIndex(
             np.array([msg.outer_start_index, msg.inner_start_index])
@@ -361,10 +513,6 @@ def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=N
     new_limits = {'x': plt.xlim(), 'y': plt.ylim()}
     plt.close(fig)
     return new_limits
-
-
-def plot_elevation_map_with_robot(ax, map: GridMap, robot_position: np.ndarray, robot_yaw: float):
-    ax.imshow(map['elevation'])
 
 
 def setup_plots():

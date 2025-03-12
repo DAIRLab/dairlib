@@ -33,7 +33,6 @@ void HipYawTrajGen::CalcYawTraj(
   int fsm = this->EvalVectorInput(context, fsm_port_)->value()(0);
 
   double sign = (fsm == left_stance_state_) ? -1.0 : 1.0;
-  /// TODO (@Brian-Acosta) add constructor arg for joint limit
   yaw(0) = sign * 0.393 * radio.channel[7];
   const auto pp = PiecewisePolynomial<double>(yaw);
   // Assign traj

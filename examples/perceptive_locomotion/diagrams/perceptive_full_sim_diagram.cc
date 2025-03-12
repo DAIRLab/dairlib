@@ -50,19 +50,24 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
   std::string elevation_mapping_params_yaml =
-      "examples/perceptive_locomotion/camera_calib/"
-      "elevation_mapping_params_simulation.yaml";
+      "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml";
+
+  std::string solver_options_yaml = "dummy";
+
+  throw std::runtime_error("Need to implement solver options argument for "
+                           "this file");
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
-          FindResourceOrThrow(sim_params_yaml));
+          sim_params_yaml);
 
   Eigen::Vector2d goal_location = Eigen::Vector2d::Map(
       sim_options.at("goal_location").data());
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant,
+      mpc_gains_yaml, solver_options_yaml, -1);
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
       plant, plant_context.get());
@@ -201,10 +206,6 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       plant_visualizer->get_input_port()
   );
   builder.Connect(
-      perception->get_output_port_elevation_map(),
-      grid_map_visualizer->get_input_port()
-  );
-  builder.Connect(
       sim_diagram->get_output_port_state(),
       mpfc_visualizer->get_input_port_state()
   );
@@ -238,6 +239,10 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   builder.ConnectInput(
       input_port_grid_map_,
       grid_map_sender->get_input_port()
+  );
+  builder.ConnectInput(
+      input_port_grid_map_,
+      grid_map_visualizer->get_input_port()
   );
   builder.BuildInto(this);
 }

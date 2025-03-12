@@ -91,6 +91,10 @@ CassieRealSenseDriverDiagram::CassieRealSenseDriverDiagram(const std::string& pa
       "elevation_grid_map"
   );
 
+  output_port_profiling_ = builder.ExportOutput(
+      elevation_mapping_system_->get_output_port_profiling(),
+      "lcmt_profiling"
+  );
   builder.BuildInto(this);
   this->set_name("elevation_mapping_ros_diagram");
   DrawAndSaveDiagramGraph(*this);

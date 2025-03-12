@@ -59,8 +59,12 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
       EvalVectorInput(context, input_port_state_));
   Eigen::VectorXd q = robot_output->GetPositions();
   Eigen::VectorXd v = robot_output->GetVelocities();
+
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
 
+  if (q.hasNaN()) {
+    throw std::runtime_error("NaNs in state message");
+  }
 
   drake::math::RigidTransformd pose =
       plant_.GetBodyByName("pelvis").EvalPoseInWorld(*context_);
@@ -70,6 +74,7 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
 
   Eigen::Vector2d to_target = target_xy - pos.head<2>();
 
+  // cap at 1m error
   if (to_target.squaredNorm() > 1) {
     to_target.normalize();
   }
@@ -79,9 +84,15 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
 
   double ramp_factor = std::min(robot_output->get_timestamp(), 1.0);
 
-  Eigen::Vector2d vdes = ramp_factor * 0.5 * pose.rotation().matrix().topLeftCorner<2,2>().transpose() * to_target;
-  vdes -= 0.5 * pose.rotation().matrix().topLeftCorner<2,2>().transpose() * v.segment<2>(3);
 
+
+  // map from world to yaw coordinates
+  Eigen::Matrix2d R_BW = Eigen::Quaternion(
+      q(0), 0., 0., q(3)).normalized().toRotationMatrix().topLeftCorner<2,2>().transpose();
+
+  // proportional control
+  Eigen::Vector2d vdes = ramp_factor * 0.375 * R_BW * to_target;
+  vdes(1) = 0;
 
   discrete_values->get_mutable_value(vdes_state_index_) << yaw_rate, vdes(0), vdes(1);
 

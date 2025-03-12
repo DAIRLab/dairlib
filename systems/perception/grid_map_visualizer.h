@@ -16,7 +16,12 @@ class GridMapVisualizer : public drake::systems::LeafSystem<double> {
                     std::vector<std::string> layers = {});
 
   void DrawGridMap(const grid_map::GridMap& map,
-                   const std::vector<std::string>& layers) const;
+                   const std::vector<std::string>& layers,
+                   const std::string& prefix ="") const;
+
+  void SetRgba(double r, double g, double b, double a) {
+    rgba_ = drake::geometry::Rgba(r, g, b, a);
+  }
 
  private:
   drake::systems::EventStatus UpdateVisualization(
@@ -25,6 +30,8 @@ class GridMapVisualizer : public drake::systems::LeafSystem<double> {
 
   mutable std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::vector<std::string> layers_;
+
+  drake::geometry::Rgba rgba_{0.1, 0.1, 0.9, 1.0};
 
 };
 

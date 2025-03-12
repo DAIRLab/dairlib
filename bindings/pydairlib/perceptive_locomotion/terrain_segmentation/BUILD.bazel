@@ -42,7 +42,6 @@ py_binary(
     data = ["@lcm//:lcm-python"],
     deps = [
         ":convex_terrain_decomposition_system",
-        ":map_reset_monitor",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
@@ -57,7 +56,6 @@ py_binary(
     data = ["@lcm//:lcm-python"],
     deps = [
         ":convex_terrain_decomposition_system",
-        ":map_reset_monitor",
         ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
@@ -71,16 +69,7 @@ py_library(
     srcs = ["terrain_segmentation_system.py"],
     deps = [
         ":segmentation_criteria",
-        ":vision_utils",
         "//bindings/grid_map",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "map_reset_monitor",
-    srcs = ["map_reset_monitor.py"],
-    deps = [
         "@drake//bindings/pydrake",
     ],
 )
@@ -94,27 +83,13 @@ py_library(
 )
 
 py_library(
-    name = "whittling_solver",
-    srcs = ["whittling_solver.py"],
-    deps = [],
-)
-
-py_library(
     name = "convex_terrain_decomposition_system",
     srcs = ["convex_terrain_decomposition_system.py"],
     deps = [
-        ":vision_utils",
-        ":whittling_solver",
         "//bindings/grid_map",
         "//bindings/pydairlib/geometry",
         "@drake//bindings/pydrake",
     ],
-)
-
-py_library(
-    name = "vision_utils",
-    srcs = ["vision_utils.py"],
-    deps = [],
 )
 
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -145,11 +120,9 @@ pybind_py_library(
 
 PY_LIBRARIES = [
     ":segmentation_criteria",
-    ":whittling_solver",
     ":utils_py",
     ":terrain_segmentation_system",
     ":convex_terrain_decomposition_system",
-    ":vision_utils",
 ]
 
 # Package roll-up (for Bazel dependencies).

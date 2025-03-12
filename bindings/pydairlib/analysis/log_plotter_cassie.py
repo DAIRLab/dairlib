@@ -35,6 +35,7 @@ def plotter_main(plot_config, log):
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
     print(act_names)
+    print(pos_names)
 
     default_channels = cassie_plots.cassie_default_channels
     if plot_config.use_archived_lcmtypes:

@@ -22,6 +22,10 @@ group "operator" {
         exec = "python3 start_logging_jacktoy.py sim";
         host = "localhost";
     }
+    cmd "start_logging_mjpc" {
+        exec = "python3 start_logging_jacktoy.py mjpc";
+        host = "localhost";
+    }
 }
 
 group "controllers" {    
@@ -56,6 +60,7 @@ group "debug" {
 
 script "start_experiment_no_logs"{
     stop cmd "start_logging";
+    stop cmd "start_logging_mjpc";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
@@ -63,6 +68,7 @@ script "start_experiment_no_logs"{
 }
 
 script "start_experiment_with_logs"{
+    stop cmd "start_logging_mjpc";
     restart cmd "start_logging";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
@@ -72,6 +78,18 @@ script "start_experiment_with_logs"{
 
 script "start_mjpc_experiment_no_logs"{
     stop cmd "start_logging";
+    stop cmd "start_logging_mjpc";
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
+    wait ms 50;
+    restart cmd "franka_c3_no_controller";
+    wait ms 50;
+    restart cmd "mujoco_mpc";
+}
+
+script "start_mjpc_experiment_with_logs"{
+    stop cmd "start_logging";
+    restart cmd "start_logging_mjpc";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
@@ -86,6 +104,7 @@ script "end_experiment"{
     stop cmd "franka_sim";
     wait ms 10;
     stop cmd "start_logging";
+    stop cmd "start_logging_mjpc";
 }
 
 

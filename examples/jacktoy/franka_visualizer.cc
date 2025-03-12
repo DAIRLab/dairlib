@@ -273,6 +273,16 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, lcm));
 
+  // Tracking trajectory subscribers.  These are redundant with the above C3 and
+  // repositioning mode plans, but this is necessary for e.g. the MJPC
+  // comparison which only publishes the tracking trajectories.
+  auto trajectory_sub_actor_tracking = builder.AddSystem(
+    LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+        lcm_channel_params.tracking_trajectory_actor_channel, lcm));
+  auto trajectory_sub_object_tracking = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.tracking_trajectory_object_channel, lcm));
+
 	// This system subscribes to the lcmt_saved_traj message containing sample 
 	// locations. 
   auto sample_location_sub = builder.AddSystem(
@@ -427,6 +437,22 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
+  }
+
+  if (sim_params.visualize_pose_trace_tracking){
+    auto object_pose_drawer_tracking = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, "plans/tracking_planned",
+        FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        "object_position_target", "object_orientation_target");
+    auto end_effector_pose_drawer_tracking = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, "plans/tracking_planned",
+        FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
+        "end_effector_position_target", "end_effector_orientation_target", 5, false);
+
+    builder.Connect(trajectory_sub_object_tracking->get_output_port(),
+                    object_pose_drawer_tracking->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_actor_tracking->get_output_port(),
+                    end_effector_pose_drawer_tracking->get_input_port_trajectory());
   }
 
   if (sim_params.visualize_sample_locations){

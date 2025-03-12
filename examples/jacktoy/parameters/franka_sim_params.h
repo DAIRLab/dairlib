@@ -57,6 +57,8 @@ struct FrankaSimParams {
   bool visualize_center_of_mass_plan_best;
   bool visualize_c3_forces_best;
 
+  bool visualize_pose_trace_tracking;
+
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -110,5 +112,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(visualize_pose_trace_best));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));
     a->Visit(DRAKE_NVP(visualize_c3_forces_best));
+
+    a->Visit(DRAKE_NVP(visualize_pose_trace_tracking));
   }
 };

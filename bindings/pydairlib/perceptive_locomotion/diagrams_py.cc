@@ -52,8 +52,8 @@ PYBIND11_MODULE(diagrams, m) {
 
   py::class_<PerceptiveFullSimDiagram, drake::systems::Diagram<double>>(
       m, "PerceptiveFullSimDiagram")
-    .def(py::init<const std::string&, const std::string&, const std::string&>(),
-         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
+    .def(py::init<const std::string&,  const std::string&, const std::string&, const std::string&>(),
+         py::arg("mpc_gains_yaml"), py::arg("solver_options_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
       .def("SetPlantInitialConditions",
            &dairlib::perceptive_locomotion::PerceptiveFullSimDiagram::SetPlantInitialConditions,
            py::arg("diagram"),
@@ -71,8 +71,8 @@ PYBIND11_MODULE(diagrams, m) {
 
   py::class_<FullSimDiagram, drake::systems::Diagram<double>>(
       m, "FullSimDiagram")
-    .def(py::init<const std::string&, const std::string&, const std::string&>(),
-         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
+    .def(py::init<const std::string&,  const std::string&, const std::string&, const std::string&>(),
+         py::arg("mpc_gains_yaml"), py::arg("solver_options_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
       .def("SetPlantInitialConditions",
            &dairlib::perceptive_locomotion::FullSimDiagram::SetPlantInitialConditions,
            py::arg("diagram"),

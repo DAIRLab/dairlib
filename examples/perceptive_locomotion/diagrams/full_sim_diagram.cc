@@ -31,6 +31,7 @@ using systems::CassieRadioOperator;
 using systems::controllers::Alips2sMPFCSystem;
 
 FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
+                               const std::string& solver_options_yaml,
                                const std::string &terrain_yaml,
                                const std::string &sim_params_yaml) {
 
@@ -50,11 +51,6 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
   std::string elevation_mapping_params_yaml =
       "examples/perceptive_locomotion/camera_calib/"
       "elevation_mapping_params_simulation.yaml";
-
-  std::string solver_options_yaml = "dummy";
-
-  throw std::runtime_error("Need to implement solver options argument for "
-                           "this file");
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(

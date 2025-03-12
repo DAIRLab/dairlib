@@ -20,6 +20,7 @@ using Eigen::Vector3d;
 using Eigen::Vector2d;
 using Eigen::RowVectorXd;
 using Eigen::RowVector3d;
+using Eigen::RowVector4d;
 
 using alip_utils::Stance;
 using alip_utils::CalcA;
@@ -68,6 +69,20 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   auto solver_start = std::chrono::steady_clock::now();
 
   if (params_.miqp) {
+//    for (auto& binding : rounding_limits_) {
+//      binding.evaluator()->UpdateLowerBound(VectorXd::Zero(kMaxFootholds));
+//      binding.evaluator()->UpdateUpperBound(VectorXd::Ones(kMaxFootholds));
+//    }
+//    result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+//    for (size_t i = 0; i < mu_.size(); ++i) {
+//      VectorXd lb = VectorXd::Zero(kMaxFootholds);
+//      VectorXd mu_result = result.GetSolution(mu_.at(i));
+//      Eigen::Index idx_max;
+//      mu_result.maxCoeff(&idx_max);
+//      lb(idx_max) = 1.0;
+//      rounding_limits_.at(i).evaluator()->UpdateLowerBound(lb);
+//      rounding_limits_.at(i).evaluator()->UpdateUpperBound(lb);
+//    }
     result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
   } else {
     solvers::QPResult solution = ncqp_solver_.Solve(*prog_, foothold_set_c_);
@@ -133,7 +148,14 @@ void AlipS2SMPFC::MakeMPCVariables() {
     std::string mode = std::to_string(i+1);
     ee_.push_back(prog_->NewContinuousVariables(1, "ee_" + mode));
     if (params_.miqp) {
+      vector<VectorXDecisionVariable> p_aux;
+      for (int j = 0; j < kMaxFootholds; ++j) {
+        p_aux.push_back(
+            prog_->NewContinuousVariables(3, "p_aux_" + mode + "_" + std::to_string(j)));
+      }
+      pp_aux_.push_back(p_aux);
       mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
+      rounding_limits_.push_back(prog_->AddBoundingBoxConstraint(0, 1, mu_.back()));
     }
   }
 }
@@ -225,42 +247,36 @@ void AlipS2SMPFC::MakeInputConstraints() {
 void AlipS2SMPFC::MakeMIQPFootholdConstraints() {
   DRAKE_DEMAND(params_.miqp);
 
-  constexpr double bigM = 20.0;
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    vector<LinearBigMConstraint> tmp;
-    vector<LinearBigMEqualityConstraint> tmp_eq;
+
+    MatrixXd A_sum = MatrixXd::Zero(3, 3 * (kMaxFootholds + 1));
+    for (int j = 0; j < kMaxFootholds; ++j) {
+      A_sum.block<3, 3>(0, 3 * j) = Matrix3d::Identity();
+    }
+    A_sum.block<3, 3>(0, 3 * kMaxFootholds)  = -Matrix3d::Identity();
+
+    prog_->AddLinearEqualityConstraint(
+        A_sum, Vector3d::Zero(), {stack(pp_aux_.at(i)), pp_.at(i+1)});
+
+    vector<Binding<LinearConstraint>> tmp;
+    vector<Binding<LinearEqualityConstraint>> tmp_eq;
     for (size_t j = 0; j < kMaxFootholds; ++j) {
       tmp.push_back(
-          LinearBigMConstraint(
-              *prog_,
-              RowVector3d::UnitX(),
+          prog_->AddLinearConstraint(
+              RowVector4d::UnitW(),
               VectorXd::Zero(1),
-              bigM,
-              pp_.at(i+1),
-              mu_.at(i)(j)
+              VectorXd::Zero(1),
+              {pp_aux_.at(i).at(j), mu_.at(i).segment<1>(j)}
           ));
       tmp_eq.push_back(
-          LinearBigMEqualityConstraint(
-              *prog_,
-              RowVector3d::UnitZ(),
+          prog_->AddLinearEqualityConstraint(
+              RowVector4d::UnitW(),
               VectorXd::Zero(1),
-              bigM,
-              pp_.at(i+1),
-              mu_.at(i)(j)
+              {pp_aux_.at(i).at(j), mu_.at(i).segment<1>(j)}
           ));
     }
     footstep_c_.push_back(tmp);
     footstep_c_eq_.push_back(tmp_eq);
-    for (auto& clist: footstep_c_) {
-      for (auto& c: clist) {
-        c.deactivate();
-      }
-    }
-    for (auto& clist: footstep_c_eq_) {
-      for (auto& c: clist) {
-        c.deactivate();
-      }
-    }
   }
 
   footstep_choice_c_ = prog_->AddLinearEqualityConstraint(
@@ -437,19 +453,36 @@ void AlipS2SMPFC::UpdateMIQPFootholdConstraints(
   for (auto& c : footstep_c_) {
     for (size_t i = 0; i < n; ++i) {
       const auto& [A, b] = polys.at(i).GetConstraintMatrices();
-      c.at(i).UpdateCoefficients(A, b);
+      MatrixXd A_perspective = MatrixXd::Zero(A.rows(), A.cols() + 1);
+      A_perspective.leftCols<3>() = A;
+      A_perspective.rightCols<1>() = -b;
+      c.at(i).evaluator()->UpdateCoefficients(
+          A_perspective,
+          VectorXd::Constant(A.rows(), -kInfinity),
+          VectorXd::Zero(A.rows()));
     }
     for (size_t i = n; i < kMaxFootholds; ++i) {
-      c.at(i).deactivate();
+      c.at(i).evaluator()->UpdateCoefficients(
+          RowVector4d::Zero(),
+          VectorXd::Zero(1),
+          VectorXd::Zero(1));
     }
   }
   for (auto& c : footstep_c_eq_) {
     for (size_t i = 0; i < n; ++i) {
       const auto& [A, b] = polys.at(i).GetEqualityConstraintMatrices();
-      c.at(i).UpdateCoefficients(A, b);
+      MatrixXd A_perspective = MatrixXd::Zero(A.rows(), A.cols() + 1);
+      A_perspective.leftCols<3>() = A;
+      A_perspective.rightCols<1>() = -b;
+      c.at(i).evaluator()->UpdateCoefficients(
+          A_perspective,
+          VectorXd::Zero(A.rows()));
     }
     for (size_t i = n; i < kMaxFootholds; ++i) {
-      c.at(i).deactivate();
+      c.at(i).evaluator()->UpdateCoefficients(
+          Matrix4d::Identity(),
+          Vector4d::Zero()
+      );
     }
   }
 }

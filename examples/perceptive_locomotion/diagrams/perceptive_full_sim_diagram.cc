@@ -33,6 +33,7 @@ using perception::GridMapVisualizer;
 using systems::controllers::Alips2sMPFCSystem;
 
 PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_yaml,
+                                                   const std::string& solver_options_yaml,
                                                    const std::string &terrain_yaml,
                                                    const std::string &sim_params_yaml) {
 
@@ -51,11 +52,6 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
   std::string elevation_mapping_params_yaml =
       "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml";
-
-  std::string solver_options_yaml = "dummy";
-
-  throw std::runtime_error("Need to implement solver options argument for "
-                           "this file");
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(

@@ -16,6 +16,7 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
  public:
   explicit FullSimDiagram(
       const std::string& mpc_gains_yaml,
+      const std::string& solver_options_yaml,
       const std::string& terrain_yaml,
       const std::string& sim_params_yaml);
 

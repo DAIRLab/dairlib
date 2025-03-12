@@ -21,9 +21,10 @@ int DoMain(int argc, char **argv) {
 
   std::string gains_mpc_file =
       "examples/perceptive_locomotion/gains/alip_s2s_mpfc_gains_simulation.yaml";
-
   std::string sim_params_file =
       "examples/perceptive_locomotion/standalone_sim_params.yaml";
+  std::string solver_options_yaml =
+      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml";
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
@@ -31,7 +32,8 @@ int DoMain(int argc, char **argv) {
 
   drake::systems::DiagramBuilder<double> builder;
 
-  auto sim_diagram = builder.AddSystem<FullSimDiagram>(gains_mpc_file, terrain_yaml, sim_params_file);
+  auto sim_diagram = builder.AddSystem<FullSimDiagram>(
+      gains_mpc_file, solver_options_yaml, terrain_yaml, sim_params_file);
 
   auto diagram = builder.Build();
   diagram->set_name("mpfc_osc_with_sim");

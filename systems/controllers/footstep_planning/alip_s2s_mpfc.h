@@ -76,7 +76,7 @@ class AlipS2SMPFC {
   }
 
  protected:
-  static constexpr size_t kMaxFootholds = 20;
+  static constexpr size_t kMaxFootholds = 15;
   void MakeMPCVariables();
   void MakeMPCCosts();
   void MakeInputConstraints();
@@ -138,6 +138,7 @@ class AlipS2SMPFC {
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
   vector<VectorXDecisionVariable> mu_{}; // binary variables
+  vector<vector<VectorXDecisionVariable>> pp_aux_{};
   VectorXDecisionVariable tau_;          // first footstep duration
   VectorXDecisionVariable u_;            // Integrated ankle torque
 
@@ -153,9 +154,10 @@ class AlipS2SMPFC {
   vector<Binding<LinearConstraint>> reachability_c_{};
   vector<Binding<LinearConstraint>> capturability_c_{};
   std::shared_ptr<LinearConstraint> trust_region_ = nullptr;
-  vector<vector<LinearBigMConstraint>> footstep_c_{};
-  vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
+  vector<vector<Binding<LinearConstraint>>> footstep_c_{};
+  vector<vector<Binding<LinearEqualityConstraint>>> footstep_c_eq_{};
   vector<Binding<Constraint>> foothold_set_c_{};
+  vector<Binding<BoundingBoxConstraint>> rounding_limits_{};
 
   std::shared_ptr<QuadraticCost> ankle_torque_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;

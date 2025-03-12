@@ -21,6 +21,7 @@ class PerceptiveFullSimDiagram : public drake::systems::Diagram<double> {
  public:
   explicit PerceptiveFullSimDiagram(
       const std::string& mpc_gains_yaml,
+      const std::string& solver_optios_yaml,
       const std::string& terrain_yaml,
       const std::string& sim_params_yaml);
 

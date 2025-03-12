@@ -157,7 +157,7 @@ void NCQPSolver::Solve(const QPData &qp, QPResult &result,
     timer.tick();
     VectorXd d = sol.x + sol.w;
     d = DoProjectionStep(d, constraints);
-    double slack_cost = eval_cost(d, cvx_qp);
+    double slack_cost = -std::numeric_limits<double>::infinity();// eval_cost(d, cvx_qp);
 
     if (slack_cost > sol.slack_cost) {
       QPResult out;

@@ -13,7 +13,8 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
 
 enum ProgressMetric { C3_COST,
                       CURRENT_POSITION_AND_ORIENTATION_COST,
-                      POSITION_OR_ORIENTATION_ERROR };
+                      POSITION_OR_ORIENTATION_ERROR,
+                      MIN_PROGRESS_TO_CONTINUE};
 
 struct SamplingC3SamplingParams {
   int control_loop_delay_ms;
@@ -48,6 +49,8 @@ struct SamplingC3SamplingParams {
   int num_control_loops_to_wait;
   int num_control_loops_to_wait_position_tracking;
   int track_c3_progress_via;
+  double min_percentage_decrease_in_cost_to_continue;
+  int num_control_loops_to_wait_for_progress;
   double cost_switching_threshold_distance;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
@@ -99,6 +102,8 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(num_control_loops_to_wait));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait_position_tracking));
     a->Visit(DRAKE_NVP(track_c3_progress_via));
+    a->Visit(DRAKE_NVP(min_percentage_decrease_in_cost_to_continue));
+    a->Visit(DRAKE_NVP(num_control_loops_to_wait_for_progress));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));

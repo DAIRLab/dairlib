@@ -69,7 +69,6 @@ SamplingC3Controller::SamplingC3Controller(
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
-  // std::cout<<"Q size read from c3 options : "<<c3_options_.Q_position.rows()<<","<<c3_options_.Q_position.cols()<<std::endl;
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * c3_options_.Q_position);
     R_.push_back(discount_factor * c3_options_.R);
@@ -82,12 +81,6 @@ SamplingC3Controller::SamplingC3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
-  // std::cout<<"in sampling_based_c3_controller.cc"<<std::endl;
-  // std::cout<<"\tn_q: "<<n_q_<<std::endl;
-  // std::cout<<"\tn_v: "<<n_v_<<std::endl;
-  // std::cout<<"\tn_u: "<<n_u_<<std::endl;
-  // std::cout<<"Q size: "<<Q_[0].rows()<<","<<Q_[0].cols()<<std::endl;
-  // std::cout<<"R size: "<<R_[0].rows()<<","<<R_[0].cols()<<std::endl;
 
   n_x_ = n_q_ + n_v_;
 
@@ -340,6 +333,9 @@ SamplingC3Controller::SamplingC3Controller(
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_final_target_ = VectorXd::Zero(n_x_);
   best_progress_steps_ago_ = 0;
+  while(!progress_cost_buffer_.empty()) {
+    progress_cost_buffer_.pop();
+  }
   lowest_cost_ = -1.0;
   lowest_pos_and_rot_current_cost_ = -1.0;
   lowest_position_error_ = -1.0;
@@ -567,6 +563,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         lowest_position_error_ = -1.0;
         lowest_orientation_error_ = -1.0;
         best_progress_steps_ago_ = 0;
+        // Clear the progress cost buffer.
+        while(!progress_cost_buffer_.empty()){
+          progress_cost_buffer_.pop();
+        }
       }
     }
   }
@@ -1003,6 +1003,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     bool updated_cost = false;
     bool updated_curr_pos_and_rot_cost = false;
     bool updated_pos_or_rot = false;
+    bool reset_progress_cost_buffer = false;
 
     Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(3,3,7,7);
     Eigen::VectorXd pos_and_rot_error_vec = x_lcs_curr.segment(3, 7) -
@@ -1031,6 +1032,30 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       updated_pos_or_rot = true;
     }
 
+    if(progress_cost_buffer_.size() < sampling_params_.num_control_loops_to_wait_for_progress){
+      // std::cout<<"buffer size "<< progress_cost_buffer_.size()<<std::endl;
+      // If doing c3, add the current cost to the buffer if the buffer is not full.
+      progress_cost_buffer_.push(curr_pos_and_rot_cost);
+    }
+    if(progress_cost_buffer_.size() == sampling_params_.num_control_loops_to_wait_for_progress){
+      // If doing c3 and tracking progress via the minimum progress to continue, then check if the progress is enough to continue.
+      double percentage_progress_in_cost = ((progress_cost_buffer_.back() - progress_cost_buffer_.front())/progress_cost_buffer_.front()) * 100;
+      // std::cout<<"buffer size "<< progress_cost_buffer_.size()<<std::endl;
+      // std::cout<<"Percentage progress in cost: "<<percentage_progress_in_cost<<std::endl;
+      if(percentage_progress_in_cost > sampling_params_.min_percentage_decrease_in_cost_to_continue){
+        // If the progress is not enough or if it made negative progress in those many loops, then reset the buffer.
+        while(!progress_cost_buffer_.empty()){
+          progress_cost_buffer_.pop();
+        }
+        reset_progress_cost_buffer = true;
+        // std::cout<<"\tProgress buffer reset, will kick out of c3."<<std::endl;
+      }
+      else{
+        // if progress is enough, then pop the first element from the buffer.
+        progress_cost_buffer_.pop();
+      }
+    }
+
     // Keep track of how many control loops have passed since the best seen
     // progress in this mode.
     if (((sampling_params_.track_c3_progress_via == C3_COST) && updated_cost) ||
@@ -1056,7 +1081,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       num_control_loops_to_wait = sampling_params_.num_control_loops_to_wait;
     }
 
-    if ((best_progress_steps_ago_ > num_control_loops_to_wait) &&
+    if (((sampling_params_.track_c3_progress_via != MIN_PROGRESS_TO_CONTINUE && best_progress_steps_ago_ > num_control_loops_to_wait) || (sampling_params_.track_c3_progress_via == MIN_PROGRESS_TO_CONTINUE && reset_progress_cost_buffer)) &&
         (sampling_params_.num_additional_samples_c3 > 0) &&
         (!radio_out->channel[12])) {
       is_doing_c3_ = false;
@@ -1175,6 +1200,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lowest_position_error_ = -1.0;
       lowest_orientation_error_ = -1.0;
       best_progress_steps_ago_ = 0;
+      // reset progress cost buffer.
+      while(!progress_cost_buffer_.empty()){
+        progress_cost_buffer_.pop();
+      }
     }
 
     // Xbox controller override to force staying in C3 mode.
@@ -1190,6 +1219,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lowest_position_error_ = -1.0;
       lowest_orientation_error_ = -1.0;
       best_progress_steps_ago_ = 0;
+      // reset progress cost buffer.
+      while(!progress_cost_buffer_.empty()){
+        progress_cost_buffer_.pop();
+      }
     }
   }
 

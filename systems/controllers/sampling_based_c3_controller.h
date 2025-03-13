@@ -21,6 +21,7 @@
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
+#include <queue>
 
 
 
@@ -321,6 +322,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double lowest_orientation_error_;
   mutable double current_position_error_;
   mutable double current_orientation_error_;
+  // Keep track of costs seen so far in C3.
+  mutable std::queue<double> progress_cost_buffer_;
 
   mutable double filtered_solve_time_ = 0;
 

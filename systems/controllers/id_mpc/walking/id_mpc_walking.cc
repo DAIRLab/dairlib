@@ -95,9 +95,6 @@ void IDMPCWalking::MakeALIPTerms() {
       alip_mapping_constraint_,
       {mpc_.position_vars(params_.mpc_N), mpc_.velocity_vars(params_.mpc_N), xa_.back()}
   );
-
-
-
 }
 
 std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(

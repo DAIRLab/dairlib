@@ -26,26 +26,6 @@ using ForceEvaluatorsMap =
     std::unordered_map<std::string,
     std::vector<drake::solvers::LinearConstraint*>>;
 
-//template <class C>
-//concept id_mpc_interface = requires(C c, solvers::QPData qp, Eigen::VectorXd z) {
-//  { c.UpdateProblemData(MPCReference(), z) };
-//  { c.dynamics() } -> std::same_as<const ConstrainedDynamicsInfo&>;
-//  { c.get_prog() } -> std::same_as<drake::solvers::MathematicalProgram&>;
-//  { c.GetSolutionAsLcmTrajectory(drake::solvers::MathematicalProgramResult())} -> std::same_as<LcmTrajectory>;
-//  { c.knot_vars(0) } -> std::same_as<const drake::solvers::VectorXDecisionVariable>;
-//  { c.position_vars(0) } -> std::same_as<const drake::solvers::VectorXDecisionVariable>;
-//  { c.velocity_vars(0) } -> std::same_as<const drake::solvers::VectorXDecisionVariable>;
-//  { c.lambda_vars(0) } -> std::same_as<const drake::solvers::VectorXDecisionVariable>;
-//  { c.input_vars(0) } -> std::same_as<const drake::solvers::VectorXDecisionVariable>;
-//  { c.has_lambdas_at_kot(0) } -> std::same_as<bool>;
-//  { c.has_torques_at_knot(0) } -> std::same_as<bool>;
-//  { c.num_vars() } -> std::same_as<int>;
-//  { c.num_constraints() } -> std::same_as<int>;
-//  { c.ConstructSQPProgram(z, &qp) };
-//  { c.EvaluateConstraintViolation(z) };
-//  { c.EvaluateCost(z) };
-//  { c.ProjectToQuaternionConstraint(&z) };
-//};
 
 class IDMPC {
  public:
@@ -98,7 +78,8 @@ class IDMPC {
    * @param initial_state initial state of the MPC
    */
   void UpdateProblemData(const MPCReference& reference,
-                         const Eigen::VectorXd& initial_state);
+                         const Eigen::VectorXd& initial_state,
+                         const Eigen::VectorXd& prev_sol);
 
   /*!
    * Copy the MPC solution into an LCMTrajectory
@@ -190,6 +171,8 @@ class IDMPC {
 
   drake::solvers::LinearEqualityConstraint* initial_state_constraint_;
   drake::solvers::MathematicalProgram prog_;
+
+  std::shared_ptr<solvers::sqp::QuadraticErrorCost<double>> smoothness_cost_;
 
   std::vector<drake::solvers::VectorXDecisionVariable> knot_point_vars_;
   int num_constraints_;

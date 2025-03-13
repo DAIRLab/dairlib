@@ -68,7 +68,8 @@ IDMPC::IDMPC(IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo>
 }
 
 void IDMPC::UpdateProblemData(const MPCReference &reference,
-                              const VectorXd &initial_state) {
+                              const VectorXd &initial_state,
+                              const Eigen::VectorXd& prev_sol) {
   UpdateInitialState(initial_state);
   timeline_.set_time_vector(reference.knot_times_);
   for (size_t i = 0; i < params_.N + 1; ++i) {
@@ -78,6 +79,7 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
     UpdateFrictionCone(i, reference.active_contacts_.at(i));
   }
   UpdateCosts(reference);
+  smoothness_cost_->UpdateReference(prev_sol);
 }
 
 void IDMPC::UpdateFrictionCone(
@@ -215,6 +217,13 @@ void IDMPC::MakeMPCCosts() {
   prog_.AddCost(
       reference_manager_.GetTerminalEvaluator("v"),
       velocity_vars(params_.N));
+
+  smoothness_cost_ = std::make_shared<QuadraticErrorCost<double>>(
+      1e-6 * MatrixXd::Identity(prog_.num_vars(), prog_.num_vars()),
+      VectorXd::Zero(prog_.num_vars())
+  );
+
+  prog_.AddCost(smoothness_cost_, prog_.decision_variables());
 }
 
 void IDMPC::MakeKnotPoints() {

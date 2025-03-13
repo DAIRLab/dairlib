@@ -1,5 +1,6 @@
 #include "id_mpc_walking.h"
 #include "solvers/sqp/relative_position_cost.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -25,8 +26,9 @@ IDMPCWalking::IDMPCWalking(
 
 void IDMPCWalking::UpdateProblemData(
     const MPCReference &reference, const VectorXd &initial_state,
+    const VectorXd& prev_sol,
     const geometry::ConvexPolygonSet& footholds) {
-  mpc_.UpdateProblemData(reference, initial_state);
+  mpc_.UpdateProblemData(reference, initial_state, prev_sol);
   UpdateFootstepConstraints(reference.touchdown_ee_names_,
                             reference.touchdown_ee_points_);
   for (auto& foothold: footholds_) {
@@ -81,7 +83,30 @@ void IDMPCWalking::MakeFootsteps() {
 }
 
 void IDMPCWalking::MakeALIPTerms() {
+  auto& prog = mpc_.get_prog();
 
+  for (int i = 0; i < params_.footstep_horizon; ++i) {
+    xa_.push_back(prog.NewContinuousVariables(4, "xa_" + std::to_string(i)));
+  }
+  alip_mapping_constraint_ = std::make_shared<ALIPMappingConstraint>(
+      dynamics());
+
+  prog.AddConstraint(
+      alip_mapping_constraint_,
+      {mpc_.position_vars(params_.mpc_N), mpc_.velocity_vars(params_.mpc_N), xa_.back()}
+  );
+
+
+
+}
+
+std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(
+    const Eigen::VectorXd& z) const {
+  std::vector<VectorXd> sol;
+  for (const auto& p : pp_) {
+    sol.push_back(mpc_.GetDecisionVariableValue(p, z));
+  }
+  return sol;
 }
 
 void IDMPCWalking::MakeGroundConstraints() {
@@ -105,7 +130,7 @@ void IDMPCWalking::MakeSwingTrajCosts() {
 
 void IDMPCWalking::MakeFootLevelingCosts() {
   Eigen::Matrix3d Q = Eigen::Matrix3d::Zero();
-  Q(2,2) = params_.foot_pos_W(2,2);
+  Q(2,2) = 10 * params_.foot_pos_W(2,2);
   mpc_.AddTaskCost<RelativePositionCost>(
       "foot_level_left", Q, Vector3d::Zero(),
       mpc().dynamics().get_plant(),

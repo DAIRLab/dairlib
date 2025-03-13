@@ -330,7 +330,7 @@ int DoMain() {
     reference.knot_times_.push_back(params.dt * i);
   }
 
-  mpc.UpdateProblemData(reference, vars.head(2 * q.size() - 1));
+  mpc.UpdateProblemData(reference, vars.head(2 * q.size() - 1), VectorXd::Zero(mpc.get_prog().num_vars()));
 
   auto solver_options = drake::solvers::SolverOptions();
   solver_options.SetOption(drake::solvers::SnoptSolver::id(), "Print file",

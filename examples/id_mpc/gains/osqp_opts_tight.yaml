@@ -9,12 +9,12 @@ int_options:
   scaled_termination: 1
   check_termination: 25
   polish_refine_iter: 3
-  scaling: 1
+  scaling: 10
   adaptive_rho: 1
 
 double_options:
   rho: 0.01
-  sigma: 1e-6
+  sigma: 1e-12
   eps_abs: 1e-3
   eps_rel: 1e-3
   eps_prim_inf: 1e-4
@@ -22,6 +22,7 @@ double_options:
   adaptive_rho_interval: 0
   adaptive_rho_tolerance: 5
   adaptive_rho_fraction: 0.4
+  alpha: 1.00
   time_limit: 0.2
 
 string_options: {}

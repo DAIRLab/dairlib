@@ -1,4 +1,6 @@
 #include "id_mpc_walking_system.h"
+#include "common/eigen_utils.h"
+
 #include "systems/controllers/id_mpc/core/solution_trajectories.h"
 #include "systems/controllers/id_mpc/references/mpc_reference.h"
 
@@ -103,7 +105,7 @@ EventStatus IDMPCWalkingSystem::SolveMPC(
   const auto& footholds =
       get_input_port_footholds().Eval<geometry::ConvexPolygonSet>(context);
 
-  trajopt_.UpdateProblemData(reference, x, footholds);
+  trajopt_.UpdateProblemData(reference, x, solution.sqp_iterate.x_sol, footholds);
   solver_.DoSQPStep(solution.sqp_iterate.x_sol, &solution.sqp_iterate);
   solution.contact_sequence = reference.active_contacts_;
 
@@ -125,7 +127,7 @@ void IDMPCWalkingSystem::MakeDrivenByStandaloneSimulator(double update_period) {
 
 void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,
                              lcmt_timestamped_saved_traj *solution) const {
-  auto mpc_solution =
+  const auto& mpc_solution =
       context.get_abstract_state<MPCSolution>(mpc_solution_state_);
   solution->saved_traj = mpc_solution.solution_trajectories.GenerateLcmObject();
   solution->utime = 1e6 * context.get_time();
@@ -134,10 +136,21 @@ void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,
 void IDMPCWalkingSystem::CalcDebug(const Context<double> &context,
                                    lcmt_id_mpc_walking_debug *debug) const {
   CalcOutput(context, &debug->solution);
+
+  const auto& mpc_solution =
+      context.get_abstract_state<MPCSolution>(mpc_solution_state_);
+
   debug->reference = ConvertToLcm(
       get_input_port_reference().Eval<MPCReference>(context),
           context.get_time());
   debug->utime = debug->solution.utime;
+  debug->n_footsteps = trajopt_.n_footsteps();
+  debug->footsteps.clear();
+
+  for (const auto& p: trajopt_.get_footstep_solutions(mpc_solution.sqp_iterate.x_sol)) {
+    auto footstep_vec = CopyVectorXdToStdVector(p);
+    debug->footsteps.push_back(footstep_vec);
+  }
 }
 
 std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(

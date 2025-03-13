@@ -72,7 +72,7 @@ EventStatus IDMPCSystem::SolveMPC(
   }
   const Eigen::VectorXd& x = state->GetState();
 
-  trajopt_.UpdateProblemData(reference, x);
+  trajopt_.UpdateProblemData(reference, x, solution.sqp_iterate.x_sol);
   solver_.DoSQPStep(solution.sqp_iterate.x_sol, &solution.sqp_iterate);
   solution.contact_sequence = reference.active_contacts_;
 

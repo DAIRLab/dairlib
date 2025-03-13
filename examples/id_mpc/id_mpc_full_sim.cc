@@ -67,6 +67,8 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       goal_location
   );
 
+  double dt = 0.0075;
+
   // Add the MPC and PD Controller
   auto dynamics = MakeCassieDynamics();
   IDMPCParams params = LoadIDMPCParamsFromYaml(mpc_gains_yaml);
@@ -74,13 +76,13 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   context_for_reference_system = dynamics->get_plant().CreateDefaultContext();
   auto gait_params = MakeCassieGaitParams(gait_yaml, params);
 
-  auto ref_gen = builder.AddSystem<WalkingReferenceSystem>(
+  ref_gen = builder.AddSystem<WalkingReferenceSystem>(
       *dynamics, context_for_reference_system.get(), gait_params);
-  ref_gen->MakeDrivenByStandaloneSimulator(0.01);
+  ref_gen->MakeDrivenByStandaloneSimulator(dt);
 
   auto mpc_system = builder.AddSystem<IDMPCWalkingSystem>(
       params, std::move(dynamics), gait_params, solver_options_yaml);
-  mpc_system->MakeDrivenByStandaloneSimulator(0.01);
+  mpc_system->MakeDrivenByStandaloneSimulator(dt);
 
   auto gains = drake::yaml::LoadYamlFile<JointPDGains>(pd_gains_yaml);
 
@@ -98,6 +100,10 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   auto mpc_visualizer = builder.AddSystem<LcmConfigurationDrawer>(
       plant_visualizer->get_meshcat(), urdf, "q", 8);
 
+  multibody::AddSteppingStonesToMeshcatFromYaml(
+      plant_visualizer->get_meshcat(), terrain
+  );
+
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION",
@@ -106,6 +112,10 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
           0.001)
   );
 
+  builder.Connect(
+      sim_diagram->get_output_port_state_lcm(),
+      state_pub->get_input_port()
+  );
   builder.Connect(
       sim_diagram->get_output_port_state(),
       radio_operator->get_input_port_state()
@@ -163,6 +173,9 @@ void IDMPCFullSim::SetPlantInitialConditions(
   auto [q, v] = sim_diagram->SetPlantInitialConditionFromIK(
       diagram, context, Eigen::Vector3d::Zero(), 0.1, 0.95
   );
+
+  auto& ref_context = ref_gen->GetMyMutableContextFromRoot(context);
+  ref_gen->CalcForcedUnrestrictedUpdate(ref_context, &ref_context.get_mutable_state());
 }
 
 drake::math::RigidTransformd IDMPCFullSim::GetCassiePelvisPoseInWorld(

@@ -6,6 +6,7 @@
 #include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
 #include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
+#include "systems/controllers/id_mpc/constraints/alip_mapping_constraint.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
@@ -27,6 +28,7 @@ class IDMPCWalking {
 
   void UpdateProblemData(const MPCReference& reference,
                          const Eigen::VectorXd& initial_state,
+                         const Eigen::VectorXd& prev_sol,
                          const geometry::ConvexPolygonSet& footholds);
 
   void SetFootstepInitialGuess(const std::vector<Eigen::Vector3d>& pp);
@@ -38,10 +40,14 @@ class IDMPCWalking {
   solvers::NCQPSolver::SetMembershipConstraints GetFootholdConstraints(
       const Eigen::VectorXd& z);
 
+  std::vector<Eigen::VectorXd> get_footstep_solutions(const Eigen::VectorXd& z) const;
+
  private:
   void UpdateFootstepConstraints(
       const std::vector<std::string>& foot_names,
       const std::vector<Eigen::Vector3d>& contact_points);
+
+  void UpdateALIPTerms();
 
   void MakeFootsteps();
   void MakeALIPTerms();
@@ -61,6 +67,8 @@ class IDMPCWalking {
   std::vector<std::shared_ptr<solvers::ConvexPolygonSetConstraint>> footholds_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
   foothold_bindings_;
+
+  std::shared_ptr<ALIPMappingConstraint> alip_mapping_constraint_;
 };
 
 }

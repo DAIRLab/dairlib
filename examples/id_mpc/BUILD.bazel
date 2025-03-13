@@ -40,6 +40,24 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "id_mpc_full_sim",
+    srcs = ["id_mpc_full_sim.cc"],
+    hdrs = ["id_mpc_full_sim.h"],
+    deps = [
+        ":cassie_mpc_utils",
+        "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
+        "//examples/perceptive_locomotion/systems:cassie_radio_operator",
+        "//lcm:lcm_log_sink",
+        "//lcmtypes:lcmt_robot",
+        "//systems:plant_visualizer",
+        "//systems/controllers/id_mpc/systems:id_mpc_walking_system",
+        "//systems/controllers/id_mpc/systems:joint_pd_controller",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],

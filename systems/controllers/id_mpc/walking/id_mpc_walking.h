@@ -26,7 +26,8 @@ class IDMPCWalking {
   }
 
   void UpdateProblemData(const MPCReference& reference,
-                         const Eigen::VectorXd& initial_state);
+                         const Eigen::VectorXd& initial_state,
+                         const geometry::ConvexPolygonSet& footholds);
 
   void SetFootstepInitialGuess(const std::vector<Eigen::Vector3d>& pp);
   void UpdateFootstepLocationsInStackedVariables(

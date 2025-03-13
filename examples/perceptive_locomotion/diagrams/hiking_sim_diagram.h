@@ -13,7 +13,8 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HikingSimDiagram)
   HikingSimDiagram(const std::variant<
       std::string, multibody::SquareSteppingStoneList> &terrain,
-                   const std::string &camera_pose_yaml);
+                   const std::string &camera_pose_yaml,
+                   bool use_springs=true);
 
   const drake::systems::InputPort<double> &get_input_port_actuation() const {
     return get_input_port(input_port_control_);
@@ -80,6 +81,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
  private:
 
   const std::string urdf_;
+  bool use_springs_;
 
   drake::multibody::MultibodyPlant<double> *plant_;
   drake::geometry::SceneGraph<double> *scene_graph_;

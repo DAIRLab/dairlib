@@ -101,6 +101,14 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
   return EventStatus::Succeeded();
 }
 
+void WalkingReferenceSystem::MakeDrivenByStandaloneSimulator(
+    double update_period) {
+  DeclareInitializationUnrestrictedUpdateEvent(
+      &WalkingReferenceSystem::UnrestrictedUpdate);
+  DeclarePeriodicUnrestrictedUpdateEvent(
+      update_period, 0, &WalkingReferenceSystem::UnrestrictedUpdate);
+}
+
 namespace {
 
 void ResetContacts(int N, MPCReference *ref) {

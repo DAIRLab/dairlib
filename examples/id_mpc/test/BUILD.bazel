@@ -25,3 +25,12 @@ cc_binary(
         "//systems/framework:lcm_driven_loop",
     ],
 )
+
+cc_binary(
+    name = "full_sim_test",
+    srcs = ["full_sim_test.cc"],
+    deps = [
+        "//examples/id_mpc:id_mpc_full_sim",
+        "@drake//:drake_shared_library",
+    ],
+)

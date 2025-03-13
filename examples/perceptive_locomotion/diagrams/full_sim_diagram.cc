@@ -37,7 +37,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   [[maybe_unused]] auto instance = AddCassieMultibody(
-      &plant, nullptr, true, urdf, true, false);
+      &plant, nullptr, true, urdf, false, false);
   plant.Finalize();
 
   plant_context = plant.CreateDefaultContext();
@@ -48,9 +48,6 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       "solvers/fcc_qp_options_default.yaml";
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
-  std::string elevation_mapping_params_yaml =
-      "examples/perceptive_locomotion/camera_calib/"
-      "elevation_mapping_params_simulation.yaml";
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(

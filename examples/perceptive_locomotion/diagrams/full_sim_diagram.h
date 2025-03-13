@@ -39,7 +39,6 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
   HikingSimDiagram* sim_diagram;
-
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 };
 

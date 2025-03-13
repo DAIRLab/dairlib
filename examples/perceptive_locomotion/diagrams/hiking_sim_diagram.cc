@@ -44,8 +44,13 @@ using drake::perception::DepthImageToPointCloud;
 
 HikingSimDiagram::HikingSimDiagram(
     const std::variant<std::string, SquareSteppingStoneList>& terrain,
-    const std::string& camera_pose_yaml)
-    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
+    const std::string& camera_pose_yaml,
+    bool use_springs)
+    : urdf_(
+        use_springs ? "examples/Cassie/urdf/cassie_v2_self_collision.urdf" :
+                      "examples/Cassie/urdf/cassie_fixed_spring_conservative"
+                      ".urdf"),
+      use_springs_(use_springs) {
 
   // magic numbers:
   static constexpr double sim_dt = 1e-3;
@@ -67,7 +72,7 @@ HikingSimDiagram::HikingSimDiagram(
   multibody::AddSteppingStonesToSim(
       plant_, scene_graph_, terrain, terrain_friction
   );
-  AddCassieMultibody(plant_, scene_graph_, true, urdf_, true, true);
+  AddCassieMultibody(plant_, scene_graph_, true, urdf_, use_springs, true);
   plant_->Finalize();
 
   scene_graph_->AddRenderer(renderer_name,
@@ -183,7 +188,8 @@ std::pair<VectorXd, VectorXd>  HikingSimDiagram::SetPlantInitialConditionFromIK(
     Context<double>* parent_context, const Vector3d& pelvis_vel,
     double foot_spread, double height) const {
 
-  auto [q, v] = GetInitialCassieState(urdf_, true, pelvis_vel, foot_spread, height);
+  auto [q, v] = GetInitialCassieState(urdf_, use_springs_, pelvis_vel, foot_spread,
+                                      height);
   SetPlantInitialCondition(parent_diagram, parent_context, q, v);
 
   return {q, v};

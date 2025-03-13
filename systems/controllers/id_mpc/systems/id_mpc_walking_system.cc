@@ -54,6 +54,10 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
       "mpc_reference",
       drake::Value<MPCReference>()).get_index();
 
+  input_port_footholds_ = DeclareAbstractInputPort(
+      "convex_polygon_footholds",
+      drake::Value<geometry::ConvexPolygonSet>()).get_index();
+
   MPCSolution model_solution;
   model_solution.sqp_iterate = AllocateSQPIterate(trajopt_.mpc().num_vars());
   mpc_solution_state_ = DeclareAbstractState(
@@ -96,7 +100,10 @@ EventStatus IDMPCWalkingSystem::SolveMPC(
 
   const Eigen::VectorXd& x = state->GetState();
 
-  trajopt_.UpdateProblemData(reference, x);
+  const auto& footholds =
+      get_input_port_footholds().Eval<geometry::ConvexPolygonSet>(context);
+
+  trajopt_.UpdateProblemData(reference, x, footholds);
   solver_.DoSQPStep(solution.sqp_iterate.x_sol, &solution.sqp_iterate);
   solution.contact_sequence = reference.active_contacts_;
 
@@ -107,6 +114,13 @@ EventStatus IDMPCWalkingSystem::SolveMPC(
   solution.solution_trajectories = trajopt_.mpc().GetSolutionAsLcmTrajectory(result);
 
   return EventStatus::Succeeded();
+}
+
+void IDMPCWalkingSystem::MakeDrivenByStandaloneSimulator(double update_period) {
+  DeclareInitializationUnrestrictedUpdateEvent(
+      &IDMPCWalkingSystem::SolveMPC);
+  DeclarePeriodicUnrestrictedUpdateEvent(
+      update_period, 0, &IDMPCWalkingSystem::SolveMPC);
 }
 
 void IDMPCWalkingSystem::CalcOutput(const Context<double>& context,

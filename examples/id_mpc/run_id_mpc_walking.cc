@@ -9,7 +9,6 @@
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/common/yaml/yaml_io.h"
-#include "drake/solvers/osqp_solver.h"
 #include "solvers/solver_options_io.h"
 
 namespace dairlib::systems::controllers::id_mpc {

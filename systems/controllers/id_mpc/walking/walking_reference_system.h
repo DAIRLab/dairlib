@@ -25,6 +25,8 @@ class WalkingReferenceSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_vdes_);
   }
 
+  void MakeDrivenByStandaloneSimulator(double update_period);
+
  private:
 
   drake::systems::EventStatus

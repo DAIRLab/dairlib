@@ -24,11 +24,14 @@ IDMPCWalking::IDMPCWalking(
 }
 
 void IDMPCWalking::UpdateProblemData(
-    const MPCReference &reference, const VectorXd &initial_state) {
+    const MPCReference &reference, const VectorXd &initial_state,
+    const geometry::ConvexPolygonSet& footholds) {
   mpc_.UpdateProblemData(reference, initial_state);
   UpdateFootstepConstraints(reference.touchdown_ee_names_,
                             reference.touchdown_ee_points_);
-
+  for (auto& foothold: footholds_) {
+    foothold->UpdatePolygons(footholds);
+  }
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -122,7 +125,6 @@ IDMPCWalking::GetFootholdConstraints(const VectorXd &z) {
   if (footholds_.empty()) {
     return {{}, {}};
   }
-
   for (size_t i = 0; i < footholds_.size(); ++i) {
     footholds_.at(i)->SetShift(
         mpc().GetDecisionVariableValue(pp_.at(i), z));

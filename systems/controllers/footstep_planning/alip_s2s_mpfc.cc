@@ -154,7 +154,7 @@ void AlipS2SMPFC::MakeMPCVariables() {
             prog_->NewContinuousVariables(3, "p_aux_" + mode + "_" + std::to_string(j)));
       }
       pp_aux_.push_back(p_aux);
-      mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
+      mu_.push_back(prog_->NewContinuousVariables(kMaxFootholds, "mu_" + mode));
       rounding_limits_.push_back(prog_->AddBoundingBoxConstraint(0, 1, mu_.back()));
     }
   }
@@ -166,17 +166,31 @@ void AlipS2SMPFC::MakeMPCCosts() {
         prog_->AddQuadraticCost(
             Matrix4d::Identity(), Vector4d::Zero(), xx_.at(i)
         ));
-    input_cost_.push_back(
-        prog_->AddQuadraticCost(
-            Matrix4d::Identity(), Vector4d::Zero(),
-            {pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}
-        ));
     soft_constraint_cost_.push_back(
         prog_->AddQuadraticCost(
             2 * params_.soft_constraint_cost * MatrixXd::Identity(1,1),
             VectorXd::Zero(1),
             ee_.at(i)
         ));
+
+    input_cost_.push_back(
+          prog_->AddQuadraticCost(
+              Matrix4d::Identity(), Vector4d::Zero(),
+              {pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}
+    ));
+
+    if (params_.miqp) {
+      footstep_perspective_costs_.push_back(
+          solvers::PerspectiveLinearCost(Vector3d::Ones(), 0)
+      );
+      for (int j = 0; j < kMaxFootholds; ++j) {
+        footstep_perspective_costs_.back().AddToProgram(
+            *prog_,
+            pp_aux_.at(i).at(j),
+            mu_.at(i).segment<1>(j)
+        );
+      }
+    }
   }
 
   terminal_cost_ = prog_->AddQuadraticCost(

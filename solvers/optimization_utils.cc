@@ -1,4 +1,5 @@
 #include "solvers/optimization_utils.h"
+#include "drake/math/quadratic_form.h"
 #include <iostream>
 
 using Eigen::MatrixXd;
@@ -139,6 +140,89 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
   }
 }
 
+
+namespace {
+// see here: https://github.com/RobotLocomotion/drake/blob/11f92da6badabfce9225aec2f20bc9d72d73a347/geometry/optimization/graph_of_convex_sets.cc#L1048
+Eigen::MatrixXd MakeCoeffsForQuadraticPerspectiveCost(
+    const Eigen::MatrixXd& Q, const Eigen::VectorXd& b, double c) {
+
+  const double tol = 1e-10;
+  Eigen::MatrixXd R =
+      drake::math::DecomposePSDmatrixIntoXtransposeTimesX(.5 * Q, tol);
+
+  MatrixXd A_cone = MatrixXd::Zero(R.rows() + 2, Q.rows() + 2);
+  A_cone(0, 0) = 1.0;  // z₀ = ϕ.
+  // z₁ = ℓ - b'x - ϕ c.
+  A_cone(1, 1) = 1.0;
+  A_cone.block(1, 2, 1, b.rows()) = -b.transpose();
+  A_cone(1, 0) = -c;
+  // z₂ ... z_{n+1} = R x.
+  A_cone.block(2, 2, R.rows(), R.cols()) = R;
+  return A_cone;
+}
+
+}
+
+PerspectiveQuadraticCost::PerspectiveQuadraticCost(const Eigen::MatrixXd &Q,
+                                                   const Eigen::MatrixXd &b,
+                                                   double c) {
+  MatrixXd A_cone = MakeCoeffsForQuadraticPerspectiveCost(Q, b, c);
+  VectorXd b_cone = VectorXd::Zero(A_cone.rows());
+  constraint_ = std::make_unique<drake::solvers::RotatedLorentzConeConstraint>(
+      A_cone,b_cone);
+}
+
+void PerspectiveQuadraticCost::UpdateCoefficients(const Eigen::MatrixXd &Q,
+                                                  const Eigen::VectorXd &b,
+                                                  double c) {
+  MatrixXd A_cone = MakeCoeffsForQuadraticPerspectiveCost(Q, b, c);
+  VectorXd b_cone = VectorXd::Zero(A_cone.rows());
+  constraint_->UpdateCoefficients(A_cone, b_cone);
+}
+
+void PerspectiveQuadraticCost::AddToProgram(
+    drake::solvers::MathematicalProgram &prog,
+    const drake::solvers::VectorXDecisionVariable &x,
+    const drake::solvers::VectorXDecisionVariable &z) {
+  auto l = prog.NewContinuousVariables(1);
+  prog.AddLinearCost(VectorXd::Ones(1), l);
+  prog.AddConstraint(constraint_, {z, l, x});
+}
+
+PerspectiveLinearCost::PerspectiveLinearCost(
+    const Eigen::VectorXd &b, double c) {
+  Eigen::VectorXd b_cost = Eigen::VectorXd::Zero(b.rows() + 2);
+  b_cost.head(b.rows()) = b;
+  b_cost(b.rows()) = -1.0;
+  b_cost(b.rows() + 1) = c;
+  constraint_ = std::make_unique<drake::solvers::LinearConstraint>(
+      b_cost.transpose(),
+      VectorXd::Constant(1, -std::numeric_limits<double>::infinity()),
+      VectorXd::Zero(1));
+}
+
+void PerspectiveLinearCost::UpdateCoefficients(
+    const Eigen::VectorXd &b, double c) {
+  Eigen::VectorXd b_cost = Eigen::VectorXd::Zero(b.rows() + 2);
+  b_cost.head(b.rows()) = b;
+  b_cost(b.rows()) = -1.0;
+  b_cost(b.rows() + 1) = c;
+  constraint_->UpdateCoefficients(
+      b_cost.transpose(),
+      VectorXd::Constant(1, -std::numeric_limits<double>::infinity()),
+      VectorXd::Zero(1));
+}
+
+void PerspectiveLinearCost::AddToProgram(
+    drake::solvers::MathematicalProgram &prog,
+    const drake::solvers::VectorXDecisionVariable &x,
+    const drake::solvers::VectorXDecisionVariable &z) {
+  auto l = prog.NewContinuousVariables(1);
+  prog.AddLinearCost(VectorXd::Ones(1), l);
+  prog.AddConstraint(constraint_, {x, l , z});
+}
+
+
 /// Helper method, returns a vector of given length
 /// [start, start+1, ..., (start + length -1)]
 VectorXd NVec(int start, int length) {
@@ -173,6 +257,7 @@ int CountConstraintRows(const MathematicalProgram& prog) {
   }
   return n;
 }
+
 
 std::tuple<MatrixXd, VectorXd, VectorXd>
 GetBigMFormulation(const MatrixXd& A, const MatrixXd& b, double M) {

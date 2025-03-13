@@ -146,6 +146,42 @@ class LinearBigMConstraint {
 };
 
 
+class PerspectiveQuadraticCost {
+ public:
+  PerspectiveQuadraticCost(
+      const Eigen::MatrixXd& Q, const Eigen::MatrixXd& b, double c);
+
+  void AddToProgram(
+      drake::solvers::MathematicalProgram& prog,
+      const drake::solvers::VectorXDecisionVariable& x,
+      const drake::solvers::VectorXDecisionVariable& z);
+
+  void UpdateCoefficients(const Eigen::MatrixXd& Q,
+                          const Eigen::VectorXd& b, double c);
+
+ private:
+  std::shared_ptr<drake::solvers::RotatedLorentzConeConstraint> constraint_;
+
+};
+
+class PerspectiveLinearCost {
+ public:
+  PerspectiveLinearCost(const Eigen::VectorXd& b, double c);
+
+  void AddToProgram(
+      drake::solvers::MathematicalProgram& prog,
+      const drake::solvers::VectorXDecisionVariable& x,
+      const drake::solvers::VectorXDecisionVariable& z);
+
+  void UpdateCoefficients(const Eigen::VectorXd& b, double c);
+
+ private:
+  std::shared_ptr<drake::solvers::LinearConstraint> constraint_;
+
+};
+
+
+
 /// A utility for mixed integer programming,
 /// Adds the big M formulation of the constraint (z == 1) implies Ax == b,
 /// transforming it to Ax <= b + M * (1 - z), -Ax <= -b + M * (1 - z)

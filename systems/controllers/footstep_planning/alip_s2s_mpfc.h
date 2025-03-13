@@ -158,6 +158,7 @@ class AlipS2SMPFC {
   vector<vector<Binding<LinearEqualityConstraint>>> footstep_c_eq_{};
   vector<Binding<Constraint>> foothold_set_c_{};
   vector<Binding<BoundingBoxConstraint>> rounding_limits_{};
+  vector<solvers::PerspectiveLinearCost> footstep_perspective_costs_{};
 
   std::shared_ptr<QuadraticCost> ankle_torque_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;

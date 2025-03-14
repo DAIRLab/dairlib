@@ -219,7 +219,7 @@ void IDMPC::MakeMPCCosts() {
       velocity_vars(params_.N));
 
   smoothness_cost_ = std::make_shared<QuadraticErrorCost<double>>(
-      1e-6 * MatrixXd::Identity(prog_.num_vars(), prog_.num_vars()),
+      1e-5 * MatrixXd::Identity(prog_.num_vars(), prog_.num_vars()),
       VectorXd::Zero(prog_.num_vars())
   );
 

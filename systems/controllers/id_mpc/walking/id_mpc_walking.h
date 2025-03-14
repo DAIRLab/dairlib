@@ -8,8 +8,17 @@
 #include "systems/controllers/id_mpc/id_mpc.h"
 #include "systems/controllers/id_mpc/constraints/point_position_constraint.h"
 #include "systems/controllers/id_mpc/constraints/alip_mapping_constraint.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
+
+/*!
+ * class for cascaded-fidelity whole-body MPC,
+ * where the model switches to al ALIP model after the whole-body MPC horizon.
+ * Note that the ALIP model is not adjusted to be in the yaw-coordinates of
+ * the final state, this implementation is only valid for when the x-axis of
+ * the robot is aligned with the world x-axis
+ */
 
 class IDMPCWalking {
  public:
@@ -50,15 +59,23 @@ class IDMPCWalking {
 
   void UpdateALIPTerms(const MPCReference& reference);
 
+  void UpdateALIPCosts(const Eigen::Vector2d& vdes,
+                       const alip_utils::Stance& stance);
+
   void MakeFootsteps();
   void MakeALIPTerms();
   void MakeSwingTrajCosts();
   void MakeGroundConstraints();
   void MakeFootLevelingCosts();
+  void MakeALIPCosts(
+      int num_alips,
+      const std::vector<drake::solvers::VectorXDecisionVariable>& pp_tmp);
 
 
   IDMPC mpc_;
   GaitParams params_;
+  double alip_mass_;
+  double alip_height_;
 
   std::vector<drake::solvers::VectorXDecisionVariable> pp_; // Footstep pos
   std::vector<drake::solvers::VectorXDecisionVariable> xa_; // ALIP states
@@ -78,6 +95,12 @@ class IDMPCWalking {
   std::vector<std::shared_ptr<solvers::sqp::SqpQuadraticCost>>
   alip_footstep_costs_;
 
+
+  std::vector<Eigen::Matrix4d> PIs_;
+  std::vector<Eigen::Matrix<double, 4, 2>> gs_;
+  Eigen::Matrix4d Qa_;
+  Eigen::Matrix4d Qaf_;
+  Eigen::Matrix2d Ra_;
 };
 
 }

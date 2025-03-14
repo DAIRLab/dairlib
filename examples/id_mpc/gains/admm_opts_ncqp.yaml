@@ -1,5 +1,5 @@
 rho: 1.0
-max_iterations: 1
+max_iterations: 0
 tolerance: 1e-3
 verbose: false
 polish_type_int: 1

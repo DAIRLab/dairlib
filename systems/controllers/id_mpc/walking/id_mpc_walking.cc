@@ -1,12 +1,15 @@
 #include "id_mpc_walking.h"
 #include "solvers/sqp/relative_position_cost.h"
-#include "systems/controllers/footstep_planning/alip_utils.h"
 
 namespace dairlib::systems::controllers::id_mpc {
 
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
+using Eigen::Matrix4d;
 using Eigen::MatrixXd;
+
+using alip_utils::Stance;
 
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
@@ -126,19 +129,42 @@ void IDMPCWalking::MakeALIPTerms() {
       alip_utils::ResetDiscretization::kFOH;
   auto ctx = dynamics().get_plant().CreateDefaultContext();
   alip_params.mass = dynamics().get_plant().CalcTotalMass(*ctx);
+  alip_mass_ = alip_params.mass;
+  alip_height_ = alip_params.height;
   alip_utils::AddS2SDynamicsConstraints(
     alip_params, xa_, pp_tmp, &mutable_mpc().get_prog()
   );
 
+  // Setup ALIP costs
+  Qa_ = 10.0 * Matrix4d::Identity();
+  Qaf_ = 100.0 * Matrix4d::Identity();
+  Ra_ = 15.0 * Eigen::Matrix2d::Identity();
+
+  Matrix4d PI0;
+  Matrix4d PI1;
+  Eigen::Matrix<double, 4, 2> g0;
+  Eigen::Matrix<double, 4, 2> g1;
+  alip_utils::MakeProjectionToP2Orbit(
+      alip_params, PI0, PI1, g0, g1);
+  PIs_ = {PI0, PI1};
+  gs_ = {g0, g1};
+  MakeALIPCosts(num_alips, pp_tmp);
+
+}
+
+void IDMPCWalking::MakeALIPCosts(
+    int num_alips,
+    const std::vector<drake::solvers::VectorXDecisionVariable>& pp_tmp) {
+  auto& prog = mpc_.get_prog();
   for (int i = 0; i < num_alips; ++i) {
     auto state_cost = std::make_shared<solvers::sqp::SqpQuadraticCost>(
-        Eigen::Matrix4d::Identity(), Eigen::Vector4d::Zero(), 0);
+        Matrix4d::Identity(), Vector4d::Zero(), 0);
     prog.AddCost(state_cost, xa_.at(i));
     alip_state_costs_.push_back(state_cost);
   }
   for (int i = 0; i < num_alips - 1; ++i) {
     auto footstep_cost = std::make_shared<solvers::sqp::SqpQuadraticCost>(
-        Eigen::Matrix4d::Identity(), Eigen::Vector4d::Zero(), 0);
+        Matrix4d::Identity(), Vector4d::Zero(), 0);
     prog.AddCost(
         footstep_cost,
         {pp_tmp.at(i).head<2>(), pp_tmp.at(i+1).head<2>()});
@@ -152,6 +178,7 @@ void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   // (non-inclusive) and make that foot the stance foot for alip
   double t_final = reference.knot_times_.back();
   double t_prev_impact = 0;
+  Stance stance;
   for (int i = params_.mpc_N - 1; i >= 0; --i) {
     if (not reference.touchdown_ee_names_.at(i).empty()) {
       alip_mapping_constraint_->set_contact_point(
@@ -159,9 +186,24 @@ void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
           reference.touchdown_ee_points_.at(i)
       );
       t_prev_impact = reference.knot_times_.at(i);
+      if (reference.touchdown_ee_names_.at(i) == "toe_left") {
+        stance = Stance::kLeft;
+      } else {
+        stance = Stance::kRight;
+      }
       break;
     }
   }
+  double t_remain = (params_.t_ss + params_.t_ds) - (t_final - t_prev_impact);
+  if (not reference.touchdown_ee_names_.back().empty()) {
+    t_remain = 0;
+  }
+  MatrixXd A_dyn = MatrixXd::Zero(4, 8);
+  MatrixXd Ad = alip_utils::CalcAd(alip_height_, alip_mass_, t_remain);
+  A_dyn.leftCols(4) = Ad;
+  A_dyn.rightCols(4) = -MatrixXd::Identity(4, 4);
+  initial_s2s_state_constraint_->UpdateCoefficients(A_dyn, VectorXd::Zero(4));
+  UpdateALIPCosts(reference.vdes_, stance);
 }
 
 std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(
@@ -171,6 +213,51 @@ std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(
     sol.push_back(mpc_.GetDecisionVariableValue(p, z));
   }
   return sol;
+}
+
+void IDMPCWalking::UpdateALIPCosts(const Eigen::Vector2d& vdes,
+                                   const Stance& stance) {
+  // state costs
+  int start_period = stance == Stance::kLeft ? 0 : 1;
+  for (size_t i = 0; i < xa_.size() - 1; ++i) {
+    const Matrix4d& PI = PIs_.at((start_period + i) % 2);
+    const Eigen::Matrix<double, 4, 2>& g = gs_.at((start_period + i) % 2);
+    Matrix4d Q = PI.transpose() * Qa_ * PI;
+    Vector4d q = -2 * Q * g * vdes;
+    Q += 1e-5 * Matrix4d::Identity();
+    alip_state_costs_.at(i)->UpdateCoefficients(2.0 * Q, q, 0);
+  }
+
+  int final_period = stance == Stance::kLeft ? xa_.size() - 1 : xa_.size();
+  const Matrix4d& PI = PIs_.at(final_period % 2);
+  const Eigen::Matrix<double, 4, 2>& g = gs_.at((final_period) % 2);
+  Matrix4d Q = PI.transpose() * Qaf_ * PI;
+  Vector4d q = -2 * Q * g * vdes;
+  Q += 1e-5 * Matrix4d::Identity();
+  alip_state_costs_.back()->UpdateCoefficients(Q, q, 0);
+
+  // footstep costs
+  alip_utils::AlipGaitParams gait_params;
+  gait_params.height = alip_height_;
+  gait_params.double_stance_duration = params_.t_ds;
+  gait_params.single_stance_duration = params_.t_ss;
+  gait_params.reset_discretization_method =
+      alip_utils::ResetDiscretization::kFOH;
+  gait_params.desired_velocity = vdes;
+  gait_params.initial_stance_foot = stance;
+  gait_params.stance_width = params_.stance_width;
+  gait_params.mass = alip_mass_;
+  const auto ud = alip_utils::MakeP2Orbit(gait_params);
+
+  Eigen::Matrix<double, 2, 4> r;
+  r.leftCols<2>() = -Eigen::Matrix2d::Identity();
+  r.rightCols<2>() = Eigen::Matrix2d::Identity();
+
+  Matrix4d Qr = 2 * r.transpose() * Ra_ * r;
+  for (size_t i = 0; i < alip_footstep_costs_.size(); ++i) {
+    Vector4d b = - 2 * r.transpose() * Ra_ * ud[i % 2];
+    alip_footstep_costs_.at(i)->UpdateCoefficients(Qr, b, 0);
+  }
 }
 
 void IDMPCWalking::MakeGroundConstraints() {

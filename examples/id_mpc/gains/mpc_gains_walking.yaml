@@ -1,5 +1,5 @@
 # Horizon params
-N: 10
+N: 20
 dt: 0.04
 num_full_torque_knots: 2
 mu: 0.8
@@ -7,8 +7,8 @@ mu: 0.8
 # position weights
 Wq: [
   0.0001, 0.0001, 0.0001, 0.0001, 0.1, 0.1, 1,  # Quaternion part, linear part
-  0.5, 1, 0.1, 0.1, 0.1, 1,
-  0.5, 1, 0.1, 0.1, 0.1, 1
+  0.01, 1, 0.1, 0.1, 0.1, 1,
+  0.01, 1, 0.1, 0.1, 0.1, 1
 ]
 
 Wrot : [0.1, .1, 1]

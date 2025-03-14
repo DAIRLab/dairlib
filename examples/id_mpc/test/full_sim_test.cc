@@ -12,7 +12,7 @@ const std::string gait = "examples/id_mpc/gains/gait_params_walking.yaml";
 const std::string solver_opts = "examples/id_mpc/gains/ncqp_opts.yaml";
 const std::string pd_gains = "examples/id_mpc/gains/pd_gains_standing.yaml";
 const std::string terrain =
-    "examples/perceptive_locomotion/terrains/flat.yaml";
+    "examples/perceptive_locomotion/terrains/stones.yaml";
 const std::string sim_opts =
     "examples/perceptive_locomotion/standalone_sim_params.yaml";
 

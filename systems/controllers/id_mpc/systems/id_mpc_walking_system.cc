@@ -184,7 +184,7 @@ std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcFootstepLocations(
   std::vector<Vector3d> pp = std::vector<Vector3d>(
       trajopt_.n_footsteps(),Vector3d::Zero());
 
-  int idx = 1;
+  int idx = 0;
   const auto& plant = trajopt_.dynamics().get_plant();
 
   for (size_t i = 0; i < ref.touchdown_ee_names_to_update_.size(); ++i) {

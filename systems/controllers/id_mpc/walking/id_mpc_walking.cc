@@ -6,6 +6,8 @@ namespace dairlib::systems::controllers::id_mpc {
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
+
+using Eigen::Matrix3d;
 using Eigen::Matrix4d;
 using Eigen::MatrixXd;
 
@@ -39,6 +41,10 @@ void IDMPCWalking::UpdateProblemData(
     foothold->UpdatePolygons(footholds);
   }
   UpdateALIPTerms(reference);
+  for (int i = 0; i < pp_.size(); ++i) {
+    footstep_hyst_costs_.at(i)->UpdateReference(
+        mpc_.GetDecisionVariableValue(pp_.at(i), prev_sol));
+  }
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -74,6 +80,11 @@ void IDMPCWalking::MakeFootsteps() {
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
+    auto step_hyst_cost =
+        std::make_shared<solvers::sqp::QuadraticErrorCost<double>>(
+             3.0 * Matrix3d::Identity(), Vector3d::Zero());
+    prog.AddCost(step_hyst_cost, pp_.at(i));
+    footstep_hyst_costs_.push_back(step_hyst_cost);
   }
 
   // Make the touchdown constraints, noting that adding the constraint to the

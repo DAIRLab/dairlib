@@ -29,8 +29,8 @@ void ConvexPolygon::ReExpressInNewFrame(const Matrix3d& R_WF,
                                         const Vector3d& p_OF_W) {
   // A (R_WF x_F + p_OF_W) = b
   // (A R_WF) x_f = (b - A p_OF_W)
-  b_ -= A_ * p_OF_W;
-  b_eq_ -= A_eq_ * p_OF_W;
+  b_ = b_ - A_ * p_OF_W;
+  b_eq_ = b_eq_ - A_eq_ * p_OF_W;
   A_ = A_ * R_WF;
   A_eq_ = A_eq_ * R_WF;
 

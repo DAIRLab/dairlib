@@ -94,7 +94,8 @@ class IDMPCWalking {
   alip_state_costs_;
   std::vector<std::shared_ptr<solvers::sqp::SqpQuadraticCost>>
   alip_footstep_costs_;
-
+  std::vector<std::shared_ptr<solvers::sqp::QuadraticErrorCost<double>>>
+  footstep_hyst_costs_;
 
   std::vector<Eigen::Matrix4d> PIs_;
   std::vector<Eigen::Matrix<double, 4, 2>> gs_;

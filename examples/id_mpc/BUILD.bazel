@@ -46,6 +46,7 @@ cc_library(
     hdrs = ["id_mpc_full_sim.h"],
     deps = [
         ":cassie_mpc_utils",
+        "//examples/id_mpc/systems:id_mpc_walking_debug_visualizer",
         "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",
         "//lcm:lcm_log_sink",

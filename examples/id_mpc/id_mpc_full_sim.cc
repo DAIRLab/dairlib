@@ -7,6 +7,7 @@
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/id_mpc/cassie_mpc_utils.h"
+#include "examples/id_mpc/systems/id_mpc_walking_debug_visualizer.h"
 #include "examples/perceptive_locomotion/systems/cassie_radio_operator.h"
 
 #include "systems/controllers/id_mpc/systems/joint_pd_controller.h"
@@ -99,6 +100,8 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf);
   auto mpc_visualizer = builder.AddSystem<LcmConfigurationDrawer>(
       plant_visualizer->get_meshcat(), urdf, "q", 8);
+  auto debug_visualizer = builder.AddSystem<IDMPCWalkingDebugVisualizer>(
+      plant_visualizer->get_meshcat());
 
   multibody::AddSteppingStonesToMeshcatFromYaml(
       plant_visualizer->get_meshcat(), terrain
@@ -159,6 +162,10 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   builder.Connect(
       mpc_system->get_output_port_mpc_solution(),
       pd_controller->get_input_port_lcm_traj()
+  );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_debug(),
+      debug_visualizer->get_input_port()
   );
   builder.Connect(
     pd_controller->get_output_port(),

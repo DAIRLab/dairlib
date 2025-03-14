@@ -27,7 +27,7 @@ struct GaussNewtonApproximation {
 
 
 /*!
- * Abstract class for a nonlinear cost of the form ||f(x) - fx||^2
+ * Abstract class for a nonlinear cost of the form ||f(x) - fx||_Q^2
  * @tparam T double or AutoDiffXd.
  */
 template <typename T>
@@ -52,7 +52,7 @@ template <typename T>
   virtual void EvaluateInnerTerm(const Eigen::Ref<const Eigen::VectorXd>& x,
                                  Eigen::VectorXd* y) const = 0;
 
-  void EvaluateCost(const Eigen::Ref<const drake::VectorX<T>>& x,
+   virtual void EvaluateCost(const Eigen::Ref<const drake::VectorX<T>>& x,
                     drake::VectorX<T>* y) const;
 
   virtual void UpdateReference(const Eigen::VectorXd& y) = 0;

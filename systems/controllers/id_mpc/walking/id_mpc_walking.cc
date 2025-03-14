@@ -22,6 +22,7 @@ IDMPCWalking::IDMPCWalking(
   MakeSwingTrajCosts();
   MakeGroundConstraints();
   MakeFootLevelingCosts();
+  MakeALIPTerms();
 }
 
 void IDMPCWalking::UpdateProblemData(
@@ -34,6 +35,7 @@ void IDMPCWalking::UpdateProblemData(
   for (auto& foothold: footholds_) {
     foothold->UpdatePolygons(footholds);
   }
+  UpdateALIPTerms(reference);
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -65,6 +67,7 @@ void IDMPCWalking::MakeFootsteps() {
   int intervals = std::round((params_.t_ss + params_.t_ds) / params_.mpc_dt);
 
   DRAKE_DEMAND(params_.footstep_horizon * intervals > params_.mpc_N);
+  DRAKE_DEMAND(params_.mpc_N % intervals == 0);
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
@@ -87,6 +90,7 @@ void IDMPCWalking::MakeALIPTerms() {
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     xa_.push_back(prog.NewContinuousVariables(4, "xa_" + std::to_string(i)));
+    prog.SetInitialGuess(xa_.back(), VectorXd::Zero(4));
   }
   alip_mapping_constraint_ = std::make_shared<ALIPMappingConstraint>(
       dynamics());
@@ -95,6 +99,20 @@ void IDMPCWalking::MakeALIPTerms() {
       alip_mapping_constraint_,
       {mpc_.position_vars(params_.mpc_N), mpc_.velocity_vars(params_.mpc_N), xa_.back()}
   );
+}
+
+void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
+  // find the touchdown event closest to the end of the horizon
+  // (non-inclusive) and make that foot the stance foot for alip
+  for (int i = params_.mpc_N - 1; i > 0; --i) {
+    if (not reference.touchdown_ee_names_.at(i).empty()) {
+      alip_mapping_constraint_->set_contact_point(
+          reference.touchdown_ee_names_.at(i),
+          reference.touchdown_ee_points_.at(i)
+      );
+      break;
+    }
+  }
 }
 
 std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(

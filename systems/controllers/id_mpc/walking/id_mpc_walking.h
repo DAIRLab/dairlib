@@ -1,7 +1,8 @@
 #pragma once
 
-#include "solvers/admm/convex_polygon_set_constraint.h"
 #include "solvers/admm/ncqp_solver.h"
+#include "solvers/admm/convex_polygon_set_constraint.h"
+#include "solvers/sqp/sqp_quadratic_cost.h"
 
 #include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
@@ -47,7 +48,7 @@ class IDMPCWalking {
       const std::vector<std::string>& foot_names,
       const std::vector<Eigen::Vector3d>& contact_points);
 
-  void UpdateALIPTerms();
+  void UpdateALIPTerms(const MPCReference& reference);
 
   void MakeFootsteps();
   void MakeALIPTerms();
@@ -69,6 +70,13 @@ class IDMPCWalking {
   foothold_bindings_;
 
   std::shared_ptr<ALIPMappingConstraint> alip_mapping_constraint_;
+  drake::solvers::LinearEqualityConstraint* initial_s2s_state_constraint_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> alip_dynamics_;
+  std::vector<std::shared_ptr<solvers::sqp::SqpQuadraticCost>>
+  alip_state_costs_;
+  std::vector<std::shared_ptr<solvers::sqp::SqpQuadraticCost>>
+  alip_footstep_costs_;
+
 };
 
 }

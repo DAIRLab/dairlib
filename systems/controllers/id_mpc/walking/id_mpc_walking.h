@@ -62,6 +62,7 @@ class IDMPCWalking {
 
   std::vector<drake::solvers::VectorXDecisionVariable> pp_; // Footstep pos
   std::vector<drake::solvers::VectorXDecisionVariable> xa_; // ALIP states
+  drake::solvers::VectorXDecisionVariable a0_;              // Initial ALIP x
   std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
   td_constraints_;
 

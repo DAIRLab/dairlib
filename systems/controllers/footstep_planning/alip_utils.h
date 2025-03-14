@@ -1,8 +1,9 @@
 #pragma once
 
 #include "solvers/nonlinear_constraint.h"
-#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib::systems::controllers::alip_utils {
 
@@ -147,4 +148,9 @@ void MakeProjectionToP2Orbit(
     Eigen::Matrix4d& PI_0, Eigen::Matrix4d& PI_1,
     Eigen::Matrix<double, 4, 2>& g_0, Eigen::Matrix<double, 4, 2>& g_1);
 
+void AddS2SDynamicsConstraints(
+    const alip_utils::AlipGaitParams& gait_params,
+    const std::vector<drake::solvers::VectorXDecisionVariable> xx,
+    const std::vector<drake::solvers::VectorXDecisionVariable> pp,
+    drake::solvers::MathematicalProgram* prog);
 }

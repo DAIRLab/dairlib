@@ -17,6 +17,11 @@ class MPCReference {
   drake::trajectories::PiecewisePolynomial<double> u_traj_;
 
   /*!
+   * Stash the desired velocity for locomotion controllers
+   */
+   Eigen::Vector2d vdes_;
+
+  /*!
    * Reference trajectories in task space
    */
   std::unordered_map<

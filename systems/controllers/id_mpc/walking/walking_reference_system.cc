@@ -82,6 +82,7 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
   mpc_reference.v_traj_ = CalcVelocityTraj(vdes);
   mpc_reference.lambda_traj_ = CalcLambdaTraj(mpc_reference.knot_times_, fsm_vector, mpc_reference.active_contacts_);
   mpc_reference.u_traj_ = CalcInputTraj(mpc_reference.knot_times_, fsm_vector);
+  mpc_reference.vdes_ = vdes;
 
   auto phase_vec = CalcSSPhaseVector(
       next_fsm, mpc_reference.knot_times_, fsm_vector);

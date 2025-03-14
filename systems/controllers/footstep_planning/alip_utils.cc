@@ -311,4 +311,36 @@ void MakeProjectionToP2Orbit(
   g_1 = A * g_0;
 }
 
+void AddS2SDynamicsConstraints(
+    const AlipGaitParams& gait_params,
+    const std::vector<drake::solvers::VectorXDecisionVariable> xx,
+    const std::vector<drake::solvers::VectorXDecisionVariable> pp,
+    drake::solvers::MathematicalProgram* prog) {
+
+  DRAKE_DEMAND(xx.size() == pp.size());
+
+  constexpr int nx = 4;
+  constexpr int np = 3;
+  MatrixXd M(nx, 2 * (nx + np));
+  M.setZero();
+
+  const auto[A, B] = AlipStepToStepDynamics(
+      gait_params.height,
+      gait_params.mass,
+      gait_params.single_stance_duration,
+      gait_params.double_stance_duration,
+      gait_params.reset_discretization_method
+  );
+
+  M.leftCols<4>() = A;
+  M.middleCols<4>(4) = -Matrix4d::Identity();
+  M.middleCols<2>(2 * nx) = -B;
+  M.middleCols<2>(2 * nx + np) = B;
+
+  for (int i = 0; i < pp.size() - 1; ++i) {
+    prog->AddLinearEqualityConstraint(
+        M, VectorXd::Zero(nx), {xx.at(i), xx.at(i+1), pp.at(i), pp.at(i+1)});
+  }
+}
+
 }

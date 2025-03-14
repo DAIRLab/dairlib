@@ -88,7 +88,13 @@ void IDMPCWalking::MakeFootsteps() {
 void IDMPCWalking::MakeALIPTerms() {
   auto& prog = mpc_.get_prog();
 
-  for (int i = 0; i < params_.footstep_horizon; ++i) {
+  int intervals = std::round((params_.t_ss + params_.t_ds) / params_.mpc_dt);
+  int non_alip_footsteps = params_.mpc_N / intervals - 1;
+  int num_alips = params_.footstep_horizon - non_alip_footsteps;
+
+  a0_ = prog.NewContinuousVariables(4, "a0");
+  prog.SetInitialGuess(a0_, VectorXd::Zero(4));
+  for (int i = 0; i < num_alips; ++i) {
     xa_.push_back(prog.NewContinuousVariables(4, "xa_" + std::to_string(i)));
     prog.SetInitialGuess(xa_.back(), VectorXd::Zero(4));
   }
@@ -97,19 +103,62 @@ void IDMPCWalking::MakeALIPTerms() {
 
   prog.AddConstraint(
       alip_mapping_constraint_,
-      {mpc_.position_vars(params_.mpc_N), mpc_.velocity_vars(params_.mpc_N), xa_.back()}
+      {
+        mpc_.position_vars(params_.mpc_N),
+        mpc_.velocity_vars(params_.mpc_N),
+        a0_
+      });
+
+  MatrixXd A_stance = MatrixXd::Identity(4, 8);
+  initial_s2s_state_constraint_ = prog.AddLinearEqualityConstraint(
+      A_stance, VectorXd::Zero(4), {a0_, xa_.front()}
+  ).evaluator().get();
+
+  std::vector<drake::solvers::VectorXDecisionVariable> pp_tmp;
+  for (int i = non_alip_footsteps; i < params_.footstep_horizon; ++i) {
+    pp_tmp.push_back(pp_.at(i));
+  }
+  alip_utils::AlipGaitParams alip_params;
+  alip_params.height = params_.pelvis_height - 0.1;
+  alip_params.double_stance_duration = params_.t_ds;
+  alip_params.single_stance_duration = params_.t_ss;
+  alip_params.reset_discretization_method =
+      alip_utils::ResetDiscretization::kFOH;
+  auto ctx = dynamics().get_plant().CreateDefaultContext();
+  alip_params.mass = dynamics().get_plant().CalcTotalMass(*ctx);
+  alip_utils::AddS2SDynamicsConstraints(
+    alip_params, xa_, pp_tmp, &mutable_mpc().get_prog()
   );
+
+  for (int i = 0; i < num_alips; ++i) {
+    auto state_cost = std::make_shared<solvers::sqp::SqpQuadraticCost>(
+        Eigen::Matrix4d::Identity(), Eigen::Vector4d::Zero(), 0);
+    prog.AddCost(state_cost, xa_.at(i));
+    alip_state_costs_.push_back(state_cost);
+  }
+  for (int i = 0; i < num_alips - 1; ++i) {
+    auto footstep_cost = std::make_shared<solvers::sqp::SqpQuadraticCost>(
+        Eigen::Matrix4d::Identity(), Eigen::Vector4d::Zero(), 0);
+    prog.AddCost(
+        footstep_cost,
+        {pp_tmp.at(i).head<2>(), pp_tmp.at(i+1).head<2>()});
+    alip_footstep_costs_.push_back(footstep_cost);
+  }
+
 }
 
 void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   // find the touchdown event closest to the end of the horizon
   // (non-inclusive) and make that foot the stance foot for alip
-  for (int i = params_.mpc_N - 1; i > 0; --i) {
+  double t_final = reference.knot_times_.back();
+  double t_prev_impact = 0;
+  for (int i = params_.mpc_N - 1; i >= 0; --i) {
     if (not reference.touchdown_ee_names_.at(i).empty()) {
       alip_mapping_constraint_->set_contact_point(
           reference.touchdown_ee_names_.at(i),
           reference.touchdown_ee_points_.at(i)
       );
+      t_prev_impact = reference.knot_times_.at(i);
       break;
     }
   }

@@ -339,25 +339,8 @@ void AlipS2SMPFC::MakeStateConstraints() {
 }
 
 void AlipS2SMPFC::MakeDynamicsConstraint() {
-  MatrixXd M(nx_, 2 * (nx_ + np_));
-  M.setZero();
-
-  const auto[A, B] = AlipStepToStepDynamics(
-      params_.gait_params.height,
-      params_.gait_params.mass,
-      params_.gait_params.single_stance_duration,
-      params_.gait_params.double_stance_duration,
-      params_.gait_params.reset_discretization_method
-  );
-
-  M.leftCols<4>() = A;
-  M.middleCols<4>(4) = -Matrix4d::Identity();
-  M.middleCols<2>(2 * nx_) = -B;
-  M.middleCols<2>(2 * nx_ + np_) = B;
-  for (int i = 0; i < params_.nmodes - 1; ++i) {
-    prog_->AddLinearEqualityConstraint(
-        M, VectorXd::Zero(nx_), {xx_.at(i), xx_.at(i+1), pp_.at(i), pp_.at(i+1)});
-  }
+  alip_utils::AddS2SDynamicsConstraints(
+      params_.gait_params, xx_, pp_, prog_.get_mutable());
 }
 
 void AlipS2SMPFC::MakeInitialConditionsConstraints() {

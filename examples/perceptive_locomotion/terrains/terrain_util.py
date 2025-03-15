@@ -263,11 +263,11 @@ def make_block_perlin(grid_size, bins):
 def random_stepping_stones(seed, rows, cols, savefile = None):
     rng = np.random.default_rng(seed)
     base_len = 1.35
-    y_variation = 0.05
-    x_variation = 0.03
-    z_variation = 0.05
-    x_dist = 0.6
-    y_dist = 0.65
+    y_variation = 0.075
+    x_variation = 0.075
+    z_variation = 0.0
+    x_dist = 0.65
+    y_dist = 0.6
 
     # initialize stepping stone geometry with the start, end, and floor blocks
     xs = [0.0, 1.5 + (rows + 1) * x_dist, 5.0]
@@ -281,8 +281,8 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
 
     z = 0
     for r in range(rows):
-        x = base_len + x_dist * r + rng.uniform(-x_variation, x_variation)
         for c in range(cols):
+            x = base_len + x_dist * r + rng.uniform(-x_variation, x_variation)
             y = rng.uniform(-y_variation, y_variation) + y_dist * (c - 0.5 * (cols - 1))
             z = rng.uniform(-z_variation, z_variation)
             xs.append(x)
@@ -290,7 +290,7 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
             zs.append(z)
             normals.append(rng.uniform([-0.04, -0.04, 1.0], [0.04, 0.04, 1.0]))
             lxs.append(rng.uniform(0.4, 0.45))
-            lys.append(rng.uniform(0.45, 0.5))
+            lys.append(rng.uniform(0.4, 0.5))
             lzs.append(0.3)
             yaws.append(rng.uniform(-0.1, 0.1))
 
@@ -304,8 +304,9 @@ def random_stepping_stones(seed, rows, cols, savefile = None):
 
 if __name__ == '__main__':
     length = 12.0
-    sine_wave(int(length / 0.1), length, 1.0, 0.1, np.pi)
+    # sine_wave(int(length / 0.1), length, 1.0, 0.1, np.pi)
 
+    random_stepping_stones(10, 5, 3, None)
     # for i in range(20):
     #     fname = (f'bindings/pydairlib/perceptive_locomotion/sim_experiments/'
     #              f'terrains/random_stones_{i}.yaml')

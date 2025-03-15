@@ -68,7 +68,7 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       goal_location
   );
 
-  double dt = 0.0075;
+  double dt = 0.01;
 
   // Add the MPC and PD Controller
   auto dynamics = MakeCassieDynamics();

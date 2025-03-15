@@ -82,7 +82,7 @@ void IDMPCWalking::MakeFootsteps() {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
     auto step_hyst_cost =
         std::make_shared<solvers::sqp::QuadraticErrorCost<double>>(
-             3.0 * Matrix3d::Identity(), Vector3d::Zero());
+             0.5 * Matrix3d::Identity(), Vector3d::Zero());
     prog.AddCost(step_hyst_cost, pp_.at(i));
     footstep_hyst_costs_.push_back(step_hyst_cost);
   }

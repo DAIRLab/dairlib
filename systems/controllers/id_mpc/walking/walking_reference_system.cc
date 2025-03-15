@@ -63,7 +63,7 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
 
   const auto &robot_output =
       get_input_port_state().Eval<OutputVector<double>>(context);
-  const auto vdes = get_input_port_vdes().Eval(context);
+  const auto vdes = 1.5 * get_input_port_vdes().Eval(context);
 
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_output.GetState(), plant_context_);

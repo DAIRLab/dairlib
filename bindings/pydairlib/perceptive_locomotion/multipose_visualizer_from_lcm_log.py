@@ -37,7 +37,7 @@ from pydairlib.perceptive_locomotion.results import analysis_utils
 
 def ground_truth_main():
     channel_x = "CASSIE_STATE_SIMULATION"
-    num_poses = 5
+    num_poses = 6
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -49,7 +49,7 @@ def ground_truth_main():
         lcmlog, default_channels, 0, -1, mbp_plots.load_state_channel,  # processing callback
         plant, channel_x)
 
-    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.1, 0.6)
+    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.15, 0.6)
     visualizer.AddSteppingStonesFromYaml(filename_stones)
     while(True):
         continue
@@ -59,9 +59,9 @@ def perceptive_main():
     filename_log = sys.argv[1]
     grid_maps, robot_output = analysis_utils.get_grid_maps_from_log(filename_log)
     
-    start_fraction = 0.1
-    end_fraction = 0.95
-    num_poses = 5
+    start_fraction = 0.125
+    end_fraction = 0.5
+    num_poses = 6
     visualizer = multipose_visualizer_main(
         robot_output,
         num_poses,
@@ -78,7 +78,7 @@ def perceptive_main():
         dtype=int
     )
     for i, idx in enumerate(map_idx):
-        alpha = 1.0 #min(float(len(map_idx) - i) / len(map_idx) + 0.1, 1.0)
+        alpha = min(float(len(map_idx) - i) / len(map_idx) + 0.1, 1.0)
         grid_map_visualizer.SetRgba(0.1, 0.1, 0.9, alpha)
         grid_map_visualizer.DrawGridMap(grid_maps[idx], ['elevation'], f'{idx}_')
     
@@ -100,6 +100,8 @@ def look_at(meshcat, point_of_interest, cam_pos_local):
         "/Lights/PointLightNegativeX/<object>",
         RigidTransform(
             RotationMatrix(), point_of_interest + np.array([-2.0, 0.0, 4.0])))
+    meshcat.SetProperty(
+        "/Lights/PointLightNegativeX/<object>", "intensity", 200)
 
 
 def multipose_visualizer_main(robot_output, num_poses, start_fraction, end_fraction):

@@ -18,6 +18,9 @@ using geometry::ConvexPolygonSet;
 using solvers::sqp::RelativePositionCost;
 using solvers::ConvexPolygonSetConstraint;
 
+static constexpr double kInfinity = std::numeric_limits<double>::infinity();
+
+
 IDMPCWalking::IDMPCWalking(
     IDMPCParams params, std::unique_ptr<ConstrainedDynamicsInfo> dynamics,
     GaitParams gait_params) :
@@ -86,6 +89,21 @@ void IDMPCWalking::MakeFootsteps() {
     prog.AddCost(step_hyst_cost, pp_.at(i));
     footstep_hyst_costs_.push_back(step_hyst_cost);
   }
+
+  // TODO (@Brian-Acosta) This crossover constraint is implemented in the world
+  //  frame as written. Ideally we would have only a collision constraint for
+  //  the whole-body knot points, and only a local frame crossover constraint
+  //  for the ALIP knot points
+  for (size_t i = 0; i < pp_.size(); ++i) {
+    no_crossover_c_.push_back(
+        prog.AddLinearConstraint(
+            MatrixXd::Ones(1, 2),
+            VectorXd::Constant(1, -kInfinity),
+            VectorXd::Constant(1, kInfinity),
+            {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
+        ));
+  }
+
 
   // Make the touchdown constraints, noting that adding the constraint to the
   // first 2 timesteps would make the problem overconstrained
@@ -215,6 +233,15 @@ void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   A_dyn.rightCols(4) = -MatrixXd::Identity(4, 4);
   initial_s2s_state_constraint_->UpdateCoefficients(A_dyn, VectorXd::Zero(4));
   UpdateALIPCosts(reference.vdes_, stance);
+
+  // get the current stance ( not the initial ALIP stance) and use it to update
+  // the crossover constraint
+  int i = 0;
+  while (reference.touchdown_ee_names_.at(i).empty()) {
+    ++i;
+  }
+  Stance curr_stance = reference.touchdown_ee_names_.at(i) == "toe_left" ? Stance::kLeft : Stance::kRight;
+  UpdateCrossoverConstraint(curr_stance);
 }
 
 std::vector<VectorXd> IDMPCWalking::get_footstep_solutions(
@@ -268,6 +295,19 @@ void IDMPCWalking::UpdateALIPCosts(const Eigen::Vector2d& vdes,
   for (size_t i = 0; i < alip_footstep_costs_.size(); ++i) {
     Vector4d b = - 2 * r.transpose() * Ra_ * ud[i % 2];
     alip_footstep_costs_.at(i)->UpdateCoefficients(Qr, b, 0);
+  }
+}
+
+
+void IDMPCWalking::UpdateCrossoverConstraint(Stance stance) {
+  double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
+  for (auto& c : no_crossover_c_) {
+    c.evaluator()->UpdateCoefficients(
+        Eigen::RowVector2d(-s, s),
+        VectorXd::Constant(1, -kInfinity),
+        VectorXd::Constant(1, -0.04)
+    );
+    s *= -1.0;
   }
 }
 

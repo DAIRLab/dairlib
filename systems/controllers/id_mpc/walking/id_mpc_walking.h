@@ -62,6 +62,9 @@ class IDMPCWalking {
   void UpdateALIPCosts(const Eigen::Vector2d& vdes,
                        const alip_utils::Stance& stance);
 
+  void UpdateCrossoverConstraint(alip_utils::Stance stance);
+
+
   void MakeFootsteps();
   void MakeALIPTerms();
   void MakeSwingTrajCosts();
@@ -86,6 +89,8 @@ class IDMPCWalking {
   std::vector<std::shared_ptr<solvers::ConvexPolygonSetConstraint>> footholds_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
   foothold_bindings_;
+
+  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>> no_crossover_c_{};
 
   std::shared_ptr<ALIPMappingConstraint> alip_mapping_constraint_;
   drake::solvers::LinearEqualityConstraint* initial_s2s_state_constraint_;

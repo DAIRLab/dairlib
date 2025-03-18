@@ -36,7 +36,7 @@ void NCSQPSolver::DoSQPStep(const Eigen::VectorXd &x,
     DoLineSearch(eval_constraint_viol_, eval_cost_, proj_to_config_space_, qp_,
                  lsparams_, sol);
   } else {
-    std::cout << "SQP qp solve failed with status: " << result.solution_result;
+    std::cout << "SQP qp solve failed with status: " << result.solution_result << "\n";
   }
 }
 

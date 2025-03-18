@@ -160,7 +160,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   // Impose constraint for timestep 1 and beyond to ensure that the plan doesn't go below the safe threshold/ground
   // but allow the 0th timestep to be where the ee currently is in order to not invalidate the x_[0] == x0 constraint.
   for (int i = 1; i < N_; i++) {
-    prog_.AddLinearConstraint(x_.at(i)[2] == options_.ee_z_state_min);
+    prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
   }
 
   input_costs_.resize(N_);
@@ -334,7 +334,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
 // Or, use the zfin_ trajectory if cost_type is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool verbose) const{
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
@@ -512,22 +512,27 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   cost_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*
     Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
 
-  if(verbose){
+  if(verbose || print_cost_breakdown){
     std::cout<<"Error breakdown"<<std::endl;
     std::cout<<"\t total error contribution from x_ee: "<<error_contrib_ee_pos<<std::endl;
-    std::cout<<"\t total error contribution from x_obj: "<<error_contrib_obj_pos<<std::endl;
     std::cout<<"\t total error contribution from q_obj: "<<error_contrib_obj_orientation<<std::endl;
+    std::cout<<"\t total error contribution from x_obj: "<<error_contrib_obj_pos<<std::endl;
     std::cout<<"\t total error contribution from v_ee: "<<error_contrib_ee_vel<<std::endl;
     std::cout<<"\t total error contribution from w_obj: "<<error_contrib_obj_ang_vel<<std::endl;
     std::cout<<"\t total error contribution from v_obj: "<<error_contrib_obj_vel<<std::endl;
 
-    std::cout<<"\n\nCOST BREAKDOWN"<<std::endl;
+    std::cout<<"\nCOST BREAKDOWN"<<std::endl;
     std::cout<<"\t total cost contribution from x_ee: "<<cost_contrib_ee_pos<<std::endl;
-    std::cout<<"\t total cost contribution from x_obj: "<<cost_contrib_obj_pos<<std::endl;
     std::cout<<"\t total cost contribution from q_obj: "<<cost_contrib_obj_orientation<<std::endl;
+    std::cout<<"\t total cost contribution from x_obj: "<<cost_contrib_obj_pos<<std::endl;
     std::cout<<"\t total cost contribution from v_ee: "<<cost_contrib_ee_vel<<std::endl;
     std::cout<<"\t total cost contribution from w_obj: "<<cost_contrib_obj_ang_vel<<std::endl;
     std::cout<<"\t total cost contribution from v_obj: "<<cost_contrib_obj_vel<<std::endl;
+
+    std::cout<<"\t total cost is: "<<cost<<std::endl;
+    std::cout<<"\t total cost object terms only is : "<<cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel<<std::endl;
+    std::cout<<"\n\n";
+
   }
 
   if(cost_type == 5){

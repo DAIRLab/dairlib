@@ -60,9 +60,12 @@ def main():
     latching_switch_b = 1
     latching_switch_x = 0
     latching_switch_y = 0
+    latching_switch_start = 0
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
+
+
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -74,6 +77,8 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
+                # use this print statement to find the button number
+                # print(f"Button {event.button} pressed")
                 if event.button == 0:
                     latching_switch_a = not latching_switch_a
                     print("Teleop Status: " + str(latching_switch_a))
@@ -86,7 +91,9 @@ def main():
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
                     print("Force C3 Mode Status: " + str(latching_switch_y))
-
+                if event.button == 7:
+                    latching_switch_start = not latching_switch_start  # Send signal when pressed
+                    print("Print cost breakdown status: " + str(latching_switch_start))
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
@@ -97,7 +104,7 @@ def main():
         # radio_msg.channel[2] = -joystick.get_axis(3)
         # radio_msg.channel[3] = joystick.get_axis(2)
 
-
+        radio_msg.channel[7] = latching_switch_start
         radio_msg.channel[13] = latching_switch_b
         radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x

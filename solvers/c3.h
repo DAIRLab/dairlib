@@ -45,7 +45,7 @@ class C3 {
   /// Compute the MPC cost, using previously solved MPC solution
   /// @return The cost and the full state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-    int simulate_dynamics_for_cost = 2, bool force_tracking_disabled = false, bool verbose = false) const;
+    int simulate_dynamics_for_cost = 2, bool force_tracking_disabled = false, bool print_cost_breakdown = false, bool verbose = false) const;
   /// This is a helper function to simulate the dynamics with PD tracking control for the end effector
   /// plans and the control input plans when computing cost types 3,4 and 5.
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> SimulatePDControl(bool force_tracking_disabled = false, bool verbose = false) const;

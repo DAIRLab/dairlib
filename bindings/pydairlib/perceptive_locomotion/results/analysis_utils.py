@@ -517,7 +517,7 @@ def do_perception_fig_layout_and_save(ax, fig, title: str, folder: str, limits=N
 
 def setup_plots():
     matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-    font = {'size': 20, 'family': 'serif'}
+    font = {'size': 25, 'family': 'serif'}
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
     matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
     matplotlib.rc('text', usetex=True)

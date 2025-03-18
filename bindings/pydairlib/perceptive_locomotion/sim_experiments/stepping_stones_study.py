@@ -2,6 +2,7 @@ import os
 import sys
 import signal
 import tempfile
+import subprocess
 import numpy as np
 from copy import deepcopy
 import multiprocessing as mp
@@ -416,10 +417,10 @@ def plot_timing_results(folder):
     fname = os.path.join(folder, 'timing_adaptation_results.npz')
     data = np.load(fname, allow_pickle=True)
     conditions = {
-        "results_gt": "Timing Adaptation",
-        "results_gt_no_timing": "No Timing Adaptation",
-        "results_perceptive": "Timing Adaptation (Perceptive)",
-        "results_perceptive_no_timing": "No Timing Adaptation (Perceptive)"
+        "results_gt": "Opt-T (GT)",
+        "results_gt_no_timing": "Fixed-T (GT) ",
+        "results_perceptive": "Opt-T (Perceptive)",
+        "results_perceptive_no_timing": "Fixed-T (Perceptive)"
     }
 
     markers = {
@@ -428,9 +429,9 @@ def plot_timing_results(folder):
         "results_perceptive": "^",
         "results_perceptive_no_timing": "o"
     }
-
+    
     setup_plots()
-
+    plt.figure(figsize=(14, 7))
     terrain_sizes = list(data["results_gt"].item().keys())
     for condition, title in conditions.items():
         success_rates = []
@@ -439,13 +440,16 @@ def plot_timing_results(folder):
             trial_data = terrain_size_data[terrain_size]
             success_rate = 100 * float(trial_data['success']) / float(trial_data['success'] + trial_data['fail'])
             success_rates.append(success_rate)
-        plt.plot(terrain_sizes, success_rates, label=title, marker=markers[condition])
+        plt.plot(terrain_sizes, success_rates, label=title, marker=markers[condition], linewidth=2, markersize=10)
 
     plt.title('Success Rates for Randomly Generated Stepping Stones')
     plt.xticks(terrain_sizes, terrain_sizes)
-    plt.xlabel('Minimum Stepping Stone Side Length (m)')
+    plt.xlabel('Minimum Stepping Stone Side Length, $d_{min}$ (m)')
     plt.ylabel('Success Rate (\\%)')
     plt.legend()
+    savefile = 'perceptive_locomotion_results_figures/stepping_stone_success.svg'
+    plt.savefig(savefile)
+    subprocess.run(['inkscape', '--export-type=svg', '--export-id=axes_1', savefile, '-o', savefile])
 
 
 def plot_margin_results(folder):
@@ -461,7 +465,8 @@ def plot_margin_results(folder):
         0.12: "^",
         0.15: "o"
     }
-
+    
+    plt.figure(figsize=(18, 10))
     for margin in margins:
         label = f'{margin:.2f} m'
         sizes = [*results[margin]]
@@ -474,8 +479,8 @@ def plot_margin_results(folder):
             success_rates.append(success_rate)
         plt.plot(sizes, success_rates, label=label, marker=markers[margin])
         plt.title('Stepping Stone Success vs. S3 Safety Margin')
-        plt.xlabel('$d_{min}$')
-        plt.ylabel('Success Rate')
+        plt.xlabel('Minimum Stepping Stone Side Length, $d_{min}$ (m)')
+        plt.ylabel('Success Rate (\\%)')
         plt.legend()
 
 

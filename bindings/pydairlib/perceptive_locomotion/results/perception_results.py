@@ -375,6 +375,7 @@ def plot_iou_results(results, title, savefile, edges=None):
 
 
 def plot_iou_vs_poly_iou(results, title, savefile):
+    plt.figure(figsize=(10,6))
     edges = np.linspace(0.75, 1.0, 20)
     for i, k in enumerate(['poly_iou', 'iou']):
         alpha = 0.8 * (1.0 - float(i) / len(results))

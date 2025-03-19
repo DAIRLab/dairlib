@@ -116,6 +116,17 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         !is_sample_within_workspace(candidate_states[i], c3_options));
       }
   }
+  else if(sampling_params.sampling_strategy == SAMPLE_IN_SHELL){
+    // This method of sampling uses the plant to set various positions, and then project samples in collision with the 
+    // object to the closest point on the object surface along with clearance and the end-effector's radius.
+    for (int i = 0; i < num_samples; i++){
+      do{
+      candidate_states[i] = generate_sample_in_shell( 
+        n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options);
+      } while(sampling_params.filter_samples_for_safety &&
+        !is_sample_within_workspace(candidate_states[i], c3_options));
+      }
+  }
   else{
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
   }
@@ -363,6 +374,85 @@ Eigen::VectorXd generate_sample_on_grid(
     // Generate a new sample if the projected sample is on the top or bottom surface of the object. i.e not near the sampling height.
     double epsilon = 0.001;
     if (projected_state[2] < sampling_params.sampling_height - epsilon || projected_state[2] > sampling_params.sampling_height + epsilon){
+      continue;
+    }
+
+    // Undo the update context.
+    UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, x_lcs);
+    return projected_state;
+  }
+}
+
+Eigen::VectorXd generate_sample_in_shell(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+  drake::systems::Context<double>* context, 
+  drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+  drake::systems::Context<drake::AutoDiffXd>* context_ad,
+  const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+  const SamplingC3SamplingParams& sampling_params,
+  const C3Options c3_options){
+  // Initialize the candidate state.
+  Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
+  // Generate a random sample location within the sampling region in the x and y
+  // directions in body frame.
+  // The z is set to sampling height.
+  // Regenerate if the sample is not in collision with the object.
+  
+  // This is instantiated here so that we can pass it by reference to the check_collision function and have it 
+  // directly modify this variable so it can be accessed in this function without recomputing the collision check.
+  int min_distance_index = -999;
+  while(true){
+    do {
+      // Center the sampling circle on the current ball location.
+      Vector3d object_xyz = x_lcs.segment(7, 3);
+      double x_samplec = object_xyz[0];
+      double y_samplec = object_xyz[1];
+      double z_samplec = object_xyz[2];
+
+      // Generate a random theta in the range [0, 2π].  This angle corresponds to
+      // angle about vertical axis.
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_real_distribution<> dis(0, 2 * PI);
+      double theta = dis(gen);
+
+      // Generate a random elevation angle in provided range.  This angle
+      // corresponds to elevation angle from vertical.
+      std::random_device rd_height;
+      std::mt19937 gen_height(rd_height());
+      std::uniform_real_distribution<> dis_height(sampling_params.min_angle_from_vertical,
+                                                  sampling_params.max_angle_from_vertical);
+      double elevation_theta = dis_height(gen_height);
+
+      // generate random sampling radius
+      std::random_device rd_radius;
+      std::mt19937 gen_radius(rd_radius());
+      std::uniform_real_distribution<> dis_radius(sampling_params.sampling_radius - 0.03, sampling_params.sampling_radius);
+      double sampling_radius = dis_radius(gen_radius);
+      // Update the hypothetical state's end effector location to the tested sample
+      // location.
+      candidate_state = x_lcs;
+      candidate_state[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
+      candidate_state[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
+      candidate_state[2] = z_samplec + sampling_radius * cos(elevation_theta);
+    }
+    while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index));
+
+    // Once we find a sample in collision, project it to the surface of the object.
+    Eigen::VectorXd projected_state = project_to_surface(candidate_state, min_distance_index, sampling_params, plant, context, contact_geoms);
+    
+    UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, projected_state);
+    if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index)){
+      continue; // If the projected state is still in collision, exit loop and generate a new sample.
+    }
+    
+    // Generate a new sample if the projected sample is on the top or bottom surface of the object. i.e not near the sampling height.
+    double epsilon = 0.001;
+    if (projected_state[2] < -0.01){
       continue;
     }
 

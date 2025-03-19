@@ -81,6 +81,19 @@ Eigen::VectorXd generate_sample_on_grid(
   const SamplingC3SamplingParams& sampling_params,
   const C3Options c3_options);
 
+Eigen::VectorXd generate_sample_in_shell(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+  drake::systems::Context<double>* context, 
+  drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+  drake::systems::Context<drake::AutoDiffXd>* context_ad,
+  const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+  const SamplingC3SamplingParams& sampling_params,
+  const C3Options c3_options);
+
 bool check_collision(
     const int& n_q,
     const int& n_v,

@@ -61,6 +61,7 @@ group "debug" {
 script "start_experiment_no_logs"{
     stop cmd "start_logging";
     stop cmd "start_logging_mjpc";
+    stop cmd "mujoco_mpc";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
@@ -69,6 +70,7 @@ script "start_experiment_no_logs"{
 
 script "start_experiment_with_logs"{
     stop cmd "start_logging_mjpc";
+    stop cmd "mujoco_mpc";
     restart cmd "start_logging";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
@@ -79,16 +81,18 @@ script "start_experiment_with_logs"{
 script "start_mjpc_experiment_no_logs"{
     stop cmd "start_logging";
     stop cmd "start_logging_mjpc";
+    stop cmd "mujoco_mpc";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
     restart cmd "franka_c3_no_controller";
     wait ms 50;
-    restart cmd "mujoco_mpc";
+    start cmd "mujoco_mpc";
 }
 
 script "start_mjpc_experiment_with_logs"{
     stop cmd "start_logging";
+    stop cmd "mujoco_mpc";
     restart cmd "start_logging_mjpc";
     restart cmd "franka_sim";
     restart cmd "franka_osc";

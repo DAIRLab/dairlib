@@ -75,8 +75,9 @@ Parser(plant).AddModels(jack_urdf.replace('jack.sdf', 'ground.urdf'))
 
 p_world_to_ground = p_world_to_franka + p_franka_to_ground
 X_W_Ground = RigidTransform(RotationMatrix(), p_world_to_ground)
+quaternion_input = Quaternion(x_lcs_desired[3:7]/np.linalg.norm(x_lcs_desired[3:7]))
 X_WGoal = RigidTransform(
-    quaternion=Quaternion(x_lcs_desired[3:7]), p=x_lcs_desired[7:10])
+    quaternion=quaternion_input, p=x_lcs_desired[7:10])
 plant.WeldFrames(
     plant.world_frame(), plant.GetFrameByName("base_link"), RigidTransform())
 plant.WeldFrames(

@@ -847,13 +847,30 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // type 3 based on if force tracking is on or off.
       std::pair<double,std::vector<Eigen::VectorXd>> cost_trajectory_pair;
       if(!crossed_cost_switching_threshold_){
-        cost_trajectory_pair = test_c3_object->CalcCost(
-          sampling_params_.cost_type_position_tracking, radio_out->channel[11],
-          verbose_);
+        if(i == 0){
+          // std::cout<<"calculating cost for sample "<<i<<std::endl;
+          cost_trajectory_pair = test_c3_object->CalcCost(
+            sampling_params_.cost_type_position_tracking, radio_out->channel[11], radio_out->channel[7],
+            verbose_);
+        }
+        else{
+          // std::cout<<"calculating cost for sample "<<i<<std::endl;
+          cost_trajectory_pair = test_c3_object->CalcCost(
+            sampling_params_.cost_type_position_tracking, radio_out->channel[11], false,
+            verbose_);
+        }
       }
       else{
-        cost_trajectory_pair = test_c3_object->CalcCost(
-          sampling_params_.cost_type, radio_out->channel[11], verbose_);
+        if(i == 0){
+          // std::cout<<"calculating cost for sample "<<i<<std::endl;
+          cost_trajectory_pair = test_c3_object->CalcCost(
+            sampling_params_.cost_type, radio_out->channel[11], radio_out->channel[7], verbose_);
+        }
+        else{
+          // std::cout<<"calculating cost for sample "<<i<<std::endl;
+          cost_trajectory_pair = test_c3_object->CalcCost(
+            sampling_params_.cost_type, radio_out->channel[11], false, verbose_);
+        }
       }
 
       double c3_cost = cost_trajectory_pair.first;

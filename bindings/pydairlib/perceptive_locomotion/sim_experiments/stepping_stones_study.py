@@ -170,6 +170,7 @@ def build_and_run_perceptive_sim(trial_params: TrialParams):
     )
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     terrain_segmentation.erosion_kernel_length = trial_params.safety_margin
+    terrain_segmentation.opencv_inpaint = False
 
     convex_decomposition = ConvexTerrainDecompositionSystem()
     sim_diagram = PerceptiveFullSimDiagram(trial_params.gains, trial_params.terrain, trial_params.sim_params)
@@ -328,14 +329,14 @@ def timing_study_main(fname):
     results_perceptive = {}
     results_perceptive_no_timing = {}
 
-    for terrain_size in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
+    for terrain_size in [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7]:
         study_params = TrialParams(
             gains="",
             terrain="",
             sim_params="",
             perceptive=False,
             terrain_size=terrain_size,
-            safety_margin=0.12
+            safety_margin=0.10
         )
         try:
             study_params.gains = gains
@@ -497,8 +498,8 @@ if __name__ == '__main__':
     if args.saved_results_folder:
         plot_timing_results(args.saved_results_folder)
         plt.figure()
-        plot_margin_results(args.saved_results_folder)
+        # plot_margin_results(args.saved_results_folder)
         plt.show()
     else:
         timing_study_main('../stepping_stone_study_results/timing_adaptation_results.npz')
-        perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')
+        # perception_study_main('../stepping_stone_study_results/margin_adaptation_results.npz')

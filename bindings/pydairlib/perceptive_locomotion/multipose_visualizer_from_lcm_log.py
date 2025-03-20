@@ -37,7 +37,7 @@ from pydairlib.perceptive_locomotion.results import analysis_utils
 
 def ground_truth_main():
     channel_x = "CASSIE_STATE_SIMULATION"
-    num_poses = 6
+    num_poses = 5
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -49,7 +49,7 @@ def ground_truth_main():
         lcmlog, default_channels, 0, -1, mbp_plots.load_state_channel,  # processing callback
         plant, channel_x)
 
-    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.15, 0.6)
+    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.05, 0.5)
     visualizer.AddSteppingStonesFromYaml(filename_stones)
     while(True):
         continue
@@ -59,9 +59,9 @@ def perceptive_main():
     filename_log = sys.argv[1]
     grid_maps, robot_output = analysis_utils.get_grid_maps_from_log(filename_log)
     
-    start_fraction = 0.125
-    end_fraction = 0.5
-    num_poses = 6
+    start_fraction = 0.1
+    end_fraction = 0.9
+    num_poses = 5
     visualizer = multipose_visualizer_main(
         robot_output,
         num_poses,

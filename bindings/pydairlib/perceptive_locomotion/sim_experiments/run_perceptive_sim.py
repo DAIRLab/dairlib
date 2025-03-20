@@ -69,6 +69,10 @@ def main():
             'inclination_criterion': seg_criteria.inclination_criterion,
         }
     )
+    terrain_segmentation.opencv_inpaint = False
+    terrain_segmentation.erosion_kernel_length = 0.1
+    terrain_segmentation.safety_hysteresis = 0.4
+
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     
     convex_decomposition = ConvexTerrainDecompositionSystem()

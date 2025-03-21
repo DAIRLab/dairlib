@@ -520,8 +520,8 @@ class ResultsAnalyzer:
             self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
                 self.messages_by_channel[
                     'SAMPLING_C3_DEBUG'][MESSAGE_KEY][:i_cutoff]
-            self.lcm_t_adj += lcm_t_of_last_goal_change
-            self.msg_t_adj += msg_t_of_last_goal_change
+            self.lcm_t_adj = lcm_t_of_last_goal_change
+            self.msg_t_adj = msg_t_of_last_goal_change
 
         if verbose:
             for channel, contents in self.messages_by_channel.items():

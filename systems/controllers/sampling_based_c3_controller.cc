@@ -1527,8 +1527,12 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // depends on whether using spline or arc trajectory type). 
   if ((travel_distance < sampling_params_.use_straight_line_traj_under &&
       sampling_params_.repositioning_trajectory_type == 0) ||
-      ((sampling_params_.repositioning_trajectory_type == 1 || sampling_params_.repositioning_trajectory_type == 2) &&
-       travel_angle < sampling_params_.use_straight_line_traj_within_angle) || (sampling_params_.repositioning_trajectory_type == 3 && (current_ee_location.head(2) - best_sample_location.head(2)).norm() < 5*1e-3)) {
+      ((sampling_params_.repositioning_trajectory_type == 1 ||
+        sampling_params_.repositioning_trajectory_type == 2) &&
+       travel_angle < sampling_params_.use_straight_line_traj_within_angle) ||
+      (sampling_params_.repositioning_trajectory_type == 3 &&
+       (current_ee_location.head(2) - best_sample_location.head(2)).norm() < 0.008)) {
+
     Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
     times[0] = 0;
     // Ensure the times used to define PiecewisePolynomial are increasing.
@@ -1808,21 +1812,23 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     }
 
   }
-  // use piecewise linear trajectory. Go up, go to point above sample, go back down to sample.
+
+  // use piecewise linear trajectory. Go up, go to point above sample, go back
+  // down to sample.
   else if(sampling_params_.repositioning_trajectory_type == 3){
     // std::cout << "Using piecewise linear trajectory for repositioning." << std::endl;
 
         // Define the waypoints for the three-leg repositioning.
         Eigen::Vector3d waypoint_above_ee = current_ee_location;
-        waypoint_above_ee(2) = sampling_params_.sampling_height + sampling_params_.repositioning_waypoint_height;
+        waypoint_above_ee(2) = sampling_params_.repositioning_waypoint_height;
     
         Eigen::Vector3d waypoint_above_sample = best_sample_location;
-        waypoint_above_sample(2) = sampling_params_.sampling_height + sampling_params_.repositioning_waypoint_height;
+        waypoint_above_sample(2) = sampling_params_.repositioning_waypoint_height;
     
         knots.col(0) = x_lcs;
         int i = 1;
         double step_size = sampling_params_.reposition_speed * dt_;
-    
+
         // First leg: straight line from current EE location to waypoint_above_ee.
         double dist_to_wp1 = (current_ee_location - waypoint_above_ee).norm();
         while ((i * step_size < dist_to_wp1) && (i < N_)) {

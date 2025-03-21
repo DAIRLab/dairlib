@@ -11,14 +11,7 @@
 #define PI 3.14159265359
 
 // Nominal quaternions for the object.
-#define QUAT_ALL_UP Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_RED_DOWN Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_BLUE_UP Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_ALL_DOWN Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_GREEN_UP Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_BLUE_DOWN Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_RED_UP Eigen::Quaterniond(1.0,0.0,0.0,0.0)
-#define QUAT_GREEN_DOWN Eigen::Quaterniond(1.0,0.0,0.0,0.0)
+#define QUAT_FLAT Eigen::Quaterniond(1.0,0.0,0.0,0.0)
 
 namespace dairlib {
 namespace systems {
@@ -66,7 +59,6 @@ class TargetGenerator
     const int& trajectory_type,
     const bool& use_changing_final_goal,
     const int& changing_final_goal_type,
-    const bool& prevent_three_topples_for_random_goal_gen,
     const double& traj_radius,
     const double& x_c,
     const double& y_c,
@@ -104,9 +96,6 @@ class TargetGenerator
                       dairlib::lcmt_timestamped_saved_traj* target) const;
   void SetRandomizedTargetFinalObjectPosition() const;
   void SetRandomizedTargetFinalObjectOrientation() const;
-  void CycleThroughOrientationSequence() const;
-
-  bool three_topples_required(const int new_orientation_index) const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex object_state_port_;
@@ -118,7 +107,6 @@ class TargetGenerator
 
   int trajectory_type_;
   bool use_changing_final_goal_;
-  bool prevent_three_topples_;
   double traj_radius_;
   double x_c_;
   double y_c_;
@@ -143,17 +131,14 @@ class TargetGenerator
   Eigen::VectorXd random_goal_radius_limits_;
   double resting_object_height_;
 
-  enum ChangingGoalType {CHANGING_GOAL_RANDOM,
-                         CHANGING_GOAL_ORIENTATION_SEQUENCE};
+  enum ChangingGoalType {CHANGING_GOAL_RANDOM};
   ChangingGoalType changing_goal_type_;
 
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;
 
-  // Nominal orientations for the jack to be balanced on the ground.
-  const std::vector<Eigen::Quaterniond> valid_orientations_{
-    QUAT_ALL_UP, QUAT_RED_DOWN, QUAT_BLUE_UP, QUAT_ALL_DOWN,
-    QUAT_GREEN_UP, QUAT_BLUE_DOWN, QUAT_RED_UP, QUAT_GREEN_DOWN};
+  // Nominal orientation for the T to be flat on the ground.
+  const std::vector<Eigen::Quaterniond> valid_orientations_{QUAT_FLAT};
 };
 
 }  // namespace systems

@@ -347,9 +347,10 @@ Eigen::VectorXd generate_sample_on_grid(
         sampling_params.grid_x_limits[1]);
       std::uniform_real_distribution<> dis_y(sampling_params.grid_y_limits[0],
         sampling_params.grid_y_limits[1]);
+      // These are in body frame.
       double x_sample = dis_x(gen);
       double y_sample = dis_y(gen);
-      double z_sample = sampling_params.sampling_height;
+      double z_sample = 0;
 
       // convert to world frame using x_lcs.
       Eigen::VectorXd x_lcs_world = x_lcs;
@@ -359,7 +360,7 @@ Eigen::VectorXd generate_sample_on_grid(
       candidate_state = x_lcs;
       candidate_state.head(3) = quat_object*Eigen::Vector3d(x_sample, y_sample, z_sample) + object_position;
       // This is done because our param is expressed in world frame already so the previous line gives the wrong z_value.
-      candidate_state[2] = z_sample; 
+      candidate_state[2] = sampling_params.sampling_height; 
     }
     while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index));
 
@@ -500,7 +501,7 @@ bool check_collision(
   min_distance_index = std::distance(distances.begin(), min_distance_it);
   double min_distance = *min_distance_it;
 
-  return min_distance <= 0;
+  return min_distance <= sampling_params.sample_projection_clearance - 1e-3;
 }
 
 

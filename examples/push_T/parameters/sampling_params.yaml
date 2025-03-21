@@ -17,14 +17,14 @@ fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
 sampling_radius: 0.16 #0.235
 
 # Height of sampling circle; used for circle perimeter (0, 1).
-sampling_height: 0.00
+sampling_height: 0.005
 
 # Grid limits for random sampling on grid.
 grid_x_limits: [-0.16, 0.16]
 grid_y_limits: [-0.16, 0.16]
 
 # clearance for sample projection.
-sample_projection_clearance: 0.008
+sample_projection_clearance: 0.028
 
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
@@ -50,7 +50,7 @@ spline_width: 0.17
 spherical_repositioning_radius: 0.18
 circular_repositioning_radius: 0.20
 circular_repositioning_height: 0.00
-reposition_speed: 0.20    # m/s
+reposition_speed: 0.18    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
 repositioning_trajectory_type: 3   # 0 is spline, 1 is spherical, 2 is circular, 3 is piecewise linear.
@@ -116,7 +116,7 @@ use_relative_hysteresis: true
 c3_to_repos_cost_fraction: 0.75
 c3_to_repos_cost_fraction_position_tracking: 0.6
 
-repos_to_c3_cost_fraction: 0.5
+repos_to_c3_cost_fraction: 0.9
 repos_to_c3_cost_fraction_position_tracking: 0.5
 
 repos_to_repos_cost_fraction: 0.3

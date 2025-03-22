@@ -329,8 +329,8 @@ def save_decomposition_debug_plots(debug_info, save_folder):
         ax, fig, 'Convex Polygons', save_folder, limits)
 
 
-def make_hist_figure(results, title, key, edges, log_x_axis=False):
-    plt.title(title)
+def make_hist_figure(ax, results, title, key, edges, log_x_axis=False):
+    ax.set_title(title)
     for i, r in enumerate(results):
         alpha = 0.8 * (1.0 - float(i) / len(results))
         sns.histplot(
@@ -338,16 +338,18 @@ def make_hist_figure(results, title, key, edges, log_x_axis=False):
             bins=edges,
             element='step',
             alpha=alpha,
-            stat='proportion'
+            stat='proportion',
+            ax=ax
         )
 
     if log_x_axis:
-        plt.gca().set_xscale('log')
-    if title not in ['Brick Steps', 'Grass']:
-        plt.legend([r['name'] for r in results])
-    if title in ['Lab', 'Brick Steps']:
-        plt.xticks([], [])
-        plt.minorticks_off()
+        ax.set_xscale('log')
+    if title in ['Grass'] and log_x_axis:
+        ax.legend([r['name'] for r in results])
+    if title in ['Grass', 'Brick Steps']:
+        ax.set_yticks([], [])
+        ax.set_ylabel('')
+        ax.minorticks_off()
 
 
 def plot_segmentation_run_time_results(results, title, savefile):
@@ -452,6 +454,44 @@ def plot_segmentation_profiling(results, env_name='', save_prefix=None):
     plot_iou_results(results, env_name, iou_save)
 
     if save_prefix is None:
+        plt.show()
+
+
+def make_combined_iou_results_results_figures(logfolder, savefolder):
+    
+    all_results = np.load(os.path.join(logfolder, precomputed_results_fname), allow_pickle=True)
+    data = all_results['data'].item()
+    utils.setup_plots()
+    
+    # Create a figure with 2 rows and 3 columns
+    fig, axs = plt.subplots(2, 3, figsize=(26, 13))
+    
+    # Runtime edges for log scale
+    runtime_edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
+    # IoU edges
+    iou_edges = np.linspace(0, 1, 21)
+    
+    # Plot each environment in its own column
+    col = 0
+    for env, results in data.items():
+        make_hist_figure(axs[0, col], results, env, 'runtime', runtime_edges, log_x_axis=True)
+        make_hist_figure(axs[1, col], results, env, 'iou', iou_edges)
+        
+        # Add x-axis labels only to the bottom row
+        if col == 1:
+            axs[1, col].set_xlabel('Frame-to-Frame IoU')
+            axs[0, col].set_xlabel('Segmentation Run Time (s)')
+
+        col += 1
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save figure if prefix is provided
+    if savefolder is not None:
+        plt.savefig(
+            os.path.join(savefolder,  's3_results_combined.svg')
+        )
+    else:
         plt.show()
 
 
@@ -698,10 +738,9 @@ def main():
     )
     pipeline_figure_log = os.path.join(args.data_root, 'lcmlog-vision-demo-sim')
 
-
     # Run the figure scripts
     make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
-
+    
     exit(0)
 
     plot_hysteresis_comparison(
@@ -716,7 +755,10 @@ def main():
         save_all_results(args.data_root)
         results_folder = output_folder
 
-    make_all_results_figures(results_folder, output_folder)
+    make_combined_iou_results_results_figures(results_folder, output_folder)
+    
+    exit(0)
+    
     make_segmentation_tiles(results_folder, output_folder)
     run_pipeline_figure_script(pipeline_figure_log)
 

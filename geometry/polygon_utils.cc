@@ -375,6 +375,11 @@ bool ValidateHoles(const MatrixXd& boundary, const std::vector<MatrixXd>& holes)
 
 double PolygonArea(const MatrixXd& verts) {
   // https://en.wikipedia.org/wiki/Shoelace_formula
+
+  if (verts.cols() < 3) {
+    return 0;
+  }
+
   double a_sum = 0;
   int n = verts.cols();
 

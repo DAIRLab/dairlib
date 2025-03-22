@@ -205,10 +205,6 @@ def calc_polygon_iou(results):
                 decomposer
             )
         )
-        
-        # iou of 0 caused by ACD non-robustness - discard
-        if poly_iou[-1] == 0:
-            poly_iou[-1] = np.nan
             
         if i % 5 == 0:
             print(f'{100.0 * float(i) / float(len(results["grid_maps"])):.2f}')

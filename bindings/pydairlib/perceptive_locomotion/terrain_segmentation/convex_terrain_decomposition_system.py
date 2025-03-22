@@ -37,6 +37,22 @@ def plot_polygons_with_holes(polys):
         plot_polygon_with_holes(p)
 
 
+def remove_collinear(boundary):
+    len = boundary.shape[0]
+    keep_idx = []
+    for i in range(len):
+        prev_idx = i - 1 if i > 0 else len - 1
+        next_idx = (i + 1) % len
+        p = boundary[prev_idx, :]
+        c = boundary[i, :]
+        n = boundary[next_idx, :]
+        if p[0] == c[0] == n[0] or p[1] == c[1] == n[1]:
+            continue
+        else:
+            keep_idx.append(i)
+    return boundary[keep_idx, :]
+
+
 def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
     safe_regions, hierarchy = cv2.findContours(
         mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
@@ -55,6 +71,7 @@ def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
     polygons = []
     for i, boundary in enumerate(safe_regions):
         boundary = np.fliplr(boundary.squeeze())
+        boundary = remove_collinear(boundary)
         if is_outer_contour(hierarchy[i]):
             boundary_points = np.zeros_like(boundary, dtype=float)
             for j in range(boundary_points.shape[0]):
@@ -67,6 +84,7 @@ def get_polygons_by_contour_extraction(mask: np.ndarray, grid: GridMap):
 
             while child_index > 0:
                 hole_boundary = np.fliplr(safe_regions[child_index].squeeze())
+                hole_boundary = remove_collinear(hole_boundary)
                 hole_points = np.zeros_like(
                     hole_boundary, dtype=float
                 )

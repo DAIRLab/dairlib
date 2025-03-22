@@ -5,8 +5,8 @@ changing_final_goal_type: 0  # 0 to randomize goal, 1 to cycle through orientati
 final_goal_time_tolerance: 45 # in seconds
 
 # Thresholds for position and orientation for reaching a goal successfully.
-position_success_threshold: 0.05
-orientation_success_threshold: 0.4   # 0.1 rad = 5.7 degrees
+position_success_threshold: 0.02
+orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
 
 random_goal_x_limits: [0.42, 0.5]  #0.27, 0.5]
 random_goal_y_limits: [0.02, 0.25]   # 0.35]

@@ -54,6 +54,8 @@ def main(log_type):
         mjpc_jack = op.join(op.dirname(dair), 'mujoco_mpc', 'mjpc', 'tasks', 'jack')
         mjpc_task = op.join(mjpc_jack, 'task.xml')
         mjpc_ee = op.join(mjpc_jack, 'end_effector.xml')
+        mjpc_cc = op.join(mjpc_jack, 'jack.cc')
+        mjpc_h = op.join(mjpc_jack, 'jack.h')
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
@@ -90,6 +92,8 @@ def main(log_type):
     if log_type == 'mjpc':
         subprocess.run(['cp', mjpc_task, f'mjpc_task_{log_num}.xml'])
         subprocess.run(['cp', mjpc_ee, f'mjpc_end_effector_{log_num}.xml'])
+        subprocess.run(['cp', mjpc_cc, f'mjpc_jack_cc_{log_num}.xml'])
+        subprocess.run(['cp', mjpc_h, f'mjpc_jack_h_{log_num}.xml'])
 
     subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
 

@@ -104,8 +104,10 @@ script "start_mjpc_experiment_with_logs"{
 
 script "end_experiment"{
     stop cmd "franka_c3";
+    stop cmd "franka_c3_no_controller";
     stop cmd "franka_osc";
     stop cmd "franka_sim";
+    stop cmd "mujoco_mpc";
     wait ms 10;
     stop cmd "start_logging";
     stop cmd "start_logging_mjpc";

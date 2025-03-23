@@ -173,7 +173,12 @@ def build_and_run_perceptive_sim(trial_params: TrialParams):
     terrain_segmentation.opencv_inpaint = False
 
     convex_decomposition = ConvexTerrainDecompositionSystem()
-    sim_diagram = PerceptiveFullSimDiagram(trial_params.gains, trial_params.terrain, trial_params.sim_params)
+    sim_diagram = PerceptiveFullSimDiagram(
+        mpc_gains_yaml=trial_params.gains,
+        terrain_yaml=trial_params.terrain,
+        sim_options_yaml=trial_params.sim_params,
+        elevation_mapping_params_yaml=""
+    )
     
     builder = DiagramBuilder()
     builder.AddSystem(terrain_segmentation)

@@ -34,7 +34,8 @@ using systems::controllers::Alips2sMPFCSystem;
 
 PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_yaml,
                                                    const std::string &terrain_yaml,
-                                                   const std::string &sim_params_yaml) {
+                                                   const std::string &sim_params_yaml,
+                                                   const std::string &elevation_mapping_params_yaml) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   [[maybe_unused]] auto instance = AddCassieMultibody(
@@ -49,8 +50,10 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       "solvers/fcc_qp_options_default.yaml";
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
-  std::string elevation_mapping_params_yaml =
-      "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml";
+  std::string _elevation_mapping_params_yaml =
+      elevation_mapping_params_yaml.empty() ?
+      "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml" :
+      elevation_mapping_params_yaml;
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
@@ -81,7 +84,7 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   }
 
   perception = builder.AddSystem(PerceptionModuleDiagram::Make(
-      elevation_mapping_params_yaml, sensor_info));
+      _elevation_mapping_params_yaml, sensor_info));
 
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
@@ -168,7 +171,7 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       radio_operator->get_input_port_target_xy()
   );
   builder.Connect(
-      perception->get_output_port_state(),
+      sim_diagram->get_output_port_state(),
       radio_operator->get_input_port_state()
   );
   builder.Connect(

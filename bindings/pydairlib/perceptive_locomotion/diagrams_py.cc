@@ -52,8 +52,10 @@ PYBIND11_MODULE(diagrams, m) {
 
   py::class_<PerceptiveFullSimDiagram, drake::systems::Diagram<double>>(
       m, "PerceptiveFullSimDiagram")
-    .def(py::init<const std::string&, const std::string&, const std::string&>(),
-         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"), py::arg("sim_options"))
+    .def(py::init<const std::string&, const std::string&,
+                  const std::string&, const std::string&>(),
+         py::arg("mpc_gains_yaml"), py::arg("terrain_yaml"),
+         py::arg("sim_options_yaml"), py::arg("elevation_mapping_params_yaml"))
       .def("SetPlantInitialConditions",
            &dairlib::perceptive_locomotion::PerceptiveFullSimDiagram::SetPlantInitialConditions,
            py::arg("diagram"),

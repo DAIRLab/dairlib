@@ -22,7 +22,8 @@ class PerceptiveFullSimDiagram : public drake::systems::Diagram<double> {
   explicit PerceptiveFullSimDiagram(
       const std::string& mpc_gains_yaml,
       const std::string& terrain_yaml,
-      const std::string& sim_params_yaml);
+      const std::string& sim_params_yaml,
+      const std::string& elevation_mapping_params_yaml="");
 
   void SetPlantInitialConditions(drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* context);

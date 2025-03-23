@@ -14,6 +14,19 @@ py_binary(
 )
 
 py_binary(
+    name = "artifacts_study",
+    srcs = ["artifacts_study.py"],
+    data = [],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:convex_terrain_decomposition_system",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:segmentation_criteria",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation:terrain_segmentation_system",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_binary(
     name = "run_perceptive_sim",
     srcs = ["run_perceptive_sim.py"],
     data = [],

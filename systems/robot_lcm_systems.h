@@ -18,6 +18,8 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
+#include "drake/common/schema/transform.h"
+
 namespace dairlib {
 namespace systems {
 
@@ -159,15 +161,22 @@ class ContactDataSender : public drake::systems::LeafSystem<double>{
 
     private:
         void Output(const drake::systems::Context<double>& context,
-            dairlib::lcmt_densetact_measurement_data* output) const;
+        dairlib::lcmt_densetact_measurement_data* output) const;
             const drake::multibody::MultibodyPlant<double>& plant_;
             drake::systems::Context<double>* plant_context_;
             int num_positions_;
             int num_velocities_;
 
-};
+        bool IsContactBetween(const drake::multibody::PointPairContactInfo<double>& contact,
+        drake::multibody::BodyIndex body1_index,
+        drake::multibody::BodyIndex body2_index) const;
 
+        bool IsContact(int num_of_contacts) const;
 
+        Eigen::Vector3d GetAverage(const Eigen::Vector3d& points, int num_of_contacts) const;
+
+        Eigen::Matrix3d GetContactFrame(const bool contact_bool, const Eigen::Vector3d& normal_W) const;
+    };
 
 /// Converts a StateVector object to LCM type lcmt_robot_output
 class ObjectStateSender : public drake::systems::LeafSystem<double> {

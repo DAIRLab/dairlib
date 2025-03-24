@@ -12,9 +12,12 @@
 #include <drake/multibody/plant/point_pair_contact_info.h>
 
 #include "drake/common/text_logging.h"
+#include "drake/common/schema/transform.h"
+#include <drake/multibody/parsing/model_directives.h>
 
 
 #include <iostream>
+#include <cmath>
 
 namespace dairlib {
 namespace systems {
@@ -166,23 +169,73 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
     state_msg.velocity_names[i] = ordered_velocity_names[i];
   }
 }
-ContactDataSender::ContactDataSender(
-  const drake::multibody::MultibodyPlant<double>& plant): 
-  plant_(plant){
+
+ContactDataSender::ContactDataSender(const drake::multibody::MultibodyPlant<double>& plant): 
+  plant_(plant) {
+  //plant_context_ = &plant_.GetMyContextFromRoot(diagram_context);
+  plant_context_ = plant.CreateDefaultContext().release();
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
-  this->DeclareAbstractInputPort("x", drake::Value<drake::multibody::ContactResults<double>>{}).get_index();
+  //plant_context_ = plant.CreateDefaultContext().release();
+
+  this->DeclareAbstractInputPort("x_contact_force", drake::Value<drake::multibody::ContactResults<double>>{}).get_index();
+  //this->DeclareVectorInputPort("x_state", drake::BasicVector<drake::VectorX<double>>{}).get_index();
+  this->DeclareVectorInputPort("x_state", drake::systems::BasicVector<double>(num_positions_ + num_velocities_)).get_index();
+
   this->DeclareAbstractOutputPort("lcmt_densetact_measurement_data", &ContactDataSender::Output);
   }
 
+
+bool ContactDataSender::IsContactBetween(const drake::multibody::PointPairContactInfo<double>& contact,
+  drake::multibody::BodyIndex body1_index,
+  drake::multibody::BodyIndex body2_index) const{
+  return ((contact.bodyA_index() == body1_index && contact.bodyB_index() == body2_index) ||
+          (contact.bodyA_index() == body2_index && contact.bodyB_index() == body1_index));
+  }
+
+bool ContactDataSender::IsContact(int num_of_contacts) const{
+  return (num_of_contacts > 0);
+  }
+
+Eigen::Vector3d ContactDataSender::GetAverage(const Eigen::Vector3d& points, int num_of_contacts) const{
+  if (num_of_contacts > 0) {
+    return points / num_of_contacts; 
+  }
+  return Eigen::Vector3d::Zero();
+} 
+
+Eigen::Matrix3d ContactDataSender::GetContactFrame(const bool contact_bool, const Eigen::Vector3d& normal_W) const{
+  // normal_W is already normalized
+
+  if (contact_bool){ 
+    const double nx =  normal_W.coeff(0);
+    const double ny =  normal_W.coeff(1);
+    const double nz =  normal_W.coeff(2);
+
+    Eigen::Vector3d t1; 
+    t1 << -ny/(std::sqrt(ny*ny + nx*nx)), nx/std::sqrt(ny*ny + nx*nx), 0;
+
+    Eigen::Vector3d t2 = normal_W.cross(t1);
+
+    Eigen::Matrix3d contact_frame;
+    contact_frame << normal_W, t1, -t2;
+    return contact_frame;
+  }
+
+  return Eigen::Matrix3d::Identity();
+
+  }
+
 void ContactDataSender::Output(
-  const drake::systems::Context<double>& context,
+  const drake::systems::Context<double>& context, 
   dairlib::lcmt_densetact_measurement_data* contact_output) const
   {
-  
-  // const auto& contact_results = this->Eval<drake::multibody::ContactResults<double>>(context);
+
+  auto q_init = this->EvalVectorInput(context, 1);
   const drake::AbstractValue* contact_results = this->EvalAbstractInput(context, 0);//.num_point_pair_contacts();
+
+  plant_.SetPositionsAndVelocities(plant_context_, q_init->value());
 
   const auto& constact_result = contact_results->get_value<drake::multibody::ContactResults<double>>();
 
@@ -197,84 +250,129 @@ void ContactDataSender::Output(
   drake::multibody::BodyIndex sensor1_index = sensor1_body.index();
   drake::multibody::BodyIndex sensor2_index = sensor2_body.index();
   drake::multibody::BodyIndex object_index = object_body.index();
+
+  // Eigen::Matrix4d sensor1_BW = drake::multibody::RigidBody<double>& get_rotation_matrix_in_world(plant_.GetRigidBodyByName(sensor1_name));
+  // Eigen::Matrix4d sensor2_BW = drake::multibody::RigidBody<double>& get_rotation_matrix_in_world(plant_.GetRigidBodyByName(sensor2_name));
+
+  const drake::multibody::RigidBody<double>& sensor1_pose_W = plant_.GetRigidBodyByName(sensor1_name);
+  const drake::multibody::RigidBody<double>& sensor2_pose_W = plant_.GetRigidBodyByName(sensor2_name);
+
+  Eigen::Matrix4d sensor1_pose_mat_W = sensor1_pose_W.EvalPoseInWorld(*plant_context_).GetAsMatrix4();
+  Eigen::Matrix4d sensor2_pose_mat_W = sensor2_pose_W.EvalPoseInWorld(*plant_context_).GetAsMatrix4();
+
+  Eigen::Matrix3d sensor1_R_BW = sensor1_pose_mat_W.block(0,0,3,3);
+  Eigen::Matrix3d sensor2_R_BW = sensor2_pose_mat_W.block(0,0,3,3);
+
+  const int num_of_totals_contacts = constact_result.num_point_pair_contacts();
+  int num_of_sensor1_contacts = 0;
+  int num_of_sensor2_contacts = 0;
+
+  // initalize contact forces in W frame
+  Eigen::Vector3d contact_force_sensor1_W = Eigen::Vector3d::Zero();  
+  Eigen::Vector3d contact_force_sensor2_W = Eigen::Vector3d::Zero();
+  // Eigen::Vector4d contact_force_sensor1_B;
+  // Eigen::Vector4d contact_force_sensor2_B;
+
+  Eigen::Vector3d contact_normal_sensor1_W = Eigen::Vector3d::Zero();  
+  Eigen::Vector3d contact_normal_sensor2_W = Eigen::Vector3d::Zero();
+
+
+  // initalize contact frames which are spherical (i.e rho, theta, phi) in W frame expressed in W frame
+  //Eigen::Matrix3d contact_frame_sensor1_CB = Eigen::Matrix4d::Identity();
+  //Eigen::Matrix3d contact_frame_sensor2_CB = Eigen::Matrix4d::Identity();
   
-  const int num_of_contacts = constact_result.num_point_pair_contacts();
-
-
-  bool contact_bool_1 = false;
-  bool contact_bool_2 = false;
-
-  // Initalize force vectors
-  Eigen::Vector3<double> contact_force_1 = Eigen::Vector3<double>::Zero();
-  Eigen::Vector3<double> contact_force_2 = Eigen::Vector3<double>::Zero();
-
-  for (int i = 0; i < num_of_contacts; i++){
+  //for every contact instance
+  for (int i = 0; i < num_of_totals_contacts; i++){
     const auto& contact_instance = constact_result.point_pair_contact_info(i);
+    if (IsContactBetween(contact_instance, object_index, sensor1_index)){
+          num_of_sensor1_contacts++;
 
-    if (((contact_instance.bodyA_index() == sensor1_index) && (contact_instance.bodyB_index() == object_index)) 
-        || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor1_index))){
-          std::cout << "CONTACT" << std::endl;
-          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
-          contact_force_1 =  contact_instance.contact_force();
-
-          // Returns the position p_WC of the contact point C in the world frame W. 
-          // contact_pose_W_1 = contact_instance.point_pair();
-
-          contact_bool_1 = true;
+          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W
+          contact_force_sensor1_W += contact_instance.contact_force();
+          contact_normal_sensor1_W += contact_instance.point_pair().nhat_BA_W;
         }
+    
+    if (IsContactBetween(contact_instance, object_index, sensor2_index)){
+          num_of_sensor2_contacts++;
 
-    if (((contact_instance.bodyA_index() == sensor2_index) && (contact_instance.bodyB_index() == object_index)) 
-        || ((contact_instance.bodyA_index() == object_index) && (contact_instance.bodyB_index() == sensor2_index))){
-          std::cout << "CONTACT" << std::endl;
-          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W. 
-          contact_force_2 =  contact_instance.contact_force();
-
-          // Returns the position p_WC of the contact point C in the world frame W. 
-          //contact_pose_W = contact_instance.point_pair();
-
-          contact_bool_2 = true;
-        }
+          // Returns the contact force f_Bc_W on B at contact point C expressed in the world frame W in homogenous coords 
+          contact_force_sensor2_W += contact_instance.contact_force();
+          contact_normal_sensor2_W += contact_instance.point_pair().nhat_BA_W;
     }
+  }
+  // std::cout << "Number of contacts: " << num_of_totals_contacts << std::endl;
+  // std::cout << "Number of contacts snesor1: " << num_of_sensor1_contacts << std::endl;
+  // std::cout << "Number of contacts snesor2: " << num_of_sensor2_contacts << std::endl;
+
+  contact_force_sensor1_W = GetAverage(contact_force_sensor1_W, num_of_sensor1_contacts);
+  contact_force_sensor2_W = GetAverage(contact_force_sensor2_W, num_of_sensor2_contacts);
+
+  Eigen::Vector3d normal_W_sensor_1_W = GetAverage(contact_normal_sensor1_W, num_of_sensor1_contacts);
+  Eigen::Vector3d normal_W_sensor_2_W = GetAverage(contact_normal_sensor2_W, num_of_sensor2_contacts);
+
+  bool contact_bool_1 = IsContact(num_of_sensor1_contacts);
+  bool contact_bool_2 = IsContact(num_of_sensor2_contacts);
+
+  if (!contact_bool_1){
+    sensor1_R_BW = Eigen::Matrix3d::Identity();
+  }
+  if (!contact_bool_2){
+    sensor2_R_BW = Eigen::Matrix3d::Identity();;
+  }
+
+
+  Eigen::Matrix3d contact_frame_sensor1_CW = GetContactFrame(contact_bool_1, normal_W_sensor_1_W);
+  Eigen::Matrix3d contact_frame_sensor2_CW = GetContactFrame(contact_bool_2, normal_W_sensor_2_W);
+
+  Eigen::Matrix3d contact_frame_sensor1_CB = sensor1_R_BW.inverse() * contact_frame_sensor1_CW;
+  Eigen::Matrix3d contact_frame_sensor2_CB = sensor2_R_BW.inverse() * contact_frame_sensor2_CW;
+
+  // std::cout << "sensor1_R_BW" << sensor1_R_BW << std::endl;
+  // std::cout << "contact_frame_sensor1_CW" << contact_frame_sensor1_CW << std::endl;
+
+  Eigen::Vector3d contact_force_sensor1_B = sensor1_R_BW.inverse() * contact_force_sensor1_W;
+  Eigen::Vector3d contact_force_sensor2_B = sensor2_R_BW.inverse() * contact_force_sensor2_W;
 
 
   contact_output->numSensors = 2;
   contact_output->sensorData.resize(contact_output->numSensors);
 
-  // for (int i = 0; i < contact_output->numSensors; i++){
-  //   dairlib::lcmt_densetact_measurement contact;
-  //   contact.utime = context.get_time() * 1e6; 
-  //   contact.inContact = contact_bool;
-  //   //contact.contactPose = contact_pose_W;
-
-  //   contact.scaledNormal = contact_force[0];
-  //   contact.scaledFriction[0] = contact_force[1];
-  //   contact.scaledFriction[1] = contact_force[2];
-  //   contact_output->sensorData[i] = contact;
-  // }
-
-
-  dairlib::lcmt_densetact_measurement contact;
   // DenseTact 1
-  contact.utime = context.get_time() * 1e6; 
-  contact.inContact = contact_bool_1;
-  //contact.contactPose = contact_pose_W;
+  dairlib::lcmt_densetact_measurement contact_1;
+  contact_1.utime = context.get_time() * 1e6; 
+  contact_1.inContact = contact_bool_1;
 
-  contact.scaledNormal = contact_force_1[0];
-  contact.scaledFriction[0] = contact_force_1[1];
-  contact.scaledFriction[1] = contact_force_1[2];
-  contact_output->sensorData[1] = contact;
+  for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+          contact_1.contactPose[i][j] = contact_frame_sensor1_CB(i, j);
+      }
+  } 
+
+  //HACK: output force in world frame
+  //Eigen::Vector4d contact_force_sensor1_S = contact_force_sensor1_W;
+  contact_1.scaledNormal = contact_force_sensor1_B(0);
+  contact_1.scaledFriction[0] = contact_force_sensor1_B(1);
+  contact_1.scaledFriction[1] = contact_force_sensor1_B(2);
+  contact_output->sensorData[0] = contact_1;
 
   // DenseTact 2
-  contact.utime = context.get_time() * 1e6; 
-  contact.inContact = contact_bool_2;
-  //contact.contactPose = contact_pose_W;
+  dairlib::lcmt_densetact_measurement contact_2;
+  contact_2.utime = context.get_time() * 1e6; 
+  contact_2.inContact = contact_bool_2;
 
-  contact.scaledNormal = contact_force_2[0];
-  contact.scaledFriction[0] = contact_force_2[1];
-  contact.scaledFriction[1] = contact_force_2[2];
-  contact_output->sensorData[2] = contact;
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+        contact_2.contactPose[i][j] = contact_frame_sensor2_CB(i, j);
+      }
+  } 
+
+  //Eigen::Vector4d contact_force_sensor2_S = contact_force_sensor2_W;
+
+  contact_2.scaledNormal = contact_force_sensor2_B(0);
+  contact_2.scaledFriction[0] = contact_force_sensor2_B(1);
+  contact_2.scaledFriction[1] = contact_force_sensor2_B(2);
+  contact_output->sensorData[1] = contact_2;
   
-  // plant_.GetPositions(*plant_context_);
 }
 
 

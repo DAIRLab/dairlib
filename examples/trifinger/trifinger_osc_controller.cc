@@ -93,7 +93,8 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
 
   // create lcm systems.fingertip_0_name
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
+  // 0 = sim, 1 = hardware
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
   auto fingertips_target_kinematics_sub = builder.AddSystem(

@@ -15,7 +15,7 @@ import os
 class OpticalFlow:
     def __init__(self, 
         densetact: str, 
-        data: dict[str]):
+        data: dict[str]) -> None:
 
         if data['real_time']:
             for i in range(15):
@@ -44,11 +44,9 @@ class OpticalFlow:
         self.cap.set(cv.CAP_PROP_FRAME_WIDTH, self.resolution[0])
         self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
 
-
         # Setup bounding box for densetact
         self.bx = (densetact['center'][0] - densetact['rad_view'], densetact['center'][0] + densetact['rad_view'])
         self.by = (densetact['center'][1] - densetact['rad_view'], densetact['center'][1] + densetact['rad_view'])
-
 
         # Set up dense inverse search optical flow
         self.flow = cv.DISOpticalFlow_create(1)
@@ -58,7 +56,6 @@ class OpticalFlow:
         # self.flow.setVariationalRefinementDelta(0.1)  # Default: 5.0
 
         #self.flow.setPatchSize(5)
-
 
         # grid for for region of interest of step 1
         self.x = np.arange(0, 2 * densetact['rad_view'])
@@ -93,7 +90,6 @@ class OpticalFlow:
         self.first_frame = self.old_frame
         self.start = time.perf_counter()
         self.t_old_frame = 0
-
 
 
     def pre_processing(self, 
@@ -188,34 +184,40 @@ class OpticalFlow:
         theta = np.arctan(np.sqrt(CoP_ray[0] ** 2 + CoP_ray[1] ** 2))
         phi = np.arctan2(CoP_ray[1], CoP_ray[0])
 
-        M = np.array([
+
+        contact_rot = np.array([
             [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)],
             [np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi), -np.sin(theta)],
             [-np.sin(phi), np.cos(phi), 0]
         ])
-        
-        
 
-        Sn = np.nansum(np.linalg.norm(harm, axis = 2))
+        contact_pose = np.block([[contact_rot, CoP_on_sph.reshape(3, 1)],
+                                [np.zeros((1, 3)), np.array([[1]])]])
         
-        St = np.nansum(curl_free, axis = (0,1))
+        # Calculate the normal and tangential parameters
+        S_n = np.nanmean(curl_free, axis = (0,1))
+        S_tau = np.nanmean(div_free, axis = (0,1))
+        S_t = np.nanmean(harm, axis = (0,1))
 
-        #print(St)
+
         self.old_gray = self.old_gray#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
         self.old_frame = self.old_frame#[b_x[0]: b_x[1], b_y[0]: b_y[1]]
 
+
         return {
+            # For testing
             'time': self.t_old_frame - self.start,
             'x': XX_ss, 'y' : YY_ss,
             'theta': theta_ang, 'phi': phi_ang,
             'feat_pos': np.stack([XX_ss, YY_ss], axis = -1),
             'grid': interp_grid,
-            'height': height, 'A': A,
             'CoP': CoP, 'CoP_ray_norm': CoP_ray_norm,
             'curl_free': curl_free, 'div_free': div_free, 'harm': harm,
+
+            # Last in pipeline (output)
             'contact_bool': contact_bool,
-            'Sn': Sn, 'St': St,
-            'M': M, 'contactPose': np.block([[M, CoP_on_sph.reshape(3, 1)], [np.zeros((1, 3)), np.array([[1]])]])
+            'S_n': S_n, 'S_t': S_t, 'S_tau': S_tau,
+            'contact_rot': contact_rot, 'contactPose': contact_pose,
         }
 
     def recalibration(self):
@@ -224,8 +226,6 @@ class OpticalFlow:
     def calc_flow(self):
         """
         Does the following:
-        -Captures images from the densetact and extract features; features are defined as corners pick up by the Shi Tomasi algorithm
-        -Calculates flow from subsequent frames using pyrimadal Lucas Kanade
         :return: good_new, flow_vec, frame_color
         """
         ### CAPTURE IMAGE

@@ -1,11 +1,14 @@
 trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
+
 cube_model: examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf
+#cube_model: examples/trifinger/robot_properties_fingers/cube/HE_convex_terrain.urdf
+#cube_model: examples/trifinger/robot_properties_fingers/cube/HE_sphere.urdf
 
 dt: 0.0005
 realtime_rate: 1.0
 trifinger_publish_rate: 1000
-densetact_publish_rate: 40
-cube_publish_rate: 3
+densetact_publish_rate: 50
+cube_publish_rate: 100
 publish_efforts: true
 actuator_delay: 0.000
 visualizer_publish_rate: 60

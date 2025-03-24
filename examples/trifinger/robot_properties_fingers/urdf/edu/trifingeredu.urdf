@@ -167,6 +167,10 @@
     </inertial>
   </link>
   <link name="densetact_0">
+      <inertial>
+        <mass value="0.035"/>
+        <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
+      </inertial>
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
@@ -180,11 +184,6 @@
          <sphere radius="0.01575"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.035"/>
-      <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
-    </inertial>
   </link>
 
   <link name="optical_center_0"/>
@@ -363,6 +362,10 @@
   </link>
 
    <link name="densetact_120">
+    <inertial>
+      <mass value="0.035"/>
+      <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
+    </inertial>
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
@@ -376,11 +379,6 @@
          <sphere radius="0.01575"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.035"/>
-      <inertia ixx="0.00000347" ixy="0.00000" ixz="0.00000" iyy="0.00000347" iyz="0.00000" izz="0.00000347"/>
-    </inertial>
   </link>
 
   <link name="optical_center_120"/>

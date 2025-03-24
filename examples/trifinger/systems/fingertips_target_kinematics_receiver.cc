@@ -162,8 +162,6 @@ FingertipTargetKinematicsReceiver::DiscreteVariableUpdate(
   cur_fingertips_vel << fingertip_0_vel, fingertip_120_vel, fingertip_240_vel;
   cur_fingertips_quat << fingertip_0_quat, fingertip_120_quat, fingertip_240_quat;
 
-  std::cout << cur_fingertips_quat << std::endl;
-
   discrete_state->get_mutable_vector(cur_fingertips_pos_idx_)
       .set_value(cur_fingertips_pos);
   discrete_state->get_mutable_vector(cur_fingertips_vel_idx_)
@@ -224,7 +222,8 @@ void FingertipTargetKinematicsReceiver::CopyToOutputFingertipsTargetTraj(
       1.0 / target_kinematics_update_frequency_;
 
   // generate a CubicSpline trajectory that can be fed to OSC controller.
-  Eigen::VectorXd knots(2);
+
+  Eigen::VectorXd knots(2); 
   auto start_time_traj =
       context.get_discrete_state(start_time_traj_idx_).get_value()[0];
   knots << start_time_traj, start_time_traj + target_kinematics_update_period;
@@ -240,13 +239,13 @@ void FingertipTargetKinematicsReceiver::CopyToOutputFingertipsTargetTraj(
   // velocities as ones from first-order hold interpolation.
   if (!fingertips_target_vel.array().isNaN().any()) {
     samples_dot.col(1) = fingertips_target_vel;
-  } else {
+  } 
+  else {
     samples_dot.col(1) = (fingertips_target_pos - start_fingertips_pos_traj) /
                          target_kinematics_update_period;
   }
 
-  auto traj =
-      PiecewisePolynomial<double>::CubicHermite(knots, samples, samples_dot);
+  auto traj = PiecewisePolynomial<double>::CubicHermite(knots, samples, samples_dot);
   auto casted_target_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           target_traj);

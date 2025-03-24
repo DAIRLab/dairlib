@@ -2,7 +2,8 @@ controller_frequency: 1000
 target_kinematics_update_frequency: 20
 
 trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/trifingeredu.urdf
-cube_model: examples/trifinger/robot_properties_fingers/urdf/cube/cube_v2.urdf
+#cube_model: examples/trifinger/robot_properties_fingers/urdf/cube/cube_v2.urdf
+cube_model: examples/trifinger/robot_properties_fingers/cube/HE_sphere.urdf
 fingertip_0_name: densetact_0
 fingertip_120_name: densetact_120
 fingertip_240_name: finger_tip_link_240

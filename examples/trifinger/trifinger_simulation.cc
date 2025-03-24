@@ -123,14 +123,15 @@ int SimulateTrifinger(int argc, char* argv[]) {
       lcm,
       1.0 / sim_params.densetact_publish_rate));
           
-
   // Connect plant reaction to lcm
   builder.Connect(plant.get_contact_results_output_port(), 
-    tri_contact_to_lcm->get_input_port());
+    tri_contact_to_lcm->get_input_port(0));
+
+  builder.Connect(plant.get_state_output_port(), 
+    tri_contact_to_lcm->get_input_port(1));
 
   builder.Connect(tri_contact_to_lcm->get_output_port(), 
     tri_contact_pub->get_input_port());
-
 
   // Finalize the diagram
   auto diagram = builder.Build();

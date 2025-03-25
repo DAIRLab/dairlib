@@ -3,6 +3,7 @@
 #include "solvers/admm/ncqp_solver.h"
 #include "solvers/admm/convex_polygon_set_constraint.h"
 #include "solvers/sqp/sqp_quadratic_cost.h"
+#include "terrain_sdf_cost.h"
 
 #include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
@@ -64,10 +65,12 @@ class IDMPCWalking {
 
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
 
+  void UpdateSwingTrajCostsSDF(const MPCReference& mpc_reference);
 
   void MakeFootsteps();
   void MakeALIPTerms();
   void MakeSwingTrajCosts();
+  void MakeSwingTrajCostsSDF();
   void MakeGroundConstraints();
   void MakeFootLevelingCosts();
   void MakeALIPCosts(
@@ -87,6 +90,7 @@ class IDMPCWalking {
   td_constraints_;
 
   std::vector<std::shared_ptr<solvers::ConvexPolygonSetConstraint>> footholds_;
+  std::vector<std::shared_ptr<solvers::sqp::TerrainSDFCost>> terrain_sdf_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
   foothold_bindings_;
 

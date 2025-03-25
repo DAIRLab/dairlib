@@ -42,6 +42,7 @@ class MPCReference {
   std::vector<std::string> touchdown_ee_names_;
   std::vector<Eigen::Vector3d> touchdown_ee_points_;
   std::vector<std::string> touchdown_ee_names_to_update_;
+  std::vector<double> single_stance_phase_;
 
   void AppendContactsToKnot(int i, const std::vector<std::string> &contacts) {
     active_contacts_.at(i).insert(active_contacts_.at(i).end(),

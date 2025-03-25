@@ -15,6 +15,7 @@ using alip_utils::Stance;
 
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
+using solvers::sqp::TerrainSDFCost;
 using solvers::sqp::RelativePositionCost;
 using solvers::ConvexPolygonSetConstraint;
 
@@ -28,6 +29,7 @@ IDMPCWalking::IDMPCWalking(
 
   MakeFootsteps();
   MakeSwingTrajCosts();
+  MakeSwingTrajCostsSDF();
   MakeGroundConstraints();
   MakeFootLevelingCosts();
   MakeALIPTerms();
@@ -94,7 +96,7 @@ void IDMPCWalking::MakeFootsteps() {
   //  frame as written. Ideally we would have only a collision constraint for
   //  the whole-body knot points, and only a local frame crossover constraint
   //  for the ALIP knot points
-  for (size_t i = 0; i < pp_.size(); ++i) {
+  for (size_t i = 0; i < pp_.size() - 1; ++i) {
     no_crossover_c_.push_back(
         prog.AddLinearConstraint(
             MatrixXd::Ones(1, 2),
@@ -198,6 +200,20 @@ void IDMPCWalking::MakeALIPCosts(
         {pp_tmp.at(i).head<2>(), pp_tmp.at(i+1).head<2>()});
     alip_footstep_costs_.push_back(footstep_cost);
   }
+
+}
+
+void IDMPCWalking::MakeSwingTrajCostsSDF() {
+  for (int i = 0; i <= params_.mpc_N; ++i) {
+    auto sdf_cost = std::make_shared<TerrainSDFCost>(
+        params_.foot_pos_W.bottomRightCorner<1,1>(),
+        VectorXd::Zero(1), dynamics().get_plant(), "toe_left", Vector3d::Zero()
+    );
+    terrain_sdf_costs_.push_back(sdf_cost);
+  }
+}
+
+void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
 
 }
 

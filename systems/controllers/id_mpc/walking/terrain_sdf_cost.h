@@ -53,7 +53,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
   const drake::multibody::Frame<double>* frame_;
   Eigen::Vector3d point_;
 
-  grid_map::SignedDistanceField sdf_;
+  std::unique_ptr<grid_map::SignedDistanceField> sdf_ = nullptr;
 
   Eigen::VectorXd y_;
 };

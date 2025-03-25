@@ -99,7 +99,7 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
 
   auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf);
   auto mpc_visualizer = builder.AddSystem<LcmConfigurationDrawer>(
-      plant_visualizer->get_meshcat(), urdf, "q", 8);
+      plant_visualizer->get_meshcat(), urdf, "q", 5);
   auto debug_visualizer = builder.AddSystem<IDMPCWalkingDebugVisualizer>(
       plant_visualizer->get_meshcat());
 

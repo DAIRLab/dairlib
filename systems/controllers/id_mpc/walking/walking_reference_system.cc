@@ -90,6 +90,8 @@ EventStatus WalkingReferenceSystem::UnrestrictedUpdate(
   mpc_reference.task_space_trajs_["swing_foot"] = CalcSwingFootTraj(
       mpc_reference.knot_times_, fsm_vector, phase_vec);
 
+  mpc_reference.single_stance_phase_ = phase_vec;
+
   if (next_fsm.state != fsm.state) {
     mpc_reference.touchdown_ee_names_to_update_ = mpc_reference.touchdown_ee_names_;
   } else {

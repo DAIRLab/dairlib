@@ -31,7 +31,9 @@ void DoMain() {
   simulator.set_publish_at_initialization(false);
   simulator.Initialize();
 
-  simulator.AdvanceTo(10.0);
+  simulator.AdvanceTo(30.0);
+
+  diagram.SaveLcmLog('../id_mpc_test_log')
 }
 
 }

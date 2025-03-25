@@ -79,7 +79,7 @@ void IDMPC::UpdateProblemData(const MPCReference &reference,
     UpdateFrictionCone(i, reference.active_contacts_.at(i));
   }
   UpdateCosts(reference);
-  smoothness_cost_->UpdateReference(prev_sol);
+  smoothness_cost_->UpdateReference(prev_sol.head(smoothness_cost_->num_vars()));
 }
 
 void IDMPC::UpdateFrictionCone(
@@ -219,7 +219,7 @@ void IDMPC::MakeMPCCosts() {
       velocity_vars(params_.N));
 
   smoothness_cost_ = std::make_shared<QuadraticErrorCost<double>>(
-      1e-5 * MatrixXd::Identity(prog_.num_vars(), prog_.num_vars()),
+      1e-8 * MatrixXd::Identity(prog_.num_vars(), prog_.num_vars()),
       VectorXd::Zero(prog_.num_vars())
   );
 

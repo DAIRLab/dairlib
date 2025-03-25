@@ -50,6 +50,13 @@ void IDMPCWalking::UpdateProblemData(
     footstep_hyst_costs_.at(i)->UpdateReference(
         mpc_.GetDecisionVariableValue(pp_.at(i), prev_sol));
   }
+  // shuffle the footstep hysteresis costs on touchdown
+  if (not reference.touchdown_ee_names_to_update_.empty()) {
+    for (int i = 0; i < pp_.size() - 1; ++i) {
+      footstep_hyst_costs_.at(i)->UpdateReference(
+          mpc_.GetDecisionVariableValue(pp_.at(i+1), prev_sol));
+    }
+  }
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(

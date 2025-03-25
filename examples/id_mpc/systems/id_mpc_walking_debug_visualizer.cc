@@ -7,7 +7,7 @@ IDMPCWalkingDebugVisualizer::IDMPCWalkingDebugVisualizer(
     std::shared_ptr<drake::geometry::Meshcat> meshcat) : meshcat_(meshcat) {
   DeclareAbstractInputPort(
       "lcmt_id_walking_debug", drake::Value<lcmt_id_mpc_walking_debug>());
-  DeclarePeriodicPublishEvent(1.0 / 30.0, 0.0,
+  DeclarePeriodicPublishEvent(1.0 / 100.0, 0.0,
                               &IDMPCWalkingDebugVisualizer::UpdateMeshcat);
 }
 namespace {

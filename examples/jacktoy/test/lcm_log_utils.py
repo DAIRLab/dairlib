@@ -3,17 +3,20 @@ start and end times.  Uses the virtual environment installed at
 dairlib/drake_env.  Requires dairlib/bazel-bin/lcmtypes to be in the
 PYTHONPATH, i.e.:
 
-source ~/workspace/dairlib/drake_env/bin/activate
-export PYTHONPATH=$PYTHONPATH:/home/sharanya/workspace/dairlib/bazel-bin/lcmtypes
+source /home/bibit/dairlib/drake_env/bin/activate
+export PYTHONPATH=$PYTHONPATH:/home/bibit/dairlib/bazel-bin/lcmtypes
 
 Example usage:
 
+# TODO:  `single` command is currently broken.
 python examples/jacktoy/test/lcm_log_utils.py single /mnt/data2/sharanya/logs/2024/12_16_24/000006/ --interactive --start=50 --end=100
+python examples/jacktoy/test/lcm_log_utils.py multi /mnt/data2/sharanya/logs/2025/03_14_25/000084/
 """
 
 import click
 import os
 import os.path as op
+import pickle
 import shutil
 import subprocess
 from tqdm import tqdm
@@ -24,6 +27,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.ticker as mtick
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from scipy.stats import gaussian_kde
 import yaml
 
@@ -56,6 +60,7 @@ ALL_CHANNELS_AND_LCMT = {
     'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
     'SAMPLING_C3_RADIO': dairlib.lcmt_radio_out,
     'FRANKA_STATE': dairlib.lcmt_robot_output,
+    'FRANKA_STATE_SIMULATION': dairlib.lcmt_robot_output,
     'OBJECT_STATE': dairlib.lcmt_object_state,
 }
 MINIMAL_CHANNELS_AND_LCMT = {
@@ -68,6 +73,10 @@ MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO = {
     'C3_ACTUAL': dairlib.lcmt_c3_state,
     'C3_FINAL_TARGET': dairlib.lcmt_c3_state,
 }
+MINIMAL_CHANNELS_AND_LCMT_FOR_MJPC = {
+    'C3_ACTUAL': dairlib.lcmt_c3_state,
+    'C3_FINAL_TARGET': dairlib.lcmt_c3_state,
+}
 CHANNELS_AND_LCMT_TO_SYNC = {
     key: val for key, val in ALL_CHANNELS_AND_LCMT.items() \
     if key not in ['SAMPLING_C3_RADIO', 'FRANKA_STATE', 'OBJECT_STATE']}
@@ -75,8 +84,22 @@ LCM_TIME_KEY = 'lcm_seconds'
 MESSAGE_TIME_KEY = 'msg_seconds'
 MESSAGE_KEY = 'message'
 
+JOINT_LIMIT_VIO_KEY = 'joint_limit_violation'
+JOINT_VEL_VIO_KEY = 'joint_velocity_violation'
+JOINT_ACC_VIO_KEY = 'joint_acceleration_violation'
+JOINT_JERK_VIO_KEY = 'joint_jerk_violation'
+JOINT_TORQUE_VIO_KEY = 'joint_torque_violation'
+WSL_VIO_KEY = 'workspace_limit_violation'
+
 TRAJ_PARAM_POS_TOL_KEY = 'position_success_threshold'
 TRAJ_PARAM_RAD_TOL_KEY = 'orientation_success_threshold'
+
+C3_PARAM_WSL_X_KEY = 'world_x_limits'
+C3_PARAM_WSL_Y_KEY = 'world_y_limits'
+C3_PARAM_WSL_Z_KEY = 'world_z_limits'
+C3_PARAM_WSL_R_KEY = 'robot_radius_limits'
+
+EXPORT_FOLDER = '/mnt/data2/bibit/control_exports'
 
 # Labels for the source of repositioning targets.
 NO_TARGET_LABEL = 'N/A'
@@ -120,6 +143,7 @@ EPS = 1e-5
 TIME_SYNCH_THRESH = 0.03
 HIST_BINS = 10
 CDF_TIME_CUTOFF = 300
+TOO_LONG_TIME_CUTOFF = 400
 
 CAM_FOV = np.pi/6
 VIDEO_PIXELS = [480, 640]
@@ -138,6 +162,22 @@ ACTUAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/jack_with_triad.urdf'
 GOAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/goal_triad.urdf'
 CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model.urdf'
 SECOND_CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model_2.urdf'
+
+# Franka limits, from:
+# https://frankaemika.github.io/docs/control_parameters.html#limits-for-panda
+FRANKA_JOINT_MINS = np.array(
+    [-2.8973, -1.7628, -2.8973, -3.0718, -2.8976, -0.0175, -2.8973])
+FRANKA_JOINT_MAXS = np.array(
+    [2.8973, 1.7628, 2.8973, -0.0698, 2.8976, 3.7525, 2.8973])
+FRANKA_JOINT_VEL_LIMITS = np.array(
+    [2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61])
+FRANKA_JOINT_ACC_LIMITS = np.array([15, 7.5, 10, 12.5, 15, 20, 20])
+FRANKA_JOINT_JERK_LIMITS = np.array(
+    [7500, 3750, 5000, 6250, 7500, 10000, 10000])
+FRANKA_JOINT_TORQUE_LIMITS = np.array([87, 87, 87, 87, 12, 12, 12])
+# An alternative source, from:
+# https://frankaemika.github.io/docs/franka_ros.html#franka-control
+# FRANKA_JOINT_TORQUE_LIMITS = np.array([20, 20, 18, 18, 16, 14, 12])
 
 # Keyed by the log file, has a tuple of the long video filepath and a directory
 # to which single-goal videos can be written.
@@ -176,6 +216,23 @@ LOG_FILEPATHS_TO_VIDEOS = {
         (op.join('/home/bibit/Videos/franka_experiments/2025/01_29_25',
                  '20250129_124229_log7_cut.mp4'),
          '/home/bibit/Videos/franka_experiments/2025/01_29_25/'),
+}
+
+MJPC_CUT_OFF_GOALS_PER_EE_VEL = {
+    0.03: 0, 0.06: 0, 0.09: 0, 0.12: 2, 0.15: 0, 0.18: 1, 0.21: 1, 0.24: 7,
+    0.27: 5, 1000: 0
+}
+MJPC_COLORS_PER_EE_VEL = {
+    0.03: '#fedbda',
+    0.06: '#fdb7b5',
+    0.09: '#fc9490',
+    0.12: '#fb706a',
+    0.15: '#fb4d46',
+    0.18: '#c83d38',
+    0.21: '#962e2a',
+    0.24: '#641e1c',
+    0.27: '#320f0e',
+    1000: '#30ba8f',  # For our controller.
 }
 
 global_is_interactive = False
@@ -270,7 +327,8 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
 
     times = times - times[0]
     double_t = np.repeat(times, 2)
-    c3_mask, repos_mask = get_shading_masks(is_c3_mode_flags)
+    if is_c3_mode_flags is not None:
+        c3_mask, repos_mask = get_shading_masks(is_c3_mode_flags)
     deg_errors = rad_errors * 180 / np.pi
 
     # A more presentable plot:  position and rotation errors with mode shading
@@ -278,21 +336,23 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
     fig, axs = plt.subplots(1, 1, figsize=(14.3, 4))
     ax0 = axs
     ax1 = ax0.twinx()
-    ax0.fill_between(double_t, 0, 1.05, where=repos_mask, color=CF_COLOR,
-                     alpha=0.5, transform=ax0.get_xaxis_transform())
-    ax0.fill_between(double_t, 0, 1.05, where=c3_mask, color=CR_COLOR,
-                     alpha=0.5, transform=ax0.get_xaxis_transform())
+    if is_c3_mode_flags is not None:
+        ax0.fill_between(double_t, 0, 1.05, where=repos_mask, color=CF_COLOR,
+                        alpha=0.5, transform=ax0.get_xaxis_transform())
+        ax0.fill_between(double_t, 0, 1.05, where=c3_mask, color=CR_COLOR,
+                        alpha=0.5, transform=ax0.get_xaxis_transform())
 
     # Add mode switch lines.
-    for i, mode_switch_reason in enumerate(MODE_SWITCH_LABELS):
-        if i == 0:
-            continue
-        switch_ts = np.array(times)[np.array(switch_reasons) == i]
-        prefix = ''
-        for switch_t in switch_ts:
-            ax0.axvline(x=switch_t, color=MODE_SWITCH_COLORS[i],
-                        linewidth=4, label=prefix + mode_switch_reason)
-            prefix = '_'
+    if switch_reasons is not None:
+        for i, mode_switch_reason in enumerate(MODE_SWITCH_LABELS):
+            if i == 0:
+                continue
+            switch_ts = np.array(times)[np.array(switch_reasons) == i]
+            prefix = ''
+            for switch_t in switch_ts:
+                ax0.axvline(x=switch_t, color=MODE_SWITCH_COLORS[i],
+                            linewidth=4, label=prefix + mode_switch_reason)
+                prefix = '_'
 
     ax0.plot(times, pos_errors, color=POS_ERROR_COLOR, label='Position error')
     ax1.plot(times, deg_errors, color=RAD_ERROR_COLOR,
@@ -321,7 +381,8 @@ def inspect_mode_switching_by_goal(times: np.ndarray,
     ax0.legend(
         handles=ax0.get_legend_handles_labels()[0] + \
             ax1.get_legend_handles_labels()[0] + [cf_patch, cr_patch],
-        bbox_to_anchor=(1.2, 1), loc='upper left', fontsize=14, title_fontsize=16)
+        bbox_to_anchor=(1.2, 1), loc='upper left', fontsize=14,
+        title_fontsize=16)
     plt.tight_layout()
     save_current_figure(
         f'shading_goal_{goal_num}' if log_folder is not None else \
@@ -348,11 +409,82 @@ def inspect_lcm_traffic(messages_by_channel: dict):
     plt.legend()
     plt.show()
 
+def relative_angle_from_quats(q, r):
+    q /= np.linalg.norm(q)
+    r /= np.linalg.norm(r)
+    qr = R.from_quat([q[1], q[2], q[3], q[0]])
+    rr = R.from_quat([r[1], r[2], r[3], r[0]])
+    angle = (qr * rr.inv()).magnitude()
+    return angle
+
+def joint_mjpc_cdf(ras_by_ee_vel: dict, our_ra):
+    ee_vels = np.array(list(ras_by_ee_vel.keys()) + [1000])
+    ras = np.array(list(ras_by_ee_vel.values()) + [our_ra])
+
+    # Sort based on shortest to longest time to goal.
+    sorted_idx = ee_vels.argsort()
+    sorted_ee_vels = ee_vels[sorted_idx]
+    sorted_ras = ras[sorted_idx]
+
+    # Plot formatting.
+    plt.rcParams.update({'font.family': 'serif'})
+
+    # Generate a plot of cumulative distribution functions.
+    fig, axs = plt.subplots(1, 1, figsize=(10,4))
+    for ee_vel, ra in zip(sorted_ee_vels, sorted_ras):
+        color = MJPC_COLORS_PER_EE_VEL[ee_vel]
+
+        # Get the tightest threshold data.
+        data = ra.times_to_thresholds[:, 0]
+
+        # Compute the fraction of invalid goals.
+        problem_goals = []
+        problem_goals += ra.goal_violations[JOINT_LIMIT_VIO_KEY]
+        problem_goals += ra.goal_violations[JOINT_VEL_VIO_KEY]
+        problem_goals += ra.goal_violations[JOINT_TORQUE_VIO_KEY]
+        valid_goal_mask = np.array([i not in problem_goals for i in range(
+            1, ra.n_goals_achieved[-1].item() + 2)])
+        invalid_fraction = (~valid_goal_mask).sum()/valid_goal_mask.shape[0]
+        trials = len(data)
+        cut_off = MJPC_CUT_OFF_GOALS_PER_EE_VEL[ee_vel]
+        hw_viols = f'{100*invalid_fraction:.1f}%'
+
+        # Include the few goals that were manually cut off after > 400s.
+        for _ in range(MJPC_CUT_OFF_GOALS_PER_EE_VEL[ee_vel]):
+            data = np.concatenate((data, np.array([400])))
+
+        count, bins_count = np.histogram(
+            data, bins=11, range=(0, TOO_LONG_TIME_CUTOFF))
+        pdf = count / sum(count)
+        cdf = np.cumsum(pdf)
+        bins_count[0] = 0
+        cdf = np.concatenate([[0], cdf])
+        label = f'MJPC {ee_vel:.2f}' if ee_vel < 1000 else 'Ours         '
+        label += f' / {trials} / {cut_off} / {hw_viols}'
+        axs.plot(bins_count, cdf, color=color, linewidth=5, label=label)
+
+    axs.set_xlabel('Time Limit [s]', fontsize=16)
+    axs.set_ylabel('Fraction of Trials', fontsize=16)
+    axs.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    axs.set_yticks(np.linspace(0, 1, 11))
+    axs.set_ylim([0, 1])
+    axs.set_xlim([0, CDF_TIME_CUTOFF])
+    axs.tick_params(axis='both', which='major', labelsize=12)
+    fig.suptitle('Fraction of Goals Achieved Within Time Limit', fontsize=18)
+
+    axs.legend(bbox_to_anchor=(1.02, 1.04), loc='upper left',
+               title='Approach / AG\u2191 / COG\u2193 / HWV\u2193', fontsize=14,
+               title_fontsize=15)
+    plt.tight_layout()
+
+    plt.grid()
+    save_current_figure('mjpc_cdf', store_folder=ra.save_folder)
+
 
 class ResultsAnalyzer:
-    """Analyzes the results of a sampling-based C3 log by extracting information
-    out of one or multiple associated LCM logs, with the ability to generate
-    visuals."""
+    """Analyzes the results of a sampling-based C3 or MuJoCo MPC log by
+    extracting information out of one or multiple associated LCM logs, with the
+    ability to generate visuals."""
     def __init__(self, log_filepaths: List[str], channels: List[str],
                  sync_channels: List[str] = None,
                  start_times: List[float] = None, end_times: List[float] = None,
@@ -373,9 +505,11 @@ class ResultsAnalyzer:
         self.log_filepaths = log_filepaths
         self.start_times = start_times
         self.end_times = end_times
-        self._channels = channels
+        self._channels = channels if type(channels) == list else list(channels)
         self.save_folder = save_folder
         self.trim_bookends = trim_bookends
+
+        self._use_debug_instead_of_target = 'SAMPLING_C3_DEBUG' in channels
 
         # Load and stitch together each log file.
         self.lcm_t_adj = 0
@@ -384,9 +518,15 @@ class ResultsAnalyzer:
             key: {LCM_TIME_KEY: [], MESSAGE_TIME_KEY: [], MESSAGE_KEY: []}
             for key in self._channels
         }
+
+        # The start LCM times per log will be one longer than the number of logs
+        # since it includes the end time of the last log.
+        self.log_lcm_start_times = [self.lcm_t_adj]
+        self.goals_per_log = []
         for log_file, start, end in zip(log_filepaths, start_times, end_times):
             self._add_messages_from_log(
                 log_file, start_time=start, end_time=end, verbose=verbose)
+            self.log_lcm_start_times.append(self.lcm_t_adj)
 
         # Synchronize according to channels.
         self._synchronize_messages(
@@ -427,6 +567,53 @@ class ResultsAnalyzer:
         self.pos_tol = pos_tol
         self.rad_tol = rad_tol
 
+    def _get_workspace_limits(self):
+        """Get the x, y, z, and radius limits from the C3 parameter files,
+        ensuring that all logs have the same workspace limits.  Store them as
+        self.wsl_x, wsl_y, wsl_z, and wsl_r."""
+        if hasattr(self, 'wsl_x'):
+            return
+
+        wsl_x = None
+        wsl_y = None
+        wsl_z = None
+        wsl_r = None
+
+        # Get the C3 options.
+        for log_filepath in self.log_filepaths:
+            log_folder, log_filename = op.split(log_filepath)
+            log_number = log_filename.split('-')[-1]
+
+            c3_params_filepath = op.join(
+                log_folder, f'c3_gains_{log_number}.yaml')
+            with open(c3_params_filepath, 'r') as file:
+                c3_params = yaml.safe_load(file)
+
+            if wsl_x is None:
+                wsl_x = c3_params[C3_PARAM_WSL_X_KEY]
+                wsl_y = c3_params[C3_PARAM_WSL_Y_KEY]
+                wsl_z = c3_params[C3_PARAM_WSL_Z_KEY]
+                wsl_r = c3_params[C3_PARAM_WSL_R_KEY]
+
+            else:
+                assert wsl_x == c3_params[C3_PARAM_WSL_X_KEY], \
+                    'X workspace limits do not match: ' + \
+                    f'{wsl_x} vs. {c3_params[C3_PARAM_WSL_X_KEY]}'
+                assert wsl_y == c3_params[C3_PARAM_WSL_Y_KEY], \
+                    'X workspace limits do not match: ' + \
+                    f'{wsl_y} vs. {c3_params[C3_PARAM_WSL_Y_KEY]}'
+                assert wsl_z == c3_params[C3_PARAM_WSL_Z_KEY], \
+                    'X workspace limits do not match: ' + \
+                    f'{wsl_z} vs. {c3_params[C3_PARAM_WSL_Z_KEY]}'
+                assert wsl_r == c3_params[C3_PARAM_WSL_R_KEY], \
+                    'X workspace limits do not match: ' + \
+                    f'{wsl_r} vs. {c3_params[C3_PARAM_WSL_R_KEY]}'
+
+        self.wsl_x = wsl_x
+        self.wsl_y = wsl_y
+        self.wsl_z = wsl_z
+        self.wsl_r = wsl_r
+
     def _add_messages_from_log(self, log_filepath: str, start_time: float = 0.0,
                                end_time: float = 1e12, verbose: bool = True):
         """Add messages and times for every channel of interest into the
@@ -458,10 +645,18 @@ class ResultsAnalyzer:
         msg_t_of_last_goal_change = 0
         experiment_started = False
         goals_achieved = 0
+        last_goal = None
+
+        channels_and_n_msgs = {}
 
         while event is not None:
             if event.timestamp - init_lcm_utime > end_utime:
                 break
+
+            if event.channel not in channels_and_n_msgs.keys():
+                channels_and_n_msgs[event.channel] = 1
+            else:
+                channels_and_n_msgs[event.channel] += 1
 
             if event.channel in self._channels:
                 try:
@@ -474,8 +669,10 @@ class ResultsAnalyzer:
                 msg_utime = msg_contents.utime
                 msg_secs = (msg_utime - init_msg_utime)*1e-6 - t_msg_init
 
-                # Cut off initial teleop.
-                if event.channel == 'SAMPLING_C3_DEBUG':
+                # Cut off initial teleop -- detect goals based on the debug
+                # message or the goal message.
+                if self._use_debug_instead_of_target and \
+                    event.channel == 'SAMPLING_C3_DEBUG':
                     if (not experiment_started) and \
                        (not msg_contents.is_teleop or not self.trim_bookends):
                         experiment_started = True
@@ -485,6 +682,31 @@ class ResultsAnalyzer:
                     if experiment_started and \
                        (msg_contents.detected_goal_changes > goals_achieved):
                         goals_achieved = msg_contents.detected_goal_changes
+                        lcm_t_of_last_goal_change = lcm_secs - lcm_start_t + \
+                            self.lcm_t_adj
+                        msg_t_of_last_goal_change = msg_secs - msg_start_t + \
+                            self.msg_t_adj
+                        print(f'Goal {goals_achieved} achieved at ' + \
+                              f'{lcm_t_of_last_goal_change:.2f} s (' + \
+                              f'{msg_t_of_last_goal_change:.2f} s from msg).')
+
+                elif not self._use_debug_instead_of_target and \
+                    event.channel == 'C3_FINAL_TARGET':
+                    if not experiment_started:
+                        experiment_started = True
+                        lcm_start_t = lcm_secs
+                        msg_start_t = msg_secs
+                        last_goal = np.array(msg_contents.state[3:10])
+                    new_goal = np.array(msg_contents.state[3:10])
+                    if experiment_started and \
+                        (np.linalg.norm(new_goal - last_goal) >= 1e-3):
+                        goals_achieved += 1
+                        last_goal = new_goal
+                        if (msg_secs - msg_start_t + self.msg_t_adj) < \
+                            msg_t_of_last_goal_change:
+                            print(f'Found erroneously stitched experiments,' + \
+                                  f' breaking.')
+                            break
                         lcm_t_of_last_goal_change = lcm_secs - lcm_start_t + \
                             self.lcm_t_adj
                         msg_t_of_last_goal_change = msg_secs - msg_start_t + \
@@ -506,22 +728,28 @@ class ResultsAnalyzer:
 
             event = log_file.read_next_event()
 
+        self.goals_per_log.append(goals_achieved)
+
+        # Before trimming:
+        print(f'Channels and messages before trimming:')
+        for key, val in channels_and_n_msgs.items():
+            print(f'\t{key}: {val} messages')
+
         # Cut off the last goal since it was not achieved.
         if self.trim_bookends:
-            i_cutoff = self.messages_by_channel[
-                'SAMPLING_C3_DEBUG'][LCM_TIME_KEY].index(
-                    lcm_t_of_last_goal_change)
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY] = \
-                self.messages_by_channel['SAMPLING_C3_DEBUG'][LCM_TIME_KEY][
+            trim_channel = 'SAMPLING_C3_DEBUG' if \
+                self._use_debug_instead_of_target else 'C3_FINAL_TARGET'
+            i_cutoff = self.messages_by_channel[trim_channel][
+                LCM_TIME_KEY].index(lcm_t_of_last_goal_change)
+            self.messages_by_channel[trim_channel][LCM_TIME_KEY] = \
+                self.messages_by_channel[trim_channel][LCM_TIME_KEY][:i_cutoff]
+            self.messages_by_channel[trim_channel][MESSAGE_TIME_KEY] = \
+                self.messages_by_channel[trim_channel][MESSAGE_TIME_KEY][
                     :i_cutoff]
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY] = \
-                self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY][
-                    :i_cutoff]
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY] = \
-                self.messages_by_channel[
-                    'SAMPLING_C3_DEBUG'][MESSAGE_KEY][:i_cutoff]
-            self.lcm_t_adj += lcm_t_of_last_goal_change
-            self.msg_t_adj += msg_t_of_last_goal_change
+            self.messages_by_channel[trim_channel][MESSAGE_KEY] = \
+                self.messages_by_channel[trim_channel][MESSAGE_KEY][:i_cutoff]
+            self.lcm_t_adj = lcm_t_of_last_goal_change
+            self.msg_t_adj = msg_t_of_last_goal_change
 
         if verbose:
             for channel, contents in self.messages_by_channel.items():
@@ -531,6 +759,39 @@ class ResultsAnalyzer:
                 print(f'Time range: {contents[LCM_TIME_KEY][0]:.2f} to ' + \
                     f'{contents[LCM_TIME_KEY][-1]:.2f}')
             print(f'\nFinished processing log file at {log_filepath}.\n')
+
+    def _downsample_channels(self, sync_time_key: str):
+        """No need to keep more than 60Hz of information, so ensure every
+        channel's messages are no more frequent than that."""
+        for channel_name in self._channels:
+            full_lcm_times = self.messages_by_channel[channel_name][
+                LCM_TIME_KEY].copy()
+            full_msg_times = self.messages_by_channel[channel_name][
+                MESSAGE_TIME_KEY].copy()
+            full_msgs = self.messages_by_channel[channel_name][
+                MESSAGE_KEY].copy()
+            print(f'Downsampling the "{channel_name}" channel to <=60Hz:  ' + \
+                f'{len(full_lcm_times)} to ', end='')
+
+            new_lcm_times = []
+            new_msg_times = []
+            new_msgs = []
+            last_t = -1
+            for i in range(len(full_lcm_times)):
+                new_t = self.messages_by_channel[channel_name][sync_time_key][i]
+                if new_t - last_t > (1.0/60):
+                    last_t = new_t
+                    new_lcm_times.append(full_lcm_times[i])
+                    new_msg_times.append(full_msg_times[i])
+                    new_msgs.append(full_msgs[i])
+
+            self.messages_by_channel[channel_name][LCM_TIME_KEY] = new_lcm_times
+            self.messages_by_channel[channel_name][MESSAGE_TIME_KEY] = \
+                new_msg_times
+            self.messages_by_channel[channel_name][MESSAGE_KEY] = new_msgs
+
+            retention_percentage = 100*len(new_lcm_times)/len((full_lcm_times))
+            print(f'{len(new_lcm_times)} ({retention_percentage:.2f}%)')
 
     def _synchronize_messages(self, sync_channels: List[str] = None,
                               synchronize_to_channel: str = 'SAMPLING_C3_DEBUG',
@@ -544,7 +805,12 @@ class ResultsAnalyzer:
         index corresponds across channels."""
         sync_channels = sync_channels if sync_channels is not None else \
             self._channels
+        synchronize_to_channel = 'SAMPLING_C3_DEBUG' if 'SAMPLING_C3_DEBUG' in \
+            self._channels else 'C3_FINAL_TARGET'
         time_key = LCM_TIME_KEY if use_lcm_times else MESSAGE_TIME_KEY
+
+        # First, downsample the synchronize to channel if it is very high rate.
+        self._downsample_channels(time_key)
 
         # Detect which channel had the fewest messages.
         min_num_channels = np.inf
@@ -639,6 +905,86 @@ class ResultsAnalyzer:
             save_current_figure('time_sync')
 
     def _extract_information(self):
+        if hasattr(self, 'times'):
+            return
+        if self._use_debug_instead_of_target:
+            self._extract_information_with_debug()
+        else:
+            self._extract_information_without_debug()
+
+    def _extract_information_without_debug(self):
+        """Extracts and stores the following as numpy class attributes, if not
+        done already, per time step:
+            - times (N,)
+            - pos_errors (N,)
+            - rad_errors (N,)
+            - n_goals_achieved (N,)
+            - jack_poses (N, 7)
+            - ee_locations (N, 3)
+
+        And the following per goal:
+            - times_of_new_goals (M,)
+            - goals (M, 7)
+            - worst_pos_errors (M,)
+            - worst_rad_errors (M,)
+        """
+        # Get relevant messages over time.
+        goals = self.messages_by_channel['C3_FINAL_TARGET'][MESSAGE_KEY]
+        actuals = self.messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
+
+        self.times = np.array(
+            self.messages_by_channel['C3_FINAL_TARGET'][MESSAGE_TIME_KEY])
+
+        # Things to keep track of for every timestamp.
+        n_goals_achieved = []
+        pos_errors, rad_errors = [], []
+        ee_locations, jack_poses, target_poses = [], [], []
+
+        # Things to keep track of for every goal.
+        last_goal_num, last_goal = -1, np.zeros((7))
+        times_of_new_goals, goal_poses = [], []
+        worst_pos_errors, worst_rad_errors = [], []
+        init_pos_errors, init_rad_errors = [], []
+
+        for goal, actual, t in zip(goals, actuals, self.times):
+            ee_locations.append(np.array(actual.state[:3]))
+            jack_poses.append(np.array(actual.state[3:10]))
+            target_poses.append(np.array(goal.state[3:10]))
+
+            pos_errors.append(
+                np.linalg.norm(jack_poses[-1][4:7] - target_poses[-1][4:7]))
+            rad_errors.append(relative_angle_from_quats(
+                jack_poses[-1][:4], target_poses[-1][:4]))
+
+            if np.any(last_goal != np.array(goal.state[3:10])):
+                goal_poses.append(np.array(goal.state[3:10]))
+                last_goal = np.array(goal.state[3:10])
+                last_goal_num += 1
+                times_of_new_goals.append(t)
+                init_pos_errors.append(pos_errors[-1])
+                init_rad_errors.append(rad_errors[-1])
+                worst_pos_errors.append(pos_errors[-1])
+                worst_rad_errors.append(rad_errors[-1])
+
+            n_goals_achieved.append(last_goal_num)
+
+            if pos_errors[-1] > worst_pos_errors[-1]:
+                worst_pos_errors[-1] = pos_errors[-1]
+            if rad_errors[-1] > worst_rad_errors[-1]:
+                worst_rad_errors[-1] = rad_errors[-1]
+
+        self.n_goals_achieved = np.array(n_goals_achieved)
+        self.pos_errors = np.array(pos_errors)
+        self.rad_errors = np.array(rad_errors)
+        self.ee_locations = np.array(ee_locations)
+        self.jack_poses = np.array(jack_poses)
+
+        self.times_of_new_goals = np.array(times_of_new_goals)
+        self.goal_poses = np.array(goal_poses)
+        self.worst_pos_errors = np.array(worst_pos_errors)
+        self.worst_rad_errors = np.array(worst_rad_errors)
+
+    def _extract_information_with_debug(self):
         """Extracts and stores the following as numpy class attributes, if not
         done already, per time step:
             - times (N,)
@@ -649,6 +995,7 @@ class ResultsAnalyzer:
             - n_in_buffers (N,)
             - switch_reasons (N,)
             - jack_poses (N, 7)
+            - ee_locations (N, 3)
 
         And the following per goal:
             - times_of_new_goals (M,)
@@ -656,9 +1003,6 @@ class ResultsAnalyzer:
             - worst_pos_errors (M,)
             - worst_rad_errors (M,)
         """
-        if hasattr(self, 'times'):
-            return
-
         # Get relevant messages over time.
         sample_buffers = self.messages_by_channel['SAMPLE_BUFFER'][MESSAGE_KEY]
         debugs = self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_KEY]
@@ -666,25 +1010,20 @@ class ResultsAnalyzer:
         actuals = self.messages_by_channel['C3_ACTUAL'][MESSAGE_KEY]
 
         self.times = np.array(
-            self.messages_by_channel['SAMPLING_C3_DEBUG'][MESSAGE_TIME_KEY])
+            self.messages_by_channel['C3_FINAL_TARGET'][MESSAGE_TIME_KEY])
 
         # Things to keep track of for every timestamp.
         n_in_buffers, n_goals_achieved, n_since_last_progress = [], [], []
         is_c3_mode_flags, pose_tracking = [], []
         pos_errors, rad_errors = [], []
         target_came_froms, switch_reasons = [], []
-        jack_poses = []
+        ee_locations, jack_poses = [], []
 
         # Things to keep track of for every goal.
         last_goal_num, last_goal = -1, np.zeros((7))
-        # print('last goal num at init:', last_goal_num)
-        # print('last goal at init:', last_goal)
         times_of_new_goals, goal_poses = [], []
         worst_pos_errors, worst_rad_errors = [], []
         init_pos_errors, init_rad_errors = [], []
-
-        # Things to keep track of for every log.
-        goals_per_log = []
 
         for buffer, debug, goal, actual, t in zip(
             sample_buffers, debugs, goals, actuals, self.times):
@@ -721,12 +1060,8 @@ class ResultsAnalyzer:
                 goal_poses.append(np.array(goal.state[3:10]))
                 last_goal = np.array(goal.state[3:10])
 
+            ee_locations.append(np.array(actual.state[:3]))
             jack_poses.append(np.array(actual.state[3:10]))
-
-        try:
-            goals_per_log.append(debug.detected_goal_changes + 1)
-        except UnboundLocalError:
-            goals_per_log.append(0)
 
         self.is_c3_mode_flags = np.array(is_c3_mode_flags)
         self.n_in_buffers = np.array(n_in_buffers)
@@ -734,6 +1069,7 @@ class ResultsAnalyzer:
         self.switch_reasons = np.array(switch_reasons)
         self.pos_errors = np.array(pos_errors)
         self.rad_errors = np.array(rad_errors)
+        self.ee_locations = np.array(ee_locations)
         self.jack_poses = np.array(jack_poses)
 
         self.times_of_new_goals = np.array(times_of_new_goals)
@@ -745,12 +1081,17 @@ class ResultsAnalyzer:
         # logs, and store how many goals per log.
         for log_i, downhill_i in enumerate(
             np.where(np.diff(self.n_goals_achieved) < 0)[0]):
-            self.n_goals_achieved[downhill_i+1:] += goals_per_log[log_i]
-        self.goals_per_log = np.array(goals_per_log)
+            self.n_goals_achieved[downhill_i+1:] += self.goals_per_log[log_i]
 
     def _compute_times_to_thresholds(self):
+        """Per goal, computes the time the controller took to get the object to
+        the goal within each set of thresholds.  Creates the class attribute
+        self.times_to_thresholds of shape (n_goals, n_thresholds), with the
+        first column as the tightest threshold."""
         if hasattr(self, 'times_to_thresholds'):
             return
+
+        self._get_trajectory_tolerances()
 
         # Use all tolerances up to as fine as the used one from the log.
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -792,6 +1133,218 @@ class ResultsAnalyzer:
 
         self.times_to_thresholds = times_to_thresholds
 
+    def _flag_hardware_violations(self):
+        """Detects hardware violations in the recorded logs.  For hardware
+        experiments, this is unnecessary.  For simulation experiments, this can
+        catch results that would not have been possible on hardware due to
+        safety and robot limits.  This includes:
+            - joint limits
+            - joint velocity limits
+            - joint torque limits
+            - C3 workspace limits.
+        In addition, this method approximates the joint acceleration and jerk by
+        finite differencing the reported joint velocities.  This approximation
+        seems to be noisy enough to trigger false positves (e.g. they can be
+        triggered even on hardware logs), so these are only computed for
+        reference and not reported as a violation.
+
+        Stores information in the following attributes:
+            - goal_violations:  dict with keys for joint, velocity, torque, and
+                workspace limits, with values of the goal numbers which were in
+                violation.
+            - bad_t_states:  (?, 8) with t followed by bad joint positions
+            - bad_t_vels:  (?, 8) with t followed by bad joint velocities
+            - bad_t_accs:  (?, 8) with t followed by bad joint accelerations
+            - bad_t_jerks:  (?, 8) with t followed by bad joint jerks
+            - bad_t_torques:  (?, 8) with t followed by bad joint torques
+            - bad_t_ee_xyzs:  (?, 4) with t followed by bad EE xyz locations
+        """
+        if hasattr(self, 'goal_violations'):
+            return
+
+        self._extract_information()
+        self._detect_workspace_violations()
+
+        goal_violations = {}
+        keys = [JOINT_LIMIT_VIO_KEY, JOINT_VEL_VIO_KEY, JOINT_TORQUE_VIO_KEY,
+                WSL_VIO_KEY]
+        for key in keys:  goal_violations[key] = []
+        for t_thing in self.bad_t_ee_xyzs:
+            t = t_thing[0]
+            goal_num = int(np.where(t > self.times_of_new_goals)[0][-1]) + 1
+            if goal_num not in goal_violations[WSL_VIO_KEY]:
+                goal_violations[WSL_VIO_KEY].append(goal_num)
+
+        start_utime = int(0)
+
+        # Since Franka state information is very high frequency, only store the
+        # problematic ones.
+        bad_t_states = np.zeros((0, 8))
+        bad_t_vels = np.zeros((0, 8))
+        bad_t_accs = np.zeros((0, 8))
+        bad_t_jerks = np.zeros((0, 8))
+        bad_t_torques = np.zeros((0, 8))
+
+        # Iterate per log.
+        # goal_adjs = [0] + [int(num) for num in self.goals_per_log[:-1]]
+        for i, log_filepath in enumerate(self.log_filepaths):
+
+            # Get the right end time in the log to exclude any non-achieved
+            # goals at the end.
+            start_time_adj = self.log_lcm_start_times[i]
+            end_time = self.log_lcm_start_times[i+1]-self.log_lcm_start_times[i]
+            end_utime = int(end_time*1e6)
+
+            # Need to keep up with the past 3 velocity reports for computing
+            # acceleration and jerk violations.
+            previous_3_t_vels = np.zeros((0, 8))
+
+            # Open the LCM log.
+            log_file = EventLog(log_filepath, 'r')
+
+            # Read through the log file.
+            event = log_file.read_next_event()
+            while event.channel not in self._channels:
+                event = log_file.read_next_event()
+            init_lcm_utime = event.timestamp
+            init_msg_utime = ALL_CHANNELS_AND_LCMT[
+                event.channel].decode(event.data).utime
+            event = log_file.seek_to_timestamp(init_lcm_utime + start_utime)
+            event = log_file.read_next_event()
+            t_msg_init = (ALL_CHANNELS_AND_LCMT[
+                event.channel].decode(event.data).utime - init_msg_utime)*1e-6
+
+            print(f'Reading Franka states from {log_filepath}... ', end='')
+            while event is not None:
+                if event.timestamp - init_lcm_utime > end_utime:
+                    break
+
+                if event.channel in ['FRANKA_STATE', 'FRANKA_STATE_SIMULATION']:
+                    try:
+                        msg_contents = ALL_CHANNELS_AND_LCMT[
+                            event.channel].decode(event.data)
+                    except ValueError:
+                        print(f'Failed to decode message from {event.channel}.')
+                        breakpoint()
+                    msg_utime = msg_contents.utime
+                    msg_secs = (msg_utime - init_msg_utime)*1e-6 - \
+                        t_msg_init + start_time_adj
+
+                    # Compute the states.
+                    t_pos = np.hstack((
+                        np.array([msg_secs]), np.array(msg_contents.position)))
+                    t_vel = np.hstack((
+                        np.array([msg_secs]), np.array(msg_contents.velocity)))
+                    t_torque = np.hstack((
+                        np.array([msg_secs]), np.array(msg_contents.effort)))
+
+                    # Maintain the past 3 velocities.
+                    if previous_3_t_vels.shape[0] < 3:
+                        previous_3_t_vels = np.concatenate((
+                            previous_3_t_vels, t_vel.reshape(1, 8)))
+                    else:
+                        previous_3_t_vels[0, :] = previous_3_t_vels[1, :]
+                        previous_3_t_vels[1, :] = previous_3_t_vels[2, :]
+                        previous_3_t_vels[2, :] = t_vel
+
+                    # Store any problematic ones.
+                    if np.any(t_pos[1:] < FRANKA_JOINT_MINS) or \
+                    np.any(t_pos[1:] > FRANKA_JOINT_MAXS):
+                        bad_t_states = np.concatenate((
+                            bad_t_states, t_pos.reshape(1, 8)))
+                    if np.any(np.abs(t_vel[1:]) > FRANKA_JOINT_VEL_LIMITS):
+                        bad_t_vels = np.concatenate((
+                            bad_t_vels, t_vel.reshape(1, 8)))
+                    if np.any(np.abs(t_torque[1:])>FRANKA_JOINT_TORQUE_LIMITS):
+                        bad_t_torques = np.concatenate((
+                            bad_t_torques, t_torque.reshape(1, 8)))
+
+                    if previous_3_t_vels.shape[0] >= 2:
+                        dt = previous_3_t_vels[-1, 0] - previous_3_t_vels[-2, 0]
+                        acc = (previous_3_t_vels[-1, 1:] - \
+                            previous_3_t_vels[-2, 1:])/dt
+                        t_acc = np.hstack((np.array([msg_secs]), acc))
+                        if np.any(np.abs(t_acc[1:]) > FRANKA_JOINT_ACC_LIMITS):
+                            bad_t_accs = np.concatenate((
+                                bad_t_accs, t_acc.reshape(1, 8)))
+                    if previous_3_t_vels.shape[0] == 3:
+                        prev_dt = previous_3_t_vels[-2, 0] - \
+                            previous_3_t_vels[-3, 0]
+                        prev_acc = (previous_3_t_vels[-2, 1:] - \
+                                    previous_3_t_vels[-3, 1:])/prev_dt
+                        jerk = (acc - prev_acc)/dt
+                        t_jerk = np.hstack((np.array([msg_secs]), jerk))
+                        if np.any(np.abs(t_jerk[1:])>FRANKA_JOINT_JERK_LIMITS):
+                            bad_t_jerks = np.concatenate((
+                                bad_t_jerks, t_jerk.reshape(1, 8)))
+
+                event = log_file.read_next_event()
+            print(f'Done.\n')
+
+        print(f'\nJoint limit violations: {bad_t_states.shape[0]}')
+        print(f'Joint velocity violations: {bad_t_vels.shape[0]}')
+        print(f'Joint acceleration violations: {bad_t_accs.shape[0]}')
+        print(f'Joint jerk violations: {bad_t_jerks.shape[0]}')
+        print(f'Joint torque violations: {bad_t_torques.shape[0]}')
+        print(f'WSL violations: {self.bad_t_ee_xyzs.shape[0]}')
+
+        t_somethings = [bad_t_states, bad_t_vels, bad_t_torques]
+        for key, t_something in zip(keys, t_somethings):
+            goal_violations[key] = []
+            for t_thing in t_something:
+                t = t_thing[0]
+                goal_num = int(np.where(t > self.times_of_new_goals)[0][-1]) + 1
+                if goal_num not in goal_violations[key]:
+                    goal_violations[key].append(goal_num)
+
+        self.goal_violations = goal_violations
+        print(f'\nDetected hardware violations per goal:')
+        for key, val in goal_violations.items():
+            print(f'\t{key}: {val}')
+
+        self.bad_t_states = bad_t_states
+        self.bad_t_vels = bad_t_vels
+        self.bad_t_accs = bad_t_accs
+        self.bad_t_jerks = bad_t_jerks
+        self.bad_t_torques = bad_t_torques
+
+    def _detect_workspace_violations(self):
+        """Detect any violation of workspace limits throughout the experiment.
+        """
+        self._get_workspace_limits()
+
+        problem_t_ee_xyzs = np.zeros((0, 4))
+
+        # Iterate over every C3_ACTUAL message.
+        for t, ee_xyz in zip(self.times, self.ee_locations):
+            x, y, z = ee_xyz
+            radius = np.linalg.norm(ee_xyz)
+            x, y, z, radius = float(x), float(y), float(z), float(radius)
+            if (x < self.wsl_x[0] or x > self.wsl_x[1]) or \
+               (y < self.wsl_y[0] or y > self.wsl_y[1]) or \
+               (z < self.wsl_z[0] or z > self.wsl_z[1]) or \
+               (radius < self.wsl_r[0] or radius > self.wsl_r[1]):
+                problem_t_ee_xyzs = np.concatenate((
+                    problem_t_ee_xyzs, np.array([[t, x, y, z]])))
+
+        self.bad_t_ee_xyzs = problem_t_ee_xyzs
+
+    def prepare_and_export(self, filename: str):
+        """Perform all of the compute-heavy analysis and export the class as a
+        pickle object.  This can be reloaded in the future.  Note:  Since the
+        special LCM type objects are not pickle-able, need to remove the
+        self.messages_by_channel attribute.  This is ok because all of the
+        computations that require this information are already done before
+        exporting; all future visualizations are still runnable."""
+        self._extract_information()
+        self._flag_hardware_violations()
+        self._compute_times_to_thresholds()
+
+        del self.__dict__['messages_by_channel']
+        with open(filename, 'wb') as file:
+            pickle.dump(self, file)
+        print(f'\nWrote ResultsAnalyzer class as pickle object at:  {filename}')
+
     def inspect_mode_switching_by_goal(self):
         """Generate mode switching plots for every goal achieved.  The plots
         show the position and orientation errors over time, with shading for
@@ -803,18 +1356,70 @@ class ResultsAnalyzer:
         n_goals = self.n_goals_achieved[-1] + 1
         for i in range(n_goals):
             ts = self.times[self.n_goals_achieved == i]
-            is_c3s = self.is_c3_mode_flags[self.n_goals_achieved == i]
-            switches = self.switch_reasons[self.n_goals_achieved == i]
+            is_c3s = None if not self._use_debug_instead_of_target else \
+                self.is_c3_mode_flags[self.n_goals_achieved == i]
+            switches = None if not self._use_debug_instead_of_target else \
+                self.switch_reasons[self.n_goals_achieved == i]
             pos_es = self.pos_errors[self.n_goals_achieved == i]
             rad_es = self.rad_errors[self.n_goals_achieved == i]
             inspect_mode_switching_by_goal(
                 ts, is_c3s, switches, pos_es, rad_es, self.pos_tol,
                 self.rad_tol, i+1, log_folder=self.save_folder)
 
+    def visualize_goals_with_violations(self, title_suffix: str = None):
+        """Make a plot of the time to reach each goal, ordered from shortest to
+        longest, where each bar is colored to denote whether a hardware limit
+        violation occurred in pursuit of the goal."""
+        self._extract_information()
+        self._flag_hardware_violations()
+        self._compute_times_to_thresholds()
+
+        title = 'Time to Reach Goal'
+        title += f': {title_suffix}' if title_suffix is not None else ''
+
+        # Use the tightest thresholds.
+        goal_times = self.times_to_thresholds[:, 0]
+
+        # Differentiate the problem times from the good times.
+        problem_goals = []
+        problem_goals += self.goal_violations[JOINT_LIMIT_VIO_KEY]
+        problem_goals += self.goal_violations[JOINT_VEL_VIO_KEY]
+        problem_goals += self.goal_violations[JOINT_TORQUE_VIO_KEY]
+        valid_goal_mask = np.array([i not in problem_goals for i in range(
+            1, self.n_goals_achieved[-1].item() + 2)])
+        invalid_fraction = (~valid_goal_mask).sum()/valid_goal_mask.shape[0]
+
+        # Sort based on shortest to longest time to goal.
+        sorted_idx = goal_times.argsort()
+        sorted_times = goal_times[sorted_idx]
+        sorted_valid_goal_mask = valid_goal_mask[sorted_idx]
+
+        xs = np.arange(1, len(goal_times) + 1)
+
+        average_time = np.mean(sorted_times)
+
+        fig, axs = plt.subplots(1, 1, figsize=(6, 5))
+        axs.bar(xs[sorted_valid_goal_mask],
+                sorted_times[sorted_valid_goal_mask], width=1, label='Valid')
+        axs.bar(xs[~sorted_valid_goal_mask],
+                sorted_times[~sorted_valid_goal_mask], width=1,
+                label='Violated Franka Limits')
+        axs.hlines(average_time, 0.5, len(goal_times)+0.5, linestyles='--',
+                   label=f'Average: {average_time:.2f}s')
+        axs.set_xlabel(f'Goals ({100*invalid_fraction:.1f}% in violation of' + \
+                       f' hardware limits)', fontsize = 16)
+        axs.set_ylabel('Time [s]', fontsize = 16)
+        axs.set_title(title, fontsize = 18)
+        axs.set_xlim([0.5, len(goal_times)+0.5])
+        axs.set_ylim([0, 400])
+        axs.set_xticks(xs)
+        axs.legend(fontsize=14)
+        save_current_figure(f'goal_violations_{title_suffix.replace(" ", "_")}',
+                            store_folder=self.save_folder)
+
     def visualize_time_histograms(self):
         """Generate time-to-goal histograms."""
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
@@ -868,7 +1473,6 @@ class ResultsAnalyzer:
     def visualize_goal_success(self):
         """Generate a debugging-purposed goal success plot."""
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
@@ -924,15 +1528,14 @@ class ResultsAnalyzer:
         axs[2].set_title('Time to Reach Goal', fontsize = 18)
         axs[2].set_xticks(x)
         axs[2].set_xticklabels([f'Goal {i+1}' for i in range(n_goals)])
-        axs[2].legend(title="Thresholds",
-                    bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=14, title_fontsize=16)
+        axs[2].legend(title="Thresholds", bbox_to_anchor=(1.02, 1),
+                      loc='upper left', fontsize=14, title_fontsize=16)
         plt.tight_layout()
         save_current_figure('goal_success', store_folder=self.save_folder)
 
     def visualize_time_to_goal_vs_error(self):
         """Generate time to goal versus orientation and position error plots."""
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
@@ -971,7 +1574,6 @@ class ResultsAnalyzer:
     def visualize_cdf(self):
         """Generate CDF plot."""
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         # Use all tolerances up to as fine as the used one from the log.
@@ -1013,7 +1615,7 @@ class ResultsAnalyzer:
         fig.subplots_adjust(left=0.15, bottom=0.15)
 
         plt.grid()
-        fig.suptitle('Fraction of Goals Achieved Within Time Limit', fontsize = 18)
+        fig.suptitle('Fraction of Goals Achieved Within Time Limit', fontsize=18)
         save_current_figure('cdf', store_folder=self.save_folder)
 
     def print_trim_times(self):
@@ -1038,11 +1640,10 @@ class ResultsAnalyzer:
         date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
 
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         cut_times = np.concatenate((self.times_of_new_goals, self.times[-1:]))
-        n_goals = self.goals_per_log[0]
+        n_goals = len(self.times_of_new_goals)
         assert cut_times.shape[0] == n_goals + 1
 
         for i in range(n_goals):
@@ -1077,7 +1678,6 @@ class ResultsAnalyzer:
             print(f'Found existing {overlay_dir}...')
 
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         if per_goal:
@@ -1092,7 +1692,7 @@ class ResultsAnalyzer:
         goals achieved."""
         print(f'Full video overlay')
         date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
-        n_goals = self.goals_per_log[0]
+        n_goals = len(self.times_of_new_goals)
 
         # First overlay the videos.
         full_meshcat_video = op.join(
@@ -1132,7 +1732,7 @@ class ResultsAnalyzer:
         """Make a single overlay video per goal with end screen annotation to
         express the goal success."""
         date, log_num = get_date_and_log_num_from_log_filepath(log_filepath)
-        n_goals = self.goals_per_log[0]
+        n_goals = len(self.times_of_new_goals)
 
         for i in range(n_goals):
             phone_video = op.join(
@@ -1276,7 +1876,6 @@ class ResultsAnalyzer:
 
     def print_statistics(self):
         self._extract_information()
-        self._get_trajectory_tolerances()
         self._compute_times_to_thresholds()
 
         pos_thresholds = POS_SUCCESS_THRESHOLDS[
@@ -1535,6 +2134,64 @@ def cli():
     pass
 
 
+@cli.command('mjpc')
+@click.argument('pickle-dir', type=click.Path(exists=True), required=True)
+@click.option('--interactive', is_flag=True,
+              help='Run in interactive mode')
+@click.option('--save-to', type=str, default=None,
+              help='Save the results to a folder of provided name')
+@click.option('--delete', is_flag=True,
+              help='Delete the save folder if it exists')
+def mjpc_command(pickle_dir: str, interactive: bool, save_to: str,
+                 delete: bool):
+    if save_to is not None:
+        save_folder = op.join('examples/jacktoy/test/tmp/', save_to)
+        if op.exists(save_folder) and delete:
+            shutil.rmtree(save_folder)
+        elif not op.exists(save_folder):
+            os.makedirs(save_folder)
+    else:
+        save_folder = None
+
+    # Look for ours_sim.pickle and multiple MJPC files of this type:
+    # mjpc_ee_vel_0-24.pickle
+    result_analyzers_by_ee_vel = {}
+    result_analyzer_ours = None
+
+    # Iterate over all files in the directory
+    for filename in os.listdir(pickle_dir):
+        if filename.endswith('.pickle'):
+            filepath = op.join(pickle_dir, filename)
+            print(f'Loading {filepath}... ', end='')
+
+            with open(filepath, 'rb') as f:
+                ra = pickle.load(f)
+            assert isinstance(ra, ResultsAnalyzer)
+            ra.save_folder = save_folder
+
+            if filename == 'ours_sim.pickle':
+                result_analyzer_ours = ra
+            elif filename.startswith('mjpc_ee_vel_'):
+                ee_vel_str = filename.split('_')[3].split('.')[0]
+                ones = int(ee_vel_str.split('-')[0])
+                decimals = 0.01 * int(ee_vel_str.split('-')[1])
+                ee_vel = ones + decimals
+                result_analyzers_by_ee_vel[ee_vel] = ra
+
+            print(f'Done.')
+
+    if interactive:
+        global global_is_interactive
+        global_is_interactive = True
+        plt.ion()
+
+    for ee_vel, result_analyzer in result_analyzers_by_ee_vel.items():
+        result_analyzer.visualize_goals_with_violations(
+            title_suffix=f'EE Velocity cost = {ee_vel}')
+    result_analyzer_ours.visualize_goals_with_violations(title_suffix=f'Ours')
+    joint_mjpc_cdf(result_analyzers_by_ee_vel, result_analyzer_ours)
+
+
 @cli.command('multi')
 @click.argument('log-folders', type=click.Path(exists=True), nargs=-1,
                 required=True)
@@ -1552,27 +2209,51 @@ def cli():
               help='Overlay the meshcat video on the phone videos')
 @click.option('--delete', is_flag=True,
               help='Delete the save folder if it exists')
+@click.option('--export-name', type=str,
+              help='Export the ResultsAnalyzer object')
 
 def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
                   video: bool, demo: bool, trim_times: bool, overlay: bool,
-                  delete: bool):
-    channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO
-
+                  delete: bool, export_name: str):
     # Turn the folders into filepaths.
+    log_type = None
     log_filepaths = []
     for log_folder in log_folders:
         log_folder = log_folder[:-1] if log_folder[-1] == '/' else log_folder
         log_number = log_folder.split('/')[-1][:6]
-        log_filepath = op.join(log_folder, f'simlog-{log_number}')
-        log_type = 'simulation'
-        if not op.exists(log_filepath):
-            log_filepath = op.join(log_folder, f'hwlog-{log_number}')
-            log_type = 'hardware'
-        if not op.exists(log_filepath):
-            raise ValueError(f'Could not find simlog or hwlog in: {log_folder}')
+        hwlog_filepath = op.join(log_folder, f'hwlog-{log_number}')
+        simlog_filepath = op.join(log_folder, f'simlog-{log_number}')
+        mjpclog_filepath = op.join(log_folder, f'mjpclog-{log_number}')
+        if op.exists(hwlog_filepath):
+            log_filepath = hwlog_filepath
+            if log_type == None:
+                log_type = 'hardware'
+            elif log_type != 'hardware':
+                raise RuntimeError(f'Can only combine logs of the same ' + \
+                                   f'type:  got {log_type} and hardware.')
+        elif op.exists(simlog_filepath):
+            log_filepath = simlog_filepath
+            if log_type == None:
+                log_type = 'simulation'
+            elif log_type != 'simulation':
+                raise RuntimeError(f'Can only combine logs of the same ' + \
+                                   f'type:  got {log_type} and simulation.')
+        elif op.exists(mjpclog_filepath):
+            log_filepath = mjpclog_filepath
+            if log_type == None:
+                log_type = 'mjpc'
+            elif log_type != 'mjpc':
+                raise RuntimeError(f'Can only combine logs of the same ' + \
+                                   f'type:  got {log_type} and mjpc.')
+        else:
+            raise ValueError(f'Could not find simlog, hwlog, or mjpclog in:' + \
+                             f' {log_folder}')
         print(f'Parsing {log_type} log at: {log_filepath}')
         log_filepaths.append(log_filepath)
     print('')
+
+    channels_and_lcmt = MINIMAL_CHANNELS_AND_LCMT_FOR_MJPC \
+        if log_type == 'mjpc' else MINIMAL_CHANNELS_AND_LCMT_FOR_VIDEO
 
     if (trim_times and not video) or overlay:
         for log_filepath in log_filepaths:
@@ -1609,6 +2290,16 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
         verbose=False,
         trim_bookends=not demo
     )
+
+    if export_name is not None:
+        print(f'Will export ResultsAnalyzer and exit.')
+        export_name += '.pickle' if not export_name.endswith('.pickle') else ''
+        export_filepath = op.join(EXPORT_FOLDER, export_name)
+        results_analyzer.prepare_and_export(export_filepath)
+        exit()
+
+    results_analyzer.visualize_goals_with_violations()
+    breakpoint()
 
     if demo:
         if video:

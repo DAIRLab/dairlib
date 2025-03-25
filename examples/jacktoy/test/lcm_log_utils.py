@@ -1042,8 +1042,6 @@ class ResultsAnalyzer:
             switch_reasons.append(debug.mode_switch_reason)
 
             if last_goal_num != debug.detected_goal_changes:
-                if last_goal_num > debug.detected_goal_changes:
-                    goals_per_log.append(last_goal_num + 1)
                 last_goal_num = debug.detected_goal_changes
                 times_of_new_goals.append(t)
                 init_pos_errors.append(debug.current_pos_error)

@@ -73,6 +73,8 @@ void RelativePositionCost::EvaluateInnerTerm(
 void RelativePositionCost::EvaluateInnerTerm(
     const Eigen::Ref<const VectorXd> &x, VectorXd *y) const{
 
+  multibody::SetPositionsIfNew<double>(plant_, x, context_.get());
+
   Vector3d p_from;
   Vector3d p_to;
 

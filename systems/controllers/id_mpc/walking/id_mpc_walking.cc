@@ -104,7 +104,6 @@ void IDMPCWalking::MakeFootsteps() {
         ));
   }
 
-
   // Make the touchdown constraints, noting that adding the constraint to the
   // first 2 timesteps would make the problem overconstrained
   for (int i = 2; i <= params_.mpc_N; ++i) {

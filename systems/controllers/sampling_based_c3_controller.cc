@@ -1507,7 +1507,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // ee locations.
   Eigen::Vector3d v1 = (current_ee_location - current_object_location).normalized();
   Eigen::Vector3d v2 = (best_sample_location - current_object_location).normalized();
-  double travel_angle = std::acos(v1.dot(v2));
+  // NOTE:  Need to clamp between not quite (-1, 1) to avoid NaNs.
+  double travel_angle = std::acos(std::clamp(v1.dot(v2), -0.9999, 0.9999));
 
   // Read the time from the t_context i/p for setting timestamps.
   double t = t_context;

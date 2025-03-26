@@ -57,6 +57,7 @@ void IDMPCWalking::UpdateProblemData(
           mpc_.GetDecisionVariableValue(pp_.at(i+1), prev_sol));
     }
   }
+  UpdateSwingTrajCostsSDF(reference);
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -221,7 +222,17 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
 }
 
 void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
-
+  const Vector3d& point = params_.foot_midpoint;
+  for (int i = 0; i <= params_.mpc_N; ++i) {
+    double clearance = params_.step_height *
+        std::sin(M_PI * mpc_reference.single_stance_phase_.at(i));
+    const std::string foot =
+        mpc_reference.active_contacts_.at(i).front() == "toe_left_front" ?
+        "toe_right" : "toe_left";
+    terrain_sdf_costs_.at(i)->UpdateReference(VectorXd::Constant(1, clearance));
+    terrain_sdf_costs_.at(i)->set_frame(foot);
+    terrain_sdf_costs_.at(i)->set_point(point);
+  }
 }
 
 void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
@@ -256,14 +267,12 @@ void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   initial_s2s_state_constraint_->UpdateCoefficients(A_dyn, VectorXd::Zero(4));
   UpdateALIPCosts(reference.vdes_, stance);
 
-  // get the current stance ( not the initial ALIP stance) and use it to update
+  // get the current stance (not the initial ALIP stance) and use it to update
   // the crossover constraint
   int i = 0;
   while (reference.touchdown_ee_names_.at(i).empty()) {
     ++i;
   }
-  std::cout << "i: " << i << " td: " << reference.touchdown_ee_names_.at(i) <<
-  std::endl;
   Stance curr_stance = reference.touchdown_ee_names_.at(i) == "toe_left" ?
       Stance::kRight : Stance::kLeft;
   UpdateCrossoverConstraint(curr_stance);

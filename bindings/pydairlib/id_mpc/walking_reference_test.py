@@ -26,7 +26,8 @@ def main():
     dynamics = MakeCassieDynamics()
     plant_context = dynamics.MakeContext()
     ref_gen = WalkingReferenceSystem(
-        dynamics, plant_context, MakeCassieGaitParams(params))
+        dynamics, plant_context,
+        MakeCassieGaitParams("examples/id_mpc/gains/gait_params_walking.yaml", params))
 
     q = np.array([1., 0., 0., 0., 0., 0., 0.75, 0.0924283, 0, 0.839764, -1.91927, 2.14352, -1.9375, -0.0924283, 0, 0.839764, -1.91927, 2.14352, -1.9375])
     u = np.array([-2.03951, 2.04169, 0.906345, -0.861539, -5.96077, -6.16527, 45.7984, 45.6304, -3.48936, -3.52897])
@@ -47,7 +48,7 @@ def main():
     print_ref(reference)
     print()
 
-    state.set_timestamp(0.1731)
+    state.set_timestamp(0.350)
     ref_gen.get_input_port_state().FixValue(context, state)
     ref_gen.CalcForcedUnrestrictedUpdate(context, context.get_mutable_state())
 

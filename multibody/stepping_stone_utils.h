@@ -27,8 +27,11 @@ struct SquareSteppingStoneList {
   void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(stones));
     std::tie(this->footholds, this->cubes) = GetFootholdsWithMargin(
-        stones, 0.15);
+        stones, 0.13);
   }
+
+std::vector<ConvexPolygon> GetConvexPolygonsForHeightmapSimulation(
+      std::vector<std::vector<std::vector<double>>> stone_list);
 
   static std::pair<std::vector<ConvexPolygon>,
                    std::vector<std::pair<RigidTransformd, Eigen::Vector3d>>>

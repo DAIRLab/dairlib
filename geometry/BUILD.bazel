@@ -14,6 +14,15 @@ cc_library(
 )
 
 cc_library(
+    name = "polygon_height_map",
+    srcs = ["polygon_height_map.cc"],
+    hdrs = ["polygon_height_map.h"],
+    deps = [
+        ":convex_polygon_set",
+    ],
+)
+
+cc_library(
     name = "convex_polygon",
     srcs = ["convex_polygon.cc"],
     hdrs = ["convex_polygon.h"],

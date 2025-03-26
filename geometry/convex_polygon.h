@@ -112,6 +112,28 @@ class ConvexPolygon {
     return foothold;
   }
 
+  static ConvexPolygon MakeBoxFaceForTerrain(
+      const Eigen::Vector3d& normal, const Eigen::Vector3d& center,
+      const Eigen::Vector3d& x_extent, const Eigen::Vector3d& y_extent) {
+    ConvexPolygon foothold;
+    foothold.SetPlane(normal, center);
+
+    double rx = -x_extent(2) / normal(2);
+    double ry = -y_extent(2) / normal(2);
+    Eigen::Vector3d nx = x_extent + rx * normal;
+    Eigen::Vector3d ny = y_extent + ry * normal;
+    nx.normalize();
+    ny.normalize();
+
+    foothold.AddFace(nx, center + x_extent);
+    foothold.AddFace(ny, center + y_extent);
+    foothold.AddFace(-nx, center - x_extent);
+    foothold.AddFace(-ny, center - y_extent);
+
+    foothold.CalcBoundingBox();
+    return foothold;
+  }
+
   void CalcBoundingBox();
 
   Eigen::Matrix3d R_WF() const;
@@ -119,6 +141,11 @@ class ConvexPolygon {
 
   // only public for unit_testing
   void SortFacesByYawAngle();
+
+  double xmin() const { return bounding_box_.xmin_;}
+  double xmax() const { return bounding_box_.xmax_;}
+  double ymin() const { return bounding_box_.ymin_;}
+  double ymax() const { return bounding_box_.ymax_;}
 
  private:
 

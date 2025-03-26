@@ -99,6 +99,13 @@ bool ConvexPolygon::PointViolatesInequalities(const Eigen::Vector3d &pt) const {
 Matrix3d ConvexPolygon::R_WF() const {
   Vector3d b_z = A_eq_.transpose().normalized();
   Vector3d b_x (b_z(2), 0, -b_z(0));
+
+  // normal is too close to the world y axis for
+  // y.cross(normal) to give a good x axis, pick -90
+  // degree rotation about world z axis instead
+  if (b_x.squaredNorm() < 0.001) {
+    b_x = b_z.cross(Vector3d::UnitZ());
+  }
   b_x.normalize();
   Vector3d b_y = b_z.cross(b_x).normalized();
   Matrix3d R_WF = Matrix3d::Zero();
@@ -202,7 +209,13 @@ void ConvexPolygon::Clip(int i, int j) {
 }
 
 void ConvexPolygon::SortFacesByYawAngle() {
-  const Matrix3d R_FW = R_WF().transpose();
+  Matrix3d R_FW = R_WF().transpose();
+
+  VectorXd faces_cos_sim = A_ * A_eq_.transpose().normalized();
+  if (faces_cos_sim.cwiseAbs().maxCoeff() > 0.01) {
+    R_FW = Matrix3d::Identity();
+  }
+
   // Cheeky little insertion sort since these are small matrices
   for (int i = 1; i < A_.rows(); i++) {
     int j = i;

@@ -187,7 +187,7 @@ std::vector<fsm_info::fsm_state> WalkingReferenceSystem::CalcGaitTiming(
     SetContactsAtKnot(i, fsm_vector.at(i), mpc_reference);
   }
 
-  if (intervals == ds_intervals_) {
+  if (fsm.is_double_stance()) {
     mpc_reference->touchdown_ee_names_.at(0) = fsm_vector.at(0) == fsm_info::kPostRightDouble ?
                                                params_.left_foot_body_name : params_.right_foot_body_name;
     mpc_reference->touchdown_ee_points_.at(0) = params_.foot_midpoint;

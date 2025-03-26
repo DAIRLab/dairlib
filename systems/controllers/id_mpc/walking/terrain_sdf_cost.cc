@@ -87,7 +87,7 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
   const auto [phi, dphi_dp] = sdf_->valueAndDerivative(p);
 
 
-  //dphi_dq = dphi_dp dp_dq
+  //dphi_dq = dphi_dp * dp_dq
 
   VectorXd yd = VectorXd::Constant(1, phi) - y_;
   MatrixXd grad = dphi_dp.transpose() * J;

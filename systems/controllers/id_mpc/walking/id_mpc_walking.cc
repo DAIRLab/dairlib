@@ -262,7 +262,10 @@ void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   while (reference.touchdown_ee_names_.at(i).empty()) {
     ++i;
   }
-  Stance curr_stance = reference.touchdown_ee_names_.at(i) == "toe_left" ? Stance::kLeft : Stance::kRight;
+  std::cout << "i: " << i << " td: " << reference.touchdown_ee_names_.at(i) <<
+  std::endl;
+  Stance curr_stance = reference.touchdown_ee_names_.at(i) == "toe_left" ?
+      Stance::kRight : Stance::kLeft;
   UpdateCrossoverConstraint(curr_stance);
 }
 
@@ -322,7 +325,7 @@ void IDMPCWalking::UpdateALIPCosts(const Eigen::Vector2d& vdes,
 
 
 void IDMPCWalking::UpdateCrossoverConstraint(Stance stance) {
-  double s = (stance == Stance::kLeft) ? 1.0 : -1.0;
+  double s = (stance == Stance::kLeft) ? -1.0 : 1.0;
   for (auto& c : no_crossover_c_) {
     c.evaluator()->UpdateCoefficients(
         Eigen::RowVector2d(-s, s),

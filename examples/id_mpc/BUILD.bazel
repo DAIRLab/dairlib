@@ -54,6 +54,8 @@ cc_library(
         "//systems:plant_visualizer",
         "//systems/controllers/id_mpc/systems:id_mpc_walking_system",
         "//systems/controllers/id_mpc/systems:joint_pd_controller",
+        "//systems/perception:ground_truth_elevation_mapping_system",
+        "//systems/perception:grid_map_visualizer",
         "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
     ],

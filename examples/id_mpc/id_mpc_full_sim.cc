@@ -12,6 +12,8 @@
 
 #include "systems/controllers/id_mpc/systems/joint_pd_controller.h"
 #include "systems/controllers/id_mpc/systems/joint_controller_gains.h"
+#include "systems/perception/ground_truth_elevation_mapping_system.h"
+#include "systems/perception/grid_map_visualizer.h"
 #include "systems/visualization/lcm_visualization_systems.h"
 #include "systems/plant_visualizer.h"
 
@@ -30,6 +32,9 @@ using drake::systems::ConstantVectorSource;
 using drake::systems::lcm::LcmPublisherSystem;
 
 using perceptive_locomotion::HikingSimDiagram;
+using perception::GroundTruthElevationMappingSystem;
+using perception::GridMapVisualizer;
+
 
 IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
                            const std::string &sim_opts,
@@ -49,8 +54,14 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
 
-  std::vector<ConvexPolygon> footholds =
-      multibody::LoadSteppingStonesFromYaml(terrain).footholds;
+  multibody::SquareSteppingStoneList stepping_stones =
+      multibody::LoadSteppingStonesFromYaml(terrain);
+
+  std::vector<ConvexPolygon> footholds = stepping_stones.footholds;
+
+  geometry::ConvexPolygonSet polygons_for_map = geometry::ConvexPolygonSet(
+      stepping_stones.GetConvexPolygonsForHeightmapSimulation(stepping_stones.stones));
+
 
   const auto sim_options =
       drake::yaml::LoadYamlFile<std::map<std::string, std::vector<double>>>(
@@ -97,11 +108,29 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       terrain, camera_yaml, false
   );
 
+
+  GroundTruthElevationMappingSystem::map_params map_params;
+  map_params.resolution = 0.02;
+  map_params.map_length = 2.0;
+  map_params.map_width = 1.5;
+  map_params.track_point = Eigen::Vector3d(0.5, 0, 0);
+  map_params.base_frame = "pelvis";
+  auto map_server = builder.AddSystem<GroundTruthElevationMappingSystem>(
+      plant, polygons_for_map, map_params);
+
   auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf);
+
+  meshcat_ = plant_visualizer->get_meshcat();
+
   auto mpc_visualizer = builder.AddSystem<LcmConfigurationDrawer>(
       plant_visualizer->get_meshcat(), urdf, "q", 5);
   auto debug_visualizer = builder.AddSystem<IDMPCWalkingDebugVisualizer>(
       plant_visualizer->get_meshcat());
+
+  std::vector<std::string> layers = {"elevation"};
+  auto grid_map_visualizer = builder.AddSystem<GridMapVisualizer>(
+      plant_visualizer->get_meshcat(), (1.0 / 15.0), layers
+  );
 
   multibody::AddSteppingStonesToMeshcatFromYaml(
       plant_visualizer->get_meshcat(), terrain
@@ -115,9 +144,32 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
           0.001)
   );
 
+  auto solution_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_timestamped_saved_traj>(
+          "ID_MPC",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          0.01)
+  );
+  auto debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_id_mpc_walking_debug>(
+          "ID_MPC_DEBUG",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          0.01)
+  );
+
   builder.Connect(
       sim_diagram->get_output_port_state_lcm(),
       state_pub->get_input_port()
+  );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_solution(),
+      solution_pub->get_input_port()
+  );
+  builder.Connect(
+      mpc_system->get_output_port_mpc_debug(),
+      debug_pub->get_input_port()
   );
   builder.Connect(
       sim_diagram->get_output_port_state(),
@@ -171,6 +223,11 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
     pd_controller->get_output_port(),
     sim_diagram->get_input_port_actuation()
   );
+  builder.Connect(
+      sim_diagram->get_output_port_state(),
+      map_server->get_input_port()
+  );
+  builder.Connect(*map_server, *grid_map_visualizer);
 
   builder.BuildInto(this);
 }

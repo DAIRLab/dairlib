@@ -57,6 +57,18 @@ cc_library(
 )
 
 cc_library(
+    name = "ground_truth_elevation_mapping_system",
+    srcs = ["ground_truth_elevation_mapping_system.cc"],
+    hdrs = ["ground_truth_elevation_mapping_system.h"],
+    deps = [
+        "//geometry:polygon_height_map",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
+    ],
+)
+
+cc_library(
     name = "perceptive_locomotion_preprocessor",
     srcs = ["perceptive_locomotion_preprocessor.cc"],
     hdrs = ["perceptive_locomotion_preprocessor.h"],

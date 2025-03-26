@@ -14,15 +14,11 @@ class PolygonHeightMap {
 
   int x_idx(double x) const {
     return std::clamp(
-        0,
-        nx_ - 1,
-        static_cast<int>((x - xmin_) / resolution_));
+        static_cast<int>((x - xmin_) / resolution_), 0,nx_ - 1);
   }
   int y_idx(double y) const {
     return std::clamp(
-        0,
-        ny_ - 1,
-        static_cast<int>((y - ymin_) / resolution_));
+        static_cast<int>((y - ymin_) / resolution_), 0, ny_ - 1);
   }
 
   Eigen::MatrixXf data_;

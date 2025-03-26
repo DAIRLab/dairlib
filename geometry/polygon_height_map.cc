@@ -20,7 +20,7 @@ PolygonHeightMap::PolygonHeightMap(const ConvexPolygonSet& polys, double resolut
     ymax_ = poly.ymax() > ymax_ ? poly.ymax() : ymax_;
   }
   nx_ = static_cast<int>((xmax_ - xmin_) / resolution + 1.0);
-  ny_ = static_cast<int>(ymax_ - ymin_ + 1.0);
+  ny_ = static_cast<int>((ymax_ - ymin_) / resolution + 1.0);
 
   data_ = Eigen::MatrixXf::Constant(nx_, ny_, -kInf);
 
@@ -29,6 +29,7 @@ PolygonHeightMap::PolygonHeightMap(const ConvexPolygonSet& polys, double resolut
     int idx_y_min = y_idx(poly.ymin());
     int idx_x_max = x_idx(poly.xmax());
     int idx_y_max = y_idx(poly.ymax());
+
     for (int x = idx_x_min; x <= idx_x_max; ++x) {
       for (int y = idx_y_min; y <= idx_y_max; ++y) {
         double xd = xmin_ + resolution_ * x;

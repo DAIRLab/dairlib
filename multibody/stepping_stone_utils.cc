@@ -129,7 +129,7 @@ SquareSteppingStoneList::GetConvexPolygonsForHeightmapSimulation (
       );
     }
   }
-  return footholds;
+  return footholds_out;
 }
 
 }

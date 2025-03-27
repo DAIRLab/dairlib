@@ -1048,6 +1048,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lowest_orientation_error_ = current_orientation_error_;
       updated_pos_or_rot = true;
     }
+    
+    if(radio_out->channel[6]){
+      std::cout<<"Current rot and pos cost: "<<curr_pos_and_rot_cost<<std::endl;
+    }
 
     if(progress_cost_buffer_.size() < sampling_params_.num_control_loops_to_wait_for_progress){
       // std::cout<<"buffer size "<< progress_cost_buffer_.size()<<std::endl;

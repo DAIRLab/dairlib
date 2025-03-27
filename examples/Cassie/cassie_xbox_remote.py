@@ -61,6 +61,7 @@ def main():
     latching_switch_x = 0
     latching_switch_y = 0
     latching_switch_start = 0
+    latching_switch_back = 0
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
@@ -94,6 +95,9 @@ def main():
                 if event.button == 7:
                     latching_switch_start = not latching_switch_start  # Send signal when pressed
                     print("Print cost breakdown status: " + str(latching_switch_start))
+                if event.button == 6:
+                    latching_switch_back = not latching_switch_back  # Send signal when pressed
+                    print("Print current rot and pos cost status: " + str(latching_switch_back))
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
@@ -103,7 +107,7 @@ def main():
         radio_msg.channel[3] = joystick.get_axis(3)
         # radio_msg.channel[2] = -joystick.get_axis(3)
         # radio_msg.channel[3] = joystick.get_axis(2)
-
+        radio_msg.channel[6] = latching_switch_back
         radio_msg.channel[7] = latching_switch_start
         radio_msg.channel[13] = latching_switch_b
         radio_msg.channel[14] = latching_switch_a

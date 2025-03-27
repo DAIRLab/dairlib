@@ -160,7 +160,10 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   // Impose constraint for timestep 1 and beyond to ensure that the plan doesn't go below the safe threshold/ground
   // but allow the 0th timestep to be where the ee currently is in order to not invalidate the x_[0] == x0 constraint.
   for (int i = 1; i < N_; i++) {
+    // WARNING!!! The x_.at(i)[2] == 0.005 constraint is hardcoded for the T example. The jack example needs line 166
+    // to be commented and line 165 to be uncommented.
     prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
+    // prog_.AddLinearConstraint(x_.at(i)[2] == 0.005);
   }
 
   input_costs_.resize(N_);

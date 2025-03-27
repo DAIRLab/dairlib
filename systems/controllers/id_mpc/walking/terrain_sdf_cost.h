@@ -20,6 +20,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
                   const drake::multibody::MultibodyPlant<double>& plant_,
                   const std::string& frame,
                   const Eigen::Vector3d& point,
+                  grid_map::SignedDistanceField* sdf,
                   const std::string& description="");
 
   void EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
@@ -27,10 +28,6 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
 
   void EvaluateInnerTerm(const Eigen::Ref<const Eigen::VectorXd> &x,
                          Eigen::VectorXd *y) const override;
-
-  void UpdateSDF(const grid_map::GridMap& map,
-                 const std::string& layer,
-                 double min_height, double max_height);
 
   void UpdateReference(const Eigen::VectorXd& y) override {
     DRAKE_ASSERT(y.rows() == 1);
@@ -53,7 +50,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
   const drake::multibody::Frame<double>* frame_;
   Eigen::Vector3d point_;
 
-  std::unique_ptr<grid_map::SignedDistanceField> sdf_ = nullptr;
+  grid_map::SignedDistanceField* sdf_ = nullptr;
 
   Eigen::VectorXd y_;
 };

@@ -70,6 +70,10 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
                      MPCSolution* prev_sol) const;
 
   drake::systems::EventStatus
+  UpdateSDF(const drake::systems::Context<double>& context,
+            drake::systems::State<double>* state) const;
+
+  drake::systems::EventStatus
   SolveMPC(const drake::systems::Context<double>&context,
            drake::systems::State<double>* state) const;
 
@@ -86,6 +90,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_reference_;
   drake::systems::InputPortIndex input_port_footholds_;
+  drake::systems::InputPortIndex input_port_grid_map_;
 
   drake::systems::OutputPortIndex output_port_mpc_solution_;
   drake::systems::OutputPortIndex output_port_mpc_debug_;

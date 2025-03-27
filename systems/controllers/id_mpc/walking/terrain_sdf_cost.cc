@@ -33,21 +33,17 @@ T smooth_min(T a, T b, double lambda) {
 TerrainSDFCost::TerrainSDFCost(
     const MatrixXd &Q, const VectorXd& yref,
     const MultibodyPlant<double>& plant,
-    const std::string& frame, const Vector3d& point,
+    const std::string& frame,
+    const Vector3d& point,
+    grid_map::SignedDistanceField* sdf,
     const std::string& description) : NonlinearLeastSquaresCost<double>(
     plant.num_positions(), 1, Q, description),
     plant_(plant),
     frame_(&plant.GetBodyByName(frame).body_frame()),
-    point_(point) {
+    point_(point),
+    sdf_(sdf){
   context_ = plant_.CreateDefaultContext();
-}
-
-void TerrainSDFCost::UpdateSDF(const grid_map::GridMap &map,
-                               const std::string &layer,
-                               double min_height,
-                               double max_height) {
-  sdf_ = std::make_unique<grid_map::SignedDistanceField>(
-      map, layer, min_height, max_height);
+  DRAKE_DEMAND(sdf_ != nullptr);
 }
 
 void TerrainSDFCost::EvaluateInnerTerm(
@@ -75,7 +71,7 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
   multibody::SetPositionsIfNew<double>(plant_, q, context_.get());
 
   Vector3d p;
-  MatrixXd J;
+  MatrixXd J = MatrixXd::Zero(3, plant_.num_positions());
 
   plant_.CalcPointsPositions(
       *context_, *frame_, point_, plant_.world_frame(), &p);
@@ -86,21 +82,20 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
 
   const auto [phi, dphi_dp] = sdf_->valueAndDerivative(p);
 
-
   //dphi_dq = dphi_dp * dp_dq
 
-  VectorXd yd = VectorXd::Constant(1, phi) - y_;
+  VectorXd yd = VectorXd::Constant(1, phi);
   MatrixXd grad = dphi_dp.transpose() * J;
   MatrixXd ddx = ExtractGradient(x);
 
   drake::AutoDiffXd y_ad(y_(0));
+
   if (ddx.isIdentity(1e-16)) {
     *y = InitializeAutoDiff(yd, grad);
-    (*y)(0) = smooth_min((*y)(0), y_ad, 10.0);
   } else {
     *y = InitializeAutoDiff(yd, ddx * grad);
-    (*y)(0) = smooth_min((*y)(0), y_ad, 10.0);
   }
+  (*y)(0) = smooth_min((*y)(0), y_ad, 10.0) - y_ad;
 }
 
 }

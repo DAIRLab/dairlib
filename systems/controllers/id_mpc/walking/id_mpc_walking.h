@@ -53,6 +53,8 @@ class IDMPCWalking {
 
   std::vector<Eigen::VectorXd> get_footstep_solutions(const Eigen::VectorXd& z) const;
 
+  void UpdateSDF(const grid_map::GridMap& map);
+
  private:
   void UpdateFootstepConstraints(
       const std::vector<std::string>& foot_names,
@@ -67,6 +69,7 @@ class IDMPCWalking {
 
   void UpdateSwingTrajCostsSDF(const MPCReference& mpc_reference);
 
+  void MakeSDF();
   void MakeFootsteps();
   void MakeALIPTerms();
   void MakeSwingTrajCosts();
@@ -111,6 +114,9 @@ class IDMPCWalking {
   Eigen::Matrix4d Qa_;
   Eigen::Matrix4d Qaf_;
   Eigen::Matrix2d Ra_;
+
+  std::unique_ptr<grid_map::SignedDistanceField> sdf_ = nullptr;
+
 };
 
 }

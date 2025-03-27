@@ -67,6 +67,9 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
 
   DeclareForcedUnrestrictedUpdateEvent(&IDMPCWalkingSystem::SolveMPC);
 
+  DeclarePeriodicUnrestrictedUpdateEvent(
+      0.1, 0.0, &IDMPCWalkingSystem::UpdateSDF);
+
   output_port_mpc_solution_ = DeclareAbstractOutputPort(
       "mpc_solution", lcmt_timestamped_saved_traj(),
       &IDMPCWalkingSystem::CalcOutput).get_index();
@@ -76,6 +79,7 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
       &IDMPCWalkingSystem::CalcDebug).get_index();
 
   plant_context_ = trajopt_.dynamics().get_plant().CreateDefaultContext();
+
 }
 
 EventStatus IDMPCWalkingSystem::SolveMPC(
@@ -151,6 +155,11 @@ void IDMPCWalkingSystem::CalcDebug(const Context<double> &context,
     auto footstep_vec = CopyVectorXdToStdVector(p);
     debug->footsteps.push_back(footstep_vec);
   }
+}
+
+EventStatus IDMPCWalkingSystem::UpdateSDF(const Context<double> &context,
+                                   State<double> *state) const {
+  return EventStatus::Succeeded();
 }
 
 std::vector<Eigen::Vector3d> IDMPCWalkingSystem::CalcInitialFootsteps(

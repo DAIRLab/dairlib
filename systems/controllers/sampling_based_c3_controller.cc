@@ -1556,7 +1556,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       double t_line = std::min((i)*dt_, total_travel_time);
       knots.col(i) = trajectory.value(t_line);
 
-      if (i == 1 && t_line == total_travel_time && !is_doing_c3_){
+      if (i == 1 && t_line >= total_travel_time && !is_doing_c3_){
         // If it can get there in one step, then set finished_reposition_flag_ to
         // true.
         finished_reposition_flag_ = true;

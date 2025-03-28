@@ -60,6 +60,10 @@ IDMPCWalkingSystem::IDMPCWalkingSystem(
       "convex_polygon_footholds",
       drake::Value<geometry::ConvexPolygonSet>()).get_index();
 
+  multibody::BoxSet model_boxes({});
+  input_port_boxy_terrain_ = DeclareAbstractInputPort(
+      "boxy_terrain", drake::Value<multibody::BoxSet>(model_boxes)).get_index();
+
   MPCSolution model_solution;
   model_solution.sqp_iterate = AllocateSQPIterate(trajopt_.mpc().num_vars());
   mpc_solution_state_ = DeclareAbstractState(
@@ -159,6 +163,14 @@ void IDMPCWalkingSystem::CalcDebug(const Context<double> &context,
 
 EventStatus IDMPCWalkingSystem::UpdateSDF(const Context<double> &context,
                                    State<double> *state) const {
+  if (get_input_port_boxes().HasValue(context)) {
+    const auto& boxes =
+        get_input_port_boxes().Eval<multibody::BoxSet>(context);
+    if (boxes.empty()) {
+      return EventStatus::DidNothing();
+    }
+    trajopt_.UpdateTerrain(boxes);
+  }
   return EventStatus::Succeeded();
 }
 

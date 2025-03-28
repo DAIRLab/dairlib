@@ -2,8 +2,7 @@
 
 #include "solvers/sqp/nonlinear_least_squares_cost.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "grid_map_sdf/SignedDistanceField.hpp"
-
+#include "multibody/box_set.h"
 
 namespace dairlib::solvers::sqp {
 
@@ -20,7 +19,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
                   const drake::multibody::MultibodyPlant<double>& plant_,
                   const std::string& frame,
                   const Eigen::Vector3d& point,
-                  grid_map::SignedDistanceField* sdf,
+                  multibody::BoxSet* box_set,
                   const std::string& description="");
 
   void EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
@@ -50,7 +49,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
   const drake::multibody::Frame<double>* frame_;
   Eigen::Vector3d point_;
 
-  grid_map::SignedDistanceField* sdf_ = nullptr;
+  multibody::BoxSet* box_set_;
 
   Eigen::VectorXd y_;
 };

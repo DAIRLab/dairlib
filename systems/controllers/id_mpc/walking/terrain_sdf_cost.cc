@@ -35,21 +35,21 @@ TerrainSDFCost::TerrainSDFCost(
     const MultibodyPlant<double>& plant,
     const std::string& frame,
     const Vector3d& point,
-    grid_map::SignedDistanceField* sdf,
+    multibody::BoxSet* box_set,
     const std::string& description) : NonlinearLeastSquaresCost<double>(
     plant.num_positions(), 1, Q, description),
     plant_(plant),
     frame_(&plant.GetBodyByName(frame).body_frame()),
     point_(point),
-    sdf_(sdf){
+    box_set_(box_set){
   context_ = plant_.CreateDefaultContext();
-  DRAKE_DEMAND(sdf_ != nullptr);
+  DRAKE_DEMAND(box_set_ != nullptr);
 }
 
 void TerrainSDFCost::EvaluateInnerTerm(
     const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::VectorXd *y) const {
 
-  DRAKE_DEMAND(sdf_ != nullptr);
+  DRAKE_DEMAND(box_set_ != nullptr);
 
   multibody::SetPositionsIfNew<double>(plant_, x, context_.get());
 
@@ -58,14 +58,14 @@ void TerrainSDFCost::EvaluateInnerTerm(
   plant_.CalcPointsPositions(
       *context_, *frame_, point_, plant_.world_frame(), &p);
 
-  double signed_distance = sdf_->value(p);
+  const auto [signed_distance, _] = box_set_->CalcSDF(p);
   *y =  VectorXd::Constant(1, signed_distance) - y_;
 }
 
 void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
                                        drake::AutoDiffVecXd *y) const {
   DRAKE_DEMAND(not y_.hasNaN());
-  DRAKE_DEMAND(sdf_ != nullptr);
+  DRAKE_DEMAND(box_set_ != nullptr);
 
   VectorXd q = ExtractValue(x);
   multibody::SetPositionsIfNew<double>(plant_, q, context_.get());
@@ -80,10 +80,9 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
       *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
       point_, plant_.world_frame(), plant_.world_frame(), &J);
 
-  const auto [phi, dphi_dp] = sdf_->valueAndDerivative(p);
+  const auto [phi, dphi_dp] = box_set_->CalcSDF(p);
 
   //dphi_dq = dphi_dp * dp_dq
-
   VectorXd yd = VectorXd::Constant(1, phi);
   MatrixXd grad = dphi_dp.transpose() * J;
   MatrixXd ddx = ExtractGradient(x);

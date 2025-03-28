@@ -13,7 +13,6 @@
 #include "systems/controllers/id_mpc/systems/joint_pd_controller.h"
 #include "systems/controllers/id_mpc/systems/joint_controller_gains.h"
 #include "systems/perception/ground_truth_elevation_mapping_system.h"
-#include "systems/perception/grid_map_visualizer.h"
 #include "systems/visualization/lcm_visualization_systems.h"
 #include "systems/plant_visualizer.h"
 
@@ -33,8 +32,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 using perceptive_locomotion::HikingSimDiagram;
 using perception::GroundTruthElevationMappingSystem;
-using perception::GridMapVisualizer;
-
 
 IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
                            const std::string &sim_opts,
@@ -108,15 +105,9 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       terrain, camera_yaml, false
   );
 
-
-  GroundTruthElevationMappingSystem::map_params map_params;
-  map_params.resolution = 0.02;
-  map_params.map_length = 2.0;
-  map_params.map_width = 1.5;
-  map_params.track_point = Eigen::Vector3d(0.5, 0, 0);
-  map_params.base_frame = "pelvis";
-  auto map_server = builder.AddSystem<GroundTruthElevationMappingSystem>(
-      plant, polygons_for_map, map_params);
+  auto map_server = builder.AddSystem<ConstantValueSource<double>>(
+      drake::Value<multibody::BoxSet>(stepping_stones.cubes)
+  );
 
   auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf);
 
@@ -126,11 +117,6 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       plant_visualizer->get_meshcat(), urdf, "q", 5);
   auto debug_visualizer = builder.AddSystem<IDMPCWalkingDebugVisualizer>(
       plant_visualizer->get_meshcat());
-
-  std::vector<std::string> layers = {"elevation"};
-  auto grid_map_visualizer = builder.AddSystem<GridMapVisualizer>(
-      plant_visualizer->get_meshcat(), (1.0 / 15.0), layers
-  );
 
   multibody::AddSteppingStonesToMeshcatFromYaml(
       plant_visualizer->get_meshcat(), terrain
@@ -212,6 +198,10 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       mpc_system->get_input_port_footholds()
   );
   builder.Connect(
+      map_server->get_output_port(),
+      mpc_system->get_input_port_boxes()
+  );
+  builder.Connect(
       mpc_system->get_output_port_mpc_solution(),
       pd_controller->get_input_port_lcm_traj()
   );
@@ -223,11 +213,6 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
     pd_controller->get_output_port(),
     sim_diagram->get_input_port_actuation()
   );
-  builder.Connect(
-      sim_diagram->get_output_port_state(),
-      map_server->get_input_port()
-  );
-  builder.Connect(*map_server, *grid_map_visualizer);
 
   builder.BuildInto(this);
 }

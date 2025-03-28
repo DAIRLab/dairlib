@@ -7,9 +7,9 @@ cc_library(
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     deps = [
+        "//multibody:box_set",
         "//solvers/admm:convex_polygon_set_constraint",
         "//systems/controllers/footstep_planning:alip_utils",
         "//systems/controllers/id_mpc",
-        "@grid_map//grid_map_sdf",
     ],
 )

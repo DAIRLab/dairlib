@@ -27,7 +27,7 @@ IDMPCWalking::IDMPCWalking(
     GaitParams gait_params) :
     mpc_(params, std::move(dynamics)), params_(gait_params) {
 
-  MakeSDF();
+  MakeFlatTerrain();
   MakeFootsteps();
   MakeSwingTrajCosts();
   MakeSwingTrajCostsSDF();
@@ -70,13 +70,13 @@ void IDMPCWalking::UpdateFootstepConstraints(
   }
 }
 
-void IDMPCWalking::MakeSDF() {
-  grid_map::GridMap map;
-  map.add("elevation");
-  map.setGeometry(grid_map::Length(20.0, 20.0), 0.1);
-  map["elevation"].setZero();
-  sdf_ = std::make_unique<grid_map::SignedDistanceField>(
-      map, "elevation", -0.25, 0.25);
+void IDMPCWalking::MakeFlatTerrain() {
+  double zlen = 0.1;
+  drake::math::RigidTransformd X(Vector3d(0.0, 0.0, -0.5 * zlen));
+
+  std::vector<std::pair<drake::math::RigidTransformd, Vector3d>> boxes =
+      {{X, Vector3d(100.0, 100.0, zlen)}};
+  boxy_terrain_ = std::make_unique<multibody::BoxSet>(boxes);
 }
 
 void IDMPCWalking::SetFootstepInitialGuess(const std::vector<Vector3d>& pp) {
@@ -103,9 +103,11 @@ void IDMPCWalking::MakeFootsteps() {
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
+    Eigen::Matrix3d W_hyst = 0.5 * Eigen::Matrix3d::Identity();
+    W_hyst(2,2) = 0.01;
     auto step_hyst_cost =
         std::make_shared<solvers::sqp::QuadraticErrorCost<double>>(
-             0.5 * Matrix3d::Identity(), Vector3d::Zero());
+            W_hyst, Vector3d::Zero());
     prog.AddCost(step_hyst_cost, pp_.at(i));
     footstep_hyst_costs_.push_back(step_hyst_cost);
   }
@@ -222,27 +224,22 @@ void IDMPCWalking::MakeALIPCosts(
 }
 
 void IDMPCWalking::MakeSwingTrajCostsSDF() {
-  DRAKE_DEMAND(sdf_ != nullptr);
+  DRAKE_DEMAND(boxy_terrain_ != nullptr);
   auto& prog = mutable_mpc().get_prog();
   for (int i = 0; i <= params_.mpc_N; ++i) {
+    double w = 1.0 - std::exp(-0.25 * (double)(params_.mpc_N - i));
     auto sdf_cost = std::make_shared<TerrainSDFCost>(
-        params_.mpc_dt * params_.foot_pos_W.bottomRightCorner<1,1>(),
+        w * params_.mpc_dt * params_.foot_pos_W.bottomRightCorner<1,1>(),
         VectorXd::Zero(1), dynamics().get_plant(), "toe_left",
-        Vector3d::Zero(), sdf_.get()
+        Vector3d::Zero(), boxy_terrain_.get()
     );
     terrain_sdf_costs_.push_back(sdf_cost);
     prog.AddCost(terrain_sdf_costs_.back(), mpc_.position_vars(i));
   }
 }
 
-// TODO (@Brian-Acosta) set the min and max z automatically based on the
-//  terrain
-void IDMPCWalking::UpdateSDF(const grid_map::GridMap& map) {
-  *sdf_ = grid_map::SignedDistanceField(map, "elevation", -0.5, 1.0);
-}
-
 void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
-  const Vector3d& point = params_.foot_midpoint;
+  const Vector3d& point = params_.foot_front;
   for (int i = 0; i <= params_.mpc_N; ++i) {
     double clearance = params_.step_height *
         std::sin(M_PI * mpc_reference.single_stance_phase_.at(i));
@@ -377,7 +374,7 @@ void IDMPCWalking::MakeGroundConstraints() {
 
 void IDMPCWalking::MakeSwingTrajCosts() {
   Eigen::MatrixXd W = params_.foot_pos_W;
-  W(2,2) = 0;
+  W(2,2) = 0.1;
   mpc_.AddTaskCost<RelativePositionCost>(
       "swing_foot", W, Vector3d::Zero(), mpc().dynamics().get_plant(),
       params_.right_foot_body_name, params_.left_foot_body_name,

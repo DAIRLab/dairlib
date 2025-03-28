@@ -33,6 +33,10 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_footholds_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_boxes() const {
+    return get_input_port(input_port_boxy_terrain_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_mpc_solution()
   const {
     return get_output_port(output_port_mpc_solution_);
@@ -90,7 +94,7 @@ class IDMPCWalkingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_reference_;
   drake::systems::InputPortIndex input_port_footholds_;
-  drake::systems::InputPortIndex input_port_grid_map_;
+  drake::systems::InputPortIndex input_port_boxy_terrain_;
 
   drake::systems::OutputPortIndex output_port_mpc_solution_;
   drake::systems::OutputPortIndex output_port_mpc_debug_;

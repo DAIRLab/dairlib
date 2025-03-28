@@ -335,9 +335,10 @@ std::vector<double> WalkingReferenceSystem::CalcSSPhaseVector(
     if (curr_fsm.is_double_stance()) {
       phase.push_back(0);
     } else {
-      phase.push_back((breaks.at(i) - fsm.prev_switch_time) / params_.t_ss);
+      phase.push_back(
+          (breaks.at(i) - curr_fsm.prev_switch_time) / params_.t_ss);
     }
-    if (i + 1 < breaks.size() && fsm_vector.at(i+1) != curr_fsm.state) {
+    if ((i + 1) < breaks.size() && fsm_vector.at(i+1) != curr_fsm.state) {
       curr_fsm.state = fsm_vector.at(i+1);
       curr_fsm.prev_switch_time = breaks.at(i+1);
     }

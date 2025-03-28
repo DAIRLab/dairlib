@@ -31,6 +31,7 @@ PYBIND11_MODULE(id_mpc, m) {
     .def_readwrite("active_contacts", &MPCReference::active_contacts_)
     .def_readwrite("touchdown_ee_names", &MPCReference::touchdown_ee_names_)
     .def_readwrite("touchdown_ee_points", &MPCReference::touchdown_ee_points_)
+    .def_readwrite("single_stance_phase", &MPCReference::single_stance_phase_)
     // Expose member functions
     .def("AppendContactsToKnot", &MPCReference::AppendContactsToKnot,
          py::arg("i"),

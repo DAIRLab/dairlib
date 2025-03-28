@@ -197,54 +197,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "franka_ros_lcm_bridge",
-    srcs = ["franka_ros_lcm_bridge.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    tags = ["ros"],
-    deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
-        "//common",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/primitives",
-        "//systems/ros:franka_ros_channels",
-        "//systems/ros:franka_ros_lcm_conversions",
-        "//systems/ros:ros_pubsub_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "@ros",
-    ],
-)
-
-cc_binary(
-    name = "franka_lcm_ros_bridge",
-    srcs = ["franka_lcm_ros_bridge.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    tags = ["ros"],
-    deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
-        "//common",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/ros:franka_ros_channels",
-        "//systems/ros:franka_ros_lcm_conversions",
-        "//systems/ros:ros_pubsub_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "@ros",
-    ],
-)
-
 cc_library(
     name = "franka_lcm_channels",
     hdrs = ["parameters/franka_lcm_channels.h"],

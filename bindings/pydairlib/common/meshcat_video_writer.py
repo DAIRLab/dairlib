@@ -9,14 +9,14 @@ from pydairlib.common.meshcat_chrome_capture import MeshcatChromeCapture
 
 
 def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
-                                 channel_to_port_map, video_out_path, duration=-1,
+                                 channel_to_port_map, video_out_path, start=0, duration=-1,
                                  window_size=(1440, 1080)):
     capture = MeshcatChromeCapture(meshcat, window_size=window_size)
 
     # wait for plant to load
     sleep(5)
     playback = LcmLogPlayback(
-        lcm_log, diagram, channel_to_type_map, channel_to_port_map)
+        lcm_log, diagram, channel_to_type_map, channel_to_port_map, start_time=start)
 
     dt = 1.0/30.0
     t = dt

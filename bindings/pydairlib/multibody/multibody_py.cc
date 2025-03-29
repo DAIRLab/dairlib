@@ -13,6 +13,7 @@ namespace dairlib {
 namespace pydairlib {
 
 using multibody::MultiposeVisualizer;
+using multibody::AddSteppingStonesToMeshcatFromYaml;
 
 PYBIND11_MODULE(multibody, m) {
   py::module::import("pydrake.all");
@@ -53,7 +54,9 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
            py::arg("mu_kinetic"),
            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),
-           py::arg("show_ground") = 1);
+           py::arg("show_ground") = 1)
+      .def("AddSteppingStonesToMeshcatFromYaml", &AddSteppingStonesToMeshcatFromYaml,
+           py::arg("meshcat"), py::arg("yaml"));
 }
 
 }  // namespace pydairlib

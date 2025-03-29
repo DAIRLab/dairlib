@@ -490,6 +490,41 @@ def plot_margin_results(folder):
         plt.legend()
 
 
+def logsaver_main():
+    n_trials = 20
+    gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
+    gains_no_timing = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_no_timing_adaptation.yaml"
+
+    results_gt = {}
+    results_gt_no_timing = {}
+    results_perceptive = {}
+    results_perceptive_no_timing = {}
+
+    for terrain_size in [0.35, 0.4]:
+        study_params = TrialParams(
+            gains="",
+            terrain="",
+            sim_params="",
+            perceptive=False,
+            terrain_size=terrain_size,
+            safety_margin=0.10
+        )
+        try:
+            study_params.gains = gains
+            results_gt[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.gains = gains_no_timing
+            results_gt_no_timing[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.perceptive = True
+            results_perceptive_no_timing[terrain_size] = run_study_parallel(study_params, n_trials)
+
+            study_params.gains = gains
+            results_perceptive[terrain_size] = run_study_parallel(study_params, n_trials)
+        except KeyboardInterrupt:
+            print("\nStudy terminated by user.")
+
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()

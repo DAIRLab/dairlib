@@ -46,7 +46,7 @@ from pydrake.geometry import Meshcat
 from grid_map import GridMap
 
 # pydairlib
-from pydairlib.multibody import MultiposeVisualizer
+from pydairlib.multibody import MultiposeVisualizer, AddSteppingStonesToMeshcatFromYaml
 from pydairlib.common import MeshcatChromeCapture, write_meshcat_video_from_log
 
 from pydairlib.systems import (
@@ -89,7 +89,42 @@ def check_mpfc_debug_version(event):
     return lcmt_alip_mpfc_debug_complete
 
 
-def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
+def write_sim_log_video(logfile: str, savefile: str, terrain_yaml: str):
+    urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
+
+    theta = -2 * np.pi / 3
+    r = 1.7
+    plant_visualizer = PlantVisualizer(urdf, "pelvis", np.array([r * np.cos(theta), r * np.sin(theta), 0.25]))
+    meshcat = plant_visualizer.get_meshcat()
+    state_receiver = RobotOutputReceiver(plant_visualizer.get_plant())
+    AddSteppingStonesToMeshcatFromYaml(meshcat, terrain_yaml)
+
+    builder = DiagramBuilder()
+    builder.AddSystem(plant_visualizer)
+    builder.AddSystem(state_receiver)
+
+    builder.Connect(state_receiver.get_output_port(),
+                    plant_visualizer.get_input_port())
+
+    diagram = builder.Build()
+
+    # we have multiple debug types - check which one is being used
+    lcm_log = lcm.EventLog(logfile)
+
+    types = {
+        state_channel: lcmt_robot_output,
+    }
+
+    ports = {
+        state_channel: state_receiver.get_input_port(),
+    }
+
+    lcm_log = lcm.EventLog(logfile)
+    write_meshcat_video_from_log(
+        diagram, lcm_log, meshcat, types, ports, savefile, start=0.0, duration=-1)
+
+
+def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1, terrain_yaml=None):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
 
     theta = -2 * np.pi / 3
@@ -98,6 +133,9 @@ def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
     meshcat = plant_visualizer.get_meshcat()
     mpc_visualizer = AlipMPFCMeshcatVisualizer(meshcat, plant_visualizer.get_plant())
     state_receiver = RobotOutputReceiver(plant_visualizer.get_plant())
+
+    if terrain_yaml is not None:
+        AddSteppingStonesToMeshcatFromYaml(meshcat, terrain_yaml)
 
     builder = DiagramBuilder()
     builder.AddSystem(plant_visualizer)
@@ -121,19 +159,23 @@ def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1):
 
     types = {
         state_channel: lcmt_robot_output,
-        terrain_channel: lcmt_foothold_set,
         mpfc_debug_channel: mpfc_debug_type
     }
+
     ports = {
         state_channel: state_receiver.get_input_port(),
-        terrain_channel: mpc_visualizer.get_input_port_terrain(),
         mpfc_debug_channel: mpc_visualizer.get_input_port_mpc() if
                             mpfc_debug_type == lcmt_alip_mpfc_debug_complete else
                             mpc_visualizer.get_input_port_mpc_legacy()
     }
+
+    if terrain_yaml is None:
+        types[terrain_channel] = lcmt_foothold_set
+        ports[terrain_channel] = mpc_visualizer.get_input_port_terrain()
+
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, savefile, duration=duration)
+        diagram, lcm_log, meshcat, types, ports, savefile, start=0.0, duration=duration)
 
 
 def write_segmented_elevation_meshcat_video(logfile: str, savefile: str, duration=60):
@@ -177,7 +219,7 @@ def write_segmented_elevation_meshcat_video(logfile: str, savefile: str, duratio
         diagram, lcm_log, meshcat, types, ports, savefile, duration=duration)
 
 
-def write_segmentation_results_video(segmenter: System, logfile: str, savefile: str, duration=60):
+def write_segmentation_results_video(segmenter: System, logfile: str, savefile: str, start=0.0, duration=60.0):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
     theta = -np.pi
@@ -226,9 +268,29 @@ def write_segmentation_results_video(segmenter: System, logfile: str, savefile: 
 
     lcm_log = lcm.EventLog(logfile)
     write_meshcat_video_from_log(
-        diagram, lcm_log, meshcat, types, ports, savefile, duration=duration,
+        diagram, lcm_log, meshcat, types, ports, savefile, start=start, duration=duration,
         window_size=(1000, 1000)
     )
+
+
+def moving_obstacle_experiments_videos(logfile: str, savefolder: str, start: float, duration: float):
+    hysts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    logname = logfile.split('/')[-1].strip().lower()
+
+    for khyst in hysts:
+        segmentation = TerrainSegmentationSystem({
+            'curvature_criterion': seg_criteria.curvature_criterion,
+            'inclination_criterion': seg_criteria.inclination_criterion,
+        })
+        segmentation.safety_hysteresis = khyst
+        savename = os.path.join(savefolder, f'{logname}_khyst_{khyst:0.1f}.mp4')
+        write_segmentation_results_video(
+            segmenter=segmentation,
+            logfile=logfile,
+            savefile=savename,
+            start=start,
+            duration=duration
+        )
 
 
 def make_pipeline_figures_from_map(grid_map: GridMap, q: np.ndarray, save_folder: str=''):
@@ -704,6 +766,61 @@ def acknowledge_rerun_option(rerun: bool):
         exit(0)
 
 
+def moving_obstacle_videos(args):
+    moving_obstacle_experiments_videos(
+        logfile=os.path.join(args.data_root, 'lcmlog-laptop-moving-obstacle-standing'),
+        savefolder=os.path.join(args.data_root, 'moving_obstacle_videos'),
+        start=5.0,
+        duration=8.0,
+    )
+    moving_obstacle_experiments_videos(
+        logfile=os.path.join(args.data_root, 'lcmlog-laptop-moving-obstacle-walking'),
+        savefolder=os.path.join(args.data_root, 'moving_obstacle_videos'),
+        start=4.0,
+        duration=10.0,
+    )
+
+
+def simulation_videos(data_root):
+    terrain_folder = 'bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/'
+    log_folder = os.path.join(data_root, 'sim_experiment_logs/')
+    out_folder = os.path.join(data_root, 'simulation_videos/')
+
+    for terrain in ['perceptive_beam', 'perceptive_stairs', 'perceptive_sine']:
+        write_mpfc_debug_video(
+            logfile=os.path.join(log_folder, terrain),
+            savefile=os.path.join(out_folder, f'{terrain}_mpfc_debug.mp4')
+        )
+        write_segmented_elevation_meshcat_video(
+            logfile=os.path.join(log_folder, terrain),
+            savefile=os.path.join(out_folder, f'{terrain}_segmentation.mp4')
+        )
+
+    global state_channel
+    state_channel = "CASSIE_STATE_SIMULATION"
+
+    for terrain in ['perceptive_beam', 'perceptive_stairs', 'perceptive_sine']:
+        write_sim_log_video(
+            logfile=os.path.join(log_folder, terrain),
+            savefile=os.path.join(out_folder, f'{terrain}_boxy.mp4'),
+            terrain_yaml=os.path.join(terrain_folder, f'{terrain}.yaml')
+        )
+
+    for terrain in ['beam', 'stairs']:
+        write_mpfc_debug_video(
+            logfile=os.path.join(log_folder, terrain),
+            savefile=os.path.join(out_folder, f'{terrain}.mp4'),
+            terrain_yaml=os.path.join(terrain_folder, f'{terrain}.yaml')
+        )
+
+
+def get_user_results_gen_choice():
+    option = input('\nWhich results should be generated?\n1: Simulation Videos'
+                   '\n2: Moving obstacle videos\n3: Hardware perception results (Figures Only)'
+                   '\n4: Hardware perception results (Figures and Videos)\n\n Selection: ')
+    return int(option)
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument(
@@ -724,6 +841,14 @@ def main():
             " --data_root argument"
         )
 
+    results_selection = get_user_results_gen_choice()
+    if results_selection == 1:
+        simulation_videos(args.data_root)
+        exit(0)
+    if results_selection == 2:
+        moving_obstacle_videos(args)
+        exit(0)
+
     acknowledge_rerun_option(args.rerun_plane_segmentation_comparisons)
 
     # define relevant data files
@@ -740,8 +865,6 @@ def main():
 
     # Run the figure scripts
     make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
-    
-    exit(0)
 
     plot_hysteresis_comparison(
         hysteresis_comparison_log,
@@ -756,9 +879,6 @@ def main():
         results_folder = output_folder
 
     make_combined_iou_results_results_figures(results_folder, output_folder)
-    
-    exit(0)
-    
     make_segmentation_tiles(results_folder, output_folder)
     run_pipeline_figure_script(pipeline_figure_log)
 
@@ -767,18 +887,18 @@ def main():
         os.path.join(output_folder, 'perception_stack_full_profiling.svg')
     )
 
-    # Do the videos
-    make_all_segmentation_videos(args.data_root)
-    write_segmented_elevation_meshcat_video(
-        demo_reel_log,
-        os.path.join(output_folder, 'segmented_elevation_demo_animation.mp4'),
-        duration=60
-    )
-    write_mpfc_debug_video(
-        demo_reel_log,
-        os.path.join(output_folder, 'mpfc_output_demo_animation.mp4'),
-        duration=60
-    )
+    if results_selection == 4:
+        make_all_segmentation_videos(args.data_root)
+        write_segmented_elevation_meshcat_video(
+            demo_reel_log,
+            os.path.join(output_folder, 'segmented_elevation_demo_animation.mp4'),
+            duration=60
+        )
+        write_mpfc_debug_video(
+            demo_reel_log,
+            os.path.join(output_folder, 'mpfc_output_demo_animation.mp4'),
+            duration=60
+        )
 
 
 if __name__ == '__main__':

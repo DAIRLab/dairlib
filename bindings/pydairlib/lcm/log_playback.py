@@ -5,7 +5,7 @@ from pydrake.common.value import Value
 
 class LcmLogPlayback:
 
-    def __init__(self, log, diagram, channel_to_type_map, channel_to_port_map):
+    def __init__(self, log, diagram, channel_to_type_map, channel_to_port_map, start_time: float = 0):
         self._lcm_log = log
         self._diagram = diagram
         self._channel_to_port_map = channel_to_port_map
@@ -25,7 +25,7 @@ class LcmLogPlayback:
         self._start_timestamp = 0
         self._sim = Simulator(self._diagram, self._context)
         self._finished = False
-        self.reset()
+        self.reset(start_time)
 
     def advance(self, t: float):
         assert self._channels
@@ -64,7 +64,9 @@ class LcmLogPlayback:
     def finished(self):
         return self._finished
 
-    def reset(self):
+    def reset(self, start_time: float):
         self._lcm_log.seek(0)
         event = self._lcm_log.read_next_event()
-        self._start_timestamp = event.timestamp
+        start_timestamp = int(event.timestamp + start_time * 1e6)
+        self._lcm_log.seek_to_timestamp(start_timestamp)
+        self._start_timestamp = start_timestamp

@@ -60,9 +60,7 @@ def select_terrain_and_log_file():
 
 
 def main():
-    
     terrain, params, logfile = select_terrain_and_log_file()
-    
     terrain_segmentation = TerrainSegmentationSystem(
         {
             'curvature_criterion': seg_criteria.curvature_criterion,

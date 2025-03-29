@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_grid_map.hpp"
 #include "dairlib/lcmt_landmark_array.hpp"
 #include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
+#include "dairlib/lcmt_alip_mpfc_debug_complete.hpp"
 #include "dairlib/lcmt_profiling.hpp"
 
 #include "drake/bindings/pydrake/systems/lcm_pybind.h"
@@ -34,6 +35,7 @@ void BindCppSerializers() {
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_grid_map>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_landmark_array>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_alip_s2s_mpfc_debug>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_alip_mpfc_debug_complete>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_profiling>("dairlib");
 }
 

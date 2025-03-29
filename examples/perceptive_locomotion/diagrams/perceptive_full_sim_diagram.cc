@@ -1,6 +1,7 @@
 #include "perceptive_full_sim_diagram.h"
 
 #include "geometry/convex_polygon_set.h"
+#include "geometry/convex_polygon_lcm_systems.h"
 #include "examples/perceptive_locomotion/systems/cassie_radio_operator.h"
 #include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 #include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
@@ -27,6 +28,7 @@ using drake::systems::ConstantVectorSource;
 using drake::systems::lcm::LcmPublisherSystem;
 
 using geometry::ConvexPolygonSet;
+using geometry::ConvexPolygonSender;
 using systems::CassieRadioOperator;
 using perception::GridMapSender;
 using perception::GridMapVisualizer;
@@ -128,7 +130,15 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
           {TriggerType::kPeriodic},
           1.0 / 30.0)
   );
+  auto foothold_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_foothold_set>(
+          "FOOTHOLDS_PROCESSED",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          1.0 / 30.0)
+  );
 
+  auto poly_sender = builder.AddSystem<ConvexPolygonSender>();
   auto grid_map_sender = builder.AddSystem<GridMapSender>();
 
   auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
@@ -220,6 +230,7 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   builder.Connect(mpfc->get_output_port_mpfc_debug(),
                   mpc_pub->get_input_port());
   builder.Connect(*grid_map_sender, *grid_map_pub);
+  builder.Connect(*poly_sender, *foothold_pub);
 
   input_port_footholds_ = builder.ExportInput(
       mpfc->get_input_port_footholds(),
@@ -240,6 +251,10 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   builder.ConnectInput(
       input_port_grid_map_,
       grid_map_visualizer->get_input_port()
+  );
+  builder.ConnectInput(
+      input_port_footholds_,
+      poly_sender->get_input_port()
   );
   builder.BuildInto(this);
 }

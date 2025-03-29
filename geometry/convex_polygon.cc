@@ -173,6 +173,7 @@ std::pair<Matrix3Xd, Matrix3Xi> ConvexPolygon::GetSurfaceMesh() {
     centroid += verts.col(i);
   }
   verts.rightCols(1) = centroid / N;
+  verts.bottomRows<1>() += 0.0005 * Eigen::RowVectorXd::Ones(verts.cols());
   Matrix3Xi idxs = Matrix3Xi::Zero(3, N);
   for (int i = 0; i < A_.rows(); i++) {
     idxs(0, i) = N;

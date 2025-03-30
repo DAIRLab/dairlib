@@ -178,7 +178,7 @@ def write_mpfc_debug_video(logfile: str, savefile: str, duration=-1, terrain_yam
         diagram, lcm_log, meshcat, types, ports, savefile, start=0.0, duration=duration)
 
 
-def write_segmented_elevation_meshcat_video(logfile: str, savefile: str, duration=60):
+def write_grid_map_meshcat_video(logfile: str, savefile: str, layer="segmented_elevation", duration=60):
     urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf"
     update_period = 1.0 / 30.01
     theta = -2 * np.pi / 3
@@ -188,7 +188,7 @@ def write_segmented_elevation_meshcat_video(logfile: str, savefile: str, duratio
 
     visualizers = {
         "state": plant_visualizer,
-        "grid_map": GridMapVisualizer(meshcat, update_period, ["segmented_elevation"]),
+        "grid_map": GridMapVisualizer(meshcat, update_period, [layer]),
     }
     receivers = {
         "state": RobotOutputReceiver(plant_visualizer.get_plant()),
@@ -786,27 +786,33 @@ def simulation_videos(data_root):
     log_folder = os.path.join(data_root, 'sim_experiment_logs/')
     out_folder = os.path.join(data_root, 'simulation_videos/')
 
-    for terrain in ['perceptive_beam', 'perceptive_stairs', 'perceptive_sine']:
+    perceptive_terrains = ['perceptive_stones', 'perceptive_beam', 'perceptive_stairs', 'perceptive_sine']
+    for terrain in perceptive_terrains:
         write_mpfc_debug_video(
             logfile=os.path.join(log_folder, terrain),
             savefile=os.path.join(out_folder, f'{terrain}_mpfc_debug.mp4')
         )
-        write_segmented_elevation_meshcat_video(
+        write_grid_map_meshcat_video(
             logfile=os.path.join(log_folder, terrain),
             savefile=os.path.join(out_folder, f'{terrain}_segmentation.mp4')
+        )
+        write_grid_map_meshcat_video(
+            logfile=os.path.join(log_folder, terrain),
+            savefile=os.path.join(out_folder, f'{terrain}_elevation.mp4'),
+            layer="elevation"
         )
 
     global state_channel
     state_channel = "CASSIE_STATE_SIMULATION"
 
-    for terrain in ['perceptive_beam', 'perceptive_stairs', 'perceptive_sine']:
+    for terrain in perceptive_terrains:
         write_sim_log_video(
             logfile=os.path.join(log_folder, terrain),
             savefile=os.path.join(out_folder, f'{terrain}_boxy.mp4'),
             terrain_yaml=os.path.join(terrain_folder, f'{terrain}.yaml')
         )
 
-    for terrain in ['beam', 'stairs']:
+    for terrain in ['stones', 'beam', 'stairs']:
         write_mpfc_debug_video(
             logfile=os.path.join(log_folder, terrain),
             savefile=os.path.join(out_folder, f'{terrain}.mp4'),
@@ -889,7 +895,7 @@ def main():
 
     if results_selection == 4:
         make_all_segmentation_videos(args.data_root)
-        write_segmented_elevation_meshcat_video(
+        write_grid_map_meshcat_video(
             demo_reel_log,
             os.path.join(output_folder, 'segmented_elevation_demo_animation.mp4'),
             duration=60

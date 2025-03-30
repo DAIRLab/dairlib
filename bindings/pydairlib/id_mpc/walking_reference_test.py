@@ -56,6 +56,5 @@ def main():
     print_ref(reference)
 
 
-
 if __name__ == '__main__':
     main()

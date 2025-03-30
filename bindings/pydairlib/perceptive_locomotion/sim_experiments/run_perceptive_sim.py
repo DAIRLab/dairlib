@@ -20,7 +20,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.perceptive_locomotion import ConvexTerrainDecompositionSystem
 
-from pydairlib.systems import DrawAndSaveDiagramGraph
+from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import OutputVector
 
 import pydairlib.perceptive_locomotion.terrain_segmentation. \
@@ -37,6 +37,7 @@ terrains = {
 log_folder = "../sim_experiment_logs"
 
 gains = os.path.join(base_folder, "gains/mpfc_gains_default.yaml")
+solver_options = os.path.join(base_folder, "solver_options/gurobi_options_planner.yaml")
 
 
 def select_terrain_and_log_file():
@@ -72,7 +73,7 @@ def main():
     terrain_segmentation.MakeDrivenByStandaloneSimulator(1.0/30.0)
     
     convex_decomposition = ConvexTerrainDecompositionSystem()
-    sim_diagram = PerceptiveFullSimDiagram(gains, terrain, params)
+    sim_diagram = PerceptiveFullSimDiagram(gains, solver_options, terrain, params)
 
     builder = DiagramBuilder()
     builder.AddSystem(terrain_segmentation)

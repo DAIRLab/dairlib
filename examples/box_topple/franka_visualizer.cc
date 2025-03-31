@@ -80,13 +80,10 @@ int do_main(int argc, char* argv[]) {
      
   C3Options c3_options;
   SamplingC3SamplingParams sampling_params;
-  int safety_mode_index = controller_params.run_in_safe_mode ? 0 : 1;
-  std::string safety_mode_name = controller_params.run_in_safe_mode ? "safe" : "normal";
-  std::cout << "Running in " << safety_mode_name << " mode" << std::endl;
   c3_options = drake::yaml::LoadYamlFile<C3Options>(
-                controller_params.c3_options_file[safety_mode_index]);
+                controller_params.c3_options_file);
   sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
-                controller_params.sampling_params_file[safety_mode_index]);
+                controller_params.sampling_params_file);
                 
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);

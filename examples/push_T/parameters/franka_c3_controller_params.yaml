@@ -1,9 +1,6 @@
 # c3_options_file: examples/push_T/parameters/franka_c3_options_floating.yaml
-run_in_safe_mode: false
-c3_options_file: [examples/push_T/parameters/franka_c3_options_floating_safe.yaml,
-                  examples/push_T/parameters/franka_c3_options_floating.yaml]
-sampling_params_file: [examples/push_T/parameters/sampling_params_safe.yaml,
-                       examples/push_T/parameters/sampling_params.yaml,]
+c3_options_file: examples/push_T/parameters/franka_c3_options_floating.yaml
+sampling_params_file: examples/push_T/parameters/sampling_params.yaml
 
 osqp_settings_file: examples/push_T/parameters/franka_c3_qp_settings.yaml
 

@@ -70,10 +70,8 @@ TargetGenerator::TargetGenerator(
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
         "examples/jacktoy/parameters/franka_c3_controller_params.yaml");
 
-  int safety_mode_index = controller_params.run_in_safe_mode ? 0 : 1;
-  std::string safety_mode_name = controller_params.run_in_safe_mode ? "safe" : "normal";
   c3_options = drake::yaml::LoadYamlFile<C3Options>(
-                controller_params.c3_options_file[safety_mode_index]);
+                controller_params.c3_options_file);
 }
 
 void TargetGenerator::SetRemoteControlParameters(

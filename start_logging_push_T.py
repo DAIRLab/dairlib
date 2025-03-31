@@ -22,13 +22,8 @@ def main(log_type):
     with open(franka_c3_controller_params_path) as f:
         franka_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
 
-    # if franka_c3_controller_params.yaml has run_in_safe_mode: true, then load the safe mode gains
-    if (franka_c3_controller_params['run_in_safe_mode']):
-        c3_gains = dair + "examples/push_T/parameters/franka_c3_options_floating_safe.yaml"
-        sampling_params = dair + "examples/push_T/parameters/sampling_params_safe.yaml"
-    else:
-        c3_gains = dair + "examples/push_T/parameters/franka_c3_options_floating.yaml"
-        sampling_params = dair + "examples/push_T/parameters/sampling_params.yaml"
+    c3_gains = dair + "examples/push_T/parameters/franka_c3_options_floating.yaml"
+    sampling_params = dair + "examples/push_T/parameters/sampling_params.yaml"
 
     osc_gains = dair + "examples/push_T/parameters/franka_osc_controller_params.yaml"
     sim_params = dair + "examples/push_T/parameters/franka_sim_params.yaml"

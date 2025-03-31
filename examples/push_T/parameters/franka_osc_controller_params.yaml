@@ -3,7 +3,7 @@ controller_frequency: 1000
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/push_T/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
-ground_model: examples/push_T/urdf/ground.urdf
+ground_model: examples/push_T/urdf/ground_modified.sdf
 platform_model: examples/push_T/urdf/platform.urdf
 
 tool_attachment_frame: [0, 0, 0.107]

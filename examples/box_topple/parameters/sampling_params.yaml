@@ -17,6 +17,13 @@ sampling_radius: 0.08
 # Height of sampling circle; used for circle perimeter (0, 1).
 sampling_height: 0.04
 
+# Grid limits for random sampling on grid.
+grid_x_limits: [-0.16, 0.16]
+grid_y_limits: [-0.16, 0.16]
+
+# clearance for sample projection.
+sample_projection_clearance: 0.008
+
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
 min_angle_from_vertical: 0.2  #0.785
@@ -39,10 +46,13 @@ consider_best_buffer_sample_when_leaving_c3: true
 # Repositioning parameters.
 spline_width: 0.17
 spherical_repositioning_radius: 0.17
-reposition_speed: 0.13    # m/s
+circular_repositioning_radius: 0.20
+circular_repositioning_height: 0.00
+reposition_speed: 0.20    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
 repositioning_trajectory_type: 1   # alternative is a spline
+repositioning_waypoint_height: 0.06 # This is the height of the waypoints for the piecewise linear repositioning.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc
@@ -71,6 +81,11 @@ num_control_loops_to_wait_position_tracking: 20
 track_c3_progress_via: 1  # 0: C3 cost,
                           # 1: current position and orientation cost,
                           # 2: position and orientation error
+                          # 3: min % decrease in current position and orientation cost
+# If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
+# in order to continue in C3 mode. If not, it has to switch to repositioning.
+min_percentage_decrease_in_cost_to_continue: -1.8
+num_control_loops_to_wait_for_progress: 12
 
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a
 ####### lookahead for the trajectory type i.e. trajectory_type in the

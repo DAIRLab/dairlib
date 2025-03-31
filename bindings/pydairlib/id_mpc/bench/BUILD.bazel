@@ -1,0 +1,49 @@
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "get_pybind_package_info",
+)
+
+py_binary(
+    name = "alip_bench",
+    srcs = ["alip_bench.py"],
+    data = [],
+    deps = [
+        ":utils",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_library(
+    name = "utils",
+    srcs = ["utils.py"],
+    deps = [],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":utils",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "bench",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

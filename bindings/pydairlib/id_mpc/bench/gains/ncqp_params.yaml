@@ -1,0 +1,3 @@
+admm_params: "bindings/pydairlib/perceptive_locomotion/sim_experiments/solver_options/ncqp_admm_params.yaml"
+inner_qp_options: "bindings/pydairlib/perceptive_locomotion/sim_experiments/solver_options/osqp_options_planner.yaml"
+polish_qp_options: "bindings/pydairlib/perceptive_locomotion/sim_experiments/solver_options/osqp_options_planner_polish_step.yaml"

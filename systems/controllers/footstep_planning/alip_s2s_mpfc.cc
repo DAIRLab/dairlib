@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+
 #include "common/eigen_utils.h"
 #include "solvers/admm/ncqp_solver.h"
 #include "solvers/admm/convex_polygon_set_constraint.h"
@@ -28,6 +29,53 @@ using alip_utils::AlipGaitParams;
 using alip_utils::AlipStepToStepDynamics;
 
 using geometry::ConvexPolygonSet;
+
+lcmt_alip_s2s_mpfc_input alip_s2s_mpfc_input::ToLcm(double timestamp) const {
+  lcmt_alip_s2s_mpfc_input msg{};
+
+  msg.utime = timestamp * 1e6;
+
+  for (int i = 0; i < 4; i++) {
+    msg.x[i] = x(i);
+  }
+  for (int i = 0; i < 3; i++) {
+    msg.p[i] = p(i);
+    msg.p_prev_stance[i] = p_prev_stance(i);
+  }
+  for (int i = 0; i < 2; i++) {
+    msg.vdes[i] = vdes(i);
+  }
+
+  msg.t = t;
+  msg.tmin = tmin;
+  msg.tmax = tmax;
+  msg.stance = static_cast<int32_t>(stance);
+  footholds.CopyToLcm(&msg.footholds);
+
+  return msg;
+}
+
+alip_s2s_mpfc_input alip_s2s_mpfc_input::FromLcm(
+    const lcmt_alip_s2s_mpfc_input& msg) {
+  alip_s2s_mpfc_input ret;
+  for (int i = 0; i < 4; i++) {
+    ret.x(i) = msg.x[i];
+  }
+  for (int i = 0; i < 3; i++) {
+    ret.p(i) = msg.p[i];
+    ret.p_prev_stance(i) = msg.p_prev_stance[i];
+  }
+  for (int i = 0; i < 2; i++) {
+    ret.vdes(i) = msg.vdes[i];
+  }
+
+  ret.t = msg.t;
+  ret.tmin = msg.tmin;
+  ret.tmax = msg.tmax;
+  ret.stance = static_cast<alip_utils::Stance>(msg.stance);
+  ret.footholds = geometry::ConvexPolygonSet::CopyFromLcm(msg.footholds);
+  return ret;
+}
 
 static constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
@@ -318,7 +366,6 @@ void AlipS2SMPFC::MakeStateConstraints() {
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
-    //std::cout << workspace_c_.at(i).ToLatex() << std::endl;
   }
 }
 
@@ -456,7 +503,6 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
         Q, b, 0, true // we know it's convex
     );
   }
-
 }
 
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
@@ -528,7 +574,7 @@ void AlipS2SMPFC::UpdateTrustRegionConstraint(double t, const Vector3d& p) {
   Vector3d bound = Vector3d::Constant(bound_size);
   trust_region_->UpdateLowerBound(p - bound);
   trust_region_->UpdateUpperBound(p + bound);
-};
+}
 
 
 void AlipS2SMPFC::UpdateTimeRegularization(double t) {

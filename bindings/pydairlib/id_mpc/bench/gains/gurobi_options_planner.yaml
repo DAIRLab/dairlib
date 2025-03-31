@@ -1,0 +1,9 @@
+print_to_console: 0
+log_file_name: ""
+int_options:
+  Presolve: 0
+  Threads: 4
+#  IterationLimit: 1000
+double_options: {}
+string_options: {} # need to provide an empty dict if not using an
+                   # options category

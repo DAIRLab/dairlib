@@ -1,0 +1,18 @@
+package dairlib;
+
+struct lcmt_alip_s2s_mpfc_input
+{
+  int64_t utime;
+  double x[4];
+  double p[3];
+  double p_prev_stance[3];
+  double vdes[2];
+
+    // Time parameters
+  double t;
+  double tmin;
+  double tmax;
+
+  int32_t stance;
+  lcmt_foothold_set footholds;
+}

@@ -212,6 +212,10 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       plant_, context_, robot_state,
       {stance_foot_map_.at(fsm_state)}, {1} , &CoM_w, &L, &p_w);
 
+  if (CoM_w(2) - p_w(2) < 0.2) {
+    throw std::runtime_error("the robot fell");
+  }
+
   plant_.CalcPointsPositions(
       *context_,
       stance_foot_map_.at(fsm_state).second,
@@ -248,7 +252,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
     double radius = (
         trajopt_.params().gait_params.single_stance_duration +
         trajopt_.params().gait_params.double_stance_duration
-    ) * trajopt_.params().nmodes * std::max(vdes.norm(), trajopt_.params().com_pos_bound[0]);
+    ) * trajopt_.params().nmodes * std::max(vdes.norm(), 1.0);
 
     footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, radius);
   } else {

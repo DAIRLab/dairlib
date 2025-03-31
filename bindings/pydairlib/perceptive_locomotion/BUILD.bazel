@@ -43,6 +43,7 @@ py_library(
     imports = PACKAGE_INFO.py_imports,
     deps = [
         "//bindings/pydairlib:module_py",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation",
     ],
 )
 

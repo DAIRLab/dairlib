@@ -7,6 +7,7 @@
 #include "geometry/convex_polygon_set.h"
 #include "solvers/optimization_utils.h"
 #include "solvers/admm/ncqp_solver.h"
+#include "dairlib/lcmt_alip_s2s_mpfc_input.hpp"
 
 #include "drake/solvers/decision_variable.h"
 #include "drake/solvers/mathematical_program.h"
@@ -49,6 +50,21 @@ struct alip_s2s_mpfc_solution {
   Eigen::Vector2d desired_velocity;
   drake::solvers::SolutionResult solution_result;
   geometry::ConvexPolygonSet input_footholds;
+};
+
+struct alip_s2s_mpfc_input {
+  Eigen::Vector4d x;
+  Eigen::Vector3d p;
+  Eigen::Vector2d vdes;
+  double t;
+  double tmin;
+  double tmax;
+  alip_utils::Stance stance;
+  geometry::ConvexPolygonSet footholds;
+  Eigen::Vector3d p_prev_stance;
+
+  lcmt_alip_s2s_mpfc_input ToLcm(double timestamp) const;
+  static alip_s2s_mpfc_input FromLcm(const lcmt_alip_s2s_mpfc_input& msg);
 };
 
 class AlipS2SMPFC {
@@ -115,7 +131,6 @@ class AlipS2SMPFC {
     DRAKE_DEMAND(initial_foot_c_ != nullptr);
     DRAKE_DEMAND(initial_state_c_ != nullptr);
     DRAKE_DEMAND(initial_time_constraint_ != nullptr);
-//    DRAKE_DEMAND(dynamics_c_ != nullptr);
     DRAKE_DEMAND(footstep_choice_c_ != nullptr || not foothold_set_c_.empty());
     DRAKE_DEMAND(terminal_cost_ != nullptr);
     DRAKE_DEMAND(time_regularization_ != nullptr);

@@ -393,9 +393,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
-  // std::cout<<"x_lcs_curr size: "<<x_lcs_curr.size()<<std::endl;
-  // This is currently the quaternion from the object.
-  // std::cout<<"x_lcs z value: "<<lcs_x_curr->get_data()[2]<<std::endl;
 
   if(verbose_){
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
@@ -848,13 +845,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::pair<double,std::vector<Eigen::VectorXd>> cost_trajectory_pair;
       if(!crossed_cost_switching_threshold_){
         if(i == 0){
-          // std::cout<<"calculating cost for sample "<<i<<std::endl;
           cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type_position_tracking, radio_out->channel[11], radio_out->channel[7],
             verbose_);
         }
         else{
-          // std::cout<<"calculating cost for sample "<<i<<std::endl;
           cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type_position_tracking, radio_out->channel[11], false,
             verbose_);
@@ -862,12 +857,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
       else{
         if(i == 0){
-          // std::cout<<"calculating cost for sample "<<i<<std::endl;
           cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type, radio_out->channel[11], radio_out->channel[7], verbose_);
         }
         else{
-          // std::cout<<"calculating cost for sample "<<i<<std::endl;
           cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type, radio_out->channel[11], false, verbose_);
         }
@@ -1054,22 +1047,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
 
     if(progress_cost_buffer_.size() < sampling_params_.num_control_loops_to_wait_for_progress){
-      // std::cout<<"buffer size "<< progress_cost_buffer_.size()<<std::endl;
       // If doing c3, add the current cost to the buffer if the buffer is not full.
       progress_cost_buffer_.push(curr_pos_and_rot_cost);
     }
     if(progress_cost_buffer_.size() == sampling_params_.num_control_loops_to_wait_for_progress){
       // If doing c3 and tracking progress via the minimum progress to continue, then check if the progress is enough to continue.
       double percentage_progress_in_cost = ((progress_cost_buffer_.back() - progress_cost_buffer_.front())/progress_cost_buffer_.front()) * 100;
-      // std::cout<<"buffer size "<< progress_cost_buffer_.size()<<std::endl;
-      // std::cout<<"Percentage progress in cost: "<<percentage_progress_in_cost<<std::endl;
       if(percentage_progress_in_cost > sampling_params_.min_percentage_decrease_in_cost_to_continue){
         // If the progress is not enough or if it made negative progress in those many loops, then reset the buffer.
         while(!progress_cost_buffer_.empty()){
           progress_cost_buffer_.pop();
         }
         reset_progress_cost_buffer = true;
-        // std::cout<<"\tProgress buffer reset, will kick out of c3."<<std::endl;
       }
       else{
         // if progress is enough, then pop the first element from the buffer.
@@ -1710,8 +1699,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   // use circular trajectory.
   else if (sampling_params_.repositioning_trajectory_type == 2){
-    // std::cout << "Using circular trajectory for repositioning." << std::endl;
-
     // Current object projection onto the plane of the circle.
     Vector3d current_object_projection = current_object_location;
     current_object_projection(2) = sampling_params_.circular_repositioning_height;
@@ -1821,8 +1808,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // use piecewise linear trajectory. Go up, go to point above sample, go back
   // down to sample.
   else if(sampling_params_.repositioning_trajectory_type == 3){
-    // std::cout << "Using piecewise linear trajectory for repositioning." << std::endl;
-
         // Define the waypoints for the three-leg repositioning.
         Eigen::Vector3d waypoint_above_ee = current_ee_location;
         waypoint_above_ee(2) = sampling_params_.repositioning_waypoint_height;

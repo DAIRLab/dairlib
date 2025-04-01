@@ -33,8 +33,12 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
     y_ = y;
   }
 
-  void set_point(const Eigen::Vector3d& pt) {
-    point_ = pt;
+  void set_front_point(const Eigen::Vector3d& pt) {
+    front_point_ = pt;
+  }
+
+  void set_rear_point(const Eigen::Vector3d& pt) {
+    rear_point_ = pt;
   }
 
   void set_frame(const std::string& frame_name) {
@@ -47,7 +51,8 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
   std::unique_ptr<drake::systems::Context<double>> context_;
 
   const drake::multibody::Frame<double>* frame_;
-  Eigen::Vector3d point_;
+  Eigen::Vector3d front_point_;
+  Eigen::Vector3d rear_point_;
 
   multibody::BoxSet* box_set_;
 

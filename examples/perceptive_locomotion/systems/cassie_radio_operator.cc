@@ -11,7 +11,8 @@ using drake::systems::BasicVector;
 
 CassieRadioOperator::CassieRadioOperator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    Context<double>* context) : plant_(plant), context_(context) {
+    Context<double>* context,
+    double vel_scale) : plant_(plant), context_(context), vel_scale(vel_scale) {
 
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(plant)).get_index();
@@ -91,7 +92,7 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
       q(0), 0., 0., q(3)).normalized().toRotationMatrix().topLeftCorner<2,2>().transpose();
 
   // proportional control
-  Eigen::Vector2d vdes = ramp_factor * 0.375 * R_BW * to_target;
+  Eigen::Vector2d vdes = ramp_factor * vel_scale * R_BW * to_target;
   vdes(1) = 0;
 
   discrete_values->get_mutable_value(vdes_state_index_) << yaw_rate, vdes(0), vdes(1);

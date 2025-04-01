@@ -59,7 +59,7 @@ void IDMPCWalking::UpdateProblemData(
     }
   }
   UpdateSwingTrajCostsSDF(reference);
-  UpdateTerrainCBF(reference, initial_state);
+  //  UpdateTerrainCBF(reference, initial_state);
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -237,25 +237,9 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
     terrain_sdf_costs_.push_back(sdf_cost);
     prog.AddCost(terrain_sdf_costs_.back(), mpc_.position_vars(i));
   }
-
-  terrain_cbf_ = std::make_unique<TerrainSDFCBF>(
-      dynamics().get_plant(), boxy_terrain_.get());
-  vdot_0_ = prog.NewContinuousVariables(dynamics().nv());
-  prog.SetInitialGuess(vdot_0_, VectorXd::Zero(vdot_0_.rows()));
-
-  initial_dv_constraint_ =  prog.AddLinearEqualityConstraint(
-      MatrixXd::Zero(dynamics().nv(), 3 * dynamics().nv()),
-      VectorXd::Zero(dynamics().nv()),
-      {vdot_0_, mutable_mpc().velocity_vars(0), mutable_mpc().velocity_vars(1)}
-  ).evaluator().get();
-  
-  terrain_cbf_constraint_ = prog.AddLinearConstraint(
-      MatrixXd::Zero(1, dynamics().nv()),
-      VectorXd::Zero(1), VectorXd::Zero(1), vdot_0_).evaluator().get();
 }
 
 void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
-  const Vector3d& point = params_.foot_front;
   for (int i = 0; i <= params_.mpc_N; ++i) {
     double clearance = params_.step_height *
         std::sin(M_PI * mpc_reference.single_stance_phase_.at(i));
@@ -264,7 +248,8 @@ void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
         "toe_right" : "toe_left";
     terrain_sdf_costs_.at(i)->UpdateReference(VectorXd::Constant(1, clearance));
     terrain_sdf_costs_.at(i)->set_frame(foot);
-    terrain_sdf_costs_.at(i)->set_point(point);
+    terrain_sdf_costs_.at(i)->set_front_point(params_.foot_front);
+    terrain_sdf_costs_.at(i)->set_rear_point(params_.foot_rear);
   }
 }
 
@@ -440,7 +425,7 @@ void IDMPCWalking::MakeSwingTrajCosts() {
 
 void IDMPCWalking::MakeFootLevelingCosts() {
   Eigen::Matrix3d Q = Eigen::Matrix3d::Zero();
-  Q(2,2) = 10 * params_.foot_pos_W(2,2);
+  Q(2,2) = params_.foot_pos_W(2,2);
   mpc_.AddTaskCost<RelativePositionCost>(
       "foot_level_left", Q, Vector3d::Zero(),
       mpc().dynamics().get_plant(),

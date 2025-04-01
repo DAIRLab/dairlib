@@ -20,10 +20,12 @@ using drake::multibody::MultibodyPlant;
 
 namespace {
 
+constexpr double lambda = 3.0;
+
 template<typename T>
-T smooth_min(T a, T b, double lambda) {
-  T exp_a = exp(a / lambda);
-  T exp_b = exp(b / lambda);
+T smooth_min(T a, T b) {
+  T exp_a = exp(a * lambda);
+  T exp_b = exp(b * lambda);
 
   return (exp_b * a  + exp_a * b) / (exp_a + exp_b);
 }
@@ -40,7 +42,8 @@ TerrainSDFCost::TerrainSDFCost(
     plant.num_positions(), 1, Q, description),
     plant_(plant),
     frame_(&plant.GetBodyByName(frame).body_frame()),
-    point_(point),
+    front_point_(point),
+    rear_point_(point),
     box_set_(box_set){
   context_ = plant_.CreateDefaultContext();
   DRAKE_DEMAND(box_set_ != nullptr);
@@ -53,13 +56,18 @@ void TerrainSDFCost::EvaluateInnerTerm(
 
   multibody::SetPositionsIfNew<double>(plant_, x, context_.get());
 
-  Vector3d p;
+  Vector3d pf;
+  Vector3d pr;
 
   plant_.CalcPointsPositions(
-      *context_, *frame_, point_, plant_.world_frame(), &p);
+      *context_, *frame_, front_point_, plant_.world_frame(), &pf);
 
-  const auto [signed_distance, _] = box_set_->CalcSDF(p);
-  *y =  VectorXd::Constant(1, signed_distance) - y_;
+  const auto [phi_f, gf] = box_set_->CalcSDF(pf);
+  const auto [phi_r, gr] = box_set_->CalcSDF(pr);
+
+  double smooth_min_y = smooth_min(std::min(phi_f, phi_r), y_(0));
+
+  *y =  VectorXd::Constant(1, smooth_min_y) - y_;
 }
 
 void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
@@ -70,17 +78,34 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
   VectorXd q = ExtractValue(x);
   multibody::SetPositionsIfNew<double>(plant_, q, context_.get());
 
-  Vector3d p;
-  MatrixXd J = MatrixXd::Zero(3, plant_.num_positions());
+  Vector3d pf;
+  Vector3d pr;
 
   plant_.CalcPointsPositions(
-      *context_, *frame_, point_, plant_.world_frame(), &p);
+      *context_, *frame_, front_point_, plant_.world_frame(), &pf);
+  plant_.CalcPointsPositions(
+      *context_, *frame_, rear_point_, plant_.world_frame(), &pr);
 
-  plant_.CalcJacobianTranslationalVelocity(
-      *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
-      point_, plant_.world_frame(), plant_.world_frame(), &J);
+  const auto [phi_f, dphi_f_dp] = box_set_->CalcSDF(pf);
+  const auto [phi_r, dphi_r_dp] = box_set_->CalcSDF(pr);
 
-  const auto [phi, dphi_dp] = box_set_->CalcSDF(p);
+  double phi;
+  Vector3d dphi_dp;
+  MatrixXd J = MatrixXd::Zero(3, plant_.num_positions());
+
+  if (phi_f < phi_r) {
+    phi = phi_f;
+    dphi_dp = dphi_f_dp;
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
+        front_point_, plant_.world_frame(), plant_.world_frame(), &J);
+  } else {
+    phi = phi_r;
+    dphi_dp = dphi_r_dp;
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
+        rear_point_, plant_.world_frame(), plant_.world_frame(), &J);
+  }
 
   //dphi_dq = dphi_dp * dp_dq
   VectorXd yd = VectorXd::Constant(1, phi);
@@ -94,7 +119,7 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
   } else {
     *y = InitializeAutoDiff(yd, ddx * grad);
   }
-  (*y)(0) = smooth_min((*y)(0), y_ad, 10.0) - y_ad;
+  (*y)(0) = smooth_min((*y)(0), y_ad) - y_ad;
 }
 
 }

@@ -99,7 +99,7 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
       plant, gains.kp, gains.kd);
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
-      plant, plant_context.get());
+      plant, plant_context.get(), 0.4);
 
   sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain, camera_yaml, false

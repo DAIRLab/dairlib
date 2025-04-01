@@ -11,7 +11,8 @@ namespace systems {
 class CassieRadioOperator : public drake::systems::LeafSystem<double> {
  public:
   CassieRadioOperator(const drake::multibody::MultibodyPlant<double>& plant,
-                      drake::systems::Context<double>* context);
+                      drake::systems::Context<double>* context,
+                      double vel_scale=0.375);
 
   [[nodiscard]] const drake::systems::InputPort<double>& get_input_port_state()
   const {
@@ -64,6 +65,7 @@ class CassieRadioOperator : public drake::systems::LeafSystem<double> {
   static constexpr double rot_vel_to_radio = 0.5;
   static constexpr double y_vel_to_radio = -2.0;
 
+  double vel_scale;
 
 };
 

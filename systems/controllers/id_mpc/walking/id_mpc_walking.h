@@ -4,6 +4,7 @@
 #include "solvers/admm/convex_polygon_set_constraint.h"
 #include "solvers/sqp/sqp_quadratic_cost.h"
 #include "terrain_sdf_cost.h"
+#include "terrain_sdf_cbf.h"
 
 #include "walking_utils.h"
 #include "systems/controllers/id_mpc/id_mpc.h"
@@ -70,6 +71,8 @@ class IDMPCWalking {
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
 
   void UpdateSwingTrajCostsSDF(const MPCReference& mpc_reference);
+  void UpdateTerrainCBF(const MPCReference& reference,
+                        const Eigen::VectorXd& initial_state);
 
   void MakeFlatTerrain();
   void MakeFootsteps();
@@ -91,6 +94,7 @@ class IDMPCWalking {
   std::vector<drake::solvers::VectorXDecisionVariable> pp_; // Footstep pos
   std::vector<drake::solvers::VectorXDecisionVariable> xa_; // ALIP states
   drake::solvers::VectorXDecisionVariable a0_;              // Initial ALIP x
+  drake::solvers::VectorXDecisionVariable vdot_0_;
   std::vector<std::shared_ptr<PointPositionConstraint<AutoDiffXd>>>
   td_constraints_;
 
@@ -110,6 +114,10 @@ class IDMPCWalking {
   alip_footstep_costs_;
   std::vector<std::shared_ptr<solvers::sqp::QuadraticErrorCost<double>>>
   footstep_hyst_costs_;
+
+  drake::solvers::LinearConstraint* terrain_cbf_constraint_;
+  drake::solvers::LinearEqualityConstraint* initial_dv_constraint_;
+  std::unique_ptr<TerrainSDFCBF> terrain_cbf_;
 
   std::vector<Eigen::Matrix4d> PIs_;
   std::vector<Eigen::Matrix<double, 4, 2>> gs_;

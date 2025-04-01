@@ -33,7 +33,8 @@ using systems::controllers::Alips2sMPFCSystem;
 FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
                                const std::string& solver_options_yaml,
                                const std::string &terrain_yaml,
-                               const std::string &sim_params_yaml) {
+                               const std::string &sim_params_yaml,
+                               bool visualize) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   [[maybe_unused]] auto instance = AddCassieMultibody(
@@ -107,15 +108,6 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
           0.01)
   );
 
-  auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
-  auto mpfc_visualizer = builder.AddSystem<AlipMPFCMeshcatVisualizer>(
-      plant_visualizer->get_meshcat(), plant_visualizer->get_plant());
-  multibody::AddSteppingStonesToMeshcatFromYaml(
-      plant_visualizer->get_meshcat(), terrain_yaml
-  );
-
-  meshcat_ = plant_visualizer->get_meshcat();
-
   auto goal_position = builder.AddSystem<ConstantVectorSource<double>>(
       goal_location
   );
@@ -160,18 +152,32 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       radio_operator->get_output_port_radio(),
       sim_diagram->get_input_port_radio()
   );
-  builder.Connect(
-      sim_diagram->get_output_port_state(),
-      plant_visualizer->get_input_port()
-  );
-  builder.Connect(
-      sim_diagram->get_output_port_state(),
-      mpfc_visualizer->get_input_port_state()
-  );
-  builder.Connect(
-      mpfc->get_output_port_mpfc_debug(),
-      mpfc_visualizer->get_input_port_mpc()
-  );
+
+  if (visualize) {
+    auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
+    auto mpfc_visualizer = builder.AddSystem<AlipMPFCMeshcatVisualizer>(
+        plant_visualizer->get_meshcat(), plant_visualizer->get_plant());
+    multibody::AddSteppingStonesToMeshcatFromYaml(
+        plant_visualizer->get_meshcat(), terrain_yaml
+    );
+
+    meshcat_ = plant_visualizer->get_meshcat();
+
+    builder.Connect(
+        sim_diagram->get_output_port_state(),
+        plant_visualizer->get_input_port()
+    );
+    builder.Connect(
+        sim_diagram->get_output_port_state(),
+        mpfc_visualizer->get_input_port_state()
+    );
+    builder.Connect(
+        mpfc->get_output_port_mpfc_debug(),
+        mpfc_visualizer->get_input_port_mpc()
+    );
+  }
+
+
 
   builder.Connect(osc_diagram->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());

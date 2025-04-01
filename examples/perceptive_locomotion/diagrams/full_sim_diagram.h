@@ -18,7 +18,8 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
       const std::string& mpc_gains_yaml,
       const std::string& solver_options_yaml,
       const std::string& terrain_yaml,
-      const std::string& sim_params_yaml);
+      const std::string& sim_params_yaml,
+      bool visualize=false);
 
   void SetPlantInitialConditions(drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* context);

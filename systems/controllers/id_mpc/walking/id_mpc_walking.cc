@@ -59,6 +59,7 @@ void IDMPCWalking::UpdateProblemData(
     }
   }
   UpdateSwingTrajCostsSDF(reference);
+  UpdateTerrainCBF(reference, initial_state);
 }
 
 void IDMPCWalking::UpdateFootstepConstraints(
@@ -236,6 +237,21 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
     terrain_sdf_costs_.push_back(sdf_cost);
     prog.AddCost(terrain_sdf_costs_.back(), mpc_.position_vars(i));
   }
+
+  terrain_cbf_ = std::make_unique<TerrainSDFCBF>(
+      dynamics().get_plant(), boxy_terrain_.get());
+  vdot_0_ = prog.NewContinuousVariables(dynamics().nv());
+  prog.SetInitialGuess(vdot_0_, VectorXd::Zero(vdot_0_.rows()));
+
+  initial_dv_constraint_ =  prog.AddLinearEqualityConstraint(
+      MatrixXd::Zero(dynamics().nv(), 3 * dynamics().nv()),
+      VectorXd::Zero(dynamics().nv()),
+      {vdot_0_, mutable_mpc().velocity_vars(0), mutable_mpc().velocity_vars(1)}
+  ).evaluator().get();
+  
+  terrain_cbf_constraint_ = prog.AddLinearConstraint(
+      MatrixXd::Zero(1, dynamics().nv()),
+      VectorXd::Zero(1), VectorXd::Zero(1), vdot_0_).evaluator().get();
 }
 
 void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
@@ -251,6 +267,46 @@ void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
     terrain_sdf_costs_.at(i)->set_point(point);
   }
 }
+
+void IDMPCWalking::UpdateTerrainCBF(
+    const MPCReference &reference, const VectorXd &initial_state) {
+
+  double a =  std::sin(M_PI * reference.single_stance_phase_.front());
+  double dt = reference.knot_times_[1] - reference.knot_times_[0];
+
+  int nv = dynamics().nv();
+  MatrixXd Adyn = MatrixXd::Zero(nv, 3 * nv);
+
+  Adyn.leftCols(nv) = dt * MatrixXd::Identity(nv, nv);
+  Adyn.middleCols(nv, nv) = -MatrixXd::Identity(nv, nv);
+  Adyn.rightCols(nv) = MatrixXd::Identity(nv, nv);
+
+
+  if (a > 0.5) {
+    initial_dv_constraint_->UpdateCoefficients(Adyn, VectorXd::Zero(nv));
+    const std::string foot =
+        reference.active_contacts_.front().front() == "toe_left_front" ?
+        "toe_right" : "toe_left";
+    const Vector3d& point = params_.foot_front;
+    auto [A, b] = terrain_cbf_->GetConstraintMatrices(
+        foot, point, initial_state.head(dynamics().nq()),
+        initial_state.tail(dynamics().nv()), 10.0, 10.0, dt);
+
+    std::cout << "A: " << A << std::endl;
+    std::cout << "b: " << b << std::endl;
+    terrain_cbf_constraint_->UpdateCoefficients(
+        A, b, VectorXd::Constant(1, kInfinity));
+
+  } else {
+    initial_dv_constraint_->UpdateCoefficients(
+        MatrixXd::Zero(nv, 3 * nv), VectorXd::Zero(nv));
+    terrain_cbf_constraint_->UpdateCoefficients(
+        MatrixXd::Zero(1, dynamics().nv()),
+        VectorXd::Zero(1),
+        VectorXd::Zero(1));
+  }
+}
+
 
 void IDMPCWalking::UpdateALIPTerms(const MPCReference &reference) {
   // find the touchdown event closest to the end of the horizon

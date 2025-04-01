@@ -16,7 +16,7 @@ class TerrainSDFCost : public NonlinearLeastSquaresCost<double>{
 
  public:
    TerrainSDFCost(const Eigen::MatrixXd& Q, const Eigen::VectorXd& yref,
-                  const drake::multibody::MultibodyPlant<double>& plant_,
+                  const drake::multibody::MultibodyPlant<double>& plant,
                   const std::string& frame,
                   const Eigen::Vector3d& point,
                   multibody::BoxSet* box_set,

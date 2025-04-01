@@ -23,11 +23,11 @@
 #include "solvers/lcs_factory.h"
 
 // Uncomment this line to output cost information for evenly spaced samples.
-// #define DO_SAMPLE_VISUALIZATIONS
+#define DO_SAMPLE_VISUALIZATIONS
 
 // Sample grid locations.
-#define N_VERTICAL 30
-#define N_HORIZONTAL 150
+#define N_VERTICAL 100
+#define N_HORIZONTAL 100
 
 #define N_Q 10
 #define N_V 9
@@ -48,8 +48,7 @@ using solvers::LCSFactoryPreProcessor;
 
 
 // Declare function that will generate samples around jack location.
-std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>> 
-  GenerateEvenlySpacedSamples(
+std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamples(
     const Eigen::VectorXd& x_lcs,
     const SamplingC3SamplingParams& sampling_params,
     const int& num_vertical, const int& num_horizontal
@@ -111,6 +110,19 @@ int DoMain(int argc,  char* argv[]) {
   // NOTE:  can temporarily hard code many more ADMM iterations or other
   // changes here, e.g.:
   // c3_options.admm_iter = 8;
+  
+  //example of updating Q to test effect of changing cost weights on C3 solve
+  // std::vector<double> new_q {0.01, 0.01, 0.01,
+  //          0.1, 0.1, 0.1, 0.1,
+  //          250, 250, 250,
+  //          2.5, 2.5, 2.5,
+  //          0.05, 0.05, 0.05,
+  //          0.05, 0.05, 0.05};
+  // c3_options.q_vector_position_and_orientation = new_q;
+  // Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+  //       c3_options.q_vector_position_and_orientation.data(), c3_options.q_vector_position_and_orientation.size());
+  // c3_options.Q_position_and_orientation = c3_options.w_Q * q_position_and_orientation.asDiagonal();
+  // std::cout<<"Updated Q"<<std::endl;
 
   // (3/4) Sim parameters.
   std::string sim_params_path = log_filepath;
@@ -160,7 +172,7 @@ int DoMain(int argc,  char* argv[]) {
   std::set<std::string> channels_to_check = {
     "C3_ACTUAL", "C3_TARGET", "C3_FINAL_TARGET",
     "DYNAMICALLY_FEASIBLE_CURR_PLAN", "DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN",
-    "C3_DEBUG_CURR", "IS_C3_MODE"};
+    "C3_DEBUG_CURR", "IS_C3_MODE", "SAMPLE_LOCATIONS", "SAMPLE_COSTS", "DYNAMICALLY_FEASIBLE_BEST_PLAN", "DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN"};
 
   Eigen::VectorXd x_lcs_actual = Eigen::VectorXd::Zero(19);
   Eigen::VectorXd x_lcs_desired = Eigen::VectorXd::Zero(19);
@@ -168,12 +180,19 @@ int DoMain(int argc,  char* argv[]) {
   Eigen::MatrixXd dyn_feas_curr_plan_obj_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
   Eigen::MatrixXd dyn_feas_curr_plan_ee_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
   Eigen::MatrixXd dyn_feas_curr_plan_obj_orientation = Eigen::MatrixXd::Zero(4, c3_options.N+1);
+  Eigen::MatrixXd dyn_feas_best_plan_obj_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
+  Eigen::MatrixXd dyn_feas_best_plan_ee_pos = Eigen::MatrixXd::Zero(3, c3_options.N+1);
+  Eigen::MatrixXd dyn_feas_best_plan_obj_orientation = Eigen::MatrixXd::Zero(4, c3_options.N+1);
 
   Eigen::MatrixXd u_sol = Eigen::MatrixXd::Zero(3, c3_options.N);
   Eigen::MatrixXd x_sol = Eigen::MatrixXd::Zero(19, c3_options.N);
   Eigen::MatrixXd lambda_sol = Eigen::MatrixXd::Zero(16, c3_options.N);
   Eigen::MatrixXd w_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
   Eigen::MatrixXd delta_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
+
+  // Collect the sample locations
+  std::vector<Eigen::VectorXd> sample_locations_in_log;
+  std::vector<Eigen::VectorXd> sample_costs_in_log;
 
   bool is_c3_mode = false;
   bool is_c3_mode_set = false;
@@ -271,6 +290,50 @@ int DoMain(int argc,  char* argv[]) {
         }
       }
     }
+    else if (event->channel == "DYNAMICALLY_FEASIBLE_BEST_PLAN"){
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
+        dairlib::lcmt_timestamped_saved_traj message;
+        if (message.decode(event->data, 0, event->datalen) > 0){
+            std::cout << "Received DYNAMICALLY_FEASIBLE_BEST_PLAN " <<
+              "message in seconds utime: " << (message.utime)/1e6 <<
+              " and event timestamp " << adjusted_utimestamp/1e6 << std::endl;
+          for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < c3_options.N+1; j++) {
+              dyn_feas_best_plan_obj_orientation(i,j) =
+                message.saved_traj.trajectories[0].datapoints[i][j];
+            }
+          }
+          for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < c3_options.N+1; j++) {
+              dyn_feas_best_plan_obj_pos(i,j) =
+                message.saved_traj.trajectories[1].datapoints[i][j];
+            }
+          }
+        } else {
+          std::cerr << "Failed to decode DYNAMICALLY_FEASIBLE_BEST_PLAN" <<
+            " message" << std::endl;
+        }
+      }
+    }
+    else if (event->channel == "DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN"){
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
+        dairlib::lcmt_timestamped_saved_traj message;
+        if (message.decode(event->data, 0, event->datalen) > 0){
+            std::cout << "Received DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN " <<
+              "message in seconds utime: " << (message.utime)/1e6 <<
+              " and event timestamp " << adjusted_utimestamp/1e6 << std::endl;
+          for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < c3_options.N+1; j++) {
+              dyn_feas_best_plan_ee_pos(i,j) =
+                message.saved_traj.trajectories[0].datapoints[i][j];
+            }
+          }
+        } else {
+          std::cerr << "Failed to decode DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN"
+            << " message" << std::endl;
+        }
+      }
+    }
     else if (event->channel == "C3_DEBUG_CURR") {
       if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
         dairlib::lcmt_c3_output message;
@@ -322,6 +385,41 @@ int DoMain(int argc,  char* argv[]) {
         }
       }
     }
+    else if (event->channel == "SAMPLE_LOCATIONS") {
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
+        dairlib::lcmt_timestamped_saved_traj message;
+        if (message.decode(event->data, 0, event->datalen) > 0) {
+          std::cout << "Received SAMPLE_LOCATIONS message in " <<
+            "seconds utime: " << (message.utime)/1e6 << " and event " <<
+            "timestamp " << adjusted_utimestamp/1e6 << std::endl;
+          for (int i = 0; i < message.saved_traj.trajectories[0].datapoints[0].size(); i++) {
+            Eigen::VectorXd sample_location = Eigen::VectorXd::Zero(3);
+            for (int j = 0; j < 3; j++) {
+              sample_location(j) = message.saved_traj.trajectories[0].datapoints[j][i];
+            }
+            sample_locations_in_log.push_back(sample_location);
+          }
+        } else {
+          std::cerr << "Failed to decode SAMPLE_LOCATIONS message" << std::endl;
+        }
+      }
+    }
+    else if (event->channel == "SAMPLE_COSTS") {
+      if(event->timestamp >= time_into_log_in_microsecs + u_init_time) {
+        dairlib::lcmt_timestamped_saved_traj message;
+        if (message.decode(event->data, 0, event->datalen) > 0) {
+          std::cout << "Received SAMPLE_COSTS message in " <<
+            "seconds utime: " << (message.utime)/1e6 << " and event " <<
+            "timestamp " << adjusted_utimestamp/1e6 << std::endl;
+          for (int i = 0; i < message.saved_traj.trajectories[0].datapoints[0].size(); i++) {
+            sample_costs_in_log.push_back(
+              Eigen::VectorXd::Constant(1, message.saved_traj.trajectories[0].datapoints[0][i]));
+          }
+        } else {
+          std::cerr << "Failed to decode SAMPLE_COSTS message" << std::endl;
+        }
+      }
+    }
 
     // Break out of loop if we have one message for every desired channel.
     if (channels_to_check.find(event->channel) != channels_to_check.end()) {
@@ -332,9 +430,34 @@ int DoMain(int argc,  char* argv[]) {
           (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXd::Zero(3, c3_options.N+1)) &&
           (dyn_feas_curr_plan_obj_orientation != Eigen::MatrixXd::Zero(4, c3_options.N+1)) &&
           (u_sol != Eigen::MatrixXd::Zero(3, c3_options.N)) &&
-          (is_c3_mode_set)) {
+          (is_c3_mode_set) &&
+          (sample_locations_in_log.size() > 0) &&
+          (sample_costs_in_log.size() > 0)) {
         break;
       }
+    }
+  }
+
+  std::cout<<"x_lcs_actual from log : "<<x_lcs_actual.transpose()<<"\n"<<std::endl;
+  std::cout<<"Available sample locations from log and corresponding costs: " <<std::endl;
+  std::cout<<"Number of sample locations in log: "<<sample_locations_in_log.size()<<std::endl;
+  for (int i = 0; i < sample_locations_in_log.size(); i++) {
+    if (i < sample_costs_in_log.size()) {
+      std::cout <<"sample "<<i<<" : " << sample_locations_in_log[i].transpose() << " cost is "<< sample_costs_in_log[i]<<std::endl;
+      if(i == 0){
+        std::cout<<"Dynamically feasible plan is: "<<std::endl;
+        std::cout<<"End effector position: "<<dyn_feas_curr_plan_ee_pos.transpose()<<std::endl;
+        std::cout<<"Object orientation: "<<dyn_feas_curr_plan_obj_orientation.transpose()<<std::endl;
+        std::cout<<"Object position: "<<dyn_feas_curr_plan_obj_pos.transpose()<<std::endl;
+      }
+      if(i == 1){
+        std::cout<<"Dynamically feasible best plan is: "<<std::endl;
+        std::cout<<"End effector position: "<<dyn_feas_best_plan_ee_pos.transpose()<<std::endl;
+        std::cout<<"Object orientation: "<<dyn_feas_best_plan_obj_orientation.transpose()<<std::endl;
+        std::cout<<"Object position: "<<dyn_feas_best_plan_obj_pos.transpose()<<std::endl;
+      }
+    } else {
+      std::cout <<"sample "<<i<<" : " << sample_locations_in_log[i].transpose() << " cost is "<< "N/A"<<std::endl;
     }
   }
 
@@ -492,22 +615,33 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     controller_context.get(), x_lcs_final_desired);
 
   std::vector<Eigen::VectorXd> x_lcs_actuals;
-  x_lcs_actuals.push_back(x_lcs_actual);
+  // x_lcs_actuals.push_back(x_lcs_actual);
+  
+  // Testing sample location 0 and sample location 1 from the log from all sample locations.
+  // This was done to verify the anolmaly seen as a result of using cost type 3 in the push_T case.
+  // Eigen::VectorXd curr_sample_in_log = x_lcs_actual;
+  // curr_sample_in_log.head(3) = sample_locations_in_log[0];
+  // x_lcs_actuals.push_back(curr_sample_in_log);
+  Eigen::VectorXd best_sample_in_log = x_lcs_actual;
+  best_sample_in_log.head(3) = sample_locations_in_log[1];
+  x_lcs_actuals.push_back(best_sample_in_log);
 
   #ifdef DO_SAMPLE_VISUALIZATIONS
     std::cout<<"DO_SAMPLE_VISUALIZATIONS"<<std::endl;
 
     // Generate evenly spaced samples around the jack location.
-    auto [x_lcs_samples, angles] = GenerateEvenlySpacedSamples(
+    auto x_lcs_samples = GenerateEvenlySpacedSamples(
       x_lcs_actual, sampling_params, N_VERTICAL, N_HORIZONTAL);
 
     x_lcs_actuals.clear();
     x_lcs_actuals = x_lcs_samples;
 
     // Prepare to print out the costs.
-    Eigen::VectorXd costs = Eigen::VectorXd::Zero(angles.size());
+    Eigen::VectorXd costs = Eigen::VectorXd::Zero(x_lcs_samples.size());
   #endif
 
+  // Remember that doing this in a loop actually triggers the x_pred calculation
+  // in the controller. Ensure this is something you want to do. 
   for (int i = 0; i < x_lcs_actuals.size(); i++) {
     Eigen::VectorXd x_lcs_actual_i = x_lcs_actuals[i];
 
@@ -521,6 +655,8 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     auto discrete_state = controller->AllocateDiscreteVariables();
     controller->CalcForcedDiscreteVariableUpdate(
       *controller_context, discrete_state.get());
+    auto sample_costs_inside = controller->get_output_port_all_sample_costs(
+        ).Eval<std::vector<double>>(*controller_context);
     controller->ForcedPublish(*controller_context);
 
     #ifdef DO_SAMPLE_VISUALIZATIONS
@@ -582,57 +718,74 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     - A std::vector of 2D (theta, elevation_theta) positions from which the
       samples were derived.
 */
-std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>> 
-  GenerateEvenlySpacedSamples(
+std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamples(
     const Eigen::VectorXd& x_lcs,
     const SamplingC3SamplingParams& sampling_params,
     const int& num_vertical, const int& num_horizontal
   ) {
-  // Grab sampling parameters.
-  double sampling_radius = sampling_params.sampling_radius;
-  double min_angle_from_vertical = sampling_params.min_angle_from_vertical;
-  double max_angle_from_vertical = sampling_params.max_angle_from_vertical;
+  
+  // Extract sampling parameters.
+  double sampling_height = 0.00;
 
-  // Pull out the q and v from the LCS state.  The end effector location and
-  // velocity of this state will be changed for the sample.
-  Eigen::VectorXd q = x_lcs.head(N_Q);
-  Eigen::VectorXd v = x_lcs.tail(N_V);
+  // the sampling region has an outer x and y limit. These are expressed in body frame.
+  double outer_x_limit = 0.16;
+  double outer_y_limit = 0.16;
 
-  // Center the sampling circle on the current ball location.
-  Eigen::Vector3d object_xyz = q.tail(3);
-  double x_samplec = object_xyz[0];
-  double y_samplec = object_xyz[1];
-  double z_samplec = object_xyz[2];
-
-  // Prepare to store samples and (theta, elevation_theta) angles.
+  // Generate samples on a grid around the T
   std::vector<Eigen::VectorXd> x_lcs_samples;
-  std::vector<Eigen::Vector2d> angles;
 
-  // Double for loop over the number of vertical and horizontal samples.
+  // Compute the step size for the grid.
+  // num_vertical means how many rows of samples we want to take. That is x changes across each row.
+  // num_horizontal means how many columns of samples we want to take. That is y changes across each column.
+  double step_size_x = 2*outer_x_limit/(num_vertical-1);
+  double step_size_y = 2*outer_y_limit/(num_horizontal-1);
+  std::cout << "step_size_x: " << step_size_x << std::endl;
+  std::cout << "step_size_y: " << step_size_y << std::endl;
+
+  std::vector<Eigen::VectorXd> unfiltered_samples_in_body_frame;
+  // Set the dummy to be the same as the actual lcs value.
+  Eigen::VectorXd x_lcs_sample = x_lcs;
+  std::cout << "x_lcs: " << x_lcs.transpose() << std::endl;
+  Eigen::Quaterniond quat_object(x_lcs(3), x_lcs(4), x_lcs(5), x_lcs(6));
+  Eigen::Vector3d object_position = x_lcs.segment(7, 3);
+
+  // Generate uniform samples on a grid. Replace the end effector values in the dummy with the sample values.
   for (int i = 0; i < num_vertical; i++) {
-    double elevation_theta = min_angle_from_vertical +
-      i * (max_angle_from_vertical - min_angle_from_vertical)/(num_vertical-1);
     for (int j = 0; j < num_horizontal; j++) {
-      double theta = j * 2*M_PI/num_horizontal;
-
-      // Update the hypothetical state's end effector location to the tested
-      // sample location.
-      Eigen::VectorXd q_ee = Eigen::VectorXd::Zero(3);
-      q_ee[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
-      q_ee[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
-      q_ee[2] = z_samplec + sampling_radius * cos(elevation_theta);
-
-      Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(N_Q + N_V);
-      candidate_state << q_ee, x_lcs.segment(3, N_Q - 3), v;
-
-      // Store the sample and the angle pair.
-      x_lcs_samples.push_back(candidate_state);
-      Eigen::Vector2d angle_pair;
-      angle_pair << theta, elevation_theta;
-      angles.push_back(angle_pair);
+      x_lcs_sample(0) = -outer_x_limit + i*step_size_x;
+      x_lcs_sample(1) = -outer_y_limit + j*step_size_y;
+      x_lcs_sample(2) = sampling_height;
+      unfiltered_samples_in_body_frame.push_back(x_lcs_sample);
     }
   }
-  return std::make_pair(x_lcs_samples, angles);
+
+  // Define limits for sample validity.
+  double ee_radius = 0; //0.0145;
+  double clearance = 0; //0.002;     // Maintain a clearance of 2mm from the T.
+  double x_bottom_lim_1 = 0.08 + ee_radius + clearance;
+  double x_top_lim_1 = -0.08 + ee_radius + clearance;
+  double x_top_lim_2 = -0.08 - 0.04 - ee_radius - clearance;
+  double y_lim_1 = 0.04 + ee_radius + clearance;
+  double y_lim_2 = 0.08 + ee_radius + clearance;
+
+  // Remove invalid samples.
+  // std::vector<Eigen::VectorXd> filtered_samples_in_body_frame = remove_invalid_samples(
+  //   unfiltered_samples_in_body_frame, x_bottom_lim_1, x_top_lim_1, x_top_lim_2,
+  //   y_lim_1, y_lim_2);
+
+  // Currently setting filtering off. 
+  std::vector<Eigen::VectorXd> filtered_samples_in_body_frame = unfiltered_samples_in_body_frame;
+
+  // Convert the samples to world frame.
+  std::vector<Eigen::VectorXd> filtered_samples_in_world_frame;
+  for (const auto& sample : filtered_samples_in_body_frame) {
+    Eigen::VectorXd sample_in_world_frame = sample;
+    // Convert end effector position to world frame.
+    sample_in_world_frame.head(3) = quat_object*sample.head(3) + object_position;
+    filtered_samples_in_world_frame.push_back(sample_in_world_frame);
+  }
+
+  return filtered_samples_in_world_frame;
 }
 
 void PythonFriendlyVectorOfVectorXdPrint(

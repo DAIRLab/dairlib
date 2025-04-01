@@ -1,0 +1,145 @@
+#pragma once
+
+#include <drake/multibody/plant/multibody_plant.h>
+
+#include "systems/framework/state_vector.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+
+#include "drake/systems/framework/leaf_system.h"
+
+
+#define PI 3.14159265359
+
+// Nominal quaternions for the object.
+#define QUAT_FLAT Eigen::Quaterniond(1.0,0.0,0.0,0.0)
+
+namespace dairlib {
+namespace systems {
+
+class TargetGeneratorPushT
+    : public drake::systems::LeafSystem<double> {
+ public:
+  TargetGeneratorPushT(
+      const drake::multibody::MultibodyPlant<double>& object_plant);
+
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_object_state() const {
+    return this->get_input_port(object_state_port_);
+  }
+
+  const drake::systems::OutputPort<double>&
+  get_output_port_end_effector_target() const {
+    return this->get_output_port(end_effector_target_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_object_target()
+      const {
+    return this->get_output_port(object_target_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_object_velocity_target()
+  const {
+    return this->get_output_port(object_velocity_target_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_object_final_target()
+  const {
+    return this->get_output_port(object_final_target_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_target_gen_info()
+  const {
+    return this->get_output_port(target_gen_info_port_);
+  }
+
+  void SetRemoteControlParameters(
+    const int& trajectory_type,
+    const bool& use_changing_final_goal,
+    const int& changing_final_goal_type,
+    const double& traj_radius,
+    const double& x_c,
+    const double& y_c,
+    const double& lead_angle,
+    const Eigen::VectorXd& target_object_position,
+    const Eigen::VectorXd& target_object_orientation,
+    const double& step_size,
+    const double& start_point_x,
+    const double& start_point_y,
+    const double& end_point_x,
+    const double& end_point_y,
+    const double& lookahead_step_size,
+    const double& lookahead_angle,
+    const double& angle_err_to_vel_factor,
+    const double& max_step_size,
+    const double& ee_goal_height,
+    const double& object_half_width,
+    const double& position_success_threshold,
+    const double& orientation_success_threshold,
+    const Eigen::VectorXd& random_goal_x_limits,
+    const Eigen::VectorXd& random_goal_y_limits,
+    const Eigen::VectorXd& random_goal_radius_limits,
+    const double& resting_object_height);
+
+ private:
+  void CalcEndEffectorTarget(const drake::systems::Context<double>& context,
+                             drake::systems::BasicVector<double>* target) const;
+  void CalcObjectTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
+  void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
+                    drake::systems::BasicVector<double>* target) const;
+  void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
+  void OutputTargetGeneratorInfo(const drake::systems::Context<double>& context,
+                      dairlib::lcmt_timestamped_saved_traj* target) const;
+  void SetRandomizedTargetFinalObjectPosition() const;
+  void SetRandomizedTargetFinalObjectOrientation() const;
+
+  drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex object_state_port_;
+  drake::systems::OutputPortIndex end_effector_target_port_;
+  drake::systems::OutputPortIndex object_target_port_;
+  drake::systems::OutputPortIndex object_velocity_target_port_;
+  drake::systems::OutputPortIndex object_final_target_port_;
+  drake::systems::OutputPortIndex target_gen_info_port_;
+
+  int trajectory_type_;
+  bool use_changing_final_goal_;
+  double traj_radius_;
+  double x_c_;
+  double y_c_;
+  double lead_angle_;
+  mutable Eigen::VectorXd target_final_object_position_;
+  mutable Eigen::VectorXd target_final_object_orientation_;
+  double step_size_;
+  double start_point_x_;
+  double start_point_y_;
+  double end_point_x_;
+  double end_point_y_;
+  double lookahead_step_size_;
+  double lookahead_angle_;
+  double angle_err_to_vel_factor_;
+  double max_step_size_;
+  double ee_goal_height_;
+  double object_half_width_;
+  double position_success_threshold_;
+  double orientation_success_threshold_;
+  Eigen::VectorXd random_goal_x_limits_;
+  Eigen::VectorXd random_goal_y_limits_;
+  Eigen::VectorXd random_goal_radius_limits_;
+  double resting_object_height_;
+
+  enum ChangingGoalType {CHANGING_GOAL_RANDOM};
+  ChangingGoalType changing_goal_type_;
+
+  mutable int goal_counter_ = 1;
+  mutable int orientation_index_ = -1;
+
+  // Nominal orientation for the T to be flat on the ground.
+  const std::vector<Eigen::Quaterniond> valid_orientations_{QUAT_FLAT};
+};
+
+}  // namespace systems
+}  // namespace dairlib

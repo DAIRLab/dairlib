@@ -16,16 +16,16 @@
 #include "examples/box_topple/parameters/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/box_topple/parameters/trajectory_params.h"
-#include "examples/box_topple/systems/c3_state_sender.h"
-#include "examples/box_topple/systems/c3_trajectory_generator.h"
-#include "examples/box_topple/systems/control_target_generator.h"
-#include "examples/box_topple/systems/franka_kinematics.h"
-#include "examples/box_topple/systems/tracking_trajectory_generator.h"
-#include "examples/box_topple/systems/sample_location_sender.h"
-#include "examples/box_topple/systems/dynamically_feasible_plan_sender.h"
-#include "examples/box_topple/systems/sample_cost_sender.h"
-#include "examples/box_topple/systems/is_c3_mode_sender.h"
-#include "examples/box_topple/systems/sample_buffer_sender.h"
+#include "systems/sender_systems/c3_state_sender.h"
+#include "systems/sender_systems/c3_trajectory_generator.h"
+#include "systems/sender_systems/control_target_generator_box_topple.h"
+#include "systems/sender_systems/franka_kinematics.h"
+#include "systems/sender_systems/tracking_trajectory_generator.h"
+#include "systems/sender_systems/sample_location_sender.h"
+#include "systems/sender_systems/dynamically_feasible_plan_sender.h"
+#include "systems/sender_systems/sample_cost_sender.h"
+#include "systems/sender_systems/is_c3_mode_sender.h"
+#include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -322,7 +322,7 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
 
   // Systems involved in setting up the target for the end effector and the
   // object.
-  auto control_target = builder.AddSystem<systems::TargetGenerator>(
+  auto control_target = builder.AddSystem<systems::TargetGeneratorBoxTopple>(
       plant_jack);  // This system generates the target for the end effector and
                     // the object.
   control_target->SetRemoteControlParameters(

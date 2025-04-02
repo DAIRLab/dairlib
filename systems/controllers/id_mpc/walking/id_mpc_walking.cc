@@ -224,6 +224,13 @@ void IDMPCWalking::MakeALIPCosts(
 
 }
 
+namespace {
+double horizon_blend(int i, int N) {
+  double x = static_cast<double>(i) - static_cast<double>(N) / 2.0;
+  return 0.5 * ( 1 + std::tanh(-0.2 * x));
+}
+}
+
 void IDMPCWalking::MakeSwingTrajCostsSDF() {
   DRAKE_DEMAND(boxy_terrain_ != nullptr);
   auto& prog = mutable_mpc().get_prog();

@@ -125,7 +125,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   }
   auto solver_end = std::chrono::steady_clock::now();
 
-  if (not result.is_success()) {
+  if (not result.is_success() and result.get_solution_result() !=
+      drake::solvers::SolutionResult::kIterationLimit) {
     std::cout << "Solve failed wth code "
               << result.get_solution_result() << std::endl;
     std::cout << "x: " << x.transpose() << std::endl;

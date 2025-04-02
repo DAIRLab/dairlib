@@ -12,8 +12,6 @@ using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using Eigen::Vector3d;
 
-
-
 namespace dairlib {
 namespace multibody {
 

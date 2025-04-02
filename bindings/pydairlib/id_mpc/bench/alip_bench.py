@@ -2,6 +2,8 @@ import os
 import tempfile
 import numpy as np
 from copy import deepcopy
+from functools import partial
+from concurrent.futures import ProcessPoolExecutor
 from pydairlib.id_mpc.bench.utils import random_stepping_stones
 
 from pydrake.systems.all import (
@@ -23,6 +25,8 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
     sim_params = os.path.join(base_folder, 'alip_bench_params.yaml')
     terrain_file = tempfile.NamedTemporaryFile()
 
+    print(trial_idx)
+
     random_stepping_stones(
         seed=trial_idx,
         min_sidelength=0.35,
@@ -33,7 +37,8 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
         gains,
         solver_options,
         terrain_file.name,
-        sim_params
+        sim_params,
+        False
     )
 
     builder = DiagramBuilder()
@@ -48,7 +53,7 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
     try:
-        simulator.AdvanceTo(15.0)
+        simulator.AdvanceTo(20.0)
     except Exception as e:
         print(e)
         terrain_file.close()
@@ -68,8 +73,13 @@ def run_experiment():
         'admm': {},
         'miqp': {}
     }
+
+    horizons = {
+        'admm': [3, 4, 5, 6, 7, 8],
+        'miqp': [3, 4, 5]
+    }
     for method in ['admm', 'miqp']:
-        for horizon in [3, 4, 5]:
+        for horizon in horizons[method]:
             solver_options = 'gurobi_options_planner' if method == 'miqp' else\
                              'ncqp_params'
             solver_options_file = os.path.join(
@@ -79,15 +89,19 @@ def run_experiment():
                 base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
             )
             success_count = 0
-            for idx in range(50):
-                success = trial(
-                    idx,
-                    gains_file,
-                    solver_options_file
-                )
-                if success:
-                    success_count += 1
+
+            worker_fn = partial(
+                trial,
+                gains=gains_file,
+                solver_options=solver_options_file
+            )
+            with ProcessPoolExecutor(max_workers=8) as exec:
+                executor = exec
+                for success in executor.map(worker_fn, range(100)):
+                    if success:
+                        success_count += 1
             success_counts[method][horizon] = success_count
+            print(success_counts)
 
     np.savez(
         '../alip_bench_results',

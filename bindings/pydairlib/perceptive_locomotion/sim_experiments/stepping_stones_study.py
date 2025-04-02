@@ -21,10 +21,10 @@ from pydrake.systems.all import (
     Diagram,
     Context,
     Simulator,
+    TriggerType,
     DiagramBuilder,
     LcmPublisherSystem,
     LcmSubscriberSystem,
-    TriggerType,
 )
 
 from pydrake.math import RigidTransform

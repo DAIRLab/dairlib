@@ -20,14 +20,13 @@ using drake::multibody::MultibodyPlant;
 
 namespace {
 
-constexpr double lambda = 3.0;
+constexpr double lambda = 10.0;
 
 template<typename T>
 T smooth_min(T a, T b) {
-  T exp_a = exp(a * lambda);
-  T exp_b = exp(b * lambda);
-
-  return (exp_b * a  + exp_a * b) / (exp_a + exp_b);
+  T exp_a = exp(-a * lambda);
+  T exp_b = exp(-b * lambda);
+  return -1.0 / (lambda) * log(0.5 * exp_a + 0.5 * exp_b);
 }
 
 }
@@ -65,7 +64,7 @@ void TerrainSDFCost::EvaluateInnerTerm(
   const auto [phi_f, gf] = box_set_->CalcSDF(pf);
   const auto [phi_r, gr] = box_set_->CalcSDF(pr);
 
-  double smooth_min_y = smooth_min(std::min(phi_f, phi_r), y_(0));
+  double smooth_min_y = smooth_min(phi_f, phi_r);
 
   *y =  VectorXd::Constant(1, smooth_min_y) - y_;
 }
@@ -89,37 +88,28 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
   const auto [phi_f, dphi_f_dp] = box_set_->CalcSDF(pf);
   const auto [phi_r, dphi_r_dp] = box_set_->CalcSDF(pr);
 
-  double phi;
-  Vector3d dphi_dp;
-  MatrixXd J = MatrixXd::Zero(3, plant_.num_positions());
+  MatrixXd Jf = MatrixXd::Zero(3, plant_.num_positions());
+  MatrixXd Jr = MatrixXd::Zero(3, plant_.num_positions());
 
-  if (phi_f < phi_r) {
-    phi = phi_f;
-    dphi_dp = dphi_f_dp;
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
-        front_point_, plant_.world_frame(), plant_.world_frame(), &J);
-  } else {
-    phi = phi_r;
-    dphi_dp = dphi_r_dp;
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
-        rear_point_, plant_.world_frame(), plant_.world_frame(), &J);
-  }
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
+      front_point_, plant_.world_frame(), plant_.world_frame(), &Jf);
+
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
+      rear_point_, plant_.world_frame(), plant_.world_frame(), &Jf);
+
+  MatrixXd dphi_f_dq = dphi_f_dp.transpose() * Jf;
+  MatrixXd dphi_r_dq = dphi_r_dp.transpose() * Jr;
+  drake::AutoDiffVecXd phi_ad_f = InitializeAutoDiff(
+      VectorXd::Constant(1, phi_f), dphi_f_dq);
+  drake::AutoDiffVecXd phi_ad_r = InitializeAutoDiff(
+      VectorXd::Constant(1, phi_r), dphi_r_dq);
 
   //dphi_dq = dphi_dp * dp_dq
-  VectorXd yd = VectorXd::Constant(1, phi);
-  MatrixXd grad = dphi_dp.transpose() * J;
-  MatrixXd ddx = ExtractGradient(x);
-
-  drake::AutoDiffXd y_ad(y_(0));
-
-  if (ddx.isIdentity(1e-16)) {
-    *y = InitializeAutoDiff(yd, grad);
-  } else {
-    *y = InitializeAutoDiff(yd, ddx * grad);
-  }
-  (*y)(0) = smooth_min((*y)(0), y_ad) - y_ad;
+  drake::AutoDiffXd phi_ad = smooth_min(phi_ad_f(0), phi_ad_r(0));
+  *y = drake::AutoDiffVecXd::Zero(1);
+  (*y)(0) = phi_ad - y_(0);
 }
 
 }

@@ -22,6 +22,5 @@ double_options:
   adaptive_rho_interval: 0
   adaptive_rho_tolerance: 5
   adaptive_rho_fraction: 0.4
-  time_limit: 0.005
 
 string_options: {}

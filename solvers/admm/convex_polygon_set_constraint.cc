@@ -20,6 +20,10 @@ ConvexPolygonSetConstraint::ConvexPolygonSetConstraint(
   set_ = polygons;
   projection_prog_.SetSolverOption(
       drake::solvers::OsqpSolver::id(), "scale", 0);
+
+  W_proj_ = Matrix3d::Identity();
+  W_proj_(0, 0) = 0.3;
+  W_proj_(2, 2) = 0.1;
   BuildProjectionProg();
 }
 
@@ -85,7 +89,7 @@ void ConvexPolygonSetConstraint::BuildProjectionProg() {
     projection_prog_.AddLinearEqualityConstraint(Aeq, beq, p);
     projection_prog_.AddLinearConstraint(
         A, VectorXd::Constant (A.rows(), -kInf), b, p);
-    projection_prog_.AddQuadraticErrorCost(Matrix3d::Identity(), Vector3d::Zero(), p);
+    projection_prog_.AddQuadraticErrorCost(W_proj_, Vector3d::Zero(), p);
     pp_.push_back(p);
   }
 
@@ -98,9 +102,10 @@ void ConvexPolygonSetConstraint::BuildProjectionProg() {
 std::pair<Vector3d, ConvexPolygon> ConvexPolygonSetConstraint::DoProjection(
     const Vector3d &x) const {
 
+  Vector3d b = -2.0 * W_proj_ * x;
   for (auto& binding : projection_prog_.quadratic_costs()) {
     for (int i = 0; i < 3; ++i) {
-      binding.evaluator()->update_linear_coefficient_entry(i, -2.0 * x(i));
+      binding.evaluator()->update_linear_coefficient_entry(i, b(i));
     }
   }
   MathematicalProgramResult result = osqp_.Solve(projection_prog_, false);

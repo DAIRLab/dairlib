@@ -256,6 +256,9 @@ QPResult NCQPSolver::QPPolish(
     const QPResult& most_recent_result,
     const NCQPSolver::SetMembershipConstraints& nc_constraints) const {
 
+  if (params_.verbose) {
+    std::cout << "\n --- start polish ---" << std::endl;
+  }
   QPData copy = cvx_qp;
 
   const auto& indices = nc_constraints.first;
@@ -268,6 +271,10 @@ QPResult NCQPSolver::QPPolish(
       y(j) = sol.x(indices.at(i).at(j));
     }
     const auto [A, lb, ub] = evaluators[i]->CalcClosestConvexRestrictionToQP(y);
+    if (params_.verbose) {
+      std::cout << "A:\n" << A << "\nlb: " << lb.transpose() << "\nub: "
+                << ub.transpose()  << std::endl;
+    }
     copy.num_ineq += A.rows();
     copy.lb.conservativeResize(copy.num_ineq);
     copy.ub.conservativeResize(copy.num_ineq);
@@ -284,7 +291,7 @@ QPResult NCQPSolver::QPPolish(
   polish_solver_->Solve(copy, out);
 
   if (params_.verbose) {
-    std::cout << "Polish result:\n" << out << std::endl;
+    std::cout << "\n --- end polish ---" << std::endl;
   }
   return out;
 }

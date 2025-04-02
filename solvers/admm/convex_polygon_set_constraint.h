@@ -40,6 +40,9 @@ class ConvexPolygonSetConstraint : public SetMembershipConstraint {
   drake::solvers::MathematicalProgram projection_prog_;
   QPData projection_qp_;
   std::vector<drake::solvers::VectorXDecisionVariable> pp_{};
+
+  Eigen::Matrix3d W_proj_;
+
 };
 
 }

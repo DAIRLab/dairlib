@@ -52,8 +52,6 @@ struct QPResult {
   std::ostream& operator<<(std::ostream& os, const QPResult& result) {
     os << "{status:" << result.solution_result
        << "\nsuccess:" << std::boolalpha << result.success
-       << "\nx:" << result.x.transpose()
-       << "\ny:" << result.y.transpose()
        << "\nobj:" << result.objective
        << "\np_res:" << result.primal_res
        << "\nd_res:" << result.dual_res

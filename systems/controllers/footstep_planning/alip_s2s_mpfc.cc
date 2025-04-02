@@ -125,16 +125,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   }
   auto solver_end = std::chrono::steady_clock::now();
 
-  if (not result.is_success() and result.get_solution_result() !=
-      drake::solvers::SolutionResult::kIterationLimit) {
-    std::cout << "Solve failed wth code "
-              << result.get_solution_result() << std::endl;
-    std::cout << "x: " << x.transpose() << std::endl;
-    std::cout << "t: " << t << std::endl;
-  }
-
   alip_s2s_mpfc_solution mpfc_solution;
-
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
 
@@ -420,7 +411,7 @@ void AlipS2SMPFC::UpdateInitialConditions(
       Eigen::VectorXd::Constant(1,  tmin)
   );
   initial_time_constraint_->UpdateUpperBound(
-      Eigen::VectorXd::Constant(1, tmax)
+      Eigen::VectorXd::Constant(1, std::max(tmin, tmax))
   );
   ankle_torque_bounds_->UpdateLowerBound(
       Eigen::VectorXd::Constant(1, -params_.umax)

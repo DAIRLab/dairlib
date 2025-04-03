@@ -39,6 +39,10 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   const drake::systems::OutputPort<double>& get_output_port_mpfc_debug() const {
     return get_output_port(output_port_mpfc_debug_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_mpfc_inputs()
+  const {
+    return this->get_output_port(output_port_mpfc_inputs_);
+  }
  private:
 
   drake::lcm::DrakeLcm lcm_local;
@@ -74,6 +78,7 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_grid_map_;
   drake::systems::OutputPortIndex output_port_mpc_output_;
   drake::systems::OutputPortIndex output_port_mpfc_debug_;
+  drake::systems::OutputPortIndex output_port_mpfc_inputs_;
 
 };
 

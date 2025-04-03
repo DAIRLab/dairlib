@@ -109,6 +109,10 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
       foot_placement_controller->get_output_port_mpc_debug(),
       "lcmt_alip_s2s_mpfc_debug"
   );
+  output_port_mpfc_inputs_ = builder.ExportOutput(
+    foot_placement_controller->get_output_port_mpc_input(),
+    "lcmt_alip_s2s_mpfc_input"
+  );
 
   // Create the diagram
   builder.BuildInto(this);

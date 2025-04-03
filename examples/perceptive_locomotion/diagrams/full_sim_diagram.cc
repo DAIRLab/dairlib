@@ -107,6 +107,13 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
           {TriggerType::kPeriodic},
           0.01)
   );
+  auto mpc_input_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_input>(
+          "ALIP_S2S_MPFC_INPUTS",
+          &lcm_log_sink,
+          {TriggerType::kPeriodic},
+          0.01)
+  );
 
   auto goal_position = builder.AddSystem<ConstantVectorSource<double>>(
       goal_location
@@ -152,6 +159,10 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       radio_operator->get_output_port_radio(),
       sim_diagram->get_input_port_radio()
   );
+  builder.Connect(
+      mpfc->get_output_port_mpfc_inputs(),
+      mpc_input_pub->get_input_port()
+  );
 
   if (visualize) {
     auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
@@ -176,8 +187,6 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
         mpfc_visualizer->get_input_port_mpc()
     );
   }
-
-
 
   builder.Connect(osc_diagram->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());

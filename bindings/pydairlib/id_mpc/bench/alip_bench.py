@@ -38,7 +38,7 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
         solver_options,
         terrain_file.name,
         sim_params,
-        False
+        True
     )
 
     builder = DiagramBuilder()
@@ -75,8 +75,8 @@ def run_experiment():
     }
 
     horizons = {
-        'admm': [3, 4, 5, 6, 7, 8],
-        'miqp': [3, 4, 5]
+        'admm': [4],
+        'miqp': [4, 5]
     }
     for method in ['admm', 'miqp']:
         for horizon in horizons[method]:
@@ -103,11 +103,12 @@ def run_experiment():
             success_counts[method][horizon] = success_count
             print(success_counts)
 
-    np.savez(
-        '../alip_bench_results',
-        success_counts=success_counts
-    )
+    # np.savez(
+    #     '../alip_bench_results',
+    #     success_counts=success_counts
+    # )
     print(success_counts)
+
 
 if __name__ == '__main__':
     run_experiment()

@@ -2,6 +2,7 @@
 #include <dairlib/lcmt_saved_traj.hpp>
 #include <dairlib/lcmt_alip_mpfc_debug_complete.hpp>
 #include <dairlib/lcmt_alip_mpc_output.hpp>
+#include <dairlib/lcmt_alip_s2s_mpfc_input.hpp>
 
 #include "alip_utils.h"
 #include "alip_s2s_mpfc.h"
@@ -60,6 +61,9 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
     return this->get_output_port(mpc_debug_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_mpc_input() const {
+    return this->get_output_port(mpc_input_output_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_fsm() const {
     return this->get_output_port(fsm_output_port_);
   }
@@ -117,6 +121,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   // drake output ports
   drake::systems::OutputPortIndex mpc_output_port_;
   drake::systems::OutputPortIndex mpc_debug_output_port_;
+  drake::systems::OutputPortIndex mpc_input_output_port_;
   drake::systems::OutputPortIndex fsm_output_port_;
 
   // controller states
@@ -129,6 +134,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   drake::systems::AbstractStateIndex mpc_solution_idx_;
   drake::systems::AbstractStateIndex footholds_idx_;
   drake::systems::AbstractStateIndex alip_state_estimator_idx_;
+  drake::systems::AbstractStateIndex mpfc_input_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;

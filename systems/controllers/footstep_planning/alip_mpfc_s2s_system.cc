@@ -77,6 +77,13 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       drake::Value<ConvexPolygonSet>(ConvexPolygonSet::MakeFlatGround())
   );
 
+  mpfc_input_idx_ = DeclareAbstractState(
+      drake::Value<lcmt_alip_s2s_mpfc_input>()
+  );
+
+  mpc_input_output_port_ = DeclareStateOutputPort(
+      "lcmt_alip_s2s_mpfc_input", mpfc_input_idx_).get_index();
+
   MatrixXd A = alip_utils::CalcA(mpfc_params.gait_params.height,
                                  mpfc_params.gait_params.mass);
   MatrixXd B = -MatrixXd::Identity(4,2);
@@ -117,6 +124,7 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
       "lcmt_mpc_debug", &Alips2sMPFCSystem::CopyMpcDebugToLcm
   ).get_index();
+
   fsm_output_port_ = DeclareVectorOutputPort(
       "fsm", 1, &Alips2sMPFCSystem::CopyFsmOutput).get_index();
 }
@@ -280,6 +288,20 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       tmax_remaining, vdes, stance, footholds_filt,
       footstep_in_stance_frame
   );
+
+  alip_s2s_mpfc_input mpc_input;
+  mpc_input.x = x;
+  mpc_input.p = p_b;
+  mpc_input.t = tnom_remaining;
+  mpc_input.tmin = tmin_remaining;
+  mpc_input.tmax = tmax_remaining;
+  mpc_input.vdes = vdes;
+  mpc_input.stance = stance;
+  mpc_input.footholds = footholds_filt;
+  mpc_input.p_prev_stance = footstep_in_stance_frame;
+
+  state->get_mutable_abstract_state<lcmt_alip_s2s_mpfc_input>(mpfc_input_idx_) =
+      mpc_input.ToLcm(robot_output->get_timestamp());
 
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(

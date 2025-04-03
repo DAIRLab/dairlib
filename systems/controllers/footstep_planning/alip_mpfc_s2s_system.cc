@@ -453,6 +453,13 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
     );
   }
   mpc_debug->max_foothold_violation = max_foothold_violation;
+  mpc_debug->total_cost = mpc_sol.total_cost;
+  mpc_debug->footstep_cost = mpc_sol.footstep_cost;
+  mpc_debug->time_reg_cost = mpc_sol.time_reg_cost;
+  mpc_debug->input_reg_cost = mpc_sol.input_reg_cost;
+  mpc_debug->final_cost = mpc_sol.final_cost;
+  mpc_debug->state_cost = mpc_sol.state_cost;
+  mpc_debug->soft_constraint_cost = mpc_sol.soft_constraint_cost;
 }
 
 

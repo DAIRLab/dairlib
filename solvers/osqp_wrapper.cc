@@ -293,6 +293,7 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
       result.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                               workspace_->data->m);
       result.solution_result = SolutionResult::kDualInfeasible;
+      result.objective = workspace_->info->obj_val + qp.c;
       result.success = false;
       break;
     }
@@ -310,6 +311,7 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
       result.x = Eigen::Map<Eigen::VectorXd>(workspace_->solution->x, qp.num_vars);
       result.y = Eigen::Map<Eigen::VectorXd>(workspace_->solution->y,
                                              workspace_->data->m);
+      result.objective = workspace_->info->obj_val + qp.c;
       result.solution_result = SolutionResult::kSolverSpecificError;
       result.success = false;
       break;

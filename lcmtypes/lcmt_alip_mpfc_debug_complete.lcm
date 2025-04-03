@@ -29,5 +29,12 @@ struct lcmt_alip_mpfc_debug_complete
     double ee[nmodes_minus_1]; // soft constraint slack;
     lcmt_foothold_set foothold_solution;
 
+    double total_cost;
+    double footstep_cost;
+    double time_reg_cost;
+    double input_reg_cost;
+    double final_cost;
+    double state_cost;
+    double soft_constraint_cost;
     double max_foothold_violation;
 }

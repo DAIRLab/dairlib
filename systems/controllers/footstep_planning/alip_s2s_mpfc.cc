@@ -96,8 +96,22 @@ AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) :
   Check();
 }
 
+alip_s2s_mpfc_solution AlipS2SMPFC::Solve(const alip_s2s_mpfc_input &input) {
+  return Solve(
+      input.x,
+      input.p,
+      input.t,
+      input.tmin,
+      input.tmax,
+      input.vdes,
+      input.stance,
+      input.footholds,
+      input.p_prev_stance
+  );
+}
+
 alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
-    const Vector4d &x,const Vector3d &p, double t, double tmin, double tmax,
+    const Vector4d &x, const Vector3d &p, double t, double tmin, double tmax,
     const Vector2d& vdes, Stance stance, const ConvexPolygonSet& footholds,
     const Vector3d& p_prev_stance) {
 
@@ -157,6 +171,31 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
+
+  // assign costs
+  mpfc_solution.total_cost = result.get_optimal_cost();
+  mpfc_solution.footstep_cost = 0;
+  mpfc_solution.state_cost = 0;
+  mpfc_solution.soft_constraint_cost = 0;
+
+  for (const auto& c : input_cost_) {
+    mpfc_solution.footstep_cost += result.EvalBinding(c)(0);
+  }
+  for (const auto& c : tracking_cost_) {
+    mpfc_solution.state_cost += result.EvalBinding(c)(0);
+  }
+  for (const auto& c : soft_constraint_cost_) {
+    mpfc_solution.soft_constraint_cost += result.EvalBinding(c)(0);
+  }
+  VectorXd y = VectorXd::Zero(1);
+  time_regularization_->Eval(result.GetSolution(tau_), &y);
+  mpfc_solution.time_reg_cost = y(0);
+
+  ankle_torque_regularization_->Eval(result.GetSolution(u_), &y);
+  mpfc_solution.input_reg_cost = y(0);
+
+  terminal_cost_->Eval(result.GetSolution(xx_.back()), &y);
+  mpfc_solution.final_cost = y(0);
 
   return mpfc_solution;
 }

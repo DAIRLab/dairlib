@@ -44,6 +44,13 @@ struct alip_s2s_mpfc_solution {
 
   // some debug info
   bool success;
+  double total_cost;
+  double footstep_cost;
+  double time_reg_cost;
+  double input_reg_cost;
+  double final_cost;
+  double state_cost;
+  double soft_constraint_cost;
   double t_nom;
   double total_time;
   double optimizer_time;
@@ -82,6 +89,8 @@ class AlipS2SMPFC {
       const geometry::ConvexPolygonSet& footholds,
       const Eigen::Vector3d& p_prev_stance
   );
+
+  alip_s2s_mpfc_solution Solve (const alip_s2s_mpfc_input& input);
 
   const alip_utils::AlipGaitParams& gait_params() const {
     return params_.gait_params;

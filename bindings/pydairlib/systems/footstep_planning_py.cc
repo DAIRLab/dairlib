@@ -1,6 +1,5 @@
-#include <pybind11/eigen.h>
-#include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 
 #include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
@@ -22,6 +21,10 @@ using systems::controllers::alip_utils::MakePeriodicAlipGait;
 using systems::controllers::alip_utils::AlipStepToStepDynamics;
 using systems::controllers::alip_utils::MassNormalizedAlipStepToStepDynamics;
 using systems::controllers::SwingFootTrajSolver;
+using systems::controllers::alip_s2s_mpfc_solution;
+using systems::controllers::alip_s2s_mpfc_params;
+using systems::controllers::alip_s2s_mpfc_input;
+using systems::controllers::AlipS2SMPFC;
 
 
 PYBIND11_MODULE(footstep_planning, m) {
@@ -32,6 +35,7 @@ PYBIND11_MODULE(footstep_planning, m) {
   py::enum_<Stance>(m, "Stance")
       .value("kLeft", Stance::kLeft)
       .value("kRight", Stance::kRight);
+
   py::enum_<ResetDiscretization>(m, "ResetDiscretization")
       .value("kZOH", ResetDiscretization::kZOH)
       .value("kFOH", ResetDiscretization::kFOH)
@@ -87,7 +91,73 @@ PYBIND11_MODULE(footstep_planning, m) {
          py::arg("com_z"), py::arg("t"))
     .def("CalcMassNormalizedA", &CalcMassNormalizedA, py::arg("com_z"));
 
+  py::class_<alip_s2s_mpfc_solution>(m, "AlipS2SMpfcSolution")
+      // Constructor
+      .def(py::init<>())
+      .def_readwrite("pp", &alip_s2s_mpfc_solution::pp)
+      .def_readwrite("xx", &alip_s2s_mpfc_solution::xx)
+      .def_readwrite("ee", &alip_s2s_mpfc_solution::ee)
+      .def_readwrite("mu", &alip_s2s_mpfc_solution::mu)
+      .def_readwrite("t_sol", &alip_s2s_mpfc_solution::t_sol)
+      .def_readwrite("u_sol", &alip_s2s_mpfc_solution::u_sol)
+      .def_readwrite("success", &alip_s2s_mpfc_solution::success)
+      .def_readwrite("total_cost", &alip_s2s_mpfc_solution::total_cost)
+      .def_readwrite("footstep_cost", &alip_s2s_mpfc_solution::footstep_cost)
+      .def_readwrite("time_reg_cost", &alip_s2s_mpfc_solution::time_reg_cost)
+      .def_readwrite("input_reg_cost", &alip_s2s_mpfc_solution::input_reg_cost)
+      .def_readwrite("final_cost", &alip_s2s_mpfc_solution::final_cost)
+      .def_readwrite("state_cost", &alip_s2s_mpfc_solution::state_cost)
+      .def_readwrite("soft_constraint_cost", &alip_s2s_mpfc_solution::soft_constraint_cost)
+      .def_readwrite("t_nom", &alip_s2s_mpfc_solution::t_nom)
+      .def_readwrite("total_time", &alip_s2s_mpfc_solution::total_time)
+      .def_readwrite("optimizer_time", &alip_s2s_mpfc_solution::optimizer_time)
+      .def_readwrite("desired_velocity", &alip_s2s_mpfc_solution::desired_velocity)
+      .def_readwrite("solution_result", &alip_s2s_mpfc_solution::solution_result)
+      .def_readwrite("input_footholds", &alip_s2s_mpfc_solution::input_footholds);
 
+  py::class_<dairlib::systems::controllers::alip_s2s_mpfc_params>(m, "AlipS2SMpfcParams")
+      .def(py::init<>())
+      .def_readwrite("gait_params", &alip_s2s_mpfc_params::gait_params)
+      .def_readwrite("nmodes", &alip_s2s_mpfc_params::nmodes)
+      .def_readwrite("tmin", &alip_s2s_mpfc_params::tmin)
+      .def_readwrite("tmax", &alip_s2s_mpfc_params::tmax)
+      .def_readwrite("soft_constraint_cost", &alip_s2s_mpfc_params::soft_constraint_cost)
+      .def_readwrite("time_regularization", &alip_s2s_mpfc_params::time_regularization)
+      .def_readwrite("com_pos_bound", &alip_s2s_mpfc_params::com_pos_bound)
+      .def_readwrite("com_vel_bound", &alip_s2s_mpfc_params::com_vel_bound)
+      .def_readwrite("Q", &alip_s2s_mpfc_params::Q)
+      .def_readwrite("R", &alip_s2s_mpfc_params::R)
+      .def_readwrite("Qf", &alip_s2s_mpfc_params::Qf)
+      .def_readwrite("solver_options", &alip_s2s_mpfc_params::solver_options)
+      .def_readwrite("ncqp_solver_options_path", &alip_s2s_mpfc_params::ncqp_solver_options_path)
+      .def_readwrite("umax", &dairlib::systems::controllers::alip_s2s_mpfc_params::umax)
+      .def_readwrite("ankle_torque_regularization", &alip_s2s_mpfc_params::ankle_torque_regularization)
+      .def_readwrite("tracking_cost_type", &alip_s2s_mpfc_params::tracking_cost_type)
+      .def_readwrite("miqp", &alip_s2s_mpfc_params::miqp);
+
+  py::class_<alip_s2s_mpfc_input>(m, "AlipS2SMpfcInput")
+      .def(py::init<>())
+      .def_readwrite("x", &alip_s2s_mpfc_input::x)
+      .def_readwrite("p", &alip_s2s_mpfc_input::p)
+      .def_readwrite("t", &alip_s2s_mpfc_input::t)
+      .def_readwrite("vdes", &alip_s2s_mpfc_input::vdes)
+      .def_readwrite("tmin", &alip_s2s_mpfc_input::tmin)
+      .def_readwrite("tmax", &alip_s2s_mpfc_input::tmax)
+      .def_readwrite("stance", &alip_s2s_mpfc_input::stance)
+      .def_readwrite("footholds", &alip_s2s_mpfc_input::footholds)
+      .def_readwrite("p_prev_stance", &alip_s2s_mpfc_input::p_prev_stance);
+
+  m.def("make_alip_s2s_mpfc_params_from_yaml",
+        &dairlib::systems::controllers::MakeAlipS2SMPFCParamsFromYaml,
+        py::arg("gains_yaml_path"),
+        py::arg("solver_options_yaml_path"),
+        py::arg("plant"),
+        py::arg("context"),
+        "Create ALIP S2S MPFC parameters from YAML configuration files");
+
+  py::class_<AlipS2SMPFC>(m, "AlipS2SMPFC")
+      .def(py::init<alip_s2s_mpfc_params>(), py::arg("params"))
+      .def("Solve", &AlipS2SMPFC::SolveFromInput, py::arg("input"));
 }
 
 

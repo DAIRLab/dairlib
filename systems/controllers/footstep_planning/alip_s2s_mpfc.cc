@@ -96,7 +96,8 @@ AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) :
   Check();
 }
 
-alip_s2s_mpfc_solution AlipS2SMPFC::Solve(const alip_s2s_mpfc_input &input) {
+alip_s2s_mpfc_solution AlipS2SMPFC::SolveFromInput(
+    const alip_s2s_mpfc_input &input) {
   return Solve(
       input.x,
       input.p,

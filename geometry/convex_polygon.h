@@ -42,6 +42,11 @@ class ConvexPolygon {
   void AddFace(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
 
   /*
+   * Add faces as a group
+   */
+  void AddFaces(const Eigen::MatrixXd& A, const Eigen::VectorXd& b);
+
+  /*
    * Add a face by adding two vertices. v1 and v2 should be unique points
    * in the contact plane, and with the contact normal pointing toward the
    * observer, v2 should be counterclockwise from v1. These conditions are not

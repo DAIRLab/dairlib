@@ -90,7 +90,9 @@ class AlipS2SMPFC {
       const Eigen::Vector3d& p_prev_stance
   );
 
-  alip_s2s_mpfc_solution Solve (const alip_s2s_mpfc_input& input);
+  // Using a different function name here to allow for easily python binding
+  // this method as "Solve" without template nonsense
+  alip_s2s_mpfc_solution SolveFromInput(const alip_s2s_mpfc_input& input);
 
   const alip_utils::AlipGaitParams& gait_params() const {
     return params_.gait_params;

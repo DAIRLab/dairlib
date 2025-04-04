@@ -68,6 +68,11 @@ void ConvexPolygon::AddVertices(const Vector3d &v1, const Vector3d &v2) {
   bounding_box_.valid = false;
 }
 
+void ConvexPolygon::AddFaces(const MatrixXd& A, const VectorXd& b) {
+  A_ = A;
+  b_ = b;
+}
+
 std::pair<MatrixXd, VectorXd> ConvexPolygon::GetConstraintMatrices() const {
   return {A_, b_};
 }

@@ -16,6 +16,19 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "alip_bench_analysis",
+    srcs = ["alip_bench_analysis.py"],
+    data = [],
+    deps = [
+        ":utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/systems",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_library(
     name = "utils",
     srcs = ["utils.py"],

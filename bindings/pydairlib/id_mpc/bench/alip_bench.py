@@ -124,7 +124,11 @@ def make_log(logfile: str, idx: int, method: str, horizon: int):
 
 
 def make_log_driver():
-    pass
+    idx = int(input('Enter index: '))
+    method = input('Method (admm or miqp): ')
+    horizon = int(input("Horizon: "))
+    file = f"../{input('Save file name: ../')}"
+    make_log(file, idx, method, horizon)
 
 
 def choose_your_fighter():

@@ -1,4 +1,4 @@
-#include "control_target_generator.h"
+#include "control_target_generator_ball_rolling.h"
 
 #include <iostream>
 
@@ -13,7 +13,7 @@ using Eigen::VectorXd;
 namespace dairlib {
 namespace systems {
 
-TargetGenerator::TargetGenerator(
+TargetGeneratorBallRolling::TargetGeneratorBallRolling(
     const MultibodyPlant<double>& object_plant) {
   // INPUT PORTS
   radio_port_ =
@@ -29,16 +29,24 @@ TargetGenerator::TargetGenerator(
   end_effector_target_port_ =
       this->DeclareVectorOutputPort(
               "end_effector_target", BasicVector<double>(3),
-              &TargetGenerator::CalcEndEffectorTarget)
+              &TargetGeneratorBallRolling::CalcEndEffectorTarget)
           .get_index();
   // OUTPUT PORTS
   object_target_port_ = this->DeclareVectorOutputPort(
                               "object_target", BasicVector<double>(7),
-                              &TargetGenerator::CalcObjectTarget)
+                              &TargetGeneratorBallRolling::CalcObjectTarget)
+                          .get_index();
+  // object_velocity_target_port_ = this->DeclareVectorOutputPort(
+  //                             "object_velocity_target", BasicVector<double>(6),
+  //                             &TargetGenerator::CalcObjectVelocityTarget)
+  //                         .get_index();
+  object_final_target_port_ = this->DeclareVectorOutputPort(
+                              "object_final_target", BasicVector<double>(7),
+                              &TargetGeneratorBallRolling::OutputObjectFinalTarget)
                           .get_index();
 }
 
-void TargetGenerator::SetRemoteControlParameters(
+void TargetGeneratorBallRolling::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& fixed_target_position, 
     const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
@@ -68,7 +76,7 @@ void TargetGenerator::SetRemoteControlParameters(
   object_half_width_ = object_half_width;
 }
 
-void TargetGenerator::CalcEndEffectorTarget(
+void TargetGeneratorBallRolling::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
   // const auto& radio_out =
@@ -86,7 +94,7 @@ void TargetGenerator::CalcEndEffectorTarget(
   target->SetFromVector(end_effector_position);
 }
 
-void TargetGenerator::CalcObjectTarget(
+void TargetGeneratorBallRolling::CalcObjectTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
   const StateVector<double>* object_state =
@@ -202,8 +210,19 @@ void TargetGenerator::CalcObjectTarget(
   }
 
   // For ball rolling, no orientation target.
+  target_final_object_position_ = target_obj_position;
   target_obj_state << fixed_target_orientation_, target_obj_position;
   target->SetFromVector(target_obj_state);
+}
+
+void TargetGeneratorBallRolling::OutputObjectFinalTarget(
+    const drake::systems::Context<double>& context,
+    BasicVector<double>* target) const {
+
+  VectorXd target_final_obj_state = VectorXd::Zero(7);
+  target_final_obj_state << fixed_target_orientation_,
+    target_final_object_position_;
+  target->SetFromVector(target_final_obj_state);
 }
 
 }  // namespace systems

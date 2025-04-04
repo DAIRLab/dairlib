@@ -16,14 +16,16 @@
 #include "examples/ball_rolling/parameters/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/ball_rolling/parameters/trajectory_params.h"
-#include "examples/ball_rolling/systems/c3_state_sender.h"
-#include "examples/ball_rolling/systems/c3_trajectory_generator.h"
-#include "examples/ball_rolling/systems/control_target_generator.h"
-#include "examples/ball_rolling/systems/franka_kinematics.h"
-#include "examples/ball_rolling/systems/tracking_trajectory_generator.h"
-#include "examples/ball_rolling/systems/sample_location_sender.h"
-#include "examples/ball_rolling/systems/sample_cost_sender.h"
-#include "examples/ball_rolling/systems/is_c3_mode_sender.h"
+#include "systems/sender_systems/c3_state_sender.h"
+#include "systems/sender_systems/c3_trajectory_generator.h"
+#include "systems/sender_systems/control_target_generator_ball_rolling.h"
+#include "systems/sender_systems/franka_kinematics.h"
+#include "systems/sender_systems/tracking_trajectory_generator.h"
+#include "systems/sender_systems/sample_location_sender.h"
+#include "systems/sender_systems/dynamically_feasible_plan_sender.h"
+#include "systems/sender_systems/sample_cost_sender.h"
+#include "systems/sender_systems/is_c3_mode_sender.h"
+#include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 // #include "systems/controllers/c3/lcs_factory_system.h"
@@ -255,7 +257,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Systems involved in setting up the target for the end effector and the
   // object.
-  auto control_target = builder.AddSystem<systems::TargetGenerator>(
+  auto control_target = builder.AddSystem<systems::TargetGeneratorBallRolling>(
       plant_jack);  // This system generates the target for the end effector and
                     // the object.
   control_target->SetRemoteControlParameters(
@@ -272,27 +274,44 @@ int DoMain(int argc, char* argv[]) {
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+  auto final_target_state_mux =
+      builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
   auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
+//   auto target_gen_info_publisher = builder.AddSystem(
+//       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+//           lcm_channel_params.target_generator_info_channel, &lcm,
+//           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(control_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
   builder.Connect(control_target->get_output_port_object_target(),
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
+// // TODO: Verify if this needs to be changed. The velocity target is different here than in the jack example. 
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
+//   builder.Connect(control_target->get_output_port_target_gen_info(),
+//                   target_gen_info_publisher->get_input_port());
+  builder.Connect(control_target->get_output_port_end_effector_target(),
+                  final_target_state_mux->get_input_port(0));
+  builder.Connect(control_target->get_output_port_object_final_target(),
+                  final_target_state_mux->get_input_port(1));
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
+                  final_target_state_mux->get_input_port(2));
+  builder.Connect(object_zero_velocity_source->get_output_port(),
+                  final_target_state_mux->get_input_port(3));
 
 
   // Instantiating the sampling based c3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
-      sampling_params);
+      sampling_params, true);
 
   // The following systems consume the planned trajectories and output it to an
   // LCM publisher to go to the visualizer.
@@ -389,14 +408,24 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  
+  // These systems send the dynamically feasible plans used to compute costs.
+  auto dynamically_feasible_curr_plan_sender =
+    builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("curr");
+  auto dynamically_feasible_best_plan_sender = 
+    builder.AddSystem<systems::DynamicallyFeasiblePlanSender>("best");
 
   // These systems send the sample locations and sample costs.
   auto sample_locations_sender = 
     builder.AddSystem<systems::SampleLocationSender>();
   auto sample_costs_sender = 
     builder.AddSystem<systems::SampleCostSender>();
+  auto curr_and_best_sample_costs_sender = 
+    builder.AddSystem<systems::SampleCostSender>("curr_and_best_sample_costs_sender");
   auto is_c3_mode_sender = 
     builder.AddSystem<systems::IsC3ModeSender>();
+  auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
+    sampling_params.N_sample_buffer, 10);
 
   // These systems publish the sample locations and sample costs over LCM.
   auto sample_locations_publisher = builder.AddSystem(
@@ -407,9 +436,37 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto curr_and_best_sample_costs_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto controller_debug_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_sampling_c3_debug>(
+          lcm_channel_params.sampling_c3_debug_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto is_c3_mode_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_curr_actor_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_curr_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_best_actor_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_actor_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto dynamically_feasible_best_plan_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto sample_buffer_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.sample_buffer_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
@@ -431,6 +488,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto c3_final_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_final_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
 
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
@@ -447,6 +508,8 @@ int DoMain(int argc, char* argv[]) {
   // control_target output connections to mux set up earlier.
   builder.Connect(target_state_mux->get_output_port(),
                   controller->get_input_port_target());
+  builder.Connect(final_target_state_mux->get_output_port(),
+                  controller->get_input_port_final_target());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
 
@@ -495,14 +558,30 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
                   c3_forces_publisher_best_plan->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan(),
+                  dynamically_feasible_curr_plan_sender->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan(),
+                  dynamically_feasible_best_plan_sender->get_input_port());
+  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port_dynamically_feasible_plan(),
+                  dynamically_feasible_curr_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_curr_plan_sender->get_output_port_dynamically_feasible_plan_actor(),
+                  dynamically_feasible_curr_actor_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port_dynamically_feasible_plan(),
+                  dynamically_feasible_best_plan_publisher->get_input_port());
+  builder.Connect(dynamically_feasible_best_plan_sender->get_output_port_dynamically_feasible_plan_actor(),
+                  dynamically_feasible_best_actor_plan_publisher->get_input_port());
 
   // ACTUAL AND TARGET LCS_STATE CONNECTIONS
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
+  builder.Connect(final_target_state_mux->get_output_port(),
+                  c3_state_sender->get_input_port_final_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   c3_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_final_target_c3_state(),
+                  c3_final_target_state_publisher->get_input_port());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                   c3_actual_state_publisher->get_input_port());
 
@@ -534,12 +613,24 @@ int DoMain(int argc, char* argv[]) {
                   sample_costs_sender->get_input_port());
   builder.Connect(controller->get_output_port_is_c3_mode(),
                   is_c3_mode_sender->get_input_port());
+  builder.Connect(controller->get_output_port_curr_and_best_sample_costs(),
+                  curr_and_best_sample_costs_sender->get_input_port());
+  builder.Connect(controller->get_output_port_debug(),
+                  controller_debug_publisher->get_input_port());
   builder.Connect(sample_locations_sender->get_output_port(),
                   sample_locations_publisher->get_input_port());
   builder.Connect(sample_costs_sender->get_output_port(),
                   sample_costs_publisher->get_input_port());
+  builder.Connect(sample_buffer_sender->get_output_port_sample_buffer(),
+                  sample_buffer_publisher->get_input_port());
+  builder.Connect(curr_and_best_sample_costs_sender->get_output_port(),
+                  curr_and_best_sample_costs_publisher->get_input_port());
   builder.Connect(is_c3_mode_sender->get_output_port(),
                   is_c3_mode_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_sample_buffer_configurations(),
+                  sample_buffer_sender->get_input_port_samples());
+  builder.Connect(controller->get_output_port_sample_buffer_costs(),
+                  sample_buffer_sender->get_input_port_sample_costs());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
@@ -548,9 +639,10 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(*plant_diagram, "examples/ball_rolling/franka_c3_plant");
 
   // Run lcm-driven simulation
+  int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+      lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   DrawAndSaveDiagramGraph(*loop.get_diagram(), "examples/ball_rolling/loop");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());

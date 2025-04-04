@@ -11,6 +11,8 @@ cc_library(
         ":control_target_generator_jacktoy",
         ":control_target_generator_push_T",
         ":control_target_generator_box_topple",
+        ":control_target_generator_ball_rolling",
+        ":sample_buffer_sender",
         ":joint_trajectory_generator",
         ":c3_state_sender",
         ":c3_trajectory_generator",
@@ -108,6 +110,23 @@ cc_library(
         "@drake//:drake_shared_library",
         "//solvers:c3",
         "//examples/box_topple:franka_c3_controller_params",
+        "//systems/controllers:sampling_params",
+        "//lcm:lcm_trajectory_saver",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "control_target_generator_ball_rolling",
+    srcs = ["control_target_generator_ball_rolling.cc"],
+    hdrs = ["control_target_generator_ball_rolling.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//solvers:c3",
+        "//examples/ball_rolling:franka_c3_controller_params",
         "//systems/controllers:sampling_params",
         "//lcm:lcm_trajectory_saver",
         "@lcm",

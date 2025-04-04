@@ -2,6 +2,7 @@
 
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
@@ -26,8 +27,10 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
-#include "examples/ball_rolling/systems/franka_kinematics.h"
-#include "examples/ball_rolling/systems/c3_mode_visualizer.h"
+#include "drake/geometry/meshcat_point_cloud_visualizer.h"
+#include "systems/sender_systems/franka_kinematics.h"
+#include "systems/sender_systems/c3_mode_visualizer.h"
+#include "systems/sender_systems/sample_buffer_to_point_cloud.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -242,6 +245,12 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_force_curr =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_curr_channel, lcm));
+  auto dynamically_feasible_trajectory_sub_object_curr = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_plan_channel, lcm));
+  auto dynamically_feasible_trajectory_sub_actor_curr = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, lcm));
 
   auto trajectory_sub_actor_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -252,6 +261,9 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_force_best =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_best_channel, lcm));
+  auto dynamically_feasible_trajectory_sub_object_best = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_plan_channel, lcm));
 
 	// This system subscribes to the lcmt_saved_traj message containing sample 
 	// locations. 
@@ -259,12 +271,25 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, lcm));
 
+  // Subscribes to the lcmt_sample_buffer message containing the sample buffer.
+  auto sample_buffer_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.sample_buffer_channel, lcm));
+
+  // Subscribes to the sample costs message.
+  auto sample_costs_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.sample_costs_channel, lcm));
+
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
   auto c3_state_target_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
+  auto c3_final_state_target_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_final_target_state_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 

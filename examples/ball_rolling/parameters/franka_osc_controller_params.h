@@ -22,6 +22,7 @@ struct FrankaControllerParams : OSCGains {
   bool publish_debug_info;
 
   Eigen::VectorXd neutral_position;
+  bool teleop_neutral_position;
   double x_scale;
   double y_scale;
   double z_scale;
@@ -78,6 +79,7 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(p_franka_to_platform));
     a->Visit(DRAKE_NVP(p_world_to_franka));
     a->Visit(DRAKE_NVP(neutral_position));
+    a->Visit(DRAKE_NVP(teleop_neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));
     a->Visit(DRAKE_NVP(z_scale));

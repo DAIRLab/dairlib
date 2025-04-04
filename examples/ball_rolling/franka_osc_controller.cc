@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/ball_rolling/parameters/franka_lcm_channels.h"
 #include "examples/ball_rolling/parameters/franka_osc_controller_params.h"
-#include "examples/ball_rolling/systems/end_effector_force_trajectory.h"
-#include "examples/ball_rolling/systems/end_effector_orientation.h"
-#include "examples/ball_rolling/systems/end_effector_trajectory.h"
+#include "systems/sender_systems/end_effector_force_trajectory.h"
+#include "systems/sender_systems/end_effector_orientation.h"
+#include "systems/sender_systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -177,7 +177,11 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(
+        plant, plant_context.get(),
+        controller_params.neutral_position,
+        controller_params.teleop_neutral_position,
+        controller_params.end_effector_name);
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());

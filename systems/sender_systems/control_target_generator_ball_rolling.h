@@ -10,10 +10,10 @@
 namespace dairlib {
 namespace systems {
 
-class TargetGenerator
+class TargetGeneratorBallRolling
     : public drake::systems::LeafSystem<double> {
  public:
-  TargetGenerator(
+  TargetGeneratorBallRolling(
       const drake::multibody::MultibodyPlant<double>& object_plant);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
@@ -33,6 +33,11 @@ class TargetGenerator
       const {
     return this->get_output_port(object_target_port_);
   }
+  
+  const drake::systems::OutputPort<double>& get_output_port_object_final_target()
+  const {
+    return this->get_output_port(object_final_target_port_);
+  }
 
   void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const Eigen::VectorXd& fixed_target_position,
@@ -47,6 +52,10 @@ class TargetGenerator
                              drake::systems::BasicVector<double>* target) const;
   void CalcObjectTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
+  // void CalcObjectVelocityTarget(const drake::systems::Context<double>& context,
+  //                   drake::systems::BasicVector<double>* target) const;
+  void OutputObjectFinalTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -55,6 +64,7 @@ class TargetGenerator
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex object_target_port_;
+  drake::systems::OutputPortIndex object_final_target_port_;
 
   int trajectory_type_;
   double traj_radius_;
@@ -74,6 +84,7 @@ class TargetGenerator
   double max_step_size_;
   double ee_goal_height_;
   double object_half_width_;
+  mutable Eigen::VectorXd target_final_object_position_;
 };
 
 }  // namespace systems

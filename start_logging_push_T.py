@@ -16,20 +16,20 @@ def main(log_type):
         os.mkdir(logdir)
 
     # franka_cr_controller params path
-    franka_c3_controller_params_path = dair + "examples/push_T/parameters/franka_c3_controller_params.yaml"
+    franka_c3_controller_params_path = dair + "examples/sampling_c3/push_t/parameters/franka_c3_controller_params.yaml"
 
-    # Load the run_in_safe_mode param from dair + "examples/push_T/parameters/franka_c3_controller_params.yaml"
+    # Load the run_in_safe_mode param from dair + "examples/sampling_c3/push_t/parameters/franka_c3_controller_params.yaml"
     with open(franka_c3_controller_params_path) as f:
         franka_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
 
-    c3_gains = dair + "examples/push_T/parameters/franka_c3_options_floating.yaml"
-    sampling_params = dair + "examples/push_T/parameters/sampling_params.yaml"
+    c3_gains = dair + "examples/sampling_c3/push_t/parameters/franka_c3_options_floating.yaml"
+    sampling_params = dair + "examples/sampling_c3/push_t/parameters/sampling_params.yaml"
 
-    osc_gains = dair + "examples/push_T/parameters/franka_osc_controller_params.yaml"
-    sim_params = dair + "examples/push_T/parameters/franka_sim_params.yaml"
-    trajectory_params = dair + "examples/push_T/parameters/trajectory_params.yaml"
-    ee_simple_model_urdf = dair + "examples/push_T/urdf/end_effector_simple_model.urdf"
-    T_sdf = dair + "examples/push_T/urdf/T.sdf"
+    osc_gains = dair + "examples/sampling_c3/push_t/parameters/franka_osc_controller_params.yaml"
+    sim_params = dair + "examples/sampling_c3/push_t/parameters/franka_sim_params.yaml"
+    trajectory_params = dair + "examples/sampling_c3/push_t/parameters/trajectory_params.yaml"
+    ee_simple_model_urdf = dair + "examples/sampling_c3/urdf/end_effector_simple_model.urdf"
+    T_sdf = dair + "examples/sampling_c3/urdf/T.sdf"
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)

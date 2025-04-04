@@ -1,6 +1,6 @@
 #include "control_target_generator_box_topple.h"
 #include <drake/common/yaml/yaml_io.h>
-#include "examples/box_topple/parameters/franka_c3_controller_params.h"
+#include "examples/sampling_c3/box_topple/parameters/franka_c3_controller_params.h"
 #include "solvers/c3_options.h"
 
 #include "drake/systems/framework/leaf_system.h"
@@ -68,7 +68,7 @@ TargetGeneratorBoxTopple::TargetGeneratorBoxTopple(
   C3Options c3_options;
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-        "examples/box_topple/parameters/franka_c3_controller_params.yaml");
+        "examples/sampling_c3/box_topple/parameters/franka_c3_controller_params.yaml");
 
   c3_options = drake::yaml::LoadYamlFile<C3Options>(
                 controller_params.c3_options_file);

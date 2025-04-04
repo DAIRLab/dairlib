@@ -24,7 +24,7 @@ py_binary(
 pybind_py_library(
     name = "diagrams_py",
     cc_deps = [
-        "//examples/jacktoy/diagrams:franka_visualizer_diagram",
+        "//examples/sampling_c3/jacktoy/diagrams:franka_visualizer_diagram",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "diagrams",

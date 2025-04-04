@@ -15,8 +15,8 @@ from pydrake.all import MultibodyPlant, Parser, RigidTransform, RotationMatrix, 
 
 franka_urdf = FindResourceOrThrow(
     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf")
-end_effector_model = "examples/jacktoy/urdf/end_effector_full.urdf"
-object_model = "examples/jacktoy/urdf/jack.sdf"
+end_effector_model = "examples/sampling_c3/urdf/end_effector_full.urdf"
+object_model = "examples/sampling_c3/urdf/jack.sdf"
 tool_attachment_frame = np.array([0, 0, 0.107])
 franka_origin = np.array([0, 0, 0])
 

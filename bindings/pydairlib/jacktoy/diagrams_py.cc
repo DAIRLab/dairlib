@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "examples/jacktoy/diagrams/franka_visualizer_diagram.h"
+#include "examples/sampling_c3/jacktoy/diagrams/franka_visualizer_diagram.h"
 
 namespace py = pybind11;
 

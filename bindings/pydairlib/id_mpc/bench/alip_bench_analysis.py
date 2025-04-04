@@ -1,10 +1,13 @@
+import os
 import lcm
+import argparse
 import numpy as np
+import matplotlib.pyplot as plt
 
 import dairlib
-import argparse
 
 from pydairlib.systems import(
+    make_alip_s2s_mpfc_params_from_yaml,
     AlipS2SMpfcSolution,
     AlipS2SMpfcParams,
     AlipS2SMpfcInput,
@@ -17,7 +20,27 @@ from pydairlib.geometry import (
     ConvexPolygon
 )
 
+from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 from pydairlib.analysis.process_lcm_log import get_log_data
+
+
+def make_mpfc_params(method: str, horizon: int):
+    base_folder = "bindings/pydairlib/id_mpc/bench/"
+    solver_options = 'gurobi_options_multithreaded' if method == 'miqp' else \
+        'ncqp_params'
+    solver_options_file = os.path.join(
+        base_folder, f'gains/{solver_options}.yaml'
+    )
+    gains_file = os.path.join(
+        base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
+    )
+    plant, context = make_plant_and_context()
+    return make_alip_s2s_mpfc_params_from_yaml(
+        gains_file,
+        solver_options_file,
+        plant,
+        context
+    )
 
 
 def foothold_set_from_lcm(msg):
@@ -65,11 +88,42 @@ def get_mpfc_inputs(logfile: str):
     return input_data
 
 
+def cost_comparison(mpfc_inputs, horizon: int):
+    params_admm = make_mpfc_params('admm', horizon)
+    params_miqp = make_mpfc_params('miqp', horizon)
+    admm_solver = AlipS2SMPFC(params_admm)
+    miqp_solver = AlipS2SMPFC(params_miqp)
+
+    solutions_admm = [
+        admm_solver.Solve(inp) for inp in mpfc_inputs
+    ]
+    solutions_miqp = [
+        miqp_solver.Solve(inp) for inp in mpfc_inputs
+    ]
+
+    admm_costs = [sol.total_cost for sol in solutions_admm]
+    miqp_costs = [sol.total_cost for sol in solutions_miqp]
+
+    admm_success = [1 if sol.success else 0 for sol in solutions_admm]
+    miqp_success = [1 if sol.success else 0 for sol in solutions_miqp]
+
+    plt.plot(admm_costs)
+    plt.plot(miqp_costs)
+    plt.legend(['ADMM', 'MIQP'])
+
+    plt.figure()
+    plt.plot(admm_success)
+    plt.plot(miqp_success)
+    plt.legend(['ADMM', 'MIQP'])
+    plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--logfile")
     args = parser.parse_args()
     mpfc_inputs = get_mpfc_inputs(args.logfile)
+    cost_comparison(mpfc_inputs, 3)
 
 
 if __name__ == '__main__':

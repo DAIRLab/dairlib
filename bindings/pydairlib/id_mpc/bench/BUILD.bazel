@@ -22,6 +22,7 @@ py_binary(
     data = [],
     deps = [
         ":utils",
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/systems",

@@ -137,6 +137,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     result.set_decision_variable_index(prog_->decision_variable_index());
     result.set_x_val(solution.x);
     result.set_solution_result(solution.solution_result);
+    result.set_optimal_cost(solution.objective);
   }
   auto solver_end = std::chrono::steady_clock::now();
 
@@ -305,7 +306,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
 void AlipS2SMPFC::MakeMIQPFootholdConstraints() {
   DRAKE_DEMAND(params_.miqp);
 
-  constexpr double bigM = 20.0;
+  constexpr double bigM = 100.0;
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;

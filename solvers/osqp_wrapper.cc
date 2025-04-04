@@ -304,7 +304,7 @@ void OsqpWrapper::Solve(dairlib::solvers::QPData &qp,
                                              workspace_->data->m);
       result.objective = workspace_->info->obj_val + qp.c;
       result.solution_result = SolutionResult::kIterationLimit;
-      result.success = true;
+      result.success = false;
       break;
     }
     case OSQP_TIME_LIMIT_REACHED: {
@@ -333,6 +333,7 @@ MathematicalProgramResult OsqpWrapper::Solve(
   result.set_decision_variable_index(prog.decision_variable_index());
   result.set_x_val(solution.x);
   result.set_solution_result(solution.solution_result);
+  result.set_optimal_cost(solution.objective);
   return result;
 }
 

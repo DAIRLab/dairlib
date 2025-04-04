@@ -111,6 +111,38 @@ alip_s2s_mpfc_solution AlipS2SMPFC::SolveFromInput(
   );
 }
 
+namespace {
+double EvaluateConstraintViolation(
+    const MathematicalProgram& prog, const Eigen::VectorXd &x) {
+  double max_viol = 0;
+  for (const auto& binding : prog.GetAllConstraints()) {
+    const auto &v = binding.variables();
+    const auto &indices = prog.FindDecisionVariableIndices(v);
+    VectorXd xval = VectorXd::Zero(v.rows());
+    for (int i = 0; i < v.rows(); ++i) {
+      xval(i) = x(indices[i]);
+    }
+    VectorXd y;
+    binding.evaluator()->Eval(xval, &y);
+    const VectorXd& lb = binding.evaluator()->lower_bound();
+    const VectorXd& ub = binding.evaluator()->upper_bound();
+    VectorXd lb_viol = (lb - y).cwiseMax(0);
+    VectorXd ub_viol = (y - ub).cwiseMax(0);
+
+    double max_viol_this_binding = std::max(
+        lb_viol.maxCoeff(), ub_viol.maxCoeff()
+    );
+
+    if (max_viol_this_binding > 1.0) {
+      std::cout << "ultra high violation of " << binding.evaluator()
+      ->get_description() << std::endl;
+    }
+    max_viol = std::max(max_viol, max_viol_this_binding);
+  }
+  return max_viol;
+}
+}
+
 alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     const Vector4d &x, const Vector3d &p, double t, double tmin, double tmax,
     const Vector2d& vdes, Stance stance, const ConvexPolygonSet& footholds,
@@ -141,9 +173,12 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   }
   auto solver_end = std::chrono::steady_clock::now();
 
+
   alip_s2s_mpfc_solution mpfc_solution;
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
+  mpfc_solution.max_constraint_viol = EvaluateConstraintViolation(
+      *prog_, result.GetSolution());
 
   mpfc_solution.pp.clear();
   mpfc_solution.xx.clear();
@@ -278,6 +313,8 @@ void AlipS2SMPFC::MakeInputConstraints() {
             ub_reach,
             {xx_.at(i).head<2>(), pp_.at(i), pp_.at(i+1)}
         ));
+    reachability_c_.back().evaluator()->set_description(
+        "reach_" + std::to_string(i));
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(
             MatrixXd::Ones(1, 2),
@@ -285,6 +322,8 @@ void AlipS2SMPFC::MakeInputConstraints() {
             VectorXd::Constant(1, kInfinity),
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
     ));
+    no_crossover_c_.back().evaluator()->set_description(
+        "crossover_" + std::to_string(i));
   }
 
   if (params_.miqp) {
@@ -359,6 +398,8 @@ void AlipS2SMPFC::MakeNCQPFootholdConstraints() {
     foothold_set_c_.push_back(
         prog_->AddConstraint(evaluator, pp_.at(i+1))
     );
+    foothold_set_c_.back().evaluator()->set_description(
+        "ncqp_foothold_constraint_" + std::to_string(i));
   }
 }
 

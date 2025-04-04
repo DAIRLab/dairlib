@@ -57,10 +57,12 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
     except Exception as e:
         print(e)
         terrain_file.close()
+        if logfile:
+            sim_diagram.SaveLcmLog(logfile + "_" + str(trial_idx))
         return False
 
     if logfile:
-        sim_diagram.SaveLcmLog(logfile)
+        sim_diagram.SaveLcmLog(logfile + "_" + str(trial_idx))
 
     terrain_file.close()
 
@@ -76,7 +78,7 @@ def run_experiment():
 
     horizons = {
         'admm': [4],
-        'miqp': [4, 5]
+        'miqp': [4]
     }
     for method in ['admm', 'miqp']:
         for horizon in horizons[method]:
@@ -89,19 +91,20 @@ def run_experiment():
                 base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
             )
             success_count = 0
+            logname = f'../alip_bench_logs/{method}_{horizon}'
 
             worker_fn = partial(
                 trial,
                 gains=gains_file,
-                solver_options=solver_options_file
+                solver_options=solver_options_file,
+                logfile=logname
             )
             with ProcessPoolExecutor(max_workers=8) as exec:
                 executor = exec
-                for success in executor.map(worker_fn, range(100)):
+                for success in executor.map(worker_fn, range(20)):
                     if success:
                         success_count += 1
             success_counts[method][horizon] = success_count
-            print(success_counts)
 
     # np.savez(
     #     '../alip_bench_results',

@@ -66,8 +66,6 @@ void ConvexPolygonSetConstraint::EvaluateConstraint(
   *y = VectorXd::Constant(1, set_.CalcViolation(x));
 }
 
-
-
 void ConvexPolygonSetConstraint::BuildProjectionProg() {
   for (const auto& binding : projection_prog_.GetAllCosts()) {
     projection_prog_.RemoveCost(binding);

@@ -101,8 +101,8 @@ def cost_comparison(mpfc_inputs, horizon: int):
         miqp_solver.Solve(inp) for inp in mpfc_inputs
     ]
 
-    admm_costs = [sol.total_cost for sol in solutions_admm]
-    miqp_costs = [sol.total_cost for sol in solutions_miqp]
+    admm_costs = [sol.max_constraint_viol for sol in solutions_admm]
+    miqp_costs = [sol.max_constraint_viol for sol in solutions_miqp]
 
     admm_success = [1 if sol.success else 0 for sol in solutions_admm]
     miqp_success = [1 if sol.success else 0 for sol in solutions_miqp]

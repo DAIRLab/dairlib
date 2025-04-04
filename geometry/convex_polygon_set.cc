@@ -205,13 +205,13 @@ bool ConvexPolygonSet::Feasible2d(const Vector3d& pt, double tol) const {
 }
 
 double ConvexPolygonSet::CalcViolation(const Vector3d &pt) const {
-  double max_viol = -std::numeric_limits<double>::infinity();
+  double min_viol = std::numeric_limits<double>::infinity();
   for (const auto& poly : set_) {
-    max_viol = std::max(
-        max_viol,
+    min_viol = std::min(
+        min_viol,
         std::max(poly.Get2dViolation(pt), poly.GetPlaneViolation(pt)));
   }
-  return max_viol;
+  return min_viol;
 }
 
 }

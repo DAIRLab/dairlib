@@ -44,6 +44,7 @@ struct alip_s2s_mpfc_solution {
 
   // some debug info
   bool success;
+  double max_constraint_viol;
   double total_cost;
   double footstep_cost;
   double time_reg_cost;

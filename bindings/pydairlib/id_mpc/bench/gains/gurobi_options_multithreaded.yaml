@@ -1,9 +1,13 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  Presolve: 0
+  Presolve: 1
   Threads: 8
+  Method: 2
 #  IterationLimit: 1000
-double_options: {}
+double_options:
+  BarConvTol: 1e-3
+  FeasibilityTol: 1e-3
+  OptimalityTol: 1e-3
 string_options: {} # need to provide an empty dict if not using an
                    # options category

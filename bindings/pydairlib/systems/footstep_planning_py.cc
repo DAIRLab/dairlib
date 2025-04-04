@@ -103,6 +103,7 @@ PYBIND11_MODULE(footstep_planning, m) {
       .def_readwrite("success", &alip_s2s_mpfc_solution::success)
       .def_readwrite("total_cost", &alip_s2s_mpfc_solution::total_cost)
       .def_readwrite("footstep_cost", &alip_s2s_mpfc_solution::footstep_cost)
+      .def_readwrite("max_constraint_viol", &alip_s2s_mpfc_solution::max_constraint_viol)
       .def_readwrite("time_reg_cost", &alip_s2s_mpfc_solution::time_reg_cost)
       .def_readwrite("input_reg_cost", &alip_s2s_mpfc_solution::input_reg_cost)
       .def_readwrite("final_cost", &alip_s2s_mpfc_solution::final_cost)

@@ -110,5 +110,33 @@ def run_experiment():
     print(success_counts)
 
 
+def make_log(logfile: str, idx: int, method: str, horizon: int):
+    base_folder = "bindings/pydairlib/id_mpc/bench/"
+    solver_options = 'gurobi_options_planner' if method == 'miqp' else \
+        'ncqp_params'
+    solver_options_file = os.path.join(
+        base_folder, f'gains/{solver_options}.yaml'
+    )
+    gains_file = os.path.join(
+        base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
+    )
+    success = trial(idx, gains_file, solver_options_file, logfile)
+
+
+def make_log_driver():
+    pass
+
+
+def choose_your_fighter():
+    choice = input("What do you want to do?\n 1) run success rate experiment\n"
+                   " 2) run a single trial and make a log\n\nchoice: ")
+    if int(choice) == 1:
+        run_experiment()
+    elif int(choice) == 2:
+        make_log_driver()
+    else:
+        print("invalid option")
+
+
 if __name__ == '__main__':
-    run_experiment()
+    choose_your_fighter()

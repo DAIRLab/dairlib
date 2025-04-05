@@ -1,13 +1,13 @@
 group "simulations" {
     cmd "franka_sim" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_sim";
+        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_sim";
         host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_visualizer";
+        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_visualizer";
         host = "localhost";
     }
     cmd "drake-director" {
@@ -19,22 +19,22 @@ group "operator" {
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 start_logging_push_T.py sim";
+        exec = "python3 examples/sampling_c3/start_logging.py sim jacktoy";
         host = "localhost";
     }
 }
 
 group "controllers" {    
     cmd "move_to_init" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_joint_osc_controller";
+        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_joint_osc_controller";
         host = "localhost";
     }
     cmd "franka_osc" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_osc_controller";
+        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_osc_controller";
         host = "localhost";
     }
     cmd "franka_c3" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_c3_controller";
+        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_c3_controller";
         host = "localhost";
     }
 }

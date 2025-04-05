@@ -6,6 +6,7 @@
 #include "common/eigen_utils.h"
 #include "solvers/admm/ncqp_solver.h"
 #include "solvers/admm/convex_polygon_set_constraint.h"
+#include "drake/solvers/mosek_solver.h"
 #include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::systems::controllers{
@@ -29,6 +30,7 @@ using alip_utils::AlipGaitParams;
 using alip_utils::AlipStepToStepDynamics;
 
 using geometry::ConvexPolygonSet;
+using drake::solvers::MathematicalProgramResult;
 
 lcmt_alip_s2s_mpfc_input alip_s2s_mpfc_input::ToLcm(double timestamp) const {
   lcmt_alip_s2s_mpfc_input msg{};
@@ -132,11 +134,6 @@ double EvaluateConstraintViolation(
     double max_viol_this_binding = std::max(
         lb_viol.maxCoeff(), ub_viol.maxCoeff()
     );
-
-    if (max_viol_this_binding > 1.0) {
-      std::cout << "ultra high violation of " << binding.evaluator()
-      ->get_description() << std::endl;
-    }
     max_viol = std::max(max_viol, max_viol_this_binding);
   }
   return max_viol;
@@ -150,13 +147,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   auto start = std::chrono::steady_clock::now();
 
-  UpdateInitialConditions(x, p, t, tmin, tmax);
-  UpdateCrossoverConstraint(stance);
-  UpdateFootholdConstraints(footholds);
-  UpdateInputCost(vdes, stance);
-  UpdateTrackingCost(vdes, stance);
-  UpdateTimeRegularization(t);
-  UpdateTrustRegionConstraint(t, p_prev_stance);
+  UpdateProblemData(
+      x, p, t, tmin, tmax, vdes, stance, footholds, p_prev_stance);
 
   drake::solvers::MathematicalProgramResult result;
 
@@ -173,68 +165,91 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   }
   auto solver_end = std::chrono::steady_clock::now();
 
-
   alip_s2s_mpfc_solution mpfc_solution;
-  mpfc_solution.success = result.is_success();
-  mpfc_solution.solution_result = result.get_solution_result();
-  mpfc_solution.max_constraint_viol = EvaluateConstraintViolation(
-      *prog_, result.GetSolution());
-
-  mpfc_solution.pp.clear();
-  mpfc_solution.xx.clear();
-  mpfc_solution.ee.clear();
-  mpfc_solution.mu.clear();
-
-  for (int i = 0; i < params_.nmodes; ++i) {
-    mpfc_solution.xx.push_back(result.GetSolution(xx_.at(i)));
-    mpfc_solution.pp.push_back(result.GetSolution(pp_.at(i)));
-  }
-  for (int i = 0; i < params_.nmodes - 1; ++i) {
-    mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
-    mpfc_solution.mu.push_back(params_.miqp ?
-        result.GetSolution(mu_.at(i)) : VectorXd::Zero(kMaxFootholds));
-    mpfc_solution.mu.back()(0) = 1;
-  }
-
-  mpfc_solution.t_nom = t;
-  mpfc_solution.t_sol = result.GetSolution(tau_)(0);
-  mpfc_solution.u_sol = result.GetSolution(u_)(0);
   mpfc_solution.desired_velocity = vdes;
+  mpfc_solution.t_nom = t;
 
+  SetSolution(&mpfc_solution, result);
   auto end = std::chrono::steady_clock::now();
-
   std::chrono::duration<double> total_time = end - start;
   std::chrono::duration<double> solve_time = solver_end - solver_start;
-
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
 
+  return mpfc_solution;
+}
+
+void AlipS2SMPFC::UpdateProblemData(const Eigen::Vector4d &x,
+                                    const Eigen::Vector3d &p,
+                                    double t,
+                                    double tmin,
+                                    double tmax,
+                                    const Eigen::Vector2d &vdes,
+                                    alip_utils::Stance stance,
+                                    const geometry::ConvexPolygonSet &footholds,
+                                    const Eigen::Vector3d &p_prev_stance) {
+  UpdateInitialConditions(x, p, t, tmin, tmax);
+  UpdateCrossoverConstraint(stance);
+  UpdateFootholdConstraints(footholds);
+  UpdateInputCost(vdes, stance);
+  UpdateTrackingCost(vdes, stance);
+  UpdateTimeRegularization(t);
+  UpdateTrustRegionConstraint(t, p_prev_stance);
+}
+
+void AlipS2SMPFC::SetSolution(
+    alip_s2s_mpfc_solution *sol,
+    const MathematicalProgramResult& result) const  {
+  sol->success = result.is_success();
+  sol->solution_result = result.get_solution_result();
+  sol->max_constraint_viol = EvaluateConstraintViolation(
+      *prog_, result.GetSolution());
+
+  sol->pp.clear();
+  sol->xx.clear();
+  sol->ee.clear();
+  sol->mu.clear();
+
+  for (int i = 0; i < params_.nmodes; ++i) {
+    sol->xx.push_back(result.GetSolution(xx_.at(i)));
+    sol->pp.push_back(result.GetSolution(pp_.at(i)));
+  }
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    sol->ee.push_back(result.GetSolution(ee_.at(i)));
+    sol->mu.push_back(params_.miqp ?
+                               result.GetSolution(mu_.at(i)) : VectorXd::Zero(kMaxFootholds));
+    sol->mu.back()(0) = 1;
+  }
+
+  sol->t_sol = result.GetSolution(tau_)(0);
+  sol->u_sol = result.GetSolution(u_)(0);
+
+
+
   // assign costs
-  mpfc_solution.total_cost = result.get_optimal_cost();
-  mpfc_solution.footstep_cost = 0;
-  mpfc_solution.state_cost = 0;
-  mpfc_solution.soft_constraint_cost = 0;
+  sol->total_cost = result.get_optimal_cost();
+  sol->footstep_cost = 0;
+  sol->state_cost = 0;
+  sol->soft_constraint_cost = 0;
 
   for (const auto& c : input_cost_) {
-    mpfc_solution.footstep_cost += result.EvalBinding(c)(0);
+    sol->footstep_cost += result.EvalBinding(c)(0);
   }
   for (const auto& c : tracking_cost_) {
-    mpfc_solution.state_cost += result.EvalBinding(c)(0);
+    sol->state_cost += result.EvalBinding(c)(0);
   }
   for (const auto& c : soft_constraint_cost_) {
-    mpfc_solution.soft_constraint_cost += result.EvalBinding(c)(0);
+    sol->soft_constraint_cost += result.EvalBinding(c)(0);
   }
   VectorXd y = VectorXd::Zero(1);
   time_regularization_->Eval(result.GetSolution(tau_), &y);
-  mpfc_solution.time_reg_cost = y(0);
+  sol->time_reg_cost = y(0);
 
   ankle_torque_regularization_->Eval(result.GetSolution(u_), &y);
-  mpfc_solution.input_reg_cost = y(0);
+  sol->input_reg_cost = y(0);
 
   terminal_cost_->Eval(result.GetSolution(xx_.back()), &y);
-  mpfc_solution.final_cost = y(0);
-
-  return mpfc_solution;
+  sol->final_cost = y(0);
 }
 
 void AlipS2SMPFC::MakeMPCVariables() {
@@ -340,6 +355,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
       A_trust, -Vector3d::Constant(kInfinity), Vector3d::Constant(kInfinity),
       {pp_.at(1), pp_.at(0)}
   ).evaluator();
+  trust_region_->set_description("trust_region_constraint");
 }
 
 void AlipS2SMPFC::MakeMIQPFootholdConstraints() {
@@ -388,6 +404,7 @@ void AlipS2SMPFC::MakeMIQPFootholdConstraints() {
       VectorXd::Ones(mu_.size()),
       stack(mu_)
   ).evaluator();
+  footstep_choice_c_->set_description("footstep_choice_c");
 }
 
 void AlipS2SMPFC::MakeNCQPFootholdConstraints() {
@@ -440,6 +457,8 @@ void AlipS2SMPFC::MakeStateConstraints() {
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
+    workspace_c_.back().evaluator()->set_description(
+        "workspace_c_" + std::to_string(i));
   }
 }
 
@@ -463,6 +482,11 @@ void AlipS2SMPFC::MakeInitialConditionsConstraints() {
   ).evaluator();
 
   ankle_torque_bounds_ = prog_->AddBoundingBoxConstraint(-1, 1, u_).evaluator();
+
+  initial_state_c_->set_description("initial_state");
+  initial_foot_c_->set_description("initial_foot");
+  initial_time_constraint_->set_description("initial_time_bounds");
+  ankle_torque_bounds_->set_description("ankle_torque_bounds");
 }
 
 void AlipS2SMPFC::UpdateInitialConditions(

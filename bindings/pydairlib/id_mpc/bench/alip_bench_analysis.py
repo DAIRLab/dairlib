@@ -88,24 +88,56 @@ def get_mpfc_inputs(logfile: str):
     return input_data
 
 
+def calc_cost_sensitivity_to_x(problem: AlipS2SMpfcInput, solver: AlipS2SMPFC):
+    n = 5
+    noise_bounds = np.array([0.01, 0.01, 0.1, 0.1])
+    costs = []
+    for i in range(n):
+        tmp = problem
+        tmp.x = tmp.x + np.random.uniform(-noise_bounds, noise_bounds)
+        sol = solver.Solve(problem)
+        costs.append(sol.total_cost)
+
+    return np.max(costs) - np.min(costs)
+
+
+def sensitivity_analysis(mpfc_inputs, horizon: int):
+    params_admm = make_mpfc_params('admm', horizon)
+    params_miqp = make_mpfc_params('miqp', horizon)
+    admm_solver = AlipS2SMPFC(params_admm)
+    miqp_solver = AlipS2SMPFC(params_miqp)
+
+    ranges_miqp = [
+        calc_cost_sensitivity_to_x(inp, miqp_solver) for inp in mpfc_inputs
+    ]
+    ranges_admm = [
+        calc_cost_sensitivity_to_x(inp, admm_solver) for inp in mpfc_inputs
+    ]
+    plt.plot(ranges_admm)
+    plt.plot(ranges_miqp)
+    plt.legend(['ADMM', 'MIQP'])
+    plt.show()
+
+
 def cost_comparison(mpfc_inputs, horizon: int):
     params_admm = make_mpfc_params('admm', horizon)
     params_miqp = make_mpfc_params('miqp', horizon)
     admm_solver = AlipS2SMPFC(params_admm)
     miqp_solver = AlipS2SMPFC(params_miqp)
 
-    solutions_admm = [
-        admm_solver.Solve(inp) for inp in mpfc_inputs
-    ]
     solutions_miqp = [
         miqp_solver.Solve(inp) for inp in mpfc_inputs
     ]
+    solutions_admm = [
+        admm_solver.Solve(inp) for inp in mpfc_inputs
+    ]
 
-    admm_costs = [sol.max_constraint_viol for sol in solutions_admm]
-    miqp_costs = [sol.max_constraint_viol for sol in solutions_miqp]
-
+    admm_costs = [sol.total_cost for sol in solutions_admm]
+    miqp_costs = [sol.total_cost for sol in solutions_miqp]
     admm_success = [1 if sol.success else 0 for sol in solutions_admm]
     miqp_success = [1 if sol.success else 0 for sol in solutions_miqp]
+    admm_step_sizes = [np.linalg.norm(sol.pp[1] - sol.pp[0]) for sol in solutions_admm]
+    miqp_step_sizes = [np.linalg.norm(sol.pp[1] - sol.pp[0]) for sol  in solutions_miqp]
 
     plt.plot(admm_costs)
     plt.plot(miqp_costs)
@@ -115,6 +147,11 @@ def cost_comparison(mpfc_inputs, horizon: int):
     plt.plot(admm_success)
     plt.plot(miqp_success)
     plt.legend(['ADMM', 'MIQP'])
+
+    plt.figure()
+    plt.plot(admm_step_sizes)
+    plt.plot(miqp_step_sizes)
+    plt.legend(['ADMM', 'MIQP'])
     plt.show()
 
 
@@ -123,7 +160,7 @@ def main():
     parser.add_argument("--logfile")
     args = parser.parse_args()
     mpfc_inputs = get_mpfc_inputs(args.logfile)
-    cost_comparison(mpfc_inputs, 3)
+    cost_comparison(mpfc_inputs, 5)
 
 
 if __name__ == '__main__':

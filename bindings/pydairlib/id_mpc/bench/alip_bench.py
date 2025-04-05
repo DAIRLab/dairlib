@@ -38,7 +38,7 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
         solver_options,
         terrain_file.name,
         sim_params,
-        True
+        False
     )
 
     builder = DiagramBuilder()
@@ -77,8 +77,8 @@ def run_experiment():
     }
 
     horizons = {
-        'admm': [4],
-        'miqp': [4]
+        'admm': [3, 4, 5, 6],
+        'miqp': [3, 4, 5]
     }
     for method in ['admm', 'miqp']:
         for horizon in horizons[method]:
@@ -91,25 +91,24 @@ def run_experiment():
                 base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
             )
             success_count = 0
-            logname = f'../alip_bench_logs/{method}_{horizon}'
 
             worker_fn = partial(
                 trial,
                 gains=gains_file,
                 solver_options=solver_options_file,
-                logfile=logname
             )
             with ProcessPoolExecutor(max_workers=8) as exec:
                 executor = exec
-                for success in executor.map(worker_fn, range(20)):
+                for success in executor.map(worker_fn, range(100)):
                     if success:
                         success_count += 1
             success_counts[method][horizon] = success_count
+            print(success_counts)
 
-    # np.savez(
-    #     '../alip_bench_results',
-    #     success_counts=success_counts
-    # )
+    np.savez(
+        '../alip_bench_results',
+        success_counts=success_counts
+    )
     print(success_counts)
 
 

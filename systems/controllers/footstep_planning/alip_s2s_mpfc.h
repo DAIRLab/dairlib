@@ -114,6 +114,19 @@ class AlipS2SMPFC {
   void MakeNCQPFootholdConstraints();
   void MakeInitialConditionsConstraints();
 
+  void UpdateProblemData(
+      const Eigen::Vector4d& x,
+      const Eigen::Vector3d& p,
+      double t, double tmin, double tmax,
+      const Eigen::Vector2d& vdes,
+      alip_utils::Stance stance,
+      const geometry::ConvexPolygonSet& footholds,
+      const Eigen::Vector3d& p_prev_stance);
+
+  void SetSolution(
+      alip_s2s_mpfc_solution* sol,
+      const drake::solvers::MathematicalProgramResult& result) const;
+
   void UpdateInitialConditions(
       const Eigen::Vector4d& x, const Eigen::Vector3d& p,
       double t, double tmin, double tmax);

@@ -104,7 +104,7 @@ void IDMPCWalking::MakeFootsteps() {
 
   for (int i = 0; i < params_.footstep_horizon; ++i) {
     pp_.push_back(prog.NewContinuousVariables(3, "p_" + std::to_string(i)));
-    Eigen::Matrix3d W_hyst = 0.5 * Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d W_hyst = 0.25 * Eigen::Matrix3d::Identity();
     W_hyst(2,2) = 0.01;
     auto step_hyst_cost =
         std::make_shared<solvers::sqp::QuadraticErrorCost<double>>(
@@ -227,7 +227,7 @@ void IDMPCWalking::MakeALIPCosts(
 namespace {
 double horizon_blend(int i, int N) {
   double x = static_cast<double>(i) - static_cast<double>(N) / 2.0;
-  return 0.5 * ( 1 + std::tanh(-0.2 * x));
+  return 0.5 * (1 + std::tanh(-0.25 * x));
 }
 }
 
@@ -235,7 +235,7 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
   DRAKE_DEMAND(boxy_terrain_ != nullptr);
   auto& prog = mutable_mpc().get_prog();
   for (int i = 0; i <= params_.mpc_N; ++i) {
-    double w = 1.0 - std::exp(-0.25 * (double)(params_.mpc_N - i));
+    double w = horizon_blend(i, params_.mpc_N);
     auto sdf_cost = std::make_shared<TerrainSDFCost>(
         w * params_.mpc_dt * params_.foot_pos_W.bottomRightCorner<1,1>(),
         VectorXd::Zero(1), dynamics().get_plant(), "toe_left",

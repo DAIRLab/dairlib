@@ -211,6 +211,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
 
   tmin_remaining = std::max(tmin_remaining, 0.0);
   tnom_remaining = std::max(tnom_remaining, 0.0);
+  tmax_remaining = std::max(tmax_remaining, 0.0);
 
   const int fsm_state = curr_fsm(fsm_idx);
   Stance stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? Stance::kLeft : Stance::kRight;

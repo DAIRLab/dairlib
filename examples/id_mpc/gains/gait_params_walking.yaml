@@ -1,7 +1,7 @@
 footstep_horizon: 5
 t_ss: 0.35
 t_ds: 0.05
-step_height: 0.15
+step_height: 0.18
 stance_width: 0.2
 pelvis_height: 0.95
-foot_pos_w: [2, 10, 6000]
+foot_pos_w: [2, 10, 3000]

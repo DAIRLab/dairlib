@@ -97,7 +97,7 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
 
   plant_.CalcJacobianTranslationalVelocity(
       *context_, drake::multibody::JacobianWrtVariable::kQDot, *frame_,
-      rear_point_, plant_.world_frame(), plant_.world_frame(), &Jf);
+      rear_point_, plant_.world_frame(), plant_.world_frame(), &Jr);
 
   MatrixXd dphi_f_dq = dphi_f_dp.transpose() * Jf;
   MatrixXd dphi_r_dq = dphi_r_dp.transpose() * Jr;

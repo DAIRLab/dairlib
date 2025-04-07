@@ -19,14 +19,14 @@ DRAKE_CHECKSUM = "78cf62c177c41f8415ade172c1e6eb270db619f07c4b043d5148e1f35be8da
 #DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
-load("//:environ.bzl", "environ_repository")
+load("//:environ.bzl", "drake_repository", "inekf_repository")
 
-environ_repository(
-    name = "environ",
-    vars = ["DAIRLIB_LOCAL_DRAKE_PATH"],
-)
+drake_repository(name = "drake_path")
 
-load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+inekf_repository(name = "inekf_path")
+
+load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -66,10 +66,6 @@ add_default_workspace()
 load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
 
 osqp_repository(name = "osqp")
-
-load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
-
-signal_scope_repository(name = "signal_scope")
 
 # Prebuilt ROS workspace
 new_local_repository(
@@ -113,14 +109,6 @@ INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256
 # displays the suggested new value for the CHECKSUM.
 # INEKF_CHECKSUM = "0" * 64
 
-# Load an environment variable.
-environ_repository(
-    name = "environ_inekf",
-    vars = ["DAIRLIB_LOCAL_INEKF_PATH"],
-)
-
-load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
-
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
 # "@inekf", the other is named "@inekf_ignored".
@@ -128,9 +116,6 @@ load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
     "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
     "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
 )
-
-# Maybe download InEKF.
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = _http_inekf_repo_name,
@@ -149,8 +134,6 @@ local_repository(
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.
 http_archive(
@@ -162,11 +145,9 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains")
 
 go_register_toolchains(version = "1.17.2")
 

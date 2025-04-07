@@ -97,14 +97,27 @@ LCS LCSFactory::LinearizePlantToLCS(
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
-        contact_geoms[i]);  // deleted num_friction_directions (check with
-    // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+        contact_geoms[i]);
+    if (num_friction_directions == 1) {
+      Eigen::Vector3d planar_normal;
+      planar_normal << 0, 1, 0;
+      auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+    } else {
+      auto [phi_i, J_i] =
+          collider.EvalPolytope(context, num_friction_directions);
+      phi(i) = phi_i;
+      J_n.row(i) = J_i.row(0);
+      J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+                n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+    }
 
-    phi(i) = phi_i;
-    J_n.row(i) = J_i.row(0);
-    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+    // J_i is 3 x n_v
+    // row (0) is contact normal
+    // rows (1-num_friction directions) are the contact tangents
   }
 
   auto M_ldlt = ExtractValue(M).ldlt();
@@ -155,15 +168,20 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd H = MatrixXd::Zero(n_lambda, n_u);
   VectorXd c = VectorXd::Zero(n_lambda);
 
+  MatrixXd W_x = MatrixXd::Zero(n_lambda, n_x);
+  MatrixXd W_l = MatrixXd::Zero(n_lambda, n_lambda);
+  MatrixXd W_u = MatrixXd::Zero(n_lambda, n_u);
+  MatrixXd w = VectorXd::Zero(n_lambda);
+
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     D.block(0, 2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions) =
         dt * dt * qdotNv * MinvJ_t_T;
     D.block(n_q, 2 * n_contacts, n_v,
             2 * n_contacts * num_friction_directions) = dt * MinvJ_t_T;
-
     D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
+    // Complementarity condition for gamma: mu lambda^n
     E.block(n_contacts, 0, n_contacts, n_q) =
         dt * dt * J_n * AB_v_q + J_n * vNqdot;
     E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
@@ -173,26 +191,35 @@ LCS LCSFactory::LinearizePlantToLCS(
     E.block(2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions,
             n_v) = J_t + dt * J_t * AB_v_v;
 
-    F.block(0, n_contacts, n_contacts, n_contacts) =
-        Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(mu.data(),
-                                                            mu.size())
-            .asDiagonal();
+    VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+        mu.data(), mu.size());
+    // Complementarity condition for gamma: mu lambda^n
+    F.block(0, n_contacts, n_contacts, n_contacts) = mu_vec.asDiagonal();
 
+    // Complementarity condition for gamma: lambda^t
     F.block(0, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) = -E_t;
 
+    // Complementarity condition for lambda_n: dt J_n (lambda^n component of
+    // v_{k+1})
     F.block(n_contacts, n_contacts, n_contacts, n_contacts) =
         dt * dt * J_n * MinvJ_n_T;
+    // Complementarity condition for lambda_n: dt J_n (lambda^t component of
+    // v_{k+1})
     F.block(n_contacts, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) =
         dt * dt * J_n * MinvJ_t_T;
-
+    // Complementarity condition for lambda_t: dt J_t (gamma component of
+    // v_{k+1})
     F.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions,
             n_contacts) = E_t.transpose();
-
+    // Complementarity condition for lambda_t: dt J_t (lambda^n component of
+    // v_{k+1})
     F.block(2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions, n_contacts) =
         dt * J_t * MinvJ_n_T;
+    // Complementarity condition for lambda_t: dt J_t (lambda^t component of
+    // v_{k+1})
     F.block(2 * n_contacts, 2 * n_contacts,
             2 * n_contacts * num_friction_directions,
             2 * n_contacts * num_friction_directions) = dt * J_t * MinvJ_t_T;
@@ -211,13 +238,12 @@ LCS LCSFactory::LinearizePlantToLCS(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
     for (int i = 0; i < mu_vec.rows(); i++) {
-      double cur = mu_vec(i);
-      anitescu_mu_vec(4 * i) = cur;
-      anitescu_mu_vec(4 * i + 1) = cur;
-      anitescu_mu_vec(4 * i + 2) = cur;
-      anitescu_mu_vec(4 * i + 3) = cur;
+      anitescu_mu_vec.segment((2 * num_friction_directions) * i,
+                              2 * num_friction_directions) =
+          mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
+    // Constructing friction bases
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
@@ -225,15 +251,28 @@ LCS LCSFactory::LinearizePlantToLCS(
     D.block(0, 0, n_q, n_lambda) = dt * dt * qdotNv * MinvJ_c_T;
     D.block(n_q, 0, n_v, n_lambda) = dt * MinvJ_c_T;
 
+    // q component of complementarity constraint
     E.block(0, 0, n_lambda, n_q) =
         dt * J_c * AB_v_q + E_t.transpose() * J_n * vNqdot / dt;
     E.block(0, n_q, n_lambda, n_v) = J_c + dt * J_c * AB_v_v;
 
+    // lambda component of complementarity constraint
     F = dt * J_c * MinvJ_c_T;
 
+    // u component of complementarity constraint
     H = dt * J_c * AB_v_u;
+    // constant component of complementarity constraint
     c = E_t.transpose() * phi / dt + dt * J_c * d_v -
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
+
+    // Anitescu model needs an explicit formulation for the tangential
+    // components in order to appropriately activate the robust constraint
+    // (TODO): yangwill do another pass to verify this formulation
+    W_x.block(0, 0, n_lambda, n_q) = J_t * AB_v_q;
+    W_x.block(0, n_q, n_lambda, n_v) = J_t + J_t * AB_v_v;
+    W_l = J_t * (MinvJ_c_T);
+    W_u = J_t * (AB_v_u);
+    w = J_t * (d_v);
   }
 
 
@@ -245,12 +284,10 @@ std::pair<Eigen::MatrixXd, std::vector<VectorXd>>
 LCSFactory::ComputeContactJacobian(
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::systems::Context<double>& context,
-    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    const drake::systems::Context<drake::AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
         contact_geoms,
-    int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, dairlib::solvers::ContactModel contact_model) {
+    int num_friction_directions, const std::vector<double>& mu,
+    dairlib::solvers::ContactModel contact_model) {
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();

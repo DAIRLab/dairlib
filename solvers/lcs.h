@@ -1,5 +1,5 @@
 #pragma once
-
+#include <iostream>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -23,8 +23,7 @@ class LCS {
       const std::vector<Eigen::MatrixXd>& E,
       const std::vector<Eigen::MatrixXd>& F,
       const std::vector<Eigen::MatrixXd>& H,
-      const std::vector<Eigen::VectorXd>& c,
-      double dt);
+      const std::vector<Eigen::VectorXd>& c, double dt);
 
   /// Constructor for time-invariant LCS
   LCS(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
@@ -37,6 +36,17 @@ class LCS {
   LCS& operator=(const LCS&);
   LCS(LCS&&) = default;
   LCS& operator=(LCS&&) = default;
+
+  void SetTangentGapLinearization(const Eigen::MatrixXd& W_x,
+                                  const Eigen::MatrixXd& W_l,
+                                  const Eigen::MatrixXd& W_u,
+                                  const Eigen::VectorXd& w) {
+    W_x_ = W_x;
+    W_l_ = W_l;
+    W_u_ = W_u;
+    w_ = w;
+    has_tangent_linearization_ = true;
+  }
 
   /// Simulate the system for one-step
   /// @param x_init Initial x value
@@ -52,6 +62,11 @@ class LCS {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
+  Eigen::MatrixXd W_x_;
+  Eigen::MatrixXd W_l_;
+  Eigen::MatrixXd W_u_;
+  Eigen::VectorXd w_;
+  bool has_tangent_linearization_ = false;
   Eigen::MatrixXd J_c_;
   int N_;
   double dt_;

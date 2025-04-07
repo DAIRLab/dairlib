@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "drake/geometry/scene_graph.h"
 #include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -55,9 +55,9 @@ class MultiposeVisualizer {
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be
   /// ignored.
-  void DrawPoses(Eigen::MatrixXd poses);
+  void DrawPoses(Eigen::MatrixXd poses, std::optional<double> time_in_recording = std::nullopt);
 
-  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat(){
+  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
     return meshcat_;
   }
 

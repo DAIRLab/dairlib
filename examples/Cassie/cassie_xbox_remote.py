@@ -63,7 +63,7 @@ def main():
     latching_switch_start = 0
     latching_switch_back = 0
     print("Teleop Status: " + str(latching_switch_a))
-    print("End Effector Follow Status: " + str(latching_switch_b))
+    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
 
 
@@ -85,7 +85,7 @@ def main():
                     print("Teleop Status: " + str(latching_switch_a))
                 if event.button == 1:
                     latching_switch_b = not latching_switch_b
-                    print("End Effector Follow Status: " + str(latching_switch_b))
+                    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
                 if event.button == 2:
                     latching_switch_x = not latching_switch_x
                     print("Force Tracking Status: " + str(not latching_switch_x))
@@ -113,6 +113,7 @@ def main():
         radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x
         radio_msg.channel[12] = latching_switch_y
+        radio_msg.channel[10] = latching_switch_rt
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 

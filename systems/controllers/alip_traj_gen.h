@@ -119,7 +119,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const std::vector<std::vector<std::pair<
       const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
 
   double m_;
 

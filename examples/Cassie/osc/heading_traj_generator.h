@@ -41,7 +41,7 @@ class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
 
   int state_port_;

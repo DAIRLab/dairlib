@@ -1,7 +1,7 @@
 #include "multibody/geom_geom_collider.h"
 
 #include "drake/math/rotation_matrix.h"
-
+#include <iostream>
 using drake::EigenPtr;
 using drake::MatrixX;
 using drake::VectorX;
@@ -128,7 +128,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
                                            plant_.world_frame(),
                                            plant_.world_frame(), &Jv_WCb);
 
-  const auto& R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+  auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
       signed_distance_pair.nhat_BA_W, 0);
 
   // if this is a planar problem, then the basis has one row and encodes
@@ -138,8 +138,8 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   // thus the somewhat awkward calculations here.
   if (planar) {
     Vector3d planar_normal = force_basis.row(0);
+    force_basis = Eigen::MatrixXd::Zero(3, 3);
     force_basis.resize(3, 3);
-
     // First row is the contact normal, projected to the plane
     force_basis.row(0) =
         signed_distance_pair.nhat_BA_W -
@@ -150,6 +150,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     force_basis.row(1) = signed_distance_pair.nhat_BA_W.cross(planar_normal);
     force_basis.row(1).normalize();
     force_basis.row(2) = -force_basis.row(1);
+    R_WC = drake::math::RotationMatrix<T>::Identity();
   }
   // Standard case
   auto J = force_basis * R_WC.matrix().transpose() * (Jv_WCa - Jv_WCb);

@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
-#include "examples/franka/systems/end_effector_force_trajectory.h"
+#include "examples/franka/systems/end_effector_force.h"
 #include "examples/franka/systems/end_effector_orientation.h"
-#include "examples/franka/systems/end_effector_trajectory.h"
+#include "examples/franka/systems/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -19,6 +19,7 @@
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
@@ -85,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
+  parser.AddModelsFromUrl(controller_params.franka_model);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
@@ -94,8 +95,9 @@ int DoMain(int argc, char* argv[]) {
   if (!controller_params.end_effector_name.empty()) {
     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
         FindResourceOrThrow(controller_params.end_effector_model))[0];
-    RigidTransform<double> T_EE_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), controller_params.tool_attachment_frame);
+    RigidTransform<double> T_EE_W =
+        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                               controller_params.tool_attachment_frame);
     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                      plant.GetFrameByName(controller_params.end_effector_name,
                                           end_effector_index),
@@ -136,28 +138,23 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant,
-                                                        plant_context.get());
-  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      controller_params.neutral_position.data(),
-      controller_params.neutral_position.size());
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
   end_effector_trajectory->SetRemoteControlParameters(
-      neutral_position, controller_params.x_scale, controller_params.y_scale,
+      controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>(plant,
-                                                         plant_context.get());
+      builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>(
-          plant, plant_context.get());
+      builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
+  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  if (controller_params.publish_debug_info){
+  if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -225,25 +222,23 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
-    if (FLAGS_lcm_channels == "examples/franka/parameters/lcm_channels_hardware.yaml"){
-      std::cerr << "Using hardware lcm channels but not cancelling gravity compensation. Please check the OSC settings" << std::endl;
+    if (FLAGS_lcm_channels ==
+        "examples/franka/parameters/lcm_channels_hardware.yaml") {
+      std::cerr << "Using hardware lcm channels but not cancelling gravity "
+                   "compensation. Please check the OSC settings"
+                << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),
                     franka_command_sender->get_input_port(0));
   }
 
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
-  builder.Connect(radio_sub->get_output_port(0),
+  builder.Connect(*radio_sub, *radio_to_vector);
+  builder.Connect(radio_to_vector->get_output_port(),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_state());
-  builder.Connect(radio_sub->get_output_port(0),
+  builder.Connect(radio_to_vector->get_output_port(),
                   end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_state());
-  builder.Connect(radio_sub->get_output_port(0),
+  builder.Connect(radio_to_vector->get_output_port(),
                   end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());

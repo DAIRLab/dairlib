@@ -39,6 +39,18 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
            py_rvp::reference_internal)
       .def("get_input_port_imu", &RobotOutputSender::get_input_port_imu,
            py_rvp::reference_internal);
+  py::class_<systems::ObjectStateSender, drake::systems::LeafSystem<double>>(
+      m, "ObjectStateSender")
+      .def(py::init<const MultibodyPlant<double>&,
+                    drake::multibody::ModelInstanceIndex>())
+      .def("get_input_port_state", &systems::ObjectStateSender::get_input_port_state,
+           py_rvp::reference_internal);
+  py::class_<systems::ObjectStateReceiver, drake::systems::LeafSystem<double>>(
+      m, "ObjectStateReceiver")
+      .def(py::init<const MultibodyPlant<double>&>())
+      .def(py::init<const MultibodyPlant<double>&,
+                    drake::multibody::ModelInstanceIndex>());
+
   py::class_<systems::RobotCommandSender, drake::systems::LeafSystem<double>>(
       m, "RobotCommandSender")
       .def(py::init<const MultibodyPlant<double>&>());
@@ -53,6 +65,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
         py::arg("actuator_channel"), py::arg("state_channel"),
         py::arg("publish_rate"), py::arg("model_instance"),
         py::arg("publish_efforts"), py::arg("actuator_delay"));
+
 }
 
 }  // namespace pydairlib

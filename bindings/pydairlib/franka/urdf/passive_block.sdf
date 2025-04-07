@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+
+<model name="passive_block">
+  <link name="base">
+      <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>0</mass>
+          <inertia>
+              <ixx>0</ixx>
+              <ixy>0</ixy>
+              <ixz>0</ixz>
+              <iyy>0</iyy>
+              <iyz>0</iyz>
+              <izz>0</izz>
+          </inertia>
+      </inertial>
+  </link>
+  <link name="base_x">
+      <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>0</mass>
+          <inertia>
+              <ixx>0</ixx>
+              <ixy>0</ixy>
+              <ixz>0</ixz>
+              <iyy>0</iyy>
+              <iyz>0</iyz>
+              <izz>0</izz>
+          </inertia>
+      </inertial>
+  </link>
+  <link name="base_xz">
+      <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>0</mass>
+          <inertia>
+              <ixx>0</ixx>
+              <ixy>0</ixy>
+              <ixz>0</ixz>
+              <iyy>0</iyy>
+              <iyz>0</iyz>
+              <izz>0</izz>
+          </inertia>
+      </inertial>
+    </link>
+  <link name="passive_block">
+    <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1</mass>
+      <inertia>
+     <ixx>0.014167</ixx>
+     <ixy>0</ixy>
+     <ixz>0</ixz>
+     <iyy>0.014167</iyy>
+     <iyz>0</iyz>
+     <izz>0.026667</izz>
+    </inertia>
+    </inertial>
+    <visual name="passive_block">
+      <pose>0 0 0 0 0 0</pose>
+      <material>
+        <diffuse>0.1 0.1 0.1 0.6</diffuse>
+      </material>
+      <geometry>
+        <box>
+            <size> 0.4 0.4 0.1 </size>
+        </box>
+      </geometry>
+    </visual>
+    <collision name="collision">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <box>
+            <size> 0.4 0.4 0.1 </size>
+        </box>
+      </geometry>
+        <drake:proximity_properties>
+            <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+            <drake:mesh_resolution_hint> 0.15 </drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+            <drake:mu_dynamic>0.4</drake:mu_dynamic>
+        </drake:proximity_properties>
+    </collision>
+  </link>
+  <joint name="planar_x" type="prismatic">
+      <parent>base</parent>
+      <child>base_x</child>
+      <axis>
+          <xyz>
+              1 0 0
+          </xyz>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
+      </axis>
+  </joint>
+  <joint name="planar_z" type="prismatic">
+      <parent>base_x</parent>
+      <child>base_xz</child>
+      <axis>
+          <xyz>
+              0 0 1
+          </xyz>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
+      </axis>
+  </joint>
+  <joint name="planar_roty" type="continuous">
+      <parent>base_xz</parent>
+      <child>passive_block</child>
+      <axis>
+          <xyz>
+              0 1 0
+          </xyz>
+          <limit>
+              <effort>0.0</effort>
+          </limit>
+      </axis>
+  </joint>
+</model>
+
+</sdf>

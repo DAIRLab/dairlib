@@ -1,0 +1,81 @@
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/franka/franka_visualizer --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
+    cmd "logger" {
+        exec = "python3 start_logging.py hw";
+        host = "localhost";
+    }
+    cmd "record_video" {
+        exec = "python3 record_video.py";
+        host = "localhost";
+    }
+}
+
+group "controllers (hardware)" {
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/franka/franka_osc_controller --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+    cmd "franka_c3" {
+        exec = "bazel-bin/examples/franka/franka_c3_controller --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "drivers" {
+    cmd "franka_driver_out" {
+        exec = "bazel-bin/examples/franka/franka_bridge_driver_out";
+        host = "localhost";
+    }
+    cmd "franka_driver_in" {
+        exec = "bazel-bin/examples/franka/franka_bridge_driver_in";
+        host = "localhost";
+    }
+    cmd "position_driver" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=position";
+        host = "franka_control";
+    }
+    cmd "torque_driver" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
+        host = "franka_control";
+    }
+}
+
+script "start_operator_commands" {
+    restart cmd "visualizer";
+    restart cmd "xbox";
+}
+
+script "start_experiment" {
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
+    stop cmd "franka_osc";
+    stop cmd "torque_driver";
+    start cmd "record_video";
+    start cmd "logger";
+    wait ms 1000;
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "torque_driver";
+    start cmd "franka_osc";
+}
+
+script "stop_experiment" {
+    stop group "drivers";
+    stop group "controllers (hardware)";
+    stop cmd "record_video";
+    stop cmd "logger";
+}

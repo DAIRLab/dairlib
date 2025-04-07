@@ -1,7 +1,0 @@
-package dairlib;
-
-struct lcmt_estimated_object_state
-{
-  lcmt_object_state object_state;
-  string measurement_status;
-}

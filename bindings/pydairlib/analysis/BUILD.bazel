@@ -95,7 +95,7 @@ py_library(
     name = "franka_plotting_utils",
     srcs = ["franka_plotting_utils.py"],
     data = [
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
         "@lcm//:lcm-python",
     ],
     deps = [

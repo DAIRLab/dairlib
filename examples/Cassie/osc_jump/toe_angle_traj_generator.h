@@ -39,7 +39,7 @@ class FlightToeAngleTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
 
   drake::trajectories::PiecewisePolynomial<double> toe_traj_;
   bool use_traj_;

@@ -27,8 +27,6 @@ class C3Output {
 
   struct C3Intermediates {
     C3Intermediates() = default;
-//    C3Intermediates(Eigen::VectorXd time_vector_, Eigen::MatrixXd delta_,
-//                    Eigen::MatrixXd w_);
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;

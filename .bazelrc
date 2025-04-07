@@ -52,7 +52,6 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
-build --define=WITH_SNOPT=ON
 build --define=WITH_GUROBI=ON
 build --define=NO_CLARABEL=ON
 

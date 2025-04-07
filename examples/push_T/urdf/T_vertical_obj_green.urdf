@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- The push T has volume 2*(0.16*0.04*0.04) = 512,000 mm^3 -->
+<!-- The push T has mass 1 kg -->
+<!-- Therefore, it has a density of 195.3125 kg/m^3 -->
+<robot name="t_goal_shape">
+  <link name="t">
+    <visual>
+      <geometry>
+        <mesh filename="push_t_green_transparent.obj"/>
+      </geometry>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="-0.05 0 0"/>
+        <mass value="1.0"/>
+        <inertia ixx="0.001266586" ixy="0" ixz="0" iyy="0.003766426" iyz="0" izz="0.004766362"/>
+    </inertial>
+    <collision>
+      <geometry>
+        <mesh filename="push_t_green_transparent.obj"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

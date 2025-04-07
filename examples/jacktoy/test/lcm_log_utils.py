@@ -149,19 +149,37 @@ CAM_FOV = np.pi/6
 VIDEO_PIXELS = [480, 640]
 VIDEO_FPS = 30
 
-# Front video view.
+# Front video view (for the jack).
 SENSOR_RPY_FRONT = np.array([-np.pi / 2, 0, np.pi / 2])
 SENSOR_POSITION_FRONT = np.array([2., 0., 0.2])
 SENSOR_POSE_FRONT_VIEW = RigidTransform(
     RollPitchYaw(SENSOR_RPY_FRONT).ToQuaternion(), SENSOR_POSITION_FRONT)
-LOCKED_CAMERA_OFFSET = np.array([0.6, 0, 0]).reshape(3, 1)
-LOCKED_CAMERA_QUAT = SENSOR_POSE_FRONT_VIEW.rotation().ToQuaternion(
+JACK_LOCKED_CAMERA_OFFSET = np.array([0.6, 0, 0]).reshape(3, 1)
+JACK_LOCKED_CAMERA_QUAT = SENSOR_POSE_FRONT_VIEW.rotation().ToQuaternion(
+    ).wxyz().reshape(4, 1)
+
+# Top video view (for the T).
+SENSOR_RPY_TOP = np.array([np.pi, 0, np.pi / 2])
+SENSOR_POSITION_TOP = np.array([0., 0., 2.])
+SENSOR_POSE_TOP_VIEW = RigidTransform(
+    RollPitchYaw(SENSOR_RPY_TOP).ToQuaternion(), SENSOR_POSITION_TOP)
+T_LOCKED_CAMERA_OFFSET = np.array([0, 0, 0.8]).reshape(3, 1)
+T_LOCKED_CAMERA_QUAT = SENSOR_POSE_TOP_VIEW.rotation().ToQuaternion(
     ).wxyz().reshape(4, 1)
 
 ACTUAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/jack_with_triad.urdf'
 GOAL_JACK_URDF_PATH = 'examples/jacktoy/urdf/goal_triad.urdf'
+ACTUAL_T_URDF_PATH = 'examples/push_T/urdf/T_vertical_obj.urdf'
+GOAL_T_URDF_PATH = 'examples/push_T/urdf/T_vertical_obj_green.urdf'
 CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model.urdf'
 SECOND_CAMERA_URDF_PATH = 'examples/jacktoy/urdf/camera_model_2.urdf'
+
+BOTTOM_LEFT_PLACEMENT = '1400:690'
+BOTTOM_RIGHT_PLACEMENT = '20:690'
+BOTTOM_LEFT_BOX_PLACEMENT = 'x=10:y=680'
+BOTTOM_RIGHT_BOX_PLACEMENT = 'x=1380:y=680'
+UPPER_LEFT_TEXT_PLACEMENT = 'x=50:y=50'
+UPPER_RIGHT_TEXT_PLACEMENT = 'x=1200:y=50'
 
 # Franka limits, from:
 # https://frankaemika.github.io/docs/control_parameters.html#limits-for-panda
@@ -186,37 +204,60 @@ LOG_FILEPATHS_TO_VIDEOS = {
     '/mnt/data2/sharanya/logs/2025/01_29_25/000007/hwlog-000007':
         (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump1',
                  '20250129_124229_log7_cut_2.mp4'),
-         '/mnt/data2/bibit/01_29_25_log_7/'),
+         '/mnt/data2/bibit/log_videos/01_29_25_log_7/'),
     '/mnt/data2/sharanya/logs/2025/01_29_25/000031/hwlog-000031':
         (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
                 '20250129_162050_log31_cut_2.mp4'),
-         '/mnt/data2/bibit/01_29_25_log_31/'),
+         '/mnt/data2/bibit/log_videos/01_29_25_log_31/'),
     '/mnt/data2/sharanya/logs/2025/01_29_25/000032/hwlog-000032':
         (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
                 '20250129_170022_log32_cut.mp4'),
-         '/mnt/data2/bibit/01_29_25_log_32/'),
+         '/mnt/data2/bibit/log_videos/01_29_25_log_32/'),
     '/mnt/data2/sharanya/logs/2025/01_29_25/000033/hwlog-000033':
         (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/Jan29/Dump2',
                 '20250129_173127_log33_cut_2.mp4'),
-         '/mnt/data2/bibit/01_29_25_log_33/'),
+         '/mnt/data2/bibit/log_videos/01_29_25_log_33/'),
     # Jack hardware videos, orientation cycling with loose tolerances:
     '/mnt/data2/sharanya/logs/2025/01_14_25/000029/hwlog-000029':
         (op.join('/mnt/data2/sharanya/Hardware_videos_Sharanya/',
                 '20250114_log29_cut_2.MOV'),
-         '/mnt/data2/bibit/01_14_25_log_29/'),
-    # Box sim videos:
-    '/mnt/data2/sharanya/logs/2025/01_24_25/000021/hwlog-000021':
-        ('/mnt/data2/sharanya/sim_videos/Jan24_log21_box.webm',
-         '/mnt/data2/bibit/01_24_25_log_21/'),
-    '/mnt/data2/sharanya/logs/2025/01_24_25/000032/hwlog-000032':
-        ('/mnt/data2/sharanya/sim_videos/Jan24_log32_box.webm',
-         '/mnt/data2/bibit/01_24_25_log_32/'),
+         '/mnt/data2/bibit/log_videos/01_14_25_log_29/'),
+    # # Box sim videos:
+    # '/mnt/data2/sharanya/logs/2025/01_24_25/000021/hwlog-000021':
+    #     ('/mnt/data2/sharanya/sim_videos/Jan24_log21_box.webm',
+    #      '/mnt/data2/bibit/log_videos/01_24_25_log_21/'),
+    # '/mnt/data2/sharanya/logs/2025/01_24_25/000032/hwlog-000032':
+    #     ('/mnt/data2/sharanya/sim_videos/Jan24_log32_box.webm',
+    #      '/mnt/data2/bibit/log_videos/01_24_25_log_32/'),
     # One for a local test:
     '/home/bibit/Videos/franka_experiments/2025/01_29_25/000007/hwlog-000007':
         (op.join('/home/bibit/Videos/franka_experiments/2025/01_29_25',
                  '20250129_124229_log7_cut.mp4'),
          '/home/bibit/Videos/franka_experiments/2025/01_29_25/'),
+    # Push T hardware videos, all tight tolerances:
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000016/hwlog-000016':
+        (None,  # TODO this recording must be on Sharanya's phone
+         '/mnt/data2/bibit/log_videos/03_19_25_log_16/'),
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000018/hwlog-000018':
+        ('/mnt/data2/bibit/hardware_videos/03_19_2025_log_18_trimmed.MOV',
+         '/mnt/data2/bibit/log_videos/03_19_25_log_18/'),
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000024/hwlog-000024':
+        ('/mnt/data2/bibit/hardware_videos/03_19_2025_log_24_trimmed.MOV',
+         '/mnt/data2/bibit/log_videos/03_19_25_log_24/'),
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000029/hwlog-000029':
+        ('/mnt/data2/bibit/hardware_videos/03_19_2025_log_29_trimmed.MOV',
+         '/mnt/data2/bibit/log_videos/03_19_25_log_29/'),
 }
+
+PUSH_T_LOG_PATHS = [
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000016/hwlog-000016',
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000018/hwlog-000018',
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000024/hwlog-000024',
+    '/mnt/data2/sharanya/logs/2025/03_19_25/000029/hwlog-000029'
+]
+JACK_LOG_PATHS = list(LOG_FILEPATHS_TO_VIDEOS.keys())
+for push_t_path in PUSH_T_LOG_PATHS:
+    if push_t_path in JACK_LOG_PATHS:  JACK_LOG_PATHS.remove(push_t_path)
 
 MJPC_CUT_OFF_GOALS_PER_EE_VEL = {
     0.03: 0, 0.06: 0, 0.09: 0, 0.12: 2, 0.15: 0, 0.18: 1, 0.21: 1, 0.24: 7,
@@ -408,6 +449,13 @@ def inspect_lcm_traffic(messages_by_channel: dict):
     plt.plot(radio_ts, label='Radio times')
     plt.legend()
     plt.show()
+
+def log_is_push_t(log_path: str):
+    if log_path in JACK_LOG_PATHS:
+        return False
+    if log_path in PUSH_T_LOG_PATHS:
+        return True
+    raise ValueError(f'Unsure if {log_path} is push T or jack log.')
 
 def relative_angle_from_quats(q, r):
     q /= np.linalg.norm(q)
@@ -1697,16 +1745,20 @@ class ResultsAnalyzer:
             output_dir, f'goal_times_0_{int(self.times[-1])}.mp4')
         output_video = op.join(
             overlay_dir, f'overlay_{date}_log_{log_num}_full.mp4')
+        placement = BOTTOM_RIGHT_PLACEMENT if log_is_push_t(log_filepath) \
+            else BOTTOM_LEFT_PLACEMENT
         cmd = f'ffmpeg -y -i {input_video} -i {full_meshcat_video} ' + \
-                f'-filter_complex "[1:v]scale=500:-1[v2];[0:v][v2]' + \
-                f'overlay=main_w-overlay_w-1400:690" -c:v libx264 -c:a ' + \
-                f'copy {output_video}'
+              f'-filter_complex "[1:v]scale=500:-1[v2];[0:v][v2]' + \
+              f'overlay=main_w-overlay_w-{placement}" -c:v libx264 -c:a ' + \
+              f'copy {output_video}'
         print(f'\n{cmd}\n')
         os.system(cmd)
 
         # Second add text annotations to count the goals achieved.
         goal_labeled_video = output_video.replace('.mp4', '_labeled.mp4')
         cmd = f'ffmpeg -y -i {output_video} -vf "'
+        placement = UPPER_RIGHT_TEXT_PLACEMENT if log_is_push_t(log_filepath) \
+            else UPPER_LEFT_TEXT_PLACEMENT
         for goal in range(n_goals+1):
             if goal == n_goals:
                 t_start = self.times[-1]
@@ -1716,10 +1768,12 @@ class ResultsAnalyzer:
                 t_end = self.times[-1] if goal==n_goals-1 else \
                     self.times_of_new_goals[goal+1]
             goal_txt = f'{goal} Goal' if goal==1 else f'{goal} Goals'
-            cmd += f"drawtext=text='{goal_txt}':x=50:y=50:fontsize=150:" + \
+            cmd += f"drawtext=text='{goal_txt}':{placement}:fontsize=150:" + \
                    f"fontcolor_expr=0x00FFFFFF:enable='between(t," + \
                    f"{t_start:.3f},{t_end:.3f})',"
-        cmd += f"drawbox=x=10:y=680:w=680:h=395:color=gray@0.5:t=fill:" + \
+        placement = BOTTOM_RIGHT_BOX_PLACEMENT if log_is_push_t(log_filepath) \
+            else BOTTOM_LEFT_BOX_PLACEMENT
+        cmd += f"drawbox={placement}:w=680:h=395:color=gray@0.5:t=fill:" + \
                f"enable='between(t,{t_start:.3f},{t_end:3f})'"
         cmd += f'" -c:a copy {goal_labeled_video}'
         print(f'\n{cmd}\n')
@@ -1740,10 +1794,12 @@ class ResultsAnalyzer:
                 overlay_dir, f'overlay_{date}_log_{log_num}_goal_{i+1}.mp4')
 
             # First overlay the videos.
+            placement = BOTTOM_RIGHT_PLACEMENT if log_is_push_t(log_filepath) \
+                else BOTTOM_LEFT_PLACEMENT
             cmd = f'ffmpeg -y -i {phone_video} -i {meshcat_video} ' + \
                   f'-filter_complex "[1:v]scale=500:-1[v2];[0:v][v2]' + \
-                  f'overlay=main_w-overlay_w-1400:690" -c:v libx264 -c:a ' + \
-                  f'copy {output_video}'
+                  f'overlay=main_w-overlay_w-{placement}" -c:v libx264 -c:a' + \
+                  f' copy {output_video}'
             print(f'\n{cmd}\n')
             os.system(cmd)
 
@@ -1805,7 +1861,6 @@ class ResultsAnalyzer:
             print(f'Generating multiple videos, one for each goal.')
             t_inits = self.times_of_new_goals
             t_finals = np.concatenate((t_inits[1:], self.times[-1:]))
-            # cut_times = np.concatenate((self.times_of_new_goals, self.times[-1:]))
         else:
             print(f'Generating one continuous video for the whole log.')
             t_inits = [0] if t_init is None else [t_init]
@@ -1844,7 +1899,8 @@ class ResultsAnalyzer:
         jack_quat_pos_traj.Append(position_trajectory)
 
         self.vid = ProgressVideoMaker(
-            save_dir=self.save_folder, open_meshcat=True, per_goal=per_goal)
+            save_dir=self.save_folder, open_meshcat=True, per_goal=per_goal,
+            is_push_T=log_is_push_t(self.log_filepaths[0]))
         for i, (t0, tf) in enumerate(zip(t_inits, t_finals)):
             self.vid.visualize(goal_traj, jack_quat_pos_traj,
                                t_init=t0, t_final=tf, goal=i+1)
@@ -1899,11 +1955,12 @@ class ProgressVideoMaker:
     perspective of a jack-locked camera view and from a goal-locked camera view.
     """
     def __init__(self, save_dir: str, open_meshcat: bool = False,
-                 per_goal: bool = False):
+                 per_goal: bool = False, is_push_T: bool = False):
         self.save_dir = save_dir if save_dir is not None \
             else 'examples/jacktoy/test/tmp'
         self.open_meshcat = open_meshcat
         self.per_goal = per_goal
+        self.is_push_T = is_push_T
 
     def visualize(self, goal_traj: PiecewisePolynomial,
                   jack_traj: PiecewisePolynomial, t_init: float,
@@ -1914,6 +1971,17 @@ class ProgressVideoMaker:
             filename_end = f'goal_{goal}'
         else:
             filename_end = f'times_{int(t_init)}_{int(t_final)}'
+
+        # Configure some things for the jack versus push T.
+        goal_urdf = GOAL_T_URDF_PATH if self.is_push_T else GOAL_JACK_URDF_PATH
+        actual_urdf = ACTUAL_T_URDF_PATH if self.is_push_T else \
+            ACTUAL_JACK_URDF_PATH
+        obj_locked_camera_quat = T_LOCKED_CAMERA_QUAT if self.is_push_T \
+            else JACK_LOCKED_CAMERA_QUAT
+        obj_locked_camera_offset = T_LOCKED_CAMERA_OFFSET if self.is_push_T \
+            else JACK_LOCKED_CAMERA_OFFSET
+
+        # Start building the Drake diagram.
         builder = DiagramBuilder()
 
         # Add the jack and goal triad to the plant.
@@ -1921,8 +1989,8 @@ class ProgressVideoMaker:
         plant, scene_graph = AddMultibodyPlant(
             mbp_config, builder)
         parser = Parser(plant)
-        goal_vis = parser.AddModels(GOAL_JACK_URDF_PATH)[0]
-        jack_vis = parser.AddModels(ACTUAL_JACK_URDF_PATH)[0]
+        goal_vis = parser.AddModels(goal_urdf)[0]
+        jack_vis = parser.AddModels(actual_urdf)[0]
         goal_camera_vis = parser.AddModels(CAMERA_URDF_PATH)[0]
         jack_camera_vis = parser.AddModels(SECOND_CAMERA_URDF_PATH)[0]
         plant.RegisterVisualGeometry(
@@ -2008,13 +2076,13 @@ class ProgressVideoMaker:
 
         for t in tqdm(np.arange(t_init, t_final, 1.0/VIDEO_FPS)):
             # Update the visualization.
-            goal_camera_xyz = goal_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
-            jack_camera_xyz = jack_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            goal_camera_xyz = goal_traj.value(t)[4:7] + obj_locked_camera_offset
+            jack_camera_xyz = jack_traj.value(t)[4:7] + obj_locked_camera_offset
             configs = np.vstack((
                 goal_traj.value(t),
                 jack_traj.value(t),
-                LOCKED_CAMERA_QUAT, goal_camera_xyz,
-                LOCKED_CAMERA_QUAT, jack_camera_xyz
+                obj_locked_camera_quat, goal_camera_xyz,
+                obj_locked_camera_quat, jack_camera_xyz
             ))
             context = simulator.get_context()
             plant_context = plant.GetMyMutableContextFromRoot(context)
@@ -2108,13 +2176,13 @@ class DemoVideoMaker:
 
         for t in tqdm(np.arange(t_init, t_final, 1.0/VIDEO_FPS)):
             # Update the visualization.
-            goal_camera_xyz = goal_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
-            jack_camera_xyz = jack_traj.value(t)[4:7] + LOCKED_CAMERA_OFFSET
+            goal_camera_xyz = goal_traj.value(t)[4:7] + JACK_LOCKED_CAMERA_OFFSET
+            jack_camera_xyz = jack_traj.value(t)[4:7] + JACK_LOCKED_CAMERA_OFFSET
             configs = np.vstack((
                 goal_traj.value(t),
                 jack_traj.value(t),
-                LOCKED_CAMERA_QUAT, goal_camera_xyz,
-                LOCKED_CAMERA_QUAT, jack_camera_xyz
+                JACK_LOCKED_CAMERA_QUAT, goal_camera_xyz,
+                JACK_LOCKED_CAMERA_QUAT, jack_camera_xyz
             ))
             context = simulator.get_context()
             plant_context = plant.GetMyMutableContextFromRoot(context)
@@ -2296,8 +2364,8 @@ def multi_command(log_folders: Tuple[str], save_to: str, interactive: bool,
         results_analyzer.prepare_and_export(export_filepath)
         exit()
 
-    results_analyzer.visualize_goals_with_violations()
-    breakpoint()
+    # results_analyzer.visualize_goals_with_violations()
+    # breakpoint()
 
     if demo:
         if video:

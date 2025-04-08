@@ -423,17 +423,17 @@ def plot_timing_results(folder):
     fname = os.path.join(folder, 'timing_adaptation_results.npz')
     data = np.load(fname, allow_pickle=True)
     conditions = {
-        "results_gt": "Opt-T (GT)",
-        "results_gt_no_timing": "Fixed-T (GT) ",
-        "results_perceptive": "Opt-T (Perceptive)",
-        "results_perceptive_no_timing": "Fixed-T (Perceptive)"
+        "results_gt": "Opt-T",
+        "results_gt_no_timing": "Fixed-T",
+        # "results_perceptive": "Opt-T (Perceptive)",
+        # "results_perceptive_no_timing": "Fixed-T (Perceptive)"
     }
 
     markers = {
         "results_gt": "*",
         "results_gt_no_timing": "x",
-        "results_perceptive": "^",
-        "results_perceptive_no_timing": "o"
+        # "results_perceptive": "^",
+        # "results_perceptive_no_timing": "o"
     }
     
     setup_plots()
@@ -453,7 +453,7 @@ def plot_timing_results(folder):
     plt.xlabel('Minimum Stepping Stone Side Length, $d_{min}$ (m)')
     plt.ylabel('Success Rate (\\%)')
     plt.legend()
-    savefile = 'perceptive_locomotion_results_figures/stepping_stone_success.svg'
+    savefile = 'perceptive_locomotion_results_figures/stepping_stone_success_sim.svg'
     plt.savefig(savefile)
     subprocess.run(['inkscape', '--export-type=svg', '--export-id=axes_1', savefile, '-o', savefile])
 

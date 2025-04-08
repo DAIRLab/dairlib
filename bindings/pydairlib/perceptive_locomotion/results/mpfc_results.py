@@ -13,7 +13,8 @@ from dairlib import(
     lcmt_grid_map,
     lcmt_foothold_set,
     lcmt_robot_output,
-    lcmt_alip_s2s_mpfc_debug
+    lcmt_alip_s2s_mpfc_debug,
+    lcmt_alip_mpfc_debug_complete
 )
 
 # installed
@@ -28,7 +29,7 @@ import matplotlib.pyplot as plt
 
 # dairlib
 from pydairlib.analysis.mbp_plotting_utils import process_state_channel, get_floating_base_velocity_in_body_frame
-from pydairlib.analysis.mpfc_plotting_utils import process_alip_mpfc_debug_data
+from pydairlib.analysis.mpfc_plotting_utils import process_alip_mpfc_debug_data, process_alip_mpfc_debug_complete_data
 from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 from pydairlib.analysis.process_lcm_log import get_log_data
 from pydairlib.analysis.video_tools import extract_frames
@@ -37,7 +38,7 @@ from pydairlib.perceptive_locomotion.results import analysis_utils as utils
 
 
 # LCM Channels
-state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
+state_channel = 'CASSIE_STATE_SIMULATION'
 mpfc_debug_channel = 'ALIP_S2S_MPFC_DEBUG'
 terrain_channel = 'FOOTHOLDS_PROCESSED'
 
@@ -57,7 +58,7 @@ def process_mpc_data(data_dict):
     plant, _ = make_plant_and_context()
     
     robot_output = process_state_channel(data_dict[state_channel], plant)
-    mpc_debug = process_alip_mpfc_debug_data(data_dict[mpfc_debug_channel])
+    mpc_debug = process_alip_mpfc_debug_complete_data(data_dict[mpfc_debug_channel])
     
     return robot_output, mpc_debug
 
@@ -73,7 +74,7 @@ def load_log(logfile: str, start_time: float = 0, duration: float = -1):
         log,
         {
             state_channel: lcmt_robot_output,
-            mpfc_debug_channel: lcmt_alip_s2s_mpfc_debug
+            mpfc_debug_channel: lcmt_alip_mpfc_debug_complete
         },
         start_time,
         duration,
@@ -88,19 +89,19 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
         robot_output, plant, context, plant.GetBodyByName("pelvis").body_frame()
     )
     utils.setup_plots()
-    
+
     mpc_time = mpc_debug['t_mpc'] - mpc_debug['t_mpc'][0]
     robot_output_time = robot_output['t_x'] - robot_output['t_x'][0]
     vdes = mpc_debug['desired_velocity']
     fig = plt.figure(figsize=(8, 6))
     plt.plot(mpc_time, vdes[:, 0], linestyle='--', color=utils.plotting_palette[0], label='$v_{des, x}$')
-    plt.plot(robot_output_time, vel[:, 0], linewidth=0.5, color=utils.plotting_palette[0], label='$v_{x}$')
+    plt.plot(robot_output_time, vel[:, 0], linewidth=1.0, color=utils.plotting_palette[0], label='$v_{x}$')
     plt.plot(mpc_time, vdes[:, 1], linestyle='--', color=utils.plotting_palette[2], label='$v_{des, y}$')
-    plt.plot(robot_output_time, vel[:, 1], linewidth=0.5, color=utils.plotting_palette[2], label='$v_{y}$')
-    plt.ylim([-0.75, 1.5])
+    plt.plot(robot_output_time, vel[:, 1], linewidth=1.0, color=utils.plotting_palette[2], label='$v_{y}$')
+    plt.ylim([-0.5, 1.0])
     ax = plt.gca()
     ax.autoscale(enable=True, axis='x', tight=True)
-    plt.title('Velocity Tracking', fontsize=28)
+    plt.title('Velocity Tracking - Beam', fontsize=28)
     plt.xlabel('Time (s)')
     plt.ylabel('Pelvis Velocity (m/s)')
     plt.legend(ncol=4, fontsize=20, columnspacing=0.5)
@@ -287,5 +288,15 @@ def main():
     elevation_plot(args.data_root)
 
 
+def just_vel_tracking():
+    parser = ArgumentParser()
+    parser.add_argument('--logfile', type=str, default='')
+    args = parser.parse_args()
+
+    savefile = args.logfile + '_vel_tracking.svg'
+    robot_output, mpc_debug = load_log(args.logfile)
+    velocity_tracking_plot(robot_output, mpc_debug, savefile)
+
+
 if __name__ == '__main__':
-    main()
+    just_vel_tracking()

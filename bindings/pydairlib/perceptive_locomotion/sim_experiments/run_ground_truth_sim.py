@@ -22,7 +22,8 @@ base_folder = "bindings/pydairlib/perceptive_locomotion/sim_experiments/"
 
 terrains = {
     'beam': 'terrains/beam.yaml',
-    'stairs': 'terrains/stairs.yaml'
+    'stairs': 'terrains/stairs.yaml',
+    'stones': 'terrains/stones_10.yaml',
 }
 
 log_folder = "../sim_experiment_logs"
@@ -31,7 +32,7 @@ gains = os.path.join(base_folder, "gains/mpfc_gains_default.yaml")
 
 
 def select_terrain_and_log_file():
-    choice = input('pick terrain type:\n(1) beam\n(2) stairs\n\nSelection: ')
+    choice = input('pick terrain type:\n(1) beam\n(2) stairs\n(3) stones\n\nSelection: ')
     choice = choice.strip()
     if choice == '1':
         return os.path.join(base_folder, terrains['beam']), \
@@ -41,6 +42,10 @@ def select_terrain_and_log_file():
         return os.path.join(base_folder, terrains['stairs']), \
             os.path.join(base_folder, 'sim_opts_stairs.yaml'), \
             os.path.join(log_folder, 'stairs')
+    if choice == '3':
+        return os.path.join(base_folder, terrains['stones']), \
+            os.path.join(base_folder, 'sim_opts_stones.yaml'), \
+            os.path.join(log_folder, 'stones')
     
     raise RuntimeError("invalid or no terrain specified")
 
@@ -69,7 +74,7 @@ def main():
 
     input("\n\n-- Press Enter to start the simulation --")
 
-    simulator.AdvanceTo(20.0)
+    simulator.AdvanceTo(25.0)
     
     sim_diagram.SaveLcmLog(logfile)
 

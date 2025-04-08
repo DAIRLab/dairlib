@@ -15,7 +15,7 @@ py_binary(
     name = "run_tray_parameter_study",
     srcs = ["run_tray_parameter_study.py"],
     data = [
-        "@drake_models//:franka_description",
+        "@drake//manipulation/models/franka_description:models",
         "@lcm//:lcm-python",
     ],
     deps = [
@@ -30,7 +30,7 @@ py_binary(
     data = [
         ":parameter_study_config.yaml",
         "//examples/franka:parameters",
-        "@drake_models//:franka_description",
+        "@drake//manipulation/models/franka_description:models",
         "@lcm//:lcm-python",
     ],
     deps = [

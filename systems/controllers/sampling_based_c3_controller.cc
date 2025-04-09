@@ -2090,10 +2090,9 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+      plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      c3_options_.mu[c3_options_.num_contacts_index], dt_,
-      c3_options_.N, contact_model_);
+      c3_options_.mu[c3_options_.num_contacts_index], contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -2153,10 +2152,9 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+      plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      c3_options_.mu[c3_options_.num_contacts_index], dt_,
-      c3_options_.N, contact_model_);
+      c3_options_.mu[c3_options_.num_contacts_index], contact_model_);
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

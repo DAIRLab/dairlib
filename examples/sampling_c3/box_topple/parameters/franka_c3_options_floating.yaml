@@ -70,6 +70,7 @@ at_least_predict_first_planned_trajectory_knot: false
 use_predicted_x0_reset_mechanism: true
 
 solve_time_filter_alpha: 0.95
+publish_frequency: 0
 # Workspace Limits
 world_x_limits: [0.1, 1]
 world_y_limits: [-0.6, 0.6]

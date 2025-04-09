@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, jack_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, false, jack_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm,

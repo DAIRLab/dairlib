@@ -39,8 +39,8 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_des, const C3Options& options)
+C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
+       const vector<VectorXd>& x_desired, const C3Options& options)
     : warm_start_(options.warm_start),
       lcs_(LCS),
       N_((LCS.A_).size()),
@@ -59,11 +59,11 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       R_(costs.R),
       U_(costs.U),
       G_(costs.G),
-      x_desired_(x_des),
+      x_desired_(x_desired),
       options_(options),
-      h_is_zero_(lcs.H_[0].isZero(0)),
-      osqp_(OsqpSolver()),
-      prog_(MathematicalProgram()) {
+      h_is_zero_(H_[0].isZero(0)),
+      prog_(MathematicalProgram()),
+      osqp_(OsqpSolver()) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -138,17 +138,21 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   dynamics_constraints_.resize(N_);
   target_cost_.resize(N_ + 1);
   for (int i = 0; i < N_; i++) {
-    LinEq.block(0, 0, n_, n_) = lcs.A_.at(i);
-    LinEq.block(0, n_, n_, m_) = lcs.D_.at(i);
-    LinEq.block(0, n_ + m_, n_, k_) = lcs.B_.at(i);
+    LinEq.block(0, 0, n_, n_) = A_.at(i);
+    LinEq.block(0, n_, n_, m_) = D_.at(i);
+    LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
 
+    //    prog_.AddLinearEqualityConstraint(
+    //        LinEq, -d_.at(i), {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i +
+    //        1)});
     dynamics_constraints_[i] =
         prog_
             .AddLinearEqualityConstraint(
-                LinEq, -lcs.d_.at(i),
+                LinEq, -d_.at(i),
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
+    //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
 
   // Adding constraint for x[2] corresponding to end effector z to always be 
@@ -166,7 +170,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
         prog_
-            .AddQuadraticCost(2 * Q_.at(i), -2 * Q_.at(i) * x_desired_.at(i),
+            .AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
             .evaluator()
             .get();
@@ -216,25 +220,10 @@ void C3::UpdateLCS(const LCS& lcs) {
   F_ = lcs.F_;
   H_ = lcs.H_;
   c_ = lcs.c_;
-  dt_ = lcs.dt_;
-  W_x_ = lcs.W_x_;
-  W_l_ = lcs.W_l_;
-  W_u_ = lcs.W_u_;
-  w_ = lcs.w_;
   h_is_zero_ = H_[0].isZero(0);
 
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
-  auto Dn = D_[0].norm();
-  auto An = A_[0].norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    D_.at(i) *= AnDn_;
-    E_.at(i) /= AnDn_;
-    c_.at(i) /= AnDn_;
-    H_.at(i) /= AnDn_;
-  }
 
   auto Dn = D_.at(0).norm();
   auto An = A_.at(0).norm();
@@ -273,7 +262,7 @@ void C3::UpdateCostLCS(const LCS& lcs) {
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; i++) {
-    target_cost_[i]->UpdateCoefficients(2 * Q_.at(i),
+    target_cost_[i]->UpdateCoefficients(Q_.at(i) * 2,
                                         -2 * Q_.at(i) * x_desired_.at(i));
   }
 }
@@ -322,18 +311,12 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     std::cout<<"w: \n"<<verbose_w<<std::endl;
   }
 
-  *w_sol_ = w;
-  *delta_sol_ = delta;
-
-  if (!options_.end_on_qp_step) {
-    *z_sol_ = delta;
-    z_sol_->at(0).segment(0, n_) = x0;
-    x_sol_->at(0) = x0;
-    for (int i = 1; i < N_; ++i) {
-      z_sol_->at(i).segment(0, n_) =
-          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-          D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
-    }
+  *z_sol_ = delta;
+  z_sol_->at(0).segment(0, n_) = x0;
+  for (int i = 1; i < N_; ++i) {
+    z_sol_->at(i).segment(0, n_) =
+        A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
+        D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
 
   *w_sol_ = w;
@@ -686,7 +669,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
-  if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
+  if (h_is_zero_ == 1) {
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
@@ -718,20 +701,13 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    int index = solve_time_ / dt_;
-    double weight = (solve_time_ - index * dt_) / dt_;
-    for (int i = 0; i < N_ - 1; i++) {
-      prog_.SetInitialGuess(x_[i],
-                            (1 - weight) * warm_start_x_[admm_iteration][i] +
-                                weight * warm_start_x_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(
-          lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] +
-                          weight * warm_start_lambda_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(u_[i],
-                            (1 - weight) * warm_start_u_[admm_iteration][i] +
-                                weight * warm_start_u_[admm_iteration][i + 1]);
-    }
     prog_.SetInitialGuess(x_[0], x0);
+    for (int i = 0; i < N_ - 1; i++) {
+      prog_.SetInitialGuess(x_[i], warm_start_x_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(lambda_[i],
+                            warm_start_lambda_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
+    }
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 
@@ -766,56 +742,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
-                                     vector<VectorXd>& WZ, int admm_iteration) {
-  vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
-  int i;
-
-  if (options_.num_threads > 0) {
-    omp_set_dynamic(0);  // Explicitly disable dynamic teams
-    omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_max_active_levels(1);
-  }
-
-#pragma omp parallel for num_threads(options_.num_threads)
-  for (i = 0; i < N_; i++) {
-    if (options_.use_robust_formulation &&
-        admm_iteration ==
-            (options_.admm_iter - 1)) {  // only on the last iteration
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveRobustSingleProjection(
-              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveRobustSingleProjection(
-              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, i + 1);
-        }
-      } else {
-        deltaProj[i] = SolveRobustSingleProjection(
-            U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-            admm_iteration, -1);
-      }
-    } else {
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, i + 1);
-        }
-      } else {
-        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                             c_[i], admm_iteration, -1);
-      }
-    }
-  }
-
-  return deltaProj;
-}
-
 void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                              double upper_bound, int constraint) {
   if (constraint == 1) {
@@ -845,6 +771,48 @@ void C3::RemoveConstraints() {
     prog_.RemoveConstraint(userconstraint);
   }
   user_constraints_.clear();
+}
+
+vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
+                                     vector<VectorXd>& WZ, int admm_iteration) {
+  vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
+  int i;
+
+  if (options_.num_threads > 0) {
+    omp_set_dynamic(0);  // Explicitly disable dynamic teams
+    omp_set_num_threads(options_.num_threads);  // Set number of threads
+    omp_set_nested(1);
+  }
+
+#pragma omp parallel for num_threads(options_.num_threads)
+  for (i = 0; i < N_; i++) {
+    if (warm_start_) {
+      if (i == N_ - 1) {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, -1);
+      } else {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, i + 1);
+      }
+    } else {
+      deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                           c_[i], admm_iteration, -1);
+    }
+  }
+
+  return deltaProj;
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartX() const {
+  return warm_start_x_[0];
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartLambda() const {
+  return warm_start_lambda_[0];
+}
+
+std::vector<Eigen::VectorXd> C3::GetWarmStartU() const {
+  return warm_start_u_[0];
 }
 
 }  // namespace solvers

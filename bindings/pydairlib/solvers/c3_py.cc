@@ -1,3 +1,6 @@
+#include <functional>
+
+#include <optional>
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -6,6 +9,7 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
 #include "solvers/lcs.h"
+#include "solvers/lcs_factory.h"
 
 namespace py = pybind11;
 
@@ -15,6 +19,7 @@ namespace pydairlib {
 using dairlib::solvers::C3;
 using dairlib::solvers::C3MIQP;
 using dairlib::solvers::LCS;
+using dairlib::solvers::LCSFactory;
 
 class PyC3 : public C3 {
  public:
@@ -26,12 +31,13 @@ class PyC3 : public C3 {
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const int admm_iteration, const int& warm_start_index) override {
+      std::optional<Eigen::MatrixXd> K, const int admm_iteration,
+      const int& warm_start_index) override {
     PYBIND11_OVERRIDE_PURE(Eigen::VectorXd,       /* Return type */
                            C3,                    /* Parent class */
                            SolveSingleProjection, /* Name of function in C++
                                                      (must match Python name) */
-                           U, delta_c, E, F, H, c, admm_iteration,
+                           U, delta_c, E, F, H, c, K, admm_iteration,
                            warm_start_index /* Argument(s) */
     );
   };
@@ -101,7 +107,8 @@ PYBIND11_MODULE(c3, m) {
       .def("GetPrimalZAfterProjection", &C3::GetPrimalZAfterProjection)
       .def("GetDualDeltaAfterProjection", &C3::GetDualDeltaAfterProjection)
       .def("GetDualWAfterProjection", &C3::GetDualWAfterProjection)
-      .def("UpdateStateCostMatrices", &C3::UpdateStateCostMatrices, py::arg("new_Q"));
+      .def("UpdateStateCostMatrices", &C3::UpdateStateCostMatrices,
+           py::arg("new_Q"));
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -120,18 +127,41 @@ PYBIND11_MODULE(c3, m) {
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
-                    const std::vector<Eigen::VectorXd>&, double>(),
+                    const std::vector<Eigen::VectorXd>&, double, bool>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
-           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"))
+           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"),
+           py::arg("rescale"))
+      .def(
+          py::init<const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::VectorXd>&,
+                   const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::MatrixXd>&,
+                   const std::vector<Eigen::VectorXd>&,
+                   std::optional<std::vector<Eigen::MatrixXd>>, double, bool>(),
+          py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
+          py::arg("F"), py::arg("H"), py::arg("c"), py::arg("K") = std::nullopt,
+          py::arg("dt"), py::arg("rescale"))
 
       .def(py::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&,
                     const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&, const int&,
-                    double>(),
+                    double, bool>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
            py::arg("F"), py::arg("H"), py::arg("c"), py::arg("N"),
-           py::arg("dt"))
+           py::arg("dt"), py::arg("rescale"))
+      .def(py::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&,
+                    const Eigen::MatrixXd&, const Eigen::VectorXd&,
+                    const Eigen::MatrixXd&, const Eigen::MatrixXd&,
+                    const Eigen::MatrixXd&, const Eigen::VectorXd&,
+                    std::optional<Eigen::MatrixXd>, const int&, double, bool>(),
+           py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
+           py::arg("F"), py::arg("H"), py::arg("c"),
+           py::arg("K") = std::nullopt, py::arg("N"), py::arg("dt"),
+           py::arg("rescale"))
       .def(py::init<const LCS&>(), py::arg("other"))
 
       .def("simulate", &LCS::Simulate, py::arg("x_init"), py::arg("input"),
@@ -143,7 +173,8 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("E", &LCS::E_)
       .def_readwrite("F", &LCS::F_)
       .def_readwrite("H", &LCS::H_)
-      .def_readwrite("c", &LCS::c_);
+      .def_readwrite("c", &LCS::c_)
+      .def_readwrite("AnDn", &LCS::AnDn_);
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());

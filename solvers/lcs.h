@@ -1,8 +1,11 @@
 #pragma once
+#include <functional>
 #include <iostream>
 #include <vector>
 
 #include <Eigen/Dense>
+#include <eigen3/Eigen/src/Core/Matrix.h>
+#include <optional>
 
 #include "drake/common/sorted_pair.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -23,14 +26,30 @@ class LCS {
       const std::vector<Eigen::MatrixXd>& E,
       const std::vector<Eigen::MatrixXd>& F,
       const std::vector<Eigen::MatrixXd>& H,
-      const std::vector<Eigen::VectorXd>& c, double dt);
+      const std::vector<Eigen::VectorXd>& c, double dt, bool rescale);
+
+  LCS(const std::vector<Eigen::MatrixXd>& A,
+      const std::vector<Eigen::MatrixXd>& B,
+      const std::vector<Eigen::MatrixXd>& D,
+      const std::vector<Eigen::VectorXd>& d,
+      const std::vector<Eigen::MatrixXd>& E,
+      const std::vector<Eigen::MatrixXd>& F,
+      const std::vector<Eigen::MatrixXd>& H,
+      const std::vector<Eigen::VectorXd>& c,
+      std::optional<std::vector<Eigen::MatrixXd>> K, double dt, bool rescale);
 
   /// Constructor for time-invariant LCS
   LCS(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
       const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
-      double dt);
+      double dt, bool rescale);
+
+  LCS(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
+      const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      std::optional<Eigen::MatrixXd> K, const int& N, double dt, bool rescale);
 
   LCS(const LCS& other);
   LCS& operator=(const LCS&);
@@ -43,6 +62,8 @@ class LCS {
   const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init,
                                  Eigen::VectorXd& input);
 
+  void Rescale();
+
  public:
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
@@ -52,6 +73,8 @@ class LCS {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
+  std::optional<std::vector<Eigen::MatrixXd>> K_;  // Reduction mapping
+  std::vector<double> AnDn_;  // Scaling factor for each time step
   Eigen::MatrixXd W_x_;
   Eigen::MatrixXd W_l_;
   Eigen::MatrixXd W_u_;

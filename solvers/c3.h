@@ -1,8 +1,12 @@
 #pragma once
 
+#include <cstddef>
+#include <functional>
 #include <vector>
 
 #include <Eigen/Dense>
+#include <eigen3/Eigen/src/Core/Matrix.h>
+#include <optional>
 
 #include "solvers/c3_options.h"
 #include "solvers/lcs.h"
@@ -93,7 +97,8 @@ class C3 {
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const int admm_iteration, const int& warm_start_index) = 0;
+      std::optional<Eigen::MatrixXd> K, const int admm_iteration,
+      const int& warm_start_index) = 0;
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
@@ -133,13 +138,12 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const std::size_t N_;
-  const std::size_t n_x_;       // n
-  const std::size_t n_lambda_;  // m
-  const std::size_t n_u_;       // k
+  const std::size_t n_x_;  // n
+  std::size_t n_lambda_;   // m
+  const std::size_t n_u_;  // k
 
  private:
   LCS lcs_;
-  double AnDn_ = 1.0;  // Scaling factor for lambda
   CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   std::vector<Eigen::VectorXd> u_desired_;

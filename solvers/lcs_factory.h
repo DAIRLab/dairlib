@@ -41,9 +41,10 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu, double dt,
-      int N, ContactModel = ContactModel::kStewartAndTrinkle);
+      int N, ContactModel = ContactModel::kAnitescu);
 
-  static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
+  static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>
+  ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&

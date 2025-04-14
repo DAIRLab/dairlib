@@ -5,14 +5,13 @@
 #include <Eigen/Dense>
 
 #include "solvers/c3.h"
+#include "solvers/c3_options.h"
 #include "solvers/lcs.h"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
-
-#include "solvers/c3_options.h"
 
 namespace dairlib {
 namespace solvers {
@@ -22,24 +21,20 @@ class C3QP final : public C3 {
   /// Default constructor for time-varying LCS
   C3QP(const LCS& LCS, const CostMatrices& costs,
        const std::vector<Eigen::VectorXd>& x_desired,
-       const std::vector<Eigen::VectorXd>& u_desired,
-       const C3Options& options);
+       const std::vector<Eigen::VectorXd>& u_desired, const C3Options& options);
 
   ~C3QP() override = default;
 
   /// Virtual projection method
-  Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
-                                        const Eigen::VectorXd& delta_c,
-                                        const Eigen::MatrixXd& E,
-                                        const Eigen::MatrixXd& F,
-                                        const Eigen::MatrixXd& H,
-                                        const Eigen::VectorXd& c,
-                                        const int admm_iteration,
-                                        const int& warm_start_index = -1) override;
+  Eigen::VectorXd SolveSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      std::optional<Eigen::MatrixXd> K, const int admm_iteration,
+      const int& warm_start_index = -1) override;
 
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
-
 };
 
 }  // namespace solvers

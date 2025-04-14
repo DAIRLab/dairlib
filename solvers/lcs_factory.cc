@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include <eigen3/Eigen/src/Core/Matrix.h>
+
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 
@@ -250,7 +252,7 @@ LCS LCSFactory::LinearizePlantToLCS(
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
   }
 
-  LCS system(A, B, D, d, E, F, H, c, N, dt);
+  LCS system(A, B, D, d, E, F, H, c, N, dt, false);
   return system;
 }
 
@@ -427,7 +429,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     D.push_back(D_k);
     d.push_back(d_k);
   }
-  return LCS(A, B, D, d, E, F, H, c, other.dt_);
+  return LCS(A, B, D, d, E, F, H, c, other.dt_, false);
 }
 
 }  // namespace solvers

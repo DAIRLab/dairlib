@@ -1,5 +1,9 @@
 #include "solvers/c3_miqp.h"
 
+#include <functional>
+
+#include <optional>
+
 #include "gurobi_c++.h"
 
 namespace dairlib {
@@ -18,6 +22,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
                                        const MatrixXd& E, const MatrixXd& F,
                                        const MatrixXd& H, const VectorXd& c,
+                                       std::optional<MatrixXd> K,
                                        const int admm_iteration,
                                        const int& warm_start_index) {
   try {
@@ -31,8 +36,16 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
     // set up for constraints (Ex + F \lambda + Hu + c >= 0)
+    // if the reduction mapping K is available, we will have the following
+    // constraint (Ex + F K \lambda + Hu + c >= 0)
     MatrixXd Mcons1(n_lambda_, n_x_ + n_lambda_ + n_u_);
-    Mcons1 << E, F, H;
+
+    if (K.has_value()) {
+      Mcons1 << K.value().transpose() * E,
+          K.value().transpose() * F * K.value(), K.value().transpose() * H;
+    } else {
+      Mcons1 << E, F, H;
+    }
 
     // set up for constraints (\lambda >= 0)
     MatrixXd MM1 = MatrixXd::Zero(n_lambda_, n_x_);
@@ -73,7 +86,22 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.setObjective(obj, GRB_MINIMIZE);
 
     double coeff[n_x_ + n_lambda_ + n_u_];
-    double coeff2[n_x_ + n_lambda_ + n_u_];
+    double coeff1[n_x_ + n_lambda_ + n_u_];
+
+    // additional constraints Ex + F K \lambda + Hu + c >= 0 if K is available)
+    if (K.has_value()) {
+      MatrixXd Mcons(E.rows(), n_x_ + n_lambda_ + n_u_);
+      Mcons << E, F * K.value(), H;
+      double coeff2[n_x_ + n_lambda_ + n_u_];
+      for (int i = 0; i < E.rows(); i++) {
+        GRBLinExpr signed_dist_expr = 0;
+        for (int j = 0; j < n_x_ + n_lambda_ + n_u_; j++) {
+          coeff2[j] = Mcons(i, j);
+        }
+        signed_dist_expr.addTerms(coeff2, delta_k, n_x_ + n_lambda_ + n_u_);
+        model.addConstr(signed_dist_expr + c(i) >= 0);
+      }
+    }
 
     for (int i = 0; i < n_lambda_; i++) {
       GRBLinExpr lambda_expr = 0;
@@ -87,16 +115,25 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       model.addConstr(lambda_expr >= 0);
       model.addConstr(lambda_expr <= M_ * (1 - binary[i]));
 
-      GRBLinExpr activation_expr = 0;
+      GRBLinExpr activation_expr =
+          0;  // Ex + F \lambda + Hu + c or
+              // K^T (Ex + F K \lambda + Hu + c) if K is available
 
       /// convert VectorXd to double
       for (int j = 0; j < n_x_ + n_lambda_ + n_u_; j++) {
-        coeff2[j] = Mcons1(i, j);
+        coeff1[j] = Mcons1(i, j);
       }
 
-      activation_expr.addTerms(coeff2, delta_k, n_x_ + n_lambda_ + n_u_);
-      model.addConstr(activation_expr + c(i) >= 0);
-      model.addConstr(activation_expr + c(i) <= M_ * binary[i]);
+      activation_expr.addTerms(coeff1, delta_k, n_x_ + n_lambda_ + n_u_);
+
+      if (K.has_value()) {
+        model.addConstr(activation_expr + (K.value().transpose() * c)(i) >= 0);
+        model.addConstr(activation_expr + (K.value().transpose() * c)(i) <=
+                        M_ * binary[i]);
+      } else {
+        model.addConstr(activation_expr + c(i) >= 0);
+        model.addConstr(activation_expr + c(i) <= M_ * binary[i]);
+      }
     }
 
     model.optimize();

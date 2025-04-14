@@ -24,8 +24,7 @@ PYBIND11_MODULE(lcs_factory, m) {
                   py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
                   py::arg("context_ad"), py::arg("contact_geoms"),
                   py::arg("num_friction_directions"), py::arg("mu"),
-                  py::arg("dt"), py::arg("N"),
-                  py::arg("contact_model") = ContactModel::kStewartAndTrinkle);
+                  py::arg("dt"), py::arg("N"), py::arg("contact_model"));
 }
 }  // namespace pydairlib
 }  // namespace dairlib

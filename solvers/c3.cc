@@ -1,9 +1,11 @@
 #include "solvers/c3.h"
 
 #include <chrono>
+#include <functional>
 #include <iostream>
 
 #include <Eigen/Core>
+#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <omp.h>
 
 #include "solvers/lcs.h"
@@ -45,7 +47,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     : warm_start_(options.warm_start),
       N_((lcs.A_).size()),
       n_x_((lcs.A_)[0].cols()),
-      n_lambda_((lcs.D_)[0].cols()),
       n_u_((lcs.B_)[0].cols()),
       lcs_(lcs),
       cost_matrices_(costs),
@@ -55,6 +56,11 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       h_is_zero_(lcs.H_[0].isZero(0)),
       prog_(MathematicalProgram()),
       osqp_(OsqpSolver()) {
+  if (lcs.K_.has_value()) {
+    n_lambda_ = lcs.K_.value()[0].cols();
+  } else {
+    n_lambda_ = lcs.D_[0].cols();
+  }
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -84,18 +90,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       }
     }
   }
-
-  auto Dn = lcs.D_.at(0).norm();
-  auto An = lcs.A_.at(0).norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    lcs_.D_.at(i) *= AnDn_;
-    lcs_.E_.at(i) /= AnDn_;
-    lcs_.c_.at(i) /= AnDn_;
-    lcs_.H_.at(i) /= AnDn_;
-  }
-
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -210,31 +204,32 @@ void C3::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.A_.size() == N_);
   DRAKE_DEMAND(lcs.A_[0].rows() == n_x_);
   DRAKE_DEMAND(lcs.A_[0].cols() == n_x_);
-  DRAKE_DEMAND(lcs.D_[0].cols() == n_lambda_);
+
+  if (lcs.K_.has_value()) {
+    DRAKE_DEMAND(lcs.K_.value().size() == N_);
+    DRAKE_DEMAND(lcs.K_.value()[0].cols() == n_lambda_);
+  } else {
+    DRAKE_DEMAND(lcs.D_[0].cols() == n_lambda_);
+  }
   DRAKE_DEMAND(lcs.B_[0].cols() == n_u_);
 
   lcs_ = lcs;
   h_is_zero_ = lcs_.H_[0].isZero(0);
-
-  // Scaling dynamics matrices constraint for better numerics
-  // This only scales lambda
-  auto Dn = lcs_.D_[0].norm();
-  auto An = lcs_.A_[0].norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    lcs_.D_.at(i) *= AnDn_;
-    lcs_.E_.at(i) /= AnDn_;
-    lcs_.c_.at(i) /= AnDn_;
-    lcs_.H_.at(i) /= AnDn_;
-  }
 
   MatrixXd LinEq = MatrixXd::Zero(n_x_, 2 * n_x_ + n_lambda_ + n_u_);
   LinEq.block(0, n_x_ + n_u_ + n_lambda_, n_x_, n_x_) =
       -1 * MatrixXd::Identity(n_x_, n_x_);
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_x_, n_x_) = lcs_.A_.at(i);
-    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D_.at(i);
+
+    // If reduction mapping is available, remap low-dimensional lambda to
+    // full-dimensional lambda
+    if (lcs_.K_.has_value()) {
+      LinEq.block(0, n_x_, n_x_, n_lambda_) =
+          lcs_.D_.at(i) * lcs_.K_.value().at(i);
+    } else {
+      LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D_.at(i);
+    }
     LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B_.at(i);
 
     dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d_.at(i));
@@ -322,6 +317,14 @@ void C3::Solve(const VectorXd& x0) {
           lcs_.D_.at(i - 1) *
               z_sol_->at(i - 1).segment(n_x_, (n_x_ + n_lambda_)) +
           lcs_.d_.at(i - 1);
+      if (lcs_.K_.has_value()) {
+        z_sol_->at(i).segment(0, n_x_) +=
+            lcs_.D_.at(i) * lcs_.K_.value().at(i - 1) *
+            z_sol_->at(i - 1).segment(n_x_, n_lambda_);
+      } else {
+        z_sol_->at(i).segment(0, n_x_) +=
+            lcs_.D_.at(i) * z_sol_->at(i - 1).segment(n_x_, n_lambda_);
+      }
     }
   }
   *w_sol_ = w;
@@ -330,9 +333,9 @@ void C3::Solve(const VectorXd& x0) {
   // Undoing to scaling to put variables back into correct units
   // This only scales lambda
   for (int i = 0; i < N_; ++i) {
-    lambda_sol_->at(i) *= AnDn_;
-    z_sol_->at(i).segment(n_x_, n_lambda_) *= AnDn_;
-    delta_sol_->at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    lambda_sol_->at(i) *= lcs_.AnDn_.at(i);
+    z_sol_->at(i).segment(n_x_, n_lambda_) *= lcs_.AnDn_.at(i);
+    delta_sol_->at(i).segment(n_x_, n_lambda_) *= lcs_.AnDn_.at(i);
   }
 
   auto finish = std::chrono::high_resolution_clock::now();
@@ -370,6 +373,22 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
+  // if (lcs_.K_.has_value()) {
+  //   std::cout << "ADMM iter: " << admm_iteration << std::endl;
+  //   std::cout << "Ex: " << lcs_.E_.at(0) * (*delta)[0].head(n_x_) <<
+  //   std::endl; std::cout << "Hu: " << lcs_.H_.at(0) * (*delta)[0].tail(n_u_)
+  //   << std::endl; std::cout << "FKlam: "
+  //             << lcs_.F_.at(0) * lcs_.K_.value().at(0) *
+  //                    (*delta)[0].segment(n_x_, n_lambda_)
+  //             << std::endl;
+  //   std::cout << "c: " << lcs_.c_.at(0) << std::endl;
+  //   std::cout << "Signed distance: "
+  //             << lcs_.E_.at(0) * (*delta)[0].head(n_x_) +
+  //                    lcs_.F_.at(0) * lcs_.K_.value().at(0) *
+  //                        (*delta)[0].segment(n_x_, n_lambda_) +
+  //                    lcs_.H_.at(0) * (*delta)[0].tail(n_u_) + lcs_.c_.at(0)
+  //             << std::endl;
+  // }
 
   for (auto i = 0; i < N_; i++) {
     z_proj_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
@@ -473,20 +492,25 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
+    std::optional<Eigen::MatrixXd> K;
+    if (lcs_.K_.has_value()) {
+      K = lcs_.K_.value().at(i);
+    }
+
     if (warm_start_) {
       if (i == N_ - 1) {
-        deltaProj[i] =
-            SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i],
-                                  lcs_.H_[i], lcs_.c_[i], admm_iteration, -1);
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i],
+                                             lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
+                                             K, admm_iteration, -1);
       } else {
         deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i],
                                              lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
-                                             admm_iteration, i + 1);
+                                             K, admm_iteration, i + 1);
       }
     } else {
       deltaProj[i] =
           SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
-                                lcs_.c_[i], admm_iteration, -1);
+                                lcs_.c_[i], K, admm_iteration, -1);
     }
   }
 

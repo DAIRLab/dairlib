@@ -69,7 +69,7 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
     return True
 
 
-def run_experiment():
+def run_miqp_vs_admm_experiment():
     base_folder = "bindings/pydairlib/id_mpc/bench/"
     success_counts = {
         'admm': {},
@@ -112,6 +112,46 @@ def run_experiment():
     print(success_counts)
 
 
+def run_admm_params_grid_search():
+    base_folder = "bindings/pydairlib/id_mpc/bench/"
+    successes = {}
+
+    iterations = [0, 1, 2, 3, 4, 5]
+    rho_exps = [-2, -1, 0, 1, 2]
+
+    for iteration in iterations:
+        successes[iteration] = {}
+        for rho_exp in rho_exps:
+            method = 'admm'
+            horizon = 4
+            solver_options = f'ncqp_params_{rho_exp}_{iteration}'
+            solver_options_file = os.path.join(
+                base_folder, f'admm_grid_search_gains/{solver_options}.yaml'
+            )
+            gains_file = os.path.join(
+                base_folder, f'gains/mpfc_gains_{method}_{horizon}.yaml'
+            )
+            success_count = 0
+
+            worker_fn = partial(
+                trial,
+                gains=gains_file,
+                solver_options=solver_options_file,
+            )
+            with ProcessPoolExecutor(max_workers=8) as exec:
+                for success in exec.map(worker_fn, range(100)):
+                    if success:
+                        success_count += 1
+            successes[iteration][rho_exp] = success_count
+            print(successes)
+
+    np.savez(
+        '../alip_bench_grid_search_results_4_step',
+        success_counts=successes
+    )
+    print(successes)
+
+
 def make_log(logfile: str, idx: int, method: str, horizon: int):
     base_folder = "bindings/pydairlib/id_mpc/bench/"
     solver_options = 'gurobi_options_planner' if method == 'miqp' else \
@@ -134,11 +174,14 @@ def make_log_driver():
 
 
 def choose_your_fighter():
-    choice = input("What do you want to do?\n 1) run success rate experiment\n"
-                   " 2) run a single trial and make a log\n\nchoice: ")
+    choice = input("What do you want to do?\n 1) run ADMM vs MIQP experiment\n"
+                   " 2) Run a grid search over the ADMM parameters\n"
+                   " 3) run a single trial and make a log\n\nchoice: ")
     if int(choice) == 1:
-        run_experiment()
+        run_miqp_vs_admm_experiment()
     elif int(choice) == 2:
+        run_admm_params_grid_search()
+    elif int(choice) == 3:
         make_log_driver()
     else:
         print("invalid option")

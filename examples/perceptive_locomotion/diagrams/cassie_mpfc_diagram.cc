@@ -46,7 +46,6 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
     const std::string& gains_yaml,
     const std::string& solver_options_yaml,
     double debug_publish_period) :
-    lcm_local("udpm://239.255.76.67:7667?ttl=0"),
     plant_(plant),
     left_toe(LeftToeFront(plant_)),
     left_heel(LeftToeRear(plant_)),
@@ -68,7 +67,7 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
       post_left_right_fsm_states, left_right_toe, gains_yaml,
       solver_options_yaml);
 
-  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.011111);
+  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 
@@ -80,14 +79,17 @@ CassieMPFCDiagram<MPC>::CassieMPFCDiagram(
   );
 
   if (debug_publish_period > 0) {
+    lcm_local = std::make_unique<drake::lcm::DrakeLcm>(
+        "udpm://239.255.76.67:7667?ttl=0"
+    );
     auto mpc_debug_pub = builder.AddSystem(
         LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
-            "ALIP_MPFC_DEBUG", &lcm_local, debug_publish_period));
+            "ALIP_MPFC_DEBUG", lcm_local.get(), debug_publish_period));
     builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
                     mpc_debug_pub->get_input_port());
     auto state_debug_pub = builder.AddSystem(
         LcmPublisherSystem::Make<lcmt_robot_output>(
-            "CASSIE_STATE_MPC_DEBUG", &lcm_local, debug_publish_period));
+            "CASSIE_STATE_MPC_DEBUG", lcm_local.get(), debug_publish_period));
     builder.ConnectInput(input_port_state_, state_debug_pub->get_input_port());
   }
 

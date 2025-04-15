@@ -74,7 +74,7 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
   // Add the Augmented lagrangian cost
   // We also add zeros to the original QP to keep the same sparsity pattern
   for (int i = 0; i < al_qp.num_vars; ++i) {
-    al_qp.H.coeffRef(i, i) += params_.rho;
+    al_qp.H.coeffRef(i, i) += rho_W_diag_(i);
     cvx_qp.H.coeffRef(i, i) += 0.0;
     al_qp.H.makeCompressed();
     cvx_qp.H.makeCompressed();
@@ -90,7 +90,7 @@ std::pair<QPData, QPData> NCQPSolver::InitializeQPData(const QPData& qp) const {
 void NCQPSolver::SolveALQP(
     const QPData &cvx_qp, QPData &al_qp,
     QPResult* al_result, NCQPSolution *sol, int iter) const {
-  VectorXd g_al = -params_.rho * (sol->z - sol->w);
+  VectorXd g_al = -(rho_W_diag_.array() * (sol->z - sol->w).array());
   al_qp.g = cvx_qp.g + g_al;
 
   qp_solver_->Solve(al_qp, *al_result, iter <= 1);
@@ -125,14 +125,28 @@ QPResult NCQPSolver::Solve(const MathematicalProgram &qp,
   return result;
 }
 
-// TODO (@Brian-Acosta) warmstart the duals
-// TODO (@Brian-Acosta) result a mathematicalprogram result with appropriate
+void NCQPSolver::SetupVectorRho(
+    const QPData& qp,
+    const SetMembershipConstraints &nc_constraints) const {
+  rho_W_diag_ = VectorXd::Constant(qp.num_vars, params_.rho);
+  for (int i = 0; i < nc_constraints.first.size(); ++i) {
+    const auto& indices = nc_constraints.first.at(i);
+    const auto& w = nc_constraints.second.at(i)->GetW();
+    for (int j = 0; j < indices.size(); ++j) {
+      rho_W_diag_(indices[j]) *= w(j);
+    }
+  }
+}
+
+// TODO (@Brian-Acosta) warm-start the duals
+// TODO (@Brian-Acosta) result a MathematicalProgramResult with appropriate
 //  solution details
 void NCQPSolver::Solve(const QPData &qp, QPResult &result,
                        const SetMembershipConstraints& constraints) const {
 
   Timer global_timer;
 
+  SetupVectorRho(qp, constraints);
   NCQPSolution sol = initialize_sol(qp);
   auto [cvx_qp, al_qp] = InitializeQPData(qp);
 

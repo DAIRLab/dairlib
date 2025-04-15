@@ -24,6 +24,8 @@ ConvexPolygonSetConstraint::ConvexPolygonSetConstraint(
   W_proj_ = Matrix3d::Identity();
   W_proj_(0, 0) = 0.3;
   W_proj_(2, 2) = 0.3;
+  w_ = Eigen::VectorXd::Zero(3);
+  w_ = W_proj_.diagonal();
   BuildProjectionProg();
 }
 

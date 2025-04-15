@@ -229,6 +229,11 @@ double horizon_blend(int i, int N) {
   double x = static_cast<double>(i) - static_cast<double>(N) / 2.0;
   return 0.5 * (1 + std::tanh(-0.25 * x));
 }
+
+double swing_profile(double phase) {
+  double sin_pi_phase = std::sin(M_PI * phase);
+  return 1.18 * sin_pi_phase / sqrt(sin_pi_phase * sin_pi_phase + 0.4);
+}
 }
 
 void IDMPCWalking::MakeSwingTrajCostsSDF() {
@@ -249,7 +254,7 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
 void IDMPCWalking::UpdateSwingTrajCostsSDF(const MPCReference &mpc_reference) {
   for (int i = 0; i <= params_.mpc_N; ++i) {
     double clearance = params_.step_height *
-        std::sin(M_PI * mpc_reference.single_stance_phase_.at(i));
+        swing_profile(mpc_reference.single_stance_phase_.at(i));
     const std::string foot =
         mpc_reference.active_contacts_.at(i).front() == "toe_left_front" ?
         "toe_right" : "toe_left";

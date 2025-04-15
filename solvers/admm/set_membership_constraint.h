@@ -37,9 +37,13 @@ class SetMembershipConstraint : public NonlinearConstraint<double> {
     shift_ = shift;
   }
 
+  const Eigen::VectorXd& GetW() const {
+    return w_;
+  }
+
  protected:
   Eigen::VectorXd shift_;
-
+  Eigen::VectorXd w_; // diagonal of the projection weight matrix
 };
 
 }

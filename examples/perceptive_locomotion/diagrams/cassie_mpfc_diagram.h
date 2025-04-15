@@ -45,7 +45,7 @@ class CassieMPFCDiagram  : public drake::systems::Diagram<double> {
   }
  private:
 
-  drake::lcm::DrakeLcm lcm_local;
+  std::unique_ptr<drake::lcm::DrakeLcm> lcm_local = nullptr;
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 

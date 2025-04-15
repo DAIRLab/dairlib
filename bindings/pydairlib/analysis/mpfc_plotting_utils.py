@@ -329,6 +329,10 @@ def alip_mpfc_debug_callback(data_dict, channel):
     return process_alip_mpfc_debug_data(data_dict[channel])
 
 
+def alip_mpfc_debug_complete_callback(data_dict, channel):
+    return process_alip_mpfc_debug_complete_data(data_dict[channel])
+
+
 def cf_mpfc_debug_callback(data_dict, channel):
     return process_cf_mpfc_debug_data(data_dict[channel])
 

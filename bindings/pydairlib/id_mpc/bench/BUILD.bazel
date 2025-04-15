@@ -23,8 +23,10 @@ py_binary(
     deps = [
         ":utils",
         "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/analysis:mpfc_plotting_utils",
         "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/perceptive_locomotion/results:analysis_utils",
         "//bindings/pydairlib/systems",
         "//lcmtypes:lcmtypes_robot_py",
     ],

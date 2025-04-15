@@ -162,6 +162,10 @@ class NCQPSolver {
   void SolveALQP(const QPData& cvx_qp, QPData& al_qp,
                  QPResult* al_result, NCQPSolution* sol, int iter) const;
 
+  void SetupVectorRho(
+      const QPData& qp_data,
+      const SetMembershipConstraints& nc_constraints) const;
+
   Eigen::VectorXd DoProjectionStep(
       const Eigen::VectorXd& d,
       const SetMembershipConstraints& nc_constraints) const;
@@ -194,6 +198,7 @@ class NCQPSolver {
   ADMMParams params_;
   std::unique_ptr<OsqpWrapper> qp_solver_ = nullptr;
   std::unique_ptr<OsqpWrapper> polish_solver_ = nullptr;
+  mutable Eigen::VectorXd rho_W_diag_;
 
   drake::solvers::SolverOptions inner_qp_options_{};
   drake::solvers::SolverOptions polish_qp_options_{};

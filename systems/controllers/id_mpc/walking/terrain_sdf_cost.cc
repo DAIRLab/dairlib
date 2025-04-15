@@ -20,13 +20,14 @@ using drake::multibody::MultibodyPlant;
 
 namespace {
 
-constexpr double lambda = 10.0;
+constexpr double lambda = 500.0;
 
 template<typename T>
-T smooth_min(T a, T b) {
+T smooth_min(T a, T b, T c) {
   T exp_a = exp(-a * lambda);
   T exp_b = exp(-b * lambda);
-  return -1.0 / (lambda) * log(0.5 * exp_a + 0.5 * exp_b);
+  T exp_c = exp(-c * lambda);
+  return -1.0 / (lambda) * log(exp_a + exp_b + exp_c);
 }
 
 }
@@ -64,7 +65,7 @@ void TerrainSDFCost::EvaluateInnerTerm(
   const auto [phi_f, gf] = box_set_->CalcSDF(pf);
   const auto [phi_r, gr] = box_set_->CalcSDF(pr);
 
-  double smooth_min_y = smooth_min(phi_f, phi_r);
+  double smooth_min_y = smooth_min(phi_f, phi_r, y_(0));
 
   *y =  VectorXd::Constant(1, smooth_min_y) - y_;
 }
@@ -107,7 +108,8 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
       VectorXd::Constant(1, phi_r), dphi_r_dq);
 
   //dphi_dq = dphi_dp * dp_dq
-  drake::AutoDiffXd phi_ad = smooth_min(phi_ad_f(0), phi_ad_r(0));
+  drake::AutoDiffVecXd y_ad_ = drake::AutoDiffVecXd::Constant(1, y_(0));
+  drake::AutoDiffXd phi_ad = smooth_min(phi_ad_f(0), phi_ad_r(0), y_ad_(0));
   *y = drake::AutoDiffVecXd::Zero(1);
   (*y)(0) = phi_ad - y_(0);
 }

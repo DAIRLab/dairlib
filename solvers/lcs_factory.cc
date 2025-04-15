@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <eigen3/Eigen/src/Core/Matrix.h>
-
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 

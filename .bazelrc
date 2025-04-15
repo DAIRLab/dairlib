@@ -63,5 +63,6 @@ build:omp --linkopt=-fopenmp
 build --python_path=python3
 build --jobs=8
 
-build:opt --incompatible_strict_action_env
 build --define=WITH_GUROBI=ON
+build --cxxopt=-Wno-missing-template-arg-list-after-template-kw
+build --java_runtime_version=remotejdk_11

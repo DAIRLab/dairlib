@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <Eigen/Dense>
-#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <optional>
 
 #include "solvers/c3_options.h"

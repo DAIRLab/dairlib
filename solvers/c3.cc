@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include <Eigen/Core>
-#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <omp.h>
 
 #include "solvers/lcs.h"

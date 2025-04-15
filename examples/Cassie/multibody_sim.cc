@@ -1,8 +1,8 @@
+#include <iostream>
 #include <memory>
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
-#include <iostream>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -71,7 +71,7 @@ DEFINE_double(start_time, 0.0,
 DEFINE_string(contact_solver, "SAP",
               "Contact solver to use. Either TAMSI or SAP.");
 
-    int do_main(int argc, char* argv[]) {
+int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Plant/System initialization
@@ -165,7 +165,7 @@ DEFINE_string(contact_solver, "SAP",
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
-      plant.get_geometry_poses_output_port(),
+      plant.get_geometry_pose_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());

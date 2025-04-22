@@ -1,3 +1,4 @@
+
 #include "id_mpc_walking.h"
 #include "solvers/sqp/relative_position_cost.h"
 
@@ -187,8 +188,8 @@ void IDMPCWalking::MakeALIPTerms() {
   );
 
   // Setup ALIP costs
-  Qa_ = 10.0 * Matrix4d::Identity();
-  Qaf_ = 100.0 * Matrix4d::Identity();
+  Qa_ = 4.0 * Matrix4d::Identity();
+  Qaf_ = 10.0 * Matrix4d::Identity();
   Ra_ = 15.0 * Eigen::Matrix2d::Identity();
 
   Matrix4d PI0;
@@ -240,7 +241,8 @@ void IDMPCWalking::MakeSwingTrajCostsSDF() {
   DRAKE_DEMAND(boxy_terrain_ != nullptr);
   auto& prog = mutable_mpc().get_prog();
   for (int i = 0; i <= params_.mpc_N; ++i) {
-    double w = horizon_blend(i, params_.mpc_N);
+    double s = (i == 0 || i == params_.mpc_N) ? 0.5 : 1;
+    double w = s * horizon_blend(i, params_.mpc_N);
     auto sdf_cost = std::make_shared<TerrainSDFCost>(
         w * params_.mpc_dt * params_.foot_pos_W.bottomRightCorner<1,1>(),
         VectorXd::Zero(1), dynamics().get_plant(), "toe_left",

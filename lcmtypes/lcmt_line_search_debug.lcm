@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_line_search_debug {
+  boolean accepted;
+  double constraint_viol;
+  double cost;
+  double step_size;
+  double setup_time;
+  double solve_time;
+  double line_search_time;
+  double total_step_time;
+}
+

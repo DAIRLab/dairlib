@@ -135,18 +135,18 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
           "ID_MPC",
           &lcm_log_sink,
           {TriggerType::kPeriodic},
-          0.01)
+          dt)
   );
   auto debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_id_mpc_walking_debug>(
           "ID_MPC_DEBUG",
           &lcm_log_sink,
           {TriggerType::kPeriodic},
-          0.01)
+          dt)
   );
 
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram->get_output_port_state_lcm(),+
       state_pub->get_input_port()
   );
   builder.Connect(

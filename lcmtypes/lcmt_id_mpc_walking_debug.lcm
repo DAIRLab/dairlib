@@ -7,4 +7,5 @@ struct lcmt_id_mpc_walking_debug {
 
     int32_t n_footsteps;
     double footsteps[n_footsteps][3];
+    lcmt_line_search_debug ls_debug;
 }

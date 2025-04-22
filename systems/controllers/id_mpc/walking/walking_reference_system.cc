@@ -260,11 +260,7 @@ PiecewisePolynomial<double> WalkingReferenceSystem::CalcPositionTraj(
 }
 
 PiecewisePolynomial<double> WalkingReferenceSystem::CalcOrientationTraj() const {
-  Vector4d quat_ref = plant_.GetPositions(*plant_context_).head<4>();
-  quat_ref(1) = 0;
-  quat_ref(2) = 0;
-  quat_ref.normalize();
-
+  Vector4d quat_ref = Vector4d::UnitX();
   return PiecewisePolynomial<double>(quat_ref);
 }
 

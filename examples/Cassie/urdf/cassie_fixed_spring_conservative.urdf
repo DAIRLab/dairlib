@@ -544,30 +544,18 @@
             </material>
         </visual>
 
-        <visual>
-            <geometry>
-                <sphere radius="0.001"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <box size="0.15 0.001 0.001"/>
             </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <box size="0.15 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </collision>
     </link>
 
     <link name="toe_right">
@@ -596,30 +584,19 @@
                 <color rgba="0.4 0.4 0.4 1" />
             </material>
         </visual>
-        <visual>
-            <geometry>
-                <sphere radius="0.001"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <box size="0.15 0.001 0.001"/>
             </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <box size="0.15 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
+            <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </collision>
+
     </link>
 
 
@@ -641,7 +618,7 @@
         <parent link="pelvis" />
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.12" upper="0.215" effort="300" velocity="1000"/>
+        <limit lower="-0.12" upper="0.215" effort="90" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -650,7 +627,7 @@
         <parent link="pelvis" />
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.215" upper="0.12" effort="300" velocity="1000"/>
+        <limit lower="-0.215" upper="0.12" effort="90" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -660,7 +637,7 @@
         <parent link="yaw_left" />
         <child link="hip_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.235" upper="0.235" effort="300" velocity="1000"/>
+        <limit lower="-0.235" upper="0.235" effort="60" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -669,7 +646,7 @@
         <parent link="yaw_right" />
         <child link="hip_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.235" upper="0.235" effort="300" velocity="1000"/>
+        <limit lower="-0.235" upper="0.235" effort="60" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -679,7 +656,7 @@
         <parent link="hip_left" />
         <child link="thigh_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.72" upper="1.24" effort="300" velocity="1000"/>
+        <limit lower="-0.72" upper="1.24" effort="90" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -688,7 +665,7 @@
         <parent link="hip_right" />
         <child link="thigh_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.72" upper="1.24" effort="300" velocity="1000"/>
+        <limit lower="-0.72" upper="1.24" effort="90" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -697,7 +674,7 @@
         <parent link="thigh_left" />
         <child link="knee_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="300" velocity="1000"/>
+        <limit lower="-2.862" upper="-0.646" effort="200" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -706,7 +683,7 @@
         <parent link="thigh_right" />
         <child link="knee_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.862" upper="-0.646" effort="300" velocity="1000"/>
+        <limit lower="-2.862" upper="-0.646" effort="200" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -811,7 +788,7 @@
         <parent link="tarsus_left" />
         <child link="toe_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.3" upper="0.74" effort="300" velocity="1000"/>
+        <limit lower="-2.3" upper="0.74" effort="40" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 
@@ -820,7 +797,7 @@
         <parent link="tarsus_right" />
         <child link="toe_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.3" upper="0.74" effort="300" velocity="1000"/>
+        <limit lower="-2.3" upper="0.74" effort="40" velocity="1000"/>
         <dynamics damping="1" />
     </joint>
 

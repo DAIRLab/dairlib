@@ -20,6 +20,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "analysis",
+    srcs = ["analysis.py"],
+    deps = [
+        "//bindings/pydairlib/analysis",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 pybind_py_library(
     name = "id_mpc_py",
     cc_deps = [

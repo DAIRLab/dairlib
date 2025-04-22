@@ -14,20 +14,22 @@ from pydrake.systems.all import (
 from pydrake.common.value import AbstractValue
 
 from pydairlib.perceptive_locomotion import FullSimDiagram
-
-from pydairlib.systems import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import OutputVector
 
 base_folder = "bindings/pydairlib/perceptive_locomotion/sim_experiments/"
 
 terrains = {
     'beam': 'terrains/beam.yaml',
-    'stairs': 'terrains/stairs.yaml'
+    'stairs': 'terrains/stairs.yaml',
+    'heights': 'terrains/heights.yaml'
 }
 
 log_folder = "../sim_experiment_logs"
 
 gains = os.path.join(base_folder, "gains/mpfc_gains_default.yaml")
+solver_options = os.path.join(base_folder, 'solver_options/gurobi_options_planner.yaml')
+gains_admm = os.path.join(base_folder, 'gains/mpfc_gains_comparison_to_id_mpc.yaml')
+solver_options_admm = os.path.join(base_folder, 'solver_options/ncqp_params.yaml')
 
 
 def select_terrain_and_log_file():
@@ -41,6 +43,10 @@ def select_terrain_and_log_file():
         return os.path.join(base_folder, terrains['stairs']), \
             os.path.join(base_folder, 'sim_opts_stairs.yaml'), \
             os.path.join(log_folder, 'stairs')
+    if choice == '3':
+        return os.path.join(base_folder, terrains['heights']), \
+            os.path.join(base_folder, 'sim_opts_heights.yaml'), \
+            os.path.join(log_folder, 'heights')
     
     raise RuntimeError("invalid or no terrain specified")
 
@@ -48,16 +54,13 @@ def select_terrain_and_log_file():
 def main():
     terrain, params, logfile = select_terrain_and_log_file()
     
-    sim_diagram = FullSimDiagram(gains, terrain, params)
+    sim_diagram = FullSimDiagram(
+        gains, solver_options, terrain, params, True)
 
     builder = DiagramBuilder()
     builder.AddSystem(sim_diagram)
     
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(
-        diagram,
-        '../full_sim_diagram'
-    )
 
     context = diagram.CreateDefaultContext()
     sim_diagram.SetPlantInitialConditions(diagram, context)
@@ -65,13 +68,13 @@ def main():
     simulator = Simulator(diagram, context)
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
-    # simulator.set_target_realtime_rate(1.0)
 
     input("\n\n-- Press Enter to start the simulation --")
 
-    simulator.AdvanceTo(20.0)
-    
-    sim_diagram.SaveLcmLog(logfile)
+    try:
+        simulator.AdvanceTo(40.0)
+    finally:
+        sim_diagram.SaveLcmLog(logfile)
 
 
 if __name__ == '__main__':

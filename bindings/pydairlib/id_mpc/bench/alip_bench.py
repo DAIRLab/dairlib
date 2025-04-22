@@ -38,7 +38,7 @@ def trial(trial_idx: int, gains: str, solver_options: str, logfile: str = None):
         solver_options,
         terrain_file.name,
         sim_params,
-        False
+        True
     )
 
     builder = DiagramBuilder()
@@ -78,7 +78,7 @@ def run_miqp_vs_admm_experiment():
 
     horizons = {
         'admm': [3, 4, 5, 6],
-        'miqp': [3, 4, 5]
+        'miqp': [3, 4, 5, 6]
     }
     for method in ['admm', 'miqp']:
         for horizon in horizons[method]:
@@ -106,7 +106,7 @@ def run_miqp_vs_admm_experiment():
             print(success_counts)
 
     np.savez(
-        '../alip_bench_results',
+        '../alip_bench_results_increased_footstep_cost',
         success_counts=success_counts
     )
     print(success_counts)

@@ -577,31 +577,7 @@
             <origin xyz="0.02 0.048 0.0" rpy="0.0 0.0 -0.7"/>
         </visual>
 
-        <!-- Toe spheres -->
-        <visual>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </collision>
-        <visual>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </collision>
+
     </link>
 
     <link name="toe_right">
@@ -630,33 +606,6 @@
             <color rgba="0.4 0.4 0.4 1" />
           </material>
         </visual>
-
-        <!-- Toe spheres -->
-        <visual>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
-        </collision>
-        <visual>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.0025"/>
-            </geometry>
-            <origin xyz="0.088 0 0" rpy="0 0 0"/>
-        </collision>
-
         <collision>
             <geometry>
                 <box size="0.15 0.01 0.01"/>
@@ -739,7 +688,7 @@
         <parent link="hip_right" />
         <child link="thigh_right" />
         <axis xyz="0 0 1" />
-        <!--        <limit lower="-0.72" upper="1.24" effort="300"/>-->
+        <!--        <limit lower="-0.72" upper="1.24" effort="90"/>-->
         <limit lower="0.2" upper="1.24" effort="90"/>
         <dynamics damping="1" />
     </joint>

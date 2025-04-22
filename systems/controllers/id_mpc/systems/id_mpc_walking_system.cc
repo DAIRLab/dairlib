@@ -159,6 +159,15 @@ void IDMPCWalkingSystem::CalcDebug(const Context<double> &context,
     auto footstep_vec = CopyVectorXdToStdVector(p);
     debug->footsteps.push_back(footstep_vec);
   }
+
+  debug->ls_debug.accepted = mpc_solution.sqp_iterate.accepted;
+  debug->ls_debug.constraint_viol = mpc_solution.sqp_iterate.constraint_viol;
+  debug->ls_debug.cost = mpc_solution.sqp_iterate.cost;
+  debug->ls_debug.step_size = mpc_solution.sqp_iterate.step_size;
+  debug->ls_debug.setup_time = mpc_solution.sqp_iterate.setup_time;
+  debug->ls_debug.solve_time = mpc_solution.sqp_iterate.solve_time;
+  debug->ls_debug.line_search_time = mpc_solution.sqp_iterate.line_search_time;
+  debug->ls_debug.total_step_time = mpc_solution.sqp_iterate.total_step_time;
 }
 
 EventStatus IDMPCWalkingSystem::UpdateSDF(const Context<double> &context,

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include "solvers/sqp/nc_sqp_solver.h"
 
@@ -23,21 +24,34 @@ NCSQPSolver::NCSQPSolver(
 void NCSQPSolver::DoSQPStep(const Eigen::VectorXd &x,
                             SQPIterate *sol) {
   DRAKE_DEMAND(sol != nullptr);
+
+  auto start = std::chrono::high_resolution_clock::now();
   sol->x_init = x;
   make_qp_(x, &qp_);
 
-  solvers::QPResult result;
-
   auto set_membership_constraints = get_sm_constraints_(x);
+  auto post_setup = std::chrono::high_resolution_clock::now();
+
+  solvers::QPResult result;
   ncqp_solver_.Solve(qp_, result, set_membership_constraints);
 
-  if (result.success) {
+  if (result.success or result.solution_result ==
+      drake::solvers::kIterationLimit) {
     sol->dx = result.x;
     DoLineSearch(eval_constraint_viol_, eval_cost_, proj_to_config_space_, qp_,
                  lsparams_, sol);
   } else {
     std::cout << "SQP qp solve failed with status: " << result.solution_result << "\n";
+    sol->step_size = 0.0;
+    sol->line_search_time = 0.0;
+    sol->accepted = false;
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> setup_time = post_setup - start;
+  std::chrono::duration<double> total_time = end - start;
+  sol->setup_time = setup_time.count();
+  sol->solve_time = result.run_time;
+  sol->total_step_time = total_time.count();
 }
 
 }

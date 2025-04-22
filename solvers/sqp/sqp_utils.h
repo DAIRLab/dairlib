@@ -11,15 +11,20 @@ struct SQPIterate {
   bool accepted;
   double constraint_viol;
   double cost;
+  double step_size = 0;
+  double setup_time = 0;
+  double solve_time = 0;
+  double line_search_time = 0;
+  double total_step_time = 0;
 };
 
 struct LineSearchParams {
   double alpha_min = 1e-4;
-  double theta_max = 1e-2;
+  double theta_max = 3e-2;
   double theta_min = 1e-6;
   double eta = 1e-4;
   double gamma_phi = 1e-6;
-  double gamma_theta = 1e-6;
+  double gamma_theta = 1e-2;
   double gamma_alpha = 0.5;
 };
 

@@ -20,7 +20,7 @@ using drake::multibody::MultibodyPlant;
 
 namespace {
 
-constexpr double lambda = 500.0;
+constexpr double lambda = 180.0;
 
 template<typename T>
 T smooth_min(T a, T b, T c) {
@@ -28,6 +28,19 @@ T smooth_min(T a, T b, T c) {
   T exp_b = exp(-b * lambda);
   T exp_c = exp(-c * lambda);
   return -1.0 / (lambda) * log(exp_a + exp_b + exp_c);
+}
+
+template <typename T>
+T hard_max(T a, T b, T c) {
+  return std::max(a, std::max(b, c));
+}
+
+template <typename T>
+T smooth_max(T a, T b, T c) {
+  T exp_a = exp(a * lambda);
+  T exp_b = exp(b * lambda);
+  T exp_c = exp(c * lambda);
+  return 1.0 / (lambda) * log(exp_a + exp_b + exp_c);
 }
 
 }
@@ -65,9 +78,9 @@ void TerrainSDFCost::EvaluateInnerTerm(
   const auto [phi_f, gf] = box_set_->CalcSDF(pf);
   const auto [phi_r, gr] = box_set_->CalcSDF(pr);
 
-  double smooth_min_y = smooth_min(phi_f, phi_r, y_(0));
+  double smooth_max_y = hard_max(0.0, y_(0) - phi_f,  y_(0) - phi_r);
 
-  *y =  VectorXd::Constant(1, smooth_min_y) - y_;
+  *y =  VectorXd::Constant(1, smooth_max_y);
 }
 
 void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVecXd> &x,
@@ -109,9 +122,11 @@ void TerrainSDFCost::EvaluateInnerTerm(const Eigen::Ref<const drake::AutoDiffVec
 
   //dphi_dq = dphi_dp * dp_dq
   drake::AutoDiffVecXd y_ad_ = drake::AutoDiffVecXd::Constant(1, y_(0));
-  drake::AutoDiffXd phi_ad = smooth_min(phi_ad_f(0), phi_ad_r(0), y_ad_(0));
+  drake::AutoDiffXd zero_ad(0.0);
+  drake::AutoDiffXd phi_err_ad = hard_max(
+      zero_ad, y_ad_(0) - phi_ad_r(0), y_ad_(0) - phi_ad_f(0));
   *y = drake::AutoDiffVecXd::Zero(1);
-  (*y)(0) = phi_ad - y_(0);
+  (*y)(0) = phi_err_ad;
 }
 
 }

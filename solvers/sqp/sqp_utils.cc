@@ -112,6 +112,8 @@ void DoLineSearch(std::function<double (const Eigen::VectorXd&)> eval_constraint
                   std::function<void (Eigen::VectorXd*)> proj_to_cspace,
                   const QPData& qp, const LineSearchParams& params,
                   SQPIterate* sol) {
+
+  auto start = std::chrono::high_resolution_clock::now();
   double alpha = 1.0;
   double theta_k = eval_constraint_viol(sol->x_init);
   double phi_k = eval_cost(sol->x_init);
@@ -145,6 +147,10 @@ void DoLineSearch(std::function<double (const Eigen::VectorXd&)> eval_constraint
       alpha *= params.gamma_alpha;
     }
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> ls_time = end - start;
+  sol->line_search_time = ls_time.count();
+  sol->step_size = accepted ? alpha : 0.0;
   sol->accepted = accepted;
   sol->x_sol = accepted ? candidate : sol->x_init;
   sol->constraint_viol = accepted ? theta_k_p1 : theta_k;

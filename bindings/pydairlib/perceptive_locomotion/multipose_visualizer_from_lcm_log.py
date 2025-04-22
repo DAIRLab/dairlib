@@ -37,21 +37,24 @@ from pydairlib.perceptive_locomotion.results import analysis_utils
 
 def ground_truth_main():
     channel_x = "CASSIE_STATE_SIMULATION"
-    num_poses = 5
+    num_poses = 8
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
     lcmlog = lcm.EventLog(filename_log, "r")
-    plant, context = cassie_plots.make_plant_and_context(True, True)
+    plant, context = cassie_plots.make_plant_and_context(
+        floating_base=True,
+        springs=False
+    )
     default_channels = cassie_plots.cassie_default_channels
 
     robot_output = get_log_data(
         lcmlog, default_channels, 0, -1, mbp_plots.load_state_channel,  # processing callback
         plant, channel_x)
 
-    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.1, 0.6)
+    visualizer = multipose_visualizer_main(robot_output, num_poses, 0.08, 0.75)
     visualizer.AddSteppingStonesFromYaml(filename_stones)
-    while(True):
+    while (True):
         continue
 
 
@@ -114,9 +117,9 @@ def multipose_visualizer_main(robot_output, num_poses, start_fraction, end_fract
     q_idx[-1] -= 1
     poses = robot_output['q'][q_idx]
 
-    alpha_scale = np.linspace(1.0, 0.5, num_poses)
+    alpha_scale = np.linspace(0.7, 0.5, num_poses)
     visualizer = MultiposeVisualizer(
-        FindResourceOrThrow(cassie_plots.cassie_urdf),
+        FindResourceOrThrow(cassie_plots.cassie_urdf_no_springs),
         num_poses,
         np.square(alpha_scale), ""
     )

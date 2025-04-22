@@ -14,7 +14,7 @@ const std::string pd_gains = "examples/id_mpc/gains/pd_gains_standing.yaml";
 const std::string terrain =
     "examples/id_mpc/terrains/heights.yaml";
 const std::string sim_opts =
-    "examples/perceptive_locomotion/standalone_sim_params.yaml";
+    "examples/id_mpc/test/sim_params.yaml";
 
 void DoMain() {
 
@@ -33,7 +33,7 @@ void DoMain() {
 
   simulator.AdvanceTo(20.0);
 
-  diagram.SaveLcmLog("../id_mpc_test_log");
+  diagram.SaveLcmLog("../id_mpc_test_log_heights");
 }
 
 }

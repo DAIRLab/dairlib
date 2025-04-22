@@ -146,7 +146,7 @@ IDMPCFullSim::IDMPCFullSim(const std::string &terrain,
   );
 
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),+
+      sim_diagram->get_output_port_state_lcm(),
       state_pub->get_input_port()
   );
   builder.Connect(

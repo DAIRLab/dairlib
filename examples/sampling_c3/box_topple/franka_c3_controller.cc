@@ -11,9 +11,9 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_c3_controller_params.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_lcm_channels.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/sampling_c3/box_topple/parameters/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"
@@ -71,6 +71,10 @@ DEFINE_string(lcm_channels,
 DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
+DEFINE_string(demo_name,
+              "box_topple",
+              "Name for the demo, used when building filepaths for output.");
+std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -88,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
 	// Sim params are only used to keep the offsets between different models 
 	// in the scene consistent across all systems.
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/sampling_c3/box_topple/parameters/franka_sim_params.yaml");
+      base_path + "parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
@@ -714,15 +718,15 @@ std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "examples/sampling_c3/box_topple/franka_c3_controller");
-  DrawAndSaveDiagramGraph(*plant_diagram, "examples/sampling_c3/box_topple/franka_c3_plant");
+  DrawAndSaveDiagramGraph(*owned_diagram, base_path + "franka_c3_controller");
+  DrawAndSaveDiagramGraph(*plant_diagram, base_path + "franka_c3_plant");
 
   // Run lcm-driven simulation
   int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "examples/sampling_c3/box_topple/loop");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), base_path + "loop");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);

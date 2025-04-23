@@ -4,21 +4,18 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_lcm_channels.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_osc_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
 #include "systems/sender_systems/end_effector_force_trajectory.h"
 #include "systems/sender_systems/end_effector_orientation.h"
 #include "systems/sender_systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
-#include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/osc/relative_translation_tracking_data.h"
-#include "systems/controllers/osc/rot_space_tracking_data.h"
-#include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
@@ -31,6 +28,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "systems/sender_systems/joint_trajectory_generator.h"
 
 namespace dairlib {
 
@@ -46,12 +44,9 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
+using std::string;
 
-using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RelativeTranslationTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
-using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(osqp_settings,
               "examples/sampling_c3/box_topple/parameters/franka_osc_qp_settings.yaml",
@@ -66,9 +61,13 @@ DEFINE_string(lcm_channels,
 DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
+DEFINE_string(demo_name,
+              "box_topple",
+              "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;
@@ -89,7 +88,6 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
 
-  parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model))[0];
   drake::multibody::ModelInstanceIndex ground_index =
@@ -127,24 +125,13 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
                    plant.GetFrameByName("platform"), X_F_P);
 
+
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
-  
+
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto end_effector_trajectory_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
-  auto end_effector_position_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_position_target");
-  auto end_effector_force_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_force_target");
-  auto end_effector_orientation_receiver =
-      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
-          "end_effector_orientation_target");
   auto franka_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.franka_input_channel, &lcm,
@@ -157,33 +144,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
-  auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(
-        plant, plant_context.get(),
-        controller_params.neutral_position,
-        controller_params.teleop_neutral_position,
-        controller_params.end_effector_name);
-  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      controller_params.neutral_position.data(),
-      controller_params.neutral_position.size());
-  end_effector_trajectory->SetRemoteControlParameters(
-      neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
-  auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>(plant,
-                                                         plant_context.get());
-  end_effector_orientation_trajectory->SetTrackOrientation(
-      controller_params.track_end_effector_orientation);
-  auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>(
-          plant, plant_context.get());
-  auto radio_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          lcm_channel_params.radio_channel, &lcm));
   // TODO:  Why are there 5 arguments here? Clean this up at some point.
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  if (controller_params.publish_debug_info){
+  if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -191,56 +155,34 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_output_port_osc_debug(),
                     osc_debug_pub->get_input_port());
   }
+  VectorXd target_position = VectorXd::Zero(7);
+  target_position << 2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08;
+  auto joint_traj_generator =
+      builder.AddSystem<JointTrajectoryGenerator>(plant, target_position);
+  std::vector<std::unique_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;
+  std::vector<std::string> joint_names = {
+      "panda_joint1", "panda_joint2", "panda_joint3",
+      "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"};
+  for (int joint_idx = 0; joint_idx < joint_names.size();
+       ++joint_idx) {
+    string joint_name = joint_names[joint_idx];
+    MatrixXd W = 1.0 * MatrixXd::Identity(1, 1);
+    MatrixXd K_p = 100 * MatrixXd::Identity(1, 1);
+    MatrixXd K_d = 5 * MatrixXd::Identity(1, 1);
+    joint_tracking_data_vec.push_back(std::make_unique<JointSpaceTrackingData>(
+        joint_name + "_traj", K_p, K_d, W, plant, plant));
+    joint_tracking_data_vec[joint_idx]->AddJointToTrack(joint_name,
+                                                        joint_name + "dot");
 
-  auto end_effector_position_tracking_data =
-      std::make_unique<TransTaskSpaceTrackingData>(
-          "end_effector_target", controller_params.K_p_end_effector,
-          controller_params.K_d_end_effector, controller_params.W_end_effector,
-          plant, plant);
-  end_effector_position_tracking_data->AddPointToTrack(
-      controller_params.end_effector_name);
-  const VectorXd& end_effector_acceleration_limits =
-      controller_params.end_effector_acceleration * Vector3d::Ones();
-  end_effector_position_tracking_data->SetCmdAccelerationBounds(
-      -end_effector_acceleration_limits, end_effector_acceleration_limits);
-  auto mid_link_position_tracking_data_for_rel =
-      std::make_unique<JointSpaceTrackingData>(
-          "panda_joint2_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
-          plant);
-  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
-                                                           "panda_joint2dot");
+    osc->AddTrackingData(std::move(joint_tracking_data_vec[joint_idx]));
 
-  auto end_effector_force_tracking_data =
-      std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_params.W_ee_lambda, plant, plant,
-          controller_params.end_effector_name, Vector3d::Zero());
+    builder.Connect(joint_traj_generator->get_output_port_joint(joint_idx),
+                    osc->get_input_port_tracking_data(joint_name + "_traj"));
+  }
 
-  auto end_effector_orientation_tracking_data =
-      std::make_unique<RotTaskSpaceTrackingData>(
-          "end_effector_orientation_target",
-          controller_params.K_p_end_effector_rot,
-          controller_params.K_d_end_effector_rot,
-          controller_params.W_end_effector_rot, plant, plant);
-  end_effector_orientation_tracking_data->AddFrameToTrack(
-      controller_params.end_effector_name);
-  Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
-  orientation_target(0) = 1;
-  osc->AddTrackingData(std::move(end_effector_position_tracking_data));
-  // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
-  // null space associated with trying to control 7 joints with 6 DOF. 
-  // The value is currently set to 1.1 to have it be more vertical for the jack
-  // example but not enough that it hits a singularity or ends up with too small 
-  // a workspace. 
-  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.1 * VectorXd::Ones(1));
-  osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
-  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(
-      controller_params.enforce_acceleration_constraints);
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
@@ -248,7 +190,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
-    if (FLAGS_lcm_channels == "examples/sampling_c3/box_topple/parameters/lcm_channels_simulation.yaml"){
+    if (FLAGS_lcm_channels == base_path + "parameters/lcm_channels_simulation.yaml"){
       std::cerr << "In simulation, OSC needs to have cancel_gravity_compensation: false" << std::endl;
       return -1;
     }
@@ -260,60 +202,30 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
-    if (FLAGS_lcm_channels == "examples/sampling_c3/box_topple/parameters/lcm_channels_hardware.yaml"){
-      std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"<< std::endl;
+    if (FLAGS_lcm_channels ==
+        base_path + "parameters/lcm_channels_hardware.yaml") {
+      std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"
+                << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),
                     franka_command_sender->get_input_port(0));
   }
 
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_state());
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_state());
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
                   osc_command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
                   osc_command_sender->get_input_port(0));
-
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_position_receiver->get_input_port_trajectory());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_force_receiver->get_input_port_trajectory());
-  builder.Connect(
-      end_effector_trajectory_sub->get_output_port(),
-      end_effector_orientation_receiver->get_input_port_trajectory());
-  builder.Connect(end_effector_position_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_trajectory());
   builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
-  builder.Connect(
-      end_effector_orientation_receiver->get_output_port(0),
-      end_effector_orientation_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_target"));
-  builder.Connect(
-      end_effector_orientation_trajectory->get_output_port(0),
-      osc->get_input_port_tracking_data("end_effector_orientation_target"));
-  builder.Connect(end_effector_force_receiver->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_force"));
+                  joint_traj_generator->get_input_port_robot_state());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "examples/sampling_c3/box_topple/franka_osc_controller");
+  owned_diagram->set_name(("new_franka_osc_controller"));
+  DrawAndSaveDiagramGraph(*owned_diagram, base_path + "new_franka_osc_controller");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,

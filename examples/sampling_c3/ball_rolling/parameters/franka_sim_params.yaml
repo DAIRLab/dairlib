@@ -28,11 +28,6 @@ p_franka_to_ground: [0, 0, -0.029]
 # This is the z value of the platform wrt to the base of the franka.
 p_franka_to_platform: [0, 0, -0.0145]
 
-# Workspace Limits
-world_x_limits: [-2, 2]
-world_y_limits: [-2, 2]
-world_z_limits: [-2, 2]
-
 dt: 0.0001
 realtime_rate: 1
 
@@ -52,7 +47,7 @@ q_init_object: [-0.3347435, -0.026718954, 0.8878204, 0.31518626, 0.4, 0.30, 0.05
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_sample_locations_model: examples/sampling_c3/ball_rolling/urdf/sample_locations.urdf
 visualizer_c3_mode_model: examples/sampling_c3/ball_rolling/urdf/c3_mode_visualization.urdf
-visualize_workspace: false
+visualize_c3_workspace: false
 visualize_c3_state: true
 visualize_is_c3_mode: true
 
@@ -62,6 +57,7 @@ visualize_sample_buffer: false
 visualize_execution_plan: true
 
 visualizer_curr_sample_end_effector_model: examples/sampling_c3/ball_rolling/urdf/ee_curr_traj_visualization_model.urdf
+visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_green_visualization_model.urdf
 visualizer_curr_sample_traj_jack_model: examples/sampling_c3/ball_rolling/urdf/ball_curr_traj_visualization_model.urdf
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: false

@@ -1,6 +1,6 @@
 #include "control_target_generator_push_T.h"
 #include <drake/common/yaml/yaml_io.h>
-#include "examples/sampling_c3/push_t/parameters/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
 #include "solvers/c3_options.h"
 
 #include "drake/systems/framework/leaf_system.h"

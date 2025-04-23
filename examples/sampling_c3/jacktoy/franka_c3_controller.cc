@@ -11,9 +11,9 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/jacktoy/parameters/franka_c3_controller_params.h"
-#include "examples/sampling_c3/jacktoy/parameters/franka_lcm_channels.h"
-#include "examples/sampling_c3/jacktoy/parameters/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/sampling_c3/jacktoy/parameters/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"

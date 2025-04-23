@@ -14,8 +14,8 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include "systems/controllers/sampling_based_c3_controller.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_c3_controller_params.h"
-#include "examples/sampling_c3/box_topple/parameters/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/system_utils.h"
 #include "systems/framework/timestamped_vector.h"
 #include "solvers/c3_output.h"

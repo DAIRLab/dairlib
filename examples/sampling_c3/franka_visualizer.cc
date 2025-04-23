@@ -11,9 +11,9 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/sampling_c3/jacktoy/parameters/franka_lcm_channels.h"
-#include "examples/sampling_c3/jacktoy/parameters/franka_sim_params.h"
-#include "examples/sampling_c3/jacktoy/parameters/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -67,16 +67,25 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/jacktoy/parameters/lcm_channels_simulation.yaml",
+              "examples/sampling_c3/box_topple/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
+DEFINE_string(demo_name,
+              "box_topple",
+              "Name for the demo, used when building filepaths for output.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
+  
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/sampling_c3/jacktoy/parameters/franka_sim_params.yaml");
+      base_path + "parameters/franka_sim_params.yaml");
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          "examples/sampling_c3/jacktoy/parameters/franka_c3_controller_params.yaml");
+          base_path + "parameters/franka_c3_controller_params.yaml");
+
+  std::cout<<"sim params path is "<< base_path + "parameters/franka_sim_params.yaml" << std::endl;
+  std::cout<<"controller params path is "<< base_path + "parameters/franka_c3_controller_params.yaml" << std::endl;
      
   C3Options c3_options;
   SamplingC3SamplingParams sampling_params;
@@ -531,7 +540,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/sampling_c3/jacktoy/visualizer_diagram");
+  DrawAndSaveDiagramGraph(*diagram, base_path + "visualizer_diagram");
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

@@ -1,11 +1,11 @@
 controller_frequency: 1000
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
-end_effector_model: examples/sampling_c3/ball_rolling/urdf/end_effector_full.urdf
+end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 # TODO maybe this should stay as end_effector_base?
 end_effector_name: end_effector_tip 
-ground_model: examples/sampling_c3/ball_rolling/urdf/ground.urdf
-platform_model: examples/sampling_c3/ball_rolling/urdf/platform.urdf
+ground_model: examples/sampling_c3/urdf/ground.urdf
+platform_model: examples/sampling_c3/urdf/platform.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
 p_world_to_franka: [0, 0, 0]

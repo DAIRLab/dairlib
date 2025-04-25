@@ -77,7 +77,7 @@ cc_binary(
     srcs = ["franka_c3_controller.cc"],
     data = [
         ":urdfs",
-        "@drake_models//:franka_descriptions",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",

@@ -15,7 +15,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
-#include "examples/sampling_c3/ball_rolling/parameters/trajectory_params.h"
+#include "examples/sampling_c3/parameter_headers/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"
 #include "systems/sender_systems/c3_trajectory_generator.h"
 #include "systems/sender_systems/control_target_generator_ball_rolling.h"

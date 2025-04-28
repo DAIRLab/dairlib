@@ -23,3 +23,25 @@ max_step_size: 0.15           # if error is smaller or equal to this max step si
 # Sampling parameters
 ee_goal_height: 0.06          # height of the end effector above the jack
 object_half_width: 0.0315     # half width of the object. Make sure to match with urdf of object.
+
+
+
+########### UNUSED PARAMETERS IN THIS EXAMPLE ###########
+# TODO: Go through the parameters before this to remove any unused ones.
+use_changing_final_goal: true
+changing_final_goal_type: 0  # 0 to randomize goal, 1 to cycle through orientations
+final_goal_time_tolerance: 45 # in seconds
+
+# Thresholds for position and orientation for reaching a goal successfully.
+position_success_threshold: 0.02
+orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
+
+random_goal_x_limits: [0.42, 0.5]  #0.27, 0.5]
+random_goal_y_limits: [0.02, 0.25]   # 0.35]
+random_goal_radius_limits: [0.48, 0.5]
+
+resting_object_height: 0.031971466           # currently being used by the goal randomization code.
+
+prevent_three_topples_for_random_goal_gen: false
+
+angle_hysteresis: 0.4

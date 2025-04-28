@@ -23,6 +23,12 @@ cc_library(
 )
 
 cc_library(
+    name = "trajectory_params",
+    hdrs = ["trajectory_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "franka_drake_lcm_driver_channels",
     hdrs = ["franka_drake_lcm_driver_channels.h"],
     visibility = ["//visibility:public"],

@@ -33,7 +33,7 @@ cc_binary(
         ":franka_c3_controller_params_ball_rolling",
         "//systems/controllers:sampling_params",
         ":franka_sim_params_ball_rolling",
-        ":trajectory_params",
+        ":trajectory_params_ball_rolling",
         ":franka_lcm_channels_ball_rolling",
         "//common",
         "//systems/sender_systems:franka_systems",
@@ -150,12 +150,13 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_params",
-    hdrs = ["parameters/trajectory_params.h"],
+    name = "trajectory_params_ball_rolling",
+    hdrs = [],
     data = [
         "parameters/trajectory_params.yaml",
     ],
     deps = [
+        "//examples/sampling_c3/parameter_headers:trajectory_params",
         "//solvers:c3",
         "@drake//:drake_shared_library",
     ],

@@ -33,7 +33,7 @@ cc_binary(
         ":franka_c3_controller_params_box_topple",
         "//systems/controllers:sampling_params",
         ":franka_sim_params_box_topple",
-        ":trajectory_params",
+        ":trajectory_params_box_topple",
         ":franka_lcm_channels_box_topple",
         "//common",
         "//systems/sender_systems:franka_systems",
@@ -103,12 +103,13 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_params",
-    hdrs = ["parameters/trajectory_params.h"],
+    name = "trajectory_params_box_topple",
+    hdrs = [],
     data = [
         "parameters/trajectory_params.yaml",
     ],
     deps = [
+        "//examples/sampling_c3/parameter_headers:trajectory_params",
         "//solvers:c3",
         "@drake//:drake_shared_library",
     ],

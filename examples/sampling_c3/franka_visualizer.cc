@@ -67,7 +67,7 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/box_topple/parameters/lcm_channels_simulation.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(demo_name,
               "box_topple",
@@ -75,7 +75,6 @@ DEFINE_string(demo_name,
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
   
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(

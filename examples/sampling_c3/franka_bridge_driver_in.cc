@@ -36,21 +36,23 @@ using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
 
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/box_topple/parameters/lcm_channels_hardware.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(franka_driver_channels,
-              "examples/sampling_c3/box_topple/parameters/franka_drake_lcm_driver_channels.yaml",
+              "examples/sampling_c3/shared_parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
-// NOTE:  While most module's TTL is set to 0 by default, this one is set to 1
-// since it necessarily needs to communicate with the Franka.
 DEFINE_string(lcm_url,
-              "udpm://239.255.76.67:7667?ttl=1",
+              "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
+DEFINE_string(demo_name,
+"box_topple",
+"Name for the demo, used when building filepaths for output.");
 
 namespace dairlib {
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
@@ -64,9 +66,8 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
-
 //   parser.AddModelsFromUrl(sim_params.franka_model);
+    parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
   RigidTransform<double> W_X_R = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
@@ -84,22 +85,24 @@ int DoMain(int argc, char* argv[]) {
   /* -------------------------------------------------------------------------------------------*/
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
-
-  auto franka_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, &lcm,
+  auto franka_command_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
+          franka_driver_channel_params.franka_command_channel, &lcm,
           1.0 / 1000.0));
-  auto franka_state_translator = builder.AddSystem<systems::FrankaStateOutTranslator>(
-      pos_names, vel_names, act_names);
+    auto franka_status_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_panda_status>(
+          franka_driver_channel_params.franka_status_channel, &lcm));
+  auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
-  builder.Connect(*franka_state_translator, *franka_state_pub);
+  builder.Connect(*franka_command_translator, *franka_command_pub);
+  builder.Connect(franka_status_sub->get_output_port(), franka_command_translator->get_input_port_panda_status());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_bridge_driver_out"));
+  owned_diagram->set_name(("franka_bridge_driver_in"));
 
-  systems::LcmDrivenLoop<drake::lcmt_panda_status> loop(
-      &lcm, std::move(owned_diagram), franka_state_translator,
-      franka_driver_channel_params.franka_status_channel, true);
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
+      &lcm, std::move(owned_diagram), franka_command_translator,
+      lcm_channel_params.franka_input_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 

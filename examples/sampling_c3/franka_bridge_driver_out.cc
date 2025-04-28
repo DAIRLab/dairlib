@@ -36,28 +36,32 @@ using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
 
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/jacktoy/parameters/lcm_channels_hardware.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(franka_driver_channels,
-              "examples/sampling_c3/jacktoy/parameters/franka_drake_lcm_driver_channels.yaml",
+              "examples/sampling_c3/shared_parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
 // NOTE:  While most module's TTL is set to 0 by default, this one is set to 1
 // since it necessarily needs to communicate with the Franka.
 DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=1",
               "LCM URL with IP, port, and TTL settings");
+DEFINE_string(demo_name,
+            "box_topple",
+            "Name for the demo, used when building filepaths for output.");
 
 namespace dairlib {
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   FrankaDrakeLcmDriverChannels franka_driver_channel_params =
       drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(FLAGS_franka_driver_channels);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/sampling_c3/jacktoy/parameters/franka_sim_params.yaml");
+      "examples/sampling_c3/box_topple/parameters/franka_sim_params.yaml");
 
   DiagramBuilder<double> builder;
 

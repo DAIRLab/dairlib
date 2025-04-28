@@ -13,6 +13,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "shared_params_yamls",
+    srcs = glob(["shared_parameters/*.yaml"]),
+    visibility = ["//visibility:public"],
+)
+
 cc_binary(
     name = "franka_sim",
     srcs = ["franka_sim.cc"],
@@ -108,6 +114,56 @@ cc_binary(
         "//systems/primitives",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_out",
+    srcs = ["franka_bridge_driver_out.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        "//systems/sender_systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_in",
+    srcs = ["franka_bridge_driver_in.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        "//systems/sender_systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

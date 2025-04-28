@@ -49,60 +49,11 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "franka_bridge_driver_out",
-    srcs = ["franka_bridge_driver_out.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":parameters",
-        ":franka_drake_lcm_driver_channels_jacktoy",
-        ":franka_lcm_channels_jacktoy",
-        ":franka_sim_params_jacktoy",
-        "//common",
-        "//systems/sender_systems:franka_state_translator",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "franka_bridge_driver_in",
-    srcs = ["franka_bridge_driver_in.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":parameters",
-        ":franka_drake_lcm_driver_channels_jacktoy",
-        ":franka_lcm_channels_jacktoy",
-        ":franka_sim_params_jacktoy",
-        "//common",
-        "//systems/sender_systems:franka_state_translator",
-        "//multibody:utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 cc_library(
     name = "franka_lcm_channels_jacktoy",
     hdrs = [],
     data = [
-        "parameters/lcm_channels_hardware.yaml",
-        "parameters/lcm_channels_simulation.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
@@ -142,7 +93,7 @@ cc_library(
         "parameters/franka_c3_controller_params.yaml",
         "parameters/franka_c3_options_floating.yaml",
         "parameters/sampling_params.yaml",
-        "parameters/franka_qp_options.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
         "//solvers:c3",
@@ -166,7 +117,7 @@ cc_library(
     name = "franka_drake_lcm_driver_channels_jacktoy",
     hdrs = [],
     data = [
-        "parameters/franka_drake_lcm_driver_channels.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",

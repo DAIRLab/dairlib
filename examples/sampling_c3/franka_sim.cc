@@ -49,7 +49,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/box_topple/parameters/lcm_channels_simulation.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",

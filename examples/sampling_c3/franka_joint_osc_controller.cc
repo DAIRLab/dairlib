@@ -49,14 +49,14 @@ using std::string;
 using systems::controllers::JointSpaceTrackingData;
 
 DEFINE_string(osqp_settings,
-              "examples/sampling_c3/box_topple/parameters/franka_osc_qp_settings.yaml",
+              "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
               "examples/sampling_c3/box_topple/parameters/franka_osc_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/box_topple/parameters/lcm_channels_simulation.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
@@ -190,7 +190,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
-    if (FLAGS_lcm_channels == base_path + "parameters/lcm_channels_simulation.yaml"){
+    if (FLAGS_lcm_channels == base_path + "shared_parameters/lcm_channels_simulation.yaml"){
       std::cerr << "In simulation, OSC needs to have cancel_gravity_compensation: false" << std::endl;
       return -1;
     }
@@ -203,7 +203,7 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port());
   } else {
     if (FLAGS_lcm_channels ==
-        base_path + "parameters/lcm_channels_hardware.yaml") {
+        base_path + "shared_parameters/lcm_channels_hardware.yaml") {
       std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"
                 << std::endl;
       return -1;

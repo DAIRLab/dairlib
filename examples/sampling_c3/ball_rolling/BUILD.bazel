@@ -101,8 +101,7 @@ cc_library(
     name = "franka_lcm_channels_ball_rolling",
     hdrs = [],
     data = [
-        "parameters/lcm_channels_hardware.yaml",
-        "parameters/lcm_channels_simulation.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
@@ -141,7 +140,7 @@ cc_library(
     data = [
         "parameters/franka_c3_controller_params.yaml",
         "parameters/franka_c3_options_floating.yaml",
-        "parameters/franka_qp_options.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",

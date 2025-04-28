@@ -71,7 +71,7 @@ DEFINE_string(sampling_settings,
               "Sampling settings such as sampling strategy, geometric "
               "parameters, number of samples.");
 DEFINE_string(lcm_channels,
-              "examples/sampling_c3/ball_rolling/parameters/lcm_channels_simulation.yaml",
+              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {

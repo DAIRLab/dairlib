@@ -232,7 +232,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* is_c3_mode) const;
+    Eigen::VectorXd* is_c3_mode) const;
 
   void OutputCurrAndBestSampleCost(
     const drake::systems::Context<double>& context,

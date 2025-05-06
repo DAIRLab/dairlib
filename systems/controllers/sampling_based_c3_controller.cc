@@ -270,8 +270,9 @@ SamplingC3Controller::SamplingC3Controller(
     "traj_execute", lcm_traj,
     &SamplingC3Controller::OutputTrajExecute
   ).get_index();
-  is_c3_mode_port_ = this->DeclareVectorOutputPort(
-    "is_c3_mode", drake::systems::BasicVector<double>(1),
+  is_c3_mode_port_ = this->DeclareAbstractOutputPort(
+    "is_c3_mode", 
+    Eigen::VectorXd{Eigen::VectorXd::Zero(1)},
     &SamplingC3Controller::OutputIsC3Mode
   ).get_index();
 
@@ -2184,9 +2185,10 @@ void SamplingC3Controller::OutputTrajExecute(
 
 void SamplingC3Controller::OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* is_c3_mode) const {
+    Eigen::VectorXd* is_c3_mode) const {
   Eigen::VectorXd vec = VectorXd::Constant(1, is_doing_c3_);
-  is_c3_mode->SetFromVector(vec);
+  // is_c3_mode->SetFromVector(vec);
+  *is_c3_mode = vec;
 }
 
 // Output port handler for Dynamically feasible trajectory used for cost

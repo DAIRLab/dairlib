@@ -21,10 +21,8 @@
 #include "systems/sender_systems/control_target_generator_ball_rolling.h"
 #include "systems/sender_systems/franka_kinematics.h"
 #include "systems/sender_systems/tracking_trajectory_generator.h"
-#include "systems/sender_systems/sample_location_sender.h"
 #include "systems/sender_systems/dynamically_feasible_plan_sender.h"
-#include "systems/sender_systems/sample_cost_sender.h"
-#include "systems/sender_systems/is_c3_mode_sender.h"
+#include "systems/sender_systems/sender_bindings.h"
 #include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -417,13 +415,13 @@ int DoMain(int argc, char* argv[]) {
 
   // These systems send the sample locations and sample costs.
   auto sample_locations_sender = 
-    builder.AddSystem<systems::SampleLocationSender>();
+    builder.AddSystem<dairlib::systems::SampleLocationSender>("sample_location_sender");
   auto sample_costs_sender = 
-    builder.AddSystem<systems::SampleCostSender>();
+    builder.AddSystem<dairlib::systems::SampleCostSender>("all_sample_costs_sender");
   auto curr_and_best_sample_costs_sender = 
-    builder.AddSystem<systems::SampleCostSender>("curr_and_best_sample_costs_sender");
+    builder.AddSystem<dairlib::systems::SampleCostSender>("curr_and_best_sample_costs_sender");
   auto is_c3_mode_sender = 
-    builder.AddSystem<systems::IsC3ModeSender>();
+    builder.AddSystem<dairlib::systems::IsC3ModeSender>();
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
     sampling_params.N_sample_buffer, 10);
 

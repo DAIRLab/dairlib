@@ -34,7 +34,7 @@ group "controllers" {
         host = "localhost";
     }
     cmd "franka_c3" {
-        exec = "bazel-bin/examples/sampling_c3/jacktoy/franka_c3_controller";
+        exec = "bazel-bin/examples/sampling_c3/franka_c3_controller --demo_name=jacktoy";
         host = "localhost";
     }
 }

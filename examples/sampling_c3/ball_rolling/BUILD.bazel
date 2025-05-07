@@ -23,36 +23,6 @@ cc_library(
 )
 
 cc_binary(
-    name = "franka_c3_controller",
-    srcs = ["franka_c3_controller.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":franka_c3_controller_params_ball_rolling",
-        "//systems/controllers:sampling_params",
-        ":franka_sim_params_ball_rolling",
-        ":trajectory_params_ball_rolling",
-        ":franka_lcm_channels_ball_rolling",
-        "//common",
-        "//systems/sender_systems:franka_systems",
-        "//systems/sender_systems:sender_systems",
-        "//systems/sender_systems:build_functions",
-        "//systems/sender_systems:sender_bindings",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:sampling_c3_controller",
-        "//systems/controllers/osc:operational_space_control",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/trajectory_optimization:c3_output_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "franka_ros_lcm_bridge",
     srcs = ["franka_ros_lcm_bridge.cc"],
     data = [

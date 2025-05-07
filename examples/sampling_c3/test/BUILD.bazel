@@ -4,6 +4,7 @@ cc_binary(
         "lcm_log_loader.cc",
     ],
     deps = [
+        "@gflags",
         "//common:find_resource",
         "//systems/controllers:sampling_c3_controller",
         "//lcm:lcm_trajectory_saver",

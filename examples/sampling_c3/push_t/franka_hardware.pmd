@@ -19,7 +19,7 @@ group "operator" {
 
 group "controllers (hardware)" {
     cmd "franka_c3" {
-        exec = "bazel-bin/examples/sampling_c3/push_t/franka_c3_controller --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/sampling_c3/franka_c3_controller --demo_name=push_t --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
         host = "sampling_c3_localhost";
     }
     cmd "franka_osc" {

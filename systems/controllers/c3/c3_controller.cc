@@ -36,11 +36,11 @@ C3Controller::C3Controller(
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q_position);
+    Q_.push_back(discount_factor * c3_options_.Q);
     R_.push_back(discount_factor * c3_options_.R);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q_position);
+  Q_.push_back(discount_factor * c3_options_.Q);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -52,11 +52,11 @@ C3Controller::C3Controller(
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts[c3_options_.num_contacts_index] +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
+        2 * c3_options_.num_contacts +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   } else if (c3_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   }
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
 

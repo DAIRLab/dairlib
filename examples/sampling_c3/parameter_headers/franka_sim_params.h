@@ -6,6 +6,7 @@
 struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;
+  std::string end_effector_visualization_model;
   std::string end_effector_name;
   std::string ground_model;
   std::string jack_model;
@@ -62,6 +63,7 @@ struct FrankaSimParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
+    a->Visit(DRAKE_NVP(end_effector_visualization_model));
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(jack_model));

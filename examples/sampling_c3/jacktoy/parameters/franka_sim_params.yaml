@@ -1,6 +1,7 @@
 #franka_model: examples/sampling_c3/urdf/franka_no_collision.urdf
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
 end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
+end_effector_visualization_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 end_effector_name: end_effector_tip
 ground_model: examples/sampling_c3/urdf/ground.urdf
 platform_model: examples/sampling_c3/urdf/platform.urdf
@@ -41,8 +42,8 @@ q_init_object: [-0.3347435, -0.026718954, 0.8878204, 0.31518626, 0.4, 0.30, 0.03
 # q_init_object: [0.7598772, -0.453076, 0.11131, 0.452687, 0.4355, 0.15771, 0.03442]     #For test case 17
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
-visualizer_sample_locations_model: examples/sampling_c3/urdf/sample_locations.urdf
-visualizer_c3_mode_model: examples/sampling_c3/urdf/c3_mode_visualization.urdf
+visualizer_sample_locations_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_c3_mode_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 visualize_c3_workspace: true
 visualize_c3_state: true
 visualize_is_c3_mode: true
@@ -51,16 +52,16 @@ visualize_sample_locations: true
 visualize_sample_buffer: true
 visualize_execution_plan: false
 
-visualizer_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_curr_traj_visualization_model.urdf
-visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_green_visualization_model.urdf
-visualizer_curr_sample_traj_jack_model: examples/sampling_c3/urdf/jack_curr_traj_visualization_model.sdf
+visualizer_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_curr_sample_traj_jack_model: examples/sampling_c3/urdf/jack.sdf
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: false
 
 
-visualizer_best_sample_end_effector_model: examples/sampling_c3/urdf/ee_best_traj_visualization_model.urdf
-visualizer_best_sample_traj_jack_model: examples/sampling_c3/urdf/jack_best_traj_visualization_model.sdf
+visualizer_best_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_best_sample_traj_jack_model: examples/sampling_c3/urdf/jack.sdf
 visualize_pose_trace_best: false
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false

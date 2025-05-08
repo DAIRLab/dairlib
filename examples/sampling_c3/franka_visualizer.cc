@@ -1,4 +1,8 @@
 #include <iostream>
+#include <csignal>
+#include <fstream>
+#include <filesystem>
+#include <regex>
 
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
@@ -66,12 +70,110 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
+std::vector<std::filesystem::path> g_temp_files_to_cleanup;
+
 DEFINE_string(lcm_channels,
               "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(demo_name,
               "box_topple",
               "Name for the demo, used when building filepaths for output.");
+
+
+void HandleSignal(int signal) {
+    std::cerr << "\nCaught signal " << signal << ", cleaning up..." << std::endl;
+    for (const auto& path : g_temp_files_to_cleanup) {
+        try {
+            if (std::filesystem::exists(path)) {
+                std::filesystem::remove(path);
+                std::cerr << "Deleted: " << path << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to delete " << path << ": " << e.what() << std::endl;
+        }
+    }
+
+    std::_Exit(1);  // Ensure clean and fast exit
+}
+
+void RegisterSignalHandlers() {
+    std::signal(SIGINT, HandleSignal);   // Ctrl+C
+    std::signal(SIGTERM, HandleSignal);  // procman stop
+}
+
+// Function to replace all <color> tags with a specific RGBA color in urdfs.
+std::string ReplaceUrdfColorWithRgba(const std::string& urdf, const std::string& rgba) {
+    std::string modified = urdf;
+    std::regex color_tag(R"(<color\s+rgba="[^"]*"\s*/>)");
+    std::string new_color = "<color rgba=\"" + rgba + "\"/>";
+    modified = std::regex_replace(modified, color_tag, new_color);
+    return modified;
+}
+
+ // Function to replace all <diffuse> tags with a specific color in sdfs.
+std::string ReplaceSdfDiffuseWithColor(std::string sdf_content, const std::string& new_color_rgba) {
+    size_t pos = 0;
+    while ((pos = sdf_content.find("<diffuse>", pos)) != std::string::npos) {
+        size_t end_pos = sdf_content.find("</diffuse>", pos);
+        if (end_pos != std::string::npos) {
+            // Replace the content inside <diffuse>...</diffuse> with the new color
+            sdf_content.replace(pos + 9, end_pos - (pos + 9), new_color_rgba);
+            pos = end_pos + 10; // Move past the </diffuse> tag
+        }
+    }
+    return sdf_content;
+}
+
+std::string WriteTempModelWithColorChange(const std::string& original_path, const std::string& new_color_rgba, const std::string& new_model_name) {
+    // Read original model
+    std::ifstream in(original_path);
+    std::string content((std::istreambuf_iterator<char>(in)),
+                         std::istreambuf_iterator<char>());
+    in.close();
+
+    // Modify the material color based on file type
+    if (original_path.ends_with(".sdf")) {
+        content = ReplaceSdfDiffuseWithColor(content, new_color_rgba);
+    } else if (original_path.ends_with(".urdf")) {
+        content = ReplaceUrdfColorWithRgba(content, new_color_rgba);
+    } else {
+        throw std::runtime_error("Unsupported model file format (must be .urdf or .sdf)");
+    }
+
+    // Write to a temporary file
+    std::filesystem::path temp_path = std::filesystem::temp_directory_path() / (new_model_name + std::filesystem::path(original_path).extension().string());
+    std::ofstream out(temp_path);
+    out << content;
+    out.close();
+
+    // Return relative path
+    return std::filesystem::relative(temp_path, std::filesystem::current_path()).string();
+}
+
+void ModifyUrdfRadiusInFile(const std::string& urdf_file_path, double new_radius) {
+    // Read existing content
+    std::ifstream in(urdf_file_path);
+    if (!in.is_open()) {
+        throw std::runtime_error("Failed to open URDF file: " + urdf_file_path);
+    }
+    std::string urdf_content((std::istreambuf_iterator<char>(in)),
+                              std::istreambuf_iterator<char>());
+    in.close();
+
+    // Replace radius values
+    std::regex radius_regex(R"(radius\s*=\s*\"[0-9eE\.\+-]+\")");
+    std::string new_radius_str = "radius=\"" + std::to_string(new_radius) + "\"";
+    urdf_content = std::regex_replace(urdf_content, radius_regex, new_radius_str);
+
+    // Write updated content back to the same file
+    std::ofstream out(urdf_file_path);
+    if (!out.is_open()) {
+        throw std::runtime_error("Failed to write to URDF file: " + urdf_file_path);
+    }
+    out << urdf_content;
+    out.close();
+}
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -379,31 +481,50 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (sim_params.visualize_pose_trace_curr){
+    // Replace the color in the jack model with a new color for visualization.
+    std::string visualizer_curr_sample_traj_jack_model = sim_params.jack_model;
+        // WriteTempModelWithColorChange(
+        //     FindResourceOrThrow(sim_params.jack_model),
+        //     "1 1 1 1", "curr_sample_traj_jack_model");
+    // g_temp_files_to_cleanup.push_back(visualizer_curr_sample_traj_jack_model);
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/curr_planned",
-        FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        visualizer_curr_sample_traj_jack_model,
         "object_position_target", "object_orientation_target", 5, true);
+
+    std::string visualizer_curr_sample_end_effector_model =
+        WriteTempModelWithColorChange(
+            FindResourceOrThrow(sim_params.end_effector_visualization_model),
+            "1 1 1 1", "curr_sample_end_effector_model");
+    g_temp_files_to_cleanup.push_back(visualizer_curr_sample_end_effector_model);
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/curr_planned",
-        FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
+        visualizer_curr_sample_end_effector_model,
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
                     object_pose_drawer_curr->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_pose_drawer_curr->get_input_port_trajectory());
-
+    
+    std::string visualizer_df_curr_sample_end_effector_model = 
+            WriteTempModelWithColorChange(
+                FindResourceOrThrow(sim_params.end_effector_visualization_model),
+                "0.5 1.0 0.5 1.0", "curr_sample_end_effector_model");
+    g_temp_files_to_cleanup.push_back(visualizer_df_curr_sample_end_effector_model);
     auto dynamically_feasible_actor_pose_drawer_curr_actor = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_curr_plan_actor",
-        FindResourceOrThrow(sim_params.visualizer_df_curr_sample_end_effector_model),
+        FindResourceOrThrow(visualizer_df_curr_sample_end_effector_model),
         "ee_position_target", "end_effector_orientation_target", 6, false);
     builder.Connect(
         dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
         dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
-
+    
+    
+    std::string visualizer_df_curr_sample_traj_jack_model = sim_params.jack_model;
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_curr_plan",
-        FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        FindResourceOrThrow(visualizer_df_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 6, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
@@ -411,10 +532,20 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (sim_params.visualize_pose_trace_best){
+    // Replace the color in the jack model with a new color for visualization.
+    std::string visualizer_best_sample_traj_jack_model = WriteTempModelWithColorChange(
+        FindResourceOrThrow(sim_params.jack_model),
+        "1 0.64 0 1", "best_sample_traj_jack_model");
+    g_temp_files_to_cleanup.push_back(visualizer_best_sample_traj_jack_model);
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/best_planned",
-        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        FindResourceOrThrow(visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
+    
+    std::string visualizer_best_sample_end_effector_model = WriteTempModelWithColorChange(
+        FindResourceOrThrow(sim_params.end_effector_visualization_model),
+        "1 0.64 0 1", "best_sample_end_effector_model");
+    g_temp_files_to_cleanup.push_back(visualizer_best_sample_end_effector_model);
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/best_planned",
         FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
@@ -424,11 +555,16 @@ int do_main(int argc, char* argv[]) {
                     object_pose_drawer_best->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_pose_drawer_best->get_input_port_trajectory());
-
+    
+    std::string visualizer_df_best_sample_traj_jack_model =
+            WriteTempModelWithColorChange(
+                FindResourceOrThrow(sim_params.jack_model),
+                "1 0.64 0 1", "best_sample_end_effector_model");
+    g_temp_files_to_cleanup.push_back(visualizer_df_best_sample_traj_jack_model);
     auto dynamically_feasible_object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_best_plan",
         FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target", 6, false);
+        "object_position_target", "object_orientation_target", 6, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best->get_input_port_trajectory());
@@ -445,9 +581,12 @@ int do_main(int argc, char* argv[]) {
     if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
         from_buffer = 1;
     }
+    std::string visualizer_sample_locations_model = WriteTempModelWithColorChange(
+        sim_params.end_effector_visualization_model,
+        "1.0 1.0 0.0 1.0", "sample_locations_model");
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "samples_",
-        FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+        visualizer_sample_locations_model,
         "sample_locations", "end_effector_orientation_target", 
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
             sampling_params.num_additional_samples_repos + 1) + 1, false);
@@ -518,8 +657,13 @@ int do_main(int argc, char* argv[]) {
 										c3_mode_visualizer->get_input_port_is_c3_mode());
 		builder.Connect(reduced_order_model_receiver->get_output_port(),
 										c3_mode_visualizer->get_input_port_curr_lcs_state());
+    std::string visualizer_c3_mode_model = WriteTempModelWithColorChange(
+        FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
+        "1.0 0.43 1.0 1.0", "c3_mode_model");
+    ModifyUrdfRadiusInFile(visualizer_c3_mode_model, 0.0198);
+    g_temp_files_to_cleanup.push_back(visualizer_c3_mode_model);
     auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "c3_mode", FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
+        meshcat, "c3_mode", FindResourceOrThrow(visualizer_c3_mode_model),
         "c3_mode_visualization", "end_effector_orientation_target", 1, false);
 		builder.Connect(c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
 										is_c3_mode_drawer->get_input_port_trajectory());
@@ -573,4 +717,4 @@ int do_main(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }
+int main(int argc, char* argv[]) { dairlib::RegisterSignalHandlers(); return dairlib::do_main(argc, argv); }

@@ -15,10 +15,7 @@ cc_library(
         ":sample_buffer_sender",
         ":joint_trajectory_generator",
         ":c3_state_sender",
-        ":c3_trajectory_generator",
-        ":tracking_trajectory_generator",
         ":sample_buffer_to_point_cloud",
-        ":dynamically_feasible_plan_sender",
         ":c3_mode_visualizer",
     ],
 )
@@ -153,67 +150,6 @@ cc_library(
 )
 
 cc_library(
-    name = "c3_trajectory_generator",
-    srcs = [
-        "c3_trajectory_generator.cc",
-    ],
-    hdrs = [
-        "c3_trajectory_generator.h",
-    ],
-    deps = [
-        ":franka_kinematics",
-        "//common:find_resource",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//solvers:c3",
-        "//solvers:c3_output",
-        "//solvers:solver_options_io",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "tracking_trajectory_generator",
-    srcs = [
-        "tracking_trajectory_generator.cc",
-    ],
-    hdrs = [
-        "tracking_trajectory_generator.h",
-    ],
-    deps = [
-        ":franka_kinematics",
-        "//common:find_resource",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "//solvers:c3",
-    ],
-)
-
-cc_library(
-    name = "dynamically_feasible_plan_sender",
-    srcs = [
-        "dynamically_feasible_plan_sender.cc",
-    ],
-    hdrs = [
-        "dynamically_feasible_plan_sender.h",
-    ],
-    deps = [
-        ":franka_kinematics",
-        "//common:find_resource",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "sample_buffer_to_point_cloud",
     srcs = [
         "sample_buffer_to_point_cloud.cc",
@@ -344,6 +280,7 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
         "@lcm",
+        "//solvers:c3_output",
     ],
 )
 

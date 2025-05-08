@@ -272,7 +272,7 @@ SamplingC3Controller::SamplingC3Controller(
   ).get_index();
   is_c3_mode_port_ = this->DeclareAbstractOutputPort(
     "is_c3_mode", 
-    Eigen::VectorXd{Eigen::VectorXd::Zero(1)},
+    dairlib::lcmt_timestamped_saved_traj(),
     &SamplingC3Controller::OutputIsC3Mode
   ).get_index();
 
@@ -293,18 +293,18 @@ SamplingC3Controller::SamplingC3Controller(
   // index 0 is the first sample.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
     "all_sample_locations",
-    vector<Vector3d>(max_num_samples_ + 1, Vector3d::Zero()),
+    dairlib::lcmt_timestamped_saved_traj(),
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   // all_sample_costs_port_ does include the current location. So index 0 is
   // the current location cost.
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_costs", std::vector<double>(max_num_samples_ + 1, -1),
+    "all_sample_costs", dairlib::lcmt_timestamped_saved_traj(),
     &SamplingC3Controller::OutputAllSampleCosts
   ).get_index();
 
   curr_and_best_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "current_and_best_sample_cost", std::vector<double>(2, -1),
+    "current_and_best_sample_cost", dairlib::lcmt_timestamped_saved_traj(),
     &SamplingC3Controller::OutputCurrAndBestSampleCost
   ).get_index();
 
@@ -2185,10 +2185,31 @@ void SamplingC3Controller::OutputTrajExecute(
 
 void SamplingC3Controller::OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    Eigen::VectorXd* is_c3_mode) const {
+    dairlib::lcmt_timestamped_saved_traj* output) const {
   Eigen::VectorXd vec = VectorXd::Constant(1, is_doing_c3_);
-  // is_c3_mode->SetFromVector(vec);
-  *is_c3_mode = vec;
+  // convert the above into a matrix
+  Eigen::MatrixXd c3_mode_data = Eigen::MatrixXd::Zero(1, 1);
+  Eigen::VectorXd timestamp = Eigen::VectorXd::Zero(1);
+  
+  // Reading the boolean value into the matrix.
+  c3_mode_data(0, 0) = vec(0);
+  // This timestamp corresponds to the trajectory object.
+  timestamp(0) = 0.0;
+
+  LcmTrajectory::Trajectory c3_mode;
+
+  c3_mode.traj_name = "is_c3_mode";
+  c3_mode.datatypes = std::vector<std::string>(1, "bool");
+  c3_mode.datapoints = c3_mode_data;
+  c3_mode.time_vector = timestamp.cast<double>();
+
+  LcmTrajectory c3_mode_traj({c3_mode}, {"is_c3_mode"},
+                            "is_c3_mode",
+                            "is_c3_mode", false);
+
+  // Output the mode as an lcm message
+  output->saved_traj = c3_mode_traj.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
 }
 
 // Output port handler for Dynamically feasible trajectory used for cost
@@ -2224,21 +2245,67 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlan(
 // Output port handlers for sample-related ports
 void SamplingC3Controller::OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::Vector3d>* all_sample_locations) const {
+    dairlib::lcmt_timestamped_saved_traj* output_all_sample_locations) const {
   // Output all sample locations including current location.
   std::vector<Eigen::Vector3d> sample_locations = std::vector<Eigen::Vector3d>(
     all_sample_locations_.begin(), all_sample_locations_.end());
+  // Padd with zeros to make sure the size is max_num_samples_ + 1 for the visualizer.
   while (sample_locations.size() < max_num_samples_ + 1) {
     sample_locations.push_back(Vector3d::Zero());
   }
 
-  *all_sample_locations = sample_locations;
+  // Create a matrix of sample locations
+  Eigen::MatrixXd sample_datapoints = Eigen::MatrixXd::Zero(3, sample_locations.size());
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(sample_locations.size());
+
+  for (int i = 0; i < sample_locations.size(); i++) {
+    sample_datapoints.col(i) = sample_locations[i];
+    timestamps(i) = i;
+  }
+
+  LcmTrajectory::Trajectory sample_positions;
+  sample_positions.traj_name = "sample_locations";
+  sample_positions.datatypes = std::vector<std::string>(3, "double");
+  sample_positions.datapoints = sample_datapoints;
+  sample_positions.time_vector = timestamps.cast<double>();
+
+  LcmTrajectory sample_traj({sample_positions}, {"sample_locations"},
+                            "sample_locations",
+                            "sample_locations", false);
+
+  // Output the sample locations
+  output_all_sample_locations->saved_traj = sample_traj.GenerateLcmObject();
+  output_all_sample_locations->utime = context.get_time() * 1e6;
+  // *all_sample_locations = sample_locations;
 }
 
 void SamplingC3Controller::OutputAllSampleCosts(
     const drake::systems::Context<double>& context,
-    std::vector<double>* all_sample_costs) const {
-  *all_sample_costs = all_sample_costs_;
+    dairlib::lcmt_timestamped_saved_traj* output_all_sample_costs) const {
+    // Create a matrix of sample costs
+    Eigen::MatrixXd cost_datapoints = Eigen::MatrixXd::Zero(1, all_sample_costs_.size());
+    Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(all_sample_costs_.size());
+  
+    for (int i = 0; i < all_sample_costs_.size(); i++) {
+      cost_datapoints(0, i) = all_sample_costs_[i];
+      // This is a dummy timestamp for the sample costs.
+      timestamps(i) = i*dt_;
+    }
+  
+    LcmTrajectory::Trajectory sample_costs_traj;
+    sample_costs_traj.traj_name = "sample_costs";
+    sample_costs_traj.datatypes = std::vector<std::string>(1, "double");
+    sample_costs_traj.datapoints = cost_datapoints;
+    sample_costs_traj.time_vector = timestamps.cast<double>();
+  
+    LcmTrajectory cost_traj({sample_costs_traj}, {"sample_costs"},
+                            "sample_costs",
+                            "sample_costs", false);
+  
+    // Output the sample costs
+    output_all_sample_costs->saved_traj = cost_traj.GenerateLcmObject();
+    output_all_sample_costs->utime = context.get_time() * 1e6;
+
   if(verbose_){
     std::cout << "All sample costs as per output port: " << std::endl;
     for (int i = 0; i < all_sample_costs_.size(); i++) {
@@ -2249,8 +2316,33 @@ void SamplingC3Controller::OutputAllSampleCosts(
 
 void SamplingC3Controller::OutputCurrAndBestSampleCost(
     const drake::systems::Context<double>& context,
-    std::vector<double>* curr_and_best_sample_cost) const {
-  *curr_and_best_sample_cost = curr_and_best_sample_cost_;
+    dairlib::lcmt_timestamped_saved_traj* output_curr_and_best_sample_cost) const {
+  // *curr_and_best_sample_cost = curr_and_best_sample_cost_;
+
+
+    // Create a matrix of sample costs
+    Eigen::MatrixXd cost_datapoints = Eigen::MatrixXd::Zero(1, curr_and_best_sample_cost_.size());
+    Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(curr_and_best_sample_cost_.size());
+  
+    for (int i = 0; i < curr_and_best_sample_cost_.size(); i++) {
+      cost_datapoints(0, i) = curr_and_best_sample_cost_[i];
+      // This is a dummy timestamp for the sample costs.
+      timestamps(i) = i*dt_;
+    }
+  
+    LcmTrajectory::Trajectory curr_and_best_sample_cost_traj;
+    curr_and_best_sample_cost_traj.traj_name = "curr_and_best_sample_cost";
+    curr_and_best_sample_cost_traj.datatypes = std::vector<std::string>(1, "double");
+    curr_and_best_sample_cost_traj.datapoints = cost_datapoints;
+    curr_and_best_sample_cost_traj.time_vector = timestamps.cast<double>();
+  
+    LcmTrajectory curr_and_best_cost_traj({curr_and_best_sample_cost_traj}, {"curr_and_best_sample_cost"},
+                            "curr_and_best_sample_cost",
+                            "curr_and_best_sample_cost", false);
+  
+    // Output the sample costs
+    output_curr_and_best_sample_cost->saved_traj = curr_and_best_cost_traj.GenerateLcmObject();
+    output_curr_and_best_sample_cost->utime = context.get_time() * 1e6;
 }
 
 void SamplingC3Controller::OutputDebug(

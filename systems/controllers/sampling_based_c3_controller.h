@@ -212,11 +212,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::Vector3d>* all_sample_locations) const;
+    dairlib::lcmt_timestamped_saved_traj* all_sample_locations) const;
 
   void OutputAllSampleCosts(
     const drake::systems::Context<double>& context,
-    std::vector<double>* all_sample_costs) const;
+    lcmt_timestamped_saved_traj* output_all_sample_costs) const;
 
   void OutputC3TrajExecute(
     const drake::systems::Context<double>& context,
@@ -232,11 +232,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    Eigen::VectorXd* is_c3_mode) const;
+    dairlib::lcmt_timestamped_saved_traj* is_c3_mode) const;
 
   void OutputCurrAndBestSampleCost(
     const drake::systems::Context<double>& context,
-    std::vector<double>* curr_and_best_sample_cost) const;
+    dairlib::lcmt_timestamped_saved_traj* output_curr_and_best_sample_cost) const;
 
   void OutputDebug(
     const drake::systems::Context<double>& context,

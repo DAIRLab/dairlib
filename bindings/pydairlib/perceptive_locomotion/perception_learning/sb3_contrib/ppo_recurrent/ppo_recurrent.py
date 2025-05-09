@@ -287,6 +287,28 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     else:
                         mirror_actions, _, _, mirror_lstm_states = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts) 
                     mirror_actions = mirror_actions.cpu().numpy()
+                    
+
+                    ## ALIP ##
+                    # image = obs_tensor[:, 2*64*64:3*64*64].clone()
+                    # image = image.view(-1, 64, 64)
+                    # image = th.flip(image, [1])
+                    # image = image.view(-1, 64*64)
+                    # y_pos = obs_tensor[:, 64*64:2*64*64].clone()
+                    # y_pos = y_pos.view(-1, 64, 64)
+                    # y_pos = th.flip(-y_pos, [1])
+                    # y_pos = y_pos.view(-1, 64*64)
+                    # obs = obs_tensor[:, 3*64*64:3*64*64+6].clone()
+                    # ALIP, vdes = obs[:, :4].clone(), obs[:, 4:6].clone()
+                    # ALIP[:, 1:3] = -ALIP[:, 1:3]
+                    # vdes[:, 1] = -vdes[:, 1]
+                    
+                    # mirror_obs_tensor = th.cat((obs_tensor[:, :64*64].clone(), y_pos, image, ALIP, vdes, obs_tensor[:, 3*64*64+6:].clone()), dim=1)
+                    # if self.MTL:
+                    #     mirror_actions, _, _, mirror_lstm_states, _ = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts)
+                    # else:
+                    #     mirror_actions, _, _, mirror_lstm_states = self.policy.forward(mirror_obs_tensor, mirror_lstm_states, episode_starts) 
+                    # mirror_actions = mirror_actions.cpu().numpy()
 
             actions = actions.cpu().numpy()
 

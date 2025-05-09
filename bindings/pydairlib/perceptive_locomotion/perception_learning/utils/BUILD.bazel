@@ -34,6 +34,7 @@ py_library(
     deps = [
         ":terrain_utils",
         ":true_cost_system",
+        "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
         ":DrakeGymEnv",

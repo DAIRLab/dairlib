@@ -2,6 +2,7 @@ import pdb
 import os
 import numpy as np
 import torch
+import math
 from tqdm import tqdm
 from typing import Dict, Tuple
 import argparse
@@ -183,7 +184,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     context = diagram.CreateDefaultContext()
     
     rand = np.random.randint(1,4)
-    rand = 1
+    # rand = 3
     if rand in [1,2]:
         yaw = 0.0 # Upstair
         rand = np.random.randint(-6,7)
@@ -193,6 +194,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     else:
         yaw = math.pi # Downstair
         rand = np.random.randint(-6,7)
+        # rand = 0
         pos = np.random.uniform(low=-1.2, high=-.9)
         datapoint['q'][4:6] = np.array([rand*15 + pos, 0])
 
@@ -405,7 +407,7 @@ def main():
             if rand == 1:
                 # Terrain without blocks
                 rand = np.random.randint(1, 8)
-                rand = 7
+                rand = 1
                 if rand in [1, 2, 3]:
                     rand = np.random.randint(0, 1000)
                     terrain = f'params/stair/dustair_{rand}.yaml'

@@ -159,7 +159,9 @@ class DrakeGymEnv(gym.Env):
             self.metadata['render_modes'].append('rgb_array')
         self.render_rgb_port_id = render_rgb_port_id
 
-        self.generator = RandomGenerator()
+        self.seed = np.random.randint(0,9999)
+        # print(self.seed)
+        self.generator = RandomGenerator(self.seed)
 
         if reset_handler is None or callable(reset_handler):
             #print("reset handler")
@@ -292,7 +294,7 @@ class DrakeGymEnv(gym.Env):
             self._setup()
         
         if seed is None:
-            seed = 0
+            seed = self.seed
         context = self.reset_handler(self.simulator, self.terrain, self.evaluate, seed, self.generator)
 
         observation = self.observation_port.Eval(context).astype(np.float32)

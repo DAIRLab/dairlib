@@ -39,9 +39,9 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = False):
             data = yaml.safe_load(file)
 
         # Number of cubes
-        # n = np.random.randint(15, 25) # Easy
+        n = np.random.randint(15, 30) # Easy
         # n = np.random.randint(20, 30) # Normal
-        n = np.random.randint(40, 50) # Hard
+        # n = np.random.randint(40, 50) # Hard
         #n = 50
         cubes = []
         for stone in data['stones']:
@@ -64,7 +64,7 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = False):
                 norm = np.round(norm, 4).tolist()
                 #size = np.round(np.random.uniform(0.1, 0.25, size=3), 4).tolist() # Easy terrain
                 #size = np.round(np.random.uniform(0.15, 0.35, size=3), 4).tolist() # Medium terrain
-                size = np.round(np.random.uniform(0.2, 0.45, size=3), 4).tolist() # Hard terrain
+                size = np.round(np.random.uniform(0.2, 0.5, size=3), 4).tolist() # Hard terrain
                 yaw = round(yaw, 4)
 
                 # Reject if stones are within [0.5, 0.5]
@@ -72,7 +72,7 @@ def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = False):
                 #print(abs(pos[0]))
                 # if abs(pos[0]) > 0.5 :
                 #     cubes.append([pos, norm, size, [yaw]])
-                if (abs(pos[0]) < 9.5 and abs(pos[1]) < 9.5) and (abs(pos[0]) > 0.5 or abs(pos[1]) > 0.5):
+                if (abs(pos[0]) < 9. and abs(pos[1]) < 9.) and (abs(pos[0]) > 1. or abs(pos[1]) > 1.):
                     cubes.append([pos, norm, size, [yaw]])
 
         output_file_name = f'terrain/flat_{i}.yaml'
@@ -104,7 +104,7 @@ def flat_random_stairs(num_blocks: int = 250, Gaussian: bool = False):
                 positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))
             else:
                 positions = np.random.uniform(-0.5, 0.5, size=(n, 3)) * dimensions + center
-            positions[:, -1] = np.round(np.random.uniform(0.08, 0.15, n), 4)
+            positions[:, -1] = np.round(np.random.uniform(0.1, 0.3, n), 4)
             
             #normals = [[0.0, 0.0, 1.0]]
             #normals = np.random.uniform(-1, 1, size=(n, 3))
@@ -404,7 +404,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Up phase
                 elif start_flat < x_center <= end_x:
-                    z_dim = round(np.random.uniform(0.15, 0.25), 5) # test
+                    z_dim = round(np.random.uniform(0.25, 0.35), 5) # test
                     #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
                     #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
                     #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
@@ -422,7 +422,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(1., 1.4), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(.5, 1.2), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center + avg_x_dim, 5)
 
@@ -443,7 +443,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Down phase
                 elif -end_x < x_center <= -start_flat:
-                    z_dim = round(np.random.uniform(0.15, 0.25), 5) # test
+                    z_dim = round(np.random.uniform(0.25, 0.35), 5) # test
                     #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
                     #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
                     #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
@@ -461,7 +461,7 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(1., 1.4), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(.5, 1.2), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center - avg_x_dim, 5)
                 if x_center > start_flat:
@@ -525,10 +525,209 @@ def down_flat_up(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
 
         print(f'YAML file "{output_file_name}" has been created.')
 
+def reg_width_stair(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
+                    y_increment=0.0, start_flat=0.5, Gaussian=True):
+
+    for i in range(num_blocks):
+        big_stones = []
+        big_cubes = []
+        for j in range(1):
+            stones = []
+            initial_z_center = 0.0
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+            while x_center <= end_x:
+                # Flat phase
+                if x_center <= start_flat:
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    
+                # Up phase
+                elif start_flat < x_center <= end_x:
+                    z_dim = round(np.random.uniform(0.18, 0.35), 5) # test
+                    #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                    z_center = round(z_center + z_dim / 2, 5) # + for upstair | - for downstair
+
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        [0.0, 0.0, 1.0],
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = 1.0 if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center + avg_x_dim, 5)
+
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+
+            while -end_x <= x_center:
+                # Flat phase
+                if x_center >= -start_flat :
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    
+                # Down phase
+                elif -end_x < x_center <= -start_flat:
+                    z_dim = round(np.random.uniform(0.18, 0.35), 5) # test
+                    #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                    z_center = round(z_center - z_dim / 2, 5) # - for upstair | + for downstair
+
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        [0.0, 0.0, 1.0],
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = 1.0 if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center - avg_x_dim, 5)
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+            
+            for stone in stones:
+                stone[0][0] = stone[0][0] + j * (15)
+                big_stones.append(stone)
+
+        output_file_name = f'terrain/dustair_{i}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in big_stones:
+                outfile.write(f"  - {data}\n")
+            for cube in big_cubes:
+                outfile.write(f"  - {cube}\n")
+
+        print(f'YAML file "{output_file_name}" has been created.')
+
+def reg(num_blocks = 250, start_x=0., end_x=5., initial_y_dim=20.,
+                    y_increment=0.0,start_flat=0.5, Gaussian=True):
+
+    for i in range(num_blocks):
+        big_stones = []
+        big_cubes = []
+        for j in range(-6, 7):
+            stones = []
+            initial_z_center = 0.0
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+            while x_center <= end_x:
+                # Flat phase
+                if x_center <= start_flat:
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    
+                # Up phase
+                elif start_flat < x_center <= end_x-2.7:
+                    z_dim = round(np.random.uniform(0.15, 0.28), 5) # test
+                    #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                    z_center = round(z_center + z_dim / 2, 5) # + for upstair | - for downstair
+
+                # Flat phase
+                else:
+                    x_dim = 1.0
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        [0.0, 0.0, 1.0],
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim+0.01, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = round(np.random.uniform(.25, .4), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center + avg_x_dim, 5)
+
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+
+            while -end_x <= x_center:
+                # Flat phase
+                if x_center >= -start_flat :
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    
+                # Down phase
+                elif -end_x < x_center <= -start_flat:
+                    z_dim = round(np.random.uniform(0.15, 0.28), 5) # test
+                    #z_dim = round(np.random.uniform(0.15, 0.25), 5) # Easy stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.3), 5) # Medium stair height
+                    #z_dim = round(np.random.uniform(0.15, 0.4), 5) # Hard stair height
+                    z_center = round(z_center - z_dim / 2, 5) # - for upstair | + for downstair
+
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        [0.0, 0.0, 1.0],
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim+0.01, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = round(np.random.uniform(.25, .4), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center - avg_x_dim, 5)
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+            
+            for stone in stones:
+                stone[0][0] = stone[0][0] + j * (15)
+                big_stones.append(stone)
+
+        output_file_name = f'terrain/reg_stair_{i}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in big_stones:
+                outfile.write(f"  - {data}\n")
+
+        print(f'YAML file "{output_file_name}" has been created.')
+
 def normalize(vector):
         return np.array(vector) / np.linalg.norm(vector)
 
-def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
+def down_flat_up_tilt1(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     y_increment=0.0,start_flat=0.5, Gaussian=True):
 
     for i in range(num_blocks):
@@ -551,28 +750,27 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Up phase
                 elif start_flat < x_center <= end_x:
-                    # z_dim = round(np.random.uniform(0.075, 0.125), 5) # just slope
+                    # z_dim = round(np.random.uniform(0.075, 0.13), 5) # just slope
                     # z_center = round(z_center + z_dim / 2, 5)
-                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
-
-                    z_dim = round(np.random.uniform(0.075, 0.10), 5) # slope on staircase
-                    z_center = round(z_center - z_dim / 2, 5)# + for upstair | - for downstair
-                    tilt_angle = np.random.uniform(low=0.08, high=0.11) # slope on staircase
+                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope /
+                    z_dim = round(np.random.uniform(0.07, 0.09), 5)+0.04 # slope on staircase
+                    z_center = round(z_center + z_dim / 2, 5)# + for upstair | - for downstair
+                    tilt_angle = np.random.uniform(low=0.02, high=0.05) # slope on staircase
                     tilt_vector = normalize([tilt_angle, 0.0, 1.0])
                     normal = tilt_vector.tolist()
                 # Flat phase
                 else:
                     z_dim = 0.1
-
+                
                 stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
                         normal,
-                        [round(x_dim, 5), round(y_dim, 5), round(z_dim+0.05, 5)],
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
                         [0.0]]
 
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(.4, 1.), 5) if x_center >= start_flat else .5 # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(.8, 1.6), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center + avg_x_dim, 5)
 
@@ -594,13 +792,13 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                     
                 # Down phase
                 elif -end_x < x_center <= -start_flat:
-                    # z_dim = round(np.random.uniform(0.15, 0.225), 5) # just slope
+                    # z_dim = round(np.random.uniform(0.15, 0.23), 5) # just slope
                     # z_center = round(z_center - z_dim / 2, 5) # just slope
                     # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
                     
-                    z_dim = round(np.random.uniform(0.075, 0.11), 5)# slope on staircase
-                    z_center = round(z_center + z_dim / 2, 5) # - for upstair | + for downstair
-                    tilt_angle = np.random.uniform(low=0.08, high=0.11) # slope on staircase
+                    z_dim = round(np.random.uniform(0.06, 0.1), 5)# slope on staircase
+                    z_center = round(z_center - z_dim / 2, 5) - 0.05 # - for upstair | + for downstair
+                    tilt_angle = np.random.uniform(low=0.03, high=0.06) # slope on staircase
                     tilt_vector = normalize([tilt_angle, 0.0, 1.0])
                     normal = tilt_vector.tolist()
                 # Flat phase
@@ -615,58 +813,127 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
                 stones.append(stone)
 
                 prev_x_dim = x_dim
-                x_dim = round(np.random.uniform(.4, 1.), 5) if x_center <= -start_flat else .5 # stair length 50 cm ~ 1.m
+                x_dim = round(np.random.uniform(.8, 1.6), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
                 avg_x_dim = (prev_x_dim + x_dim) / 2
                 x_center = round(x_center - avg_x_dim, 5)
                 if x_center > start_flat:
                     y_dim = round(y_dim + y_increment, 5)
 
-                # Number of cubes
-                # n = np.random.randint(10, 15)
-                #n = np.random.randint(1, 10) # Easy terrain
-                #n = np.random.randint(5, 10) # Medium terrain
-                #n = np.random.randint(15, 20) # Hard terrain
-            n = 0
-            cubes = []
+                    
             for stone in stones:
-                center, _, dimensions, _ = stone
+                stone[0][0] = stone[0][0] + j * (15)
+                big_stones.append(stone)
 
-                if Gaussian:
-                    dimensions = np.array(dimensions)
-                    positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))
+        output_file_name = f'terrain/stair_{i+750}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in big_stones:
+                outfile.write(f"  - {data}\n")
+
+        print(f'YAML file "{output_file_name}" has been created.')
+
+def down_flat_up_tilt2(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
+                    y_increment=0.0,start_flat=0.5, Gaussian=True):
+
+    for i in range(num_blocks):
+        big_stones = []
+        big_cubes = []
+        for j in range(-6, 7):
+            stones = []
+            initial_z_center = 0.0
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+            t = 0
+            while x_center <= end_x:
+                # Flat phase
+                if x_center <= start_flat:
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    normal = [0.0, 0.0, 1.0]
+                    
+                # Up phase
+                elif start_flat < x_center <= end_x:
+                    # z_dim = round(np.random.uniform(0.075, 0.13), 5) # just slope
+                    # z_center = round(z_center + z_dim / 2, 5)
+                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope /
+                    t += 1
+                    z_dim = round(np.random.uniform(0.075, 0.12), 5)+0.05 # slope on staircase
+                    z_center = round(z_center + z_dim / 2, 5) # + for upstair | - for downstair
+                    tilt_angle = -np.random.uniform(low=0.04, high=0.07) # slope on staircase
+                    tilt_vector = normalize([tilt_angle, 0.0, 1.0])
+                    normal = tilt_vector.tolist()
+                # Flat phase
                 else:
-                    positions = np.random.uniform(-0.5, 0.5, size=(n, 3)) * dimensions + center
-                
-                normals = np.random.uniform(-1, 1, size=(n, 3))
-                normals[:, 2] = np.maximum(normals[:, 2], 0.1)
-                normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+                    z_dim = 0.1
 
-                yaws = np.random.uniform(0, np.pi, size=n)
+                if t > 1:
+                    z_center += 0.09
 
-                for pos, norm, yaw in zip(positions, normals, yaws):
-                    pos = np.round(pos, 4).tolist()
-                    norm = np.round(norm, 4).tolist()
-                    #size = np.round(np.random.uniform(0.15, 0.3, size=3), 4).tolist()
-                    size = np.round(np.random.uniform(0.15, 0.2, size=3), 4).tolist() # Easy terrain
-                    #size = np.round(np.random.uniform(0.15, 0.25, size=3), 4).tolist() # Medium terrain
-                    #size = np.round(np.random.uniform(0.15, 0.3, size=3), 4).tolist() # Hard terrain
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        normal,
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
 
-                    yaw = round(yaw, 4)
+                stones.append(stone)
 
-                    # Reject if stones are within [1., 1.]
-                    # if abs(pos[0]) > 1:
+                prev_x_dim = x_dim
+                x_dim = round(np.random.uniform(.8, 1.4), 5) if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center + avg_x_dim, 5)
 
-                    # Reject if stones are within [0.5, x]
-                    if abs(pos[0]) > 0.5:
-                        cubes.append([pos, norm, size, [yaw]])
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+
+            while -end_x <= x_center:
+                # Flat phase
+                if x_center >= -start_flat :
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    normal = [0.0, 0.0, 1.0]
+                    
+                # Down phase
+                elif -end_x < x_center <= -start_flat:
+                    # z_dim = round(np.random.uniform(0.15, 0.23), 5) # just slope
+                    # z_center = round(z_center - z_dim / 2, 5) # just slope
+                    # tilt_angle = np.random.uniform(low=-0.15, high=-0.075) # just slope
+                    
+                    z_dim = round(np.random.uniform(0.03, 0.09), 5) # slope on staircase
+                    z_center = round(z_center - z_dim / 2, 5)-0.11 # - for upstair | + for downstair
+                    tilt_angle = -np.random.uniform(low=0.02, high=0.06) # slope on staircase
+                    tilt_vector = normalize([tilt_angle, 0.0, 1.0])
+                    normal = tilt_vector.tolist()
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        normal,
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = round(np.random.uniform(.8, 1.4), 5) if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center - avg_x_dim, 5)
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
 
                     
             for stone in stones:
                 stone[0][0] = stone[0][0] + j * (15)
                 big_stones.append(stone)
-            for cube in cubes:
-                cube[0][0] = cube[0][0] + j * (15)
-                big_cubes.append(cube)
 
         output_file_name = f'terrain/stair_{i}.yaml'
 
@@ -674,8 +941,110 @@ def down_flat_up_tilt(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
             outfile.write("stones:\n")
             for data in big_stones:
                 outfile.write(f"  - {data}\n")
-            for cube in big_cubes:
-                outfile.write(f"  - {cube}\n")
+
+        print(f'YAML file "{output_file_name}" has been created.')
+
+def slope(num_blocks = 250, start_x=0., end_x=7., initial_y_dim=20.,
+                    y_increment=0.0,start_flat=0.5, Gaussian=True):
+
+    for i in range(num_blocks):
+        big_stones = []
+        big_cubes = []
+        for j in range(1):
+            stones = []
+            initial_z_center = 0.0
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+            while x_center <= end_x:
+                # Flat phase
+                if x_center <= start_flat:
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    normal = [0.0, 0.0, 1.0]
+                    
+                # Up phase
+                elif start_flat < x_center <= end_x:
+                    z_dim = 0.1 # just slope
+                    tilt_angle = -0.3 # np.random.uniform(low=-0.35, high=-0.1) # just slope /
+                    z_center = round(z_center + x_dim/2 * np.sin(abs(tilt_angle)), 5)
+                    
+                    tilt_vector = normalize([tilt_angle, 0.0, 1.0])
+                    normal = tilt_vector.tolist()
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        normal,
+                        [round(x_dim+1, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = 7. if x_center >= start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center + avg_x_dim, 5)
+
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+
+            y_dim = initial_y_dim
+            z_center = initial_z_center
+            x_center = start_x
+            x_dim = 1.0
+            z_dim = 0.1
+
+            while -end_x <= x_center:
+                # Flat phase
+                if x_center >= -start_flat :
+                    z_center = initial_z_center
+                    z_dim = 0.1
+                    normal = [0.0, 0.0, 1.0]
+                    
+                # Down phase
+                elif -end_x < x_center <= -start_flat:
+                    z_dim = 0.1 # just slope
+                    tilt_angle = -0.3 # np.random.uniform(low=-0.35, high=-0.1) # just slope
+                    z_center = round(z_center - x_dim/2 * np.sin(abs(tilt_angle)), 5)
+                    
+                    # z_dim = round(np.random.uniform(0.075, 0.125), 5)# slope on staircase
+                    # z_center = round(z_center + z_dim / 2, 5) # - for upstair | + for downstair
+                    # tilt_angle = np.random.uniform(low=0.08, high=0.12) # slope on staircase
+                    tilt_vector = normalize([tilt_angle, 0.0, 1.0])
+                    normal = tilt_vector.tolist()
+                    x_center = x_center + 0.2
+                # Flat phase
+                else:
+                    z_dim = 0.1
+
+                stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                        normal,
+                        [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                        [0.0]]
+
+                stones.append(stone)
+
+                prev_x_dim = x_dim
+                x_dim = 7. if x_center <= -start_flat else 1. # stair length 50 cm ~ 1.m
+                avg_x_dim = (prev_x_dim + x_dim) / 2
+                x_center = round(x_center - avg_x_dim, 5)
+                if x_center > start_flat:
+                    y_dim = round(y_dim + y_increment, 5)
+                    
+            for stone in stones:
+                stone[0][0] = stone[0][0] + j * (15)
+                big_stones.append(stone)
+
+        output_file_name = f'terrain/stair_{i}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in big_stones:
+                outfile.write(f"  - {data}\n")
 
         print(f'YAML file "{output_file_name}" has been created.')
 
@@ -874,16 +1243,21 @@ def plot_terrain(file_path: str = './flat_stair_flat.yaml'):
 
 if __name__ == '__main__':
     #file_path = './terrain/flat_0.yaml'
-    #file_path = './terrain/dustair_0.yaml'
+    # file_path = './terrain/stair_500.yaml'
     #file_path = './flat_new.yaml'
-    # file_path = './terrain/rand_stair_0.yaml'
+    #file_path = './terrain/reg_stair_0.yaml'
     # plot_terrain(file_path=file_path)
     
-    #down_flat_up(num_blocks=1, start_x=0., end_x=7., initial_y_dim=10.,y_increment=0.0, start_flat=1.0, Gaussian=False)
+    down_flat_up(num_blocks=1, start_x=0., end_x=7., initial_y_dim=14.,y_increment=0.0, start_flat=1.0, Gaussian=False) # Stair
+    # reg(num_blocks=1000, start_x=0., end_x=6., initial_y_dim=14.,y_increment=0.0, start_flat=1.0, Gaussian=False) # Reg Stair
     #file_path = './terrain/dustair_0.yaml'
     #plot_terrain(file_path=file_path)
     
-    down_flat_up_tilt(num_blocks=500,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=1., Gaussian=False)
+    #down_flat_up_tilt1(num_blocks=1,start_x=0.,end_x=7.5,initial_y_dim=14.,y_increment=0.0,start_flat=1., Gaussian=False) # Slope
+    #down_flat_up_tilt2(num_blocks=1,start_x=0.,end_x=7.5,initial_y_dim=14.,y_increment=0.0,start_flat=1., Gaussian=False) # Slope
+    
+    # reg_width_stair(num_blocks=1, start_x=0., end_x=30., initial_y_dim=14.,y_increment=0.0, start_flat=1.0, Gaussian=False) # Stair
+    # slope(num_blocks=1,start_x=0.,end_x=7,initial_y_dim=14.,y_increment=0.0,start_flat=1., Gaussian=False) # Slope
     
     # XXX
     # down_flat_up_slope(num_blocks=1,start_x=0.,end_x=10,initial_y_dim=20.,y_increment=0.0,start_flat=0.5, Gaussian=False)
@@ -891,7 +1265,7 @@ if __name__ == '__main__':
     #staircase(start_x=-10, end_x=10., initial_y_dim = 21., y_increment=0.)
     #flat_stair(start_x=-3.5, end_x=30., initial_y_dim=15., y_increment=0.3, flat_terrain=4.0)
     #flat_terrain(init_y = 21, init_x = -10, end_x = 10)
-    #flat_random_blocks(num_blocks=1000, Gaussian=False)
+    # flat_random_blocks(num_blocks=1, Gaussian=False)
     
     # flat_random_stairs(num_blocks=500, Gaussian=False)
     # flat_stairs(num_blocks=500, Gaussian=False)

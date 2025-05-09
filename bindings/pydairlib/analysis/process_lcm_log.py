@@ -14,7 +14,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
     """
 
     data_to_process = {}
-    # print('Processing LCM log (this may take a while)...')
+    print('Processing LCM log (this may take a while)...')
     lcm_log.seek(0)
     while lcm_log.read_next_event().channel not in lcm_channels:
         pass

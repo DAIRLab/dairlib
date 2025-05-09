@@ -695,8 +695,12 @@ class ActorCriticPolicy(BasePolicy):
         mean_actions = self.action_net(latent_pi)
         # self.log_std = nn.Parameter(th.tensor([-2., -2., -2,], device='cuda:0'))
         # self.log_std = nn.Parameter(th.tensor([-3., -3., -1.89,], device='cuda:0'))
-        # self.log_std = nn.Parameter(th.tensor([-2.45, -2.45, -2.4,], device='cuda:0'))
-        # self.log_std = nn.Parameter(th.tensor([-2.4, -2.4, -2.5,], device='cuda:0'))
+        # self.log_std = nn.Parameter(th.tensor([-2.45, -2.45, -2.4,], device='cuda:0')) # -3.0432
+        # self.log_std = nn.Parameter(th.tensor([-2.6, -2.6, -2.6,], device='cuda:0')) # -3.5432
+        # self.log_std = nn.Parameter(th.tensor([-2.5, -2.6, -2.5,], device='cuda:0')) # -3.3432
+        #self.log_std = nn.Parameter(th.tensor([-2.55, -2.65, -2.55,], device='cuda:0')) # -3.4932
+        # self.log_std = nn.Parameter(th.tensor([-2.75, -2.65, -2.65,], device='cuda:0')) # -3.7432
+        #self.log_std = nn.Parameter(th.tensor([-2.7, -2.7, -2.7,], device='cuda:0')) # -3.8432
         
         # 2sigma(95.4%) -> [0.05m, 0.05m, 0.027m, 0.1rad] Initialize with log_std
         #self.log_std = nn.Parameter(th.tensor([-3., -3., -3.6, -2.3], device='cuda:0'))

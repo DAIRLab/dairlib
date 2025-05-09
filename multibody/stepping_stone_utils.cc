@@ -14,7 +14,7 @@ void AddSteppingStonesToSim(MultibodyPlant<double>* plant,
                             const SquareSteppingStoneList& stones,
                             double mu) {
   for (const auto& cube: stones.cubes) {
-    AddBox(plant, scene_graph, cube.first, cube.second,mu);
+    AddBox(plant, scene_graph, cube.first, cube.second, mu);
   }
 }
 

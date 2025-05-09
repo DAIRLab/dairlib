@@ -162,6 +162,12 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
                 const drake::multibody::Frame<double>&>> contacts,
       drake::systems::Context<double>&) const;
 
+  // For domain randomization of point cloud bias
+  void SetRandomParameters(
+      const drake::systems::Context<double>& context,
+      drake::systems::Parameters<double>* parameters,
+      drake::RandomGenerator* generator) const final; 
+
  private:
 
   drake::systems::EventStatus ElevationMapUpdateEvent(

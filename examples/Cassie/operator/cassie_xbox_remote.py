@@ -11,7 +11,7 @@ white = (255, 255, 255)
 
 def main():
     ramp_speed = len(sys.argv) > 1
-    publisher = lcm.LCM()
+    publisher = lcm.LCM("udpm://239.255.76.67:7667?ttl=0")
 
     pygame.display.set_caption('Cassie Virtual Radio Controller')
 
@@ -95,8 +95,8 @@ def main():
 
         publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
 
-        # Limit to 20 frames per second
-        clock.tick(20)
+        # Limit to 40 frames per second
+        clock.tick(40)
         i += 1
 
     pygame.quit()

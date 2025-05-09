@@ -157,8 +157,8 @@ class CustomNetwork(nn.Module):
 
         self.latent_dim_pi = last_layer_dim_pi
         self.latent_dim_vf = last_layer_dim_vf
-        self.vector_state_actor = 6+16
-        self.vector_state_critic = 6+23
+        self.vector_state_actor = 2+20+22
+        self.vector_state_critic = 2+23+22
         self.h_size = 64
         self.use_BN = False # Use BatchNorm2D
         if self.use_BN:
@@ -239,7 +239,7 @@ class CustomNetwork(nn.Module):
     def multihead_actor(self, observations: th.Tensor):
         batch_size = observations.size(0)
         image_obs = observations[:, :3*self.h_size*self.h_size].reshape(batch_size, 3, self.h_size, self.h_size)
-        state = observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6+16]
+        state = observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+2+20+22]
 
         actor_cnn_output = self.actor_cnn(image_obs)
         actor_combined_features = th.cat((actor_cnn_output, state), dim=1).unsqueeze(1)
@@ -248,8 +248,8 @@ class CustomNetwork(nn.Module):
     def multihead_critic(self, observations: th.Tensor):
         batch_size = observations.size(0)
         image_obs_gt = observations[:, -3*self.h_size*self.h_size:].reshape(batch_size, 3, self.h_size, self.h_size)
-        state = th.cat((observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+6], \
-        observations[:, 3*self.h_size*self.h_size+6+16:3*self.h_size*self.h_size+6+16+23]), dim=1)
+        state = th.cat((observations[:, 3*self.h_size*self.h_size : 3*self.h_size*self.h_size+2], \
+        observations[:, 3*self.h_size*self.h_size+2+20+22:3*self.h_size*self.h_size+2+20+22+23+22]), dim=1)
         critic_cnn_output_gt = self.critic_cnn_gt(image_obs_gt)
         critic_combined_features = th.cat((critic_cnn_output_gt, state), dim=1).unsqueeze(1)
 
@@ -265,7 +265,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
         lstm_hidden_size: int = 128,
         n_lstm_layers: int = 2,
         optimizer_class= th.optim.Adam, #th.optim.RAdam,
-        optimizer_kwargs = None,#{'weight_decay': 1e-4, 'epsilon': 1e-5},
+        optimizer_kwargs = None, #{'weight_decay': 1e-4, 'epsilon': 1e-5},
         *args,
         **kwargs,
     ):
@@ -325,7 +325,7 @@ def pretrain_agent(
     patience = 5,
     min_delta=0.0000000001
 ):
-    noise = True
+    noise = False
     MTL = False # Multi-task Learning
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -338,14 +338,7 @@ def pretrain_agent(
       criterion = nn.CrossEntropyLoss()
 
     model = student.policy.to(device)
-    # print("Parameter sizes:")
-    # total_params = 0
-    # for name, param in model.named_parameters():
-    #     num_params = param.numel()
-    #     total_params += num_params
-    #     print(f"{name}: {num_params} parameters")
 
-    # print(f"Total number of parameters: {total_params}")
     print(model)
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
@@ -362,7 +355,12 @@ def pretrain_agent(
         lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2]) # 2,1,64
         
         for batch_idx, (data, target) in enumerate(train_loader):
-
+            #nan_mask = th.isnan(data.view(data.size(0), -1)).any(dim=1)
+            if th.isnan(data).any() or th.isnan(target).any():
+                print(data.shape)
+                print(batch_idx)
+                continue
+            # print(target)
             if noise:
                 # camera_episode_noise = np.random.uniform(low=-0.02, high=0.02)
                 # camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(data.size(0), 64*64))
@@ -375,8 +373,9 @@ def pretrain_agent(
                 data[:, 3*64*64:3*64*64+4] = data[:, 3*64*64:3*64*64+4] + np.hstack((alipxy_noise, aliplxly_noise))
                 # data[:, 3*64*64+4:3*64*64+4+2] = data[:, 3*64*64+4:3*64*64+4+2] + vdes_noise
                 data[:, 3*64*64+6:3*64*64+6+16] = data[:, 3*64*64+6:3*64*64+6+16] + angle_noise
-            scaling_factor = np.array([2, 2, 4])
-            target = target * scaling_factor
+            # scaling_factor = np.array([2, 2, 4])
+            # target = target / scaling_factor
+            # print(target)
             data, target = data.to(device), target.to(device)
             
             ### Mirror ###
@@ -514,8 +513,12 @@ def pretrain_agent(
             lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2])
             
             for batch_idx, (data, target) in enumerate(test_loader):
-                scaling_factor = np.array([2, 2, 4])
-                target = target * scaling_factor
+                if th.isnan(data).any() or th.isnan(target).any():
+                    print(data.shape)
+                    print(batch_idx)
+                    continue
+                # scaling_factor = np.array([2, 2, 4])
+                # target = target * scaling_factor
                 data, target = data.to(device), target.to(device)
 
                 batch_size = data.size(0)
@@ -584,8 +587,8 @@ def pretrain_agent(
         train_loss = train(model, device, train_loader, optimizer)
         test_loss = test(model, device, test_loader)
         # scheduler.step()
-        save_directory = 'bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/data_collection'
-        student.save(os.path.join(save_directory, f'LQR_{epoch}'))
+        save_directory = 'bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/LSTM'
+        student.save(os.path.join(save_directory, f'LSTM_{epoch}'))
         
         # Early stopping
         if test_loss < best_loss - min_delta:
@@ -604,8 +607,8 @@ def pretrain_agent(
 def _main():
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    # sim_params.visualize = True
-    # sim_params.meshcat = Meshcat()
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
     sim_params.terrain = os.path.join(perception_learning_base_folder, 'params/flat.yaml')
 
     gym.envs.register(
@@ -618,16 +621,17 @@ def _main():
 
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
     student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
-    # student = RecurrentPPO.load('64_ALIP.zip', env)
-    obs_data = path.join(perception_learning_base_folder, 'tmp/data_collection/obs_concat.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/data_collection/act_concat.npy')
+    student = RecurrentPPO.load(path.join(perception_learning_base_folder, 'tmp/LSTM/LSTM_200'), env)
+    obs_data = path.join(perception_learning_base_folder, 'tmp/obs_flat.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/act_flat.npy')
 
     expert_observations = np.load(obs_data)
-    expert_actions = np.load(action_data)
-    expert_observations = np.hstack((expert_observations, np.zeros((expert_observations.shape[0], 23))))
     print(expert_observations.shape)
+    expert_actions = np.load(action_data)
+    expert_observations = np.hstack((expert_observations, np.zeros((expert_observations.shape[0], 45))))
+    print(expert_actions.shape)
 
-    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=0.95)
+    train_expert_dataset, test_expert_dataset = split(expert_observations, expert_actions, ratio=1.0)
     print(f"Total Dataset: {len(expert_observations)}, Train Dataset: {len(train_expert_dataset)}, Test Dataset: {len(test_expert_dataset)}")
 
     pretrain_agent(
@@ -635,15 +639,15 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=100,
+        epochs=300,
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,
         cuda=True,
-        seed=77,
+        seed=33,
         train_batch_size=400,
         test_batch_size=400,
-        patience=40,
+        patience=300,
     )
 
     #student.save("LQR")

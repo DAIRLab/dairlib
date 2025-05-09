@@ -58,6 +58,24 @@ py_binary(
 )
 
 py_binary(
+    name = "alip_nn_data_collection_multi_VEL",
+    srcs = ["alip_nn_data_collection_multi_VEL.py"],
+    deps = [
+        ":alip_nn_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+    ],
+)
+
+py_binary(
     name = "alip_lqr_data_collection",
     srcs = ["alip_lqr_data_collection.py"],
     deps = [

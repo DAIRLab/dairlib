@@ -80,7 +80,8 @@ class ObservationPublisher(LeafSystem):
         self.episode_noise = None
         self.rbase = 0
         self.grid = np.zeros((64, 64))
-        
+        # self.t = 0
+        self.height_arr = np.zeros((300, 64, 64))
         if self.simulate_perception:
             self.height = 64
         else:
@@ -105,7 +106,7 @@ class ObservationPublisher(LeafSystem):
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*self.height*self.height+6+16+23 + 3*self.height*self.height, self.calculate_obs
+                "observations", 3*self.height*self.height+6+16+ 23+ 3*self.height*self.height, self.calculate_obs
             ).get_index()
         }
         if self.simulate_perception:
@@ -134,9 +135,49 @@ class ObservationPublisher(LeafSystem):
     def calculate_obs(self, context: Context, output):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         ud = xd_ud.value()[4:]
+        # self.t += 1
+        # if self.t > 81 and self.t < 241:
+        #     ud1 = -(self.t-81) * 0.001
+        #     if ud[1] > 0:
+        #         ud = np.array([ud1, 0.2])
+        #     else:
+        #         ud = np.array([ud1, -0.2])
+        #     print(f'{self.t}: {ud}')
+        # elif self.t > 240 and self.t < 561:
+        #     if ud[1] > 0:
+        #         ud = np.array([-0.16, 0.2])
+        #     else:
+        #         ud = np.array([-0.16, -0.2])
+        #     print(f'{self.t}: {ud}')
+        # elif self.t > 560 and self.t < 661:
+        #     ud1 = - 0.16 + (self.t-560) * 0.001
+        #     if ud[1] > 0:
+        #         ud = np.array([ud1, 0.2])
+        #     else:
+        #         ud = np.array([ud1, -0.2])
+        #     print(f'{self.t}: {ud}')
+        # elif self.t > 660 and self.t < 801:
+        #     if ud[1] > 0:
+        #         ud = np.array([0., 0.2])
+        #     else:
+        #         ud = np.array([0., -0.2])
+        #     print(f'{self.t}: {ud}')
+        # elif self.t > 720 and self.t < 881:
+        #     ud1 = - (self.t-720) * 0.001
+        #     if ud[1] > 0:
+        #         ud = np.array([ud1, 0.2])
+        #     else:
+        #         ud = np.array([ud1, -0.2])
+        #     print(f'{self.t}: {ud}')
+        # elif self.t > 880:
+        #     if ud[1] > 0:
+        #         ud = np.array([-0.16, 0.2])
+        #     else:
+        #         ud = np.array([-0.16, -0.2])
+        #     print(f'{self.t}: {ud}')
 
         if self.simulate_perception:
-            # Ground truth height map for Critic
+            #### Ground truth height map for Critic
             gt_hmap_query = self.EvalAbstractInput(
             context, self.input_port_indices['height_map_query']
             ).get_value()
@@ -160,7 +201,7 @@ class ObservationPublisher(LeafSystem):
             if self.init_ == 0 or context.get_time() < 0.562:
                 self.camera_episode_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
             # X, Y offset : Shifts the camera
-            camera_step_noise = np.random.uniform(low=-0.01, high=0.01, size=(2,))
+            camera_step_noise = np.random.uniform(low=-0.02, high=0.02, size=(2,))
             adverserial_offset = self.camera_episode_noise + camera_step_noise
             # adverserial_offset = np.zeros(2,)
         else:
@@ -182,16 +223,22 @@ class ObservationPublisher(LeafSystem):
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
-
+        # print(states[:7])
+        # print(states[23:29])
         joint_angle = states[7:23] # Only joint angles (reject pelvis)
         joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
         gt_joint_angle = gt_states[:23]
+        # joint_vel = states[29:45]
+        joint_pos = np.concatenate([states[:4], states[7:23]])
+        joint_vel = states[23:45]
+        # print(joint_pos.shape)
+        # print(joint_vel.shape)
+        
 
         if self.noise:
             if self.init_ == 0 or context.get_time() < 0.562:
                 # Offset for hmap per episode
                 self.episode_noise = np.random.uniform(low=-0.02, high=0.02)
-                self.init_ += 1
             
             # Offset for hmap per step
             height_noise = np.random.uniform(low=-0.01, high=0.01, size=(self.height,self.height))
@@ -206,13 +253,13 @@ class ObservationPublisher(LeafSystem):
             # hmap[-1] += weighted_noise
             # hmap_grid_world[-1] += weighted_noise
 
-            # hmap[-1] += self.episode_noise + height_noise
-            # hmap_grid_world[-1] += self.episode_noise + height_noise
+            hmap[-1] += self.episode_noise + height_noise
+            hmap_grid_world[-1] += self.episode_noise + height_noise
 
-            alip_noise_comx = 0.01#abs(alip[0])*0.15 # 0.1, 0.15, 0.2
-            alip_noise_comy = 0.01#abs(alip[1])*0.15
-            alip_noise_angx = 0.01#abs(alip[2])*0.15
-            alip_noise_angy = 0.01#abs(alip[3])*0.15
+            alip_noise_comx = 0.02#abs(alip[0])*0.15 # 0.1, 0.15, 0.2
+            alip_noise_comy = 0.02#abs(alip[1])*0.15
+            alip_noise_angx = 0.02#abs(alip[2])*0.15
+            alip_noise_angy = 0.02#abs(alip[3])*0.15
             
             alipxy_noisex = np.random.uniform(low=-alip_noise_comx, high=alip_noise_comx, size=(1,))
             alipxy_noisey = np.random.uniform(low=-alip_noise_comy, high=alip_noise_comy, size=(1,))
@@ -221,43 +268,91 @@ class ObservationPublisher(LeafSystem):
             aliplxly_noisey = np.random.uniform(low=-alip_noise_angy, high=alip_noise_angy, size=(1,))
             alip = alip + np.hstack((alipxy_noisex, alipxy_noisey, aliplxly_noisex, aliplxly_noisey))
 
-            angle_noise = np.random.uniform(low=-0.005, high=0.005, size=(16,))
+            angle_noise = np.random.uniform(low=-0.01, high=0.01, size=(16,))
             joint_angle = joint_angle + angle_noise
 
 
             # if self.terrain == 'flat':
-            # scale = np.random.uniform(10., 30.) # 10.0  # Scale controls how zoomed in/out the noise is
-            # octaves = 6 # Controls the number of noise layers
-            # persistence = np.random.uniform(.25, .75) #0.5  # Controls the amplitude of each octave
-            # lacunarity = np.random.uniform(1.75, 2.25) #2.   # Controls the frequency of each octave
-            # min_height = -0.03
-            # max_height = 0.03
-            
-            # for i in range(64):
-            #     for j in range(64):
-            #         x = i / scale
-            #         y = j / scale
-            #         self.grid[i, j] = noise.pnoise2(x, y, octaves=octaves, 
-            #                     persistence=persistence, lacunarity=lacunarity, repeatx=64, repeaty=64, base=self.rbase)
-            # min_value = np.min(self.grid)
-            # max_value = np.max(self.grid)
+            scale = np.random.uniform(2., 15.) # 10.0  # Scale controls how zoomed in/out the noise is
+            octaves = 6 # Controls the number of noise layers
+            persistence = 0.5 #np.random.uniform(.1, .9) #0.5  # Controls the amplitude of each octave
+            lacunarity = 2.0 #np.random.uniform(1., 3.) #2.   # Controls the frequency of each octave
+            min_height = -0.02
+            max_height = 0.02
+            seed = np.random.randint(0,300)
+            rand = np.random.randint(1,63) # np.random.randint(16,32)
 
-            # # Normalize the grid values to the range [-0.04, 0.04]
-            # scaled_grid = min_height + (self.grid - min_value) / (max_value - min_value) * (max_height - min_height)
-            # hmap[-1] += scaled_grid
-            # hmap_grid_world[-1] += scaled_grid
+            for i in range(64):
+                for j in range(rand):
+                    x = i / scale
+                    y = (63-j) / scale
+                    self.grid[i, 63-j] = noise.pnoise2(x, y, octaves=octaves, 
+                                persistence=persistence, lacunarity=lacunarity, repeatx=rand, repeaty=rand, base=seed)
+            min_value = np.min(self.grid)
+            max_value = np.max(self.grid)
+
+            # Normalize the grid values to the range [-0.04, 0.04]
+            scaled_grid = min_height + (self.grid - min_value) / (max_value - min_value) * (max_height - min_height)
+            # print(scaled_grid)
+            hmap[-1] += scaled_grid
+            hmap_grid_world[-1] += scaled_grid
+
+            # if self.terrain == 'else':
+                # size = 64  # Grid size (64x64)
+                # A = np.random.normal(0.01, 0.005) #np.random.uniform(low=0.005, high=0.03)  # Amplitude of sinusoidal noise
+                # k = np.random.normal(0.1, 0.05) #np.random.uniform(low=0.01, high=0.3)  # Frequency of sinusoidal noise
+                # omega = np.random.normal(0.2, 0.1) # np.random.uniform(low=0.01, high=0.3)  # Temporal frequency
+                # sigma = np.random.uniform(low=0.005, high=0.01) #0.5  # Standard deviation of Gaussian noise
+                # t = int(self.init_)  # Time step (can be varied over iterations)
+                # # print(t)
+                # # Create a base elevation map (example: smooth plane or random terrain)
+                # z = np.zeros((size, size))  # Flat terrain, modify as needed
+
+                # # Generate sinusoidal structured bias along x-axis
+                # x, y = np.meshgrid(np.arange(size), np.arange(size))
+                # sinusoidal_bias = A * np.sin(k * x + omega * t)
+
+                # gaussian_noise = np.random.normal(0, sigma, (size, size))
+
+                # # Apply distortion to the elevation map
+                # z_distorted = (z + sinusoidal_bias + gaussian_noise)
+                # # print(np.max(z_distorted))
+                # # print(np.min(z_distorted))
+                # hmap[-1] += z_distorted
+                # hmap_grid_world[-1] += z_distorted
+
+                # # Image size
+                # width, height = 64, 64
+
+                # # Generate wave pattern
+                # x = np.arange(width)
+                # y = np.arange(height)
+                # X, Y = np.meshgrid(x, y)
+
+                # # Define wave properties
+                # A = np.random.uniform(low=0.005, high=0.04) # 0.02  # Amplitude
+                # f = np.random.uniform(low=0.01, high=0.3) # 0.2  # Frequency
+                # phase = 0  # Phase shift
+
+                # # Compute wave displacement
+                # wave = A * np.sin(2 * np.pi * f * X + phase)
+                
+                # hmap[-1] += wave
+                # hmap_grid_world[-1] += wave
+        self.init_ += 1
+        # self.height_arr[int(self.init_/2)] = hmap[-1]
+        # print(int(self.init_/2))
+        # if self.init_ == 600:
+        #     np.save('height_array.npy', self.height_arr)
 
         # Plot depth map with noise
         hmap_query.plot_surface(
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
 
-        # np.save("height.npy", gt_hmap)
-        # np.save("elevation.npy", hmap)
-        # print(np.max(gt_hmap[-1]))
-        # print(np.min(gt_hmap[-1]))
-        # print("====")
         hmap = hmap.reshape(-1)
+        #gt_hmap = np.zeros((3*64*64))
+        # print(np.max(gt_hmap[-1]))
         gt_hmap = gt_hmap.reshape(-1)
 
         out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # JOINT 24621
@@ -269,10 +364,18 @@ class RewardSystem(LeafSystem):
         super().__init__()
 
         self.params = alip_params
-        if 'flat/' in terrain or '/flat.yaml' in terrain:
+        if 'flat_obs/' in terrain:
+            self.terrain = 'flat_obs'
+            # print('flat_obs')
+        elif 'flat/' in terrain or '/flat.yaml' in terrain:
             self.terrain = 'flat'
+        elif 'slope/' in terrain:
+            self.terrain = 'slope'
+        elif 'reg_stair/' in terrain:
+            self.terrain = 'reg_stair'
         else:
             self.terrain = 'stair'
+
         self.cassie_sim = sim_env
         self.prev_fsm = None
         self.prev_action = None
@@ -342,17 +445,6 @@ class RewardSystem(LeafSystem):
         edges = G > threshold
         return edges
 
-    def set_collision_check_point_in_toe_frame(self, dist_in_front, dist_above):
-        front = np.array((-0.0457, 0.112, 0))
-        rear = np.array((0.088, 0, 0))
-        toe_axis = front - rear
-        toe_axis /= np.linalg.norm(toe_axis)
-        toe_vertical = np.array([[0, -1, 0],
-                                [1, 0, 0],
-                                [0, 0, 1]]) @ toe_axis
-        #self.collision_check_point = front + dist_in_front * toe_axis + dist_above * toe_vertical
-        return front + dist_in_front * toe_axis + dist_above * toe_vertical
-
     def calc_reward(self, context: Context, output) -> None:
         scene_graph = self.EvalAbstractInput(
             context, self.input_port_indices['scene_graph']
@@ -384,6 +476,23 @@ class RewardSystem(LeafSystem):
         bf_vel = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_vel)
         bf_ang = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_ang)
 
+        # Toe Velocity
+        # rtoe_frame = plant.GetBodyByName("toe_right").body_frame()
+        # rt_velocity = rtoe_frame.CalcSpatialVelocityInWorld(plant_context)
+        # rt_vel = rt_velocity.translational()
+        # rt_ang = rt_velocity.rotational()
+        # rt_vel = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "toe_right", rt_vel)
+        # rt_ang = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "toe_right", rt_ang)
+        # #print(rt_vel[-1])
+
+        # ltoe_frame = plant.GetBodyByName("toe_left").body_frame()
+        # lt_velocity = ltoe_frame.CalcSpatialVelocityInWorld(plant_context)
+        # lt_vel = lt_velocity.translational()
+        # lt_ang = lt_velocity.rotational()
+        # lt_vel = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "toe_left", lt_vel)
+        # lt_ang = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "toe_left", lt_ang)
+        #print(lt_vel)
+
         vdes = self.EvalVectorInput(
             context,
             self.input_port_indices['vdes']
@@ -400,41 +509,55 @@ class RewardSystem(LeafSystem):
         collision = 0.
         # clearance_contact_pt = front_contact_pt - rear_contact_pt
 
-        left_toe_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        left_toe_direction = left_toe_rotation @ (front_contact_pt - rear_contact_pt)
-        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+        # left_toe_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        # left_toe_direction = left_toe_rotation @ (front_contact_pt - rear_contact_pt)
+        # left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
 
-        left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (left_toe_rotation @ toe_axis) * 0.12
-        left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+        # left_toe_p = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context).translation() + (left_toe_rotation @ toe_axis) * 0.12
+        # left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=left_toe_p, threshold=1.0)
+        
+        toe_left = plant.GetBodyByName("toe_left").EvalPoseInWorld(plant_context)
+        R_WL = toe_left.rotation()
+        p_WL = toe_left.translation()
+        contact_pt = np.array([-0.0641797, 0.094719, 0]) # Local frame
+        p_WQ = R_WL @ contact_pt + p_WL # Transform to world frame
+        left_distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=p_WQ, threshold=1.0)
         for distances in left_distances:
-            if distances.distance <= 0.:
-                collision = 1.
+            if distances.distance <= -0.001:
+                collision = 2.
                 # print("Left Penetration or contact detected!")
                 # print(f"Distance: {distances.distance}")
         
-        right_toe_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        right_toe_direction = right_toe_rotation @ (front_contact_pt - rear_contact_pt)
-        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+        # right_toe_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        # right_toe_direction = right_toe_rotation @ (front_contact_pt - rear_contact_pt)
+        # right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
         
-        right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (right_toe_rotation @ toe_axis) * 0.12
-        distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+        # right_toe_p = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context).translation() + (right_toe_rotation @ toe_axis) * 0.12
+        # distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=right_toe_p, threshold=1.0)
+        
+        toe_pose = plant.GetBodyByName("toe_right").EvalPoseInWorld(plant_context)
+        R_WL = toe_pose.rotation()
+        p_WL = toe_pose.translation()
+        contact_pt = np.array([-0.0641797, 0.094719, 0])  # Local frame
+        p_WQ = R_WL @ contact_pt + p_WL # Transform to world frame
+        distances = scene_graph.ComputeSignedDistanceToPoint(p_WQ=p_WQ, threshold=1.0)
         for signed_distance in distances:
-            if signed_distance.distance <= 0.:
-                collision = 1.
+            if signed_distance.distance <= -0.001:
+                collision = 2.
                 # print("Right Penetration or contact detected!")
                 # print(f"Distance: {signed_distance.distance}")
 
         track_error = self.EvalVectorInput(context, self.input_port_indices['swing_ft_tracking_error']).value()
 
-        vx_reward = np.exp(-2*np.linalg.norm(vdes[0] - bf_vel[0]))
-        vy_reward = np.exp(-2*np.linalg.norm(vdes[1] - bf_vel[1]))
+        vx_reward = np.exp(-3*np.linalg.norm(vdes[0] - bf_vel[0]))
+        vy_reward = np.exp(-3*np.linalg.norm(vdes[1] - bf_vel[1]))
 
         # penalize angular velocity about the z axis
-        angular_reward = np.exp(-2*np.linalg.norm(bf_ang))
+        angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
         track_penalty = 0.0
 
         if track_error > 0.05 and (context.get_time() > 1.):
-            track_penalty = min(np.exp(2.5*(track_error-0.05)) - 1, 2)
+            track_penalty = min(np.exp(4.5*(track_error-0.05)) - 1, 2)
             # print(f'track error : {track_error}')
             # print(f'track penalty : {track_penalty}')
             # input("track_penalty")
@@ -465,59 +588,78 @@ class RewardSystem(LeafSystem):
             z_reward = 0.
         else:
             #LQRreward = np.exp(-5*LQRcost)
-            ud_reward = np.exp(-2*np.linalg.norm(footstep_command[:2] - ud*2)) # Scale
+            ud_reward = np.exp(-3*np.linalg.norm(footstep_command[:2] - ud*2)) # Scale
+            # print(ud)
             x_index = np.argmin((gt_hmap[0][0] - u[0])**2)
             y_index = np.argmin((gt_hmap[1,:,0] - u[1])**2)
             z = min(gt_hmap[-1, y_index, x_index] * 4, 1) # Scale
-            z_reward = np.exp(-4*np.linalg.norm(footstep_command[-1] - z))
-            # np.save("elevation.npy", gt_hmap)
+            z_reward = np.exp(-3*np.linalg.norm(footstep_command[-1] - z))
 
-            edges = self.detect_edges_with_dilation(gt_hmap[-1], threshold=0.05, dilation_iterations=1)
-            if edges[y_index, x_index]:
-                edge_penalty = 1.
-                # print("edge")
-            else:
+            if self.terrain == 'slope':
                 edge_penalty = 0
+            else:
+                edges = self.detect_edges_with_dilation(gt_hmap[-1], threshold=0.05, dilation_iterations=1)
+                if edges[y_index, x_index]:
+                    edge_penalty = 2.
+                    # print("edge")
+                else:
+                    edge_penalty = 0
             
         action_reward = 0
         if self.prev_action is not None:
             if (self.prev_fsm != fsm):
                 self.stance_change = 1.
-                action_reward = np.exp(-3*np.linalg.norm(footstep_command - self.prev_action))
+                action_reward = np.exp(-4*np.linalg.norm(footstep_command - self.prev_action))
             elif (self.prev_fsm == fsm) and self.stance_change != 0.:
                 action_reward = 0
                 self.stance_change = 0.
             else:
-                action_reward = np.exp(-3*np.linalg.norm(footstep_command - self.prev_action))
+                action_reward = np.exp(-4*np.linalg.norm(footstep_command - self.prev_action))
                 self.stance_change = 0.
         
+        if footstep_command[0] > 0.85:
+            x_penalty = 1.0
+        else:
+            x_penalty = 0.
+        
+        if footstep_command[1] > 0.85:
+            y_penalty = 1.0
+        else:
+            y_penalty = 0.
+
         self.prev_action = footstep_command.copy()
         self.prev_fsm = fsm.copy()
 
         if (bf_vel[0] < 0.) and (context.get_time() > 1.):
-            v_penalty = 0.5
+            v_penalty = 1.
+            if self.terrain == 'reg_stair':
+                v_penalty = 1.5
+                #print(self.terrain)
         else:
             v_penalty = 0.
 
+        torque = x_u_t[45:55]
+        torque_penalty = -np.sum(np.square(torque), axis=0)*0.000007 
+        # print(-torque_reward*0.00001)
         if self.terrain == 'flat':
             z = 0.
-            z_reward = np.exp(-4*np.linalg.norm(footstep_command[-1] - z))
-            reward = 0.3125 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
-                   + 0.0625 * ud_reward  - track_penalty - edge_penalty - collision
+            z_reward = np.exp(-3*np.linalg.norm(footstep_command[-1] - z))
+            reward = 0.5 * vx_reward + 0.175 * vy_reward + 0.25 * angular_reward + 0.3875 * z_reward + 0.0625 * action_reward \
+                   + 0.125 * ud_reward  - track_penalty - edge_penalty - collision - x_penalty - y_penalty - torque_penalty
+        elif self.terrain == 'flat_obs':
+            z = 0.
+            z_reward = np.exp(-3*np.linalg.norm(footstep_command[-1] - z))
+            reward = 0.5 * vx_reward + 0.175 * vy_reward + 0.25 * angular_reward + 0.3875 * z_reward + 0.0625 * action_reward \
+                   + 0.125 * ud_reward  - track_penalty - v_penalty - edge_penalty - collision - x_penalty - y_penalty - torque_penalty
         else:
-            reward = 0.3125 * vx_reward + 0.125 * vy_reward + 0.125 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
-                   + 0.0625 * ud_reward - track_penalty - v_penalty - edge_penalty - collision
-            # reward = 0.375 * vx_reward + 0.125 * vy_reward + 0.0625 * angular_reward + 0.3125 * z_reward + 0.0625 * action_reward \
-            #        + 0.0625 * ud_reward - track_penalty - (left_penalty + right_penalty) - v_penalty # + 0.125 * LQRreward + 0.0625 * ud_reward 
+            reward = 0.4375 * vx_reward + 0.125 * vy_reward + 0.25 * angular_reward + 0.5 * z_reward + 0.0625 * action_reward \
+                   + 0.125 * ud_reward - track_penalty - v_penalty - edge_penalty - collision - x_penalty - y_penalty - torque_penalty
+            # reward = 0.5 * vx_reward + 0.25 * vy_reward + 0.1875 * angular_reward + 0.3125 * z_reward + 0.125 * action_reward \
+            #         + 0.125 * ud_reward - track_penalty - v_penalty - edge_penalty - collision
 
-        # print(f'LQR = {LQRreward}')
-        # print(f'vx = {vx_reward}')
-        # print(f'vy = {vy_reward}')
-        # print(f'angl = {angular_reward}')
-        # print(f'z = {z_reward}')
-        # print(f'track = {-track_penalty}')
-        # print(f'ud = {ud_reward}')
-        # print(f'action = {action_reward}')
+        if reward < 0:
+            reward = 0.
+
         output[0] = reward
 
 class DisturbanceSystem(LeafSystem):
@@ -609,7 +751,7 @@ class CassieFootstepControllerEnvironmentOptions:
     elevation_mapping_params_yaml: str = path.join(
         params_folder, 'elevation_mapping_params_simulation.yaml'
     )
-    urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
+    urdf: str = "examples/Cassie/urdf/cassie_v2.urdf" # "examples/Cassie/urdf/cassie_v2_toe_link.urdf"
     
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
@@ -636,7 +778,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             False,
             True
         )
-        self.controller_plant.Finalize()
+        self.controller_plant.Finalize()        
         self.nq = self.controller_plant.num_positions() # 23
         self.nv = self.controller_plant.num_velocities() # 22
         self.na = self.controller_plant.num_actuators() # 10
@@ -653,8 +795,12 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.controller_input_type
         )
 
-        terrain_friction = np.random.uniform(0.4, 1.2)
-
+        #terrain_friction = np.random.uniform(0.3, 1.1)
+        terrain_friction = np.random.uniform(0.4, 1.0)
+        # terrain_friction = 0.8
+        terrain_friction = 0.4
+        # terrain_friction = 0.8
+        # terrain_friction = 1.1
         print(terrain_friction)
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -667,7 +813,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
 
-        self.dist = True
+        self.dist = False
 
         if self.dist:
             self.disturbance = builder.AddSystem(DisturbanceSystem(plant=self.controller_plant, force_x=10.0, \
@@ -830,6 +976,9 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def export_outputs(self, builder: DiagramBuilder) -> Dict[
         str, OutputPortIndex]:
+        # for i in range(self.controller.num_output_ports()):
+        #     port = self.controller.get_output_port(i)
+        #     print(f"Output Port {i}: {port.get_name()}")
         output_port_indices = {
             'alip_state': builder.ExportOutput(
                 self.controller.get_output_port_alip(),
@@ -846,6 +995,22 @@ class CassieFootstepControllerEnvironment(Diagram):
             'swing_ft_tracking_error': builder.ExportOutput(
                 self.controller.get_output_port_swing_ft_tracking_error(),
                 'swing_ft_tracking_error'
+            ),
+            # 'lcmt_robot_input': builder.ExportOutput(
+            #     self.controller.get_output_port_u_lcm(),
+            #     'lcmt_robot_input'
+            # ),
+            # 'lcmt_osc_debug': builder.ExportOutput(
+            #     self.controller.get_output_port_osc_debug(),
+            #     'lcmt_osc_debug'
+            # ),
+            'lcmt_robot_input': builder.ExportOutput(
+                self.controller.get_output_port(1),
+                'lcmt_robot_input'
+            ),
+            'lcmt_osc_debug': builder.ExportOutput(
+                self.controller.get_output_port(2),
+                'lcmt_osc_debug'
             ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
@@ -901,7 +1066,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                       center: np.ndarray = None) -> np.ndarray:
         if self.params.simulate_perception:
             raise NotImplementedError(
-                "Need to implement heightmap getter for simulated perception."
+                "Need to implement heightmap better for simulated perception."
             )
         else:
             hmap_server_context = self.GetSubsystemContext(
@@ -967,7 +1132,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(noise=True, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
+        obs_pub = ObservationPublisher(noise=False, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd

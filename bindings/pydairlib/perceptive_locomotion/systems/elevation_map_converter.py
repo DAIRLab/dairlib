@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter, median_filter
 from typing import Union
@@ -207,7 +208,7 @@ class ElevationMappingConverter(LeafSystem):
 
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
-        InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
+        #InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
         return self.get_heightmap_3d(x, stance, grid_map, center, adverserial_offset)
 
@@ -227,7 +228,7 @@ class ElevationMappingConverter(LeafSystem):
 
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
-        InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
+        #InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
         hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, grid_map, center, adverserial_offset)
 
@@ -235,7 +236,7 @@ class ElevationMappingConverter(LeafSystem):
 
     def get_height_at_point(self, query_point: np.ndarray, grid_map) -> float:
         return grid_map.atPosition(
-            'elevation_inpainted', query_point[:2], InterpolationMethods.INTER_NEAREST #InterpolationMethods.INTER_CUBIC_CONVOLUTION
+            'elevation', query_point[:2], InterpolationMethods.INTER_NEAREST #InterpolationMethods.INTER_CUBIC_CONVOLUTION
         )
 
     def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:
@@ -300,7 +301,7 @@ class ElevationMappingConverter(LeafSystem):
 
         heightmap = CalcHeightMapInStanceFrame(
             grid_map=grid_map,
-            layer="elevation_inpainted",
+            layer="elevation",
             plant=self.plant,
             plant_context=self.plant_context,
             floating_base_body_name="pelvis",
@@ -317,5 +318,5 @@ class ElevationMappingConverter(LeafSystem):
 
         heightmap = median_filter(filled_map, size=3)
         heightmap = np.nan_to_num(heightmap, nan=0)
-        
+
         return heightmap

@@ -25,7 +25,7 @@ using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
 PlantVisualizer::PlantVisualizer(const std::string& urdf,
                                  std::shared_ptr<Meshcat> meshcat) :
-                                 plant_(0.0), meshcat_(std::move(meshcat)) {
+                                 plant_(0.025), meshcat_(std::move(meshcat)) {
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   scene_graph.set_name("plant_visualizer_scene_graph");

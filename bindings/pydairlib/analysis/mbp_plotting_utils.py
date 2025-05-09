@@ -276,7 +276,10 @@ def load_default_channels(data, plant, controller_plant,
                           state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
-    robot_input = process_effort_channel(data[input_channel], plant)
+    if input_channel:
+        robot_input = process_effort_channel(data[input_channel], plant)
+    else:
+        robot_input = None
     if osc_debug_channel:
         osc_debug = process_osc_channel(data[osc_debug_channel])
         osc_debug = permute_osc_joint_ordering(
@@ -286,6 +289,10 @@ def load_default_channels(data, plant, controller_plant,
     imu = process_imu_channel(data[state_channel])
 
     return robot_output, robot_input, osc_debug, imu
+
+
+def load_state_channel(data, plant, state_channel):
+    return process_state_channel(data[state_channel], plant)
 
 
 def load_force_channels(data, contact_force_channel):
@@ -347,6 +354,18 @@ def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, titl
     return ps
 
 
+def plot_motor_power(robot_output, u_names, plant, time_slice):
+    B = plant.MakeActuationMatrix()
+    w = robot_output['v'] @ B
+    p = w * robot_output['u']
+    data = {
+        't_x': robot_output['t_x'],
+        'p': p
+    }
+    return plot_q_or_v_or_u(data, 'p', u_names, slice(len(u_names)),
+                     time_slice, ylabel='Motor Power', title='Motor Power')
+
+
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
                             time_slice, ylabel='Position',
@@ -401,6 +420,30 @@ def plot_commanded_efforts(robot_input, u_names, time_slice):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
                       time_slice, ylabel='Efforts (Nm)',
                       title='Commanded Joint Efforts')
+
+
+def plot_measured_vs_commanded_efforts_by_name(
+        robot_output, robot_input, u_names, u_map):
+    u_slice = [u_map[name] for name in u_names]
+
+    u_names_measured = [name + '_measured' for name in u_names]
+    u_names_commaned = [name + '_commanded' for name in u_names]
+    ps = plot_q_or_v_or_u(
+        robot_output,
+        'u',
+        u_names_measured,
+        u_slice, slice(robot_output['t_x'].size),
+        ylabel='Efforts (Nm)', title='Select Joint Efforts')
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
+        slice(robot_input['t_u'].size),
+        ['u'],  # key to plot
+        {'u': u_slice},  # slice of key to plot
+        {'u': u_names_commaned},  # legend entries
+        {}, ps)
+    return ps
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
@@ -534,8 +577,8 @@ def plot_qp_solve_time(osc_debug, time_slice):
         ['qp_solve_time'],
         {},
         {},
-        {'xlabel': 'Timestamp',
-         'ylabel': 'Solve Time ',
+        {'xlabel': 'Timestamp (s)',
+         'ylabel': 'Solve Time (s)',
          'title': 'OSC QP Solve Time'}, ps)
     return ps
 
@@ -583,7 +626,42 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
         if fsm_state_names:
             legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
 
-    if len(legend_elements) > 0:
-        legend = ax.legend(handles=legend_elements, loc=4)
-        # ax.add_artist(legend)
-        ax.relim()
+    # if len(legend_elements) > 0:
+    #     legend = ax.legend(handles=legend_elements, loc='upper left')
+    #     # ax.add_artist(legend)
+    #     ax.relim()
+
+
+def add_OOD_to_plot(fsm_time, fsm_signal, fsm_state_names, ood_times1, ood_times2):
+    import matplotlib.patches as mpatches
+    ps = plot_styler.PlotStyler()
+    plt.xlabel('time (s)')
+    plt.title('Out of Distribution')
+    ax = ps.fig.axes[0]
+
+    ax.set_yticks([])
+
+    ymin, ymax = ax.get_ylim()
+
+    # uses default color map
+    legend_elements = []
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        if fsm_state_names:
+            legend_elements.append(mpatches.Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+    
+    # Add OOD window highlight and legend entry
+    ood_patch = mpatches.Patch(facecolor="red", alpha=0.3, label="OOD Datapoint")
+    ood_patch1 = mpatches.Patch(facecolor="green", alpha=0.3, label="OOD Window")
+    if "OOD Window" not in [l.get_label() for l in legend_elements]:
+        legend_elements.append(ood_patch)
+    if "OOD Datapoint" not in [l.get_label() for l in legend_elements]:
+        legend_elements.append(ood_patch1)
+
+    for t_start in ood_times1:
+        ax.axvspan(t_start, t_start+0.01, color="red", alpha=0.3)
+    for t_start in ood_times2:
+        ax.axvspan(t_start, t_start+0.5, color="green", alpha=0.3)
+
+    # Add legend
+    ax.legend(handles=legend_elements, loc="upper right", fontsize=8, markerscale=0.8, frameon=True, facecolor='white')

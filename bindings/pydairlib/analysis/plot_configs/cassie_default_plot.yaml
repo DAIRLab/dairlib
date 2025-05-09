@@ -1,7 +1,8 @@
 # LCM channels to read data from
-channel_x: "CASSIE_STATE_DISPATCHER"
+channel_x: "CASSIE_STATE_SIMULATION" # "CASSIE_STATE_DISPATCHER" | "CASSIE_STATE_SIMULATION"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
+channel_cassie_out: "CASSIE_OUTPUT_ECHO"
 use_archived_lcmtypes: false
 
 # Approximate log time to start at relative to the first timestamp in the log
@@ -17,28 +18,39 @@ use_floating_base: true
 plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_floating_base_velocity_body_frame: false
-plot_joint_positions: true
-plot_joint_velocities: true
-plot_measured_efforts: true
+plot_joint_positions: false
+plot_joint_velocities: false
+plot_measured_efforts: false
 plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ ]
+# special_positions_to_plot: [ 'ankle_spring_joint_left', 'ankle_spring_joint_right' ]
 special_velocities_to_plot: [ ]
-special_efforts_to_plot: [ 'knee_left_motor', 'knee_right_motor']
+special_efforts_to_plot: [ ]
+efforts_to_plot_measured_vs_commanded: [ ]
+
+# cassie output
+plot_battery_voltage: false
 
 # FSM Names
 fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', ' ', 'Double Support Post Left (DSPL)', 'Double Support Post Right (DSPR)' ]
 
 # Foot position plots
-foot_positions_to_plot: [ 'right', 'left' ]
+foot_positions_to_plot: [ ]
 foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 0, 1, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: true
-plot_tracking_costs: true
-plot_qp_solve_time: true
+plot_qp_costs: false
+plot_tracking_costs: false
+plot_qp_solve_time: false
 tracking_datas_to_plot:
-#  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
-#  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-#  swing_ft_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+    # swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
+    # pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
+    # alip_com_traj: {'dims': [2], 'derivs': ['accel' ]}
+    # swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': ['accel' ] }
+    
+    # swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
+    # pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+    # alip_com_traj: {'dims': [2], 'derivs': ['pos', 'vel', 'accel' ]}
+    # swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

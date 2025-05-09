@@ -979,8 +979,10 @@ void OperationalSpaceControl::SetRandomParameters(
       for (int c = 0; c < gains.cols(); ++c) {
         double kp = default_gains.K_p_(r, c);
         double kd = default_gains.K_d_(r, c);
-        gains.K_p_(r, c) = kp + 0.5 * kp * uniform(*generator);
-        gains.K_d_(r, c) = kd + 0.5 * kd * uniform(*generator);
+        gains.K_p_(r, c) = kp + 0.35 * kp * uniform(*generator);
+        gains.K_d_(r, c) = kd + 0.35 * kd * uniform(*generator);
+        // std::cout << "Gain K_p_(" << r << ", " << c << ") = " << gains.K_p_(r, c) << std::endl;
+        // std::cout << "Gain K_d_(" << r << ", " << c << ") = " << gains.K_d_(r, c) << std::endl;
       }
     }
   }

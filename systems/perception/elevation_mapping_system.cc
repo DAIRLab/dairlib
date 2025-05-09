@@ -4,7 +4,7 @@
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/framework/output_vector.h"
-
+#include <iostream>
 namespace dairlib {
 namespace perception {
 
@@ -37,6 +37,7 @@ ElevationMappingSystem::ElevationMappingSystem(
     track_point_(params.track_point),
     params_(params) {
 
+  this->DeclareAbstractParameter(drake::Value<Eigen::Vector3d>(params.point_cloud_bias));
   // configure sensors
   drake::Vector1d prev_time_model_vector{-1};
   for (const auto& pose_param : params.sensor_poses) {
@@ -248,8 +249,10 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     // allocate data for processing
     Eigen::VectorXf measurement_variances;
     PointCloudType::Ptr pc_processed(new PointCloudType);
-
-    const auto X_bias = RigidTransformd(params_.point_cloud_bias);
+    Eigen::Vector3d updated_bias = context.get_parameters().get_abstract_parameter<Eigen::Vector3d>(0);
+    // std::cout << "Updated bias = " << updated_bias.transpose() << std::endl;
+    // const auto X_bias = RigidTransformd(params_.point_cloud_bias);
+    const auto X_bias = RigidTransformd(updated_bias);
 
     // TODO (@Brian-Acosta) does it make sense to propogate the base variance
     //  if we add non-base parent frames?
@@ -343,6 +346,27 @@ void ElevationMappingSystem::CopyGridMap(
       elevation_map_state_index_
   ).getRawGridMap();
 }
+
+void ElevationMappingSystem::SetRandomParameters(
+    const Context<double>& context,
+    drake::systems::Parameters<double>* parameters,
+    drake::RandomGenerator* generator) const {
+  
+  std::uniform_real_distribution<double> uniform(-1.0, 1.0);
+
+  Eigen::Vector3d& bias =
+      parameters->get_mutable_abstract_parameter<Eigen::Vector3d>(0);
+
+  for (int i = 0; i < bias.size(); ++i) {
+    double original_bias = bias(i);
+    bias(i) = original_bias; //+ 0.02 * uniform(*generator);
+    // std::cout << "Original bias(" << i << ") = " << original_bias << std::endl;
+    // std::cout << "Updated bias(" << i << ") = " << bias(i) << std::endl;
+  }
+  // std::cout << "Stored bias after SetRandomParameters: " 
+  //         << parameters->get_abstract_parameter<Eigen::Vector3d>(0).transpose() << std::endl;
+}
+
 
 }
 }

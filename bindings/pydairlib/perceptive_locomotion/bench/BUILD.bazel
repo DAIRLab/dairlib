@@ -32,6 +32,7 @@ py_binary(
     data = [
         "//examples/Cassie:cassie_urdf",
         "@lcm//:lcm-python",
+        "//bindings/pydairlib/lcm",
     ],
     deps = [
         ":bench_harness",

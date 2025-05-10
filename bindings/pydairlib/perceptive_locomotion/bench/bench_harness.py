@@ -84,7 +84,7 @@ class InitialConditionsServer:
 @dataclass
 class BenchEnvOptions:
     terrain: Union[str, SquareSteppingStoneList] = path.join(
-        params_folder, 'terrain.yaml' #'easy_dustair_0.yaml'(stair) #stair_1.yaml (slope) #'terrain.yaml' # 'stair_curriculum.yaml' # 'easy_dustair_0.yaml' # 'normal_dustair_0.yaml' # 'reg_dustair_0.yaml'
+        params_folder, 'dustair_10.yaml' #'easy_dustair_0.yaml'(stair) #stair_1.yaml (slope) #'terrain.yaml' # 'stair_curriculum.yaml' # 'easy_dustair_0.yaml' # 'normal_dustair_0.yaml' # 'reg_dustair_0.yaml'
     )
     rgdb_extrinsics_yaml: str = path.join(
         params_folder, 'rgbd_extrinsics.yaml'
@@ -143,8 +143,8 @@ class BenchHarness(Diagram):
         )
 
         # terrain_friction = 0.4
-        # terrain_friction = 0.8
-        terrain_friction = 1.1
+        terrain_friction = 0.57
+        # terrain_friction = 1.1
 
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -264,7 +264,13 @@ class BenchHarness(Diagram):
             ), 'fsm': builder.ExportOutput(
                 self.controller.get_output_port_fsm(),
                 'fsm'
-            ), 'time_until_switch': builder.ExportOutput(
+            ),'lcmt_robot_input': builder.ExportOutput(
+                self.controller.get_output_port_u_lcm(),
+                'lcmt_robot_input'
+            ),'lcmt_osc_debug': builder.ExportOutput(
+                self.controller.get_output_port_osc_debug(),
+                'lcmt_osc_debug'
+            ),'time_until_switch': builder.ExportOutput(
                 self.controller.get_output_port_switching_time(),
                 'time_until_switch'
             ), 'swing_ft_tracking_error': builder.ExportOutput(

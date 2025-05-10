@@ -74,6 +74,12 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_output_port_alip",
            &MpfcOscDiagram::get_output_port_alip,
            py_rvp::reference_internal)
+      .def("get_output_port_osc_debug",
+           &MpfcOscDiagram::get_output_port_osc_debug,
+           py_rvp::reference_internal)
+      .def("get_output_port_u_lcm",
+           &MpfcOscDiagram::get_output_port_u_lcm,
+           py_rvp::reference_internal)     
       .def("get_output_port_switching_time",
            &MpfcOscDiagram::get_output_port_switching_time,
            py_rvp::reference_internal)

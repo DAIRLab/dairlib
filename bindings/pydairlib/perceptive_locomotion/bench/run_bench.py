@@ -33,8 +33,16 @@ from pydrake.systems.all import (
     ZeroOrderHold,
 )
 
+from pydrake.systems.all import (
+    LcmInterfaceSystem,
+    LcmSubscriberSystem,
+    LcmPublisherSystem
+)
+from pydrake.lcm import DrakeLcm
+from pydairlib import lcm
 from pydrake.geometry import Meshcat
 from pydairlib.multibody import SquareSteppingStoneList, ReExpressWorldVector3InBodyYawFrame
+from dairlib import lcmt_robot_output, lcmt_robot_input, lcmt_osc_output
 
 def add_mpc_perception_deps(builder, env, mpc):
     segmentation = builder.AddSystem(
@@ -91,7 +99,7 @@ def add_mpc_perception_deps(builder, env, mpc):
 
 def main():
     opts = BenchEnvOptions()
-    opts.visualize = False
+    opts.visualize = True
     opts.meshcat = Meshcat()
 
     env = BenchHarness(opts)
@@ -107,6 +115,37 @@ def main():
         controller.get_output_port_mpc_output(),
         env.get_input_port_by_name("command")
     )
+    ### LCM publisher for lcm_logger
+    drake_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=0")
+    lcm1 = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
+    publisher1 = LcmPublisherSystem.Make(
+        channel="CASSIE_STATE_SIMULATION",
+        lcm_type=lcmt_robot_output,
+        lcm=lcm1,
+        use_cpp_serializer=True
+    )
+    lcm2 = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
+    publisher2 = LcmPublisherSystem.Make(
+        channel="OSC_WALKING",
+        lcm_type=lcmt_robot_input,
+        lcm=lcm2,
+        use_cpp_serializer=True
+    )
+    lcm3 = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
+    publisher3 = LcmPublisherSystem.Make(
+        channel="OSC_DEBUG_WALKING",
+        lcm_type=lcmt_osc_output,
+        lcm=lcm3,
+        use_cpp_serializer=True
+    )
+
+    builder.AddSystem(publisher1)
+    builder.AddSystem(publisher2)
+    builder.AddSystem(publisher3)
+
+    builder.Connect(env.get_output_port_by_name('lcmt_robot_output'), publisher1.get_input_port())
+    builder.Connect(env.get_output_port_by_name('lcmt_robot_input'), publisher2.get_input_port())
+    builder.Connect(env.get_output_port_by_name('lcmt_osc_debug'), publisher3.get_input_port())
 
     #xvdes = np.random.uniform(0, 0.8)
     #vdes_source = builder.AddSystem(ConstantVectorSource(np.array([xvdes, 0.0])))
@@ -118,7 +157,7 @@ def main():
 
     diagram = builder.Build()
 
-    # DrawAndSaveDiagramGraph(diagram, 'bench')
+    DrawAndSaveDiagramGraph(diagram, 'bench')
     # simulator = Simulator(diagram)
     # context = diagram.CreateDefaultContext()
     # controller_context = controller.GetMyMutableContextFromRoot(context)
@@ -128,8 +167,9 @@ def main():
     DES = []
     TRUE = []
     simulator = Simulator(diagram)
-    print("Friction: 1.1 flat")
-    for i in range(200):
+    simulator.set_publish_every_time_step(True)
+    print("Friction: 0.8 stair")
+    for i in range(1):
         # simulator = Simulator(diagram)
         context = diagram.CreateDefaultContext()
         controller_context = controller.GetMyMutableContextFromRoot(context)
@@ -137,7 +177,7 @@ def main():
 
         # xvdes = np.random.uniform(0.2, 0.8)
         # vdes_source = np.array([xvdes, 0.]).flatten()
-        xvdes = np.random.uniform(0, 0.8)
+        xvdes = 0.53 #np.random.uniform(0, 0.8)
         #yvdes = np.random.uniform(-0.2, 0.2)
         yvdes = 0.
         vdes_source = np.array([xvdes, yvdes]).flatten()
@@ -158,7 +198,7 @@ def main():
         simulator.reset_context(context)
         simulator.Initialize()
         # input('waiting')
-        simulator.set_target_realtime_rate(3.0)
+        simulator.set_target_realtime_rate(10.0)
         t_init = 0.0
         context.SetTime(t_init)
         terminate = False
@@ -244,7 +284,7 @@ def main():
                 if body_B.name() == "toe_left_tip" or body_B.name() == "toe_right_tip":
                     # print(body_B.name())
                     # print(contact_force)
-                    if np.linalg.norm(contact_force) > 500:
+                    if np.linalg.norm(contact_force) > 1000:
                         print(context.get_time())
                         print(np.linalg.norm(contact_force))
 
@@ -252,7 +292,7 @@ def main():
 
         simulator.set_monitor(monitor)
 
-        for i in range(601):
+        for i in range(801):
             t_init += 0.025
             # if check_termination(env, context):
             #     terminate = True

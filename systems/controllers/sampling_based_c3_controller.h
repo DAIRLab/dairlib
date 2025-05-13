@@ -75,6 +75,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(c3_solution_curr_plan_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_curr_plan_actor()
+      const {
+    return this->get_output_port(c3_solution_curr_plan_actor_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_curr_plan_object()
+      const {
+    return this->get_output_port(c3_solution_curr_plan_object_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_curr_plan()
       const {
     return this->get_output_port(c3_intermediates_curr_plan_port_);
@@ -83,15 +91,27 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(lcs_contact_jacobian_curr_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_curr_plan() 
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_curr_plan_actor() 
       const {
-    return this->get_output_port(dynamically_feasible_curr_plan_port_);
+    return this->get_output_port(dynamically_feasible_curr_plan_actor_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_curr_plan_object() 
+      const {
+    return this->get_output_port(dynamically_feasible_curr_plan_object_port_);
   }
 
   // Best sample plan output ports
   const drake::systems::OutputPort<double>& get_output_port_c3_solution_best_plan()
       const {
     return this->get_output_port(c3_solution_best_plan_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_best_plan_actor()
+      const {
+    return this->get_output_port(c3_solution_best_plan_actor_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_best_plan_object()
+      const {
+    return this->get_output_port(c3_solution_best_plan_object_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_best_plan()
       const {
@@ -101,24 +121,40 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(lcs_contact_jacobian_best_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_best_plan() 
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_best_plan_actor() 
       const {
-    return this->get_output_port(dynamically_feasible_best_plan_port_);
+    return this->get_output_port(dynamically_feasible_best_plan_actor_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_dynamically_feasible_best_plan_object() 
+      const {
+    return this->get_output_port(dynamically_feasible_best_plan_object_port_);
   }
 
 
   // Execution trajectory output ports
-  const drake::systems::OutputPort<double>& get_output_port_c3_traj_execute() 
+  const drake::systems::OutputPort<double>& get_output_port_c3_traj_execute_actor() 
       const {
-    return this->get_output_port(c3_traj_execute_port_);
+    return this->get_output_port(c3_traj_execute_actor_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_repos_traj_execute() 
+  const drake::systems::OutputPort<double>& get_output_port_repos_traj_execute_actor() 
       const {
-    return this->get_output_port(repos_traj_execute_port_);
+    return this->get_output_port(repos_traj_execute_actor_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_traj_execute() 
+  const drake::systems::OutputPort<double>& get_output_port_traj_execute_actor() 
       const {
-    return this->get_output_port(traj_execute_port_);
+    return this->get_output_port(traj_execute_actor_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_traj_execute_object() 
+      const {
+    return this->get_output_port(c3_traj_execute_object_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_repos_traj_execute_object() 
+      const {
+    return this->get_output_port(repos_traj_execute_object_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_traj_execute_object() 
+      const {
+    return this->get_output_port(traj_execute_object_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_is_c3_mode() 
       const {
@@ -182,6 +218,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const;
 
+  void OutputC3SolutionCurrPlanActor(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const;
+  void OutputC3SolutionCurrPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const;
+
   void OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const;
@@ -193,6 +236,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputC3SolutionBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const;
+    
+  void OutputC3SolutionBestPlanActor(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const;
+  void OutputC3SolutionBestPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const;
 
   void OutputC3IntermediatesBestPlan(
     const drake::systems::Context<double>& context,
@@ -202,13 +252,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const;
 
-  void OutputDynamicallyFeasibleCurrPlan(
+  void OutputDynamicallyFeasibleCurrPlanActor(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::VectorXd>* dynamically_feasible_curr_plan) const;
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_actor) const;
 
-  void OutputDynamicallyFeasibleBestPlan(
+  void OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const;
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object) const;
+
+  void OutputDynamicallyFeasibleBestPlanActor(
+    const drake::systems::Context<double>& context,
+    lcmt_timestamped_saved_traj* dynamically_feasible_best_plan_actor) const;
+
+  void OutputDynamicallyFeasibleBestPlanObject(
+    const drake::systems::Context<double>& context,
+    lcmt_timestamped_saved_traj* dynamically_feasible_best_plan_object) const;
 
   void OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
@@ -218,17 +276,26 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     lcmt_timestamped_saved_traj* output_all_sample_costs) const;
 
-  void OutputC3TrajExecute(
+  void OutputC3TrajExecuteActor(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* c3_execution_lcm_traj) const;
+    lcmt_timestamped_saved_traj* c3_execution_lcm_traj) const;
+  void OutputC3TrajExecuteObject(
+    const drake::systems::Context<double>& context,
+    lcmt_timestamped_saved_traj* c3_execution_lcm_traj) const;
 
-  void OutputReposTrajExecute(
+  void OutputReposTrajExecuteActor(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* repos_execution_lcm_traj) const;
+    lcmt_timestamped_saved_traj* repos_execution_lcm_traj) const;
+  void OutputReposTrajExecuteObject(
+    const drake::systems::Context<double>& context,
+    lcmt_timestamped_saved_traj* repos_execution_lcm_traj) const;
 
-  void OutputTrajExecute(
+  void OutputTrajExecuteActor(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* execution_lcm_traj) const;
+    lcmt_timestamped_saved_traj* execution_lcm_traj) const;
+  void OutputTrajExecuteObject(
+    const drake::systems::Context<double>& context,
+    lcmt_timestamped_saved_traj* execution_lcm_traj) const;
 
   void OutputIsC3Mode(
     const drake::systems::Context<double>& context,
@@ -256,20 +323,29 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex lcs_state_input_port_;
   // Current sample output port indices
   drake::systems::OutputPortIndex c3_solution_curr_plan_port_;
+  drake::systems::OutputPortIndex c3_solution_curr_plan_actor_port_;
+  drake::systems::OutputPortIndex c3_solution_curr_plan_object_port_;
   drake::systems::OutputPortIndex c3_intermediates_curr_plan_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_curr_plan_port_;
   // Best sample output port indices
   drake::systems::OutputPortIndex c3_solution_best_plan_port_;
+  drake::systems::OutputPortIndex c3_solution_best_plan_actor_port_;
+  drake::systems::OutputPortIndex c3_solution_best_plan_object_port_;
   drake::systems::OutputPortIndex c3_intermediates_best_plan_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_best_plan_port_;
   // Execution trajectory output port indices
-  drake::systems::OutputPortIndex c3_traj_execute_port_;
-  drake::systems::OutputPortIndex repos_traj_execute_port_;
-  drake::systems::OutputPortIndex traj_execute_port_;
+  drake::systems::OutputPortIndex c3_traj_execute_actor_port_;
+  drake::systems::OutputPortIndex repos_traj_execute_actor_port_;
+  drake::systems::OutputPortIndex traj_execute_actor_port_;
+  drake::systems::OutputPortIndex c3_traj_execute_object_port_;
+  drake::systems::OutputPortIndex repos_traj_execute_object_port_;
+  drake::systems::OutputPortIndex traj_execute_object_port_;
   drake::systems::OutputPortIndex is_c3_mode_port_;
   // Dynamically feasible plan output port indices
-  drake::systems::OutputPortIndex dynamically_feasible_curr_plan_port_;
-  drake::systems::OutputPortIndex dynamically_feasible_best_plan_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_curr_plan_actor_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_curr_plan_object_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_best_plan_actor_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_best_plan_object_port_;
   // Sample related output port indices
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;

@@ -17,10 +17,8 @@
 #include "systems/controllers/sampling_params.h"
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"
-// #include "systems/sender_systems/c3_trajectory_generator.h"
 #include "systems/sender_systems/control_target_generator_push_T.h"
 #include "systems/sender_systems/franka_kinematics.h"
-#include "systems/sender_systems/sender_bindings.h"
 #include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -611,21 +609,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
       plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
       sampling_params);
 
-  // The following systems consume the planned trajectories and output it to an
-  // LCM publisher to go to the visualizer.
-  auto c3_trajectory_generator_curr_plan_actor =
-      builder.AddSystem<systems::C3TrajectoryActorSender>(
-        "c3_trajectory_generator_curr_plan_actor");
-  auto c3_trajectory_generator_curr_plan_object =
-      builder.AddSystem<systems::C3TrajectoryObjectSender>(
-        "c3_trajectory_generator_curr_plan_object");
-  auto c3_trajectory_generator_best_plan_actor =
-      builder.AddSystem<systems::C3TrajectoryActorSender>(
-        "c3_trajectory_generator_best_plan_actor");
-  auto c3_trajectory_generator_best_plan_object =
-      builder.AddSystem<systems::C3TrajectoryObjectSender>(
-        "c3_trajectory_generator_best_plan_object");
-
   // These systems publish the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -670,21 +653,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
           lcm_channel_params.c3_force_best_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // These systems consume the both tracking trajectories, convert them to lcm
-  // types, and select one of them based on the mode.
-  auto c3_tracking_trajectory_generator_actor =
-      builder.AddSystem<dairlib::systems::TrackingTrajectoryActorSender>(
-        "c3_tracking_trajectory_generator_actor");
-  auto repos_tracking_trajectory_generator_actor =
-      builder.AddSystem<dairlib::systems::TrackingTrajectoryActorSender>(
-        "repos_tracking_trajectory_generator_actor");
-  auto exec_trajectory_generator_actor =
-      builder.AddSystem<systems::TrackingTrajectoryActorSender>(
-        "execution_trajectory_generator_actor");
-  auto exec_trajectory_generator_object =
-      builder.AddSystem<systems::TrackingTrajectoryObjectSender>(
-        "execution_trajectory_generator");
-
   // These systems publish the tracking output.
   auto actor_c3_execution_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -702,16 +670,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  
-  // These systems send the dynamically feasible plans used to compute costs.
-  auto dynamically_feasible_curr_plan_sender_actor =
-    builder.AddSystem<dairlib::systems::DynamicallyFeasiblePlanSenderActor>("curr_actor");
-  auto dynamically_feasible_best_plan_sender_actor = 
-    builder.AddSystem<dairlib::systems::DynamicallyFeasiblePlanSenderActor>("best_actor");
-  auto dynamically_feasible_curr_plan_sender_object =
-    builder.AddSystem<dairlib::systems::DynamicallyFeasiblePlanSenderObject>("curr_object");
-  auto dynamically_feasible_best_plan_sender_object = 
-    builder.AddSystem<dairlib::systems::DynamicallyFeasiblePlanSenderObject>("best_object");
 
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
     sampling_params.N_sample_buffer, 10);
@@ -737,19 +695,19 @@ else if(FLAGS_demo_name == "ball_rolling"){
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_curr_actor_plan_publisher = builder.AddSystem(
+  auto dynamically_feasible_curr_plan_actor_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_curr_plan_publisher = builder.AddSystem(
+  auto dynamically_feasible_curr_plan_object_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_best_actor_plan_publisher = builder.AddSystem(
+  auto dynamically_feasible_best_plan_actor_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_actor_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_best_plan_publisher = builder.AddSystem(
+  auto dynamically_feasible_best_plan_object_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
@@ -807,29 +765,17 @@ else if(FLAGS_demo_name == "ball_rolling"){
                   control_target->get_input_port_radio());
 
   builder.Connect(
-      controller->get_output_port_c3_solution_curr_plan(),
-      c3_trajectory_generator_curr_plan_actor->get_input_port());
-  builder.Connect(
-      c3_trajectory_generator_curr_plan_actor->get_output_port(),
+      controller->get_output_port_c3_solution_curr_plan_actor(),
       actor_trajectory_sender_curr_plan->get_input_port());
   builder.Connect(
-      controller->get_output_port_c3_solution_curr_plan(),
-      c3_trajectory_generator_curr_plan_object->get_input_port());
-  builder.Connect(
-      c3_trajectory_generator_curr_plan_object->get_output_port(),
+      controller->get_output_port_c3_solution_curr_plan_object(),
       object_trajectory_sender_curr_plan->get_input_port());
 
   builder.Connect(
-      controller->get_output_port_c3_solution_best_plan(),
-      c3_trajectory_generator_best_plan_actor->get_input_port());
-  builder.Connect(
-      c3_trajectory_generator_best_plan_actor->get_output_port(),
+      controller->get_output_port_c3_solution_best_plan_actor(),
       actor_trajectory_sender_best_plan->get_input_port());
   builder.Connect(
-      controller->get_output_port_c3_solution_best_plan(),
-      c3_trajectory_generator_best_plan_object->get_input_port());
-  builder.Connect(
-      c3_trajectory_generator_best_plan_object->get_output_port(),
+      controller->get_output_port_c3_solution_best_plan_object(),
       object_trajectory_sender_best_plan->get_input_port());
 
   // DEBUGGING OUTPUT CONNECTIONS
@@ -853,22 +799,18 @@ else if(FLAGS_demo_name == "ball_rolling"){
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
                   c3_forces_publisher_best_plan->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan(),
-                  dynamically_feasible_curr_plan_sender_actor->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan(),
-                  dynamically_feasible_best_plan_sender_actor->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan(),
-                  dynamically_feasible_curr_plan_sender_object->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan(),
-                  dynamically_feasible_best_plan_sender_object->get_input_port());
-  builder.Connect(dynamically_feasible_curr_plan_sender_object->get_output_port(),
-                  dynamically_feasible_curr_plan_publisher->get_input_port());
-  builder.Connect(dynamically_feasible_curr_plan_sender_actor->get_output_port(),
-                  dynamically_feasible_curr_actor_plan_publisher->get_input_port());
-  builder.Connect(dynamically_feasible_best_plan_sender_object->get_output_port(),
-                  dynamically_feasible_best_plan_publisher->get_input_port());
-  builder.Connect(dynamically_feasible_best_plan_sender_actor->get_output_port(),
-                  dynamically_feasible_best_actor_plan_publisher->get_input_port());
+
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_actor(),
+                  dynamically_feasible_curr_plan_actor_publisher->get_input_port());
+
+  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan_actor(),
+                  dynamically_feasible_best_plan_actor_publisher->get_input_port());
+
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
+                  dynamically_feasible_curr_plan_object_publisher->get_input_port());
+
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
+                  dynamically_feasible_best_plan_object_publisher->get_input_port());
 
   // ACTUAL AND TARGET LCS_STATE CONNECTIONS
   builder.Connect(target_state_mux->get_output_port(),
@@ -886,26 +828,18 @@ else if(FLAGS_demo_name == "ball_rolling"){
 
   // TRACKING TRAJECTORY CONNECTIONS
   builder.Connect(
-      controller->get_output_port_c3_traj_execute(),
-      c3_tracking_trajectory_generator_actor->get_input_port());
-  builder.Connect(controller->get_output_port_repos_traj_execute(),
-                  repos_tracking_trajectory_generator_actor
+      controller->get_output_port_c3_traj_execute_actor(),
+      actor_c3_execution_trajectory_sender->get_input_port());
+  builder.Connect(controller->get_output_port_repos_traj_execute_actor(),
+      actor_repos_execution_trajectory_sender
                       ->get_input_port());
 
-  builder.Connect(c3_tracking_trajectory_generator_actor->get_output_port(),
-                  actor_c3_execution_trajectory_sender->get_input_port());
-  builder.Connect(repos_tracking_trajectory_generator_actor->get_output_port(),
-                  actor_repos_execution_trajectory_sender->get_input_port());
   builder.Connect(
-      controller->get_output_port_traj_execute(),
-      exec_trajectory_generator_actor->get_input_port());
+      controller->get_output_port_traj_execute_actor(),
+      actor_tracking_trajectory_sender->get_input_port());
   builder.Connect(
-      controller->get_output_port_traj_execute(),
-      exec_trajectory_generator_object->get_input_port());
-  builder.Connect(exec_trajectory_generator_actor->get_output_port(),
-                  actor_tracking_trajectory_sender->get_input_port());
-  builder.Connect(exec_trajectory_generator_object->get_output_port(),
-                  object_tracking_trajectory_sender->get_input_port());
+      controller->get_output_port_traj_execute_object(),
+      object_tracking_trajectory_sender->get_input_port());
 
   // Add connections to sample location sender system, cost sender system
   // and c3_mode_sender system.

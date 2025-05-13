@@ -229,9 +229,19 @@ SamplingC3Controller::SamplingC3Controller(
   LcmTrajectory lcm_traj = LcmTrajectory();
 
   // Current location plan output ports.
+  // This output port is being kept so it can go into a C3outputSender which is what we use to grab downstream forces 
+  // for visualization.
   c3_solution_curr_plan_port_ = this->DeclareAbstractOutputPort(
     "c3_solution_curr_plan", c3_solution,
     &SamplingC3Controller::OutputC3SolutionCurrPlan
+  ).get_index();
+  c3_solution_curr_plan_actor_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_curr_plan_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3SolutionCurrPlanActor
+  ).get_index();
+  c3_solution_curr_plan_object_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_curr_plan_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3SolutionCurrPlanObject
   ).get_index();
   c3_intermediates_curr_plan_port_ = this->DeclareAbstractOutputPort(
     "c3_intermediates_curr_plan", c3_intermediates,
@@ -243,9 +253,19 @@ SamplingC3Controller::SamplingC3Controller(
   ).get_index();
 
   // Best sample plan output ports.
+  // This output port is being kept so it can go into a C3outputSender which is what we use to grab downstream forces 
+  // for visualization.
   c3_solution_best_plan_port_ = this->DeclareAbstractOutputPort(
     "c3_solution_best_plan", c3_solution,
     &SamplingC3Controller::OutputC3SolutionBestPlan
+  ).get_index();
+  c3_solution_best_plan_actor_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_best_plan_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3SolutionBestPlanActor
+  ).get_index();
+  c3_solution_best_plan_object_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_best_plan_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3SolutionBestPlanObject
   ).get_index();
   c3_intermediates_best_plan_port_ = this->DeclareAbstractOutputPort(
     "c3_intermediates_best_plan", c3_intermediates,
@@ -257,18 +277,30 @@ SamplingC3Controller::SamplingC3Controller(
   ).get_index();
 
   // Execution trajectory output ports.
-  c3_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "c3_traj_execute", lcm_traj,
-    &SamplingC3Controller::OutputC3TrajExecute
+  c3_traj_execute_actor_port_ = this->DeclareAbstractOutputPort(
+    "c3_traj_execute_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3TrajExecuteActor
   ).get_index();
-  repos_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "repos_traj_execute", lcm_traj,
-    &SamplingC3Controller::OutputReposTrajExecute
+  c3_traj_execute_object_port_ = this->DeclareAbstractOutputPort(
+    "c3_traj_execute_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputC3TrajExecuteObject
+  ).get_index();
+  repos_traj_execute_actor_port_ = this->DeclareAbstractOutputPort(
+    "repos_traj_execute_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputReposTrajExecuteActor
+  ).get_index();
+  repos_traj_execute_object_port_ = this->DeclareAbstractOutputPort(
+    "repos_traj_execute_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputReposTrajExecuteObject
   ).get_index();
   // NOTE: We reuse lcm_traj to set the right type for the port.
-  traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "traj_execute", lcm_traj,
-    &SamplingC3Controller::OutputTrajExecute
+  traj_execute_actor_port_ = this->DeclareAbstractOutputPort(
+    "traj_execute_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputTrajExecuteActor
+  ).get_index();
+  traj_execute_object_port_ = this->DeclareAbstractOutputPort(
+    "traj_execute_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputTrajExecuteObject
   ).get_index();
   is_c3_mode_port_ = this->DeclareAbstractOutputPort(
     "is_c3_mode", 
@@ -278,13 +310,21 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Output ports for dynamically feasible plans used for cost computation and
   // visualization.
-  dynamically_feasible_curr_plan_port_ = this->DeclareAbstractOutputPort(
-    "dynamically_feasible_curr_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)),
-    &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan
+  dynamically_feasible_curr_plan_actor_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_curr_plan_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor
   ).get_index();
-  dynamically_feasible_best_plan_port_ = this->DeclareAbstractOutputPort(
-    "dynamically_feasible_best_plan", vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)),
-    &SamplingC3Controller::OutputDynamicallyFeasibleBestPlan
+  dynamically_feasible_curr_plan_object_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_curr_plan_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject
+  ).get_index();
+  dynamically_feasible_best_plan_actor_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_best_plan_actor", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor
+  ).get_index();
+  dynamically_feasible_best_plan_object_port_ = this->DeclareAbstractOutputPort(
+    "dynamically_feasible_best_plan_object", dairlib::lcmt_timestamped_saved_traj(),
+    &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject
   ).get_index();
 
   // Sample location related output ports.
@@ -2038,6 +2078,110 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
 
 
 // Output port handlers for current location
+void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  auto c3_solution = std::make_unique<C3Output::C3Solution>();
+  c3_solution->x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution->lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution->time_vector_ = VectorXf::Zero(N_);
+
+  auto z_sol = c3_curr_plan_->GetFullSolution();
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+
+
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+
+  LcmTrajectory::Trajectory end_effector_traj;
+  end_effector_traj.traj_name = "end_effector_position_target";
+  end_effector_traj.datatypes =
+      std::vector<std::string>(knots.rows(), "double");
+  end_effector_traj.datapoints = knots;
+  end_effector_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                          "end_effector_position_target",
+                          "end_effector_position_target", false);
+
+  // NOTE: End effector orientation functionality is not implemented.
+
+  // Generate force trajectory
+  MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+
+  output->saved_traj = lcm_traj.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  auto c3_solution = std::make_unique<C3Output::C3Solution>();
+  c3_solution->x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution->lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution->time_vector_ = VectorXf::Zero(N_);
+  auto z_sol = c3_curr_plan_->GetFullSolution();
+
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
+  LcmTrajectory::Trajectory object_traj;
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datapoints = knots;
+  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                          "object_target", "object_target", false);
+
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // first 3 rows are rpy, last 3 rows are angular velocity
+  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
+  orientation_samples =
+      c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  output->saved_traj = lcm_traj.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
 void SamplingC3Controller::OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
@@ -2097,12 +2241,18 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 }
 
 // Output port handlers for best sample location
-void SamplingC3Controller::OutputC3SolutionBestPlan(
+void SamplingC3Controller::OutputC3SolutionBestPlanActor(
     const drake::systems::Context<double>& context,
-    C3Output::C3Solution* c3_solution) const {
+    dairlib::lcmt_timestamped_saved_traj* output) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_best_plan_->GetFullSolution();
+  auto c3_solution = std::make_unique<C3Output::C3Solution>();
+  c3_solution->x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution->lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution->time_vector_ = VectorXf::Zero(N_);
+
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
@@ -2111,6 +2261,113 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
+
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+
+
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+
+  LcmTrajectory::Trajectory end_effector_traj;
+  end_effector_traj.traj_name = "end_effector_position_target";
+  end_effector_traj.datatypes =
+      std::vector<std::string>(knots.rows(), "double");
+  end_effector_traj.datapoints = knots;
+  end_effector_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                          "end_effector_position_target",
+                          "end_effector_position_target", false);
+
+  // NOTE: End effector orientation functionality is not implemented.
+
+  // Generate force trajectory
+  MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+
+  output->saved_traj = lcm_traj.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputC3SolutionBestPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  auto z_sol = c3_best_plan_->GetFullSolution();
+  auto c3_solution = std::make_unique<C3Output::C3Solution>();
+  c3_solution->x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution->lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution->time_vector_ = VectorXf::Zero(N_);
+  
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
+  LcmTrajectory::Trajectory object_traj;
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datapoints = knots;
+  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                          "object_target", "object_target", false);
+
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // first 3 rows are rpy, last 3 rows are angular velocity
+  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
+  orientation_samples =
+      c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  output->saved_traj = lcm_traj.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputC3SolutionBestPlan(
+  const drake::systems::Context<double>& context,
+  C3Output::C3Solution* c3_solution) const {
+double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+auto z_sol = c3_best_plan_->GetFullSolution();
+for (int i = 0; i < N_; i++) {
+  c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+  c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+  c3_solution->lambda_sol_.col(i) =
+      z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+  c3_solution->u_sol_.col(i) =
+      z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+}
 }
 
 void SamplingC3Controller::OutputC3IntermediatesBestPlan(
@@ -2161,26 +2418,152 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 }
 
 // Output port handlers for executing C3 and repositioning ports
-void SamplingC3Controller::OutputC3TrajExecute(
+void SamplingC3Controller::OutputC3TrajExecuteActor(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* output_c3_execution_lcm_traj) const {
-  *output_c3_execution_lcm_traj = c3_execution_lcm_traj_;
+    dairlib::lcmt_timestamped_saved_traj* output_c3_execution_lcm_traj) const {
+  // Create a matrix containing the tracking trajectory including position
+  LcmTrajectory::Trajectory end_effector_traj = 
+    c3_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
+  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                         "end_effector_position_target",
+                         "end_effector_position_target", false);
+  // NOTE: End effector orientation functionality is not implemented.
+  
+  // TODO: Might need to add a force trajectory that is non-zero for the 
+  // downstream osc to track.
+  // TODO : ARE WE ACTUALLY TRACKING THE FORCE? 
+  // TODO: The 5 here is the hardcoded planning horizon.
+  MatrixXd force_samples = MatrixXd::Zero(3, 5);
+  LcmTrajectory::Trajectory force_traj = 
+    c3_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+
+  output_c3_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_c3_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
-void SamplingC3Controller::OutputReposTrajExecute(
+void SamplingC3Controller::OutputC3TrajExecuteObject(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* output_repos_execution_lcm_traj) const {
-  *output_repos_execution_lcm_traj = repos_execution_lcm_traj_;
+    dairlib::lcmt_timestamped_saved_traj* output_c3_execution_lcm_traj) const {
+  // Create a matrix containing the tracking trajectory including position
+  LcmTrajectory::Trajectory object_traj = 
+    c3_execution_lcm_traj_.GetTrajectory("object_position_target");
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                          "object_target", "object_target", false);
+
+  LcmTrajectory::Trajectory object_orientation_traj = 
+    c3_execution_lcm_traj_.GetTrajectory("object_orientation_target");
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  output_c3_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_c3_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
-void SamplingC3Controller::OutputTrajExecute(
+void SamplingC3Controller::OutputReposTrajExecuteActor(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* output_execution_lcm_traj) const {
+    dairlib::lcmt_timestamped_saved_traj* output_repos_execution_lcm_traj) const {
+  // *output_repos_execution_lcm_traj = repos_execution_lcm_traj_;
+
+  // Create a matrix containing the tracking trajectory including position
+  LcmTrajectory::Trajectory end_effector_traj = 
+    repos_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
+  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                         "end_effector_position_target",
+                         "end_effector_position_target", false);
+  // NOTE: End effector orientation functionality is not implemented.
+  
+  // TODO: Might need to add a force trajectory that is non-zero for the 
+  // downstream osc to track.
+  // TODO : ARE WE ACTUALLY TRACKING THE FORCE? 
+  // TODO: The 5 here is the hardcoded planning horizon.
+  MatrixXd force_samples = MatrixXd::Zero(3, 5);
+  LcmTrajectory::Trajectory force_traj = 
+    repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+
+  output_repos_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_repos_execution_lcm_traj->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputReposTrajExecuteObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_repos_execution_lcm_traj) const {
+  // *output_repos_execution_lcm_traj = repos_execution_lcm_traj_;
+
+
+  LcmTrajectory::Trajectory object_traj = 
+    repos_execution_lcm_traj_.GetTrajectory("object_position_target");
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                          "object_target", "object_target", false);
+
+  LcmTrajectory::Trajectory object_orientation_traj = 
+    repos_execution_lcm_traj_.GetTrajectory("object_orientation_target");
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  output_repos_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_repos_execution_lcm_traj->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputTrajExecuteActor(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_execution_lcm_traj) const {
+  
+  LcmTrajectory execution_lcm_traj;
   if(is_doing_c3_){
-    *output_execution_lcm_traj = c3_execution_lcm_traj_;
+    execution_lcm_traj = c3_execution_lcm_traj_;
   } else {
-    *output_execution_lcm_traj = repos_execution_lcm_traj_;
+    execution_lcm_traj = repos_execution_lcm_traj_;
   }
+
+
+  // Create a matrix containing the tracking trajectory including position
+  LcmTrajectory::Trajectory end_effector_traj = 
+    execution_lcm_traj.GetTrajectory("end_effector_position_target");
+  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                         "end_effector_position_target",
+                         "end_effector_position_target", false);
+  // NOTE: End effector orientation functionality is not implemented.
+  
+  // TODO: Might need to add a force trajectory that is non-zero for the 
+  // downstream osc to track.
+  // TODO : ARE WE ACTUALLY TRACKING THE FORCE? 
+  // TODO: The 5 here is the hardcoded planning horizon.
+  MatrixXd force_samples = MatrixXd::Zero(3, 5);
+  LcmTrajectory::Trajectory force_traj = 
+    execution_lcm_traj.GetTrajectory("end_effector_force_target");
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+
+  output_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_execution_lcm_traj->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputTrajExecuteObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_execution_lcm_traj) const {
+  LcmTrajectory execution_lcm_traj;
+  if(is_doing_c3_){
+    execution_lcm_traj = c3_execution_lcm_traj_;
+  } else {
+    execution_lcm_traj = repos_execution_lcm_traj_;
+  }
+
+  LcmTrajectory::Trajectory object_traj = 
+    execution_lcm_traj.GetTrajectory("object_position_target");
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                          "object_target", "object_target", false);
+
+  LcmTrajectory::Trajectory object_orientation_traj = 
+    execution_lcm_traj.GetTrajectory("object_orientation_target");
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  output_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
 void SamplingC3Controller::OutputIsC3Mode(
@@ -2213,33 +2596,166 @@ void SamplingC3Controller::OutputIsC3Mode(
 }
 
 // Output port handler for Dynamically feasible trajectory used for cost
-// computation.
-void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlan(
+// computation. This will directy output an lcmt_timestamped_saved_traj
+// object with the dynamically feasible trajectory.
+void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::VectorXd>* dynamically_feasible_curr_plan) const {
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_actor) const {
+    std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+    // Create a matrix of dynamically feasible plan including positions and orientations.
+    for(int i = 0; i < N_ + 1; i++){
+      dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i];
+    }
+    Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, dynamically_feasible_traj.size());
+    Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+    for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
+      knots.col(i) = dynamically_feasible_traj[i].head(3);
+      timestamps(i) = i;
+    }
+    LcmTrajectory::Trajectory ee_traj;
+    // position trajectory
+    Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, N_ + 1);
+    position_samples = knots.bottomRows(3);
+    ee_traj.traj_name = "ee_position_target";
+    ee_traj.datatypes = std::vector<std::string>(position_samples.rows(), "double");
+    ee_traj.datapoints = position_samples;
+    ee_traj.time_vector = timestamps.cast<double>();
+  
+    LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
+                              "ee_position_target",
+                              "ee_position_target", false);
+  
+    // Output the trajectory as an lcm message
+    dynamically_feasible_curr_plan_actor->saved_traj = ee_traj_lcm.GenerateLcmObject();
+    dynamically_feasible_curr_plan_actor->utime = context.get_time() * 1e6;
+}
+
+// Output port handler for Dynamically feasible trajectory used for cost
+// computation.
+void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object) const {
     std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   // Extract object pose only from the dynamically feasible plan for each time step.
   for(int i = 0; i < N_ + 1; i++){
     dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(CURRENT_LOCATION_INDEX)[i];
   }
-  std::vector<Eigen::VectorXd> dynamically_feasible_ee_object_pose = std::vector<Eigen::VectorXd>(
-    dynamically_feasible_traj.begin(), dynamically_feasible_traj.end());
-  // Output dynamically feasible current plan.
-  *dynamically_feasible_curr_plan = dynamically_feasible_ee_object_pose;
+
+  // Create a matrix containing the dynamically feasible plan including position and orientation
+  // TODO: Change the 7 to read the number of states from the dynamically_feasible_plan
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
+	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+	for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
+		knots.col(i) = dynamically_feasible_traj[i].segment(3, 7);
+		timestamps(i) = i;
+	}
+
+
+  LcmTrajectory::Trajectory object_traj;
+  // position trajectory
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
+  position_samples = knots.bottomRows(3);
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(position_samples.rows(), "double");
+  object_traj.datapoints = position_samples;
+  object_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                         "object_target", "object_target", false);
+	
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // orientation as quaternion
+  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
+  orientation_samples = knots.topRows(4);
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector = timestamps.cast<double>();
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                         object_orientation_traj);
+
+  dynamically_feasible_curr_plan_object->saved_traj = lcm_traj.GenerateLcmObject();
+  dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
+
 }
 
-void SamplingC3Controller::OutputDynamicallyFeasibleBestPlan(
+void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
     const drake::systems::Context<double>& context,
-    std::vector<Eigen::VectorXd>* dynamically_feasible_best_plan) const {
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan) const {
     std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   // Extract object pose only from the dynamically feasible plan for each time step.
   for(int i = 0; i < N_ + 1; i++){
     dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i];
   }
-  std::vector<Eigen::VectorXd> dynamically_feasible_ee_object_pose = std::vector<Eigen::VectorXd>(
-    dynamically_feasible_traj.begin(), dynamically_feasible_traj.end());
-  // Output dynamically feasible current plan.
-  *dynamically_feasible_best_plan = dynamically_feasible_ee_object_pose;
+
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, dynamically_feasible_traj.size());
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+  for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
+    knots.col(i) = dynamically_feasible_traj[i].head(3);
+    timestamps(i) = i;
+  }
+
+  LcmTrajectory::Trajectory ee_traj;
+  // position trajectory
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
+  position_samples = knots.bottomRows(3);
+  ee_traj.traj_name = "ee_position_target";
+  ee_traj.datatypes = std::vector<std::string>(position_samples.rows(), "double");
+  ee_traj.datapoints = position_samples;
+  ee_traj.time_vector = timestamps.cast<double>();
+
+  LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
+                            "ee_position_target",
+                            "ee_position_target", false);
+
+  // Output the trajectory as an lcm message
+  dynamically_feasible_best_plan->saved_traj = ee_traj_lcm.GenerateLcmObject();
+  dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+}
+
+void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan) const {
+    std::vector<Eigen::VectorXd> dynamically_feasible_traj = std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  // Extract object pose only from the dynamically feasible plan for each time step.
+  for(int i = 0; i < N_ + 1; i++){
+    dynamically_feasible_traj[i] << all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i];
+  }
+
+  // Create a matrix containing the dynamically feasible plan including position and orientation
+  // TODO: Change the 7 to read the number of states from the dynamically_feasible_plan
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
+	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+	for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
+		knots.col(i) = dynamically_feasible_traj[i].segment(3, 7);
+		timestamps(i) = i;
+	}
+
+  LcmTrajectory::Trajectory object_traj;
+  // position trajectory
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
+  position_samples = knots.bottomRows(3);
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(position_samples.rows(), "double");
+  object_traj.datapoints = position_samples;
+  object_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                         "object_target", "object_target", false);
+	
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // orientation as quaternion
+  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
+  orientation_samples = knots.topRows(4);
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector = timestamps.cast<double>();
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                         object_orientation_traj);
+
+  dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
+  dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
 }
 
 // Output port handlers for sample-related ports

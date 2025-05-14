@@ -1,3 +1,9 @@
+/** This system is used in the visualizer diagram. It subscribes to the lcm message containing information about whether
+ * we are in c3 mode or not. it also subscribes to the current lcs state and outputs a trajectory for visualization.
+ * This trajectory is a single 3d point at the current location of the end effector if we are in C3 mode. It is a single
+ * point at the origin if we are not in C3 mode. The trajectory is output as a lcmt_timestamped_saved_traj object.
+ */
+
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
@@ -5,7 +11,7 @@
 
 #include "drake/systems/framework/leaf_system.h"
 
-#include "systems/sender_systems/c3_mode_visualizer.h"
+#include "examples/sampling_c3/c3_mode_visualizer.h"
 #include <iostream>
 
 namespace dairlib {

@@ -16,7 +16,6 @@ cc_library(
         ":joint_trajectory_generator",
         ":c3_state_sender",
         ":sample_buffer_to_point_cloud",
-        ":c3_mode_visualizer",
     ],
 )
 
@@ -133,19 +132,6 @@ cc_library(
     hdrs = ["joint_trajectory_generator.h"],
     deps = [
         "//systems/framework:vector",
-    ],
-)
-
-cc_library(
-    name = "c3_mode_visualizer",
-    srcs = ["c3_mode_visualizer.cc"],
-    hdrs = ["c3_mode_visualizer.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//lcm:lcm_trajectory_saver",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
     ],
 )
 

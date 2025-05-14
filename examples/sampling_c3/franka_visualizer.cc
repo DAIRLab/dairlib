@@ -34,7 +34,7 @@
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"
 #include "systems/sender_systems/franka_kinematics.h"
-#include "systems/sender_systems/c3_mode_visualizer.h"
+#include "examples/sampling_c3/c3_mode_visualizer.h"
 #include "systems/sender_systems/sample_buffer_to_point_cloud.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"

@@ -101,6 +101,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
+        ":c3_mode_visualizer",
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
@@ -194,5 +195,19 @@ cc_binary(
         "//systems/trajectory_optimization:c3_output_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+
+cc_library(
+    name = "c3_mode_visualizer",
+    srcs = ["c3_mode_visualizer.cc"],
+    hdrs = ["c3_mode_visualizer.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )

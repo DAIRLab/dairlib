@@ -1,3 +1,5 @@
+/**This is used by the franka kinematics system. This system is also present under examples/franka/systems but has been 
+ * copied here so as to be used by the sampling_c3 controller examples. */
 #pragma once
 
 #include <string>

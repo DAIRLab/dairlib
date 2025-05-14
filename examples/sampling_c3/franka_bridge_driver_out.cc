@@ -16,7 +16,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_drake_lcm_driver_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
-#include "systems/sender_systems/franka_state_translator.h"
+#include "franka_state_translator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"

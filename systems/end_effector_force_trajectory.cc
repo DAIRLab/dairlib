@@ -1,3 +1,6 @@
+/** This system is used by the osc diagram to read a force trajectory from an lcm message and pass it onto the OSC class.
+ * This system is also present under examples/franka/systems but has been copied here to be used by the instance of the osc in
+ * the sampling_c3 controller examples. */
 #include "end_effector_force_trajectory.h"
 
 #include "dairlib/lcmt_radio_out.hpp"

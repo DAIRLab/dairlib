@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
-#include "systems/sender_systems/end_effector_force_trajectory.h"
-#include "systems/sender_systems/end_effector_orientation.h"
-#include "systems/sender_systems/end_effector_trajectory.h"
+#include "systems/end_effector_force_trajectory.h"
+#include "systems/end_effector_orientation.h"
+#include "systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -28,7 +28,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "systems/sender_systems/joint_trajectory_generator.h"
+#include "joint_trajectory_generator.h"
 
 namespace dairlib {
 

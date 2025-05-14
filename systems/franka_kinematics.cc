@@ -1,4 +1,6 @@
-#include "systems/sender_systems/franka_kinematics.h"
+/** This system is used to generate the lcs state used by the sampling c3 controller and is a copy of the one under
+ * examples/franka/systems. */
+#include "systems/franka_kinematics.h"
 
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"

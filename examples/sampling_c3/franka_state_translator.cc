@@ -1,4 +1,6 @@
-#include "systems/sender_systems/franka_state_translator.h"
+/** This system is used by the franka_driver_out system. This system is also present under examples/franka/systems but 
+ * has been copied here to be used by the sampling_c3 controller. */
+#include "franka_state_translator.h"
 
 #include <dairlib/lcmt_robot_input.hpp>
 

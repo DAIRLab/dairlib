@@ -18,7 +18,7 @@
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"
 #include "systems/sender_systems/control_target_generator_push_T.h"
-#include "systems/sender_systems/franka_kinematics.h"
+#include "systems/franka_kinematics.h"
 #include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"

@@ -1,20 +1,22 @@
+/** This system is used by the osc diagram to read an end effector trajectory from an lcm message and pass it onto the OSC class.
+ * This system is also present under examples/franka/systems but has been copied here to be used by the instance of the osc in
+ * the sampling_c3 controller examples. */
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "systems/framework/output_vector.h"
 
+#include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 
-class EndEffectorForceTrajectoryGenerator
-    : public drake::systems::LeafSystem<double> {
+class EndEffectorOrientationGenerator : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorForceTrajectoryGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context);
+  EndEffectorOrientationGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                                 drake::systems::Context<double>* context);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -26,19 +28,25 @@ class EndEffectorForceTrajectoryGenerator
     return this->get_input_port(radio_port_);
   }
 
+  void SetTrackOrientation(bool track_orientation){
+    track_orientation_ = track_orientation;
+  }
+
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
+  drake::trajectories::PiecewiseQuaternionSlerp<double> GeneratePose(
+      const drake::systems::Context<double>& context) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
-  drake::systems::DiscreteStateIndex controller_switch_index_;
-
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
+
+  bool track_orientation_;
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex trajectory_port_;
@@ -46,4 +54,4 @@ class EndEffectorForceTrajectoryGenerator
 
 };
 
-}  // namespace dairlib
+}  // namespace dairlib::examples::osc_run

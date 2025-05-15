@@ -20,7 +20,6 @@
 #include "systems/system_utils.h"
 #include "systems/framework/timestamped_vector.h"
 #include "solvers/c3_output.h"
-#include "solvers/lcs_factory_preprocessor.h"
 #include "solvers/lcs_factory.h"
 
 // To use this file, run as follows based on the demo name: 
@@ -60,7 +59,6 @@ using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 using solvers::LCSFactory;
-using solvers::LCSFactoryPreProcessor;
 
 
 // Declare function that will generate samples around T location.

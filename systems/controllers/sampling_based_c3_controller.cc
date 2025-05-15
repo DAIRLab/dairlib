@@ -13,7 +13,6 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
-#include "solvers/lcs_factory_preprocessor.h"
 #include "generate_samples.h"
 
 #include <Eigen/Dense>
@@ -35,7 +34,6 @@ using solvers::C3MIQP;
 using solvers::C3QP;
 using solvers::LCS;
 using solvers::LCSFactory;
-using solvers::LCSFactoryPreProcessor;
 using std::vector;
 using systems::TimestampedVector;
 using drake::multibody::MultibodyPlant;
@@ -725,7 +723,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Create an LCS object.
     // Preprocessing the contact pairs
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
-    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+    resolved_contact_pairs = LCSFactory::PreProcessor(
       plant_, *context_, contact_pairs_,
       c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
       c3_options_.num_friction_directions,
@@ -751,7 +749,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
       vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
       resolved_contact_pairs_for_cost_simulation =
-        LCSFactoryPreProcessor::PreProcessor(
+        LCSFactory::PreProcessor(
           plant_, *context_, contact_pairs_,
           c3_options_.resolve_contacts_to_list[
             c3_options_.num_contacts_index_for_cost],
@@ -827,7 +825,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             c3_options_.num_contacts_index)) {
         vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
         resolved_contact_pairs_for_curr_location =
-          LCSFactoryPreProcessor::PreProcessor(
+          LCSFactory::PreProcessor(
             plant_, *context_, contact_pairs_,
             c3_options_.resolve_contacts_to_list[
               c3_options_.num_contacts_index_for_curr_location],
@@ -2227,7 +2225,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+  resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
     c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,
@@ -2403,7 +2401,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+  resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
     c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,

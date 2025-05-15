@@ -45,8 +45,8 @@ q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 q_init_object: [-0.3347435, -0.026718954, 0.8878204, 0.31518626, 0.4, 0.30, 0.05] 
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
-visualizer_sample_locations_model: examples/sampling_c3/urdf/sample_locations.urdf
-visualizer_c3_mode_model: examples/sampling_c3/urdf/c3_mode_visualization.urdf
+visualizer_sample_locations_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_c3_mode_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 visualize_c3_workspace: false
 visualize_c3_state: true
 visualize_is_c3_mode: true
@@ -56,16 +56,16 @@ visualize_sample_buffer: false
 
 visualize_execution_plan: true
 
-visualizer_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_curr_traj_visualization_model.urdf
-visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_green_visualization_model.urdf
-visualizer_curr_sample_traj_jack_model: examples/sampling_c3/urdf/ball_curr_traj_visualization_model.urdf
+visualizer_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_curr_sample_traj_jack_model: examples/sampling_c3/urdf/sphere.urdf
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: true
 
 
-visualizer_best_sample_end_effector_model: examples/sampling_c3/urdf/ee_best_traj_visualization_model.urdf
-visualizer_best_sample_traj_jack_model: examples/sampling_c3/urdf/ball_best_traj_visualization_model.urdf
+visualizer_best_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
+visualizer_best_sample_traj_jack_model: examples/sampling_c3/urdf/sphere.urdf
 visualize_pose_trace_best: true
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false

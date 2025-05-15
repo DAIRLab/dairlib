@@ -112,6 +112,7 @@ cc_binary(
     ],
     deps = [
         ":c3_mode_visualizer",
+        "//solvers:c3",
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
@@ -199,6 +200,7 @@ cc_binary(
         "//systems:franka_systems",
         "//systems/sender_systems:sample_buffer_sender",
         "//systems/sender_systems:sender_systems",
+        ":control_target_generator",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -236,5 +238,23 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "control_target_generator",
+    srcs = ["control_target_generator.cc"],
+    hdrs = ["control_target_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
+        "//systems/controllers:sampling_params",
+        "//lcm:lcm_trajectory_saver",
+        "@lcm",
     ],
 )

@@ -11,6 +11,8 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
+#include "solvers/c3_options.h"
+
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"

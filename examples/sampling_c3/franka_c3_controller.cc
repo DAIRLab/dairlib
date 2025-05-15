@@ -17,7 +17,7 @@
 #include "systems/controllers/sampling_params.h"
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
 #include "systems/sender_systems/c3_state_sender.h"
-#include "systems/sender_systems/control_target_generator_push_T.h"
+#include "control_target_generator.h"
 #include "systems/franka_kinematics.h"
 #include "systems/sender_systems/sample_buffer_sender.h"
 #include "multibody/multibody_utils.h"
@@ -536,15 +536,35 @@ else if(FLAGS_demo_name == "ball_rolling"){
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
 
-  // Systems involved in setting up the target for the end effector and the
-  // object.
-  auto control_target = builder.AddSystem<systems::TargetGeneratorPushT>(
-      plant_jack);  // This system generates the target for the end effector and
-                    // the object.
+    // Systems involved in setting up the target for the end effector and the
+    // object.
+    // Build the appropriate generator at run time
+    std::unique_ptr<systems::TargetGenerator> target_generator;
+
+    if (FLAGS_demo_name == "jacktoy") {
+    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack);
+    } 
+    else if (FLAGS_demo_name == "box_topple") {
+    target_generator = std::make_unique<systems::TargetGeneratorBoxTopple>(plant_jack);
+    } 
+    else if (FLAGS_demo_name == "push_t") {
+    target_generator = std::make_unique<systems::TargetGeneratorPushT>(plant_jack);
+    } 
+    else if (FLAGS_demo_name == "ball_rolling") {
+    target_generator = std::make_unique<systems::TargetGeneratorBallRolling>(plant_jack);
+    } 
+    else {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
+    }
+
+    // Add to the diagram; the pointer you get back keeps the final static type.
+    auto* control_target = builder.AddSystem(std::move(target_generator));
+
   control_target->SetRemoteControlParameters(
       trajectory_params.trajectory_type,
       trajectory_params.use_changing_final_goal,
       trajectory_params.changing_final_goal_type,
+      trajectory_params.prevent_three_topples_for_random_goal_gen,
       trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
       trajectory_params.lead_angle,
@@ -557,6 +577,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
       trajectory_params.end_point_y,
       trajectory_params.lookahead_step_size,
       trajectory_params.lookahead_angle,
+      trajectory_params.angle_hysteresis,
       trajectory_params.angle_err_to_vel_factor,
       trajectory_params.max_step_size,
       trajectory_params.ee_goal_height,

@@ -4,81 +4,9 @@ cc_library(
     name = "sender_systems",
     srcs = [],
     deps = [
-        ":control_target_generator_jacktoy",
-        ":control_target_generator_push_T",
-        ":control_target_generator_box_topple",
-        ":control_target_generator_ball_rolling",
         ":sample_buffer_sender",
         ":c3_state_sender",
         ":sample_buffer_to_point_cloud",
-    ],
-)
-
-cc_library(
-    name = "control_target_generator_jacktoy",
-    srcs = ["control_target_generator_jacktoy.cc"],
-    hdrs = ["control_target_generator_jacktoy.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "//solvers:c3",
-        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
-        "//lcm:lcm_trajectory_saver",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "control_target_generator_push_T",
-    srcs = ["control_target_generator_push_T.cc"],
-    hdrs = ["control_target_generator_push_T.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "//solvers:c3",
-        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
-        "//lcm:lcm_trajectory_saver",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "control_target_generator_box_topple",
-    srcs = ["control_target_generator_box_topple.cc"],
-    hdrs = ["control_target_generator_box_topple.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "//solvers:c3",
-        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
-        "//lcm:lcm_trajectory_saver",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "control_target_generator_ball_rolling",
-    srcs = ["control_target_generator_ball_rolling.cc"],
-    hdrs = ["control_target_generator_ball_rolling.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "//solvers:c3",
-        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
-        "//lcm:lcm_trajectory_saver",
-        "@lcm",
     ],
 )
 

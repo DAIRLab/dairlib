@@ -27,7 +27,7 @@ cc_binary(
     srcs = ["franka_ros_lcm_bridge.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     tags = ["ros"],
     deps = [
@@ -51,7 +51,7 @@ cc_binary(
     srcs = ["franka_lcm_ros_bridge.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     tags = ["ros"],
     deps = [

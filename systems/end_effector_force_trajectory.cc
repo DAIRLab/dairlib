@@ -13,7 +13,6 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::BodyFrame;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;

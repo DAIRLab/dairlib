@@ -25,7 +25,7 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/sampling_c3:all_example_params_yamls",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
@@ -45,7 +45,7 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/sampling_c3:all_example_params_yamls",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
@@ -70,7 +70,7 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/sampling_c3:all_example_params_yamls",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         "//examples/sampling_c3/ball_rolling:parameters",
@@ -108,7 +108,7 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/sampling_c3:all_example_params_yamls",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":c3_mode_visualizer",
@@ -137,7 +137,7 @@ cc_binary(
     srcs = ["franka_bridge_driver_out.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
     ],
@@ -162,7 +162,7 @@ cc_binary(
     srcs = ["franka_bridge_driver_in.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
     ],
@@ -187,7 +187,7 @@ cc_binary(
     srcs = ["franka_c3_controller.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
     ],

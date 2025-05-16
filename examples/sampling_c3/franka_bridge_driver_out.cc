@@ -104,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<drake::lcmt_panda_status> loop(
       &lcm, std::move(owned_diagram), franka_state_translator,
       franka_driver_channel_params.franka_status_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_bridge_driver_out_diagram");
   loop.Simulate();
 
   return 0;

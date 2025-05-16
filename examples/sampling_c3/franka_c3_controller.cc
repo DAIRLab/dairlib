@@ -888,15 +888,15 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*owned_diagram, base_path + "franka_c3_controller");
-  DrawAndSaveDiagramGraph(*plant_diagram,base_path + "franka_c3_plant");
+  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_c3_controller_diagram");
+  DrawAndSaveDiagramGraph(*plant_diagram,"/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_c3_plant");
 
   // Run lcm-driven simulation
   int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), base_path + "loop");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(),"/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_c3_controller_diagram");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);

@@ -685,7 +685,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, base_path + "visualizer_diagram");
+  DrawAndSaveDiagramGraph(*diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/visualizer_diagram");
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

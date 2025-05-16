@@ -28,6 +28,10 @@ def main(log_type, example_name):
         dair, "examples", "sampling_c3", example_name, "parameters", 
         "franka_c3_options_floating.yaml"
     )
+    sampling_c3_options = os.path.join(
+        dair, "examples", "sampling_c3", example_name, "parameters", 
+        "sampling_c3_options.yaml"
+    )
     sampling_params = os.path.join(
         dair, "examples", "sampling_c3", example_name, "parameters", 
         "sampling_params.yaml"
@@ -96,6 +100,7 @@ def main(log_type, example_name):
     subprocess.run(['cp', osc_gains, f'osc_gains_{log_num}.yaml'])
     subprocess.run(['cp', sim_params, f'sim_params_{log_num}.yaml'])
     subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])
+    subprocess.run(['cp', sampling_c3_options, f'sampling_c3_options_{log_num}.yaml'])
     subprocess.run(['cp', sampling_params, f'sampling_params_{log_num}.yaml'])
     subprocess.run(['cp', trajectory_params, f'trajectory_params_{log_num}.yaml'])
     subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}.urdf'])

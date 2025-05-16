@@ -60,12 +60,13 @@ def main():
     latching_switch_b = 1
     latching_switch_x = 0
     latching_switch_y = 0
-    latching_switch_rt = 1 # right trigger
+    latching_switch_start = 0
+    latching_switch_back = 0
     print("Teleop Status: " + str(latching_switch_a))
     print("Move C3 Target with Remote Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
-    print("Spatial Force on Object Status: " + str(not latching_switch_y))
-    print("Set OSC Target with Remote Status: " + str(not latching_switch_rt))
+
+
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -77,6 +78,8 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
+                # use this print statement to find the button number
+                # print(f"Button {event.button} pressed")
                 if event.button == 0:
                     latching_switch_a = not latching_switch_a
                     print("Teleop Status: " + str(latching_switch_a))
@@ -88,11 +91,13 @@ def main():
                     print("Force Tracking Status: " + str(not latching_switch_x))
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
-                    print("Spatial Force on Object Status: " + str(latching_switch_y))
-                if event.button == 5:
-                    latching_switch_rt = not latching_switch_rt
-                    print("Set OSC Target with Remote Status: " + str(latching_switch_rt))
-
+                    print("Force C3 Mode Status: " + str(latching_switch_y))
+                if event.button == 7:
+                    latching_switch_start = not latching_switch_start  # Send signal when pressed
+                    print("Print cost breakdown status: " + str(latching_switch_start))
+                if event.button == 6:
+                    latching_switch_back = not latching_switch_back  # Send signal when pressed
+                    print("Print current rot and pos cost status: " + str(latching_switch_back))
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
@@ -102,17 +107,16 @@ def main():
         radio_msg.channel[3] = joystick.get_axis(3)
         # radio_msg.channel[2] = -joystick.get_axis(3)
         # radio_msg.channel[3] = joystick.get_axis(2)
-
-
+        radio_msg.channel[6] = latching_switch_back
+        radio_msg.channel[7] = latching_switch_start
         radio_msg.channel[13] = latching_switch_b
         radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x
         radio_msg.channel[12] = latching_switch_y
-        radio_msg.channel[10] = latching_switch_rt
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
-        publisher.publish("RADIO", radio_msg.encode())
+        publisher.publish("SAMPLING_C3_RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
         clock.tick(60)

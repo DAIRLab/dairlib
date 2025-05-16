@@ -4,7 +4,7 @@ group "operator" {
         host = "sampling_c3_localhost";
     }
     cmd "xbox" {
-        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        exec = "bazel-bin/examples/sampling_c3/xbox_script";
         host = "sampling_c3_localhost";
     }
     cmd "logger" {

@@ -258,3 +258,15 @@ cc_library(
         "@lcm",
     ],
 )
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

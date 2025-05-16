@@ -15,7 +15,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "xbox" {
-        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        exec = "bazel-bin/examples/sampling_c3/xbox_script";
         host = "localhost";
     }
     cmd "start_logging" {

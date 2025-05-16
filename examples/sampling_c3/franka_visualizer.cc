@@ -213,7 +213,7 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+      parser.AddModelsFromUrl(sim_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex ground_index =
       parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
   drake::multibody::ModelInstanceIndex platform_index =
@@ -260,8 +260,7 @@ int do_main(int argc, char* argv[]) {
 	// to avoid having to redefine them.
 	MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);	
-	parser_franka.AddModels(
-		drake::FindResourceOrThrow(sim_params.franka_model))[0];
+	parser_franka.AddModelsFromUrl(sim_params.franka_model)[0];
 	parser_franka.AddModels(
 		FindResourceOrThrow(sim_params.ground_model))[0];
 	parser_franka.AddModels(

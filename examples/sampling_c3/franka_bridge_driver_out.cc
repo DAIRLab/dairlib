@@ -68,7 +68,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
+  parser.AddModelsFromUrl(sim_params.franka_model);
 
 //   parser.AddModelsFromUrl(sim_params.franka_model);
   RigidTransform<double> W_X_R = RigidTransform<double>(

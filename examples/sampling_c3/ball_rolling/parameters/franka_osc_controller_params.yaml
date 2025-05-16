@@ -1,6 +1,6 @@
 controller_frequency: 1000
 
-franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 # TODO maybe this should stay as end_effector_base?
 end_effector_name: end_effector_tip 

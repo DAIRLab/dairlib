@@ -66,8 +66,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-//   parser.AddModelsFromUrl(sim_params.franka_model);
-    parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model));
+  parser.AddModelsFromUrl(sim_params.franka_model);
   RigidTransform<double> W_X_R = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),

@@ -4,7 +4,7 @@ sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.ya
 
 osqp_settings_file: examples/sampling_c3/shared_parameters/franka_c3_qp_settings.yaml
 
-franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
 end_effector_simple_model: examples/sampling_c3/urdf/end_effector_simple_model.urdf

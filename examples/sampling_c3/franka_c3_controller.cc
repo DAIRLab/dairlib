@@ -106,7 +106,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);	
   drake::multibody::ModelInstanceIndex franka_index =
-      parser_franka.AddModels(drake::FindResourceOrThrow(controller_params.franka_model))[0];
+      parser_franka.AddModelsFromUrl(controller_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex ground_index =
       parser_franka.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
   drake::multibody::ModelInstanceIndex platform_index =

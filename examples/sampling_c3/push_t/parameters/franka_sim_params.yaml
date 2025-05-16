@@ -1,5 +1,5 @@
 #franka_model: examples/sampling_c3/urdf/franka_no_collision.urdf
-franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
 end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 end_effector_visualization_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 end_effector_name: end_effector_tip

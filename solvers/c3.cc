@@ -267,20 +267,29 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
-               vector<VectorXd>& w, bool verbose) {
+// TODO: @Bibit can you confirm that this initialization for delta is correct?
+void C3::Solve(const VectorXd& x0, bool verbose) {
+  auto start = std::chrono::high_resolution_clock::now();
+
+  VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
+  if (options_.delta_option == 1) {
+    delta_init.head(n_) = x0;
+  }
+  std::vector<VectorXd> delta(N_, delta_init);
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
-    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-                                        -2 * R_.at(i) * u_sol_->at(i));
     // input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-    //                                     Eigen::VectorXd::Zero(k_));
+    //                                     -2 * R_.at(i) * u_sol_->at(i));
+    // We want this to be centered around 0 since we are using sampling.
+    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+                                        Eigen::VectorXd::Zero(k_));
   }
-  
   if(verbose){
     std::cout << "x0: " << x0.transpose() << std::endl;
   }
+
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter, verbose);    
@@ -290,7 +299,8 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
-  zfin_ = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
   if(verbose){
     std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
@@ -311,26 +321,31 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     std::cout<<"w: \n"<<verbose_w<<std::endl;
   }
 
-  *z_sol_ = delta;
-  z_sol_->at(0).segment(0, n_) = x0;
-  for (int i = 1; i < N_; ++i) {
-    z_sol_->at(i).segment(0, n_) =
-        A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-        D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
-  }
-
   *w_sol_ = w;
   *delta_sol_ = delta;
 
-  // Unscale lambda before output for better visualizationa and interpretation.
-  // These values will now be in Newtons.
-  for (int i = 0; i < N_; ++i){
+  if (!options_.end_on_qp_step) {
+    *z_sol_ = delta;
+    z_sol_->at(0).segment(0, n_) = x0;
+    x_sol_->at(0) = x0;
+    for (int i = 1; i < N_; ++i) {
+      z_sol_->at(i).segment(0, n_) =
+          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
+          D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+    }
+  }
+
+  for (int i = 0; i < N_; ++i) {
     lambda_sol_->at(i) *= AnDn_;
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
-  // Will added this line since zfin_ should be z_sol? Reconfirm with him.
-  // Commented for now since these look to be the same.
-  // zfin_ = *z_sol_;
+  zfin_ = *z_sol_;
+  
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto elapsed = finish - start;
+  solve_time_ =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+      1e6;
 }
 
 // This function relies on the previously computed zfin_ from the Solve function.

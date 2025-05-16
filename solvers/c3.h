@@ -35,12 +35,18 @@ class C3 {
 
   virtual ~C3() = default;
 
+  // /// Solve the MPC problem
+  // /// @param x0 The initial state of the system
+  // /// @param delta A pointer to the copy variable solution
+  // /// @param w A pointer to the scaled dual variable solution
+  // void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
+  //            std::vector<Eigen::VectorXd>& w, bool verbose = false);
+
+
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
-  /// @param delta A pointer to the copy variable solution
-  /// @param w A pointer to the scaled dual variable solution
-  void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
-             std::vector<Eigen::VectorXd>& w, bool verbose = false);
+  /// @return void
+  void Solve(const Eigen::VectorXd& x0, bool verbose = false);
 
   /// Compute the MPC cost, using previously solved MPC solution
   /// @return The cost and the full state trajectory
@@ -168,6 +174,7 @@ class C3 {
   std::vector<Eigen::MatrixXd> U_;
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
+  double solve_time_ = 0;
 
   bool h_is_zero_;
 

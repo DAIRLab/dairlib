@@ -13,6 +13,7 @@
 #include "solvers/c3.h"
 
 #include "solvers/c3_options.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "sampling_params.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
@@ -52,6 +53,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
       C3Options c3_options,
+      SamplingC3Options sampling_c3_options,
       SamplingC3SamplingParams sampling_params, bool verbose = false);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -364,6 +366,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   solvers::ContactModel contact_model_;
 
   C3Options c3_options_;
+  SamplingC3Options sampling_c3_options_;
   SamplingC3SamplingParams sampling_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(

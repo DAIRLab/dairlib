@@ -16,6 +16,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "systems/sender_systems/c3_state_sender.h"
 #include "control_target_generator.h"
 #include "systems/franka_kinematics.h"
@@ -81,6 +82,9 @@ int DoMain(int argc, char* argv[]) {
       base_path + "parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3Options sampling_c3_options =
+      drake::yaml::LoadYamlFile<SamplingC3Options>(
+          base_path + "parameters/sampling_c3_options.yaml");
 
   C3Options c3_options;
   SamplingC3SamplingParams sampling_params;
@@ -184,7 +188,7 @@ int DoMain(int argc, char* argv[]) {
   auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
   std::vector<std::vector<SortedPair<GeometryId>>>
-  contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
+  contact_pairs;  // Exact list depends on sampling_c3_options.num_contacts_index,
                   // but e.g. num_contacts_index = 0 means this will have
                   // [[(ee,cap1), (ee,cap2), (ee_cap3)],
                   //  [(ground,cap1sph1), (ground,cap1sph2),
@@ -252,7 +256,7 @@ if(FLAGS_demo_name == "push_t") {
 
     contact_pairs.push_back(ee_contact_pairs);
 
-    if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
         // If num_contacts_index is 2 or 3, we add an additional contact pair 
         // between the end effector and the ground.
         std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -353,7 +357,7 @@ else if(FLAGS_demo_name == "box_topple") {
                         // resolved to 3 ground-jack contacts.
     contact_pairs.push_back(ee_contact_pairs);
 
-    if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
         // If num_contacts_index is 2 or 3, we add an additional contact pair 
         // between the end effector and the ground.
         std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -459,7 +463,7 @@ else if(FLAGS_demo_name == "jacktoy") {
                         // resolved to 3 ground-jack contacts.
     contact_pairs.push_back(ee_contact_pairs);
 
-    if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
     // If num_contacts_index is 2 or 3, we add an additional contact pair 
     // between the end effector and the ground.
     std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -504,7 +508,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
     // will have [[(ee,sphere)], [(sphere, ground)]]
     contact_pairs.push_back(ee_contact_pairs);
 
-    if (c3_options.num_contacts_index == 1){
+    if (sampling_c3_options.num_contacts_index == 1){
         // If num_contacts_index is 2 or 3, we add an additional contact pair 
         // between the end effector and the ground.
         std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -628,7 +632,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
-      sampling_params);
+      sampling_c3_options, sampling_params);
 
   // These systems publish the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(

@@ -49,6 +49,7 @@ SamplingC3Controller::SamplingC3Controller(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     C3Options c3_options,
+    SamplingC3Options sampling_c3_options,
     SamplingC3SamplingParams sampling_params,
     bool verbose)
     : plant_(plant),
@@ -57,22 +58,23 @@ SamplingC3Controller::SamplingC3Controller(
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
       c3_options_(std::move(c3_options)),
+      sampling_c3_options_(std::move(sampling_c3_options)),
       sampling_params_(std::move(sampling_params)),
-      G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
-      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G_for_curr_location)),
-      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
-      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U_for_curr_location)),
+      G_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G)),
+      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_for_curr_location)),
+      U_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U)),
+      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_for_curr_location)),
       N_(c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q_position);
-    R_.push_back(discount_factor * c3_options_.R);
+    Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
+    R_.push_back(discount_factor * sampling_c3_options_.R);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q_position);
+  Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -86,12 +88,12 @@ SamplingC3Controller::SamplingC3Controller(
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
-        2 * c3_options_.num_contacts[c3_options_.num_contacts_index] +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
+        2 * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index] +
+        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
   } else if (c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
+        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
   } else {
     std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -385,13 +387,13 @@ SamplingC3Controller::SamplingC3Controller(
   // Set parallelization settings.
   omp_set_dynamic(0);           // Explicitly disable dynamic teams.
   omp_set_nested(1);            // Enable nested threading.
-  if (c3_options_.num_outer_threads == 0) {
+  if (sampling_c3_options_.num_outer_threads == 0) {
     // Interpret setting number of threads to zero as a request to use all
     // machine's threads.
     num_threads_to_use_ = omp_get_max_threads();
   }
   else {
-    num_threads_to_use_ = c3_options_.num_outer_threads;
+    num_threads_to_use_ = sampling_c3_options_.num_outer_threads;
   }
 
   if (verbose_) {
@@ -409,7 +411,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.planning_dt_position_tracking);
+  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, sampling_c3_options_.planning_dt_position_tracking);
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -452,14 +454,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // for next control loop.
   x_from_last_control_loop_ = x_lcs_curr;
   if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() &&
-      c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
+      sampling_c3_options_.use_predicted_x0_c3 && is_doing_c3_) {
     // First detect if we should use predicted state or not:  x_pred reset
     // mechanism is used if the prediction from last control loop is further
     // from the current state than last state was.
     if (((curr_ee - last_ee).norm() < (curr_ee - pred_ee).norm()) &&
         (curr_ee - pred_ee).norm() > 0.01 &&
         !x_pred_from_last_control_loop_.isZero() &&
-        c3_options_.use_predicted_x0_reset_mechanism) {
+        sampling_c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
       if(verbose_){
         std::cout << "RESET x_pred in C3 mode. ";
@@ -480,14 +482,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
   else if (!radio_out->channel[14] && !x_pred_curr_plan_.isZero() &&
-           c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
+           sampling_c3_options_.use_predicted_x0_repos && !is_doing_c3_) {
     // First detect if we should use predicted state or not:  x_pred reset
     // mechanism is used if the prediction from last control loop is further
     // from the current state than last state was.
     if (((curr_ee - last_ee).norm() < (curr_ee - pred_ee).norm()) &&
         (curr_ee - pred_ee).norm() > 0.01 &&
         !x_pred_from_last_control_loop_.isZero() &&
-        c3_options_.use_predicted_x0_reset_mechanism) {
+        sampling_c3_options_.use_predicted_x0_reset_mechanism) {
       // Skip using the predicted state.
       if(verbose_){
         std::cout << "RESET x_pred in repositioning mode. ";
@@ -615,35 +617,35 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   U_for_curr_location_.clear();
   double discount_factor = 1;
   if (crossed_cost_switching_threshold_) {
-    dt_ = c3_options_.planning_dt;
+    dt_ = sampling_c3_options_.planning_dt;
     // clear the Q_ values and replace with costs for position and orientation.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * c3_options_.Q_position_and_orientation);
+      Q_.push_back(discount_factor * sampling_c3_options_.Q_position_and_orientation);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
-        G_.push_back(c3_options_.G);
-        U_.push_back(c3_options_.U);
-        G_for_curr_location_.push_back(c3_options_.G_for_curr_location);
-        U_for_curr_location_.push_back(c3_options_.U_for_curr_location);
+        G_.push_back(sampling_c3_options_.G);
+        U_.push_back(sampling_c3_options_.U);
+        G_for_curr_location_.push_back(sampling_c3_options_.G_for_curr_location);
+        U_for_curr_location_.push_back(sampling_c3_options_.U_for_curr_location);
       }
     }
   }
   else {
-    dt_ = c3_options_.planning_dt_position_tracking;
+    dt_ = sampling_c3_options_.planning_dt_position_tracking;
     // clear the Q_ values and replace with costs for position only.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * c3_options_.Q_position);
+      Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
-        G_.push_back(c3_options_.G_position_tracking);
-        U_.push_back(c3_options_.U_position_tracking);
-        G_for_curr_location_.push_back(c3_options_.G_position_tracking_for_curr_location);
-        U_for_curr_location_.push_back(c3_options_.U_position_tracking_for_curr_location);
+        G_.push_back(sampling_c3_options_.G_position_tracking);
+        U_.push_back(sampling_c3_options_.U_position_tracking);
+        G_for_curr_location_.push_back(sampling_c3_options_.G_position_tracking_for_curr_location);
+        U_for_curr_location_.push_back(sampling_c3_options_.U_position_tracking_for_curr_location);
       }
     }
   }
 
-  if (c3_options_.use_quaternion_dependent_cost &&
+  if (sampling_c3_options_.use_quaternion_dependent_cost &&
       crossed_cost_switching_threshold_) {
     Eigen::VectorXd quat = x_lcs_curr.segment(3,4);
     Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3,4);
@@ -666,10 +668,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     double discount_factor = 1;
     for (int i = 0; i < N_+1; ++i) {
       Q_[i].block(3,3,4,4) = discount_factor *
-        c3_options_.q_quaternion_dependent_weight * (
+        sampling_c3_options_.q_quaternion_dependent_weight * (
           Q_quaternion_dependent_cost +
             Q_quaternion_dependent_regularizer_part_1 +
-            c3_options_.q_quaternion_dependent_regularizer_fraction
+            sampling_c3_options_.q_quaternion_dependent_regularizer_fraction
               * Q_quaternion_dependent_regularizer_part_2);
       discount_factor *= c3_options_.gamma;
     }
@@ -725,14 +727,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
     resolved_contact_pairs = LCSFactory::PreProcessor(
       plant_, *context_, contact_pairs_,
-      c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+      sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
       c3_options_.num_friction_directions,
-      c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
+      sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
 
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      c3_options_.mu[c3_options_.num_contacts_index],
+      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index],
       dt_, N_, contact_model_);
 
     // Store LCS object.
@@ -751,17 +753,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       resolved_contact_pairs_for_cost_simulation =
         LCSFactory::PreProcessor(
           plant_, *context_, contact_pairs_,
-          c3_options_.resolve_contacts_to_list[
-            c3_options_.num_contacts_index_for_cost],
+          sampling_c3_options_.resolve_contacts_to_list[
+            sampling_c3_options_.num_contacts_index_for_cost],
           c3_options_.num_friction_directions,
-          c3_options_.num_contacts[c3_options_.num_contacts_index_for_cost],
+          sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index_for_cost],
           verbose_);
       solvers::LCS lcs_object_sample_for_cost_simulation =
         solvers::LCSFactory::LinearizePlantToLCS(
           plant_, *context_, plant_ad_, *context_ad_,
           resolved_contact_pairs_for_cost_simulation,
           c3_options_.num_friction_directions,
-          c3_options_.mu[c3_options_.num_contacts_index_for_cost],
+          sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_cost],
           dt_, N_, contact_model_);
       lcs_objects_for_cost_simulation.push_back(
         lcs_object_sample_for_cost_simulation);
@@ -821,31 +823,31 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Optionally the current location can use a different number of contacts
       // than the other samples.
       if ((i == 0) &&
-          (c3_options_.num_contacts_index_for_curr_location !=
-            c3_options_.num_contacts_index)) {
+          (sampling_c3_options_.num_contacts_index_for_curr_location !=
+            sampling_c3_options_.num_contacts_index)) {
         vector<SortedPair<GeometryId>> resolved_contact_pairs_for_curr_location;
         resolved_contact_pairs_for_curr_location =
           LCSFactory::PreProcessor(
             plant_, *context_, contact_pairs_,
-            c3_options_.resolve_contacts_to_list[
-              c3_options_.num_contacts_index_for_curr_location],
+            sampling_c3_options_.resolve_contacts_to_list[
+              sampling_c3_options_.num_contacts_index_for_curr_location],
             c3_options_.num_friction_directions,
-            c3_options_.num_contacts[
-              c3_options_.num_contacts_index_for_curr_location],
+            sampling_c3_options_.num_contacts[
+              sampling_c3_options_.num_contacts_index_for_curr_location],
             verbose_);
         test_system =
           solvers::LCSFactory::LinearizePlantToLCS(
             plant_, *context_, plant_ad_, *context_ad_,
             resolved_contact_pairs_for_curr_location,
             c3_options_.num_friction_directions,
-            c3_options_.mu[c3_options_.num_contacts_index_for_curr_location],
+            sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_curr_location],
             dt_, N_, contact_model_);
 
         G = G_for_curr_location_;
         U = U_for_curr_location_;
         int n_lambda = 2 * c3_options_.num_friction_directions *
-          c3_options_.num_contacts[
-            c3_options_.num_contacts_index_for_curr_location];
+          sampling_c3_options_.num_contacts[
+            sampling_c3_options_.num_contacts_index_for_curr_location];
         delta = std::vector<Eigen::VectorXd>(
           N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
         w = std::vector<Eigen::VectorXd>(
@@ -877,7 +879,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
-      test_c3_object->Solve(test_state, delta, w, verbose_);
+      // test_c3_object->Solve(test_state, delta, w, verbose_);
+      test_c3_object->Solve(test_state, verbose_);
       // Get the state solution and calculate the cost.
       // This is taking in the xbox input to change the way we calculate cost
       // type 3 based on if force tracking is on or off.
@@ -1460,7 +1463,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   if(is_doing_c3_){
     if (filtered_solve_time_ < 2*dt_ &&
-        c3_options_.at_least_predict_first_planned_trajectory_knot) {
+        sampling_c3_options_.at_least_predict_first_planned_trajectory_knot) {
       std::cerr << "Using first planned trajectory knot as predicted state for c3." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
     } else if (filtered_solve_time_ < (N_ - 1) * dt_) {
@@ -1914,7 +1917,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // currently in repositioning mode.
   if(!is_doing_c3_){
     if (filtered_solve_time_ < dt_ &&
-        c3_options_.at_least_predict_first_planned_trajectory_knot) {
+        sampling_c3_options_.at_least_predict_first_planned_trajectory_knot) {
       std::cerr << "Using first planned trajectory knot as predicted state for repos." << std::endl;
       x_pred_curr_plan_ = knots.col(2);
     } else
@@ -2227,15 +2230,15 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
-    c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+    sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,
-    c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
+    sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      c3_options_.mu[c3_options_.num_contacts_index], contact_model_);
+      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index], contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -2403,14 +2406,14 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
-    c3_options_.resolve_contacts_to_list[c3_options_.num_contacts_index],
+    sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,
-    c3_options_.num_contacts[c3_options_.num_contacts_index], verbose_);
+    sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      c3_options_.mu[c3_options_.num_contacts_index], contact_model_);
+      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index], contact_model_);
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

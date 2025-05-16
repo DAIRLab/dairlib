@@ -16,6 +16,7 @@
 #include <drake/systems/framework/diagram_builder.h>
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/system_utils.h"
 #include "systems/framework/timestamped_vector.h"
@@ -134,6 +135,17 @@ int DoMain(int argc,  char* argv[]) {
                         c3_gains_path_replacement);
   C3Options c3_options;
   c3_options = drake::yaml::LoadYamlFile<C3Options>(c3_gains_path + ".yaml");
+    
+  // Sampling c3 options.
+  // WARNING: ALL LOGS PRIOR TO MAY 15, 2025 WILL NOT HAVE A SAMPLING C3 OPTIONS.
+  // PLEASE USE AN OLDER VERSION OF THIS FILE TO LOAD LOGS COLLECTED PRIOR TO MAY 15, 2025.
+  std::string sampling_c3_options_path = log_filepath;
+  std::string sampling_c3_options_path_replacement = "sampling_c3_options_";
+  sampling_c3_options_path.replace(
+    sampling_c3_options_path.find(to_replace), to_replace.length(),
+    sampling_c3_options_path_replacement);
+  SamplingC3Options sampling_c3_options =
+    drake::yaml::LoadYamlFile<SamplingC3Options>(sampling_c3_options_path + ".yaml");
   // NOTE:  can temporarily hard code many more ADMM iterations or other
   // changes here, e.g.:
   // c3_options.admm_iter = 8;
@@ -604,7 +616,7 @@ int DoMain(int argc,  char* argv[]) {
 
       contact_pairs.push_back(ee_contact_pairs);
 
-      if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+      if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
           // If num_contacts_index is 2 or 3, we add an additional contact pair 
           // between the end effector and the ground.
           std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -705,7 +717,7 @@ int DoMain(int argc,  char* argv[]) {
                           // resolved to 3 ground-jack contacts.
       contact_pairs.push_back(ee_contact_pairs);
 
-      if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+      if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
           // If num_contacts_index is 2 or 3, we add an additional contact pair 
           // between the end effector and the ground.
           std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -811,7 +823,7 @@ int DoMain(int argc,  char* argv[]) {
                           // resolved to 3 ground-jack contacts.
       contact_pairs.push_back(ee_contact_pairs);
 
-      if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+      if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
       // If num_contacts_index is 2 or 3, we add an additional contact pair 
       // between the end effector and the ground.
       std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -856,7 +868,7 @@ int DoMain(int argc,  char* argv[]) {
       // will have [[(ee,sphere)], [(sphere, ground)]]
       contact_pairs.push_back(ee_contact_pairs);
 
-      if (c3_options.num_contacts_index == 1){
+      if (sampling_c3_options.num_contacts_index == 1){
           // If num_contacts_index is 2 or 3, we add an additional contact pair 
           // between the end effector and the ground.
           std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -880,6 +892,7 @@ int DoMain(int argc,  char* argv[]) {
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
     plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
     plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
+    sampling_c3_options,
     sampling_params, verbose);
   auto controller_context = controller->CreateDefaultContext();
 

@@ -1,4 +1,10 @@
 cc_library(
+    name = "sampling_c3_options",
+    hdrs = ["sampling_c3_options.h"],
+    visibility = ["//visibility:public"],  # Allow all subpackages to use it
+)
+
+cc_library(
     name = "franka_sim_params",
     hdrs = ["franka_sim_params.h"],
     visibility = ["//visibility:public"],  # Allow all subpackages to use it

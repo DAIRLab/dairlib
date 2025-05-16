@@ -131,6 +131,7 @@ cc_library(
         ":quaternion_error_hessian",
         ":sampling_params",
         "//solvers:lcs",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
     ],
     copts = [
         "-fopenmp",

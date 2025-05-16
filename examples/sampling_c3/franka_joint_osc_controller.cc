@@ -73,8 +73,7 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          FLAGS_controller_parameters);
+      drake::yaml::LoadYamlFile<FrankaControllerParams>(base_path + "parameters/franka_osc_controller_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(

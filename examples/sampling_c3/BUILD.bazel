@@ -73,7 +73,6 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        "//examples/sampling_c3/ball_rolling:parameters",
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
         "//common",

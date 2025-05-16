@@ -11,6 +11,4 @@ attic/multibody/solver_log/
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
-MODULE.bazel
-MODULE.bazel.lock
 

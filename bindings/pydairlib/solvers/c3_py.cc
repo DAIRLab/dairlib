@@ -73,11 +73,11 @@ PYBIND11_MODULE(c3, m) {
       .def(py::init<const LCS&, const dairlib::solvers::C3::CostMatrices&,
                     const vector<VectorXd>&, const C3Options&>(),
            arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
-      .def("Solve", &C3MIQP::Solve, arg("x0"))
+      .def("Solve", &C3MIQP::Solve, arg("x0"), arg("verbose") = false)
       .def("UpdateTarget", &C3MIQP::UpdateTarget, arg("x0"))
       .def("UpdateLCS", &C3MIQP::UpdateLCS, arg("lcs"))
       .def("ADMMStep", &C3MIQP::ADMMStep, arg("x0"), arg("delta"), arg("w"),
-           arg("G"), arg("admm_iteration"))
+           arg("G"), arg("admm_iteration"), arg("verbose") = false)
       .def("SolveQP", &C3MIQP::SolveQP, arg("x0"), arg("G"), arg("WD"),
            arg("admm_iteration"), arg("is_final_solve"))
       .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))

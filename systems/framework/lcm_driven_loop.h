@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <chrono>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -54,71 +53,6 @@ namespace systems {
 /// Note that we implement the class only in the header file because we don't
 /// know what MessageTypes are beforehand.
 
-/**
- * Subscribes to and stores a copy of the most recent message on a given
- * channel, for some @p Message type.  All copies of a given Subscriber share
- * the same underlying data.  This class does NOT provide any mutex behavior
- * for multi-threaded locking; it should only be used in cases where the
- * governing DrakeLcmInterface::HandleSubscriptions is called from the same
- * thread that owns all copies of this object.
- */
-template <typename Message>
-class Subscriber final {
- public:
-  // Intentionally copyable so that it can be returned and stored by-value.
-  DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(Subscriber);
-
-  /**
-   * Subscribes to the (non-empty) @p channel on the given (non-null)
-   * @p lcm instance.  The `lcm` pointer is only used during construction; it
-   * is not retained by this object.  When a undecodable message is received,
-   * @p on_error handler is invoked; when `on_error` is not provided, an
-   * exception will be thrown instead.
-   */
-  Subscriber(drake::lcm::DrakeLcmInterface* lcm, const std::string& channel,
-             std::function<void()> on_error = {}) {
-    subscription_ = drake::lcm::Subscribe<Message>(
-        lcm, channel,
-        [data = data_](const Message& message) {
-          data->message = message;
-          data->count++;
-        },
-        std::move(on_error));
-    if (subscription_) {
-      subscription_->set_unsubscribe_on_delete(true);
-    }
-  }
-
-  /**
-   * Returns the most recently received message, or a value-initialized (zeros)
-   * message otherwise.
-   */
-  const Message& message() const { return data_->message; }
-  Message& message() { return data_->message; }
-
-  /** Returns the total number of received messages. */
-  int64_t count() const { return data_->count; }
-  int64_t& count() { return data_->count; }
-
-  /** Clears all data (sets the message and count to all zeros). */
-  void clear() {
-    data_->message = {};
-    data_->count = 0;
-  }
-
-  struct Data {
-    Message message{};
-    int64_t count{0};
-  };
-  // Share a single copy of our (mutable) message storage, for all Subscribers
-  // to view or modify *and* for our subscription closure to write into.  This
-  // will not be destroyed until all Subscribers are gone AND the subscription
-  // closure has been destroyed.
-  std::shared_ptr<Data> data_{std::make_shared<Data>()};
-  // Keep our subscription active as long as a copy of this Subscriber remains.
-  std::shared_ptr<drake::lcm::DrakeSubscriptionInterface> subscription_;
-};
-
 // We set a default value for SwitchMessageType so that we can generalize this
 // to both single and multi inputs.
 template <typename InputMessageType,
@@ -137,11 +71,10 @@ class LcmDrivenLoop {
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
-                const std::string& input_channel, bool is_forced_publish,
-                int queue_capacity=1)
+                const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      "", is_forced_publish, queue_capacity){};
+                      "", is_forced_publish){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -158,7 +91,6 @@ class LcmDrivenLoop {
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
                 const std::string& switch_channel, bool is_forced_publish,
-                int queue_capacity=1,
                 const std::string& backup_drive_channel = "")
       : drake_lcm_(drake_lcm),
         lcm_parser_(lcm_parser),
@@ -176,7 +108,7 @@ class LcmDrivenLoop {
     DRAKE_DEMAND(!input_channels.empty());
     if (input_channels.size() > 1) {
       DRAKE_DEMAND(!switch_channel.empty());
-      switch_sub_ = std::make_unique<Subscriber<SwitchMessageType>>(
+      switch_sub_ = std::make_unique<drake::lcm::Subscriber<SwitchMessageType>>(
           drake_lcm_, switch_channel);
     }
 
@@ -184,8 +116,7 @@ class LcmDrivenLoop {
     for (const auto& name : input_channels) {
       std::cout << "Constructing subscriber for " << name << std::endl;
       name_to_input_sub_map_.insert(std::make_pair(
-          name, Subscriber<InputMessageType>(drake_lcm_, name)));
-      name_to_input_sub_map_.at(name).subscription_->set_queue_capacity(queue_capacity);
+          name, drake::lcm::Subscriber<InputMessageType>(drake_lcm_, name)));
     }
 
     // Make sure input_channels contains active_channel, and then set initial
@@ -202,7 +133,7 @@ class LcmDrivenLoop {
     active_channel_ = active_channel;
 
     if (!backup_drive_channel.empty()) {
-      state_sub_ = std::make_unique<Subscriber<lcmt_robot_output>>(
+      state_sub_ = std::make_unique<drake::lcm::Subscriber<lcmt_robot_output>>(
           drake_lcm_, backup_drive_channel);
     }
   };
@@ -295,11 +226,6 @@ class LcmDrivenLoop {
             is_new_state_message;
       });
 
-      // Pump drake's LCM subscribers to empty their internal queues
-      // until all LCM buffers are up-to-date.
-      // Addresses https://github.com/RobotLocomotion/drake/issues/15234
-      while (drake_lcm_->HandleSubscriptions(0) > 0);
-
       // Update the diagram context when there is new input message
       if (is_new_input_message || too_long_between_input_messages_) {
         // Write the InputMessageType message into the context if lcm_parser is
@@ -316,17 +242,9 @@ class LcmDrivenLoop {
           time =
               name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
           last_input_msg_time_ = time;
-          // print current cpu time for timing analysis
-          // auto now = std::chrono::high_resolution_clock::now();
-          // std::cout << "Time of receipt of robot state: "
-          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<<" at utime: "<< time << std::endl;
         } else {
           // use the robot state to advance
           time = state_sub_->message().utime * 1e-6;
-          // print current cpu time for timing analysis
-          // auto now = std::chrono::high_resolution_clock::now();
-          // std::cout << "Time of receipt of robot state: "
-          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<<" at utime: "<< time << std::endl;
           state_sub_->clear();
         }
 
@@ -350,10 +268,6 @@ class LcmDrivenLoop {
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
-          // print current cpu time for timing analysis
-          // auto now = std::chrono::high_resolution_clock::now();
-          // std::cout << "Time of publish: "
-          //   << std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()<< std::endl;
         }
 
         // Clear messages in the current input channel
@@ -409,9 +323,11 @@ class LcmDrivenLoop {
 
   std::string diagram_name_ = "diagram";
   std::string active_channel_;
-  std::unique_ptr<Subscriber<SwitchMessageType>> switch_sub_ = nullptr;
-  std::map<std::string, Subscriber<InputMessageType>> name_to_input_sub_map_;
-  std::unique_ptr<Subscriber<lcmt_robot_output>> state_sub_;
+  std::unique_ptr<drake::lcm::Subscriber<SwitchMessageType>> switch_sub_ =
+      nullptr;
+  std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
+      name_to_input_sub_map_;
+  std::unique_ptr<drake::lcm::Subscriber<lcmt_robot_output>> state_sub_;
 
   bool is_forced_publish_;
   bool too_long_between_input_messages_ = false;

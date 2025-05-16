@@ -1,7 +1,7 @@
 """Script to visualize the costs of samples.  Requires the drake_env virtual
-environment located at dairlib/drake_env, i.e.:
+environment located at workspace/drake_env, i.e.:
 
-source ~/workspace/dairlib/drake_env/bin/activate
+source ~/workspace/drake_env/bin/activate
 
 Visualizes the costs and configurations exported by lcm_log_loader.cc when the
 DO_SAMPLE_VISUALIZATIONS is #defined.  That log loading script writes files to

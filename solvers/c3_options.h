@@ -8,8 +8,7 @@ struct C3Options {
   int admm_iter;     // total number of ADMM iterations
   float rho;         // initial value of the rho parameter
   float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // for inner C3 loop.
-                     // 0 is dynamic, greater than 0 for a fixed count
+  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
@@ -20,15 +19,12 @@ struct C3Options {
   double solve_time_filter_alpha;
   double publish_frequency;
 
-  std::vector<double> world_x_limits;
-  std::vector<double> world_y_limits;
-  std::vector<double> world_z_limits;
-  std::vector<double> robot_radius_limits;
+//  std::vector<double> world_x_limits;
+//  std::vector<double> world_y_limits;
+//  std::vector<double> world_z_limits;
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
   std::vector<Eigen::VectorXd> workspace_limits;
-
-  double ee_z_state_min;
   double workspace_margins;
 
   int N;
@@ -38,10 +34,6 @@ struct C3Options {
   double w_R;
   double w_G;
   double w_U;
-
-  // Parameters used for cost computation function
-  double Kp_for_cost_type_3;
-  double Kd_for_cost_type_3;
 
   std::vector<double> q_vector;
   std::vector<double> r_vector;
@@ -62,12 +54,8 @@ struct C3Options {
   std::vector<double> u_lambda;
   std::vector<double> u_u;
 
-  double qp_projection_alpha;
-  double qp_projection_scaling;
-
   std::vector<double> mu;
-  double dt;                    // dt for everything if not using sampling-based
-                                // C3 controller.
+  double dt;
   double solve_dt;
   int num_friction_directions;
   int num_contacts;
@@ -89,20 +77,15 @@ struct C3Options {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
     a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(end_on_qp_step));
     a->Visit(DRAKE_NVP(use_robust_formulation));
-    a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
 
-    a->Visit(DRAKE_NVP(world_x_limits));
-    a->Visit(DRAKE_NVP(world_y_limits));
-    a->Visit(DRAKE_NVP(world_z_limits));
-    a->Visit(DRAKE_NVP(robot_radius_limits));
     a->Visit(DRAKE_NVP(workspace_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
-    a->Visit(DRAKE_NVP(ee_z_state_min));
     a->Visit(DRAKE_NVP(workspace_margins));
 
     a->Visit(DRAKE_NVP(mu));
@@ -112,25 +95,19 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
-
     a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
-
-    a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
-    a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
-
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
-
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));
@@ -138,31 +115,23 @@ struct C3Options {
     a->Visit(DRAKE_NVP(u_lambda));
     a->Visit(DRAKE_NVP(u_u));
 
-    a->Visit(DRAKE_NVP(qp_projection_alpha));
-    a->Visit(DRAKE_NVP(qp_projection_scaling));
-
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
-
     if (contact_model == "stewart_and_trinkle") {
       g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
       g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
       g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
-
     } else {
       g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
-
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
-
     if (contact_model == "stewart_and_trinkle") {
       u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
       u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
       u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
-
     } else {
       u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }

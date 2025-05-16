@@ -3,21 +3,7 @@
 #include <set>
 
 #include "solvers/lcs.h"
-#include "multibody/geom_geom_collider.h"
-#include "drake/geometry/query_object.h"
-#include "drake/geometry/geometry_ids.h"   
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/math/rigid_transform.h" 
 
-using std::vector;
-using drake::SortedPair;
-using drake::geometry::GeometryId;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Body;
-using drake::math::RigidTransform;
-using drake::geometry::FrameId;
-using drake::systems::Context;
-using drake::geometry::SignedDistancePair;
 namespace dairlib {
 namespace solvers {
 
@@ -73,33 +59,6 @@ class LCSFactory {
   /// @param inactive_lambda_inds The indices for lambda that must be 0
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
-
-    /// Preprocess the contact pairs to select the closest contacts
-    /// @param plant The MultibodyPlant
-    /// @param context The context about which to linearize
-    /// @param contact_geoms The contact geometries
-    /// @param resolve_contacts_to_list The number of contacts to resolve
-    /// @param num_friction_directions The number of friction directions
-    /// @param num_contacts The number of contacts
-    /// @param verbose Whether to print verbose information
-    /// @return The closest contacts
-    static std::vector<drake::SortedPair<drake::geometry::GeometryId>> PreProcessor(
-            const drake::multibody::MultibodyPlant<double>& plant,
-            const drake::systems::Context<double>& context,
-            const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-                contact_geoms,
-            const std::vector<int>& resolve_contacts_to_list,
-            int num_friction_directions, int num_contacts, bool verbose = false);
-    /// Print verbose contact information
-    /// @param plant The MultibodyPlant
-    /// @param context The context about which to linearize
-    /// @param pair The contact pair
-    /// @param phi_i The sign distance
-    static void PrintVerboseContactInfo(
-        const drake::multibody::MultibodyPlant<double>& plant,
-        const drake::systems::Context<double>& context,
-        const drake::SortedPair<drake::geometry::GeometryId>& pair,
-        const double phi_i);
 };
 
 }  // namespace solvers

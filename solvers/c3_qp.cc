@@ -1,7 +1,6 @@
 #include "solvers/c3_qp.h"
 
 #include <vector>
-#include <iostream>
 
 #include <Eigen/Dense>
 
@@ -45,24 +44,24 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   auto ln_ = prog.NewContinuousVariables(m_, "lambda");
   auto un_ = prog.NewContinuousVariables(k_, "u");
 
-  // This must be the parameter that regulates complimentarity violation. 
-  // As alpha tends to 0, the complimentarity condition is enforced more 
-  // strictly.
-  double alpha = options_.qp_projection_alpha;
-  double scaling = options_.qp_projection_scaling;
+  double alpha = 0.01;
+  double scaling = 1000;
 
-  MatrixXd EFH = MatrixXd::Zero(m_, n_ + m_ + k_);
+  MatrixXd EFH(m_, n_ + m_ + k_);
   EFH.block(0, 0, m_, n_) = E / scaling;
   EFH.block(0, n_, m_, m_) = F / scaling;
   EFH.block(0, n_ + m_, m_, k_) = H / scaling;
+
   prog.AddLinearConstraint(
       EFH, -c / scaling,
       Eigen::VectorXd::Constant(m_, std::numeric_limits<double>::infinity()),
       {xn_, ln_, un_});
+
   prog.AddLinearConstraint(
       MatrixXd::Identity(m_, m_), VectorXd::Zero(m_),
       Eigen::VectorXd::Constant(m_, std::numeric_limits<double>::infinity()),
       ln_);
+
   MatrixXd New_U = U;
   New_U.block(n_, n_, m_, m_) = alpha * F;
 
@@ -73,6 +72,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
 
   //  prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
   prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
+
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
@@ -81,6 +81,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);
   prog.SetSolverOptions(solver_options);
+
   MathematicalProgramResult result = osqp_.Solve(prog);
 
   VectorXd xSol = result.GetSolution(xn_);

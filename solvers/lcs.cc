@@ -88,27 +88,24 @@ LCS& LCS::operator=(const LCS& lcs) {
     H_.at(i) = lcs.H_.at(i);
     c_.at(i) = lcs.c_.at(i);
   }
+  W_x_ = lcs.W_x_;
+  W_l_ = lcs.W_l_;
+  W_u_ = lcs.W_u_;
+  w_ = lcs.w_;
+  has_tangent_linearization_ = lcs.has_tangent_linearization_;
   return *this;
 }
 
-const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input, bool verbose) {
+const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
   VectorXd x_final;
   // calculate force
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
 
-  auto flag = LCPSolver.SolveLcpLemkeRegularized(
+  auto flag = LCPSolver.SolveLcpLemke(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
-
-  if (flag == 0) {
-    std::cout << "LCP solver failed" << std::endl;
-    return x_init;
-  }
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
-  if(verbose){
-    std::cout<<"\tForce is "<<force.transpose()<<std::endl;
-  }
   return x_final;
 }
 

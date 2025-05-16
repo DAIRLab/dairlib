@@ -11,9 +11,9 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
-  //  env_.set("LogToConsole", "0");
-  env_.set("OutputFlag", "0");
-  env_.set("Threads", "5");
+  env_.set("LogToConsole", "0");
+  env_.set("OutputFlag", "1");
+  env_.set("Threads", "0");
   env_.start();
 }
 
@@ -38,12 +38,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   Mcons2 << MM1, MM2, MM3;
 
   GRBModel model = GRBModel(env_);
-  //  model.set(GRB_IntParam_LogToConsole, 1);
-  //  model.set(GRB_StringParam_LogFile, "grb_debug");
-  //  model.set("Cutoff", "0.001");
-  //  model.set("FeasibilityTol", "0.00001");
-  //  model.set("FeasibilityTol", "0.01");
-  //  model.set("IterationLimit", "40");
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];
@@ -73,32 +67,39 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 100000;  // big M variable
+  // initial state constraint
+//  if (warm_start_index == 0){
+//    for (int i = 0; i < n_; ++i){
+//      model.addConstr(delta_k[i] == delta_c[i]);
+//    }
+//  }
+
+  int M = 1000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 
   for (int i = 0; i < m_; i++) {
-    GRBLinExpr cexpr = 0;
+    GRBLinExpr lambda_expr = 0;
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
       coeff[j] = Mcons2(i, j);
     }
 
-    cexpr.addTerms(coeff, delta_k, n_ + m_ + k_);
-    model.addConstr(cexpr >= 0);
-    model.addConstr(cexpr <= M * (1 - binary[i]));
+    lambda_expr.addTerms(coeff, delta_k, n_ + m_ + k_);
+    model.addConstr(lambda_expr >= 0);
+    model.addConstr(lambda_expr <= M * (1 - binary[i]));
 
-    GRBLinExpr cexpr2 = 0;
+    GRBLinExpr activation_expr = 0;
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
       coeff2[j] = Mcons1(i, j);
     }
 
-    cexpr2.addTerms(coeff2, delta_k, n_ + m_ + k_);
-    model.addConstr(cexpr2 + c(i) >= 0);
-    model.addConstr(cexpr2 + c(i) <= M * binary[i]);
+    activation_expr.addTerms(coeff2, delta_k, n_ + m_ + k_);
+    model.addConstr(activation_expr + c(i) >= 0);
+    model.addConstr(activation_expr + c(i) <= M * binary[i]);
   }
 
   model.optimize();

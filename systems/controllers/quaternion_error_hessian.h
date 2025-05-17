@@ -1,5 +1,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include "drake/common/drake_assert.h"
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;

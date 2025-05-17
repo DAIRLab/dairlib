@@ -88,6 +88,15 @@ cc_library(
 )
 
 cc_library(
+    name = "quaternion_error_hessian",
+    srcs = ["quaternion_error_hessian.cc"],
+    hdrs = ["quaternion_error_hessian.h"],
+    deps = [
+	"@drake//:drake_shared_library",
+    ]
+)
+
+cc_library(
     name = "gravity_compensator",
     srcs = [
         "gravity_compensator.cc",

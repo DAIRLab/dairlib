@@ -65,12 +65,13 @@ from pydrake.systems.all import (
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 class ObservationPublisher(LeafSystem):
-    def __init__(self, noise=False, simulate_perception=True, terrain=None):
+    def __init__(self, sim_env, noise=False, simulate_perception=True, terrain=None):
         LeafSystem.__init__(self)
         self.ns = 4
         self.noise = noise
         self.simulate_perception = simulate_perception
-        
+        self.cassie_sim = sim_env
+
         if 'flat/' in terrain or '/flat.yaml' in terrain:
             self.terrain = 'flat'
         else:
@@ -355,7 +356,21 @@ class ObservationPublisher(LeafSystem):
         # print(np.max(gt_hmap[-1]))
         gt_hmap = gt_hmap.reshape(-1)
 
-        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap)) # JOINT 24621
+
+        # x_u_t = self.EvalVectorInput(context, self.input_port_indices['gt_x_u_t']).value()
+        pos_vel = gt_states[:45]
+        
+        plant = self.cassie_sim.get_plant()
+        plant_context = plant.CreateDefaultContext()
+        plant.SetPositionsAndVelocities(plant_context, pos_vel)
+        bf_frame = plant.GetBodyByName("pelvis").body_frame()
+        bf_velocity = bf_frame.CalcSpatialVelocityInWorld(plant_context)
+        bf_vel = bf_velocity.translational()
+        bf_ang = bf_velocity.rotational()
+        bf_vel = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_vel)
+        bf_ang = ReExpressWorldVector3InBodyYawFrame(plant, plant_context, "pelvis", bf_ang)
+        
+        out = np.hstack((hmap, alip, vdes, joint_angle, bf_vel[:2], gt_joint_angle[2:], gt_hmap)) # JOINT 24621
         # out = np.hstack((hmap, alip, vdes, gt_joint_angle, gt_hmap)) # ALIP
         output.set_value(out)
 
@@ -751,7 +766,7 @@ class CassieFootstepControllerEnvironmentOptions:
     elevation_mapping_params_yaml: str = path.join(
         params_folder, 'elevation_mapping_params_simulation.yaml'
     )
-    urdf: str = "examples/Cassie/urdf/cassie_v2.urdf" # "examples/Cassie/urdf/cassie_v2_toe_link.urdf"
+    urdf: str = "examples/Cassie/urdf/cassie_v2_toe_link.urdf" # "examples/Cassie/urdf/cassie_v2_toe_link.urdf"
     
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
@@ -799,7 +814,6 @@ class CassieFootstepControllerEnvironment(Diagram):
         terrain_friction = np.random.uniform(0.4, 1.0)
         # terrain_friction = 0.8
         terrain_friction = 0.4
-        # terrain_friction = 0.8
         # terrain_friction = 1.1
         print(terrain_friction)
         self.cassie_sim = HikingSimDiagram(
@@ -1132,7 +1146,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(noise=False, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
+        obs_pub = ObservationPublisher(sim_env = self.cassie_sim, noise=False, simulate_perception=self.params.simulate_perception, terrain=self.params.terrain)
         builder.AddSystem(obs_pub)
         # builder.Connect(
         #     self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd

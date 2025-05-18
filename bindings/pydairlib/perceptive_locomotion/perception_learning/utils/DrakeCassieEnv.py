@@ -195,7 +195,7 @@ def reset_handler(simulator, terrain, evaluate, seed, drake_rng):
     -1.31373, -0.0404818, 1.61925, -0.0310551, -1.6785])
     datapoint['v'] = np.zeros((22,))
 
-    v_x = 0.65
+    v_x = 0.4
     v_y = 0.1
     
     if terrain == 'no_obs':
@@ -212,12 +212,12 @@ def reset_handler(simulator, terrain, evaluate, seed, drake_rng):
         vx = np.random.uniform(0.0, v_x)
         vy = np.random.uniform(-v_y, v_y)
     else:
-        vx = np.random.uniform(0.25, v_x)
+        vx = np.random.uniform(0.0, v_x)
         vy = np.random.uniform(-v_y, v_y)
 
-    datapoint['desired_velocity'] = np.array([vx, vy]).flatten()
+    datapoint['desired_velocity'] = np.array([vx, 0.0]).flatten()
 
-    datapoint['desired_velocity'] = np.array([0.4, 0.]).flatten()
+    # datapoint['desired_velocity'] = np.array([0.6, 0.]).flatten()
     print(datapoint['desired_velocity'])
 
     if evaluate:
@@ -245,14 +245,14 @@ def reset_handler(simulator, terrain, evaluate, seed, drake_rng):
             rand = np.random.randint(-6,7)
             rand = 0
             # pos = np.random.uniform(low=.7, high=1.0)
-            pos = 0.7
+            pos = 0.
             datapoint['q'][4:6] = np.array([rand*15 + pos, 0])
         else:
             yaw = math.pi # Downstair
             rand = np.random.randint(-6,7)
             rand = 0
             pos = np.random.uniform(low=-1.0, high=-0.7)
-            pos = -0.7
+            pos = -0.
             datapoint['q'][4:6] = np.array([rand*15 + pos, 0])
         
         if evaluate:
@@ -461,7 +461,9 @@ def simulate_init(sim_params, evaluate=False):
 
     print(terrain_yaml)
 
-    sim_params.terrain = './terrain_eval/dustair_0.yaml'
+    sim_params.terrain = './terrain/EVAL/dustair_0.yaml'
+    # sim_params.terrain = './terrain_eval/dustair_0.yaml'
+    # sim_params.terrain = './thesis_terrain/RL_sim_test/dustair_6.yaml'
     # sim_params.terrain = os.path.join(perception_learning_base_folder, terrain_yaml)
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
@@ -543,17 +545,17 @@ def simulate_init(sim_params, evaluate=False):
         #     return EventStatus.ReachedTermination(diagram, "Stray")
 
         if context.get_time() > time_limit:
-            print(com)
+            # print(com)
             print("Time")
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
         
         if z1 < 0.2:
-            print(com)
+            # print(com)
             print("Toe")
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
-            print(com)
+            # print(com)
             print("Toe")
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
@@ -622,20 +624,20 @@ def simulate_init(sim_params, evaluate=False):
         #                 print(np.linalg.norm(contact_force))
                 # return EventStatus.ReachedTermination(diagram, "Right Collision")
 
-        # contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
-        # contact_results = contact_results_port.Eval(plant_context)
-        # for i in range(contact_results.num_point_pair_contacts()):
-        #     contact_info = contact_results.point_pair_contact_info(i)
-        #     # print(contact_info)
-        #     # body_A = plant.get_body(contact_info.bodyA_index())
-        #     body_B = plant.get_body(contact_info.bodyB_index())
-        #     contact_force = contact_info.contact_force()
-        #     if body_B.name() == "toe_left_tip" or body_B.name() == "toe_right_tip":
-        #         # print(body_B.name())
-        #         # print(contact_force)
-        #         if np.linalg.norm(contact_force) > 500:
-        #             print(context.get_time())
-        #             print(np.linalg.norm(contact_force))
+        contact_results_port = plant.get_output_port(plant.get_contact_results_output_port().get_index())
+        contact_results = contact_results_port.Eval(plant_context)
+        for i in range(contact_results.num_point_pair_contacts()):
+            contact_info = contact_results.point_pair_contact_info(i)
+            # print(contact_info)
+            # body_A = plant.get_body(contact_info.bodyA_index())
+            body_B = plant.get_body(contact_info.bodyB_index())
+            contact_force = contact_info.contact_force()
+            if body_B.name() == "toe_left_tip" or body_B.name() == "toe_right_tip":
+                # print(body_B.name())
+                # print(contact_force)
+                if np.linalg.norm(contact_force) > 1000:
+                    print(context.get_time())
+                    print(np.linalg.norm(contact_force))
 
         # if track_error > 0.5 and (context.get_time() > 1.):
         #     return EventStatus.ReachedTermination(diagram, "Track Error Exceeded")
@@ -653,7 +655,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions, evalu
 
     # random_terrain = True
     simulator, terrain = simulate_init(sim_params, evaluate=evaluate)
-    
+    simulator.set_publish_every_time_step(True)
     # Define Action and Observation space.
     la = np.array([-1., -1., -1.])
     ha = np.array([1., 1., 1.])

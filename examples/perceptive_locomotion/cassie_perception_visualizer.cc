@@ -16,6 +16,7 @@
 namespace dairlib {
 
 DEFINE_string(channel_x, "NETWORK_CASSIE_STATE_DISPATCHER", "State channel");
+// DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION", "State channel");
 DEFINE_string(channel_elevation_map, "CASSIE_ELEVATION_MAP",
               "Elevation mapping grid map channel");
 DEFINE_string(channel_convex_polygons, "FOOTHOLDS_PROCESSED",

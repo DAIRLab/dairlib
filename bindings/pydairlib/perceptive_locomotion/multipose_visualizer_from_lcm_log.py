@@ -35,7 +35,7 @@ def main():
     channel_x = "CASSIE_STATE_SIMULATION" # "CASSIE_STATE_DISPATCHER" # "CASSIE_STATE_SIMULATION"
     channel_u = False #"OSC_WALKING" # False #"CASSIE_INPUT"
     channel_osc = False #"OSC_DEBUG_WALKING"
-    num_poses = 16
+    num_poses = 1
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -76,8 +76,9 @@ def multipose_visualizer_main(robot_output, fname_yaml, num_poses):
     q_idx = np.linspace(0, n, num_poses, dtype=int)
     # q_idx = np.linspace(9000, 10000, num_poses, dtype=int)
     
-    # print(q_idx)
+    print(q_idx)
     q_idx[-1] -= 1
+    q_idx[0] += 10
     # q_idx[0] += 100
     #q_idx = q_idx[:-1] 
     #q_idx = q_idx[-3:-1]

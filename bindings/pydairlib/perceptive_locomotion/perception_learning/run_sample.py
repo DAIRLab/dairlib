@@ -73,17 +73,17 @@ def sample(sim_params):
             obs, _ = env.reset()
 
 def run_play(sim_params, model_path=None):
-    np.random.seed(234)
-    th.manual_seed(234)
-    sim_params.visualize = True
-    sim_params.meshcat = Meshcat()
+    np.random.seed(222)
+    th.manual_seed(222)
+    # sim_params.visualize = True
+    # sim_params.meshcat = Meshcat()
 
     env = gym.make("DrakeCassie-v0",
                     sim_params = sim_params,
                     )
     rate = 30.0
     env.simulator.set_target_realtime_rate(rate)
-    max_steps = 800
+    max_steps = 999999
     
     lstm=True
     lstm_states = None
@@ -117,6 +117,13 @@ def run_play(sim_params, model_path=None):
     data = []
     idx = 0
     save_counter = 1
+    DES = []
+    TRUE = []
+    term_count = 0
+    # print('stair down 0.4')
+    # print('stair down 0.8')
+    print('stair down 0.4')
+
     for i in range(1, max_steps):
         idx += 1
         if lstm:
@@ -128,7 +135,12 @@ def run_play(sim_params, model_path=None):
         # print(obs[3*64*64+2:3*64*64+2+16])
         # print(obs[3*64*64+2+16:3*64*64+2+16+16])
         obs, reward, terminated, truncated, info = env.step(action)
+        xvdes = obs[3*64*64+4:3*64*64+5]
+        bf_vel = obs[3*64*64+6+16:3*64*64+6+16+2]
         
+        DES.append(xvdes)
+        TRUE.append(bf_vel[0])
+
         # obs_tensor = th.tensor(obs[:3*64*64])
         # vel = obs[3*64*64+4:3*64*64+6]
         # joint_pos = obs[3*64*64+6+16:3*64*64+6+16+20]
@@ -169,7 +181,20 @@ def run_play(sim_params, model_path=None):
             observ = []
             act = []
             idx = 0
+            term_count += 1
 
+        if term_count == 100:
+            DES = np.asarray(DES)
+            TRUE = np.asarray(TRUE)
+            MSE = []
+            mse = np.mean((DES - TRUE)**2)
+            
+            print(mse)
+            # MSE.append(mse)
+            
+            # MSE = np.asarray(MSE)
+            # print(np.mean(MSE))
+            break
     # data_array = np.array(data)
     # print(data_array.shape)
     # # filename = f"hidden_states/saliency/stair.npy"
@@ -277,7 +302,7 @@ def run_saliency(sim_params, model_path=None):
     feature_names = ["Latent", "vx", "vy", "Alip_x", "Alip_y", "Alip_Lx", "Alip_Ly"] + joint_names
     
     # Grouped feature names
-    feature_names_grouped = ["Latent", "Velocity Command", "ALIP", "Joint Position"]
+    feature_names_grouped = ["ALIP", "Joint Position"]
 
     # Indices for grouping
     vx_vy_indices = [feature_names.index("vx"), feature_names.index("vy")]
@@ -289,7 +314,7 @@ def run_saliency(sim_params, model_path=None):
         velocity = saliency[vx_vy_indices].sum()
         alip = saliency[alip_indices].sum()
         joints = saliency[joint_indices].sum()
-        return np.array([latent, velocity, alip, joints])
+        return np.array([alip, joints])
 
     # Group all saliency values
     saliency_flat_grouped = group_saliency(saliency_flat)
@@ -300,19 +325,19 @@ def run_saliency(sim_params, model_path=None):
     x = np.arange(len(feature_names_grouped))
     width = 0.25
 
-    plt.figure(figsize=(8, 5), dpi=300)
+    plt.figure(figsize=(5, 5), dpi=300)
     plt.bar(x - width, saliency_flat_grouped, width=width, label='Flat', color='skyblue')
     plt.bar(x, saliency_slope_grouped, width=width, label='Slope', color='orange')
     plt.bar(x + width, saliency_stair_grouped, width=width, label='Stair', color='green')
 
     plt.ylim(0.0, 0.5)
-    plt.yticks([i * 0.05 for i in range(11)], fontsize=10)
-    plt.xticks(x, feature_names_grouped, rotation=0, fontsize=10)
-    plt.xlabel("Feature Group", fontsize=12, fontweight='bold')
-    plt.ylabel("Saliency Magnitude", fontsize=12, fontweight='bold')
+    plt.yticks([i * 0.05 for i in range(11)], fontsize=12)
+    plt.xticks(x, feature_names_grouped, rotation=0, fontsize=14, fontweight='bold')
+    # plt.xlabel("Feature Group", fontsize=14, fontweight='bold')
+    plt.ylabel("Attribution Magnitude", fontsize=14, fontweight='bold')
     plt.title("Saliency Map", fontsize=16, fontweight='bold')
     plt.grid(True, axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
-    plt.legend(fontsize=12)
+    plt.legend(fontsize=14)
     plt.tight_layout()
     # plt.savefig("grouped_saliency.png", dpi=300, bbox_inches="tight")
     plt.show()
@@ -508,7 +533,7 @@ def run_integrated_gradients(sim_params, model_path=None):
                    'hip_pitch_right', 'knee_right', 'knee_joint_right', 'ankle_joint_right',
                    'ankle_spring_joint_right', 'toe_right']
     feature_names = ["Latent", "vx", "vy", "Alip_x", "Alip_y", "Alip_Lx", "Alip_Ly"] + joint_names
-    feature_names_grouped = ["Latent", "Velocity Command", "ALIP", "Joint Position"]
+    feature_names_grouped = ["ALIP", "Joint Position"]
 
     vx_vy_indices = [feature_names.index("vx"), feature_names.index("vy")]
     alip_indices = [feature_names.index(n) for n in ["Alip_x", "Alip_y", "Alip_Lx", "Alip_Ly"]]
@@ -519,7 +544,7 @@ def run_integrated_gradients(sim_params, model_path=None):
         velocity = saliency[vx_vy_indices].sum()
         alip = saliency[alip_indices].sum()
         joints = saliency[joint_indices].sum()
-        return np.array([latent, velocity, alip, joints])
+        return np.array([alip, joints])
 
     # Group saliency values
     saliency_flat_grouped = group_saliency(saliency_flat)
@@ -530,19 +555,19 @@ def run_integrated_gradients(sim_params, model_path=None):
     x = np.arange(len(feature_names_grouped))
     width = 0.25
 
-    plt.figure(figsize=(8, 5), dpi=300)
+    plt.figure(figsize=(5, 5), dpi=300)
     plt.bar(x - width, saliency_flat_grouped, width=width, label='Flat', color='skyblue')
     plt.bar(x, saliency_slope_grouped, width=width, label='Slope', color='orange')
     plt.bar(x + width, saliency_stair_grouped, width=width, label='Stair', color='green')
 
-    plt.ylim(0.0, 0.7)
-    plt.yticks([i * 0.05 for i in range(15)], fontsize=10)
-    plt.xticks(x, feature_names_grouped, rotation=0, fontsize=10)
-    plt.xlabel("Feature Group", fontsize=12, fontweight='bold')
-    plt.ylabel("Attribution Magnitude", fontsize=12, fontweight='bold')
-    plt.title("Grouped Feature Importance via Integrated Gradients", fontsize=16, fontweight='bold')
+    plt.ylim(0.0, 0.5)
+    plt.yticks([i * 0.05 for i in range(11)], fontsize=12)
+    plt.xticks(x, feature_names_grouped, rotation=0, fontsize=14, fontweight='bold')
+    # plt.xlabel("Feature Group", fontsize=12, fontweight='bold')
+    plt.ylabel("Attribution Magnitude", fontsize=14, fontweight='bold')
+    plt.title("Integrated Gradients", fontsize=16, fontweight='bold')
     plt.grid(True, axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
-    plt.legend(fontsize=12)
+    plt.legend(fontsize=14)
     plt.tight_layout()
     # plt.savefig("integrated_gradients_grouped.png", dpi=300, bbox_inches="tight")
     plt.show()

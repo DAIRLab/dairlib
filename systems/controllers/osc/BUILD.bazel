@@ -24,6 +24,9 @@ cc_library(
         "//systems/controllers:controller_failure_aggregator",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        ":end_effector_force_trajectory",
+        ":end_effector_orientation",
+        ":end_effector_trajectory",
     ],
 )
 
@@ -143,5 +146,46 @@ cc_library(
     hdrs = ["osc_gains.h"],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+
+
+cc_library(
+    name = "end_effector_trajectory",
+    srcs = ["end_effector_trajectory.cc"],
+    hdrs = ["end_effector_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_force_trajectory",
+    srcs = ["end_effector_force_trajectory.cc"],
+    hdrs = ["end_effector_force_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_orientation",
+    srcs = ["end_effector_orientation.cc"],
+    hdrs = ["end_effector_orientation.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )

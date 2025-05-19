@@ -5,3 +5,5 @@ from .footstep_planning import *
 from .robot_lcm_systems import *
 from .primitives import *
 from .framework import *
+from .plant_visualizer import *
+from .system_utils import *

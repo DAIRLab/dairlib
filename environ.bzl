@@ -63,3 +63,24 @@ inekf_repository = repository_rule(
     attrs = {"_vars": attr.string_list(default=["DAIRLIB_LOCAL_INEKF_PATH"])},
 )
 
+def _maybe_add_libomp_impl(repository_ctx):
+    os_name = repository_ctx.os.name
+    if os_name == "mac os x":
+        repository_ctx.symlink("/opt/homebrew/opt/libomp", "libomp")
+        repository_ctx.file("BUILD.bazel", """
+cc_library(
+    name = "libomp",
+    includes = ["include"],
+    hdrs = glob(["include/**"]),
+    srcs = ["lib/libomp.dylib"],
+    visibility = ["//visibility:public"],
+)
+""")
+
+maybe_add_libomp = repository_rule(
+    implementation = _maybe_add_libomp_impl,
+    local = True,
+    configure = True,
+    doc = "Adds libomp only on macOS",
+)
+

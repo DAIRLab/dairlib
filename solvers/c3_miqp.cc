@@ -26,36 +26,13 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const int admm_iteration,
                                        const int& warm_start_index) {
   try {
-    // Create an environment
+    // Create an environment and set up decision variables
     GRBEnv env = GRBEnv(true);
     env.set("OutputFlag", "0");
     env.set("Threads", "0");
     env.start();
 
-    // set up linear term in cost
-    VectorXd cost_lin = -2 * delta_c.transpose() * U;
-
-    // set up for constraints (Ex + F \lambda + Hu + c >= 0)
-    // if the reduction mapping K is available, we will have the following
-    // constraint (Ex + F K \lambda + Hu + c >= 0)
-    MatrixXd Mcons1(n_lambda_, n_x_ + n_lambda_ + n_u_);
-
-    if (K.has_value()) {
-      Mcons1 << K.value().transpose() * E,
-          K.value().transpose() * F * K.value(), K.value().transpose() * H;
-    } else {
-      Mcons1 << E, F, H;
-    }
-
-    // set up for constraints (\lambda >= 0)
-    MatrixXd MM1 = MatrixXd::Zero(n_lambda_, n_x_);
-    MatrixXd MM2 = MatrixXd::Identity(n_lambda_, n_lambda_);
-    MatrixXd MM3 = MatrixXd::Zero(n_lambda_, n_u_);
-    MatrixXd Mcons2(n_lambda_, n_x_ + n_lambda_ + n_u_);
-    Mcons2 << MM1, MM2, MM3;
-
     GRBModel model = GRBModel(env);
-
     GRBVar delta_k[n_x_ + n_lambda_ + n_u_];
     GRBVar binary[n_lambda_];
 
@@ -76,6 +53,15 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       }
     }
 
+    // Set up objective function
+    // J = (delta_k - delta_c)^T * U * (delta_k - delta_c) where delta_c is the
+    // result from the QP iteration
+    //
+    // Since delta_c is a constant vector, we can ignore the constant term
+    // delta_c^T * U * delta_c and rewrite the objective function as follows:
+    //
+    // J = delta_k^T * U * delta_k - 2 * delta_c^T * U * delta_k
+    VectorXd cost_lin = -2 * delta_c.transpose() * U;
     GRBQuadExpr obj = 0;
 
     for (int i = 0; i < n_x_ + n_lambda_ + n_u_; i++) {
@@ -84,6 +70,28 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     }
 
     model.setObjective(obj, GRB_MINIMIZE);
+
+    // Set up constraints for signed distance functions being non-negative
+    // - if the reduction mapping K is not available, we will have the following
+    //   constraints for full-dimensional SDF or (Ex + F \lambda + Hu + c >= 0)
+    // - if the reduction mapping K is available, we will have the following
+    //   constraints for reduced-dimensional SDF or
+    //   K.T @ (Ex + F K \lambda + Hu + c) >= 0
+    MatrixXd Mcons1(n_lambda_, n_x_ + n_lambda_ + n_u_);
+
+    if (K.has_value()) {
+      Mcons1 << K.value().transpose() * E,
+          K.value().transpose() * F * K.value(), K.value().transpose() * H;
+    } else {
+      Mcons1 << E, F, H;
+    }
+
+    // set up for constraints (\lambda >= 0)
+    MatrixXd MM1 = MatrixXd::Zero(n_lambda_, n_x_);
+    MatrixXd MM2 = MatrixXd::Identity(n_lambda_, n_lambda_);
+    MatrixXd MM3 = MatrixXd::Zero(n_lambda_, n_u_);
+    MatrixXd Mcons2(n_lambda_, n_x_ + n_lambda_ + n_u_);
+    Mcons2 << MM1, MM2, MM3;
 
     double coeff[n_x_ + n_lambda_ + n_u_];
     double coeff1[n_x_ + n_lambda_ + n_u_];
@@ -94,15 +102,18 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       Mcons << E, F * K.value(), H;
       double coeff2[n_x_ + n_lambda_ + n_u_];
       for (int i = 0; i < E.rows(); i++) {
-        GRBLinExpr signed_dist_expr = 0;
+        GRBLinExpr signed_distance_expr = 0;
         for (int j = 0; j < n_x_ + n_lambda_ + n_u_; j++) {
           coeff2[j] = Mcons(i, j);
         }
-        signed_dist_expr.addTerms(coeff2, delta_k, n_x_ + n_lambda_ + n_u_);
-        model.addConstr(signed_dist_expr + c(i) >= 0);
+        signed_distance_expr.addTerms(coeff2, delta_k, n_x_ + n_lambda_ + n_u_);
+        model.addConstr(signed_distance_expr + c(i) >= 0);
       }
     }
 
+    // Set up complementarity constraints
+    // \lambda _|_ Ex + F \lambda + Hu + c
+    // or \lambda _|_ K^T (Ex + F K \lambda + Hu + c) if K is available
     for (int i = 0; i < n_lambda_; i++) {
       GRBLinExpr lambda_expr = 0;
 
@@ -115,7 +126,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       model.addConstr(lambda_expr >= 0);
       model.addConstr(lambda_expr <= M_ * (1 - binary[i]));
 
-      GRBLinExpr activation_expr =
+      GRBLinExpr signed_distance_expr =
           0;  // Ex + F \lambda + Hu + c or
               // K^T (Ex + F K \lambda + Hu + c) if K is available
 
@@ -124,15 +135,16 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
         coeff1[j] = Mcons1(i, j);
       }
 
-      activation_expr.addTerms(coeff1, delta_k, n_x_ + n_lambda_ + n_u_);
+      signed_distance_expr.addTerms(coeff1, delta_k, n_x_ + n_lambda_ + n_u_);
 
       if (K.has_value()) {
-        model.addConstr(activation_expr + (K.value().transpose() * c)(i) >= 0);
-        model.addConstr(activation_expr + (K.value().transpose() * c)(i) <=
+        model.addConstr(signed_distance_expr + (K.value().transpose() * c)(i) >=
+                        0);
+        model.addConstr(signed_distance_expr + (K.value().transpose() * c)(i) <=
                         M_ * binary[i]);
       } else {
-        model.addConstr(activation_expr + c(i) >= 0);
-        model.addConstr(activation_expr + c(i) <= M_ * binary[i]);
+        model.addConstr(signed_distance_expr + c(i) >= 0);
+        model.addConstr(signed_distance_expr + c(i) <= M_ * binary[i]);
       }
     }
 

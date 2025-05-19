@@ -357,7 +357,11 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   for (auto i = 0; i < N_; i++) {
     z_qp_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    z_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
+        lcs_.AnDn_.at(i);
     delta_qp_debug_->at(admm_iteration).at(i) = delta->at(i);
+    delta_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
+        lcs_.AnDn_.at(i);
     w_qp_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 
@@ -372,26 +376,14 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
-  // if (lcs_.K_.has_value()) {
-  //   std::cout << "ADMM iter: " << admm_iteration << std::endl;
-  //   std::cout << "Ex: " << lcs_.E_.at(0) * (*delta)[0].head(n_x_) <<
-  //   std::endl; std::cout << "Hu: " << lcs_.H_.at(0) * (*delta)[0].tail(n_u_)
-  //   << std::endl; std::cout << "FKlam: "
-  //             << lcs_.F_.at(0) * lcs_.K_.value().at(0) *
-  //                    (*delta)[0].segment(n_x_, n_lambda_)
-  //             << std::endl;
-  //   std::cout << "c: " << lcs_.c_.at(0) << std::endl;
-  //   std::cout << "Signed distance: "
-  //             << lcs_.E_.at(0) * (*delta)[0].head(n_x_) +
-  //                    lcs_.F_.at(0) * lcs_.K_.value().at(0) *
-  //                        (*delta)[0].segment(n_x_, n_lambda_) +
-  //                    lcs_.H_.at(0) * (*delta)[0].tail(n_u_) + lcs_.c_.at(0)
-  //             << std::endl;
-  // }
 
   for (auto i = 0; i < N_; i++) {
     z_proj_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    z_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
+        lcs_.AnDn_.at(i);
     delta_proj_debug_->at(admm_iteration).at(i) = delta->at(i);
+    delta_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
+        lcs_.AnDn_.at(i);
     w_proj_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 

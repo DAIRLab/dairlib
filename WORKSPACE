@@ -254,16 +254,5 @@ load("@hedron_compile_commands//:workspace_setup_transitive_transitive_transitiv
 
 hedron_compile_commands_setup_transitive_transitive_transitive()
 
-new_local_repository(
-    name = "libomp",
-    build_file_content = """
-cc_library(
-name = "libomp",
-includes = ["include"],
-hdrs = glob(["include/**"]),
-srcs = ["lib/libomp.dylib"],
-visibility = ["//visibility:public"]
-)
-""",
-    path = "/opt/homebrew/opt/libomp",
-)
+load("//:environ.bzl", "maybe_add_libomp")
+maybe_add_libomp(name = "libomp")

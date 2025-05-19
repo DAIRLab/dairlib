@@ -56,13 +56,22 @@ cc_library(
             "-fopenmp",
         ],
     }),
-    deps = [
-        ":c3_miqp",
-        ":lcs",
-        "//solvers:fast_osqp_solver",
-        "@drake//:drake_shared_library",
-        "@libomp",
-    ],
+    deps = select({
+        "@platforms//os:macos": [
+            ":c3_miqp",
+            ":lcs",
+            "//solvers:fast_osqp_solver",
+            "@drake//:drake_shared_library",
+            "@libomp",
+        ],
+        "@platforms//os:linux": [
+            ":c3_miqp",
+            ":lcs",
+            "//solvers:fast_osqp_solver",
+            "@drake//:drake_shared_library",
+        ],
+    }),
+      
 )
 
 cc_library(

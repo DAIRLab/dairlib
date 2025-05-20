@@ -1,5 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
+
+cc_library(
+    name = "franka_systems",
+    srcs = [],
+    deps = [
+        ":end_effector_force_trajectory",
+        ":end_effector_orientation",
+        ":end_effector_trajectory",
+        ":franka_kinematics",
+    ],
+)
+
 cc_library(
     name = "robot_lcm_systems",
     srcs = ["robot_lcm_systems.cc"],
@@ -30,6 +42,72 @@ cc_library(
     srcs = ["system_utils.cc"],
     hdrs = ["system_utils.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "end_effector_trajectory",
+    srcs = ["end_effector_trajectory.cc"],
+    hdrs = ["end_effector_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_force_trajectory",
+    srcs = ["end_effector_force_trajectory.cc"],
+    hdrs = ["end_effector_force_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_orientation",
+    srcs = ["end_effector_orientation.cc"],
+    hdrs = ["end_effector_orientation.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics",
+    srcs = ["franka_kinematics.cc"],
+    hdrs = ["franka_kinematics.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics_vector",
+    srcs = ["franka_kinematics_vector.cc"],
+    hdrs = ["franka_kinematics_vector.h"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )

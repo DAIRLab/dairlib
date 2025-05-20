@@ -42,6 +42,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
+  DRAKE_DEMAND(mu.size() == n_contacts);
   int n_v = plant.num_velocities();
   int n_q = plant.num_positions();
 
@@ -123,9 +124,9 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
 
-  MatrixXd A(n_x, n_x);
-  MatrixXd B(n_x, n_u);
-  VectorXd d(n_x);
+  MatrixXd A = MatrixXd::Zero(n_x, n_x);
+  MatrixXd B = MatrixXd::Zero(n_x, n_u);
+  VectorXd d = VectorXd::Zero(n_x);
 
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);
@@ -227,10 +228,11 @@ LCS LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-    c.segment(n_contacts, n_contacts) =
-        phi + dt * dt * J_n * d_v - J_n * vNqdot * plant.GetPositions(context);
+    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  
+        - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
         J_t * dt * d_v;
+
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
@@ -273,8 +275,8 @@ LCS LCSFactory::LinearizePlantToLCS(
     w = J_t * (d_v);
   }
 
+
   LCS system(A, B, D, d, E, F, H, c, N, dt);
-  system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
 
@@ -452,6 +454,103 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     d.push_back(d_k);
   }
   return LCS(A, B, D, d, E, F, H, c, other.dt_);
+}
+
+
+vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
+  const MultibodyPlant<double>& plant, const Context<double>& context,
+  const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+  const vector<int>& resolve_contacts_to_list,
+  int num_friction_directions, int num_contacts,
+  bool verbose) {
+
+  int n_contacts = num_contacts;
+  // Return contacts as per the resolve_contacts_to_list
+  std::vector<SortedPair<GeometryId>> closest_contacts;
+  // Reserve space for the closest contacts
+  closest_contacts.reserve(n_contacts);
+
+  for (int i = 0; i < contact_geoms.size(); i++) {
+      DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+
+      const auto& candidates = contact_geoms[i];
+      const int num_to_select = resolve_contacts_to_list[i];
+
+      if (verbose && candidates.size() > 1) {
+          std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
+      }
+
+      std::vector<double> distances;
+      distances.reserve(candidates.size());
+      
+      for (const auto& pair : candidates) {
+          multibody::GeomGeomCollider collider(plant, pair);
+          auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+          distances.push_back(phi_i);
+          if (verbose) {
+              PrintVerboseContactInfo(plant, context, pair, phi_i);
+          }
+      }
+      
+      for (int j = 0; j < num_to_select; ++j) {
+          auto min_it = std::min_element(distances.begin(), distances.end());
+          int min_index = std::distance(distances.begin(), min_it);
+          closest_contacts.push_back(candidates[min_index]);
+          distances[min_index] = std::numeric_limits<double>::infinity();
+
+          if (verbose && candidates.size() > 1) {
+              std::cout << "   --> Chose option " << min_index << std::endl;
+          }
+      }
+  }
+  DRAKE_DEMAND(closest_contacts.size() == n_contacts);
+  return closest_contacts;
+}
+
+// THIS FUNCTION IS FOR DEBUGGING PURPOSES ONLY.
+// This is mostly a copy of the EvalPolytope function in the GeomGeomCollider class.
+// It is used to print out the contact information for a given pair of geometries.
+// Alternaatively, you can return the witness points and the distance from GeomGeomCollider
+// and get rid of this function.
+void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
+                             const Context<double>& context,
+                             const SortedPair<GeometryId>& pair,
+                             const double phi_i) {
+    const auto& query_port = plant.get_geometry_query_input_port();
+    const auto& query_object =
+        query_port.template Eval<drake::geometry::QueryObject<double>>(context);
+    const auto& inspector = query_object.inspector();
+
+    // Get the witness points on each geometry.
+    const SignedDistancePair<double> signed_distance_pair =
+        query_object.ComputeSignedDistancePairClosestPoints(
+            pair.first(), pair.second());
+
+    const Eigen::Vector3d& p_ACa =
+        inspector.GetPoseInFrame(pair.first()).template cast<double>() *
+        signed_distance_pair.p_ACa;
+    const Eigen::Vector3d& p_BCb =
+        inspector.GetPoseInFrame(pair.second()).template cast<double>() *
+        signed_distance_pair.p_BCb;
+
+    // Represent the witness points as points in world frame.
+    RigidTransform T_body1_contact = RigidTransform(p_ACa);
+    const FrameId f1_id = inspector.GetFrameId(pair.first());
+    const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+    RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+    Eigen::Vector3d p_world_contact_a = T_world_body1 * T_body1_contact.translation();
+
+    RigidTransform T_body2_contact = RigidTransform(p_BCb);
+    const FrameId f2_id = inspector.GetFrameId(pair.second());
+    const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+    RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+    Eigen::Vector3d p_world_contact_b = T_world_body2 * T_body2_contact.translation();
+
+    std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
+              << ", " << inspector.GetName(pair.second())
+              << ") with phi = " << phi_i << " between world points ["
+              << p_world_contact_a.transpose() << "], ["
+              << p_world_contact_b.transpose() << "]" << std::endl;
 }
 
 }  // namespace solvers

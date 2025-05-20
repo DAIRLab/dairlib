@@ -185,6 +185,13 @@ void LcmTrajectory::AddTrajectory(const std::string& trajectory_name,
   trajectories_[trajectory_name] = trajectory;
 }
 
+void LcmTrajectory::ClearTrajectories() {
+  if (this->trajectories_.size() > 0) {
+      trajectories_.clear();
+      trajectory_names_.clear();
+    }
+}
+
 void LcmTrajectory::ConstructMetadataObject(string name, string description) {
   std::time_t t = std::time(nullptr);  // get time now
 

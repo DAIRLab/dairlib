@@ -125,6 +125,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  // Get joint acceleration limits
   VectorXd ddq_min = VectorXd::Zero(n_q_);
   VectorXd ddq_max = VectorXd::Zero(n_q_);
   for (JointIndex i(0); i < n_q_; ++i) {
@@ -143,6 +144,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       n_revolute_joints_ += 1;
     }
   }
+
+  // Get joint position limits
   VectorXd q_min(n_revolute_joints_);
   VectorXd q_max(n_revolute_joints_);
   int floating_base_offset = n_v_ - n_revolute_joints_;
@@ -1089,10 +1092,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
-//  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
-  qp_output.lambda_h_sol = CopyVectorXdToStdVector(force_tracking_data_vec_->at(0)->GetLambdaDes());
+  if (!force_tracking_data_vec_->empty()){
+    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
+    qp_output.lambda_h_sol = CopyVectorXdToStdVector(force_tracking_data_vec_->at(0)->GetLambdaDes());
+  }
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;

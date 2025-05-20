@@ -1,0 +1,121 @@
+# Trajectory generation parameters
+trajectory_type: 4       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path, 4 to use a fixed goal but with a lookahead
+use_changing_final_goal: true
+changing_final_goal_type: 0  # 0 to randomize goal, 1 to cycle through orientations
+final_goal_time_tolerance: 45 # in seconds
+
+# Thresholds for position and orientation for reaching a goal successfully.
+position_success_threshold: 0.02
+orientation_success_threshold: 0.1   # 0.1 rad = 5.7 degrees
+
+random_goal_x_limits: [0.42, 0.5]  #0.27, 0.5]
+random_goal_y_limits: [0.02, 0.25]   # 0.35]
+random_goal_radius_limits: [0.48, 0.5]
+
+resting_object_height: 0.031971466           # currently being used by the goal randomization code.
+
+prevent_three_topples_for_random_goal_gen: false
+
+# Adaptive circular path parameters
+traj_radius: 0.2
+x_c: 0.35
+y_c: 0
+lead_angle: 40
+# fixed path specific parameters
+# fixed_target_position: [0.4, 0.15, 0.031971466]
+
+
+# #### C3 sanity checking good starting configurations ####
+fixed_target_position: [0.45, 0.2, 0.031971466]    # 0) for orientation cycling
+fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
+                           -0.3647051996310009, -0.11591689595929514]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 1) topple from behind and slide
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 2) topple from the top
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 3) One topple and a significant yaw
+# fixed_target_orientation: [0.39989117, -0.85599645, -0.2365289, -0.2267404]
+
+# fixed_target_position: [0.5, -0.15, 0.031971466]    # 4) 2 topples and long distance error
+# fixed_target_orientation: [ -0.45975488, -0.62741965, 0.62865406, 0.00045351146]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 5) Balancing on blue and green prongs at almost half a topple
+# fixed_target_orientation: [ -0.15288758, 0.40935087, 0.827526, -0.35267374]
+
+# fixed_target_position: [0.4, 0.1, 0.031971466]    # 6) 2 topples starting near position goal
+# fixed_target_orientation: [-0.45213515, -0.5030703, 0.7321868, 0.08386412]
+
+# fixed_target_position: [0.55, 0.3, 0.031971466]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+# fixed_target_orientation: [-0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+#^^# C3 sanity checking good starting configurations #^^#
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 8) Not a valid orientation. replaced by same as 1)
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]  # -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 9) Configuration used to sanity check target angular velocities
+# fixed_target_orientation: [1, 0, 0, 0]  
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 10) topple from the back to achive same goal pose as scenario 2.
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 11) topple from the top of back prong
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.15, 0.031971466]    # 12) yaw only
+# fixed_target_orientation: [-0.4379764, 0.7895742, -0.4070009, -0.14003317]
+
+# fixed_target_position: [0.2, 0, 0.031971466]    # 13) position target close to base
+# fixed_target_orientation: [ -0.5325461,  -0.71068238,  0.45505355,  0.06520332]
+
+# fixed_target_position: [0.4, 0.09, 0.031971466]    # 14) position wrong, orientation right
+# fixed_target_orientation: [0.0572597, 0.544881, 0.70131284, -0.4561384]
+
+# fixed_target_position: [0.6, 0, 0.031971466]    # 15) Varying position targets for testing
+# fixed_target_orientation: [ -0.42418233, 0.33692512, 0.821965, -0.17753652]
+
+# fixed_target_position: [0.4, 0.3, 0.031971466]    # 16) jack begins on the far left of the franka and the goal is to move the jack back towards the right side.
+# fixed_target_orientation: [ -0.42418233, 0.33692512, 0.821965, -0.17753652] # Remember to change the q_init_object sim params for this test case.
+
+# fixed_target_position: [0.4710, 0.1502, 0.0320]    # 17) Efficiency testing goal (same as goal 4 in log 14 from Jan 14th)
+# fixed_target_orientation: [ -0.1194, -0.7695, -0.4433, -0.4439] # Remember to change the q_init_object sim params for this test case.
+#^^# C3 sanity checking good starting configurations #^^#
+
+
+
+
+# only yaw
+# fixed_target_orientation: [0.010604407, 0.61336935, 0.6423365, -0.45962018]
+# 90 deg flip
+# fixed_target_orientation: [-0.42418233, 0.33692512, 0.821965, -0.17753652]
+# fixed_target_orientation: [-0.17435307, -0.34287302,  0.81921544, -0.42535298]
+# fixed_target_orientation: [ 0.28876167,  0.09415564, -0.88306883,  0.35768821]
+# fixed_target_orientation: [1, 0, 0, 0]
+step_size: 2
+# adaptive straight line path specific parameters
+start_point_x: 0.45           # x coordinate of start point of straight line.           
+start_point_y: 0.35           # y coordinate of start point of straight line.
+end_point_x: 0.45             # x coordinate of end point of straight line.
+end_point_y: -0.35            # y coordinate of end point of straight line.
+####### WARNING!! Make sure that if we want to do orientation tracking and use a lookahead, the lookahead step size 
+####### needs to be bigger than the orientation tracking threshold, i.e. cost_switching_threshold_distance in 
+####### sampling_params.
+lookahead_step_size: 0.15      # lookahead size for adaptive straight line and fixed goal with lookahead.
+lookahead_angle: 2  #3.14        # lookahead angle for adaptive straight line and fixed goal with lookahead
+                              # 0.785 is 45 degrees, 0.698 is 40 degrees .
+angle_hysteresis: 0.4         # Hysteresis for locking onto a rotation
+                              # direction.  The smaller this is, the more often
+                              # the lookahead orientation target can switch when
+                              # the rotational error is near 180 degrees.  The
+                              # larger this is, the lookahead orientation target
+                              # will be more stable but possibly guide progress
+                              # in the less optimal direction.
+angle_err_to_vel_factor: 0    # factor for converting an angular error to angular velocity command.
+max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
+
+# Sampling parameters
+ee_goal_height: 0.06          # height of the end effector above the jack
+# TODO: Rename this from object half width to object resting COM z height in the world frame
+object_half_width: 0.03     # half width of the object. Make sure to match with urdf of object.

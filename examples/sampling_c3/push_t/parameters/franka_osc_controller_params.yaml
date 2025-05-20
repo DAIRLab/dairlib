@@ -1,0 +1,104 @@
+controller_frequency: 1000
+
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
+end_effector_name: end_effector_tip
+ground_model: examples/sampling_c3/urdf/ground_modified.sdf
+platform_model: examples/sampling_c3/urdf/platform.urdf
+
+tool_attachment_frame: [0, 0, 0.107]
+p_world_to_franka: [0, 0, 0]
+p_franka_to_ground: [0, 0, -0.029]
+# This is the z value of the platform wrt to the base of the franka.
+p_franka_to_platform: [0, 0, -0.0145]
+
+
+#### C3 sanity checking good starting configurations ####
+# neutral_position: [0.45, 0.35, 0.05]    # 1) topple from behind and slide
+# neutral_position: [0.43, 0.19, 0.12]    # 2) topple from the top
+neutral_position: [0.4276197, 0.35295175, 0.12756625]    # 2) topple from the top
+# neutral_position: [0.4, 0.4, 0.05]      # 3) One topple and a significant yaw
+# neutral_position: [0.4, 0.4, 0.05]      # 4) 2 topples and distance error
+# neutral_position: [0.4, 0.4, 0.05]      # 5) Balancing on blue and green prongs at almost half a topple
+# neutral_position: [0.43, 0.28, 0.12]    # 6) 2 topples starting at position goal
+# neutral_position: [0.39, 0.33, 0.12]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+# neutral_position: [0.410, 0.33, 0.13]   # 8) 1 topple but in the opposite direction of the position goal and then should move to position goal.
+# neutral_position: [0.4, 0.4, 0.05]      # 9) Configuration used to sanity check target angular velocities
+# neutral_position: [0.33, 0.25, 0.043]   # 10) topple from the back to achive same goal pose as scenario 2.
+# neutral_position: [0.43, 0.30, 0.12]    # 11) topple from the top
+# neutral_position: [0.42, 0.33, 0.07]    # 12) yaw only
+# neutral_position: [0.4, 0.4, 0.05]      # 13) position target close to base
+# neutral_position: [0.36, 0.33, 0.05]    # 14) orientation starts right, position wrong
+#^^# C3 sanity checking good starting configurations #^^#
+
+# For teleop, can either stay locked to a neutral position with joystick inputs
+# to move the end effector relative to the neutral position, or can move the
+# neutral position itself with joystick inputs.  If using
+# teleop_neutral_position, it's beneficial for the x_scale/y_scale/z_scale to be
+# relatively small, i.e. 0.0002 works well (compared to 0.2 for the locked
+# neutral position scheme).
+teleop_neutral_position: true
+
+x_scale: 0.0002
+y_scale: 0.0002
+z_scale: 0.0002
+
+w_input: 0.00
+w_input_reg: 0.0
+w_accel: 0.00001
+w_soft_constraint: 0.0
+w_lambda: 0.0
+impact_threshold: 0.000
+impact_tau: 0.000
+mu: 0.4615 # unused
+end_effector_acceleration: 10
+track_end_effector_orientation: false
+cancel_gravity_compensation: false
+enforce_acceleration_constraints: false
+publish_debug_info: true
+
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
+W_lambda_c_reg: [ 0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01 ]
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.001, 0.001 ]
+
+w_elbow: 1
+elbow_kp: 200
+elbow_kd: 10
+
+# This is the weight matrix for the end effector position tracking.
+EndEffectorW:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+EndEffectorKp:
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
+EndEffectorKd:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+EndEffectorRotW:
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
+EndEffectorRotKp:
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0,  800]
+EndEffectorRotKd:
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40]
+# This is the weight matrix for the end effector force tracking. 
+# The end effector forces in the osc are called lambdas but are really tracking
+# the forces at the end effector or the u_sol we get in c3.
+LambdaEndEffectorW:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]

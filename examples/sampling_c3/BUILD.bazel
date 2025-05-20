@@ -1,0 +1,271 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+filegroup(
+    name = "all_example_params_yamls",
+    srcs = glob(["*/parameters/*.yaml"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "shared_params_yamls",
+    srcs = glob(["shared_parameters/*.yaml"]),
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "franka_sim",
+    srcs = ["franka_sim.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_osc_controller",
+    srcs = ["franka_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
+        "//common",
+        "//systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_joint_osc_controller",
+    srcs = ["franka_joint_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
+        "//common",
+        "//systems:franka_systems",
+        ":joint_trajectory_generator",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+
+
+cc_library(
+    name = "joint_trajectory_generator",
+    srcs = ["joint_trajectory_generator.cc"],
+    hdrs = ["joint_trajectory_generator.h"],
+    deps = [
+        "//systems/framework:vector",
+    ],
+)
+cc_binary(
+    name = "franka_visualizer",
+    srcs = ["franka_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":c3_mode_visualizer",
+        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
+        "//systems/controllers:sampling_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/sender_systems:sender_systems",
+        "//systems:franka_systems",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_out",
+    srcs = ["franka_bridge_driver_out.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        ":franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_in",
+    srcs = ["franka_bridge_driver_in.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        ":franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_c3_controller",
+    srcs = ["franka_c3_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//examples/sampling_c3/parameter_headers:trajectory_params",
+        "//systems/controllers:sampling_params",
+        "//common",
+        "//systems:franka_systems",
+        "//systems/sender_systems:sample_buffer_sender",
+        "//systems/sender_systems:sender_systems",
+        ":control_target_generator",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:sampling_c3_controller",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+
+cc_library(
+    name = "c3_mode_visualizer",
+    srcs = ["c3_mode_visualizer.cc"],
+    hdrs = ["c3_mode_visualizer.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "franka_state_translator",
+    srcs = [
+        "franka_state_translator.cc",
+    ],
+    hdrs = [
+        "franka_state_translator.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "control_target_generator",
+    srcs = ["control_target_generator.cc"],
+    hdrs = ["control_target_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
+        "//systems/controllers:sampling_params",
+        "//lcm:lcm_trajectory_saver",
+        "@lcm",
+    ],
+)
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

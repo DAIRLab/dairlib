@@ -1,0 +1,46 @@
+package dairlib;
+
+/* lcmtype with debug information for the sampling controller.
+
+    mode_switch_reason key:
+        0: No mode switch
+        1: Switch to C3 because lower cost
+        2: Switch to C3 because reached repositioning target
+        3: Switch to repositioning because found lower cost sample
+        4: Switch to repositioning because unproductive in C3
+        5: Switch to C3 because xbox controller forced into C3 mode
+
+    source_of_pursued_target key:
+        0: No pursued target (i.e. in C3 mode)
+        1: Previous repositioning target
+        2: New sample
+        3: Sample from buffer
+*/
+
+struct lcmt_sampling_c3_debug
+{
+  int64_t utime;
+
+  boolean is_c3_mode;
+
+  boolean is_teleop;
+  boolean is_force_tracking;
+  boolean is_forced_into_c3;
+
+  boolean in_pose_tracking_mode;
+
+  int32_t mode_switch_reason;
+  int32_t source_of_pursued_target;
+
+  int32_t detected_goal_changes;
+
+  int32_t best_progress_steps_ago;
+
+  float lowest_cost;
+  float lowest_pos_and_rot_current_cost;
+  float lowest_position_error;
+  float lowest_orientation_error;
+
+  float current_pos_error;
+  float current_rot_error;
+}

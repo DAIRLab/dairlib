@@ -1,0 +1,102 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_library(
+    name = "parameters",
+    data = glob([
+        "*yaml",
+    ]),
+)
+
+cc_library(
+    name = "franka_hardware",
+    deps = [],
+)
+
+cc_library(
+    name = "franka_lcm_channels_push_t",
+    hdrs = [],
+    data = [
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_sim_params_push_t",
+    hdrs = [],
+    data = [
+        "parameters/franka_sim_params.yaml",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_osc_controller_params_push_t",
+    hdrs = [],
+    data = [
+        "parameters/franka_osc_controller_params.yaml",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_c3_controller_params_push_t",
+    hdrs = [],
+    data = [
+        "parameters/franka_c3_controller_params.yaml",
+        "parameters/franka_c3_options_floating.yaml",
+        "parameters/sampling_params.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
+        "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "trajectory_params_push_t",
+    hdrs = [],
+    data = [
+        "parameters/trajectory_params.yaml",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:trajectory_params",
+        "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_drake_lcm_driver_channels_push_t",
+    hdrs = [],
+    data = [
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)

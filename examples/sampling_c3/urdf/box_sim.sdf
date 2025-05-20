@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="box">
+    <link name="box">
+      <inertial>
+        <mass>1</mass>
+        <!-- Inertia values were calculated to be consistent with the mass and
+             geometry size, assuming a uniform density. -->
+        <inertia>
+          <ixx>0.001083</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.001817</iyy>
+          <iyz>0</iyz>
+          <izz>0.002083</izz>
+        </inertia>
+      </inertial>
+      <visual name="box">
+        <geometry>
+          <box>
+            <size>0.13 0.09 0.07</size>
+          </box>
+        </geometry>
+        <material>
+            <diffuse>0 1 1 1</diffuse>
+        </material>
+      </visual>
+      <collision name="volume">
+            <geometry>
+          <box>
+            <size>0.13 0.09 0.07</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+      </collision>   
+    </link>     
+      
+  </model>
+</sdf>

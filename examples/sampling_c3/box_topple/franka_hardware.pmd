@@ -1,0 +1,103 @@
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/sampling_c3/franka_visualizer  --demo_name=box_topple --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        host = "sampling_c3_localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/sampling_c3/xbox_script";
+        host = "sampling_c3_localhost";
+    }
+    cmd "logger" {
+        exec = "python3 examples/sampling_c3/start_logging.py hw box_topple";
+        host = "sampling_c3_localhost";
+    }
+    cmd "record_video" {
+        exec = "python3 record_video.py";
+        host = "franka_control";
+    }
+}
+
+group "controllers (hardware)" {
+    cmd "franka_c3" {
+        exec = "bazel-bin/examples/sampling_c3/franka_c3_controller --demo_name=box_topple --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        host = "sampling_c3_localhost";
+    }
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller  --demo_name=box_topple --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        host = "franka_control";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "sampling_c3_localhost";
+    }
+}
+
+group "drivers" {
+    cmd "move_to_init" {
+        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller  --demo_name=box_topple --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        host = "franka_control";
+    }
+    cmd "franka_driver_out" {
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_out --demo_name=box_topple";
+        host = "franka_control";
+    }
+    cmd "franka_driver_in" {
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_in --demo_name=box_topple";
+        host = "franka_control";
+    }
+    cmd "torque_driver" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
+        host = "drake_franka_driver";
+    }
+}
+
+
+script "init_experiment" {
+    stop cmd "franka_c3";
+    stop cmd "franka_osc";
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
+    stop cmd "torque_driver";
+    wait ms 1000;
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "torque_driver";
+    start cmd "move_to_init";
+    wait ms 10000;
+    stop group "drivers";
+}
+
+script "start_experiment" {
+    restart cmd "xbox";
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
+    stop cmd "torque_driver";
+    stop cmd "franka_osc";
+    start cmd "record_video";
+    start cmd "logger";
+    wait ms 1000;
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "torque_driver";
+    start cmd "move_to_init";
+    wait ms 5000;
+    stop cmd "move_to_init";
+    start cmd "franka_osc";
+    start cmd "franka_c3";
+}
+
+script "start_operator_commands" {
+    restart cmd "visualizer";
+    restart cmd "xbox";
+    restart cmd "lcm-spy";
+}
+
+script "stop_experiment" {
+    stop group "drivers";
+    stop group "controllers (hardware)";
+    stop cmd "record_video";
+    stop cmd "logger";
+}

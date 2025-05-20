@@ -1,0 +1,41 @@
+cc_library(
+    name = "sampling_c3_options",
+    hdrs = ["sampling_c3_options.h"],
+    visibility = ["//visibility:public"],  # Allow all subpackages to use it
+)
+
+cc_library(
+    name = "franka_sim_params",
+    hdrs = ["franka_sim_params.h"],
+    visibility = ["//visibility:public"],  # Allow all subpackages to use it
+)
+
+cc_library(
+    name = "franka_lcm_channels",
+    hdrs = ["franka_lcm_channels.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "franka_c3_controller_params",
+    hdrs = ["franka_c3_controller_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "franka_osc_controller_params",
+    hdrs = ["franka_osc_controller_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "trajectory_params",
+    hdrs = ["trajectory_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "franka_drake_lcm_driver_channels",
+    hdrs = ["franka_drake_lcm_driver_channels.h"],
+    visibility = ["//visibility:public"],
+)

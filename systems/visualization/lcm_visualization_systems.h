@@ -24,12 +24,19 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
  public:
   explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                                std::string trajectory_name);
+  // Constructor for when system_name is provided
+  explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                               const std::string system_name,
+                               std::string trajectory_name);
+
+
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
   }
 
   void SetLineColor(drake::geometry::Rgba rgba) { rgba_ = rgba; }
+  void SetLineWidth(double line_width) { line_width_ = line_width; }
 
   void SetNumSamples(int N) {
     DRAKE_DEMAND(N > 1);
@@ -46,8 +53,10 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex trajectory_input_port_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  const std::string system_name_;
   const std::string trajectory_name_;
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
+  double line_width_ = 100;
   int N_ = 5;
 };
 
@@ -59,8 +68,14 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& model_file,
                          const std::string& translation_trajectory_name,
                          const std::string& orientation_trajectory_name,
-                         int num_poses = 5,
-                         bool add_transparency = true);
+                         int num_poses = 5);
+  // Constructor for when system_name is provided.
+  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                         const std::string& system_name,
+                         const std::string& model_file,
+                         const std::string& translation_trajectory_name,
+                         const std::string& orientation_trajectory_name,
+                         int num_poses = 5, bool add_transparency = true);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -87,6 +102,12 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
 class LcmForceDrawer : public drake::systems::LeafSystem<double> {
  public:
   explicit LcmForceDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                          std::string force_trajectory_name,
+                          std::string actor_trajectory_name,
+                          std::string lcs_force_trajectory_name);
+  // Constructor for when system_name is provided.
+  explicit LcmForceDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                          const std::string system_name,
                           std::string force_trajectory_name,
                           std::string actor_trajectory_name,
                           std::string lcs_force_trajectory_name);
@@ -141,6 +162,11 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                              bool draw_tray = true, bool draw_ee = false);
 
+  const drake::systems::InputPort<double>& get_input_port_c3_state_final_target()
+      const {
+    return this->get_input_port(c3_state_final_target_input_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_c3_state_target()
       const {
     return this->get_input_port(c3_state_target_input_port_);
@@ -158,6 +184,7 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
+  drake::systems::InputPortIndex c3_state_final_target_input_port_;
   drake::systems::InputPortIndex c3_state_target_input_port_;
   drake::systems::InputPortIndex c3_state_actual_input_port_;
 
@@ -171,6 +198,7 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
   const std::string c3_state_path_ = "c3_state";
+  const std::string c3_final_target_object_path_ = "c3_state/c3_final_target_object";
   const std::string c3_target_object_path_ = "c3_state/c3_target_object";
   const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";

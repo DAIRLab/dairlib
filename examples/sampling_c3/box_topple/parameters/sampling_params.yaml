@@ -1,0 +1,121 @@
+# Sampling strategy.  These should match the names in sampling_params.h.
+# 0 means radially symmetric sampling on a circle.
+# 1 means random sampling on a 2D circle.
+# 2 means random sampling on a 3D sphere.
+# 3 means a fixed sample location. Currently allows for 3 fixed sample.
+control_loop_delay_ms: 0
+sampling_strategy: 2
+filter_samples_for_safety: true
+
+# This is the fixed sample location for sampling strategy 3.
+fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
+
+# Size of sampling circle; used for both circle perimeter (0, 1) and spherical
+# surface sampling (2).
+sampling_radius: 0.08
+
+# Height of sampling circle; used for circle perimeter (0, 1).
+sampling_height: 0.04
+
+# Grid limits for random sampling on grid.
+grid_x_limits: [-0.16, 0.16]
+grid_y_limits: [-0.16, 0.16]
+
+# clearance for sample projection.
+sample_projection_clearance: 0.008
+
+# Radians minimum and maximum angles from vertical (i.e. closest to top of
+# sphere) used for spherical surface sampling (2).
+min_angle_from_vertical: 0.2  #0.785
+max_angle_from_vertical: 1.7 #1.75 rad = 100.26 deg   #1.9 rad is 110 deg
+
+# Number of additional samples to consider in each mode (repositioning or C3).
+# In repositioning mode, we automatically store the current location and the 
+# previous best sample location, so num_additional_samples_repos is in addition 
+# to those two. In C3 mode, we automatically store the current location, so
+# num_additional_samples_c3 is in addition to that one.
+# NOTE: IF YOU SET NUM ADDITIONAL SAMPLES TO 0, REMEMBER TO NOT VISUALIZE THE 
+#       SAMPLE LOCATIONS IN THE VISUALIZER. 
+num_additional_samples_repos: 1
+num_additional_samples_c3: 2
+
+# Whether to consider the best sample from the buffer as a potential
+# repositioning target.
+consider_best_buffer_sample_when_leaving_c3: true
+
+# Repositioning parameters.
+spline_width: 0.17
+spherical_repositioning_radius: 0.17
+circular_repositioning_radius: 0.20
+circular_repositioning_height: 0.00
+reposition_speed: 0.20    # m/s
+use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
+                                    # uses a straight line instead of spline
+repositioning_trajectory_type: 1   # alternative is a spline
+repositioning_waypoint_height: 0.06 # This is the height of the waypoints for the piecewise linear repositioning.
+use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
+                                          # repositioning uses a straight line
+                                          # instead of the spherical arc
+
+# More intelligent sampling parameters.
+N_sample_buffer: 100
+pos_error_sample_retention: 0.005
+ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
+
+# Parameters for the cost function.
+# 0 means simulate dynamics for both ee and object positions to compute cost.
+# 1 means use z_fin from C3 solution for both ee and object positions to compute cost.
+# 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
+# 3 means use U from C3 solution and add cost associated with tracking the ee
+# trajectory in c3 and simulate the object trajectory.
+cost_type: 3
+cost_type_position_tracking: 2
+use_different_contacts_to_compute_cost: true
+
+# Number of control loops to wait while C3 doesn't do anything beneficial before
+# switching to repositioning.
+num_control_loops_to_wait: 60
+num_control_loops_to_wait_position_tracking: 20
+
+# How to measure C3's progress.
+track_c3_progress_via: 1  # 0: C3 cost,
+                          # 1: current position and orientation cost,
+                          # 2: position and orientation error
+                          # 3: min % decrease in current position and orientation cost
+# If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
+# in order to continue in C3 mode. If not, it has to switch to repositioning.
+min_percentage_decrease_in_cost_to_continue: -1.8
+num_control_loops_to_wait_for_progress: 12
+
+####### WARNING!! Make sure that if we want to do orientation tracking and use a
+####### lookahead for the trajectory type i.e. trajectory_type in the
+####### trajectory_params.yaml,
+####### the lookahead step size (i.e.lookahead_step_size in
+####### trajectory_params.yaml) needs to be bigger than the orientation tracking
+####### threshold, i.e. cost_switching_threshold_distance in sampling_params.
+cost_switching_threshold_distance: 0.14
+# Cost associated with traveling.
+travel_cost_per_meter: 0
+
+finished_reposition_cost: 1000000000
+
+c3_to_repos_hysteresis: 300000
+c3_to_repos_hysteresis_position_tracking: 300000
+
+repos_to_c3_hysteresis: 200000
+repos_to_c3_hysteresis_position_tracking: 200000
+
+hysteresis_between_repos_targets: 60000000000000
+hysteresis_between_repos_targets_position_tracking: 60000000000000
+
+# With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
+# repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
+use_relative_hysteresis: true
+c3_to_repos_cost_fraction: 0.75
+c3_to_repos_cost_fraction_position_tracking: 0.6
+
+repos_to_c3_cost_fraction: 0.3
+repos_to_c3_cost_fraction_position_tracking: 0.5
+
+repos_to_repos_cost_fraction: 0.1
+repos_to_repos_cost_fraction_position_tracking: 0.1

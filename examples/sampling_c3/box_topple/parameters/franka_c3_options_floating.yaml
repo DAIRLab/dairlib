@@ -1,0 +1,110 @@
+admm_iter: 4
+rho: 0  #This isn't used anywhere!
+rho_scale: 3  #2.3
+num_threads: 5
+delta_option: 1
+# options are 'MIQP' or 'QP'
+projection_type: 'MIQP'
+# options are 'stewart_and_trinkle' or 'anitescu'
+contact_model: 'anitescu'
+# These mu values are the effective friction coefficients for the represented
+# contact pair. These values match how drake computes frictional coefficients.
+# mu_effective = 2*mu1*mu2 / (mu1 + mu2). See urdfs for mu1 and mu2.
+# The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
+# and capsule3_ground.
+# TODO: The friction values are currently hardcoded for the 6 contact lcs.
+mu : [1, 1, 1, 1, 1]
+dt: 100    # This is not used for the sampling_based controller that uses
+           # planning and execution dt instead. This param is being left in
+           #  for compatibility with other c3 controllers.
+
+solve_dt: 100 # This is not used for the sampling_based controller that uses
+           # planning and execution dt instead. This param is being left in
+           #  for compatibility with other c3 controllers.
+num_friction_directions: 2
+num_contacts: 5 # This is not used for the sampling_based controller that uses
+           # planning and execution dt instead. This param is being left in
+           #  for compatibility with other c3 controllers.
+N: 5
+use_predicted_x0: false   # unused for sampling-based c3 controller
+end_on_qp_step: true
+use_robust_formulation: false
+
+solve_time_filter_alpha: 0.95
+publish_frequency: 0
+# Workspace Limits
+world_x_limits: [0.1, 1]
+world_y_limits: [-0.6, 0.6]
+world_z_limits: [-0.03, 0.3]
+robot_radius_limits: [0.1, 1]
+workspace_margins: 0.02
+u_horizontal_limits: [-50, 50]
+u_vertical_limits: [-50, 50]
+
+### These workspace limits are not used by the sampling-based controller.
+workspace_limits: [[10, 10, 10, 10, 10],
+                   [10, 10, 10, 10, 10],
+                   [10, 10, 10, 10, 10]]
+
+# minimum end effector z-state constraint in c3
+ee_z_state_min: -0.01
+
+gamma: 1.0  # discount factor on MPC costs
+# Penalty on matching projected variables
+g_x: [500, 500, 500, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_gamma: [1, 1, 1, 1]
+g_lambda_n: [1, 1, 1, 1]
+g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005]
+g_u: [25, 25, 25]
+
+# Penalty on matching the QP variables
+u_x: [10, 10, 10, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 8, 8, 8, 1, 1, 1, 1, 1, 1]
+u_gamma: [1, 1, 1, 1]
+u_lambda_n: [1, 1, 1, 1]
+u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+# u_lambda is not used for the QP projection. It gets overwritten by alpha*F.
+u_lambda: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+u_u: [0.01, 0.01, 0.01]
+
+
+warm_start: false     # TODO: Check if we use this. Delete otherwise.
+
+# matrix scaling
+w_Q: 100
+w_R: 1
+# Penalty on all decision variables, assuming scalar
+w_G: 0.29
+# Penalty on all decision variables, assuming scalar
+w_U: 0.32
+
+Kp_for_cost_type_3: 100
+Kd_for_cost_type_3: 0.5
+
+# alpha value for qp projection. As alpha -> 0, any error in complimentarity
+# constraints also approaches 0.
+qp_projection_alpha: 0.01
+qp_projection_scaling: 1
+
+# n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
+# size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
+# size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3 * 2) + n_u (3) = 34 for anitescu
+# g_size: 49
+# u_size: 49
+#g_size: 34
+#u_size: 34
+
+# State Tracking Error, assuming diagonal
+# state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb,
+#                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
+# ORIENTATION GOAL GAINS
+q_vector: [
+           0.01, 0.01, 0.01,        # end effector position
+           0.1, 0.1, 0.1, 0.1,              # object orientation
+           120, 120, 120,    # object position
+           15, 15, 15,              # end effector linear velocity
+           0.005, 0.005, 0.005,                 # object angular velocity
+           0.05, 0.05, 0.05]           # object linear velocity
+
+# Penalty on end effector (x,y,z) force efforts, assuming diagonal
+r_vector: [0.01, 0.01, 0.01]

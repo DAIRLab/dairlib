@@ -127,5 +127,3 @@ Eigen::VectorXd project_to_surface(Eigen::VectorXd& candidate_state,
 
 } // namespace systems
 } // namespace dairlib
-
-

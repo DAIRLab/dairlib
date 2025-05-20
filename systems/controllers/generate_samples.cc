@@ -1,12 +1,5 @@
-// #include <Eigen/Dense>
 #include "generate_samples.h"
 #include <iostream>
-// #include <random>
-// #include <iostream>
-// #include <vector>
-// #include "Eigen/Dense"
-// #include "Eigen/Core"
-
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;

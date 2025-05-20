@@ -1,7 +1,6 @@
 #include "solvers/c3_qp.h"
 
 #include <vector>
-#include <iostream>
 
 #include <Eigen/Dense>
 

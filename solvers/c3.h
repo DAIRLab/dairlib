@@ -30,8 +30,8 @@ class C3 {
   };
   /// @param LCS LCS parameters
   /// @param Q, R, G, U Cost function parameters
-  C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
+  C3(const LCS& lcs, const CostMatrices& costs,
+     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
   virtual ~C3() = default;
 
@@ -136,7 +136,7 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
-  
+
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
@@ -154,7 +154,6 @@ class C3 {
   const int n_;
   const int m_;
   const int k_;
-
   const C3Options options_;
 
  private:
@@ -175,7 +174,6 @@ class C3 {
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
   double solve_time_ = 0;
-
   bool h_is_zero_;
 
   drake::solvers::MathematicalProgram prog_;
@@ -193,9 +191,7 @@ class C3 {
       user_constraints_;
 
   // Solutions
-
   mutable std::vector<Eigen::VectorXd> zfin_;
-
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;

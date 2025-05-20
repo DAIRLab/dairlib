@@ -39,31 +39,31 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_desired, const C3Options& options)
+C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
+       const vector<VectorXd>& x_des, const C3Options& options)
     : warm_start_(options.warm_start),
-      lcs_(LCS),
-      N_((LCS.A_).size()),
-      n_((LCS.A_)[0].cols()),
-      m_((LCS.D_)[0].cols()),
-      k_((LCS.B_)[0].cols()),
-      A_(LCS.A_),
-      B_(LCS.B_),
-      D_(LCS.D_),
-      d_(LCS.d_),
-      E_(LCS.E_),
-      F_(LCS.F_),
-      H_(LCS.H_),
-      c_(LCS.c_),
+      lcs_(lcs),
+      N_((lcs.A_).size()),
+      n_((lcs.A_)[0].cols()),
+      m_((lcs.D_)[0].cols()),
+      k_((lcs.B_)[0].cols()),
+      A_(lcs.A_),
+      B_(lcs.B_),
+      D_(lcs.D_),
+      d_(lcs.d_),
+      E_(lcs.E_),
+      F_(lcs.F_),
+      H_(lcs.H_),
+      c_(lcs.c_),
       Q_(costs.Q),
       R_(costs.R),
       U_(costs.U),
       G_(costs.G),
-      x_desired_(x_desired),
+      x_desired_(x_des),
       options_(options),
       h_is_zero_(H_[0].isZero(0)),
-      prog_(MathematicalProgram()),
-      osqp_(OsqpSolver()) {
+      osqp_(OsqpSolver()),
+      prog_(MathematicalProgram()) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -98,7 +98,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   auto An = A_.at(0).norm();
   AnDn_ = An / Dn;
 
-  for (int i = 0 ; i < N_; ++i){
+  for (int i = 0; i < N_; ++i){
     D_.at(i) *= AnDn_;
     E_.at(i) /= AnDn_;
     c_.at(i) /= AnDn_;
@@ -170,7 +170,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
         prog_
-            .AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * x_desired_.at(i),
+            .AddQuadraticCost(2 * Q_.at(i), -2 * Q_.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
             .evaluator()
             .get();

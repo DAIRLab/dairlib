@@ -8,8 +8,7 @@ struct C3Options {
   int admm_iter;     // total number of ADMM iterations
   float rho;         // initial value of the rho parameter
   float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // for inner C3 loop.
-                     // 0 is dynamic, greater than 0 for a fixed count
+  int num_threads;   // for inner C3 loop. 0 is dynamic, greater than 0 for a fixed count
   int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
@@ -27,7 +26,6 @@ struct C3Options {
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
   std::vector<Eigen::VectorXd> workspace_limits;
-
   double ee_z_state_min;
   double workspace_margins;
 
@@ -66,8 +64,7 @@ struct C3Options {
   double qp_projection_scaling;
 
   std::vector<double> mu;
-  double dt;                    // dt for everything if not using sampling-based
-                                // C3 controller.
+  double dt;                    // dt for everything if not using sampling-based C3 controller.
   double solve_dt;
   int num_friction_directions;
   int num_contacts;
@@ -112,18 +109,15 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
-
     a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
-
     a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
     a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
-
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
@@ -143,18 +137,15 @@ struct C3Options {
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
-
     if (contact_model == "stewart_and_trinkle") {
       g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
       g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
       g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
-
     } else {
       g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
-
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
 
@@ -162,7 +153,6 @@ struct C3Options {
       u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
       u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
       u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
-
     } else {
       u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }

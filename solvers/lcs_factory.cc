@@ -275,7 +275,6 @@ LCS LCSFactory::LinearizePlantToLCS(
     w = J_t * (d_v);
   }
 
-
   LCS system(A, B, D, d, E, F, H, c, N, dt);
   return system;
 }
@@ -456,7 +455,6 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   return LCS(A, B, D, d, E, F, H, c, other.dt_);
 }
 
-
 vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
   const MultibodyPlant<double>& plant, const Context<double>& context,
   const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
@@ -510,7 +508,7 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
 // THIS FUNCTION IS FOR DEBUGGING PURPOSES ONLY.
 // This is mostly a copy of the EvalPolytope function in the GeomGeomCollider class.
 // It is used to print out the contact information for a given pair of geometries.
-// Alternaatively, you can return the witness points and the distance from GeomGeomCollider
+// Alternatively, you can return the witness points and the distance from GeomGeomCollider
 // and get rid of this function.
 void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
                              const Context<double>& context,

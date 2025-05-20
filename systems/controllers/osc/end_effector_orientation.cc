@@ -1,3 +1,4 @@
+/* This file was moved from examples/franka/systems to be used by other examples.*/
 #include "end_effector_orientation.h"
 
 #include "dairlib/lcmt_radio_out.hpp"
@@ -21,9 +22,8 @@ EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGener
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ =
-      this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
-          .get_index();
+  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
+      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
   PiecewiseQuaternionSlerp<double> empty_slerp_traj;
   Trajectory<double>& traj_inst = empty_slerp_traj;
   this->DeclareAbstractOutputPort("end_effector_orientation", traj_inst,
@@ -34,10 +34,11 @@ EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGener
 void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
+  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
+    context, radio_port_);
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
       PiecewiseQuaternionSlerp<double>*>(traj);
-  if (radio_out->value()[14] and track_orientation_) {
+  if (radio_out->channel[14] and track_orientation_) {
     const auto& trajectory_input =
         this->EvalAbstractInput(context, trajectory_port_)
             ->get_value<drake::trajectories::Trajectory<double>>();

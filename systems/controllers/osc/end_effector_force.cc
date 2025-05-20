@@ -1,3 +1,4 @@
+/* This file was moved from examples/franka/systems to be used by other examples.*/
 #include "end_effector_force.h"
 
 #include "dairlib/lcmt_radio_out.hpp"
@@ -30,9 +31,8 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ =
-      this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
-          .get_index();
+  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
+      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
   controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Ones(1));
   DeclareForcedDiscreteUpdateEvent(
       &EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate);
@@ -46,12 +46,13 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
 EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
-  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
+  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
+    context, radio_port_);
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
-  if (!using_c3 && radio_out->value()[14] == 0) {
+  if (!using_c3 && radio_out->channel[14] == 0) {
     if (!trajectory_input.value(0).isZero() &&
         (context.get_time() - trajectory_input.start_time()) < 0.04) {
       discrete_state->get_mutable_value(controller_switch_index_)[0] = 1;
@@ -67,11 +68,12 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
-  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
+  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
+    context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (radio_out->value()[11] || radio_out->value()[14] ||
+  if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());

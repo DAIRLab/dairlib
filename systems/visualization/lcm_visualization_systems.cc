@@ -516,9 +516,11 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
-                                                   c3_state_final_target_input_port_)
-          ->utime < 1e-3) {
+  // Guarding the final state input port because it is not always connected as 
+  // in the case of the franka_example.
+  const auto* c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+    context, c3_state_final_target_input_port_);
+  if (!c3_final_target || c3_final_target->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
   if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
@@ -538,8 +540,6 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
   }
   discrete_state->get_mutable_value(last_update_time_index_)[0] =
       context.get_time();
-  const auto& c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
-      context, c3_state_final_target_input_port_);
   const auto& c3_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
       context, c3_state_target_input_port_);
   const auto& c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(

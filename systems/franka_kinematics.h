@@ -1,4 +1,4 @@
-/** This system is used to generate the lcs state used by the sampling c3 controller and is a copy of the one under
+/** This system is used to generate the lcs state used by the sampling c3 controller and was moved from
  * examples/franka/systems. */
 #pragma once
 

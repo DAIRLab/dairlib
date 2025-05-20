@@ -1,10 +1,9 @@
-/** This system is used by the franka_driver_out system. This system is also present under examples/franka/systems but 
- * has been copied here to be used by the sampling_c3 controller. */
+/**This is used by the franka_bridge_drivers. This was moved from examples/franka/systems
+ * so as to be used by the sampling_c3 controller examples. */
 #pragma once
 
 #include <string>
 #include <vector>
-#include <chrono>
 #include <dairlib/lcmt_robot_output.hpp>
 #include <drake/lcmt_panda_command.hpp>
 
@@ -37,7 +36,6 @@ class FrankaStateOutTranslator : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex panda_status_;
   drake::systems::OutputPortIndex state_output_;
-  mutable std::chrono::time_point<std::chrono::steady_clock> start_;
 };
 
 class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
@@ -46,9 +44,6 @@ class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
 
   const drake::systems::InputPort<double>& get_input_port_efforts() const {
     return this->get_input_port(robot_input_);
-  }
-  const drake::systems::InputPort<double>& get_input_port_panda_status() const {
-    return this->get_input_port(panda_status_);
   }
   const drake::systems::OutputPort<double>& get_output_port_panda_command()
       const {
@@ -60,7 +55,6 @@ class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
                          drake::lcmt_panda_command* output) const;
 
   drake::systems::InputPortIndex robot_input_;
-  drake::systems::InputPortIndex panda_status_;
   drake::systems::OutputPortIndex franka_command_output_;
 };
 

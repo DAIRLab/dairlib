@@ -16,7 +16,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_drake_lcm_driver_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
-#include "franka_state_translator.h"
+#include "systems/franka_state_translator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -88,13 +88,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
           franka_driver_channel_params.franka_command_channel, &lcm,
           1.0 / 1000.0));
-    auto franka_status_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_panda_status>(
-          franka_driver_channel_params.franka_status_channel, &lcm));
   auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
   builder.Connect(*franka_command_translator, *franka_command_pub);
-  builder.Connect(franka_status_sub->get_output_port(), franka_command_translator->get_input_port_panda_status());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_bridge_driver_in"));
@@ -102,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &lcm, std::move(owned_diagram), franka_command_translator,
       lcm_channel_params.franka_input_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_bridge_driver_in_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

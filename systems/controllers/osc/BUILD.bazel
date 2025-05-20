@@ -24,6 +24,9 @@ cc_library(
         "//systems/controllers:controller_failure_aggregator",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        ":end_effector_force",
+        ":end_effector_orientation",
+        ":end_effector_position",
     ],
 )
 
@@ -143,5 +146,46 @@ cc_library(
     hdrs = ["osc_gains.h"],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+
+
+cc_library(
+    name = "end_effector_position",
+    srcs = ["end_effector_position.cc"],
+    hdrs = ["end_effector_position.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_force",
+    srcs = ["end_effector_force.cc"],
+    hdrs = ["end_effector_force.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_orientation",
+    srcs = ["end_effector_orientation.cc"],
+    hdrs = ["end_effector_orientation.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )

@@ -4,7 +4,7 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/franka/systems/franka_kinematics_vector.h"
+#include "systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"

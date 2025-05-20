@@ -1,6 +1,6 @@
 /**This system is used by the osc diagram to read an end effector trajectory from an lcm message and pass it onto the OSC class.
-* This system is also present under examples/franka/systems but has been copied here to be used by the instance of the osc
-* in the sampling_c3 controller examples. */
+* This system was moved from examples/franka/systems and modified to allow for teleop to track the current end effector position 
+* instead of a neutral position when needed. */
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>

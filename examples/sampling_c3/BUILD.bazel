@@ -51,7 +51,6 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
         "//common",
-        "//systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -76,7 +75,6 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
         "//common",
-        "//systems:franka_systems",
         ":joint_trajectory_generator",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -120,7 +118,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems/sender_systems:sender_systems",
-        "//systems:franka_systems",
+        "//systems:franka_kinematics",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/primitives",
@@ -145,7 +143,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
-        ":franka_state_translator",
+        "//systems:franka_state_translator",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -170,7 +168,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
-        ":franka_state_translator",
+        "//systems:franka_state_translator",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -196,7 +194,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:trajectory_params",
         "//systems/controllers:sampling_params",
         "//common",
-        "//systems:franka_systems",
+        "//systems:franka_kinematics",
         "//systems/sender_systems:sample_buffer_sender",
         "//systems/sender_systems:sender_systems",
         ":control_target_generator",
@@ -224,22 +222,6 @@ cc_library(
         "@lcm",
     ],
 )
-
-cc_library(
-    name = "franka_state_translator",
-    srcs = [
-        "franka_state_translator.cc",
-    ],
-    hdrs = [
-        "franka_state_translator.h",
-    ],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 
 cc_library(
     name = "control_target_generator",

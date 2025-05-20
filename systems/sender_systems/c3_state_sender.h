@@ -1,3 +1,7 @@
+/** This system doesn't process the data it receives in any way except for converting it into an lcm message. 
+ * This system is required since we use the generic multiplexer to concatenate the pieces of the c3 state and need to send 
+ * it out over lcm. This was moved from examples/franka/systems and modified to add an additional input and output port 
+ * to allow for a final c3_target as used by sampling_c3 examples. */ 
 #pragma once
 
 #include <string>

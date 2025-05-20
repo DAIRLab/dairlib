@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
-#include "systems/end_effector_force_trajectory.h"
-#include "systems/end_effector_orientation.h"
-#include "systems/end_effector_trajectory.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -174,13 +174,11 @@ int DoMain(int argc, char* argv[]) {
       neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>(plant,
-                                                         plant_context.get());
+      builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>(
-          plant, plant_context.get());
+      builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -274,12 +272,8 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),

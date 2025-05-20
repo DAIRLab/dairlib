@@ -4,14 +4,8 @@ cc_library(
     name = "franka_systems",
     srcs = [],
     deps = [
-        ":c3_state_sender",
         ":c3_trajectory_generator",
-        ":end_effector_force_trajectory",
-        ":end_effector_orientation_trajectory",
-        ":end_effector_position_trajectory",
         ":external_force_generator",
-        ":franka_kinematics",
-        ":franka_state_translator",
         ":plate_balancing_target",
     ],
 )
@@ -20,45 +14,6 @@ cc_library(
     name = "external_force_generator",
     srcs = ["external_force_generator.cc"],
     hdrs = ["external_force_generator.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "end_effector_position_trajectory",
-    srcs = ["end_effector_position.cc"],
-    hdrs = ["end_effector_position.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "end_effector_force_trajectory",
-    srcs = ["end_effector_force.cc"],
-    hdrs = ["end_effector_force.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "end_effector_orientation_trajectory",
-    srcs = ["end_effector_orientation.cc"],
-    hdrs = ["end_effector_orientation.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -90,7 +45,7 @@ cc_library(
         "c3_trajectory_generator.h",
     ],
     deps = [
-        ":franka_kinematics",
+        "//systems:franka_kinematics",
         "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
@@ -99,62 +54,6 @@ cc_library(
         "//solvers:c3_output",
         "//solvers:solver_options_io",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "c3_state_sender",
-    srcs = [
-        "c3_state_sender.cc",
-    ],
-    hdrs = [
-        "c3_state_sender.h",
-    ],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_state_translator",
-    srcs = [
-        "franka_state_translator.cc",
-    ],
-    hdrs = [
-        "franka_state_translator.h",
-    ],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_kinematics",
-    srcs = ["franka_kinematics.cc"],
-    hdrs = ["franka_kinematics.h"],
-    deps = [
-        ":franka_kinematics_vector",
-        "//common",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_kinematics_vector",
-    srcs = ["franka_kinematics_vector.cc"],
-    hdrs = ["franka_kinematics_vector.h"],
-    deps = [
-        "//common",
-        "//multibody:utils",
-        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )

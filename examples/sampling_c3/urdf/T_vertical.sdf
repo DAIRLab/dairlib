@@ -120,7 +120,7 @@
     <visual name="corner_nxynz">
         <geometry>
           <sphere>
-            <radius>0.001</radius>
+            <radius>0.01</radius>
           </sphere>
         </geometry>
         <material>
@@ -162,7 +162,7 @@
     <visual name="corner_nxnynz">
         <geometry>
           <sphere>
-            <radius>0.001</radius>
+            <radius>0.01</radius>
           </sphere>
         </geometry>
         <material>
@@ -203,7 +203,7 @@
     <visual name="corner_xynz">
         <geometry>
           <sphere>
-            <radius>0.001</radius>
+            <radius>0.01</radius>
           </sphere>
         </geometry>
         <material>

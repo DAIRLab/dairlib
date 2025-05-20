@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<!-- This file is forked from dist/index.html in meshcat-dev/meshcat.-->
+<html>
+
+<head>
+  <meta charset=utf-8>
+  <title>Drake MeshCat</title>
+</head>
+
+<body>
+  <div id="status-message">
+    No connection to server.
+  </div>
+  <div id="meshcat-pane">
+  </div>
+
+  <script type="text/javascript" src="meshcat.js"></script>
+  <script type="text/javascript" src="stats.min.js"></script>
+  <script>
+    // TODO(#16486): add tooltips to Stats to describe chart contents
+    var stats = new Stats();
+    var realtimeRatePanel = stats.addPanel(
+            new Stats.Panel('rtr%', '#ff8', '#221')
+    );
+    document.body.appendChild(stats.dom);
+    stats.dom.id = "stats-plot";
+    // We want to show the realtime rate panel by default
+    // it is the last element in the stats.dom.children list
+    stats.showPanel(stats.dom.children.length - 1)
+    var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+    viewer.animate = function() {
+      viewer.animator.update();
+      if (viewer.needs_render) {
+        viewer.render();
+      }
+    }
+
+    const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
+    // Gamepad support - first check if the gamepad feature is available.
+    const gamepads_supported = !!navigator.getGamepads;
+    if (!gamepads_supported) {
+      if (!window.isSecureContext) {
+        console.warn("Gamepads are not supported outside of a secure context. "
+        + "See https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts"
+        + " for details. Some browsers support localhost and allowlists.");
+      } else {
+        console.warn("Gamepads are not supported in this browser session.");
+      }
+    }
+    // See https://beej.us/blog/data/javascript-gamepad/ for a tutorial.
+    var last_gamepad = {};
+    function handle_gamepads() {
+      let gamepads = navigator.getGamepads();
+      let gamepad = {};
+      for (let i = 0; i < gamepads.length; i++) {
+        if (gamepads[i] === null || !gamepads[i].connected) {
+          continue;
+        }
+
+        // Only send a subset of the available information. Also, the floating
+        // point values are not constant; they are constantly changing in the
+        // least significant digits even when the gamepad is untouched by the
+        // user. We truncate the floating point values to two significant
+        // digits to reject this noise.
+        gamepad = {
+          'index': gamepads[i].index,
+          'button_values': gamepads[i].buttons.map(
+            a => clamp(Math.round(a.value * 100) / 100, 0, 1)),
+          'axes': gamepads[i].axes.map(
+            a => clamp(Math.round(a * 100) / 100, -1, 1)),
+        };
+        break;  // Just take the first connected gamepad.
+      }
+      if (this.connection && this.connection.readyState == WebSocket.OPEN &&
+        JSON.stringify(gamepad) !== JSON.stringify(last_gamepad)) {
+        this.connection.send(MeshCat.msgpack.encode(
+          { 'type': 'gamepad', 'name': '', 'gamepad': gamepad }));
+        last_gamepad = gamepad;
+      }
+    }
+
+    function animate() {
+      stats.begin();
+      viewer.animate()
+      stats.end();
+      if (gamepads_supported) {
+        handle_gamepads();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // TODO(#16486): Replace this function with more robust custom command
+    //  handling in Meshcat
+    function handle_message(ws_message) {
+      let decoded = viewer.decode(ws_message);
+      if (decoded.type == "realtime_rate") {
+        // Note: we expect to receive messages at a fixed "rate" so that each
+        // update to the panel represents a fixed duration of time. This code
+        // doesn't define whether that time is in simulation or wall time.
+
+        // Convert realtime rate to percentage so it is easier to read.
+        realtimeRatePanel.update(decoded.rate*100, 100);
+      } else if (decoded.type == "show_realtime_rate") {
+        stats.dom.style.display = decoded.show ? "block" : "none";
+      } else {
+        viewer.handle_command(decoded)
+      }
+    }
+
+    requestAnimationFrame( animate );
+    // Set background to match the legacy ``drake_visualizer`` application from
+    // Drake's days past.
+    viewer.set_property(['Background', '<object>'], "top_color",
+                        [.95, .95, 1.0])
+    viewer.set_property(['Background', '<object>'], "bottom_color",
+                        [.32, .32, .35])
+    // Set the initial view looking up the y-axis.
+    viewer.set_property(['Cameras', 'default', 'rotated', '<object>'],
+                        "position", [0.0, 1.0, 3.0])
+
+    // With meshcat's upgrade of three.js, the default lighting conditions are
+    // no longer appropriate. Meshcat has boosted them slightly to account for
+    // a hidden change in three.js's lighting math, but it's not enough. The
+    // ambient and directional lights don't decay with distance, but point and
+    // spotlight do. The default lighting is now dominated by the non-decaying
+    // light sources. So, we're going to significantly bump the decaying sources
+    // to give them illuminating power and increase image contrast. These values
+    // don't live in upstream meshcat because in some of meshcat's test/*.html
+    // files, these defaults look horrible..
+    viewer.set_property(["Lights", "SpotLight", "<object>"], "intensity", 30);
+    viewer.set_property(["Lights", "PointLightNegativeX", "<object>"],
+                        "intensity", 25);
+    viewer.set_property(["Lights", "PointLightPositiveX", "<object>"],
+                        "intensity", 25);
+    viewer.set_property(["Lights", "AmbientLight", "<object>"], "intensity",
+                        0.3);
+    viewer.set_property(["Lights", "FillLight", "<object>"], "intensity", 0.5);
+
+    <!-- CONNECTION BLOCK BEGIN -->
+    // The lifespan of the server may be much shorter than this visualizer
+    // client. We'd like the user to not have to explicitly reload when they
+    // start a new server. So, we automatically try to reconnect at some given
+    // rate. However, due to the split of visualizer state between server and
+    // client, simply reconnecting may leave the *existing* visualizer in a
+    // strange state with various stale artifacts. So, when we detect a
+    // *reconnection*, we simply reload the page, so that every *meaningful*
+    // connection is accompanied by a fresh client state. Upon loading the
+    // page, it can accept a connection. After that first connection, any
+    // new connection is interpreted as a signal to reload.
+    var accepting_connections = true;
+    status_dom = document.getElementById("status-message");
+    // When the connection closes, try creating a new connection automatically.
+    function make_connection(url, reconnect_ms) {
+      try {
+        connection = new WebSocket(url);
+        connection.binaryType = "arraybuffer";
+        connection.onmessage = (msg) => handle_message(msg);
+        connection.onopen = (evt) => {
+          if (!accepting_connections) location.reload();
+          accepting_connections = false;
+          // Immediately trigger the callback so that connection is sufficient
+          // to register a pose (otherwise, it doesn't happen until *something*
+          // else happens to trigger a render). Invoking the render callback is
+          // always safe because even if `tracked_camera` isn't enabled, the
+          // Viewer has a non-null no-op callback set.
+          viewer.render_callback();
+        };
+        connection.onclose = function(evt) {
+          status_dom.style.display = "block";
+          if (do_reconnect) {
+            // Immediately schedule an attempt to reconnect.
+            setTimeout(() => {make_connection(url, reconnect_ms);}, reconnect_ms);
+          }
+        }
+        viewer.connection = connection
+      } catch (e) {
+        console.info("Not connected to MeshCat websocket server: ", e);
+        if (do_reconnect) {
+          setTimeout(() => {make_connection(url, reconnect_ms);}, reconnect_ms);
+        }
+      }
+    }
+
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    reconnect_ms = parseInt(urlParams.get('reconnect_ms')) || 1000;
+    var do_reconnect = reconnect_ms > 0;
+    if (do_reconnect) {
+      status_dom.textContent = "No connection to server. Attempting to reconnect...";
+    }
+
+    const tracked_camera = urlParams.get('tracked_camera');
+    if (tracked_camera) {
+      viewer.set_render_callback(
+        `(function() {
+            var prior_message = new Uint8Array();
+            return function() {
+              if (this.connection.readyState == 1 /* OPEN */) {
+                var new_message = msgpack.encode({
+                  'type': 'camera_pose',
+                  'camera_pose': this.camera.matrixWorld.elements,
+                  // Changing projection matrices *can* lead to is_perspective()
+                  // returning some null-like value; we treat it as not
+                  // perspective.
+                  'is_perspective': this.is_perspective() == null ?
+                                        false : this.is_perspective()
+                });
+                // Only transmit the message when it changes.
+                if (!(new_message.length === prior_message.length &&
+                      new_message.every((x, i) => x === prior_message[i]))) {
+                  this.connection.send(new_message);
+                  prior_message = new_message;
+                }
+              }
+            }
+         })()`);
+    }
+
+    url = location.toString();
+    url = url.replace("http://", "ws://")
+    url = url.replace("https://", "wss://")
+    url = url.replace("/index.html", "/")
+    url = url.replace("/meshcat.html", "/")
+    make_connection(url, reconnect_ms);
+
+    // Per our meshcat.h docs, using XR when offline is not supported. Adding
+    // offline support might be possible by moving the 'webxr' and 'controller'
+    // handling outside of the CONNECTION BLOCK comment region and adding
+    // meshcat_manual_test coverage.
+
+    const webxrMode = urlParams.get('webxr');
+    if (webxrMode) {
+        viewer.handle_command({
+          type: "enable_webxr",
+          mode: webxrMode
+        });
+    }
+
+    const controllerMode = urlParams.get('controller');
+    if (controllerMode === "on") {
+      viewer.handle_command({
+        type: "visualize_vr_controller"
+      });
+    }
+    <!-- CONNECTION BLOCK END -->
+
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+    }
+
+    #meshcat-pane {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #status-message{
+      width: 50vw;
+      text-align: center;
+      font-weight: bold;
+      background-color: yellow;
+      position: fixed;
+      left: 25%;
+      display: none;
+    }
+
+    #stats-plot {
+      display: none;
+    }
+  </style>
+  <script id="embedded-json"></script>
+</body>
+
+</html>

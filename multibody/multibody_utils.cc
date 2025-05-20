@@ -1,5 +1,4 @@
 #include "multibody/multibody_utils.h"
-#include <iostream>
 
 #include <set>
 #include <vector>

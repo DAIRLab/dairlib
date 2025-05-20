@@ -16,7 +16,7 @@
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
-#include "examples/franka/systems/franka_kinematics.h"
+#include "systems/franka_kinematics.h"
 #include "examples/franka/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"

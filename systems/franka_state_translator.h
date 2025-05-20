@@ -1,3 +1,5 @@
+/**This is used by the franka_bridge_drivers. This was moved from examples/franka/systems
+ * so as to be used by the sampling_c3 controller examples. */
 #pragma once
 
 #include <string>

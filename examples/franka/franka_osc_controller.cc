@@ -139,11 +139,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>(plant, 
-        plant_context.get(), controller_params.neutral_position, false,
-        controller_params.end_effector_name);
+          plant_context.get(), controller_params.neutral_position, false,
+          controller_params.end_effector_name);
   end_effector_trajectory->SetRemoteControlParameters(
-      controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
+      controller_params.neutral_position, controller_params.x_scale,
+      controller_params.y_scale, controller_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(

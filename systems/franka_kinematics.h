@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <drake/multibody/plant/multibody_plant.h>
-#include "examples/franka/systems/franka_kinematics_vector.h"
+#include "systems/franka_kinematics_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"

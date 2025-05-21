@@ -1,4 +1,4 @@
-#include "examples/franka/systems/franka_state_translator.h"
+#include "franka_state_translator.h"
 
 #include <dairlib/lcmt_robot_input.hpp>
 

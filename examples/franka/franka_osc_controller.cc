@@ -6,9 +6,9 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
-#include "examples/franka/systems/end_effector_force.h"
-#include "examples/franka/systems/end_effector_orientation.h"
-#include "examples/franka/systems/end_effector_position.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -138,10 +138,12 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant, 
+          plant_context.get(), controller_params.neutral_position, false,
+          controller_params.end_effector_name);
   end_effector_trajectory->SetRemoteControlParameters(
-      controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
+      controller_params.neutral_position, controller_params.x_scale,
+      controller_params.y_scale, controller_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
@@ -151,7 +153,6 @@ int DoMain(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
   if (controller_params.publish_debug_info) {
@@ -233,12 +234,11 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port(0));
   }
 
-  builder.Connect(*radio_sub, *radio_to_vector);
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(radio_sub->get_output_port(),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(radio_sub->get_output_port(),
                   end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(radio_sub->get_output_port(),
                   end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());

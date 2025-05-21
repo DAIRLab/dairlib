@@ -17,9 +17,9 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
-#include "examples/franka/systems/end_effector_force.h"
-#include "examples/franka/systems/end_effector_orientation.h"
-#include "examples/franka/systems/end_effector_position.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -116,8 +116,9 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(*plant_);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(
-          controller_params.neutral_position);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(*plant_, 
+        plant_context_.get(), controller_params.neutral_position, false, 
+        controller_params.end_effector_name);
   auto passthrough = builder.AddSystem<drake::systems::PassThrough<double>>(18);
   end_effector_trajectory->SetRemoteControlParameters(
       controller_params.neutral_position, controller_params.x_scale,

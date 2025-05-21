@@ -1,4 +1,4 @@
-#include "examples/franka/systems/franka_kinematics_vector.h"
+#include "systems/franka_kinematics_vector.h"
 
 #include "drake/common/default_scalars.h"
 

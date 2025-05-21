@@ -29,8 +29,6 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
                                const std::string system_name,
                                std::string trajectory_name);
 
-
-
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
   }

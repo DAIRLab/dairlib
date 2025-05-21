@@ -20,6 +20,8 @@ mu: [[0.4165, 0.4165, 0.4165, 0.4165],                    # num_contacts_index 0
 planning_dt_position_tracking: 0.1
 planning_dt: 0.05
 execution_dt: 0.1   # unused
+
+robot_radius_limits: [0.25, 0.75]
 # If num_contacts_index is 0, then we use 1 ee-jack contact and 3 ground-jack
 # contacts.
 # If num_contacts_index is 1, then we use 6 contacts without resolving

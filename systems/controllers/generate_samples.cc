@@ -26,6 +26,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const bool& is_doing_c3,
     const SamplingC3SamplingParams sampling_params,
     const C3Options c3_options,
+    const SamplingC3Options& sampling_c3_options,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
@@ -50,7 +51,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         sampling_params.sampling_radius, sampling_params.sampling_height
       );
     if(sampling_params.filter_samples_for_safety && 
-      !is_sample_within_workspace(candidate_states[i], c3_options)){
+      !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options)){
       throw std::runtime_error("Error:  Radially symmetric sample location is outside workspace.");
     }
     }
@@ -65,7 +66,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           sampling_params.sampling_height
         );
       } while(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options));
+        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
     }
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING){
@@ -79,7 +80,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           sampling_params.max_angle_from_vertical
         );
       } while(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options));
+        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
       }
     }
   else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
@@ -92,7 +93,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           n_q, n_v, x_lcs, sampling_params.sampling_height, 
           sampling_params.fixed_sample_locations[i]);
       if(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options)){
+        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options)){
         throw std::runtime_error("Error:  Fixed sample location is outside workspace.");
       }
       }
@@ -106,7 +107,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       candidate_states[i] = generate_sample_on_grid( 
         n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options);
       } while(sampling_params.filter_samples_for_safety &&
-        !is_sample_within_workspace(candidate_states[i], c3_options));
+        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
       }
   }
   else if(sampling_params.sampling_strategy == SAMPLE_IN_SHELL){
@@ -117,7 +118,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       candidate_states[i] = generate_sample_in_shell( 
         n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options);
       } while(sampling_params.filter_samples_for_safety &&
-        !is_sample_within_workspace(candidate_states[i], c3_options));
+        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
       }
   }
   else{
@@ -128,16 +129,17 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 
 // Helper function to check sample validity.
 bool is_sample_within_workspace(const Eigen::VectorXd& candidate_state,
-  const C3Options c3_options){
+  const C3Options c3_options,
+  const SamplingC3Options& sampling_c3_options){
   double candidate_radius = sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
-  if(candidate_state[0] < c3_options.world_x_limits[0] ||
-              candidate_state[0] > c3_options.world_x_limits[1] ||
-              candidate_state[1] < c3_options.world_y_limits[0] ||
-              candidate_state[1] > c3_options.world_y_limits[1] ||
-              candidate_state[2] < c3_options.world_z_limits[0] ||
-              candidate_state[2] > c3_options.world_z_limits[1] ||
-              candidate_radius > c3_options.robot_radius_limits[1] ||
-              candidate_radius < c3_options.robot_radius_limits[0]) {
+  if(candidate_state[0] < c3_options.workspace_limits[0][3] || // Xxmin
+              candidate_state[0] > c3_options.workspace_limits[0][4] || // x max
+              candidate_state[1] < c3_options.workspace_limits[1][3] || // y min
+              candidate_state[1] > c3_options.workspace_limits[1][4] || // y max
+              candidate_state[2] < c3_options.workspace_limits[2][3] || // z min
+              candidate_state[2] > c3_options.workspace_limits[2][4] || // z max
+              candidate_radius > sampling_c3_options.robot_radius_limits[1] ||   // radius max
+              candidate_radius < sampling_c3_options.robot_radius_limits[0]) {   // radius min
     return false;
   }
   return true;

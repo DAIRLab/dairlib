@@ -417,12 +417,17 @@ int do_main(int argc, char* argv[]) {
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
 
   if (sim_params.visualize_c3_workspace){
-    double width = c3_options.world_x_limits[1] - c3_options.world_x_limits[0];
-    double depth = c3_options.world_y_limits[1] - c3_options.world_y_limits[0];
-    double height = c3_options.world_z_limits[1] - c3_options.world_z_limits[0];
-    Vector3d workspace_center = {0.5 * (c3_options.world_x_limits[1] + c3_options.world_x_limits[0]),
-                                 0.5 * (c3_options.world_y_limits[1] + c3_options.world_y_limits[0]),
-                                 0.5 * (c3_options.world_z_limits[1] + c3_options.world_z_limits[0])};
+    // Extracting limits and calculating workspace dimensions based on workspace_limits
+    double width = c3_options.workspace_limits[0][4] - c3_options.workspace_limits[0][3];  // x-axis limits (max - min)
+    double depth = c3_options.workspace_limits[1][4] - c3_options.workspace_limits[1][3];  // y-axis limits
+    double height = c3_options.workspace_limits[2][4] - c3_options.workspace_limits[2][3]; // z-axis limits
+
+    // Calculate the center of the workspace based on the limits
+    Vector3d workspace_center = {
+        0.5 * (c3_options.workspace_limits[0][4] + c3_options.workspace_limits[0][3]),
+        0.5 * (c3_options.workspace_limits[1][4] + c3_options.workspace_limits[1][3]),
+        0.5 * (c3_options.workspace_limits[2][4] + c3_options.workspace_limits[2][3])
+    };
     meshcat->SetObject("c3_workspace", drake::geometry::Box(width, depth, height),
                        {0, 1, 0, 0.2});
     meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));

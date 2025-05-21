@@ -35,18 +35,13 @@ use_robust_formulation: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
 # Workspace Limits
-world_x_limits: [0.15, 0.75]
-world_y_limits: [-0.6, 0.6]
-world_z_limits: [-0.03, 0.3]
-robot_radius_limits: [0.25, 0.75]
+workspace_limits: [[1, 0, 0, 0.15, 0.75],
+                   [0, 1, 0, -0.6, 0.6],
+                   [0, 0, 1, -0.01, 0.3]]
 workspace_margins: 0.02
+
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
-
-### These workspace limits are not used by the sampling-based controller.
-workspace_limits: [[10, 10, 10, 10, 10],
-                   [10, 10, 10, 10, 10],
-                   [10, 10, 10, 10, 10]]
 
 # minimum end effector z-state constraint in c3
 ee_z_state_min: -0.01

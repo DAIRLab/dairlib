@@ -162,7 +162,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   for (int i = 1; i < N_; i++) {
     // WARNING!!! The x_.at(i)[2] == 0.005 constraint is hardcoded for the T example. The jack example needs line 166
     // to be commented and line 165 to be uncommented.
-    prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
+    // prog_.AddLinearConstraint(x_.at(i)[2] >= options_.ee_z_state_min);
     // prog_.AddLinearConstraint(x_.at(i)[2] == 0.005);
   }
 
@@ -676,10 +676,10 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
-  if(x0[2] < options_.ee_z_state_min){
+  if(x0[2] < options_.workspace_limits[2][3]){
     std::cout<<x0.segment(0,3).transpose()<<std::endl;
     std::cout<<"CAUTION: Initial state (curr or sample) is below the min z"<<
-    " height ("<<x0[2] <<" < "<<options_.ee_z_state_min <<"). C3 plan will "<<
+    " height ("<<x0[2] <<" < "<<options_.workspace_limits[2][3] <<"). C3 plan will "<<
     "have the z go up suddenly in the first step of the plan."<<std::endl;
   }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));

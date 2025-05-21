@@ -100,6 +100,7 @@ cc_library(
         "@drake//:drake_shared_library",
         ":sampling_params",
         "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//multibody:utils",
         "//multibody:geom_geom_collider",
     ],

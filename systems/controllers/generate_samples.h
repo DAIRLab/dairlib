@@ -3,6 +3,7 @@
 
 #include "systems/controllers/sampling_params.h"
 #include "solvers/c3_options.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "multibody/multibody_utils.h"
@@ -26,6 +27,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const bool& is_doing_c3,
     const SamplingC3SamplingParams sampling_params,
     const C3Options c3_options,
+    const SamplingC3Options& sampling_c3_options,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
@@ -35,7 +37,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 // Private function signatures.
 bool is_sample_within_workspace(
     const Eigen::VectorXd& candidate_state,
-    const C3Options c3_options);
+    const C3Options c3_options,
+    const SamplingC3Options& sampling_c3_options);
 
 Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& n_q,

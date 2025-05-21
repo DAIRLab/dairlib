@@ -135,35 +135,20 @@ SamplingC3Controller::SamplingC3Controller(
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
 
   // Set actor bounds
-  for (int i : vector<int>({0})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
-                                  c3_options_.world_x_limits[1], 1);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
-                                  c3_options_.world_x_limits[1], 1);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
-                                  c3_options_.world_x_limits[1], 1);
-  }
-  for (int i : vector<int>({1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
-                                  c3_options_.world_y_limits[1], 1);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
-                                  c3_options_.world_y_limits[1], 1);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
-                                  c3_options_.world_y_limits[1], 1);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
-                                  c3_options_.world_z_limits[1], 1);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
-                                  c3_options_.world_z_limits[1], 1);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
-                                  c3_options_.world_z_limits[1], 1);
+  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);  
+    A.segment(0, 3) = c3_options_.workspace_limits[i].segment(0, 3);
+    // TODO @sharanyashastry: For the T example, the z constraint is an equality 
+    // constraint. This will be reflected in the params but need to make sure to 
+    // put a comment here when the T example is added.
+    // The fourth parameter decides which optimization variable the constraint
+    // is applied to. 1 = x, 2 = u, 3 = lambda.
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
+                                  c3_options_.workspace_limits[i][4], 1);
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
+                                  c3_options_.workspace_limits[i][4], 1);
+    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
+                                  c3_options_.workspace_limits[i][4], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -522,27 +507,25 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
 
   // Force Checking of Workspace Limits
-  DRAKE_DEMAND(lcs_x_curr->get_data()[0] >
-               c3_options_.world_x_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x_curr->get_data()[0] <
-               c3_options_.world_x_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x_curr->get_data()[1] >
-               c3_options_.world_y_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x_curr->get_data()[1] <
-               c3_options_.world_y_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x_curr->get_data()[2] >
-               c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x_curr->get_data()[2] <
-               c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
+  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     c3_options_.workspace_limits[i].segment(0, 3) >
+                 c3_options_.workspace_limits[i][3] -
+                     c3_options_.workspace_margins);
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     c3_options_.workspace_limits[i].segment(0, 3) <
+                 c3_options_.workspace_limits[i][4] +
+                     c3_options_.workspace_margins);
+  }
   DRAKE_DEMAND(
     std::pow(lcs_x_curr->get_data()[0], 2) +
     std::pow(lcs_x_curr->get_data()[1], 2) >
-    std::pow(c3_options_.robot_radius_limits[0] +
+    std::pow(sampling_c3_options_.robot_radius_limits[0] +
              c3_options_.workspace_margins, 2));
   DRAKE_DEMAND(
     std::pow(lcs_x_curr->get_data()[0], 2) +
     std::pow(lcs_x_curr->get_data()[1], 2) <
-    std::pow(c3_options_.robot_radius_limits[1] -
+    std::pow(sampling_c3_options_.robot_radius_limits[1] -
              c3_options_.workspace_margins, 2));
 
   // Compute the current position and orientation errors.
@@ -686,8 +669,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
-    n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_);
+                                    n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, 
+                                    sampling_params_, c3_options_, 
+                                    sampling_c3_options_, plant_, context_, 
+                                    plant_ad_, context_ad_, contact_pairs_);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)

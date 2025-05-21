@@ -65,12 +65,7 @@ u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 u_lambda: [85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85]
 u_u: [30, 30, 30]
 
-#UNUSED PARAMS FROM ADDING WORKSPACE LIMITS IN SAMPLING_C3 EXAMPL
-# Workspace Limits
-world_x_limits: [0.15, 0.75]
-world_y_limits: [-0.6, 0.6]
-world_z_limits: [-0.03, 0.3]
-robot_radius_limits: [0.25, 0.75]
+#UNUSED PARAMS FROM ADDING WORKSPACE LIMITS IN SAMPLING_C3 EXAMPLE
 # minimum end effector z-state constraint in c3
 ee_z_state_min: -0.01
 

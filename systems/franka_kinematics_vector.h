@@ -1,5 +1,3 @@
-/**This is used by the franka kinematics system. This was moved from examples/franka/systems
- * so as to be used by the sampling_c3 controller examples. */
 #pragma once
 
 #include <string>
@@ -43,10 +41,11 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
   }
 
   /// Constructs a OutputVector with the specified positions and velocities.
-  explicit FrankaKinematicsVector(const drake::VectorX<T>& end_effector_positions,
-                                  const drake::VectorX<T>& object_positions,
-                                  const drake::VectorX<T>& end_effector_velocities,
-                                  const drake::VectorX<T>& object_velocities)
+  explicit FrankaKinematicsVector(
+    const drake::VectorX<T>& end_effector_positions,
+    const drake::VectorX<T>& object_positions,
+    const drake::VectorX<T>& end_effector_velocities,
+    const drake::VectorX<T>& object_velocities)
       : FrankaKinematicsVector(
             end_effector_positions.size(), object_positions.size(),
             end_effector_velocities.size(), object_velocities.size()) {

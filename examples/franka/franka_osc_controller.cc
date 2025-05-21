@@ -138,10 +138,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant, plant_context.get(), 
-                                                        controller_params.neutral_position,
-                                                        false,
-                                                        controller_params.end_effector_name);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant, 
+        plant_context.get(), controller_params.neutral_position, false,
+        controller_params.end_effector_name);
   end_effector_trajectory->SetRemoteControlParameters(
       controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);

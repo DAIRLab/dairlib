@@ -1,8 +1,3 @@
-/** This system doesn't process the data it receives in any way except for converting it into an lcm message. 
- * This system is required since we use the generic multiplexer to concatenate the pieces of the c3 state and need to send 
- * it out over lcm. This was moved from examples/franka/systems and modified to add an additional input and output port 
- * to allow for a final c3_target as used by sampling_c3 examples. */ 
-
 #include "systems/sender_systems/c3_state_sender.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -19,12 +14,22 @@ C3StateSender::C3StateSender(int state_size,
   this->set_name("c3_state_sender");
 
   n_x_ = state_size;
+  // The final target state is the end effector positions, object pose and
+  // velocities for c3 to track based on which the control target generator
+  // generated intermediate targets. This system sends this to a publisher for
+  // visualization.
   final_target_state_ = this->DeclareVectorInputPort("final_target_state",
                                                BasicVector<double>(state_size))
                       .get_index();
+  // The target state is the intermediate end effector position, object pose 
+  // and velocities for c3 to track. This system sends this to a publisher for
+  // visualization.
   target_state_ = this->DeclareVectorInputPort("target_state",
                                                BasicVector<double>(state_size))
                       .get_index();
+  // The actual state is the current end effector position, object pose and 
+  // velocity. This system sends this to a publisher for
+  // visualization.
   actual_state_ = this->DeclareVectorInputPort("actual_state",
                                                TimestampedVector<double>(state_size))
                       .get_index();

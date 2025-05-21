@@ -1,4 +1,3 @@
-/* This file was moved from examples/franka/systems to be used by other examples.*/
 #pragma once
 
 #include "drake/common/trajectories/piecewise_quaternion.h"

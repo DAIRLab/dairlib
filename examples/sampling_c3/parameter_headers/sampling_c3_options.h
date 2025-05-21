@@ -75,7 +75,6 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> mu;
   double planning_dt_position_tracking;           // dt for planning when comparing samples. Used for position tracking.
   double planning_dt;           // dt for planning when comparing samples.
-  double execution_dt;          // dt for execution after comparing samples.
   std::vector<double> robot_radius_limits;
   int num_contacts_index;
   int num_contacts_index_for_cost;
@@ -106,7 +105,6 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(planning_dt_position_tracking));
     a->Visit(DRAKE_NVP(planning_dt));
-    a->Visit(DRAKE_NVP(execution_dt));
     a->Visit(DRAKE_NVP(robot_radius_limits));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));

@@ -1,0 +1,65 @@
+Metadata-Version: 2.2
+Name: embreex
+Version: 2.17.7.post6
+Summary: Python binding for Intel's Embree ray engine
+License: Copyright (c) 2015, Anthony Scopatz
+        All rights reserved.
+        
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+        
+        * Redistributions of source code must retain the above copyright notice, this
+          list of conditions and the following disclaimer.
+        
+        * Redistributions in binary form must reproduce the above copyright notice,
+          this list of conditions and the following disclaimer in the documentation
+          and/or other materials provided with the distribution.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+        SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+        CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+        OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+        OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+        
+        
+Project-URL: Source, https://github.com/trimesh/embreex
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy
+
+embreeX
+========
+
+A fork of [scopatz/pyembree](https://github.com/scopatz/pyembree) that is configured to
+build wheels for Intel Mac, Windows, and Linux for Python 3.6 and newer. The name change
+is to avoid confusion with the other forks and install methods available. 
+
+The goal is to meet the upstream `trimesh[easy]` preferences for dependencies,
+which are: "`easy` requirements should install without compiling anything on
+Windows/Linux/Intel Mac for Python 3.6+ and have minimal dependencies."
+
+
+
+## Install
+
+The main goal of this fork is to provide wheels for the original project:
+```
+# will install an embree binding with only numpy as a dependency
+pip install embreex
+```
+
+## Alternatives
+
+The original project is [available on conda-forge](https://anaconda.org/conda-forge/pyembree/files) for many versons of Python. For wheel-based options currently on PyPi there are:
+- https://pypi.org/project/pyembree/
+  - https://github.com/adam-grant-hendry/pyembree
+  - Currently set up with cibuildwheel as of writing with released wheels for Mac/Windows/Linux on Python 3.8
+- https://pypi.org/project/embree/
+  - A re-write to simplify the binding.
+  - Wheels building.

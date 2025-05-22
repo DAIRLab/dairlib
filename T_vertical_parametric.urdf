@@ -15,7 +15,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <geometry>
-                <mesh filename="examples/sampling_c3/urdf/sphere_with_texture.obj"/>
+                <mesh filename="examples/sampling_c3/urdf/push_t_white.obj"/>
             </geometry>
             <material name="pennred">
                 <color rgba="0.6 0 0 1.0" />
@@ -23,7 +23,7 @@
         </visual>
         <collision>
             <geometry>
-                <mesh filename="examples/sampling_c3/urdf/sphere_with_texture.obj"/>
+                <mesh filename="examples/sampling_c3/urdf/push_t_white.obj"/>
             </geometry>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <drake:proximity_properties>
@@ -34,7 +34,7 @@
 
     <link name="corner_0">
         <inertial>
-        <origin rpy="0 0 0" xyz="0.063 0 0"/>
+        <origin rpy="0 0 0" xyz="0.2 0 -0.02"/>
         <mass value="0.00001"/>
         <inertia
             ixx="0"
@@ -45,13 +45,13 @@
             izz="0"/>
         </inertial>
         <visual>
-        <origin rpy="0 0 0" xyz="0.063 0 0"/>
+        <origin rpy="0 0 0" xyz="0.2 0 -0.02"/>
         <geometry>
             <sphere radius="0.01"/>
         </geometry>
         </visual>
         <collision name="sphere">
-            <origin rpy="0 0 0" xyz="0.063 0 0"/>
+            <origin rpy="0 0 0" xyz="0.2 0 -0.02"/>
             <geometry>
                 <sphere radius="0.01"/>
             </geometry>
@@ -70,7 +70,7 @@
 
     <link name="corner_1">
         <inertial>
-        <origin rpy="0 0 0" xyz="-0.063 -0.063 0"/>
+        <origin rpy="0 0 0" xyz="-0.2 -0.2 -0.02"/>
         <mass value="0.00001"/>
         <inertia
             ixx="0"
@@ -81,13 +81,13 @@
             izz="0"/>
         </inertial>
         <visual>
-        <origin rpy="0 0 0" xyz="-0.063 -0.063 0"/>
+        <origin rpy="0 0 0" xyz="-0.2 -0.2 -0.02"/>
         <geometry>
             <sphere radius="0.01"/>
         </geometry>
         </visual>
         <collision name="sphere">
-            <origin rpy="0 0 0" xyz="-0.063 -0.063 0"/>
+            <origin rpy="0 0 0" xyz="-0.2 -0.2 -0.02"/>
             <geometry>
                 <sphere radius="0.01"/>
             </geometry>
@@ -106,7 +106,7 @@
 
     <link name="corner_2">
         <inertial>
-        <origin rpy="0 0 0" xyz="-0.063 0.063 0"/>
+        <origin rpy="0 0 0" xyz="-0.2 0.2 -0.02"/>
         <mass value="0.00001"/>
         <inertia
             ixx="0"
@@ -117,13 +117,13 @@
             izz="0"/>
         </inertial>
         <visual>
-        <origin rpy="0 0 0" xyz="-0.063 0.063 0"/>
+        <origin rpy="0 0 0" xyz="-0.2 0.2 -0.02"/>
         <geometry>
             <sphere radius="0.01"/>
         </geometry>
         </visual>
         <collision name="sphere">
-            <origin rpy="0 0 0" xyz="-0.063 0.063 0"/>
+            <origin rpy="0 0 0" xyz="-0.2 0.2 -0.02"/>
             <geometry>
                 <sphere radius="0.01"/>
             </geometry>

@@ -386,7 +386,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   mutable std::vector<Eigen::MatrixXd> Q_;
-  std::vector<Eigen::MatrixXd> R_;
+  mutable std::vector<Eigen::MatrixXd> R_;
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> G_for_curr_location_;
   mutable std::vector<Eigen::MatrixXd> U_;

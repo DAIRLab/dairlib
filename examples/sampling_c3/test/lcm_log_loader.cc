@@ -157,10 +157,10 @@ int DoMain(int argc,  char* argv[]) {
   //          2.5, 2.5, 2.5,
   //          0.05, 0.05, 0.05,
   //          0.05, 0.05, 0.05};
-  // c3_options.q_vector_position_and_orientation = new_q;
-  // Eigen::VectorXd q_position_and_orientation = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-  //       c3_options.q_vector_position_and_orientation.data(), c3_options.q_vector_position_and_orientation.size());
-  // c3_options.Q_position_and_orientation = c3_options.w_Q * q_position_and_orientation.asDiagonal();
+  // c3_options.q_vector_pose = new_q;
+  // Eigen::VectorXd q_pose = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+  //       c3_options.q_vector_pose.data(), c3_options.q_vector_pose.size());
+  // c3_options.Q_pose = c3_options.w_Q * q_pose.asDiagonal();
   // std::cout<<"Updated Q"<<std::endl;
 
   // (3/4) Sim parameters.

@@ -60,21 +60,21 @@ SamplingC3Controller::SamplingC3Controller(
       c3_options_(std::move(c3_options)),
       sampling_c3_options_(std::move(sampling_c3_options)),
       sampling_params_(std::move(sampling_params)),
-      G_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G)),
-      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_for_curr_location)),
-      U_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U)),
-      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_for_curr_location)),
+      G_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_pose_tracking)),
+      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_pose_tracking_for_curr_location)),
+      U_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_pose_tracking)),
+      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_pose_tracking_for_curr_location)),
       N_(c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
-    R_.push_back(discount_factor * sampling_c3_options_.R);
+    Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
+    R_.push_back(discount_factor * sampling_c3_options_.R_position_tracking);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
+  Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -88,12 +88,12 @@ SamplingC3Controller::SamplingC3Controller(
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
-        2 * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index] +
-        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
+        2 * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index] +
+        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
   } else if (c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index];
+        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
   } else {
     std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -603,13 +603,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     dt_ = sampling_c3_options_.planning_dt;
     // clear the Q_ values and replace with costs for position and orientation.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * sampling_c3_options_.Q_position_and_orientation);
+      Q_.push_back(discount_factor * sampling_c3_options_.Q_pose_tracking);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
-        G_.push_back(sampling_c3_options_.G);
-        U_.push_back(sampling_c3_options_.U);
-        G_for_curr_location_.push_back(sampling_c3_options_.G_for_curr_location);
-        U_for_curr_location_.push_back(sampling_c3_options_.U_for_curr_location);
+        R_.push_back(discount_factor * sampling_c3_options_.R_pose_tracking);
+        G_.push_back(sampling_c3_options_.G_pose_tracking);
+        U_.push_back(sampling_c3_options_.U_pose_tracking);
+        G_for_curr_location_.push_back(sampling_c3_options_.G_pose_tracking_for_curr_location);
+        U_for_curr_location_.push_back(sampling_c3_options_.U_pose_tracking_for_curr_location);
       }
     }
   }
@@ -617,9 +618,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     dt_ = sampling_c3_options_.planning_dt_position_tracking;
     // clear the Q_ values and replace with costs for position only.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
+      Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
       discount_factor *= c3_options_.gamma;
       if(i < N_){
+        R_.push_back(discount_factor * sampling_c3_options_.R_position_tracking);
         G_.push_back(sampling_c3_options_.G_position_tracking);
         U_.push_back(sampling_c3_options_.U_position_tracking);
         G_for_curr_location_.push_back(sampling_c3_options_.G_position_tracking_for_curr_location);
@@ -714,12 +716,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
       c3_options_.num_friction_directions,
-      sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
+      sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
 
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index],
+      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index],
       dt_, N_, contact_model_);
 
     // Store LCS object.
@@ -741,14 +743,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           sampling_c3_options_.resolve_contacts_to_list[
             sampling_c3_options_.num_contacts_index_for_cost],
           c3_options_.num_friction_directions,
-          sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index_for_cost],
+          sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index_for_cost],
           verbose_);
       solvers::LCS lcs_object_sample_for_cost_simulation =
         solvers::LCSFactory::LinearizePlantToLCS(
           plant_, *context_, plant_ad_, *context_ad_,
           resolved_contact_pairs_for_cost_simulation,
           c3_options_.num_friction_directions,
-          sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_cost],
+          sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index_for_cost],
           dt_, N_, contact_model_);
       lcs_objects_for_cost_simulation.push_back(
         lcs_object_sample_for_cost_simulation);
@@ -817,7 +819,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             sampling_c3_options_.resolve_contacts_to_list[
               sampling_c3_options_.num_contacts_index_for_curr_location],
             c3_options_.num_friction_directions,
-            sampling_c3_options_.num_contacts[
+            sampling_c3_options_.num_contacts_list[
               sampling_c3_options_.num_contacts_index_for_curr_location],
             verbose_);
         test_system =
@@ -825,13 +827,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             plant_, *context_, plant_ad_, *context_ad_,
             resolved_contact_pairs_for_curr_location,
             c3_options_.num_friction_directions,
-            sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index_for_curr_location],
+            sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index_for_curr_location],
             dt_, N_, contact_model_);
 
         G = G_for_curr_location_;
         U = U_for_curr_location_;
         int n_lambda = 2 * c3_options_.num_friction_directions *
-          sampling_c3_options_.num_contacts[
+          sampling_c3_options_.num_contacts_list[
             sampling_c3_options_.num_contacts_index_for_curr_location];
         delta = std::vector<Eigen::VectorXd>(
           N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
@@ -2217,13 +2219,13 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     plant_, *context_, contact_pairs_,
     sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,
-    sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
+    sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index], contact_model_);
+      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index], contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -2393,12 +2395,12 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     plant_, *context_, contact_pairs_,
     sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
     c3_options_.num_friction_directions,
-    sampling_c3_options_.num_contacts[sampling_c3_options_.num_contacts_index], verbose_);
+    sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
       c3_options_.num_friction_directions,
-      sampling_c3_options_.mu[sampling_c3_options_.num_contacts_index], contact_model_);
+      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index], contact_model_);
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

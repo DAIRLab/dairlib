@@ -58,7 +58,6 @@ struct C3Options {
 
   double qp_projection_alpha;
   double qp_projection_scaling;
-
   std::vector<double> mu;
   double dt;
   double solve_dt;

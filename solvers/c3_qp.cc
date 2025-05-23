@@ -84,7 +84,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);
   prog.SetSolverOptions(solver_options);
-  
+
   MathematicalProgramResult result = osqp_.Solve(prog);
 
   VectorXd xSol = result.GetSolution(xn_);

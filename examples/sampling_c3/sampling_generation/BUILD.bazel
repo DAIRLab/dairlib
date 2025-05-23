@@ -1,0 +1,16 @@
+cc_binary(
+    name = "mesh_sampling_buffer",
+    srcs = [
+        "mesh_sampling_buffer.cc",
+    ],
+    copts = [
+        "-I/usr/include/eigen3",
+    ],
+    linkopts=[
+        "-lstdc++",
+        "-lboost_system", 
+        "-lboost_filesystem", 
+        "-lgmp", 
+        "-lmpfr",
+    ]
+)

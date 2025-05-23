@@ -1,0 +1,125 @@
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: 405 targets (0 packages loaded, 0 targets configured)
+Analyzing: 405 targets (0 packages loaded, 0 targets configured)
+[0 / 1] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+SUBCOMMAND: # //examples/sampling_c3/sampling_generation:mesh_sampling_buffer [action 'Compiling examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc', configuration: 7fd46d2513992df611ee449a4ee938609a8222647f9c5eae636f463f78734b28, execution platform: @@local_config_platform//:host, mnemonic: CppCompile]
+(cd /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/execroot/_main && \
+  exec env - \
+    CCACHE_DISABLE=1 \
+    LD_LIBRARY_PATH='' \
+    PATH=/usr/bin:/bin \
+    PWD=/proc/self/cwd \
+  /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer -g0 -O2 '-D_FORTIFY_SOURCE=1' -DNDEBUG -ffunction-sections -fdata-sections '-std=c++14' -MD -MF bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.d '-frandom-seed=bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.o' -iquote . -iquote bazel-out/k8-opt/bin -iquote external/bazel_tools -iquote bazel-out/k8-opt/bin/external/bazel_tools '-std=c++20' -I/usr/include/eigen3 -I/usr/include/CGAL -fno-canonical-system-headers -Wno-builtin-macro-redefined '-D__DATE__="redacted"' '-D__TIMESTAMP__="redacted"' '-D__TIME__="redacted"' -c examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc -o bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.o)
+# Configuration: 7fd46d2513992df611ee449a4ee938609a8222647f9c5eae636f463f78734b28
+# Execution platform: @@local_config_platform//:host
+INFO: Analyzed 405 targets (0 packages loaded, 0 targets configured).
+[1 / 3] Compiling examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc; 1s linux-sandbox
+[1 / 3] Compiling examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc; 11s linux-sandbox
+DEBUG: Sandbox debug output for CppCompile //examples/sampling_c3/sampling_generation:mesh_sampling_buffer:
+1748019769.029562456: src/main/tools/linux-sandbox.cc:156: calling pipe(2)...
+1748019769.029607735: src/main/tools/linux-sandbox.cc:165: Netns is 0
+1748019769.029609755: src/main/tools/linux-sandbox.cc:176: calling clone(2)...
+1748019769.029810644: src/main/tools/linux-sandbox.cc:185: linux-sandbox-pid1 has PID 558338
+1748019769.029858771: src/main/tools/linux-sandbox-pid1.cc:700: Pid1Main started
+1748019769.029958475: src/main/tools/linux-sandbox.cc:202: done manipulating pipes
+1748019769.030021194: src/main/tools/linux-sandbox-pid1.cc:293: bind mount: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/execroot -> /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-execroot
+1748019769.030033880: src/main/tools/linux-sandbox-pid1.cc:293: bind mount: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/execroot -> /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-working-directory
+1748019769.030040838: src/main/tools/linux-sandbox-pid1.cc:293: bind mount: /home/sid/dairlib -> /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/0
+1748019769.030046889: src/main/tools/linux-sandbox-pid1.cc:293: bind mount: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/external/bazel_tools~cc_configure_extension~local_config_cc -> /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/1
+1748019769.030053229: src/main/tools/linux-sandbox-pid1.cc:293: bind mount: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp -> /tmp
+1748019769.030063020: src/main/tools/linux-sandbox-pid1.cc:311: writable: /dev/shm
+1748019769.030068814: src/main/tools/linux-sandbox-pid1.cc:311: writable: /tmp
+1748019769.030076807: src/main/tools/linux-sandbox-pid1.cc:311: writable: /tmp/bazel-execroot/_main
+1748019769.030081641: src/main/tools/linux-sandbox-pid1.cc:327: working dir: /tmp/bazel-working-directory/_main
+1748019769.030135052: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /
+1748019769.030140582: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /dev
+1748019769.030144157: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /dev/pts
+1748019769.030147749: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /dev/shm
+1748019769.030151122: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /dev/hugepages
+1748019769.030154475: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /dev/mqueue
+1748019769.030157864: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run
+1748019769.030160933: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/lock
+1748019769.030164487: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/credentials/systemd-sysusers.service
+1748019769.030168048: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/snapd/ns
+1748019769.030171835: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/user/1000
+1748019769.030175414: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/user/1000/doc
+1748019769.030195570: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /run/user/1000/gvfs
+1748019769.030199115: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys
+1748019769.030202215: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/kernel/security
+1748019769.030207070: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/fs/cgroup
+1748019769.030211177: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/fs/pstore
+1748019769.030214854: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/firmware/efi/efivars
+1748019769.030219488: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/fs/bpf
+1748019769.030223104: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/kernel/debug
+1748019769.030226714: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/kernel/debug/tracing
+1748019769.030233930: src/main/tools/linux-sandbox-pid1.cc:427: remount(nullptr, /sys/kernel/debug/tracing, nullptr, 2101295, nullptr) failure (Permission denied) ignored
+1748019769.030239601: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/kernel/tracing
+1748019769.030243504: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/fs/fuse/connections
+1748019769.030247754: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /sys/kernel/config
+1748019769.030251376: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /proc
+1748019769.030268094: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /proc/sys/fs/binfmt_misc
+1748019769.030273564: src/main/tools/linux-sandbox-pid1.cc:427: remount(nullptr, /proc/sys/fs/binfmt_misc, nullptr, 2101281, nullptr) failure (Operation not permitted) ignored
+1748019769.030275613: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /proc/sys/fs/binfmt_misc
+1748019769.030279506: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/bare/5
+1748019769.030282978: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/core22/1612
+1748019769.030286045: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/firefox/4848
+1748019769.030289025: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/gnome-42-2204/176
+1748019769.030292221: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/gtk-common-themes/1535
+1748019769.030295313: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snap-store/1113
+1748019769.030298341: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snapd/21759
+1748019769.030301676: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snapd-desktop-integration/178
+1748019769.030305234: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /boot/efi
+1748019769.030320864: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snapd/24505
+1748019769.030324009: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/core22/1963
+1748019769.030327047: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snap-store/1216
+1748019769.030330157: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/gnome-42-2204/202
+1748019769.030333109: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/core20/2571
+1748019769.030336081: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/slack/196
+1748019769.030339163: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/gnome-3-38-2004/143
+1748019769.030342361: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /snap/snapd-desktop-integration/253
+1748019769.030345637: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-execroot
+1748019769.030360407: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-working-directory
+1748019769.030364183: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/0
+1748019769.030367810: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/1
+1748019769.030371336: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /tmp
+1748019769.030374314: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-execroot
+1748019769.030377298: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-working-directory
+1748019769.030380231: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-source-roots/0
+1748019769.030383142: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-source-roots/1
+1748019769.030386259: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /dev/shm
+1748019769.030389208: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /tmp
+1748019769.030391937: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-execroot
+1748019769.030403162: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-working-directory
+1748019769.030406140: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-source-roots/0
+1748019769.030408902: src/main/tools/linux-sandbox-pid1.cc:405: remount ro: /tmp/bazel-source-roots/1
+1748019769.030411656: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /tmp/bazel-execroot/_main
+1748019769.030414703: src/main/tools/linux-sandbox-pid1.cc:405: remount rw: /tmp/bazel-working-directory/_main
+1748019769.030441533: src/main/tools/linux-sandbox-pid1.cc:496: calling fork...
+1748019769.030528560: src/main/tools/linux-sandbox-pid1.cc:533: child started with PID 2
+1748019788.110399297: src/main/tools/linux-sandbox-pid1.cc:550: wait returned pid=2, status=0x100
+1748019788.110411120: src/main/tools/linux-sandbox-pid1.cc:568: child exited normally with code 1
+1748019788.110779831: src/main/tools/linux-sandbox.cc:243: child exited normally with code 1
+
+Run this command to start an interactive shell in an identical sandboxed environment:
+(exec env - \
+    CCACHE_DISABLE=1 \
+    LD_LIBRARY_PATH='' \
+    PATH=/usr/bin:/bin \
+    PWD=/proc/self/cwd \
+    TMPDIR=/tmp \
+  /home/sid/.cache/bazel/_bazel_sid/install/c8ddc30f81d03fbb6c764cadbda081c8/linux-sandbox -W /tmp/bazel-working-directory/_main -t 15 -w /dev/shm -w /tmp -w /tmp/bazel-execroot/_main -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/execroot -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-execroot -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/execroot -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-working-directory -M /home/sid/dairlib -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/0 -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/external/bazel_tools~cc_configure_extension~local_config_cc -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/1 -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp -m /tmp -S /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/stats.out -D /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/debug.out -- /bin/sh -i)
+ERROR: /home/sid/dairlib/examples/sampling_c3/sampling_generation/BUILD.bazel:1:10: Compiling examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc failed: (Exit 1): linux-sandbox failed: error executing CppCompile command 
+  (cd /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/execroot/_main && \
+  exec env - \
+    CCACHE_DISABLE=1 \
+    LD_LIBRARY_PATH='' \
+    PATH=/usr/bin:/bin \
+    PWD=/proc/self/cwd \
+    TMPDIR=/tmp \
+  /home/sid/.cache/bazel/_bazel_sid/install/c8ddc30f81d03fbb6c764cadbda081c8/linux-sandbox -W /tmp/bazel-working-directory/_main -t 15 -w /dev/shm -w /tmp -w /tmp/bazel-execroot/_main -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/execroot -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-execroot -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/execroot -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-working-directory -M /home/sid/dairlib -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/0 -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/external/bazel_tools~cc_configure_extension~local_config_cc -m /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp/bazel-source-roots/1 -M /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/_hermetic_tmp -m /tmp -S /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/stats.out -D /home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/sandbox/linux-sandbox/5264/debug.out -- /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer -g0 -O2 '-D_FORTIFY_SOURCE=1' -DNDEBUG -ffunction-sections -fdata-sections '-std=c++14' -MD -MF bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.d '-frandom-seed=bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.o' -iquote . -iquote bazel-out/k8-opt/bin -iquote external/bazel_tools -iquote bazel-out/k8-opt/bin/external/bazel_tools '-std=c++20' -I/usr/include/eigen3 -I/usr/include/CGAL -fno-canonical-system-headers -Wno-builtin-macro-redefined '-D__DATE__="redacted"' '-D__TIMESTAMP__="redacted"' '-D__TIME__="redacted"' -c examples/sampling_c3/sampling_generation/mesh_sampling_buffer.cc -o bazel-out/k8-opt/bin/examples/sampling_c3/sampling_generation/_objs/mesh_sampling_buffer/mesh_sampling_buffer.o)
+stderr (/home/sid/.cache/bazel/_bazel_sid/04902810c57d1d4d24ab974a08bf2d0a/execroot/_main/bazel-out/_tmp/actions/stderr-3) 1855878 exceeds maximum size of --experimental_ui_max_stdouterr_bytes=1048576 bytes; skipping
+INFO: Elapsed time: 19.337s, Critical Path: 19.09s
+INFO: 2 processes: 2 internal.
+ERROR: Build did NOT complete successfully

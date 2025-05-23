@@ -228,11 +228,10 @@ LCS LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  
-        - J_n * vNqdot * plant.GetPositions(context);
+    c.segment(n_contacts, n_contacts) = 
+        phi + dt * dt * J_n * d_v  - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
         J_t * dt * d_v;
-
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
@@ -276,6 +275,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   }
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
+  system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
 

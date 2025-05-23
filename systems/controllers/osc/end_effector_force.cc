@@ -1,4 +1,3 @@
-/* This file was moved from examples/franka/systems to be used by other examples.*/
 #include "end_effector_force.h"
 
 #include "dairlib/lcmt_radio_out.hpp"

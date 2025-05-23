@@ -278,7 +278,6 @@ struct SamplingC3Options {
     options->workspace_margins = workspace_margins;
     options->u_horizontal_limits = u_horizontal_limits;
     options->u_vertical_limits = u_vertical_limits;
-    options->ee_z_state_min = ee_z_state_min;
 
     options->N = N;
     options->gamma = gamma;

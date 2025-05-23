@@ -22,7 +22,6 @@ struct C3Options {
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
   std::vector<Eigen::VectorXd> workspace_limits;
-  double ee_z_state_min;
   double workspace_margins;
 
   int N;
@@ -86,7 +85,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(workspace_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
-    a->Visit(DRAKE_NVP(ee_z_state_min));
     a->Visit(DRAKE_NVP(workspace_margins));
 
     a->Visit(DRAKE_NVP(mu));

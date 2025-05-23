@@ -154,6 +154,9 @@ SamplingC3Controller::SamplingC3Controller(
     // put a comment here when the T example is added.
     // The fourth parameter decides which optimization variable the constraint
     // is applied to. 1 = x, 2 = u, 3 = lambda.
+
+    // These are hard constraints set in the C3 problem for the end effector
+    // position.
     c3_curr_plan_->AddLinearConstraint(A, 
                         c3_options_for_curr_location.workspace_limits[i][3],
                         c3_options_for_curr_location.workspace_limits[i][4], 1);
@@ -527,6 +530,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
 
   // Force Checking of Workspace Limits
+  // These are soft safety constraints checked within our controller
+  // to ensure the robot is within the workspace limits.
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                      sampling_c3_options_.workspace_limits[i].segment(0, 3) >
@@ -1727,8 +1732,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
     // Enforce minimum z height for end effector, with a small buffer.
     for (int j = 0; j < i; j++) {
-      if (knots(2, j) < sampling_c3_options_.ee_z_state_min + 0.005) {
-        knots(2, j) = sampling_c3_options_.ee_z_state_min + 0.005;
+      if (knots(2, j) < sampling_c3_options_.workspace_limits[2][3] + 0.005) {
+        knots(2, j) = sampling_c3_options_.workspace_limits[2][3] + 0.005;
       }
     }
 
@@ -1783,8 +1788,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       next_lcs_state.head(3) = next_ee_loc;
       next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
       // if z is under the table, set it to a min height.
-      if (next_lcs_state[2] < sampling_c3_options_.ee_z_state_min) {
-        next_lcs_state[2] = sampling_c3_options_.ee_z_state_min;
+      if (next_lcs_state[2] < sampling_c3_options_.workspace_limits[2][3]) {
+        next_lcs_state[2] = sampling_c3_options_.workspace_limits[2][3];
       }
 
       knots.col(i) = next_lcs_state;

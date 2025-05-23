@@ -70,4 +70,4 @@ ee_z_state_min: -0.01
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity
 # constraints also approaches 0.
 qp_projection_alpha: 0.01
-qp_projection_scaling: 1
+qp_projection_scaling: 1000

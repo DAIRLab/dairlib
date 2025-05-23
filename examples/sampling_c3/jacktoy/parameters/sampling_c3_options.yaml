@@ -66,7 +66,7 @@ publish_frequency: 0
 
 warm_start: false
 
-# Workspace Limits
+# Workspace Limits specified as Linear Constraints [x, y, z, lb, ub]
 workspace_limits: [[1, 0, 0, 0.15, 0.75],
                    [0, 1, 0, -0.6, 0.6],
                    [0, 0, 1, -0.01, 0.3]]

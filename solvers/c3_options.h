@@ -60,7 +60,7 @@ struct C3Options {
   double qp_projection_scaling;
 
   std::vector<double> mu;
-  double dt;                    // dt for everything if not using sampling-based C3 controller.
+  double dt;
   double solve_dt;
   int num_friction_directions;
   int num_contacts;
@@ -82,9 +82,9 @@ struct C3Options {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
     a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(end_on_qp_step));
     a->Visit(DRAKE_NVP(use_robust_formulation));
-    a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
 
@@ -116,7 +116,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
-
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));
@@ -126,7 +125,6 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
-
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (contact_model == "stewart_and_trinkle") {
@@ -140,7 +138,6 @@ struct C3Options {
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
-
     if (contact_model == "stewart_and_trinkle") {
       u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
       u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());

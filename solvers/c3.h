@@ -102,8 +102,7 @@ class C3 {
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const int admm_iteration,
-      const int& warm_start_index) = 0;
+      const int admm_iteration, const int& warm_start_index) = 0;
 
   /// Solve a robust (friction cone) projection step for a single knot point k
   /// @param U Matrix for consensus cost
@@ -174,6 +173,7 @@ class C3 {
   std::vector<Eigen::MatrixXd> U_;
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
+  double dt_ = 0;
   double solve_time_ = 0;
   bool h_is_zero_;
 

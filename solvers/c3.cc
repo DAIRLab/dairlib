@@ -98,7 +98,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   auto An = lcs.A_.at(0).norm();
   AnDn_ = An / Dn;
 
-  for (int i = 0; i < N_; ++i){
+  for (int i = 0; i < N_; ++i) {
     D_.at(i) *= AnDn_;
     E_.at(i) /= AnDn_;
     c_.at(i) /= AnDn_;
@@ -124,7 +124,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
   }
 
-  for (int i = 0; i < N_ + 1; i++){
+  for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
     if (i < N_) {
       u_.push_back(prog_.NewContinuousVariables(k_, "k" + std::to_string(i)));
@@ -149,7 +149,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
-    //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
 
   // Adding constraint for x[2] corresponding to end effector z to always be 
@@ -206,8 +205,6 @@ void C3::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.B_[0].cols() == k_);
   // Update the stored LCS object.
   lcs_ = lcs;
-  // lcs_(lcs);
-
   // first 4 lines are unnecessary
   A_ = lcs.A_;
   B_ = lcs.B_;
@@ -216,7 +213,12 @@ void C3::UpdateLCS(const LCS& lcs) {
   E_ = lcs.E_;
   F_ = lcs.F_;
   H_ = lcs.H_;
-  c_ = lcs.c_;
+  c_ = lcs.c_;  
+  dt_ = lcs.dt_;
+  W_x_ = lcs.W_x_;
+  W_l_ = lcs.W_l_;
+  W_u_ = lcs.W_u_;
+  w_ = lcs.w_;
   h_is_zero_ = H_[0].isZero(0);
 
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);

@@ -61,7 +61,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       G_(costs.G),
       x_desired_(x_des),
       options_(options),
-      h_is_zero_(H_[0].isZero(0)),
+      h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
       prog_(MathematicalProgram()) {
   if (warm_start_) {
@@ -94,8 +94,8 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     }
   }
 
-  auto Dn = D_.at(0).norm();
-  auto An = A_.at(0).norm();
+  auto Dn = lcs.D_.at(0).norm();
+  auto An = lcs.A_.at(0).norm();
   AnDn_ = An / Dn;
 
   for (int i = 0; i < N_; ++i){
@@ -124,7 +124,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
   }
 
-  for (int i = 0; i < N_ + 1; i++) {
+  for (int i = 0; i < N_ + 1; i++){
     x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
     if (i < N_) {
       u_.push_back(prog_.NewContinuousVariables(k_, "k" + std::to_string(i)));
@@ -142,13 +142,10 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     LinEq.block(0, n_, n_, m_) = D_.at(i);
     LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
 
-    //    prog_.AddLinearEqualityConstraint(
-    //        LinEq, -d_.at(i), {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i +
-    //        1)});
     dynamics_constraints_[i] =
         prog_
             .AddLinearEqualityConstraint(
-                LinEq, -d_.at(i),
+                LinEq, -lcs.d_.at(i),
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
@@ -262,7 +259,7 @@ void C3::UpdateCostLCS(const LCS& lcs) {
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; i++) {
-    target_cost_[i]->UpdateCoefficients(Q_.at(i) * 2,
+    target_cost_[i]->UpdateCoefficients(2 * Q_.at(i),
                                         -2 * Q_.at(i) * x_desired_.at(i));
   }
 }
@@ -289,7 +286,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   if(verbose){
     std::cout << "x0: " << x0.transpose() << std::endl;
   }
-
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter, verbose);    
@@ -320,7 +316,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     std::cout<<"delta: \n"<<verbose_delta<<std::endl;
     std::cout<<"w: \n"<<verbose_w<<std::endl;
   }
-
   *w_sol_ = w;
   *delta_sol_ = delta;
 
@@ -339,8 +334,8 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     lambda_sol_->at(i) *= AnDn_;
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
+
   zfin_ = *z_sol_;
-  
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   solve_time_ =
@@ -836,20 +831,6 @@ void C3::RemoveConstraints() {
     prog_.RemoveConstraint(userconstraint);
   }
   user_constraints_.clear();
-}
-
-
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartX() const {
-  return warm_start_x_[0];
-}
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartLambda() const {
-  return warm_start_lambda_[0];
-}
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartU() const {
-  return warm_start_u_[0];
 }
 
 }  // namespace solvers

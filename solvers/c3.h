@@ -35,14 +35,6 @@ class C3 {
 
   virtual ~C3() = default;
 
-  // /// Solve the MPC problem
-  // /// @param x0 The initial state of the system
-  // /// @param delta A pointer to the copy variable solution
-  // /// @param w A pointer to the scaled dual variable solution
-  // void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
-  //            std::vector<Eigen::VectorXd>& w, bool verbose = false);
-
-
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
   /// @return void
@@ -65,8 +57,8 @@ class C3 {
   /// @return solution is saved in C3 object
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
-                std::vector<Eigen::MatrixXd>* G,
-                int admm_iteration, bool verbose = false);
+                std::vector<Eigen::MatrixXd>* G, int admm_iteration, 
+                bool verbose = false);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
@@ -99,13 +91,7 @@ class C3 {
   /// remove all constraints
   void RemoveConstraints();
 
-  /// Get QP warm start
-  std::vector<Eigen::VectorXd> GetWarmStartX() const;
-  std::vector<Eigen::VectorXd> GetWarmStartLambda() const;
-  std::vector<Eigen::VectorXd> GetWarmStartU() const;
-
-  /// Solve a single projection step
-  /// @param E, F, H, c LCS parameters
+  /// Solve a projection step for a single knot point k
   /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
   /// @param E, F, H, c LCS contact parameters
@@ -162,9 +148,9 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_;
-  const int m_;
-  const int k_;
+  const int n_; // n_x
+  const int m_; // n_lambda
+  const int k_; // n_u
   const C3Options options_;
 
  private:
@@ -198,15 +184,18 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+  /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> target_cost_;
-  std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
-  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
+  // initial state constraint
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
   // workspace and input limit constraints
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
+  /// QP step costs
+  std::vector<drake::solvers::QuadraticCost*> target_cost_;
+  std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 
   // Solutions
   mutable std::vector<Eigen::VectorXd> zfin_;

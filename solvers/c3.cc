@@ -290,7 +290,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);    
+    ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -642,6 +642,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
+
   if (U_[0].isZero(0)) {
     *delta = SolveProjection(*Gv, ZW, admm_iteration);
 
@@ -681,7 +682,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
-  if (h_is_zero_ == 1) {
+  if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);

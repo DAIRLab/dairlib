@@ -66,7 +66,8 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& model_file,
                          const std::string& translation_trajectory_name,
                          const std::string& orientation_trajectory_name,
-                         int num_poses = 5);
+                         int num_poses = 5,
+                         bool add_transparency = true);
   // Constructor for when system_name is provided.
   explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                          const std::string& system_name,

@@ -98,7 +98,8 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses)
+    const std::string& orientation_trajectory_name, int num_poses,
+    bool add_transparency)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),

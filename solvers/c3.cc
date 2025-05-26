@@ -213,7 +213,7 @@ void C3::UpdateLCS(const LCS& lcs) {
   E_ = lcs.E_;
   F_ = lcs.F_;
   H_ = lcs.H_;
-  c_ = lcs.c_;  
+  c_ = lcs.c_;
   dt_ = lcs.dt_;
   W_x_ = lcs.W_x_;
   W_l_ = lcs.W_l_;

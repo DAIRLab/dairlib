@@ -1,8 +1,3 @@
-/** This system doesn't process the data it receives in any way except for converting it into an lcm message. 
- * This system is required since we use the generic multiplexer to concatenate the pieces of the c3 state and need to send 
- * it out over lcm. This was moved from examples/franka/systems and modified to add an additional input and output port 
- * to allow for a final c3_target as used by sampling_c3 examples. */ 
-
 #include "systems/sender_systems/c3_state_sender.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -19,15 +14,22 @@ C3StateSender::C3StateSender(int state_size,
   this->set_name("c3_state_sender");
 
   n_x_ = state_size;
-  final_target_state_ = this->DeclareVectorInputPort("final_target_state",
-                                               BasicVector<double>(state_size))
-                      .get_index();
-  target_state_ = this->DeclareVectorInputPort("target_state",
-                                               BasicVector<double>(state_size))
-                      .get_index();
-  actual_state_ = this->DeclareVectorInputPort("actual_state",
-                                               TimestampedVector<double>(state_size))
-                      .get_index();
+
+  /// Final target state is the final C3 goal state.  C3 objects do not use this
+  /// Final target state for computing plans/errors/costs, but it is useful to
+  /// have for visualization and/or debugging.
+  final_target_state_ = this->DeclareVectorInputPort(
+    "final_target_state", BasicVector<double>(state_size)).get_index();
+
+  /// Target state is the intermediate C3 goal state that C3 uses for computing
+  /// errors.  It is useful to truncate the final target state (yielding this
+  /// intermediate Target state) to bound the errors seen by C3.
+  target_state_ = this->DeclareVectorInputPort(
+    "target_state", BasicVector<double>(state_size)).get_index();
+
+  /// Actual state is the current C3 state that C3 uses as an initial condition.
+  actual_state_ = this->DeclareVectorInputPort(
+    "actual_state", TimestampedVector<double>(state_size)).get_index();
 
   lcmt_c3_state default_c3_state = dairlib::lcmt_c3_state();
   default_c3_state.num_states = n_x_;

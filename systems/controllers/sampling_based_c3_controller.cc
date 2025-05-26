@@ -9,7 +9,7 @@
 #include "multibody/multibody_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
-#include "quaternion_error_hessian.h"
+#include "common/quaternion_error_hessian.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"

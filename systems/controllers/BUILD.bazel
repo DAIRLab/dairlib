@@ -107,15 +107,6 @@ cc_library(
 )
 
 cc_library(
-    name = "quaternion_error_hessian",
-    srcs = ["quaternion_error_hessian.cc"],
-    hdrs = ["quaternion_error_hessian.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "sampling_c3_controller",
     srcs = ["sampling_based_c3_controller.cc"],
     hdrs = ["sampling_based_c3_controller.h"],
@@ -129,7 +120,7 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         ":generate_samples",
-        ":quaternion_error_hessian",
+        "//common:quaternion_error_hessian",
         ":sampling_params",
         "//solvers:lcs",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",

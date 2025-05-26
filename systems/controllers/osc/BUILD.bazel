@@ -149,8 +149,6 @@ cc_library(
     ],
 )
 
-
-
 cc_library(
     name = "end_effector_position",
     srcs = ["end_effector_position.cc"],

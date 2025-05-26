@@ -178,6 +178,10 @@ class C3 {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
+  Eigen::MatrixXd W_x_;
+  Eigen::MatrixXd W_l_;
+  Eigen::MatrixXd W_u_;
+  Eigen::VectorXd w_;
   double AnDn_ = 1.0;
   std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;

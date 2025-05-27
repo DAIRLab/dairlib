@@ -61,15 +61,18 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_params_(std::move(sampling_params)),
       // @sharanyashastry: TODO: Switch this to position tracking since we want
       // to start with position tracking.
-      G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_pose_tracking)),
-      G_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_pose_tracking_for_curr_location)),
-      U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_pose_tracking)),
-      U_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_pose_tracking_for_curr_location)),
+      G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_position_tracking)),
+      G_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_position_tracking_for_curr_location)),
+      U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_position_tracking)),
+      U_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_position_tracking_for_curr_location)),
       N_(sampling_c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
+  // Build C3Options from SamplingC3Options.
+  // crossed_cost_switching_threshold_ is false by default, so these are
+  // position tracking options to begin with.
   C3Options c3_options = 
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
                                         sampling_c3_options_.num_contacts_index);

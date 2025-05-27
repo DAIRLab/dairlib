@@ -59,8 +59,6 @@ SamplingC3Controller::SamplingC3Controller(
       contact_pairs_(contact_geoms),
       sampling_c3_options_(std::move(sampling_c3_options)),
       sampling_params_(std::move(sampling_params)),
-      // @sharanyashastry: TODO: Switch this to position tracking since we want
-      // to start with position tracking.
       G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_position_tracking)),
       G_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_position_tracking_for_curr_location)),
       U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_position_tracking)),

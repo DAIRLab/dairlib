@@ -31,7 +31,6 @@ struct SamplingC3Options {
   double workspace_margins;
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
-  double ee_z_state_min;
 
   int N;
   double gamma;
@@ -145,7 +144,6 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(robot_radius_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
-    a->Visit(DRAKE_NVP(ee_z_state_min));
     a->Visit(DRAKE_NVP(N));
     a->Visit(DRAKE_NVP(gamma));
 

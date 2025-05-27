@@ -63,10 +63,6 @@ u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 u_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 u_u: [30, 30, 30]
 
-#UNUSED PARAMS FROM ADDING WORKSPACE LIMITS IN SAMPLING_C3 EXAMPLE
-# minimum end effector z-state constraint in c3
-ee_z_state_min: -0.01
-
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity
 # constraints also approaches 0.
 qp_projection_alpha: 0.01

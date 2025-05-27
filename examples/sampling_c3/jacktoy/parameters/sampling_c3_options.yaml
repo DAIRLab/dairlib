@@ -76,9 +76,6 @@ workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
 
-# minimum end effector z-state constraint in c3
-ee_z_state_min: -0.01
-
 end_on_qp_step: false
 
 gamma: 1.0  # discount factor on MPC costs

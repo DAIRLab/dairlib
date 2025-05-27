@@ -150,7 +150,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .evaluator()
             .get();
   }
-
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
@@ -218,7 +217,7 @@ void C3::UpdateLCS(const LCS& lcs) {
   AnDn_ = An / Dn;
   // Scale the D, E, c, and H matrices by AnDn_ to have a better conditioned
   // optimization problem.
-  for (int i = 0 ; i < N_; ++i){
+  for (int i = 0 ; i < N_; ++i) {
     D_.at(i) *= AnDn_;
     E_.at(i) /= AnDn_;
     c_.at(i) /= AnDn_;

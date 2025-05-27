@@ -928,23 +928,35 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       if(!crossed_cost_switching_threshold_){
         if(i == 0){
           cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type_position_tracking, radio_out->channel[11], radio_out->channel[7],
+            sampling_params_.cost_type_position_tracking, 
+            sampling_c3_options_.Kp_for_cost_type_3, 
+            sampling_c3_options_.Kd_for_cost_type_3,
+            radio_out->channel[11], radio_out->channel[7],
             verbose_);
         }
         else{
           cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type_position_tracking, radio_out->channel[11], false,
+            sampling_params_.cost_type_position_tracking, 
+            sampling_c3_options_.Kp_for_cost_type_3, 
+            sampling_c3_options_.Kd_for_cost_type_3,
+            radio_out->channel[11], false,
             verbose_);
         }
       }
       else{
         if(i == 0){
           cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, radio_out->channel[11], radio_out->channel[7], verbose_);
+            sampling_params_.cost_type, 
+            sampling_c3_options_.Kp_for_cost_type_3, 
+            sampling_c3_options_.Kd_for_cost_type_3,
+            radio_out->channel[11], radio_out->channel[7], verbose_);
         }
         else{
           cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, radio_out->channel[11], false, verbose_);
+            sampling_params_.cost_type, 
+            sampling_c3_options_.Kp_for_cost_type_3, 
+            sampling_c3_options_.Kd_for_cost_type_3,
+            radio_out->channel[11], false, verbose_);
         }
       }
 

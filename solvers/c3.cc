@@ -350,7 +350,9 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
 // Or, use the zfin_ trajectory if cost_type is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, 
+  double Kp_for_cost_type_3, double Kd_for_cost_type_3,
+  bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
@@ -423,7 +425,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 3"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose); 
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
+      force_tracking_disabled, verbose);
   }
   else if(cost_type == 4){
     // This is same as cost type 3 except the end effector position and 
@@ -431,7 +434,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 4"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose);
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
+      force_tracking_disabled, verbose);
 
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
@@ -449,7 +453,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 5"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(force_tracking_disabled, verbose);
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
+      force_tracking_disabled, verbose);
   }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
@@ -560,7 +565,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
   return ret;
 }
 
-std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::SimulatePDControl(bool force_tracking_disabled, bool verbose) const{
+std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::SimulatePDControl(
+  double Kp_for_cost_type_3, double Kd_for_cost_type_3,
+  bool force_tracking_disabled, bool verbose) const{
     // used to store the solutions from C3.
     vector<VectorXd> UU(N_, VectorXd::Zero(k_));
     std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
@@ -589,8 +596,8 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
     std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
 
     // Set the PD gains for the emulated tracking controller.
-    Eigen::MatrixXd Kp = options_.Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
-    Eigen::MatrixXd Kd = options_.Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kp = Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kd = Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
 
     XX_new[0] = zfin_[0].segment(0, n_);
     // This will just be the original u from zfin_[0] for the first time step.

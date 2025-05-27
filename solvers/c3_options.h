@@ -33,10 +33,6 @@ struct C3Options {
   double w_G;
   double w_U;
 
-  // Parameters used for cost computation function
-  double Kp_for_cost_type_3;
-  double Kd_for_cost_type_3;
-
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
@@ -105,8 +101,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
-    a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
-    a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
     a->Visit(DRAKE_NVP(g_x));

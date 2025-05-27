@@ -286,9 +286,6 @@ struct SamplingC3Options {
     options->solve_dt = 0; // Not used by sampling C3
     options->num_friction_directions = num_friction_directions;
 
-    options->Kp_for_cost_type_3 = Kp_for_cost_type_3;
-    options->Kd_for_cost_type_3 = Kd_for_cost_type_3;
-
     options->qp_projection_alpha = qp_projection_alpha;
     options->qp_projection_scaling = qp_projection_scaling;
 

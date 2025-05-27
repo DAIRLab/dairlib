@@ -1,5 +1,3 @@
-# c3_options_file: examples/sampling_c3/jacktoy/parameters/franka_c3_options_floating.yaml
-c3_options_file: examples/sampling_c3/jacktoy/parameters/franka_c3_options_floating.yaml
 sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.yaml
 
 osqp_settings_file: examples/sampling_c3/shared_parameters/franka_c3_qp_settings.yaml

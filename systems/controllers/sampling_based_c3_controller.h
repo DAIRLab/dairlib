@@ -52,7 +52,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
-      C3Options c3_options,
       SamplingC3Options sampling_c3_options,
       SamplingC3SamplingParams sampling_params, bool verbose = false);
 
@@ -365,7 +364,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       contact_pairs_;
   solvers::ContactModel contact_model_;
 
-  C3Options c3_options_;
   SamplingC3Options sampling_c3_options_;
   SamplingC3SamplingParams sampling_params_;
   drake::solvers::SolverOptions solver_options_ =

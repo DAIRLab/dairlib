@@ -321,6 +321,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   *w_sol_ = w;
   *delta_sol_ = delta;
 
+  // TODO: @bibit @sharanyashastry review this logic.
   if (!options_.end_on_qp_step) {
     *z_sol_ = delta;
     z_sol_->at(0).segment(0, n_) = x0;
@@ -337,7 +338,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
 
-  zfin_ = *z_sol_;
+  zfin_ = zfin;
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   solve_time_ =

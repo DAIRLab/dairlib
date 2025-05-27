@@ -47,14 +47,6 @@ namespace systems {
                                 dairlib::lcmt_timestamped_saved_traj(),
                                 &TargetGenerator::OutputTargetGeneratorInfo)
                                   .get_index();
-    
-      C3Options c3_options;
-      FrankaC3ControllerParams controller_params =
-          drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-            "examples/sampling_c3/jacktoy/parameters/franka_c3_controller_params.yaml");
-    
-      c3_options = drake::yaml::LoadYamlFile<C3Options>(
-                    controller_params.c3_options_file);
     }
     
     void TargetGenerator::SetRemoteControlParameters(

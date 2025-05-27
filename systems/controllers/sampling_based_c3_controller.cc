@@ -14,6 +14,7 @@
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
 #include "generate_samples.h"
+#include "solvers/c3_options.h"
 
 #include <Eigen/Dense>
 
@@ -48,7 +49,6 @@ SamplingC3Controller::SamplingC3Controller(
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
-    C3Options c3_options,
     SamplingC3Options sampling_c3_options,
     SamplingC3SamplingParams sampling_params,
     bool verbose)
@@ -57,24 +57,32 @@ SamplingC3Controller::SamplingC3Controller(
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
-      c3_options_(std::move(c3_options)),
       sampling_c3_options_(std::move(sampling_c3_options)),
       sampling_params_(std::move(sampling_params)),
-      G_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_pose_tracking)),
-      G_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.G_pose_tracking_for_curr_location)),
-      U_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_pose_tracking)),
-      U_for_curr_location_(std::vector<MatrixXd>(c3_options_.N, sampling_c3_options_.U_pose_tracking_for_curr_location)),
-      N_(c3_options_.N),
+      // @sharanyashastry: TODO: Switch this to position tracking since we want
+      // to start with position tracking.
+      G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_pose_tracking)),
+      G_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G_pose_tracking_for_curr_location)),
+      U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_pose_tracking)),
+      U_for_curr_location_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U_pose_tracking_for_curr_location)),
+      N_(sampling_c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
 
   double discount_factor = 1;
+  C3Options c3_options = 
+      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+                                        sampling_c3_options_.num_contacts_index);
+  C3Options c3_options_for_curr_location =
+      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+                                        sampling_c3_options_.num_contacts_index_for_curr_location);
+
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
-    R_.push_back(discount_factor * sampling_c3_options_.R_position_tracking);
-    discount_factor *= c3_options_.gamma;
+    Q_.push_back(discount_factor * c3_options.Q);
+    R_.push_back(discount_factor * c3_options.R);
+    discount_factor *= c3_options.gamma;
   }
-  Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
+  Q_.push_back(discount_factor * c3_options.Q);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -84,16 +92,16 @@ SamplingC3Controller::SamplingC3Controller(
 
   n_x_ = n_q_ + n_v_;
 
-  solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
+  solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
+  if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
         2 * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index] +
-        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
-  } else if (c3_options_.contact_model == "anitescu") {
+        2 * sampling_c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
+  } else if (sampling_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
+        2 * sampling_c3_options_.num_friction_directions * sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index];
   } else {
     std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -105,26 +113,26 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
-  if (c3_options_.projection_type == "MIQP") {
+  if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
-                                        x_desired_placeholder, c3_options_);
+                                        x_desired_placeholder, c3_options_for_curr_location);
     c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
-                                        x_desired_placeholder, c3_options_);
+                                        x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
-                                        x_desired_placeholder, c3_options_);
-  } else if (c3_options_.projection_type == "QP") {
+                                        x_desired_placeholder, c3_options);
+  } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
-                                      x_desired_placeholder, c3_options_);
+                                      x_desired_placeholder, c3_options_for_curr_location);
     c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
-                                      x_desired_placeholder, c3_options_);
+                                      x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
-                                      x_desired_placeholder, c3_options_);
+                                      x_desired_placeholder, c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -135,40 +143,49 @@ SamplingC3Controller::SamplingC3Controller(
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
 
   // Set actor bounds
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);  
-    A.segment(0, 3) = c3_options_.workspace_limits[i].segment(0, 3);
+    A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
     // TODO @sharanyashastry: For the T example, the z constraint is an equality 
     // constraint. This will be reflected in the params but need to make sure to 
     // put a comment here when the T example is added.
     // The fourth parameter decides which optimization variable the constraint
     // is applied to. 1 = x, 2 = u, 3 = lambda.
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
-                                  c3_options_.workspace_limits[i][4], 1);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
-                                  c3_options_.workspace_limits[i][4], 1);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
-                                  c3_options_.workspace_limits[i][4], 1);
+    c3_curr_plan_->AddLinearConstraint(A, 
+                        c3_options_for_curr_location.workspace_limits[i][3],
+                        c3_options_for_curr_location.workspace_limits[i][4], 1);
+    c3_best_plan_->AddLinearConstraint(A, 
+                        c3_options.workspace_limits[i][3],
+                        c3_options.workspace_limits[i][4], 1);
+    c3_buffer_plan_->AddLinearConstraint(A, 
+                        c3_options.workspace_limits[i][3],
+                        c3_options.workspace_limits[i][4], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
-                                  c3_options_.u_horizontal_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
-                                  c3_options_.u_horizontal_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
-                                  c3_options_.u_horizontal_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(A, 
+                        c3_options_for_curr_location.u_horizontal_limits[0],
+                        c3_options_for_curr_location.u_horizontal_limits[1], 2);
+    c3_best_plan_->AddLinearConstraint(A, 
+                        c3_options.u_horizontal_limits[0],
+                        c3_options.u_horizontal_limits[1], 2);
+    c3_buffer_plan_->AddLinearConstraint(A, 
+                        c3_options.u_horizontal_limits[0],
+                        c3_options.u_horizontal_limits[1], 2);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
-                                  c3_options_.u_vertical_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
-                                  c3_options_.u_vertical_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
-                                  c3_options_.u_vertical_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(A, 
+                        c3_options_for_curr_location.u_vertical_limits[0],
+                        c3_options_for_curr_location.u_vertical_limits[1], 2);
+    c3_best_plan_->AddLinearConstraint(A,
+                        c3_options.u_vertical_limits[0],
+                        c3_options.u_vertical_limits[1], 2);
+    c3_buffer_plan_->AddLinearConstraint(A, 
+                        c3_options.u_vertical_limits[0],
+                        c3_options.u_vertical_limits[1], 2);
   }
 
   // Input ports.
@@ -396,7 +413,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, sampling_c3_options_.planning_dt_position_tracking);
+  return LCS(A, B, D, d, E, F, H, c, sampling_c3_options_.N, sampling_c3_options_.planning_dt_position_tracking);
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -507,26 +524,26 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
 
   // Force Checking of Workspace Limits
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) >
-                 c3_options_.workspace_limits[i][3] -
-                     c3_options_.workspace_margins);
+                     sampling_c3_options_.workspace_limits[i].segment(0, 3) >
+                 sampling_c3_options_.workspace_limits[i][3] -
+                     sampling_c3_options_.workspace_margins);
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) <
-                 c3_options_.workspace_limits[i][4] +
-                     c3_options_.workspace_margins);
+                     sampling_c3_options_.workspace_limits[i].segment(0, 3) <
+                 sampling_c3_options_.workspace_limits[i][4] +
+                     sampling_c3_options_.workspace_margins);
   }
   DRAKE_DEMAND(
     std::pow(lcs_x_curr->get_data()[0], 2) +
     std::pow(lcs_x_curr->get_data()[1], 2) >
     std::pow(sampling_c3_options_.robot_radius_limits[0] +
-             c3_options_.workspace_margins, 2));
+             sampling_c3_options_.workspace_margins, 2));
   DRAKE_DEMAND(
     std::pow(lcs_x_curr->get_data()[0], 2) +
     std::pow(lcs_x_curr->get_data()[1], 2) <
     std::pow(sampling_c3_options_.robot_radius_limits[1] -
-             c3_options_.workspace_margins, 2));
+             sampling_c3_options_.workspace_margins, 2));
 
   // Compute the current position and orientation errors.
   current_position_error_ = (x_lcs_curr.segment(7, 3) -
@@ -599,33 +616,51 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   G_for_curr_location_.clear();
   U_for_curr_location_.clear();
   double discount_factor = 1;
+
+  // Build C3Options from SamplingC3Options.
+  C3Options c3_options;
+  C3Options c3_options_for_curr_location;
+
+  // Load the pose/position tracking C3Options based on the 
+  // crossed_cost_switching_threshold_ flag.
   if (crossed_cost_switching_threshold_) {
-    dt_ = sampling_c3_options_.planning_dt;
+    c3_options = sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+      sampling_c3_options_.num_contacts_index);
+    c3_options_for_curr_location =
+      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+      sampling_c3_options_.num_contacts_index_for_curr_location);
+
+    dt_ = c3_options.dt;
     // clear the Q_ values and replace with costs for position and orientation.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * sampling_c3_options_.Q_pose_tracking);
-      discount_factor *= c3_options_.gamma;
+      Q_.push_back(discount_factor * c3_options.Q);
+      discount_factor *= c3_options.gamma;
       if(i < N_){
-        R_.push_back(discount_factor * sampling_c3_options_.R_pose_tracking);
-        G_.push_back(sampling_c3_options_.G_pose_tracking);
-        U_.push_back(sampling_c3_options_.U_pose_tracking);
-        G_for_curr_location_.push_back(sampling_c3_options_.G_pose_tracking_for_curr_location);
-        U_for_curr_location_.push_back(sampling_c3_options_.U_pose_tracking_for_curr_location);
+        R_.push_back(discount_factor * c3_options.R);
+        G_.push_back(c3_options.G);
+        U_.push_back(c3_options.U);
+        G_for_curr_location_.push_back(c3_options_for_curr_location.G);
+        U_for_curr_location_.push_back(c3_options_for_curr_location.U);
       }
     }
   }
   else {
-    dt_ = sampling_c3_options_.planning_dt_position_tracking;
+    c3_options = sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+      sampling_c3_options_.num_contacts_index);
+    c3_options_for_curr_location =
+      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+      sampling_c3_options_.num_contacts_index_for_curr_location);
+    dt_ = c3_options.dt;
     // clear the Q_ values and replace with costs for position only.
     for (int i = 0; i < N_+1; ++i) {
-      Q_.push_back(discount_factor * sampling_c3_options_.Q_position_tracking);
-      discount_factor *= c3_options_.gamma;
+      Q_.push_back(discount_factor * c3_options.Q);
+      discount_factor *= c3_options.gamma;
       if(i < N_){
-        R_.push_back(discount_factor * sampling_c3_options_.R_position_tracking);
-        G_.push_back(sampling_c3_options_.G_position_tracking);
-        U_.push_back(sampling_c3_options_.U_position_tracking);
-        G_for_curr_location_.push_back(sampling_c3_options_.G_position_tracking_for_curr_location);
-        U_for_curr_location_.push_back(sampling_c3_options_.U_position_tracking_for_curr_location);
+        R_.push_back(discount_factor * c3_options.R);
+        G_.push_back(c3_options.G);
+        U_.push_back(c3_options.U);
+        G_for_curr_location_.push_back(c3_options_for_curr_location.G);
+        U_for_curr_location_.push_back(c3_options_for_curr_location.U);
       }
     }
   }
@@ -658,21 +693,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             Q_quaternion_dependent_regularizer_part_1 +
             sampling_c3_options_.q_quaternion_dependent_regularizer_fraction
               * Q_quaternion_dependent_regularizer_part_2);
-      discount_factor *= c3_options_.gamma;
+      discount_factor *= sampling_c3_options_.gamma;
     }
   }
 
   if (verbose_) {
-    std::cout << "Q_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << "Q_[0] with gamma " << sampling_c3_options_.gamma << ":" << std::endl;
     std::cout << Q_[0] << std::endl;
-    std::cout << "R_[0] with gamma " << c3_options_.gamma << ":" << std::endl;
+    std::cout << "R_[0] with gamma " << sampling_c3_options_.gamma << ":" << std::endl;
     std::cout << R_[0] << std::endl;
   }
 
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
                                     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, 
-                                    sampling_params_, c3_options_, 
+                                    sampling_params_, 
                                     sampling_c3_options_, plant_, context_, 
                                     plant_ad_, context_ad_, contact_pairs_);
 
@@ -710,19 +745,36 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     UpdateContext(candidate_states[i]);
 
     // Create an LCS object.
-    // Preprocessing the contact pairs
+    // Preprocessing the contact pairs 
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
-    resolved_contact_pairs = LCSFactory::PreProcessor(
-      plant_, *context_, contact_pairs_,
-      sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
-      c3_options_.num_friction_directions,
-      sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
+    solvers::LCS lcs_object_sample = CreatePlaceholderLCS();    
+      
+    if(i == 0){
+      resolved_contact_pairs = LCSFactory::PreProcessor(
+        plant_, *context_, contact_pairs_,
+        sampling_c3_options_.resolve_contacts_to_list[
+          sampling_c3_options_.num_contacts_index_for_curr_location],
+        c3_options_for_curr_location.num_friction_directions,
+        c3_options_for_curr_location.num_contacts,
+        verbose_);
+      lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
+        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+        c3_options_for_curr_location.num_friction_directions,
+        c3_options_for_curr_location.mu,
+        dt_, N_, contact_model_);
+    }else{
+      resolved_contact_pairs = LCSFactory::PreProcessor(
+        plant_, *context_, contact_pairs_,
+        sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
+        c3_options.num_friction_directions,
+        c3_options.num_contacts, verbose_);
+      lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
+        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+        c3_options.num_friction_directions,
+        c3_options.mu,
+        dt_, N_, contact_model_);
+    }
 
-    solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions,
-      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index],
-      dt_, N_, contact_model_);
 
     // Store LCS object.
     candidate_lcs_objects.push_back(lcs_object_sample);
@@ -742,14 +794,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           plant_, *context_, contact_pairs_,
           sampling_c3_options_.resolve_contacts_to_list[
             sampling_c3_options_.num_contacts_index_for_cost],
-          c3_options_.num_friction_directions,
+          sampling_c3_options_.num_friction_directions,
           sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index_for_cost],
           verbose_);
       solvers::LCS lcs_object_sample_for_cost_simulation =
         solvers::LCSFactory::LinearizePlantToLCS(
           plant_, *context_, plant_ad_, *context_ad_,
           resolved_contact_pairs_for_cost_simulation,
-          c3_options_.num_friction_directions,
+          sampling_c3_options_.num_friction_directions,
           sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index_for_cost],
           dt_, N_, contact_model_);
       lcs_objects_for_cost_simulation.push_back(
@@ -818,23 +870,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             plant_, *context_, contact_pairs_,
             sampling_c3_options_.resolve_contacts_to_list[
               sampling_c3_options_.num_contacts_index_for_curr_location],
-            c3_options_.num_friction_directions,
-            sampling_c3_options_.num_contacts_list[
-              sampling_c3_options_.num_contacts_index_for_curr_location],
+            c3_options_for_curr_location.num_friction_directions,
+            c3_options_for_curr_location.num_contacts,
             verbose_);
         test_system =
           solvers::LCSFactory::LinearizePlantToLCS(
             plant_, *context_, plant_ad_, *context_ad_,
             resolved_contact_pairs_for_curr_location,
-            c3_options_.num_friction_directions,
-            sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index_for_curr_location],
+            c3_options.num_friction_directions,
+            c3_options.mu,
             dt_, N_, contact_model_);
 
         G = G_for_curr_location_;
         U = U_for_curr_location_;
-        int n_lambda = 2 * c3_options_.num_friction_directions *
-          sampling_c3_options_.num_contacts_list[
-            sampling_c3_options_.num_contacts_index_for_curr_location];
+        int n_lambda = 2 * c3_options_for_curr_location.num_friction_directions *
+                        c3_options_for_curr_location.num_contacts;
         delta = std::vector<Eigen::VectorXd>(
           N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
         w = std::vector<Eigen::VectorXd>(
@@ -844,14 +894,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
 
-      if (c3_options_.projection_type == "MIQP") {
+      if (c3_options.projection_type == "MIQP") {
         test_c3_object = std::make_shared<C3MIQP>(test_system,
                                             C3::CostMatrices(Q_, R_, G, U),
-                                            x_desired, c3_options_);
-      } else if (c3_options_.projection_type == "QP") {
+                                            x_desired, c3_options);
+      } else if (c3_options.projection_type == "QP") {
         test_c3_object = std::make_shared<C3QP>(test_system,
                                             C3::CostMatrices(Q_, R_, G, U),
-                                            x_desired, c3_options_);
+                                            x_desired, c3_options);
       } else {
         std::cerr << ("Unknown projection type") << std::endl;
         DRAKE_THROW_UNLESS(false);
@@ -1662,8 +1712,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
     // Enforce minimum z height for end effector, with a small buffer.
     for (int j = 0; j < i; j++) {
-      if (knots(2, j) < c3_options_.ee_z_state_min + 0.005) {
-        knots(2, j) = c3_options_.ee_z_state_min + 0.005;
+      if (knots(2, j) < sampling_c3_options_.ee_z_state_min + 0.005) {
+        knots(2, j) = sampling_c3_options_.ee_z_state_min + 0.005;
       }
     }
 
@@ -1718,8 +1768,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       next_lcs_state.head(3) = next_ee_loc;
       next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
       // if z is under the table, set it to a min height.
-      if (next_lcs_state[2] < c3_options_.ee_z_state_min) {
-        next_lcs_state[2] = c3_options_.ee_z_state_min;
+      if (next_lcs_state[2] < sampling_c3_options_.ee_z_state_min) {
+        next_lcs_state[2] = sampling_c3_options_.ee_z_state_min;
       }
 
       knots.col(i) = next_lcs_state;
@@ -2213,19 +2263,23 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   UpdateContext(lcs_x->get_data());
 
+  C3Options c3_options_for_curr_location = 
+            sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_, 
+                    sampling_c3_options_.num_contacts_index_for_curr_location);
+
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
     sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
-    c3_options_.num_friction_directions,
-    sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
+    c3_options_for_curr_location.num_friction_directions,
+    c3_options_for_curr_location.num_contacts, verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
-      c3_options_.num_friction_directions,
-      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index], contact_model_);
+      c3_options_for_curr_location.num_friction_directions,
+      c3_options_for_curr_location.mu, contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -2389,18 +2443,20 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   x_sample.head(3) = all_sample_locations_[best_sample_index_];
   UpdateContext(x_sample);
 
+  C3Options c3_options = sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_,
+                                                          sampling_c3_options_.num_contacts_index);
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
     sampling_c3_options_.resolve_contacts_to_list[sampling_c3_options_.num_contacts_index],
-    c3_options_.num_friction_directions,
-    sampling_c3_options_.num_contacts_list[sampling_c3_options_.num_contacts_index], verbose_);
+    c3_options.num_friction_directions,
+    c3_options.num_contacts, verbose_);
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, resolved_contact_pairs,
-      c3_options_.num_friction_directions,
-      sampling_c3_options_.mu_list[sampling_c3_options_.num_contacts_index], contact_model_);
+      c3_options.num_friction_directions,
+      c3_options.mu, contact_model_);
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

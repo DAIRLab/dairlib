@@ -124,6 +124,7 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
+
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (contact_model == "stewart_and_trinkle") {

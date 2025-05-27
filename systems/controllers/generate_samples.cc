@@ -25,7 +25,6 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const Eigen::VectorXd& x_lcs,
     const bool& is_doing_c3,
     const SamplingC3SamplingParams sampling_params,
-    const C3Options c3_options,
     const SamplingC3Options& sampling_c3_options,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
@@ -51,7 +50,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         sampling_params.sampling_radius, sampling_params.sampling_height
       );
     if(sampling_params.filter_samples_for_safety && 
-      !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options)){
+      !is_sample_within_workspace(candidate_states[i], sampling_c3_options)){
       throw std::runtime_error("Error:  Radially symmetric sample location is outside workspace.");
     }
     }
@@ -66,7 +65,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           sampling_params.sampling_height
         );
       } while(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
+        !is_sample_within_workspace(candidate_states[i], sampling_c3_options));
     }
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING){
@@ -80,7 +79,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           sampling_params.max_angle_from_vertical
         );
       } while(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
+        !is_sample_within_workspace(candidate_states[i], sampling_c3_options));
       }
     }
   else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
@@ -93,7 +92,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
           n_q, n_v, x_lcs, sampling_params.sampling_height, 
           sampling_params.fixed_sample_locations[i]);
       if(sampling_params.filter_samples_for_safety && 
-        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options)){
+        !is_sample_within_workspace(candidate_states[i], sampling_c3_options)){
         throw std::runtime_error("Error:  Fixed sample location is outside workspace.");
       }
       }
@@ -105,9 +104,9 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     for (int i = 0; i < num_samples; i++){
       do{
       candidate_states[i] = generate_sample_on_grid( 
-        n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options);
+        n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options);
       } while(sampling_params.filter_samples_for_safety &&
-        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
+        !is_sample_within_workspace(candidate_states[i], sampling_c3_options));
       }
   }
   else if(sampling_params.sampling_strategy == SAMPLE_IN_SHELL){
@@ -116,9 +115,9 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     for (int i = 0; i < num_samples; i++){
       do{
       candidate_states[i] = generate_sample_in_shell( 
-        n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options);
+        n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options);
       } while(sampling_params.filter_samples_for_safety &&
-        !is_sample_within_workspace(candidate_states[i], c3_options, sampling_c3_options));
+        !is_sample_within_workspace(candidate_states[i], sampling_c3_options));
       }
   }
   else{
@@ -129,15 +128,14 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 
 // Helper function to check sample validity.
 bool is_sample_within_workspace(const Eigen::VectorXd& candidate_state,
-  const C3Options c3_options,
   const SamplingC3Options& sampling_c3_options){
   double candidate_radius = sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
-  if(candidate_state[0] < c3_options.workspace_limits[0][3] || // Xxmin
-              candidate_state[0] > c3_options.workspace_limits[0][4] || // x max
-              candidate_state[1] < c3_options.workspace_limits[1][3] || // y min
-              candidate_state[1] > c3_options.workspace_limits[1][4] || // y max
-              candidate_state[2] < c3_options.workspace_limits[2][3] || // z min
-              candidate_state[2] > c3_options.workspace_limits[2][4] || // z max
+  if(candidate_state[0] < sampling_c3_options.workspace_limits[0][3] || // Xxmin
+              candidate_state[0] > sampling_c3_options.workspace_limits[0][4] || // x max
+              candidate_state[1] < sampling_c3_options.workspace_limits[1][3] || // y min
+              candidate_state[1] > sampling_c3_options.workspace_limits[1][4] || // y max
+              candidate_state[2] < sampling_c3_options.workspace_limits[2][3] || // z min
+              candidate_state[2] > sampling_c3_options.workspace_limits[2][4] || // z max
               candidate_radius > sampling_c3_options.robot_radius_limits[1] ||   // radius max
               candidate_radius < sampling_c3_options.robot_radius_limits[0]) {   // radius min
     return false;
@@ -323,7 +321,7 @@ Eigen::VectorXd generate_sample_on_grid(
   drake::systems::Context<drake::AutoDiffXd>* context_ad,
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params,
-  const C3Options c3_options){
+  const SamplingC3Options sampling_c3_options){
   // Initialize the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   // Generate a random sample location within the sampling region in the x and y
@@ -357,13 +355,13 @@ Eigen::VectorXd generate_sample_on_grid(
       // This is done because our param is expressed in world frame already so the previous line gives the wrong z_value.
       candidate_state[2] = sampling_params.sampling_height; 
     }
-    while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index));
+    while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options, min_distance_index));
 
     // Once we find a sample in collision, project it to the surface of the object.
     Eigen::VectorXd projected_state = project_to_surface(candidate_state, min_distance_index, sampling_params, plant, context, contact_geoms);
     
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, projected_state);
-    if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index)){
+    if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options, min_distance_index)){
       continue; // If the projected state is still in collision, exit loop and generate a new sample.
     }
     
@@ -390,7 +388,7 @@ Eigen::VectorXd generate_sample_in_shell(
   drake::systems::Context<drake::AutoDiffXd>* context_ad,
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params,
-  const C3Options c3_options){
+  const SamplingC3Options sampling_c3_options){
   // Initialize the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   // Generate a random sample location within the sampling region in the x and y
@@ -436,13 +434,13 @@ Eigen::VectorXd generate_sample_in_shell(
       candidate_state[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
       candidate_state[2] = z_samplec + sampling_radius * cos(elevation_theta);
     }
-    while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index));
+    while(!check_collision(n_q, n_v, n_u, candidate_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options, min_distance_index));
 
     // Once we find a sample in collision, project it to the surface of the object.
     Eigen::VectorXd projected_state = project_to_surface(candidate_state, min_distance_index, sampling_params, plant, context, contact_geoms);
     
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, projected_state);
-    if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, c3_options, min_distance_index)){
+    if(check_collision(n_q, n_v, n_u, projected_state, plant, context, plant_ad, context_ad, contact_geoms, sampling_params, sampling_c3_options, min_distance_index)){
       continue; // If the projected state is still in collision, exit loop and generate a new sample.
     }
     
@@ -469,7 +467,7 @@ bool check_collision(
   drake::systems::Context<drake::AutoDiffXd>* context_ad,
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params, 
-  C3Options c3_options,
+  SamplingC3Options sampling_c3_options,
   int& min_distance_index){
   // This function returns a boolean value indicating whether the sample is in collision with the object or not.
   // If the sample is in collision with the object, the function modifies a reference to the index of the closest pair 
@@ -486,7 +484,7 @@ bool check_collision(
       SortedPair<GeometryId> pair {(contact_geoms.at(0)).at(i)};
       multibody::GeomGeomCollider collider(plant, pair);
 
-      auto [phi_i, J_i] = collider.EvalPolytope(*context, c3_options.num_friction_directions);
+      auto [phi_i, J_i] = collider.EvalPolytope(*context, sampling_c3_options.num_friction_directions);
       distances.push_back(phi_i);
   }
 

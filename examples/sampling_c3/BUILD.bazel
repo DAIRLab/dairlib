@@ -109,7 +109,7 @@ cc_binary(
     ],
     deps = [
         ":c3_mode_visualizer",
-        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",

@@ -86,10 +86,7 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SamplingC3Options>(
           base_path + "parameters/sampling_c3_options.yaml");
 
-  C3Options c3_options;
   SamplingC3SamplingParams sampling_params;
-  c3_options = drake::yaml::LoadYamlFile<C3Options>(
-                controller_params.c3_options_file);
   sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
                 controller_params.sampling_params_file);
 
@@ -631,7 +628,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   // Instantiating the sampling based c3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
+      plant_for_lcs_context_ad.get(), contact_pairs,
       sampling_c3_options, sampling_params);
 
   // These systems publish the current and best planned trajectories.

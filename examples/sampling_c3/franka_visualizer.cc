@@ -11,7 +11,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
-#include "solvers/c3_options.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
 
 #include "common/eigen_utils.h"
@@ -190,10 +190,10 @@ int do_main(int argc, char* argv[]) {
   std::cout<<"sim params path is "<< base_path + "parameters/franka_sim_params.yaml" << std::endl;
   std::cout<<"controller params path is "<< base_path + "parameters/franka_c3_controller_params.yaml" << std::endl;
      
-  C3Options c3_options;
   SamplingC3SamplingParams sampling_params;
-  c3_options = drake::yaml::LoadYamlFile<C3Options>(
-                controller_params.c3_options_file);
+  SamplingC3Options sampling_c3_options =
+      drake::yaml::LoadYamlFile<SamplingC3Options>(
+          base_path + "parameters/sampling_c3_options.yaml");
   sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
                 controller_params.sampling_params_file);
                 
@@ -418,15 +418,15 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_workspace){
     // Extracting limits and calculating workspace dimensions based on workspace_limits
-    double width = c3_options.workspace_limits[0][4] - c3_options.workspace_limits[0][3];  // x-axis limits (max - min)
-    double depth = c3_options.workspace_limits[1][4] - c3_options.workspace_limits[1][3];  // y-axis limits
-    double height = c3_options.workspace_limits[2][4] - c3_options.workspace_limits[2][3]; // z-axis limits
+    double width = sampling_c3_options.workspace_limits[0][4] - sampling_c3_options.workspace_limits[0][3];  // x-axis limits (max - min)
+    double depth = sampling_c3_options.workspace_limits[1][4] - sampling_c3_options.workspace_limits[1][3];  // y-axis limits
+    double height = sampling_c3_options.workspace_limits[2][4] - sampling_c3_options.workspace_limits[2][3]; // z-axis limits
 
     // Calculate the center of the workspace based on the limits
     Vector3d workspace_center = {
-        0.5 * (c3_options.workspace_limits[0][4] + c3_options.workspace_limits[0][3]),
-        0.5 * (c3_options.workspace_limits[1][4] + c3_options.workspace_limits[1][3]),
-        0.5 * (c3_options.workspace_limits[2][4] + c3_options.workspace_limits[2][3])
+        0.5 * (sampling_c3_options.workspace_limits[0][4] + sampling_c3_options.workspace_limits[0][3]),
+        0.5 * (sampling_c3_options.workspace_limits[1][4] + sampling_c3_options.workspace_limits[1][3]),
+        0.5 * (sampling_c3_options.workspace_limits[2][4] + sampling_c3_options.workspace_limits[2][3])
     };
     meshcat->SetObject("c3_workspace", drake::geometry::Box(width, depth, height),
                        {0, 1, 0, 0.2});

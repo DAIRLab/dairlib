@@ -26,7 +26,6 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const Eigen::VectorXd& x_lcs,
     const bool& is_doing_c3,
     const SamplingC3SamplingParams sampling_params,
-    const C3Options c3_options,
     const SamplingC3Options& sampling_c3_options,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
@@ -37,7 +36,6 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 // Private function signatures.
 bool is_sample_within_workspace(
     const Eigen::VectorXd& candidate_state,
-    const C3Options c3_options,
     const SamplingC3Options& sampling_c3_options);
 
 Eigen::VectorXd generate_radially_symmetric_sample_location(
@@ -82,7 +80,7 @@ Eigen::VectorXd generate_sample_on_grid(
   drake::systems::Context<drake::AutoDiffXd>* context_ad,
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params,
-  const C3Options c3_options);
+  const SamplingC3Options sampling_c3_options);
 
 Eigen::VectorXd generate_sample_in_shell(
     const int& n_q,
@@ -95,7 +93,7 @@ Eigen::VectorXd generate_sample_in_shell(
   drake::systems::Context<drake::AutoDiffXd>* context_ad,
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params,
-  const C3Options c3_options);
+  const SamplingC3Options sampling_c3_options);
 
 bool check_collision(
     const int& n_q,
@@ -108,7 +106,7 @@ bool check_collision(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     const SamplingC3SamplingParams& sampling_params,
-    C3Options c3_options,
+    SamplingC3Options sampling_c3_options,
     int& min_distance_index);
 
 void UpdateContext(

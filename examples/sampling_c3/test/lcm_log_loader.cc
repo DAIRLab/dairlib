@@ -891,7 +891,7 @@ int DoMain(int argc,  char* argv[]) {
   DiagramBuilder<double> builder;
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
     plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-    plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
+    plant_for_lcs_context_ad.get(), contact_pairs,
     sampling_c3_options,
     sampling_params, verbose);
   auto controller_context = controller->CreateDefaultContext();

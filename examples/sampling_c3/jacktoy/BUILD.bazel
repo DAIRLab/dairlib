@@ -64,7 +64,6 @@ cc_library(
     hdrs = [],
     data = [
         "parameters/franka_c3_controller_params.yaml",
-        "parameters/franka_c3_options_floating.yaml",
         "parameters/sampling_params.yaml",
         "//examples/sampling_c3:shared_params_yamls",
     ],

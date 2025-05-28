@@ -223,9 +223,7 @@ int do_main(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
 
-  // All the urdfs have their origins at the world frame origin. We define all 
-  // the offsets by welding the frames such that changing the offsets in 
-  // the param file moves them to where we want in the world frame.
+  // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -268,12 +266,7 @@ int do_main(int argc, char* argv[]) {
 	parser_franka.AddModels(
 		FindResourceOrThrow(sim_params.end_effector_model))[0];
 			
-  // All the urdfs have their origins at the world frame origin. We define all 
-  // the offsets by welding the frames such that changing the offsets in 
-  // the param file moves them to where we want in the world frame.
-
-  // Create a rigid transform from the world frame to the panda_link0 frame.
-  // Franka base is 2.45cm above the ground.
+  // Affix models to their locations relative to world frame
   plant_franka.WeldFrames(plant_franka.world_frame(), 
                    plant_franka.GetFrameByName("panda_link0"), X_F_W);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), 

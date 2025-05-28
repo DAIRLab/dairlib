@@ -111,9 +111,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
 			
-  // All the urdfs have their origins at the world frame origin. We define all 
-  // the offsets by welding the frames such that changing the offsets in 
-  // the param file moves them to where we want in the world frame.
+  // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -183,197 +181,18 @@ int DoMain(int argc, char* argv[]) {
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
   auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
-
-  std::vector<std::vector<SortedPair<GeometryId>>>
-  contact_pairs;  // Exact list depends on sampling_c3_options.num_contacts_index,
-                  // but e.g. num_contacts_index = 0 means this will have
-                  // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                  //  [(ground,cap1sph1), (ground,cap1sph2),
-                  //   (ground,cap2sph1), (ground,cap2sph2),
-                  //   (ground,cap3sph1), (ground,cap3sph2)]]
-                  // and the first list (of 3) will get resolved to a single
-                  // ee-jack contact, and the second list (of 6) will get
-                  // resolved to 3 ground-jack contacts.
+  
+  // The exact list of contact geometries depends on 
+  // sampling_c3_options.num_contacts_index. For each index, this contains a set 
+  // of candidate contact pairs that will be resolved based on 
+  // sampling_c3_options.resolve_contacts_to_list.
+  std::vector<std::vector<SortedPair<GeometryId>>>  contact_pairs;  
 
   //   Creating a map of contact geoms
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
-//   Change contact geoms based on the demo_name
-if(FLAGS_demo_name == "push_t") {
 
     drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId horizontal_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("horizontal_link"))[0];
-    drake::geometry::GeometryId vertical_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("vertical_link"))[0];
-
-    drake::geometry::GeometryId corner_nxynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxynz"))[0];
-    drake::geometry::GeometryId corner_nxnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnynz"))[0];
-    drake::geometry::GeometryId corner_xynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xynz"))[0];
-
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
-
-    //   Creating a map of contact geoms
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["horizontal_link"] = horizontal_geoms;
-    contact_geoms["vertical_link"] = vertical_geoms;
-    contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
-    contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
-    contact_geoms["corner_xynz"] = corner_xynz_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["horizontal_link"]));
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["vertical_link"]));
-
-    //   Creating a list of contact pairs for the jack and the ground
-        SortedPair<GeometryId> ground_contact_1{
-        SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_2{
-        SortedPair(contact_geoms["corner_nxnynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_3{
-        SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
-
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
-        // If num_contacts_index is 2 or 3, we add an additional contact pair 
-        // between the end effector and the ground.
-        std::vector<SortedPair<GeometryId>> ee_ground_contact{
-        SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-        contact_pairs.push_back(ee_ground_contact);
-    }
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
-    ground_object_contact_pairs.push_back(ground_contact_1);
-    ground_object_contact_pairs.push_back(ground_contact_2);
-    ground_object_contact_pairs.push_back(ground_contact_3);
-    contact_pairs.push_back(ground_object_contact_pairs);
-}
-else if(FLAGS_demo_name == "box_topple") {
-    drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId box_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("box"))[0];
-
-    drake::geometry::GeometryId corner_xynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xynz"))[0];
-    drake::geometry::GeometryId corner_xnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xnynz"))[0];
-    drake::geometry::GeometryId corner_nxynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxynz"))[0];
-    drake::geometry::GeometryId corner_nxnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnynz"))[0];
-    drake::geometry::GeometryId corner_xyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xyz"))[0];
-    drake::geometry::GeometryId corner_xnyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xnyz"))[0];
-    drake::geometry::GeometryId corner_nxyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxyz"))[0];
-    drake::geometry::GeometryId corner_nxnyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnyz"))[0];
-
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
-
-    //   Creating a map of contact geoms
-    // std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["box"] = box_geoms;
-    contact_geoms["corner_xynz"] = corner_xynz_geoms;
-    contact_geoms["corner_xnynz"] = corner_xnynz_geoms;
-    contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
-    contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
-    contact_geoms["corner_xyz"] = corner_xyz_geoms;
-    contact_geoms["corner_xnyz"] = corner_xnyz_geoms;
-    contact_geoms["corner_nxyz"] = corner_nxyz_geoms;
-    contact_geoms["corner_nxnyz"] = corner_nxnyz_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["box"]));
-
-    //   Creating a list of contact pairs for the jack and the ground
-        SortedPair<GeometryId> ground_contact_1{
-        SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_2{
-        SortedPair(contact_geoms["corner_xnynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_3{
-        SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_4{
-        SortedPair(contact_geoms["corner_nxnynz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_5{
-        SortedPair(contact_geoms["corner_xyz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_6{
-        SortedPair(contact_geoms["corner_xnyz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_7{
-        SortedPair(contact_geoms["corner_nxyz"], contact_geoms["GROUND"])};
-        SortedPair<GeometryId> ground_contact_8{
-        SortedPair(contact_geoms["corner_nxnyz"], contact_geoms["GROUND"])};
-
-    // std::vector<std::vector<SortedPair<GeometryId>>>
-    //     contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
-                        // but e.g. num_contacts_index = 0 means this will have
-                        // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                        //  [(ground,cap1sph1), (ground,cap1sph2),
-                        //   (ground,cap2sph1), (ground,cap2sph2),
-                        //   (ground,cap3sph1), (ground,cap3sph2)]]
-                        // and the first list (of 3) will get resolved to a single
-                        // ee-jack contact, and the second list (of 6) will get
-                        // resolved to 3 ground-jack contacts.
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
-        // If num_contacts_index is 2 or 3, we add an additional contact pair 
-        // between the end effector and the ground.
-        std::vector<SortedPair<GeometryId>> ee_ground_contact{
-        SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-        contact_pairs.push_back(ee_ground_contact);
-    }
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
-    ground_object_contact_pairs.push_back(ground_contact_1);
-    ground_object_contact_pairs.push_back(ground_contact_2);
-    ground_object_contact_pairs.push_back(ground_contact_3);
-    ground_object_contact_pairs.push_back(ground_contact_4);
-    ground_object_contact_pairs.push_back(ground_contact_5);
-    ground_object_contact_pairs.push_back(ground_contact_6);
-    ground_object_contact_pairs.push_back(ground_contact_7);
-    ground_object_contact_pairs.push_back(ground_contact_8);
-    contact_pairs.push_back(ground_object_contact_pairs);
-}
-else if(FLAGS_demo_name == "jacktoy") {
-        drake::geometry::GeometryId ee_contact_points =
         plant_for_lcs.GetCollisionGeometriesForBody(
             plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
     drake::geometry::GeometryId capsule1_geoms =
@@ -448,16 +267,6 @@ else if(FLAGS_demo_name == "jacktoy") {
     SortedPair<GeometryId> ground_contact_3_2{
         SortedPair(contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"])};
 
-    // std::vector<std::vector<SortedPair<GeometryId>>>
-    //     contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
-                        // but e.g. num_contacts_index = 0 means this will have
-                        // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                        //  [(ground,cap1sph1), (ground,cap1sph2),
-                        //   (ground,cap2sph1), (ground,cap2sph2),
-                        //   (ground,cap3sph1), (ground,cap3sph2)]]
-                        // and the first list (of 3) will get resolved to a single
-                        // ee-jack contact, and the second list (of 6) will get
-                        // resolved to 3 ground-jack contacts.
     contact_pairs.push_back(ee_contact_pairs);
 
     if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
@@ -475,45 +284,7 @@ else if(FLAGS_demo_name == "jacktoy") {
     ground_object_contact_pairs.push_back(ground_contact_3_1);
     ground_object_contact_pairs.push_back(ground_contact_3_2);
     contact_pairs.push_back(ground_object_contact_pairs);
-}
-else if(FLAGS_demo_name == "ball_rolling"){
-    drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId object_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("sphere"))[0];
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
 
-    //   Creating a map of contact geoms
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["SPHERE"] = object_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["SPHERE"]));
-    //   Creating a list of contact pairs for the jack and the ground
-    std::vector<SortedPair<GeometryId>> ground_contact{
-        SortedPair(contact_geoms["SPHERE"], contact_geoms["GROUND"])};
-
-    // will have [[(ee,sphere)], [(sphere, ground)]]
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if (sampling_c3_options.num_contacts_index == 1){
-        // If num_contacts_index is 2 or 3, we add an additional contact pair 
-        // between the end effector and the ground.
-        std::vector<SortedPair<GeometryId>> ee_ground_contact{
-        SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-        contact_pairs.push_back(ee_ground_contact);
-    }
-    contact_pairs.push_back(ground_contact);
-}
 
   DiagramBuilder<double> builder;
 

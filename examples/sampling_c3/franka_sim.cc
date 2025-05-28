@@ -87,9 +87,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
 //   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  // All the urdfs have their origins at the world frame origin. We define all 
-  // the offsets by welding the frames such that changing the offsets in 
-  // the param file moves them to where we want in the world frame.
+  // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),

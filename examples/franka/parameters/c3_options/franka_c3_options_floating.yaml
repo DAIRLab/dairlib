@@ -47,8 +47,8 @@ u_vector: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1, 0.1, 0.1, 0.1]
 
-
-# alpha value for qp projection. As alpha -> 0, any error in complimentarity
+# Parameters used in the QP projection method. See c3_qp.cc
+# As alpha -> 0, any error in complimentarity
 # constraints also approaches 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1000

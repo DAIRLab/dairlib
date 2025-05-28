@@ -82,7 +82,6 @@ cc_binary(
         "//systems/controllers:gravity_compensator",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
-        "//systems/primitives:radio_parser",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
         "@gflags",

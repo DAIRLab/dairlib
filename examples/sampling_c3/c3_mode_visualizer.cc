@@ -35,7 +35,7 @@ C3ModeVisualizer::C3ModeVisualizer() {
   curr_lcs_state_ = this->DeclareVectorInputPort(
     "curr_lcs_state",TimestampedVector<double>(19)).get_index();
 
-  // Execution trajectory output ports.
+  // Output c3_mode indicator for visualization.
   c3_mode_visualization_traj_port_ = this->DeclareAbstractOutputPort(
     "mode_visualization_traj", dairlib::lcmt_timestamped_saved_traj(),
     &C3ModeVisualizer::OutputC3ModeVisualization).get_index();

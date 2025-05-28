@@ -15,7 +15,6 @@
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
@@ -52,7 +51,7 @@ DEFINE_string(osqp_settings,
               "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
-              "examples/sampling_c3/box_topple/parameters/franka_osc_controller_params.yaml",
+              "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
 DEFINE_string(lcm_channels,
@@ -62,7 +61,7 @@ DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name,
-              "box_topple",
+              "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -73,11 +72,14 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(base_path + "parameters/franka_osc_controller_params.yaml");
+      drake::yaml::LoadYamlFile<FrankaControllerParams>(
+        base_path + "parameters/franka_osc_controller_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
+      FindResourceOrThrow(
+        base_path + "parameters/franka_osc_controller_params.yaml"), 
+            {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -92,13 +94,13 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex ground_index =
       parser.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
   drake::multibody::ModelInstanceIndex platform_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.platform_model))[0];
+      parser.AddModels(FindResourceOrThrow(
+        controller_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
+      parser.AddModels(FindResourceOrThrow(
+        controller_params.end_effector_model))[0];
 
-  // All the urdfs have their origins at the world frame origin. We define all 
-  // the offsets by welding the frames such that changing the offsets in 
-  // the param file moves them to where we want in the world frame.
+  // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -113,7 +115,8 @@ int DoMain(int argc, char* argv[]) {
   // Create a rigid transform from the world frame to the panda_link0 frame.
   // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), controller_params.p_world_to_franka);
+      drake::math::RotationMatrix<double>(), 
+      controller_params.p_world_to_franka);
 
   plant.WeldFrames(plant.world_frame(), 
                    plant.GetFrameByName("panda_link0"), X_F_W);
@@ -189,8 +192,11 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
-    if (FLAGS_lcm_channels == base_path + "shared_parameters/lcm_channels_simulation.yaml"){
-      std::cerr << "In simulation, OSC needs to have cancel_gravity_compensation: false" << std::endl;
+    if (FLAGS_lcm_channels == 
+        base_path + "shared_parameters/lcm_channels_simulation.yaml"){
+      std::cerr << 
+        "In simulation, OSC needs to have cancel_gravity_compensation: false" 
+        << std::endl;
       return -1;
     }
     auto gravity_compensator =
@@ -203,8 +209,9 @@ int DoMain(int argc, char* argv[]) {
   } else {
     if (FLAGS_lcm_channels ==
         base_path + "shared_parameters/lcm_channels_hardware.yaml") {
-      std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"
-                << std::endl;
+      std::cerr << 
+        "In hardware, OSC needs to have cancel_gravity_compensation: true"
+        << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),

@@ -7,6 +7,38 @@
 // #include "Eigen/Dense"
 // #include "Eigen/Core"
 
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/Polygon_mesh_processing/intersection.h>
+#include <CGAL/Polygon_mesh_processing/clip.h>
+#include <CGAL/Polygon_mesh_processing/corefinement.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Polygon_mesh_slicer.h>
+#include <CGAL/IO/OBJ.h>
+#include <boost/geometry.hpp>
+#include <CGAL/subdivision_method_3.h>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/geometries.hpp>
+#include <boost/geometry/algorithms/buffer.hpp>
+#include <boost/geometry/strategies/buffer.hpp>
+#include <eigen3/Eigen/Dense>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <cstdlib>
+
+namespace bg = boost::geometry;
+namespace PMP = CGAL::Polygon_mesh_processing;
+
+// typedef CGAL::Simple_cartesian<double> Kernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef Kernel::Point_3 Point_3;
+typedef CGAL::Surface_mesh<Point_3> Mesh;
+typedef Kernel::Plane_3 Plane_3;
+typedef std::vector<std::vector<Point_3>> Polylines;
+typedef bg::model::d2::point_xy<double> BGPoint;
+typedef bg::model::polygon<BGPoint> BGPolygon;
+
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -49,6 +81,24 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   }
   std::vector<Eigen::VectorXd> candidate_states(num_samples);
 
+  std::cout << "Generating " << num_samples << " samples with strategy "
+            << sampling_params.sampling_strategy << std::endl;
+
+  const auto& query_port = plant.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
+  const auto& inspector = query_object.inspector();
+
+  for (unsigned i = 0; i < contact_geoms.size(); ++i) {
+    for (const auto& pair : contact_geoms[i]) {
+    for (int j = 0; j < 2; ++j) {
+      drake::geometry::GeometryId geom_id = (j == 0) ? pair.first() : pair.second();
+      const drake::geometry::Shape& shape = inspector.GetShape(geom_id);
+      std::string shape_type = shape.to_string();
+      std::cout << "GeometryId " << geom_id << " is of type: " << shape_type << std::endl;
+    }
+    }
+  }
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
     for (int i = 0; i < num_samples; i++){
@@ -462,6 +512,114 @@ Eigen::VectorXd generate_sample_in_shell(
     return projected_state;
   }
 }
+
+
+// Helper: convert CGAL point to Boost.Geometry point
+BGPoint convert_to_bg_point(const Point_3& p) {
+    return BGPoint(p.x(), p.y());
+}
+
+// ---- Main Function ----
+Eigen::VectorXd generate_sample_mesh_buffer(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const SamplingC3SamplingParams& sampling_params,
+    const C3Options c3_options,
+    const std::string& obj_path,         // Path to OBJ file (added parameter)
+    const double& z_height,                     // The z height at which to slice (added parameter)
+    const double& buffer_distance,       // Buffer radius
+    const int& num_samples,               // How many points to sample from the buffer
+    const int& sample_index                // Index of the sample to pick, -1 = pick randomly
+) {
+    // 1. Load OBJ mesh
+    Mesh mesh;
+    std::ifstream input_file(obj_path);
+    if (!input_file || !CGAL::IO::read_OBJ(input_file, mesh)) {
+        throw std::runtime_error("Cannot open or parse OBJ file: " + obj_path);
+    }
+
+    // 2. Slice mesh
+    Plane_3 plane(0, 0, 1, -z_height);
+    CGAL::Polygon_mesh_slicer<Mesh, Kernel> slicer(mesh);
+    Polylines polylines;
+    slicer(plane, std::back_inserter(polylines));
+    if (polylines.empty()) {
+        throw std::runtime_error("No intersection on slice plane.");
+    }
+    // 3. Convert first polyline to Boost.Geometry polygon
+    const auto& polygon = polylines[0];
+    BGPolygon bg_poly;
+    for (const auto& pt : polygon)
+        boost::geometry::append(bg_poly.outer(), convert_to_bg_point(pt));
+    if (polygon.front() != polygon.back())
+        boost::geometry::append(bg_poly.outer(), convert_to_bg_point(polygon.front()));
+    boost::geometry::correct(bg_poly);
+
+    // 4. Buffering
+    std::vector<BGPolygon> buffered_polygons;
+    boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(buffer_distance);
+    boost::geometry::strategy::buffer::join_round join_strategy;
+    boost::geometry::strategy::buffer::end_round end_strategy;
+    boost::geometry::strategy::buffer::point_circle point_strategy(10);
+    boost::geometry::strategy::buffer::side_straight side_strategy;
+    boost::geometry::buffer(bg_poly, buffered_polygons, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
+
+    // 5. Sampling points along the buffer's ring
+    const auto& ring = buffered_polygons[0].outer();
+    double total_length = 0;
+    for (size_t i = 0; i < ring.size() - 1; ++i) {
+        total_length += boost::geometry::distance(ring[i], ring[i + 1]);
+    }
+    double segment_length = total_length / num_samples;
+    std::vector<Eigen::Vector3d> sampled_points;
+    size_t current_segment = 0;
+    double sum_length = 0;
+    for (int i = 0; i < num_samples; ++i) {
+        double target_length = i * segment_length;
+        while (current_segment + 1 < ring.size() &&
+               sum_length + boost::geometry::distance(ring[current_segment], ring[current_segment + 1]) < target_length) {
+            sum_length += boost::geometry::distance(ring[current_segment], ring[current_segment + 1]);
+            ++current_segment;
+        }
+        if (current_segment + 1 >= ring.size()) break;
+        double remaining_length = target_length - sum_length;
+        double seg = boost::geometry::distance(ring[current_segment], ring[current_segment + 1]);
+        double ratio = seg == 0 ? 0 : remaining_length / seg;
+        double x = boost::geometry::get<0>(ring[current_segment]) + ratio * (boost::geometry::get<0>(ring[current_segment + 1]) - boost::geometry::get<0>(ring[current_segment]));
+        double y = boost::geometry::get<1>(ring[current_segment]) + ratio * (boost::geometry::get<1>(ring[current_segment + 1]) - boost::geometry::get<1>(ring[current_segment]));
+        sampled_points.emplace_back(x, y, z_height);
+    }
+    if (sampled_points.empty()) throw std::runtime_error("No sampled points from buffer!");
+
+    // 6. Pick sample_index (or random if sample_index < 0)
+    int chosen_index = sample_index;
+    if (chosen_index < 0) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distrib(0, sampled_points.size() - 1);
+        chosen_index = distrib(gen);
+    } else if (chosen_index >= static_cast<int>(sampled_points.size())) {
+        throw std::out_of_range("Sample index exceeds sampled_points size!");
+    }
+
+    Eigen::Vector3d buffer_sample = sampled_points[chosen_index];
+
+    // 7. Compose candidate_state as in your other sampling strategies
+    Eigen::VectorXd candidate_state = x_lcs;        // Copy all input state
+    candidate_state.head(3) = buffer_sample;        // Overwrite position with buffer sample
+
+    // Optionally set other state fields as needed (velocities, etc.)
+
+    return candidate_state;
+}
+
 
 bool check_collision(
   const int& n_q,

@@ -144,9 +144,10 @@ void TargetGenerator::CalcObjectTarget(
 }
 
 // This function computes the quaternion error between the current orientation
-// and the desired final orientation. it then clamps that error with a
-// “look-ahead” quaternion and onverts the clamped axis–angle error into an
-// angular-velocity target scaled by `angle_err_to_vel_factor_`.
+// and the desired final orientation. It then clamps that error with a
+// “look-ahead” quaternion and converts the clamped axis-angle error into an
+// angular-velocity target scaled by `angle_err_to_vel_factor_`. It also
+// commands 0 linear velocity.
 void TargetGenerator::CalcObjectVelocityTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
@@ -225,9 +226,9 @@ void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
 
   std::uniform_int_distribution<int> dis(0, valid_orientations.size() - 1);
   int random_index = dis(rng_);
-  while (!OrientationIsValid(random_index)) {
-    random_index = dis(rng_);
-  }
+  // while (!OrientationIsValid(random_index)) {
+  //   random_index = dis(rng_);
+  // }
 
   Eigen::Quaterniond quat_nominal = valid_orientations.at(random_index);
 
@@ -366,25 +367,6 @@ TargetGenerator::GenerateLineTrajectoryWithLookahead(
   target_obj_orientation = y_quat_lookahead_quat;
 
   return std::make_pair(target_obj_orientation, target_obj_position);
-}
-
-// JACKTOY SPECIFIC
-bool TargetGeneratorJacktoy::OrientationIsValid(
-    int candidate_orientation_index) const {
-  if (!prevent_three_topples_) {
-    // If we are not preventing three topples, all orientations are valid.
-    return true;
-  }
-  // If we are preventing three topples, then, this list is used to check if the
-  // candidate orientation is three topples away from the current orientation.
-  static const std::array<int, 8> three_topples_away_from_index_list = {
-      3, 6, 5, 0, 7, 2, 1, 4};
-
-  // The current orientation is given by the orientation_index_.
-  // A candidate orientation is valid if it is not the one that is three topples
-  // away from the current orientation.
-  return three_topples_away_from_index_list[orientation_index_] !=
-         candidate_orientation_index;
 }
 
 // BALL ROLLING SPECIFIC

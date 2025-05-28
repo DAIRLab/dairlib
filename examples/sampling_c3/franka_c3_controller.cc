@@ -314,7 +314,7 @@ int DoMain(int argc, char* argv[]) {
     std::unique_ptr<systems::TargetGenerator> target_generator;
 
     if (FLAGS_demo_name == "jacktoy") {
-    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack, trajectory_params.prevent_three_topples_for_random_goal_gen);
+    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack);
     } 
     else if (FLAGS_demo_name == "box_topple") {
     target_generator = std::make_unique<systems::TargetGeneratorBoxTopple>(plant_jack);

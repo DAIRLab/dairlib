@@ -104,9 +104,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   GenerateLineTrajectoryWithLookahead(
       const Eigen::Quaterniond& quat_curr_orientation,
       const Eigen::Vector3d& obj_curr_position) const;
-  // By default, all nominal orientations are valid.
-  // Derived classes can override this to provide specific valid orientations.
-  virtual bool OrientationIsValid(int orientation_index) const { return true; }
 
   mutable std::mt19937 rng_{std::random_device{}()};
 
@@ -147,8 +144,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
 };
 
 // Derived jacktoy target generator class.
-// Here we will add additional functions such as prevent three topples,
-// cycle through orientation sequence, etc.
 // This class will be used to generate targets for the jack toy.
 // Nominal quaternions for the object.
 inline const Eigen::Quaterniond kQUAT_ALL_UP{
@@ -179,10 +174,8 @@ inline const Eigen::Quaterniond kQUAT_GREEN_DOWN{
 class TargetGeneratorJacktoy : public TargetGenerator {
  public:
   TargetGeneratorJacktoy(
-      const drake::multibody::MultibodyPlant<double>& object_plant,
-      bool prevent_three_topples = true)
-      : TargetGenerator(object_plant),
-        prevent_three_topples_(prevent_three_topples) {}
+      const drake::multibody::MultibodyPlant<double>& object_plant)
+      : TargetGenerator(object_plant) {}
 
  protected:
   // Override the base class function to provide the valid orientations for the
@@ -191,14 +184,12 @@ class TargetGeneratorJacktoy : public TargetGenerator {
       const override {
     return nominal_orientations_;
   }
-  bool OrientationIsValid(int candidate_orientation_index) const override;
 
  private:
   // Nominal orientations for the jack to be balanced on the ground.
   const std::vector<Eigen::Quaterniond> nominal_orientations_{
       kQUAT_ALL_UP,   kQUAT_RED_DOWN,  kQUAT_BLUE_UP, kQUAT_ALL_DOWN,
       kQUAT_GREEN_UP, kQUAT_BLUE_DOWN, kQUAT_RED_UP,  kQUAT_GREEN_DOWN};
-  bool prevent_three_topples_ = false;
 };
 
 // push-t specific target generator class.

@@ -314,7 +314,7 @@ int DoMain(int argc, char* argv[]) {
     std::unique_ptr<systems::TargetGenerator> target_generator;
 
     if (FLAGS_demo_name == "jacktoy") {
-    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack);
+    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack, trajectory_params.prevent_three_topples_for_random_goal_gen);
     } 
     else if (FLAGS_demo_name == "box_topple") {
     target_generator = std::make_unique<systems::TargetGeneratorBoxTopple>(plant_jack);
@@ -324,6 +324,17 @@ int DoMain(int argc, char* argv[]) {
     } 
     else if (FLAGS_demo_name == "ball_rolling") {
     target_generator = std::make_unique<systems::TargetGeneratorBallRolling>(plant_jack);
+    auto* ball_target_generator_ptr =
+        static_cast<systems::TargetGeneratorBallRolling*>(target_generator.get());
+    ball_target_generator_ptr->SetBallRollingParameters(
+        trajectory_params.fixed_target_orientation,
+        trajectory_params.traj_radius,
+        trajectory_params.x_c, trajectory_params.y_c,
+        trajectory_params.lead_angle,
+        trajectory_params.angle_hysteresis,
+        trajectory_params.angle_err_to_vel_factor,
+        trajectory_params.ee_target_z_offset_above_object,
+        trajectory_params.resting_object_height);
     } 
     else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
@@ -331,35 +342,25 @@ int DoMain(int argc, char* argv[]) {
 
     // Add to the diagram; the pointer you get back keeps the final static type.
     auto* control_target = builder.AddSystem(std::move(target_generator));
+    if (FLAGS_demo_name != "ball_rolling"){
+        control_target->SetRemoteControlParameters(
+            trajectory_params.use_changing_final_goal,
+            trajectory_params.changing_final_goal_type,
+            trajectory_params.fixed_target_position,
+            trajectory_params.fixed_target_orientation,
+            trajectory_params.lookahead_step_size,
+            trajectory_params.lookahead_angle,
+            trajectory_params.angle_hysteresis,
+            trajectory_params.angle_err_to_vel_factor,
+            trajectory_params.ee_target_z_offset_above_object,
+            trajectory_params.position_success_threshold,
+            trajectory_params.orientation_success_threshold,
+            trajectory_params.random_goal_x_limits,
+            trajectory_params.random_goal_y_limits,
+            trajectory_params.random_goal_radius_limits,
+            trajectory_params.resting_object_height);
+    }
 
-  control_target->SetRemoteControlParameters(
-      trajectory_params.trajectory_type,
-      trajectory_params.use_changing_final_goal,
-      trajectory_params.changing_final_goal_type,
-      trajectory_params.prevent_three_topples_for_random_goal_gen,
-      trajectory_params.traj_radius,
-      trajectory_params.x_c, trajectory_params.y_c,
-      trajectory_params.lead_angle,
-      trajectory_params.fixed_target_position,
-      trajectory_params.fixed_target_orientation,
-      trajectory_params.step_size,
-      trajectory_params.start_point_x,
-      trajectory_params.start_point_y,
-      trajectory_params.end_point_x,
-      trajectory_params.end_point_y,
-      trajectory_params.lookahead_step_size,
-      trajectory_params.lookahead_angle,
-      trajectory_params.angle_hysteresis,
-      trajectory_params.angle_err_to_vel_factor,
-      trajectory_params.max_step_size,
-      trajectory_params.ee_goal_height,
-      trajectory_params.object_half_width,
-      trajectory_params.position_success_threshold,
-      trajectory_params.orientation_success_threshold,
-      trajectory_params.random_goal_x_limits,
-      trajectory_params.random_goal_y_limits,
-      trajectory_params.random_goal_radius_limits,
-      trajectory_params.resting_object_height);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);

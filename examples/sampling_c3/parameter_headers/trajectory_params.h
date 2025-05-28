@@ -23,7 +23,7 @@ struct SamplingC3TrajectoryParams {
   double angle_hysteresis;
   double angle_err_to_vel_factor;
   double max_step_size;
-  double ee_goal_height;
+  double ee_target_z_offset_above_object;
   double object_half_width;
   double position_success_threshold;
   double orientation_success_threshold;
@@ -55,7 +55,7 @@ struct SamplingC3TrajectoryParams {
     a->Visit(DRAKE_NVP(angle_hysteresis));
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
     a->Visit(DRAKE_NVP(max_step_size));
-    a->Visit(DRAKE_NVP(ee_goal_height));
+    a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
     a->Visit(DRAKE_NVP(object_half_width));
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));

@@ -20,8 +20,7 @@ class C3StateSender : public drake::systems::LeafSystem<double> {
     return this->get_input_port(target_state_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_final_target_state()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_final_target_state() const {
     return this->get_input_port(final_target_state_);
   }
 
@@ -29,8 +28,8 @@ class C3StateSender : public drake::systems::LeafSystem<double> {
     return this->get_input_port(actual_state_);
   }
 
-  const drake::systems::OutputPort<double>&
-  get_output_port_final_target_c3_state() const {
+  const drake::systems::OutputPort<double>& get_output_port_final_target_c3_state()
+      const {
     return this->get_output_port(final_target_c3_state_);
   }
 
@@ -45,7 +44,7 @@ class C3StateSender : public drake::systems::LeafSystem<double> {
 
  private:
   void OutputFinalTargetState(const drake::systems::Context<double>& context,
-                              dairlib::lcmt_c3_state* output) const;
+                         dairlib::lcmt_c3_state* output) const;
 
   void OutputTargetState(const drake::systems::Context<double>& context,
                          dairlib::lcmt_c3_state* output) const;

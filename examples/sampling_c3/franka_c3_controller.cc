@@ -646,9 +646,8 @@ else if(FLAGS_demo_name == "ball_rolling"){
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
-    sampling_params.N_sample_buffer, 10);
+    sampling_params.N_sample_buffer, plant_for_lcs.num_positions());
 
   // These systems publish the sample locations and sample costs over LCM.
   auto sample_locations_publisher = builder.AddSystem(
@@ -702,7 +701,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   // This system consumes the desired lcs state and the current lcs state and
   // outputs both.
   auto c3_state_sender =
-      builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
+      builder.AddSystem<systems::C3StateSender>(plant_for_lcs.num_positions() + plant_for_lcs.num_velocities(), state_names);
   auto c3_target_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, &lcm,

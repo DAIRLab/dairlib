@@ -59,7 +59,7 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   }
 
   void SetRemoteControlParameters(
-      const bool& use_changing_final_goal, const int& changing_final_goal_type,
+      const int& goal_mode,
       const Eigen::VectorXd& target_object_position,
       const Eigen::VectorXd& target_object_orientation,
       const double& lookahead_step_size, const double& lookahead_angle,
@@ -117,7 +117,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex target_gen_info_port_;
 
   // Parameters for the target generator.
-  bool use_changing_final_goal_;
   mutable Eigen::VectorXd target_final_object_position_;
   mutable Eigen::VectorXd target_final_object_orientation_;
   double lookahead_step_size_;
@@ -133,11 +132,12 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   double resting_object_height_;
 
-  enum ChangingGoalType {
+  enum GoalMode {
     CHANGING_GOAL_RANDOM,
-    CHANGING_GOAL_ORIENTATION_SEQUENCE
+    CHANGING_GOAL_ORIENTATION_SEQUENCE,
+    FIXED_GOAL
   };
-  ChangingGoalType changing_goal_type_;
+  GoalMode goal_mode_;
 
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;

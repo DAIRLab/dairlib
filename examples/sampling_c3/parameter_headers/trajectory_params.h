@@ -2,8 +2,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct SamplingC3TrajectoryParams {
-  bool use_changing_final_goal;
-  int changing_final_goal_type;
+  int goal_mode;
   double traj_radius;
   double x_c;
   double y_c;
@@ -24,8 +23,7 @@ struct SamplingC3TrajectoryParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(use_changing_final_goal));
-    a->Visit(DRAKE_NVP(changing_final_goal_type));
+    a->Visit(DRAKE_NVP(goal_mode));
     a->Visit(DRAKE_NVP(traj_radius));
     a->Visit(DRAKE_NVP(x_c));
     a->Visit(DRAKE_NVP(y_c));

@@ -344,8 +344,7 @@ int DoMain(int argc, char* argv[]) {
     auto* control_target = builder.AddSystem(std::move(target_generator));
     if (FLAGS_demo_name != "ball_rolling"){
         control_target->SetRemoteControlParameters(
-            trajectory_params.use_changing_final_goal,
-            trajectory_params.changing_final_goal_type,
+            trajectory_params.goal_mode,
             trajectory_params.fixed_target_position,
             trajectory_params.fixed_target_orientation,
             trajectory_params.lookahead_step_size,

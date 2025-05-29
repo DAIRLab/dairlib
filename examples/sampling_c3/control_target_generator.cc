@@ -52,7 +52,7 @@ TargetGenerator::TargetGenerator(
 }
 
 void TargetGenerator::SetRemoteControlParameters(
-    const bool& use_changing_final_goal, const int& changing_final_goal_type,
+    const int& goal_mode,
     const Eigen::VectorXd& target_object_position,
     const Eigen::VectorXd& target_object_orientation,
     const double& lookahead_step_size, const double& lookahead_angle,
@@ -64,8 +64,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const Eigen::VectorXd& random_goal_y_limits,
     const Eigen::VectorXd& random_goal_radius_limits,
     const double& resting_object_height) {
-  use_changing_final_goal_ = use_changing_final_goal;
-  changing_goal_type_ = static_cast<ChangingGoalType>(changing_final_goal_type);
+  goal_mode_ = static_cast<GoalMode>(goal_mode);
   target_final_object_position_ = target_object_position;
   target_final_object_orientation_ = target_object_orientation;
   lookahead_step_size_ = lookahead_step_size;
@@ -115,21 +114,17 @@ void TargetGenerator::CalcObjectTarget(
       target_final_object_orientation_[0], target_final_object_orientation_[1],
       target_final_object_orientation_[2], target_final_object_orientation_[3]);
 
-  // Handle changing goal if success criteria are met for both position and
-  // orientation.
-  if (use_changing_final_goal_) {
-    // Check if success has been met.
-    double object_position_error =
-        (obj_curr_position - target_final_object_position_).norm();
-    Eigen::AngleAxis<double> angle_axis_diff(target_obj_orientation *
-                                             curr_quat.inverse());
-    double object_angular_error = angle_axis_diff.angle();
+  // Check if success has been met. Update goal if necessary.
+  double object_position_error =
+      (obj_curr_position - target_final_object_position_).norm();
+  Eigen::AngleAxis<double> angle_axis_diff(target_obj_orientation *
+                                            curr_quat.inverse());
+  double object_angular_error = angle_axis_diff.angle();
 
-    if ((object_position_error < position_success_threshold_) &&
-        (object_angular_error < orientation_success_threshold_)) {
-      std::cout << "\nMet pose goal!\n" << std::endl;
-      OnGoalReached();
-    }
+  if ((object_position_error < position_success_threshold_) &&
+      (object_angular_error < orientation_success_threshold_)) {
+    std::cout << "\nMet pose goal!\n" << std::endl;
+    OnGoalReached();
   }
 
   // Adaptive line trajectory with lookahead.
@@ -293,14 +288,14 @@ void TargetGenerator::OutputTargetGeneratorInfo(
 
 void TargetGenerator::OnGoalReached() const {
   // Reset the target object orientation and position.
-  if (changing_goal_type_ == CHANGING_GOAL_RANDOM) {
+  if (goal_mode_ == CHANGING_GOAL_RANDOM) {
     SetRandomizedTargetFinalObjectPosition();
     SetRandomizedTargetFinalObjectOrientation();
-  } else if (changing_goal_type_ == CHANGING_GOAL_ORIENTATION_SEQUENCE) {
+  } else if (goal_mode_ == CHANGING_GOAL_ORIENTATION_SEQUENCE) {
     // Set the next orientation in the sequence.
     CycleThroughOrientationSequence();
   } else {
-    std::cerr << "Invalid changing goal type." << std::endl;
+    std::cout << "You have only specified a single goal." << std::endl;
   }
   goal_counter_++;
 }

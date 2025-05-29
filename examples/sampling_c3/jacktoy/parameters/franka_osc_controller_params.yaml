@@ -13,23 +13,8 @@ p_franka_to_ground: [0, 0, -0.029]
 p_franka_to_platform: [0, 0, -0.0145]
 
 
-#### C3 sanity checking good starting configurations ####
-# neutral_position: [0.45, 0.35, 0.05]    # 1) topple from behind and slide
-# neutral_position: [0.43, 0.19, 0.12]    # 2) topple from the top
-neutral_position: [0.4276197, 0.19295175, 0.12756625]    # 2) topple from the top
-# neutral_position: [0.4, 0.4, 0.05]      # 3) One topple and a significant yaw
-# neutral_position: [0.4, 0.4, 0.05]      # 4) 2 topples and distance error
-# neutral_position: [0.4, 0.4, 0.05]      # 5) Balancing on blue and green prongs at almost half a topple
-# neutral_position: [0.43, 0.28, 0.12]    # 6) 2 topples starting at position goal
-# neutral_position: [0.39, 0.33, 0.12]    # 7) 1 topple but in the opposite direction of the position goal and then should move to position goal.
-# neutral_position: [0.410, 0.33, 0.13]   # 8) 1 topple but in the opposite direction of the position goal and then should move to position goal.
-# neutral_position: [0.4, 0.4, 0.05]      # 9) Configuration used to sanity check target angular velocities
-# neutral_position: [0.33, 0.25, 0.043]   # 10) topple from the back to achive same goal pose as scenario 2.
-# neutral_position: [0.43, 0.30, 0.12]    # 11) topple from the top
-# neutral_position: [0.42, 0.33, 0.07]    # 12) yaw only
-# neutral_position: [0.4, 0.4, 0.05]      # 13) position target close to base
-# neutral_position: [0.36, 0.33, 0.05]    # 14) orientation starts right, position wrong
-#^^# C3 sanity checking good starting configurations #^^#
+# Neutral position for the end effector in teleop mode.
+neutral_position: [0.4276197, 0.19295175, 0.12756625]
 
 # For teleop, can either stay locked to a neutral position with joystick inputs
 # to move the end effector relative to the neutral position, or can move the

@@ -73,10 +73,6 @@ def main(log_type, example_name):
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 
     os.chdir(logdir)
-    # current_logs = sorted(glob.glob('*'))
-    # try:
-    #     last_log = int(current_logs[-1].split('-')[-1])
-
 
     try:
         directories = glob.glob(os.path.join(logdir, "*"))    

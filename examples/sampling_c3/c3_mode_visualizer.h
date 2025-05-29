@@ -2,6 +2,8 @@
 
 #include "Eigen/Core"
 #include "Eigen/Dense"
+#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -18,20 +20,19 @@ class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
   C3ModeVisualizer();
 
   // Input ports
-  const drake::systems::InputPort<double>& 
-    get_input_port_is_c3_mode() const {
-      return this->get_input_port(is_c3_mode_input_port_);
+  const drake::systems::InputPort<double>& get_input_port_is_c3_mode() const {
+    return this->get_input_port(is_c3_mode_input_port_);
   }
 
-  const drake::systems::InputPort<double>& 
-    get_input_port_curr_lcs_state() const {
-      return this->get_input_port(curr_lcs_state_);
+  const drake::systems::InputPort<double>& get_input_port_curr_lcs_state()
+      const {
+    return this->get_input_port(curr_lcs_state_);
   }
 
   // Output port
   const drake::systems::OutputPort<double>&
-    get_output_port_c3_mode_visualization_traj() const {
-      return this->get_output_port(c3_mode_visualization_traj_port_);
+  get_output_port_c3_mode_visualization_traj() const {
+    return this->get_output_port(c3_mode_visualization_traj_port_);
   }
 
  private:

@@ -19,12 +19,11 @@ struct FrankaC3ControllerParams {
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d p_franka_to_ground;
- 
+
   double workspace_margin;
 
   bool include_end_effector_orientation;
   double target_frequency;
-
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -41,7 +40,7 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(target_frequency));
-    
+
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(p_franka_to_ground));
   }

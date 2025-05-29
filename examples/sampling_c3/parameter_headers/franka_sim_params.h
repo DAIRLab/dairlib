@@ -2,7 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;
@@ -33,7 +32,6 @@ struct FrankaSimParams {
   Eigen::Vector3d p_franka_to_ground;
   Eigen::Vector3d p_franka_to_platform;
 
-
   // Visualizer settings
   std::string visualizer_sample_locations_model;
   std::string visualizer_c3_mode_model;
@@ -57,7 +55,6 @@ struct FrankaSimParams {
   bool visualize_pose_trace_best;
   bool visualize_center_of_mass_plan_best;
   bool visualize_c3_forces_best;
-
 
   template <typename Archive>
   void Serialize(Archive* a) {

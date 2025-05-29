@@ -1,18 +1,19 @@
 #pragma once
 #include <iostream>
 
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "solvers/c3_options.h"
+
+#include "drake/common/yaml/yaml_read_archive.h"
 
 struct SamplingC3Options {
   // Hyperparameters
-  int admm_iter;     // total number of ADMM iterations
-  float rho;         // initial value of the rho parameter
-  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // for inner C3 loop.
-                     // 0 is dynamic, greater than 0 for a fixed count
+  int admm_iter;          // total number of ADMM iterations
+  float rho;              // initial value of the rho parameter
+  float rho_scale;        // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads;        // for inner C3 loop.
+                          // 0 is dynamic, greater than 0 for a fixed count
   int num_outer_threads;  // for outer sampling loop.
-  int delta_option;  // different options for delta update
+  int delta_option;       // different options for delta update
   std::string projection_type;
   std::string contact_model;
   bool warm_start;
@@ -24,7 +25,6 @@ struct SamplingC3Options {
   bool use_predicted_x0_reset_mechanism;
   double solve_time_filter_alpha;
   double publish_frequency;
-
 
   std::vector<Eigen::VectorXd> workspace_limits;
   std::vector<double> robot_radius_limits;
@@ -49,8 +49,8 @@ struct SamplingC3Options {
   double q_quaternion_dependent_regularizer_fraction;
 
   std::vector<double> q_vector_pose_tracking;
-  std::vector<double> r_vector;           // This is common for both position and pose tracking
-
+  std::vector<double>
+      r_vector;  // This is common for both position and pose tracking
 
   std::vector<double> g_vector_pose_tracking;
   std::vector<double> g_vector_pose_tracking_for_curr_location;
@@ -61,7 +61,6 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> g_lambda_pose_tracking;
   std::vector<double> g_u_pose_tracking;
 
-
   std::vector<double> u_vector_pose_tracking;
   std::vector<double> u_vector_pose_tracking_for_curr_location;
   std::vector<double> u_x_pose_tracking;
@@ -70,7 +69,6 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> u_lambda_t_pose_tracking;
   std::vector<std::vector<double>> u_lambda_pose_tracking;
   std::vector<double> u_u_pose_tracking;
-
 
   std::vector<double> g_vector_position_tracking;
   std::vector<double> g_vector_position_tracking_for_curr_location;
@@ -87,7 +85,6 @@ struct SamplingC3Options {
   std::vector<std::vector<double>> g_lambda_position_tracking;
   std::vector<double> g_u_position_tracking;
 
-
   std::vector<double> u_vector_position_tracking;
   std::vector<double> u_vector_position_tracking_for_curr_location;
   std::vector<double> u_x_position_tracking;
@@ -101,8 +98,9 @@ struct SamplingC3Options {
   double qp_projection_scaling;
 
   std::vector<std::vector<double>> mu_list;
-  double planning_dt_pose_tracking;           // dt for planning when comparing samples.
-  double planning_dt_position_tracking;           // dt for planning when comparing samples. Used for position tracking.
+  double planning_dt_pose_tracking;  // dt for planning when comparing samples.
+  double planning_dt_position_tracking;  // dt for planning when comparing
+                                         // samples. Used for position tracking.
   int num_friction_directions;
   int num_contacts_index;
   int num_contacts_index_for_cost;
@@ -223,11 +221,15 @@ struct SamplingC3Options {
     std::vector<double> g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
     if (options->contact_model == "stewart_and_trinkle") {
-      g_vector.insert(g_vector.end(), options->g_gamma.begin(), options->g_gamma.end());
-      g_vector.insert(g_vector.end(), options->g_lambda_n.begin(), options->g_lambda_n.end());
-      g_vector.insert(g_vector.end(), options->g_lambda_t.begin(), options->g_lambda_t.end());
+      g_vector.insert(g_vector.end(), options->g_gamma.begin(),
+                      options->g_gamma.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_n.begin(),
+                      options->g_lambda_n.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_t.begin(),
+                      options->g_lambda_t.end());
     } else {
-      g_vector.insert(g_vector.end(), options->g_lambda.begin(), options->g_lambda.end());
+      g_vector.insert(g_vector.end(), options->g_lambda.begin(),
+                      options->g_lambda.end());
     }
 
     g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
@@ -235,21 +237,29 @@ struct SamplingC3Options {
     std::vector<double> u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), options->u_x.begin(), options->u_x.end());
     if (options->contact_model == "stewart_and_trinkle") {
-      u_vector.insert(u_vector.end(), options->u_gamma.begin(), options->u_gamma.end());
-      u_vector.insert(u_vector.end(), options->u_lambda_n.begin(), options->u_lambda_n.end());
-      u_vector.insert(u_vector.end(), options->u_lambda_t.begin(), options->u_lambda_t.end());
+      u_vector.insert(u_vector.end(), options->u_gamma.begin(),
+                      options->u_gamma.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_n.begin(),
+                      options->u_lambda_n.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_t.begin(),
+                      options->u_lambda_t.end());
     } else {
-      u_vector.insert(u_vector.end(), options->u_lambda.begin(), options->u_lambda.end());
+      u_vector.insert(u_vector.end(), options->u_lambda.begin(),
+                      options->u_lambda.end());
     }
     u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
 
     options->g_vector = g_vector;
     options->u_vector = u_vector;
-    Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(options->q_vector.data(), options->q_vector.size());
-    Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(options->r_vector.data(), options->r_vector.size());
-    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(options->g_vector.data(), options->g_vector.size());
-    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(options->u_vector.data(), options->u_vector.size());
-  
+    Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
+        options->q_vector.data(), options->q_vector.size());
+    Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
+        options->r_vector.data(), options->r_vector.size());
+    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
+        options->g_vector.data(), options->g_vector.size());
+    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
+        options->u_vector.data(), options->u_vector.size());
+
     options->Q = options->w_Q * q.asDiagonal();
     options->R = options->w_R * r.asDiagonal();
     options->G = options->w_G * g.asDiagonal();
@@ -266,7 +276,7 @@ struct SamplingC3Options {
     options->contact_model = contact_model;
     options->projection_type = projection_type;
     options->warm_start = warm_start;
-    options->use_predicted_x0 = false;   // Not used by sampling C3
+    options->use_predicted_x0 = false;  // Not used by sampling C3
     options->end_on_qp_step = end_on_qp_step;
     options->use_robust_formulation = false;
     options->solve_time_filter_alpha = solve_time_filter_alpha;
@@ -280,7 +290,7 @@ struct SamplingC3Options {
     options->N = N;
     options->gamma = gamma;
 
-    options->solve_dt = 0; // Not used by sampling C3
+    options->solve_dt = 0;  // Not used by sampling C3
     options->num_friction_directions = num_friction_directions;
 
     options->qp_projection_alpha = qp_projection_alpha;
@@ -291,7 +301,8 @@ struct SamplingC3Options {
   }
 
   // Function to set position tracking parameters
-  void SetPositionTrackingOptions(C3Options& options, int num_contacts_index) const {
+  void SetPositionTrackingOptions(C3Options& options,
+                                  int num_contacts_index) const {
     options.dt = planning_dt_position_tracking;
     options.w_Q = w_Q_position_tracking;
     options.w_R = w_R_position_tracking;
@@ -318,7 +329,8 @@ struct SamplingC3Options {
   }
 
   // Function to set pose tracking parameters
-  void SetPoseTrackingOptions(C3Options& options, int num_contacts_index) const {
+  void SetPoseTrackingOptions(C3Options& options,
+                              int num_contacts_index) const {
     options.dt = planning_dt_pose_tracking;
     options.w_Q = w_Q_pose_tracking;
     options.w_R = w_R_pose_tracking;

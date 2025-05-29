@@ -39,8 +39,7 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
 
   initial_position_index_ =
       this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
-  initial_time_index_ =
-      this->DeclareDiscreteState(VectorXd::Zero(1));
+  initial_time_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   DeclareForcedDiscreteUpdateEvent(
       &JointTrajectoryGenerator::DiscreteVariableUpdate);
   joint_trajectory_ports_.resize(plant.num_positions());
@@ -63,7 +62,8 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
 drake::systems::EventStatus JointTrajectoryGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
-  auto initial_positions = discrete_state->get_mutable_value(initial_position_index_);
+  auto initial_positions =
+      discrete_state->get_mutable_value(initial_position_index_);
   auto initial_time = discrete_state->get_mutable_value(initial_time_index_);
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);

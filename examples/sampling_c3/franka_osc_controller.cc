@@ -6,12 +6,12 @@
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
-#include "systems/controllers/osc/end_effector_force.h"
-#include "systems/controllers/osc/end_effector_orientation.h"
-#include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -53,20 +53,21 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_string(osqp_settings,
-              "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
-              "Filepath containing qp settings");
-DEFINE_string(controller_parameters,
-              "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
-              "Controller settings such as channels.");
-DEFINE_string(lcm_channels,
-              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
-DEFINE_string(lcm_url,
-              "udpm://239.255.76.67:7667?ttl=0",
+DEFINE_string(
+    osqp_settings,
+    "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
+    "Filepath containing qp settings");
+DEFINE_string(
+    controller_parameters,
+    "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
+    "Controller settings such as channels.");
+DEFINE_string(
+    lcm_channels,
+    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
+    "Filepath containing lcm channels");
+DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name,
-              "jacktoy",
+DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -77,12 +78,15 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(base_path + "parameters/franka_osc_controller_params.yaml");
+      drake::yaml::LoadYamlFile<FrankaControllerParams>(
+          base_path + "parameters/franka_osc_controller_params.yaml");
 
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(base_path + "parameters/franka_osc_controller_params.yaml"), {}, {}, yaml_options);
+      FindResourceOrThrow(base_path +
+                          "parameters/franka_osc_controller_params.yaml"),
+      {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -97,16 +101,16 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModelsFromUrl(controller_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex ground_index =
       parser.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
-  drake::multibody::ModelInstanceIndex platform_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.platform_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
+  drake::multibody::ModelInstanceIndex platform_index = parser.AddModels(
+      FindResourceOrThrow(controller_params.platform_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+      FindResourceOrThrow(controller_params.end_effector_model))[0];
 
   // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
-        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        controller_params.tool_attachment_frame);
+          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+      controller_params.tool_attachment_frame);
   RigidTransform<double> X_F_P =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.p_franka_to_platform);
@@ -114,12 +118,13 @@ int DoMain(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.p_franka_to_ground);
 
-  RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), controller_params.p_world_to_franka);
+  RigidTransform<double> X_F_W =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             controller_params.p_world_to_franka);
 
-  plant.WeldFrames(plant.world_frame(), 
-                   plant.GetFrameByName("panda_link0"), X_F_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"), 
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   X_F_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("end_effector_base"), T_EE_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
                    plant.GetFrameByName("ground"), X_F_G_franka);
@@ -130,7 +135,7 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
 
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
-  
+
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -158,10 +163,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>(
-        plant, plant_context.get(),
-        controller_params.neutral_position,
-        controller_params.teleop_neutral_position,
-        controller_params.end_effector_name);
+          plant, plant_context.get(), controller_params.neutral_position,
+          controller_params.teleop_neutral_position,
+          controller_params.end_effector_name);
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());
@@ -179,7 +183,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  if (controller_params.publish_debug_info){
+  if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -224,10 +228,10 @@ int DoMain(int argc, char* argv[]) {
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
-  // null space associated with trying to control 7 joints with 6 DOF. 
-  // The value is currently set to 1.1 to have it be more vertical for the 
-  // sampling_c3_examples example but not enough that it hits a singularity 
-  // or ends up with too small a workspace. 
+  // null space associated with trying to control 7 joints with 6 DOF.
+  // The value is currently set to 1.1 to have it be more vertical for the
+  // sampling_c3_examples example but not enough that it hits a singularity
+  // or ends up with too small a workspace.
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
@@ -244,8 +248,11 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
-    if (FLAGS_lcm_channels == base_path + "shared_parameters/lcm_channels_simulation.yaml"){
-      std::cerr << "In simulation, OSC needs to have cancel_gravity_compensation: false" << std::endl;
+    if (FLAGS_lcm_channels ==
+        base_path + "shared_parameters/lcm_channels_simulation.yaml") {
+      std::cerr << "In simulation, OSC needs to have "
+                   "cancel_gravity_compensation: false"
+                << std::endl;
       return -1;
     }
     auto gravity_compensator =
@@ -256,8 +263,11 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
-    if (FLAGS_lcm_channels == base_path + "shared_parameters/lcm_channels_hardware.yaml"){
-      std::cerr << "In hardware, OSC needs to have cancel_gravity_compensation: true"<< std::endl;
+    if (FLAGS_lcm_channels ==
+        base_path + "shared_parameters/lcm_channels_hardware.yaml") {
+      std::cerr
+          << "In hardware, OSC needs to have cancel_gravity_compensation: true"
+          << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),
@@ -305,12 +315,15 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name +
+                                              "/franka_osc_controller_diagram");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "../diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(
+      *loop.get_diagram(),
+      "../diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

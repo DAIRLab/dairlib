@@ -2,7 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 struct FrankaLcmChannels {
   std::string franka_state_channel;
   std::string object_state_channel;
@@ -53,7 +52,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(franka_input_echo));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
-    
+
     a->Visit(DRAKE_NVP(c3_actor_curr_plan_channel));
     a->Visit(DRAKE_NVP(c3_object_curr_plan_channel));
     a->Visit(DRAKE_NVP(c3_force_curr_channel));

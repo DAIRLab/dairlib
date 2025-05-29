@@ -1,6 +1,6 @@
 #include <math.h>
-#include <iostream>
 
+#include <iostream>
 #include <vector>
 
 #include <drake/common/find_resource.h>
@@ -48,14 +48,13 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-DEFINE_string(lcm_channels,
-              "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
-DEFINE_string(lcm_url,
-              "udpm://239.255.76.67:7667?ttl=0",
+DEFINE_string(
+    lcm_channels,
+    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
+    "Filepath containing lcm channels");
+DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name,
-              "jacktoy",
+DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -67,7 +66,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
-  // set simulation step 
+  // set simulation step
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
@@ -89,21 +88,19 @@ int DoMain(int argc, char* argv[]) {
   // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
-        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        sim_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.p_franka_to_ground);
+          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+      sim_params.tool_attachment_frame);
+  RigidTransform<double> X_F_P = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_platform);
+  RigidTransform<double> X_F_G_franka = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_ground);
 
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 
-  plant.WeldFrames(plant.world_frame(), 
-                   plant.GetFrameByName("panda_link0"), X_F_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"), 
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   X_F_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("end_effector_base"), T_EE_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
                    plant.GetFrameByName("ground"), X_F_G_franka);

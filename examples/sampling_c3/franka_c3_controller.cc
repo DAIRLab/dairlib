@@ -51,7 +51,6 @@ using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using std::vector;
 
-// TODO: what does gflags mean?
 DEFINE_string(lcm_channels,
               "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -59,7 +58,7 @@ DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name,
-            "box_topple",
+            "jacktoy",
             "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -109,7 +108,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
 			
-  // Affix models to their locations relative to world frame
+  // Affix models to their locations relative to world frame.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -136,12 +135,12 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  /// adding the jack model (TODO: Change to object instead of jack)
-  MultibodyPlant<double> plant_jack(0.0);
-  Parser parser_jack(&plant_jack, nullptr);
-  parser_jack.AddModels(controller_params.jack_model);
-  plant_jack.Finalize();
-  auto jack_context = plant_jack.CreateDefaultContext();
+  /// adding the jack model
+  MultibodyPlant<double> plant_object(0.0);
+  Parser parser_object(&plant_object, nullptr);
+  parser_object.AddModels(controller_params.jack_model);
+  plant_object.Finalize();
+  auto object_context = plant_object.CreateDefaultContext();
 
   /// Creating the plant for lcs which will contain only end effector and jack
   auto [plant_for_lcs, scene_graph] =
@@ -482,7 +481,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto object_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -491,7 +490,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   // reduced order lcs state vector.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_jack, jack_context.get(),
+          plant_franka, franka_context.get(), plant_object, object_context.get(),
           controller_params.end_effector_name, 
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
@@ -502,16 +501,16 @@ else if(FLAGS_demo_name == "ball_rolling"){
     std::unique_ptr<systems::TargetGenerator> target_generator;
 
     if (FLAGS_demo_name == "jacktoy") {
-    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_jack);
+    target_generator = std::make_unique<systems::TargetGeneratorJacktoy>(plant_object);
     } 
     else if (FLAGS_demo_name == "box_topple") {
-    target_generator = std::make_unique<systems::TargetGeneratorBoxTopple>(plant_jack);
+    target_generator = std::make_unique<systems::TargetGeneratorBoxTopple>(plant_object);
     } 
     else if (FLAGS_demo_name == "push_t") {
-    target_generator = std::make_unique<systems::TargetGeneratorPushT>(plant_jack);
+    target_generator = std::make_unique<systems::TargetGeneratorPushT>(plant_object);
     } 
     else if (FLAGS_demo_name == "ball_rolling") {
-    target_generator = std::make_unique<systems::TargetGeneratorBallRolling>(plant_jack);
+    target_generator = std::make_unique<systems::TargetGeneratorBallRolling>(plant_object);
     auto* ball_target_generator_ptr =
         static_cast<systems::TargetGeneratorBallRolling*>(target_generator.get());
     ball_target_generator_ptr->SetBallRollingParameters(
@@ -844,15 +843,15 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_c3_controller_diagram");
-  DrawAndSaveDiagramGraph(*plant_diagram,"/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_c3_plant");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name + "/franka_c3_controller_diagram");
+  DrawAndSaveDiagramGraph(*plant_diagram,"../diagrams/" + FLAGS_demo_name + "/franka_c3_plant");
 
   // Run lcm-driven simulation
   int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(),"/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_c3_controller_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(),"../diagrams/" + FLAGS_demo_name + "/loop_franka_c3_controller_diagram");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);

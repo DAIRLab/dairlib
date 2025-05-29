@@ -78,7 +78,7 @@ DEFINE_string(lcm_channels,
               "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(demo_name,
-              "box_topple",
+              "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 
@@ -186,9 +186,6 @@ int do_main(int argc, char* argv[]) {
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           base_path + "parameters/franka_c3_controller_params.yaml");
-
-  std::cout<<"sim params path is "<< base_path + "parameters/franka_sim_params.yaml" << std::endl;
-  std::cout<<"controller params path is "<< base_path + "parameters/franka_c3_controller_params.yaml" << std::endl;
      
   SamplingC3SamplingParams sampling_params;
   SamplingC3Options sampling_c3_options =
@@ -205,9 +202,7 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-	// This plant is for visualizing the full franka on the meshcat visualizer.
-	// This is not used for the simulation or for FK calculations for c3/repos 
-	// mode switching visualization.
+// Add models to plant.
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant, &scene_graph);
@@ -235,8 +230,6 @@ int do_main(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              sim_params.p_franka_to_ground);
 
-  // Create a rigid transform from the world frame to the panda_link0 frame.
-  // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 
@@ -252,10 +245,7 @@ int do_main(int argc, char* argv[]) {
   plant.Finalize();
 
 
-  // Loading the full franka model that will go into franka kinematics system
-  // This needs to load the full franka and full end effector model.
-	// Some of the frame definitions have been reused from the above plant so as 
-	// to avoid having to redefine them.
+// Add models to plant.
 	MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);	
 	parser_franka.AddModelsFromUrl(sim_params.franka_model)[0];
@@ -279,12 +269,12 @@ int do_main(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  /// adding the jack model (TODO: Change to object instead of jack)
-  MultibodyPlant<double> plant_jack(0.0);
-  Parser parser_jack(&plant_jack, nullptr);
-  parser_jack.AddModels(sim_params.jack_model);
-  plant_jack.Finalize();
-  auto jack_context = plant_jack.CreateDefaultContext();
+  /// adding the jack model
+  MultibodyPlant<double> plant_object(0.0);
+  Parser parser_object(&plant_object, nullptr);
+  parser_object.AddModels(sim_params.jack_model);
+  plant_object.Finalize();
+  auto object_context = plant_object.CreateDefaultContext();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
@@ -292,12 +282,12 @@ int do_main(int argc, char* argv[]) {
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, lcm));
-  auto tray_state_sub =
+  auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
-  auto tray_state_receiver =
+  auto object_state_receiver =
       builder.AddSystem<ObjectStateReceiver>(plant, jack_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -307,7 +297,7 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size(),
       franka_state_receiver->get_output_port(0).size() - 1, 1);
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      tray_state_receiver->get_output_port(0).size(), 0,
+      object_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(jack_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
@@ -319,13 +309,13 @@ int do_main(int argc, char* argv[]) {
   // reduced order lcs state vector.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_jack, jack_context.get(),
+          plant_franka, franka_context.get(), plant_object, object_context.get(),
           sim_params.end_effector_name, 
           sim_params.object_body_name,
 					false);
 	builder.Connect(franka_state_receiver->get_output_port(),
 		reduced_order_model_receiver->get_input_port_franka_state());
-	builder.Connect(tray_state_receiver->get_output_port(),
+	builder.Connect(object_state_receiver->get_output_port(),
 		reduced_order_model_receiver->get_input_port_object_state());
 
 	// This system subscribes to the lcmt_timestamped_saved_traj message containing
@@ -482,10 +472,6 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_pose_trace_curr){
     // Replace the color in the jack model with a new color for visualization.
     std::string visualizer_curr_sample_traj_jack_model = sim_params.jack_model;
-        // WriteTempModelWithColorChange(
-        //     FindResourceOrThrow(sim_params.jack_model),
-        //     "1 1 1 1", "curr_sample_traj_jack_model");
-    // g_temp_files_to_cleanup.push_back(visualizer_curr_sample_traj_jack_model);
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/curr_planned",
         visualizer_curr_sample_traj_jack_model,
@@ -677,39 +663,37 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
-  builder.Connect(*tray_state_receiver, *tray_passthrough);
+  builder.Connect(*object_state_receiver, *tray_passthrough);
   builder.Connect(*franka_state_sub, *franka_state_receiver);
-  builder.Connect(*tray_state_sub, *tray_state_receiver);
+  builder.Connect(*object_state_sub, *object_state_receiver);
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/visualizer_diagram");
+  DrawAndSaveDiagramGraph(*diagram, "../diagrams/" + FLAGS_demo_name + "/visualizer_diagram");
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
-  auto& tray_state_sub_context =
-      diagram->GetMutableSubsystemContext(*tray_state_sub, context.get());
-//   auto& box_state_sub_context =
-//       diagram->GetMutableSubsystemContext(*box_state_sub, context.get());
+  auto& object_state_sub_context =
+      diagram->GetMutableSubsystemContext(*object_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
-  tray_state_receiver->InitializeSubscriberPositions(plant,
-                                                     tray_state_sub_context);
+  object_state_receiver->InitializeSubscriberPositions(plant,
+                                                     object_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper =
+  auto simulator =
       std::make_unique<Simulator<double>>(*diagram, std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(
+  simulator->set_publish_every_time_step(false);
+  simulator->set_publish_at_initialization(false);
+  simulator->set_target_realtime_rate(
       1.0);  // may need to change this to param.real_time_rate?
-  stepper->Initialize();
+  simulator->Initialize();
 
   drake::log()->info("visualizer started");
 
-  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

@@ -57,9 +57,8 @@ DEFINE_string(osqp_settings,
               "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
-              "examples/sampling_c3/box_topple/parameters/franka_osc_controller_params.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
+              "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
+              "Controller settings such as channels.");
 DEFINE_string(lcm_channels,
               "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -67,7 +66,7 @@ DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name,
-              "box_topple",
+              "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -115,8 +114,6 @@ int DoMain(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.p_franka_to_ground);
 
-  // Create a rigid transform from the world frame to the panda_link0 frame.
-  // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), controller_params.p_world_to_franka);
 
@@ -180,7 +177,6 @@ int DoMain(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
-  // TODO:  Why are there 5 arguments here? Clean this up at some point.
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
   if (controller_params.publish_debug_info){
@@ -229,9 +225,9 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
   // null space associated with trying to control 7 joints with 6 DOF. 
-  // The value is currently set to 1.1 to have it be more vertical for the jack
-  // example but not enough that it hits a singularity or ends up with too small 
-  // a workspace. 
+  // The value is currently set to 1.1 to have it be more vertical for the 
+  // sampling_c3_examples example but not enough that it hits a singularity 
+  // or ends up with too small a workspace. 
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
@@ -309,12 +305,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), "../diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

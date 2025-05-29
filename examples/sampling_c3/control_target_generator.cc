@@ -52,8 +52,7 @@ TargetGenerator::TargetGenerator(
 }
 
 void TargetGenerator::SetRemoteControlParameters(
-    const int& goal_mode,
-    const Eigen::VectorXd& target_object_position,
+    const int& goal_mode, const Eigen::VectorXd& target_object_position,
     const Eigen::VectorXd& target_object_orientation,
     const double& lookahead_step_size, const double& lookahead_angle,
     const double& angle_hysteresis, const double& angle_err_to_vel_factor,
@@ -118,7 +117,7 @@ void TargetGenerator::CalcObjectTarget(
   double object_position_error =
       (obj_curr_position - target_final_object_position_).norm();
   Eigen::AngleAxis<double> angle_axis_diff(target_obj_orientation *
-                                            curr_quat.inverse());
+                                           curr_quat.inverse());
   double object_angular_error = angle_axis_diff.angle();
 
   if ((object_position_error < position_success_threshold_) &&
@@ -230,10 +229,10 @@ void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
   // Add random yaw in world frame.  Ensure at least 90 degrees away if no
   // topple is required.
   double min_yaw = 0;
-  double max_yaw = 2 * PI;
+  double max_yaw = 2 * kPi;
   if (random_index == orientation_index_) {
-    min_yaw = PI / 2;
-    max_yaw = 3 * PI / 2;
+    min_yaw = kPi / 2;
+    max_yaw = 3 * kPi / 2;
     quat_nominal = Eigen::Quaterniond(target_final_object_orientation_[0],
                                       target_final_object_orientation_[1],
                                       target_final_object_orientation_[2],
@@ -264,9 +263,7 @@ void TargetGenerator::CycleThroughOrientationSequence() const {
 void TargetGenerator::OutputTargetGeneratorInfo(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* target) const {
-  // NOTE: This is a placeholder for the boolean value so we can output
-  // it as an existing lcm message type. It is unconventional to be
-  // using this message type for this purpose.
+  // Output the orientation index as an lcm message for debugging purposes.
   Eigen::MatrixXd orientation_index_data =
       orientation_index_ * Eigen::MatrixXd::Ones(1, 1);
   Eigen::VectorXd timestamp = context.get_time() * Eigen::VectorXd::Ones(1);
@@ -345,8 +342,9 @@ TargetGenerator::GenerateLineTrajectoryWithLookahead(
   Eigen::Vector3d axis = angle_axis_diff.axis();
 
   // Enforce consistency near 180 degrees.
-  if ((axis.dot(last_rotation_axis_) < 0) && (PI - angle < angle_hysteresis_)) {
-    angle = 2 * PI - angle;
+  if ((axis.dot(last_rotation_axis_) < 0) &&
+      (kPi - angle < angle_hysteresis_)) {
+    angle = 2 * kPi - angle;
     axis = -axis;
   }
   last_rotation_axis_ = axis;
@@ -388,7 +386,7 @@ void TargetGeneratorBallRolling::CalcObjectTarget(
   // note that the x and y arguments are intentionally flipped
   // since we want to get the angle from the y-axis, not the x-axis
   double angle = atan2(x, y);
-  double theta = angle + lead_angle_ * PI / 180;
+  double theta = angle + lead_angle_ * kPi / 180;
 
   target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
   target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);

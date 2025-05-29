@@ -55,7 +55,7 @@ DEFINE_string(lcm_url,
               "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name,
-              "box_topple",
+              "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
@@ -85,7 +85,6 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
-//   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
@@ -99,8 +98,6 @@ int DoMain(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              sim_params.p_franka_to_ground);
 
-  // Create a rigid transform from the world frame to the panda_link0 frame.
-  // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 

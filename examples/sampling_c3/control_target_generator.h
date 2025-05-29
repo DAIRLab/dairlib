@@ -1,8 +1,8 @@
-#pragma once
 
 #include <vector>
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <numbers>
 
 #include "Eigen/Core"
 #include "Eigen/Dense"
@@ -12,8 +12,7 @@
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#define PI 3.14159265359
+inline constexpr double kPi = std::numbers::pi;
 
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewiseQuaternionSlerp;
@@ -59,8 +58,7 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   }
 
   void SetRemoteControlParameters(
-      const int& goal_mode,
-      const Eigen::VectorXd& target_object_position,
+      const int& goal_mode, const Eigen::VectorXd& target_object_position,
       const Eigen::VectorXd& target_object_orientation,
       const double& lookahead_step_size, const double& lookahead_angle,
       const double& angle_hysteresis, const double& angle_err_to_vel_factor,

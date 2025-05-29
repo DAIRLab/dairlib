@@ -52,8 +52,7 @@ DEFINE_string(osqp_settings,
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
               "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
+              "Controller settings such as channels.");
 DEFINE_string(lcm_channels,
               "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -112,8 +111,6 @@ int DoMain(int argc, char* argv[]) {
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.p_franka_to_ground);
 
-  // Create a rigid transform from the world frame to the panda_link0 frame.
-  // Franka base is 2.45cm above the ground.
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), 
       controller_params.p_world_to_franka);
@@ -146,7 +143,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
-  // TODO:  Why are there 5 arguments here? Clean this up at some point.
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
   if (controller_params.publish_debug_info) {
@@ -157,6 +153,8 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_output_port_osc_debug(),
                     osc_debug_pub->get_input_port());
   }
+//   This is a hard-coded initial position for the robot as used in the 
+// sampling_c3 experiments.
   VectorXd target_position = VectorXd::Zero(7);
   target_position << 2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08;
   auto joint_traj_generator =
@@ -231,12 +229,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("new_franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_joint_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name + "/franka_joint_osc_controller_diagram");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_joint_osc_controller_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), "../diagrams/" + FLAGS_demo_name + "/loop_franka_joint_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

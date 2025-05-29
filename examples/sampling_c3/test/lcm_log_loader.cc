@@ -548,15 +548,7 @@ int DoMain(int argc,  char* argv[]) {
 
 
   std::vector<std::vector<SortedPair<GeometryId>>>
-  contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
-                  // but e.g. num_contacts_index = 0 means this will have
-                  // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                  //  [(ground,cap1sph1), (ground,cap1sph2),
-                  //   (ground,cap2sph1), (ground,cap2sph2),
-                  //   (ground,cap3sph1), (ground,cap3sph2)]]
-                  // and the first list (of 3) will get resolved to a single
-                  // ee-jack contact, and the second list (of 6) will get
-                  // resolved to 3 ground-jack contacts.
+  contact_pairs; 
 
   //   Creating a map of contact geoms
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
@@ -667,7 +659,6 @@ int DoMain(int argc,  char* argv[]) {
               plant_for_lcs.GetBodyByName("ground"))[0];
 
       //   Creating a map of contact geoms
-      // std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
       contact_geoms["EE"] = ee_contact_points;
       contact_geoms["box"] = box_geoms;
       contact_geoms["corner_xynz"] = corner_xynz_geoms;
@@ -705,16 +696,6 @@ int DoMain(int argc,  char* argv[]) {
           SortedPair<GeometryId> ground_contact_8{
           SortedPair(contact_geoms["corner_nxnyz"], contact_geoms["GROUND"])};
 
-      // std::vector<std::vector<SortedPair<GeometryId>>>
-      //     contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
-                          // but e.g. num_contacts_index = 0 means this will have
-                          // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                          //  [(ground,cap1sph1), (ground,cap1sph2),
-                          //   (ground,cap2sph1), (ground,cap2sph2),
-                          //   (ground,cap3sph1), (ground,cap3sph2)]]
-                          // and the first list (of 3) will get resolved to a single
-                          // ee-jack contact, and the second list (of 6) will get
-                          // resolved to 3 ground-jack contacts.
       contact_pairs.push_back(ee_contact_pairs);
 
       if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
@@ -773,7 +754,6 @@ int DoMain(int argc,  char* argv[]) {
               plant_for_lcs.GetBodyByName("ground"))[0];
 
       //   Creating a map of contact geoms
-      // std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
       contact_geoms["EE"] = ee_contact_points;
       contact_geoms["CAPSULE_1"] = capsule1_geoms;
       contact_geoms["CAPSULE_2"] = capsule2_geoms;
@@ -811,16 +791,6 @@ int DoMain(int argc,  char* argv[]) {
       SortedPair<GeometryId> ground_contact_3_2{
           SortedPair(contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"])};
 
-      // std::vector<std::vector<SortedPair<GeometryId>>>
-      //     contact_pairs;  // Exact list depends on c3_options.num_contacts_index,
-                          // but e.g. num_contacts_index = 0 means this will have
-                          // [[(ee,cap1), (ee,cap2), (ee_cap3)],
-                          //  [(ground,cap1sph1), (ground,cap1sph2),
-                          //   (ground,cap2sph1), (ground,cap2sph2),
-                          //   (ground,cap3sph1), (ground,cap3sph2)]]
-                          // and the first list (of 3) will get resolved to a single
-                          // ee-jack contact, and the second list (of 6) will get
-                          // resolved to 3 ground-jack contacts.
       contact_pairs.push_back(ee_contact_pairs);
 
       if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){

@@ -11,16 +11,17 @@
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
-#include "drake/common/find_resource.h"
 
 #include "examples/sampling_c3/parameter_headers/franka_drake_lcm_driver_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
-#include "systems/franka_state_translator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/franka_state_translator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+
+#include "drake/common/find_resource.h"
 
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
@@ -35,18 +36,18 @@ using dairlib::systems::RobotOutputSender;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
 
-DEFINE_string(lcm_channels,
-              "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
-              "Filepath containing lcm channels");
+DEFINE_string(
+    lcm_channels,
+    "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
+    "Filepath containing lcm channels");
 DEFINE_string(franka_driver_channels,
-              "examples/sampling_c3/shared_parameters/franka_drake_lcm_driver_channels.yaml",
+              "examples/sampling_c3/shared_parameters/"
+              "franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
-DEFINE_string(lcm_url,
-              "udpm://239.255.76.67:7667?ttl=0",
+DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name,
-"box_topple",
-"Name for the demo, used when building filepaths for output.");
+DEFINE_string(demo_name, "jacktoy",
+              "Name for the demo, used when building filepaths for output.");
 
 namespace dairlib {
 
@@ -57,9 +58,10 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   FrankaDrakeLcmDriverChannels franka_driver_channel_params =
-      drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(FLAGS_franka_driver_channels);
+      drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(
+          FLAGS_franka_driver_channels);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/sampling_c3/box_topple/parameters/franka_sim_params.yaml");
+      base_path + "parameters/franka_sim_params.yaml");
 
   DiagramBuilder<double> builder;
 
@@ -88,7 +90,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
           franka_driver_channel_params.franka_command_channel, &lcm,
           1.0 / 1000.0));
-  auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
+  auto franka_command_translator =
+      builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
   builder.Connect(*franka_command_translator, *franka_command_pub);
 

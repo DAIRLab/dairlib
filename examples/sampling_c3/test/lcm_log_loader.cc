@@ -630,14 +630,14 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
-    //   Creating a list of contact pairs for the end effector and the jack to
+    //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["horizontal_link"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["vertical_link"]));
 
-    //   Creating a list of contact pairs for the jack and the ground
+    //   Creating a list of contact pairs for the object and the ground
     SortedPair<GeometryId> ground_contact_1{
         SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
     SortedPair<GeometryId> ground_contact_2{
@@ -712,12 +712,12 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
-    //   Creating a list of contact pairs for the end effector and the jack to
+    //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["box"]));
 
-    //   Creating a list of contact pairs for the jack and the ground
+    //   Creating a list of contact pairs for the object and the ground
     SortedPair<GeometryId> ground_contact_1{
         SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
     SortedPair<GeometryId> ground_contact_2{
@@ -807,7 +807,7 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
-    //   Creating a list of contact pairs for the end effector and the jack to
+    //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
@@ -816,7 +816,7 @@ int DoMain(int argc, char* argv[]) {
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
 
-    //   Creating a list of contact pairs for the jack and the ground
+    //   Creating a list of contact pairs for the object and the ground
     SortedPair<GeometryId> ground_contact_1_1{SortedPair(
         contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"])};
     SortedPair<GeometryId> ground_contact_1_2{SortedPair(
@@ -866,11 +866,11 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
-    //   Creating a list of contact pairs for the end effector and the jack to
+    //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["SPHERE"]));
-    //   Creating a list of contact pairs for the jack and the ground
+    //   Creating a list of contact pairs for the object and the ground
     std::vector<SortedPair<GeometryId>> ground_contact{
         SortedPair(contact_geoms["SPHERE"], contact_geoms["GROUND"])};
 
@@ -919,7 +919,6 @@ int DoMain(int argc, char* argv[]) {
                                                      x_lcs_final_desired);
 
   std::vector<Eigen::VectorXd> x_lcs_actuals;
-  // x_lcs_actuals.push_back(x_lcs_actual);
 
   // Testing sample location 0 and sample location 1 from the log from all
   // sample locations. This was done to verify the anolmaly seen as a result of
@@ -1029,7 +1028,7 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 
-/* Define function that will generate samples around jack location.
+/* Define function that will generate samples around T location.
 
   Args:
     x_lcs_actual
@@ -1093,12 +1092,6 @@ std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
   double x_top_lim_2 = -0.08 - 0.04 - ee_radius - clearance;
   double y_lim_1 = 0.04 + ee_radius + clearance;
   double y_lim_2 = 0.08 + ee_radius + clearance;
-
-  // Remove invalid samples.
-  // std::vector<Eigen::VectorXd> filtered_samples_in_body_frame =
-  // remove_invalid_samples(
-  //   unfiltered_samples_in_body_frame, x_bottom_lim_1, x_top_lim_1,
-  //   x_top_lim_2, y_lim_1, y_lim_2);
 
   // Currently setting filtering off.
   std::vector<Eigen::VectorXd> filtered_samples_in_body_frame =

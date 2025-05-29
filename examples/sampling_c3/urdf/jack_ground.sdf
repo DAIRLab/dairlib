@@ -5,8 +5,7 @@
         <inertial>
             <pose>0 0 0 0 0 0</pose>
             <mass>0.33</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and
-                geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.0004488</ixx>
             <ixy>0</ixy>
@@ -25,10 +24,6 @@
             </capsule>
             </geometry>
             <drake:proximity_properties>
-            <!-- <drake:compliant_hydroelastic/>
-            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
             <drake:mu_dynamic>0.3</drake:mu_dynamic>
             </drake:proximity_properties>
         </collision>
@@ -40,14 +35,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_1_sphere_1">
-            <pose>0 0 0.0625 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <collision name= "capsule_1_sphere_2">
             <pose>0 0 -0.0625 0 0 0</pose>
             <geometry>
@@ -56,14 +43,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_1_sphere_2">
-            <pose>0 0 -0.0625 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <visual name="capsule_1">
             <pose>0 0 0.0 0 0 0</pose>
             <geometry>
@@ -81,8 +60,7 @@
         <inertial>
             <pose>0 0 0 0 1.5708 0</pose>
             <mass>0.33</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and
-                geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.0004488</ixx>
             <ixy>0</ixy>
@@ -101,10 +79,6 @@
             </capsule>
             </geometry>
             <drake:proximity_properties>
-            <!-- <drake:compliant_hydroelastic/>
-            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
             <drake:mu_dynamic>0.3</drake:mu_dynamic>
             </drake:proximity_properties>
         </collision>
@@ -116,14 +90,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_2_sphere_1">
-            <pose>0.0625 0 0 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <collision name= "capsule_2_sphere_2">
             <pose>-0.0625 0 0 0 0 0</pose>
             <geometry>
@@ -132,14 +98,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_2_sphere_2">
-            <pose>-0.0625 0 0 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <visual name="capsule_2">
             <pose>0 0 0 0 1.5708 0</pose>
             <geometry>
@@ -157,8 +115,7 @@
         <inertial>
             <pose>0 0 0 1.5708 0 0</pose>
             <mass>0.33</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and
-                geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.0004488</ixx>
             <ixy>0</ixy>
@@ -177,10 +134,6 @@
             </capsule>
             </geometry>
             <drake:proximity_properties>
-            <!-- <drake:compliant_hydroelastic/>
-            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
             <drake:mu_dynamic>0.3</drake:mu_dynamic>
             </drake:proximity_properties>
         </collision>
@@ -192,14 +145,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_3_sphere_1">
-            <pose>0 0.0625 0 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <collision name= "capsule_3_sphere_2">
             <pose>0 -0.0625 0 0 0 0</pose>
             <geometry>
@@ -208,14 +153,6 @@
             </sphere>
             </geometry>
         </collision>
-        <!-- <visual name= "capsule_3_sphere_2">
-            <pose>0 -0.0625 0 0 0 0</pose>
-            <geometry>
-            <sphere>
-                <radius>0.025</radius>
-            </sphere>
-            </geometry>
-        </visual> -->
         <visual name="capsule_3">
             <pose>0 0 0 1.5708 0 0</pose>
             <geometry>
@@ -229,8 +166,6 @@
             </material>
         </visual>
     </link>
-
-    <!-- New co -->
 
     <!-- Joints to connect the capsules-->
     <joint name="attach_joint" type="fixed">

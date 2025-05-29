@@ -1,16 +1,6 @@
 <?xml version="1.0" ?>
 
 <robot name="end_effector_simple">
-  <!--
-    Frames are defined such that they all align with the base frame when all
-    joints are at position zero.
-
-    In zero-configuration the origins of all joints are in one line.
-
-    In zero-configuration the origin of the base link is exactly above the
-    finger tip which should make it easy to place the finger in the world.
-    -->
-  <!-- Define the global base_link and place all other objects relative to it. -->
   <link name="end_effector_simple">
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>

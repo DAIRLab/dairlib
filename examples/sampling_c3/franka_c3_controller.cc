@@ -646,10 +646,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto object_tracking_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
     sampling_params.N_sample_buffer, 10);
@@ -817,9 +813,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
   builder.Connect(
       controller->get_output_port_traj_execute_actor(),
       actor_tracking_trajectory_sender->get_input_port());
-  builder.Connect(
-      controller->get_output_port_traj_execute_object(),
-      object_tracking_trajectory_sender->get_input_port());
 
   // Add connections to sample location sender system, cost sender system
   // and c3_mode_sender system.

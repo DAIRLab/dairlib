@@ -25,14 +25,13 @@ class SampleBufferSender : public drake::systems::LeafSystem<double> {
   }
 
   const drake::systems::OutputPort<double>& get_output_port_sample_buffer()
-    const {
-        return this->get_output_port(lcm_sample_buffer_output_port_);
+      const {
+    return this->get_output_port(lcm_sample_buffer_output_port_);
   }
 
  private:
-  void OutputSampleBufferLcm(
-    const drake::systems::Context<double>& context,
-    dairlib::lcmt_sample_buffer* output) const;
+  void OutputSampleBufferLcm(const drake::systems::Context<double>& context,
+                             dairlib::lcmt_sample_buffer* output) const;
 
   int buffer_size_;
   int n_config_;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+
 #include "common/eigen_utils.h"
 
 namespace dairlib {
@@ -11,48 +12,44 @@ using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-SampleBufferSender::SampleBufferSender(int buffer_size, int n_config) :
-  buffer_size_(buffer_size), n_config_(n_config) {
+SampleBufferSender::SampleBufferSender(int buffer_size, int n_config)
+    : buffer_size_(buffer_size), n_config_(n_config) {
   this->set_name("sample_buffer_sender");
 
   MatrixXd sample_buffer = MatrixXd::Zero(buffer_size_, n_config_);
   VectorXd cost_buffer = VectorXd::Zero(buffer_size_);
-  samples_port_ = this->DeclareAbstractInputPort(
-      "sample_buffer_configurations",
-      drake::Value<MatrixXd>{sample_buffer}
-    ).get_index();
-  sample_costs_port_ = this->DeclareAbstractInputPort(
-      "sample_buffer_costs",
-      drake::Value<VectorXd>{cost_buffer}
-    ).get_index();
+  samples_port_ =
+      this->DeclareAbstractInputPort("sample_buffer_configurations",
+                                     drake::Value<MatrixXd>{sample_buffer})
+          .get_index();
+  sample_costs_port_ =
+      this->DeclareAbstractInputPort("sample_buffer_costs",
+                                     drake::Value<VectorXd>{cost_buffer})
+          .get_index();
 
-  lcm_sample_buffer_output_port_ = this->DeclareAbstractOutputPort(
-      "lcmt_sample_buffer",
-      dairlib::lcmt_sample_buffer(),
-      &SampleBufferSender::OutputSampleBufferLcm)
-    .get_index();
+  lcm_sample_buffer_output_port_ =
+      this->DeclareAbstractOutputPort(
+              "lcmt_sample_buffer", dairlib::lcmt_sample_buffer(),
+              &SampleBufferSender::OutputSampleBufferLcm)
+          .get_index();
 }
 
 void SampleBufferSender::OutputSampleBufferLcm(
-  const drake::systems::Context<double>& context,
-  dairlib::lcmt_sample_buffer* output) const {
-
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_sample_buffer* output) const {
   // Evaluate input ports to get the sample configurations and costs.
   const auto& buffer_configurations =
-    this->EvalInputValue<MatrixXd>(context, samples_port_);
+      this->EvalInputValue<MatrixXd>(context, samples_port_);
   const auto& buffer_costs =
-    this->EvalInputValue<VectorXd>(context, sample_costs_port_);
+      this->EvalInputValue<VectorXd>(context, sample_costs_port_);
 
   DRAKE_ASSERT(buffer_configurations->rows() == buffer_size_);
   DRAKE_ASSERT(buffer_configurations->cols() == n_config_);
   DRAKE_ASSERT(buffer_costs->size() == buffer_size_);
 
   // Count the number of active samples in the buffer.
-  int n_in_buffer = std::count_if(
-    buffer_costs->begin(),
-    buffer_costs->end(),
-    [](double cost) {return cost >= 0;}
-  );
+  int n_in_buffer = std::count_if(buffer_costs->begin(), buffer_costs->end(),
+                                  [](double cost) { return cost >= 0; });
 
   // Convert the Eigen matrices to std::vectors.
   std::vector<float> cost_data(buffer_costs->data(),

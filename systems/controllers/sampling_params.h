@@ -4,18 +4,21 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+enum SamplingStrategy {
+  RADIALLY_SYMMETRIC_SAMPLING,
+  RANDOM_ON_CIRCLE_SAMPLING,
+  RANDOM_ON_SPHERE_SAMPLING,
+  FIXED_SAMPLE,
+  SAMPLE_ON_GRID,
+  SAMPLE_IN_SHELL
+};
 
-enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
-                        RANDOM_ON_CIRCLE_SAMPLING,
-                        RANDOM_ON_SPHERE_SAMPLING, 
-                        FIXED_SAMPLE,
-                        SAMPLE_ON_GRID,
-                        SAMPLE_IN_SHELL};
-
-enum ProgressMetric { C3_COST,
-                      CURRENT_POSITION_AND_ORIENTATION_COST,
-                      POSITION_OR_ORIENTATION_ERROR,
-                      MIN_PROGRESS_TO_CONTINUE};
+enum ProgressMetric {
+  C3_COST,
+  CURRENT_POSITION_AND_ORIENTATION_COST,
+  POSITION_OR_ORIENTATION_ERROR,
+  MIN_PROGRESS_TO_CONTINUE
+};
 
 struct SamplingC3SamplingParams {
   int control_loop_delay_ms;

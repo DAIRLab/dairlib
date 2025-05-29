@@ -76,9 +76,9 @@ class LCSFactory {
 
     /// Preprocess the contact pairs to select the closest contacts
     /// @param plant The MultibodyPlant
-    /// @param context The context about which to linearize
+    /// @param context The plant context
     /// @param contact_geoms The contact geometries
-    /// @param resolve_contacts_to_list The number of contacts to resolve
+    /// @param resolve_contacts_to_list The number of contacts to resolve to
     /// @param num_friction_directions The number of friction directions
     /// @param num_contacts The number of contacts
     /// @param verbose Whether to print verbose information
@@ -92,7 +92,7 @@ class LCSFactory {
             int num_friction_directions, int num_contacts, bool verbose = false);
     /// Print verbose contact information
     /// @param plant The MultibodyPlant
-    /// @param context The context about which to linearize
+    /// @param context The plant context
     /// @param pair The contact pair
     /// @param phi_i The sign distance
     static void PrintVerboseContactInfo(

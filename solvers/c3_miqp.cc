@@ -11,7 +11,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
-  //  env_.set("LogToConsole", "0");
+  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
   env_.set("Threads", "5");
   env_.start();
@@ -38,12 +38,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   Mcons2 << MM1, MM2, MM3;
 
   GRBModel model = GRBModel(env_);
-  //  model.set(GRB_IntParam_LogToConsole, 1);
-  //  model.set(GRB_StringParam_LogFile, "grb_debug");
-  //  model.set("Cutoff", "0.001");
-  //  model.set("FeasibilityTol", "0.00001");
-  //  model.set("FeasibilityTol", "0.01");
-  //  model.set("IterationLimit", "40");
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];

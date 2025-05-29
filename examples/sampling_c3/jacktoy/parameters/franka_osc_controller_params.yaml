@@ -35,7 +35,7 @@ w_soft_constraint: 0.0
 w_lambda: 0.0
 impact_threshold: 0.000
 impact_tau: 0.000
-mu: 0.4615 # unused
+mu: 0.4615
 end_effector_acceleration: 10
 track_end_effector_orientation: false
 cancel_gravity_compensation: false

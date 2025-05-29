@@ -52,3 +52,4 @@ r_vector: [1, 1, 1, 0.1, 0.1, 0.1]
 # constraints also approaches 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1000
+penalize_deviation_from_previous_input_solution: true

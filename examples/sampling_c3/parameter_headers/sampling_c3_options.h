@@ -96,6 +96,7 @@ struct SamplingC3Options {
 
   double qp_projection_alpha;
   double qp_projection_scaling;
+  bool penalize_deviation_from_previous_input_solution;
 
   std::vector<std::vector<double>> mu_list;
   double planning_dt_pose_tracking;
@@ -201,6 +202,7 @@ struct SamplingC3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
+    a->Visit(DRAKE_NVP(penalize_deviation_from_previous_input_solution));
   }
 
   C3Options GetC3Options(bool is_pose_tracking, int num_contacts_index) const {
@@ -294,6 +296,8 @@ struct SamplingC3Options {
 
     options->qp_projection_alpha = qp_projection_alpha;
     options->qp_projection_scaling = qp_projection_scaling;
+    options->penalize_deviation_from_previous_input_solution =
+        penalize_deviation_from_previous_input_solution;
 
     options->mu = mu_list[num_contacts_index];
     options->num_contacts = num_contacts_list[num_contacts_index];

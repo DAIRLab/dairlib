@@ -267,11 +267,17 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
-    // input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-    //                                     -2 * R_.at(i) * u_sol_->at(i));
-    // We want this to be centered around 0 since we are using sampling.
-    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-                                        Eigen::VectorXd::Zero(k_));
+    if(options_.penalize_deviation_from_previous_input_solution){
+      // Penalize deviation from previous input solution.
+      input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+                                          -2 * R_.at(i) * u_sol_->at(i));
+    }
+    else{
+      // Do not penalize deviation from previous input solution.
+      // used by sampling C3.
+      input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+                                          Eigen::VectorXd::Zero(k_));   
+    }
   }
   if(verbose){
     std::cout << "x0: " << x0.transpose() << std::endl;

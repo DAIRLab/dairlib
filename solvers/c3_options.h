@@ -53,6 +53,7 @@ struct C3Options {
 
   double qp_projection_alpha;
   double qp_projection_scaling;
+  bool penalize_deviation_from_previous_input_solution;
   std::vector<double> mu;
   double dt;
   double solve_dt;
@@ -116,6 +117,7 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
+    a->Visit(DRAKE_NVP(penalize_deviation_from_previous_input_solution));
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());

@@ -121,6 +121,7 @@ Kd_for_cost_type_3: 0.5
 # constraints also approaches 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1
+penalize_deviation_from_previous_input_solution: false
 
 # matrix scaling
 w_Q_pose_tracking: 45

@@ -98,9 +98,8 @@ struct SamplingC3Options {
   double qp_projection_scaling;
 
   std::vector<std::vector<double>> mu_list;
-  double planning_dt_pose_tracking;  // dt for planning when comparing samples.
-  double planning_dt_position_tracking;  // dt for planning when comparing
-                                         // samples. Used for position tracking.
+  double planning_dt_pose_tracking;
+  double planning_dt_position_tracking;
   int num_friction_directions;
   int num_contacts_index;
   int num_contacts_index_for_cost;

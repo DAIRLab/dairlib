@@ -69,5 +69,3 @@ script "end_experiment"{
     wait ms 10;
     stop cmd "start_logging";
 }
-
-

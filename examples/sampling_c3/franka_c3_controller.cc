@@ -649,7 +649,6 @@ else if(FLAGS_demo_name == "ball_rolling"){
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
     sampling_params.N_sample_buffer, plant_for_lcs.num_positions());
 
-  // These systems publish the sample locations and sample costs over LCM.
   auto sample_locations_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, &lcm,
@@ -698,8 +697,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
       "end_effector_vz", "object_wx",      "object_wy",       "object_wz",
       "object_vz",       "object_vz",      "object_vz",
   };
-  // This system consumes the desired lcs state and the current lcs state and
-  // outputs both.
+  // This system consumes the final target, intermediate targe (used by the C3 solve) and current lcs state and outputs them all.
   auto c3_state_sender =
       builder.AddSystem<systems::C3StateSender>(plant_for_lcs.num_positions() + plant_for_lcs.num_velocities(), state_names);
   auto c3_target_state_publisher =
@@ -839,14 +837,12 @@ else if(FLAGS_demo_name == "ball_rolling"){
   DrawAndSaveDiagramGraph(*plant_diagram,"../diagrams/" + FLAGS_demo_name + "/franka_c3_plant");
 
   // Run lcm-driven simulation
+//   This buffer is used to store franka_state messages such that at the end of a control loop, we have a more up-to-date state message. See https://github.com/DAIRLab/dairlib/pull/366 for more details.
   int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   DrawAndSaveDiagramGraph(*loop.get_diagram(),"../diagrams/" + FLAGS_demo_name + "/loop_franka_c3_controller_diagram");
-  //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
-  //      *controller, &loop.get_diagram_mutable_context());
-  //  controller->get_input_port_target().FixValue(&controller_context, x_des);
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();

@@ -138,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
   /// adding the jack model
   MultibodyPlant<double> plant_object(0.0);
   Parser parser_object(&plant_object, nullptr);
-  parser_object.AddModels(controller_params.jack_model);
+  parser_object.AddModels(controller_params.object_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
@@ -150,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
   parser_for_lcs.SetAutoRenaming(true);
   /// Loading simple model of end effector (just a sphere) for the lcs plant
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.jack_model);
+  parser_for_lcs.AddModels(controller_params.object_model);
   parser_for_lcs.AddModels(controller_params.ground_model);
 	
 	RigidTransform<double> X_WI = RigidTransform<double>::Identity();

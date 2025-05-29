@@ -522,7 +522,7 @@ int DoMain(int argc,  char* argv[]) {
 
   // Load simple model of end effector (just a sphere) for the lcs plant.
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.jack_model);
+  parser_for_lcs.AddModels(controller_params.object_model);
   parser_for_lcs.AddModels(controller_params.ground_model);	
 	RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Eigen::Vector3d p_world_to_ground = sim_params.p_world_to_franka +
@@ -970,7 +970,7 @@ int DoMain(int argc,  char* argv[]) {
     std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '" <<
       controller_params.end_effector_simple_model << "')" << std::endl;
     std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" <<
-      sim_params.jack_model << "')" << std::endl;
+      sim_params.object_model << "')" << std::endl;
   #endif
 
   std::cout << "Finished ForcedPublish" << std::endl;

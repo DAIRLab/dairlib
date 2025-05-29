@@ -215,8 +215,8 @@ int do_main(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex jack_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
+  drake::multibody::ModelInstanceIndex object_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
 
   // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
@@ -269,10 +269,10 @@ int do_main(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  /// adding the jack model
+  /// adding the object model
   MultibodyPlant<double> plant_object(0.0);
   Parser parser_object(&plant_object, nullptr);
-  parser_object.AddModels(sim_params.jack_model);
+  parser_object.AddModels(sim_params.object_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
@@ -288,7 +288,7 @@ int do_main(int argc, char* argv[]) {
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto object_state_receiver =
-      builder.AddSystem<ObjectStateReceiver>(plant, jack_index);
+      builder.AddSystem<ObjectStateReceiver>(plant, object_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
@@ -298,14 +298,14 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size() - 1, 1);
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       object_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(jack_index));
+      plant.num_positions(object_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(jack_index)};
+                                  plant.num_positions(object_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
-  // System that takes in the state of the franka and jack and outputs a
+  // System that takes in the state of the franka and object and outputs a
   // reduced order lcs state vector.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
@@ -470,11 +470,11 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (sim_params.visualize_pose_trace_curr){
-    // Replace the color in the jack model with a new color for visualization.
-    std::string visualizer_curr_sample_traj_jack_model = sim_params.jack_model;
+    // Replace the color in the object model with a new color for visualization.
+    std::string visualizer_curr_sample_traj_object_model = sim_params.object_model;
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/curr_planned",
-        visualizer_curr_sample_traj_jack_model,
+        visualizer_curr_sample_traj_object_model,
         "object_position_target", "object_orientation_target", 5, true);
 
     std::string visualizer_curr_sample_end_effector_model =
@@ -506,10 +506,10 @@ int do_main(int argc, char* argv[]) {
         dynamically_feasible_actor_pose_drawer_curr_actor->get_input_port_trajectory());
     
     
-    std::string visualizer_df_curr_sample_traj_jack_model = sim_params.jack_model;
+    std::string visualizer_df_curr_sample_traj_object_model = sim_params.object_model;
     auto dynamically_feasible_object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_curr_plan",
-        FindResourceOrThrow(visualizer_df_curr_sample_traj_jack_model),
+        FindResourceOrThrow(visualizer_df_curr_sample_traj_object_model),
         "object_position_target", "object_orientation_target", 6, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
@@ -517,14 +517,14 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (sim_params.visualize_pose_trace_best){
-    // Replace the color in the jack model with a new color for visualization.
-    std::string visualizer_best_sample_traj_jack_model = WriteTempModelWithColorChange(
-        FindResourceOrThrow(sim_params.jack_model),
-        "1 0.64 0 1", "best_sample_traj_jack_model");
-    g_temp_files_to_cleanup.push_back(visualizer_best_sample_traj_jack_model);
+    // Replace the color in the object model with a new color for visualization.
+    std::string visualizer_best_sample_traj_object_model = WriteTempModelWithColorChange(
+        FindResourceOrThrow(sim_params.object_model),
+        "1 0.64 0 1", "best_sample_traj_object_model");
+    g_temp_files_to_cleanup.push_back(visualizer_best_sample_traj_object_model);
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/best_planned",
-        FindResourceOrThrow(visualizer_best_sample_traj_jack_model),
+        FindResourceOrThrow(visualizer_best_sample_traj_object_model),
         "object_position_target", "object_orientation_target");
     
     std::string visualizer_best_sample_end_effector_model = WriteTempModelWithColorChange(
@@ -541,14 +541,14 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_pose_drawer_best->get_input_port_trajectory());
     
-    std::string visualizer_df_best_sample_traj_jack_model =
+    std::string visualizer_df_best_sample_traj_object_model =
             WriteTempModelWithColorChange(
-                FindResourceOrThrow(sim_params.jack_model),
+                FindResourceOrThrow(sim_params.object_model),
                 "1 0.64 0 1", "best_sample_end_effector_model");
-    g_temp_files_to_cleanup.push_back(visualizer_df_best_sample_traj_jack_model);
+    g_temp_files_to_cleanup.push_back(visualizer_df_best_sample_traj_object_model);
     auto dynamically_feasible_object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/dynamically_feasible_best_plan",
-        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        FindResourceOrThrow(sim_params.visualizer_best_sample_traj_object_model),
         "object_position_target", "object_orientation_target", 6, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),

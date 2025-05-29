@@ -83,8 +83,8 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex jack_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
+  drake::multibody::ModelInstanceIndex object_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
 
   // Affix models to their locations relative to world frame
   RigidTransform<double> T_EE_W = RigidTransform<double>(
@@ -121,13 +121,13 @@ int DoMain(int argc, char* argv[]) {
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, false, jack_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm,
           1.0 / sim_params.object_publish_rate));
 
-  builder.Connect(plant.get_state_output_port(jack_index),
+  builder.Connect(plant.get_state_output_port(object_index),
                   object_state_sender->get_input_port_state());
   builder.Connect(object_state_sender->get_output_port(),
                   object_state_pub->get_input_port());
@@ -154,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
-  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_object;
+  q.tail(plant.num_positions(object_index)) = sim_params.q_init_object;
 
   plant.SetPositions(&plant_context, q);
 

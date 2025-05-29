@@ -9,7 +9,7 @@ struct FrankaSimParams {
   std::string end_effector_visualization_model;
   std::string end_effector_name;
   std::string ground_model;
-  std::string jack_model;
+  std::string object_model;
   std::string object_body_name;
   std::string platform_model;
 
@@ -47,13 +47,13 @@ struct FrankaSimParams {
 
   std::string visualizer_df_curr_sample_end_effector_model;
   std::string visualizer_curr_sample_end_effector_model;
-  std::string visualizer_curr_sample_traj_jack_model;
+  std::string visualizer_curr_sample_traj_object_model;
   bool visualize_pose_trace_curr;
   bool visualize_center_of_mass_plan_curr;
   bool visualize_c3_forces_curr;
 
   std::string visualizer_best_sample_end_effector_model;
-  std::string visualizer_best_sample_traj_jack_model;
+  std::string visualizer_best_sample_traj_object_model;
   bool visualize_pose_trace_best;
   bool visualize_center_of_mass_plan_best;
   bool visualize_c3_forces_best;
@@ -66,7 +66,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(end_effector_visualization_model));
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(ground_model));
-    a->Visit(DRAKE_NVP(jack_model));
+    a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(object_body_name));
     a->Visit(DRAKE_NVP(platform_model));
 
@@ -102,13 +102,13 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(visualizer_df_curr_sample_end_effector_model));
     a->Visit(DRAKE_NVP(visualizer_curr_sample_end_effector_model));
-    a->Visit(DRAKE_NVP(visualizer_curr_sample_traj_jack_model));
+    a->Visit(DRAKE_NVP(visualizer_curr_sample_traj_object_model));
     a->Visit(DRAKE_NVP(visualize_pose_trace_curr));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_curr));
     a->Visit(DRAKE_NVP(visualize_c3_forces_curr));
 
     a->Visit(DRAKE_NVP(visualizer_best_sample_end_effector_model));
-    a->Visit(DRAKE_NVP(visualizer_best_sample_traj_jack_model));
+    a->Visit(DRAKE_NVP(visualizer_best_sample_traj_object_model));
     a->Visit(DRAKE_NVP(visualize_pose_trace_best));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));
     a->Visit(DRAKE_NVP(visualize_c3_forces_best));

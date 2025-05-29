@@ -220,9 +220,6 @@ void TargetGenerator::SetRandomizedTargetFinalObjectOrientation() const {
 
   std::uniform_int_distribution<int> dis(0, valid_orientations.size() - 1);
   int random_index = dis(rng_);
-  // while (!OrientationIsValid(random_index)) {
-  //   random_index = dis(rng_);
-  // }
 
   Eigen::Quaterniond quat_nominal = valid_orientations.at(random_index);
 
@@ -328,10 +325,6 @@ TargetGenerator::GenerateLineTrajectoryWithLookahead(
   Eigen::Quaterniond y_quat_des(
       target_final_object_orientation_[0], target_final_object_orientation_[1],
       target_final_object_orientation_[2], target_final_object_orientation_[3]);
-
-  // Get current orientation.
-  // const VectorX<double> &q = object_state->GetPositions().head(4);
-  // Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
 
   // Compute the error.
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des *

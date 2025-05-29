@@ -8,7 +8,7 @@ struct C3Options {
   int admm_iter;     // total number of ADMM iterations
   float rho;         // initial value of the rho parameter
   float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // for inner C3 loop. 0 is dynamic, greater than 0 for a fixed count
+  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;

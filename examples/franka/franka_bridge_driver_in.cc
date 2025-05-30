@@ -12,7 +12,7 @@
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
 
-#include "examples/franka/parameters/franka_drake_lcm_driver_channels.h"
+#include "common/parameters/franka_drake_lcm_driver_channels.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "systems/franka_state_translator.h"
@@ -37,7 +37,8 @@ using dairlib::systems::TimestampedVector;
 DEFINE_string(lcm_channels,
               "examples/franka/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
-DEFINE_string(franka_driver_channels, "examples/franka/parameters/franka_drake_lcm_driver_channels.yaml",
+DEFINE_string(franka_driver_channels, 
+              "common/parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
 
 namespace dairlib {

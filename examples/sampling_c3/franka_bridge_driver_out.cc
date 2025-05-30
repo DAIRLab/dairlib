@@ -12,7 +12,7 @@
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
 
-#include "examples/sampling_c3/parameter_headers/franka_drake_lcm_driver_channels.h"
+#include "common/parameters/franka_drake_lcm_driver_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
@@ -41,8 +41,7 @@ DEFINE_string(
     "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
     "Filepath containing lcm channels");
 DEFINE_string(franka_driver_channels,
-              "examples/sampling_c3/shared_parameters/"
-              "franka_drake_lcm_driver_channels.yaml",
+              "common/parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing drake franka driver channels");
 // NOTE:  While most module's TTL is set to 0 by default, this one is set to 1
 // since it necessarily needs to communicate with the Franka.

@@ -90,10 +90,10 @@ cc_library(
     name = "franka_drake_lcm_driver_channels_jacktoy",
     hdrs = [],
     data = [
-        "//examples/sampling_c3:shared_params_yamls",
+        "//common/parameters:franka_drake_lcm_driver_channels",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//common/parameters:franka_drake_lcm_driver_channels",
         "//solvers:c3",
         "@drake//:drake_shared_library",
     ],

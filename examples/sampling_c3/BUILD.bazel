@@ -138,7 +138,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
-        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//common/parameters:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
         "//systems:franka_state_translator",
@@ -163,7 +163,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
-        "//examples/sampling_c3/parameter_headers:franka_drake_lcm_driver_channels",
+        "//common/parameters:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
         "//systems:franka_state_translator",

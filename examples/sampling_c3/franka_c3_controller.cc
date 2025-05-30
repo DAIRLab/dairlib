@@ -541,6 +541,8 @@ int DoMain(int argc, char* argv[]) {
         trajectory_params.resting_object_height);
   }
 
+  //  Input sizes here are end effector position (3), object pose (7),
+  //  end effector velocity (3), and object velocity (6).
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);

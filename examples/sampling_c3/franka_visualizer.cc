@@ -442,8 +442,8 @@ int do_main(int argc, char* argv[]) {
     repos_trajectory_drawer_actor->SetLineColor(
         drake::geometry::Rgba({0, 0, 1, 1}));
     repos_trajectory_drawer_actor->SetLineWidth(10000000);
-    c3_exec_trajectory_drawer_actor->SetNumSamples(5);
-    repos_trajectory_drawer_actor->SetNumSamples(5);
+    c3_exec_trajectory_drawer_actor->SetNumSamples(sampling_c3_options.N);
+    repos_trajectory_drawer_actor->SetNumSamples(sampling_c3_options.N);
     builder.Connect(
         c3_execution_trajectory_sub_actor->get_output_port(),
         c3_exec_trajectory_drawer_actor->get_input_port_trajectory());
@@ -462,8 +462,9 @@ int do_main(int argc, char* argv[]) {
         drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object_curr->SetLineColor(
         drake::geometry::Rgba({1, 0, 0, 1}));
-    trajectory_drawer_actor_curr->SetNumSamples(5);
-    trajectory_drawer_object_curr->SetNumSamples(5);
+    trajectory_drawer_actor_curr->SetNumSamples(sampling_c3_options.N);
+    trajectory_drawer_object_curr->SetNumSamples(sampling_c3_options.N);
+    ;
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     trajectory_drawer_actor_curr->get_input_port_trajectory());
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -481,8 +482,8 @@ int do_main(int argc, char* argv[]) {
         drake::geometry::Rgba({0, 1, 0, 1}));
     trajectory_drawer_object_best->SetLineColor(
         drake::geometry::Rgba({0, 1, 0, 1}));
-    trajectory_drawer_actor_best->SetNumSamples(5);
-    trajectory_drawer_object_best->SetNumSamples(5);
+    trajectory_drawer_actor_best->SetNumSamples(sampling_c3_options.N);
+    trajectory_drawer_object_best->SetNumSamples(sampling_c3_options.N);
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     trajectory_drawer_actor_best->get_input_port_trajectory());
     builder.Connect(trajectory_sub_object_best->get_output_port(),
@@ -495,7 +496,8 @@ int do_main(int argc, char* argv[]) {
         sim_params.object_model;
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "plans/curr_planned", visualizer_curr_sample_traj_object_model,
-        "object_position_target", "object_orientation_target", 5, true);
+        "object_position_target", "object_orientation_target",
+        sampling_c3_options.N, true);
 
     std::string visualizer_curr_sample_end_effector_model =
         WriteTempModelWithColorChange(
@@ -508,7 +510,7 @@ int do_main(int argc, char* argv[]) {
             meshcat, "plans/curr_planned",
             visualizer_curr_sample_end_effector_model,
             "end_effector_position_target", "end_effector_orientation_target",
-            5, false);
+            sampling_c3_options.N, false);
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
                     object_pose_drawer_curr->get_input_port_trajectory());
@@ -525,7 +527,8 @@ int do_main(int argc, char* argv[]) {
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat, "plans/dynamically_feasible_curr_plan_actor",
             FindResourceOrThrow(visualizer_df_curr_sample_end_effector_model),
-            "ee_position_target", "end_effector_orientation_target", 6, false);
+            "ee_position_target", "end_effector_orientation_target",
+            sampling_c3_options.N + 1, false);
     builder.Connect(
         dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
         dynamically_feasible_actor_pose_drawer_curr_actor
@@ -537,7 +540,8 @@ int do_main(int argc, char* argv[]) {
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat, "plans/dynamically_feasible_curr_plan",
             FindResourceOrThrow(visualizer_df_curr_sample_traj_object_model),
-            "object_position_target", "object_orientation_target", 6, true);
+            "object_position_target", "object_orientation_target",
+            sampling_c3_options.N + 1, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
         dynamically_feasible_object_pose_drawer_curr
@@ -568,7 +572,7 @@ int do_main(int argc, char* argv[]) {
             FindResourceOrThrow(
                 sim_params.visualizer_best_sample_end_effector_model),
             "end_effector_position_target", "end_effector_orientation_target",
-            5, false);
+            sampling_c3_options.N, false);
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     object_pose_drawer_best->get_input_port_trajectory());
@@ -586,7 +590,8 @@ int do_main(int argc, char* argv[]) {
             meshcat, "plans/dynamically_feasible_best_plan",
             FindResourceOrThrow(
                 sim_params.visualizer_best_sample_traj_object_model),
-            "object_position_target", "object_orientation_target", 6, true);
+            "object_position_target", "object_orientation_target",
+            sampling_c3_options.N + 1, true);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best

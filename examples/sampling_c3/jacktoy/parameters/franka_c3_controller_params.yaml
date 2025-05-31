@@ -6,7 +6,6 @@ franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
 end_effector_simple_model: examples/sampling_c3/urdf/end_effector_simple_model.urdf
-end_effector_simple_name: end_effector_simple
 object_model: examples/sampling_c3/urdf/jack_ground.sdf
 ground_model: examples/sampling_c3/urdf/ground.urdf
 platform_model: examples/sampling_c3/urdf/platform.urdf

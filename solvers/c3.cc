@@ -193,7 +193,6 @@ void C3::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.B_[0].cols() == k_);
   // Update the stored LCS object.
   lcs_ = lcs;
-  // first 4 lines are unnecessary
   A_ = lcs.A_;
   B_ = lcs.B_;
   D_ = lcs.D_;
@@ -233,6 +232,8 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
+// This function updates the LCS used for cost computation in case we want to consider a different number of contacts when computing the cost.
+// This is useful for sampling C3, where we want to consider more contacts for computing cost than the ones used for the actual solve.
 void C3::UpdateCostLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.A_.size() == N_);
   DRAKE_DEMAND(lcs.A_[0].rows() == n_);
@@ -254,7 +255,6 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-// TODO: @Bibit can you confirm that this initialization for delta is correct?
 void C3::Solve(const VectorXd& x0, bool verbose) {
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -279,9 +279,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
                                           Eigen::VectorXd::Zero(k_));   
     }
   }
-  if(verbose){
-    std::cout << "x0: " << x0.transpose() << std::endl;
-  }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
@@ -295,6 +292,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
   if(verbose){
+    std::cout << "x0: " << x0.transpose() << std::endl;
     std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
     // Make a printable delta and w matrix.
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
@@ -315,7 +313,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   *w_sol_ = w;
   *delta_sol_ = delta;
 
-  // TODO: @bibit @sharanyashastry review this logic.
   if (!options_.end_on_qp_step) {
     *z_sol_ = delta;
     z_sol_->at(0).segment(0, n_) = x0;
@@ -343,11 +340,14 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 // This function relies on the previously computed zfin_ from the Solve function.
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
-// Or, use the zfin_ trajectory if cost_type is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, 
-  double Kp_for_cost_type_3, double Kd_for_cost_type_3,
-  bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
-  // Extract the locally stored state and control sequences.
+std::pair<double,std::vector<Eigen::VectorXd>> 
+  C3::CalcCost(int cost_type, 
+               double Kp_for_ee_pd_rollout, 
+               double Kd_for_ee_pd_rollout,
+               bool force_tracking_disabled, 
+               bool print_cost_breakdown, 
+               bool verbose) const{
+
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 
@@ -365,8 +365,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
       }
     }
   }
+  // If cost_type is 1, use the provided zfin_ trajectory for the full state.
   else if(cost_type == 1){
-    // If cost_type is 1, use the provided zfin_ trajectory for the full state.
     for (int i = 0; i < N_; i++){
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
@@ -397,14 +397,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
     // Replace ee traj with those from zfin_.
     for (int i = 0; i < N_; i++){
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      // This is replacing the XX[N_] state of the end effector to a state
-      // simulated from the last control input in UU and last end effector state
-      // from the C3 plan. This is different from what is already set in the 
-      // previous loop because the [N_-1] states of the end effector are not
-      // the same.
       if(i == N_-1){
         if(LCS_for_cost_computation_){
-          XX[i+1].segment(0,3) = LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,3);
+          XX[i+1].segment(0,3) = 
+            LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,3);
         }
         else{
           XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
@@ -413,14 +409,16 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
     }
   }
   else if(cost_type == 3){
-    // // If cost_type is 3, try to emulate the real cost of the system associated 
-    // // not only applying the u from the zfin_[0] but also the u associated with 
-    // // tracking the position plan over time.
+    // If cost_type is 3, try to emulate the real cost of the system associated 
+    // not only applying the u from the zfin_[0] but also the u associated with 
+    // tracking the position plan over time.
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 3"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
-      force_tracking_disabled, verbose);
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
+                                         Kd_for_ee_pd_rollout,
+                                         force_tracking_disabled, 
+                                         verbose);
   }
   else if(cost_type == 4){
     // This is same as cost type 3 except the end effector position and 
@@ -428,8 +426,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 4"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
-      force_tracking_disabled, verbose);
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
+                                         Kd_for_ee_pd_rollout,
+                                         force_tracking_disabled, 
+                                         verbose);
 
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
@@ -447,8 +447,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
     if(verbose){
       std::cout<<"\nCOMPUTING COST TYPE 5"<<std::endl;
     }
-    std::tie(XX, UU) = SimulatePDControl(Kp_for_cost_type_3, Kd_for_cost_type_3,
-      force_tracking_disabled, verbose);
+    std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
+                                         Kd_for_ee_pd_rollout,
+                                         force_tracking_disabled, 
+                                         verbose);
   }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
@@ -476,56 +478,108 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
   for (int i = 0; i < N_; i++){
     // Calculate the error and cost contributions for each state.
       //ee_pos
-      error_contrib_ee_pos += (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*(XX[i].segment(0,3) - x_desired_[i].segment(0,3));
-      cost_contrib_ee_pos += (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*
-        Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - x_desired_[i].segment(0,3));
+      error_contrib_ee_pos += 
+        (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
+          (XX[i].segment(0,3) - x_desired_[i].segment(0,3));
+      cost_contrib_ee_pos += 
+        (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
+          Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - 
+            x_desired_[i].segment(0,3));
       //obj_orientation
-      error_contrib_obj_orientation += (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*(XX[i].segment(3,4) - x_desired_[i].segment(3,4));
-      cost_contrib_obj_orientation += (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*
-        Q_eff.at(i).block(3,3,4,4)*(XX[i].segment(3,4) - x_desired_[i].segment(3,4));
+      error_contrib_obj_orientation += 
+        (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() * 
+          (XX[i].segment(3,4) - x_desired_[i].segment(3,4));
+      cost_contrib_obj_orientation += 
+        (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() *
+          Q_eff.at(i).block(3,3,4,4) * 
+            (XX[i].segment(3,4) - x_desired_[i].segment(3,4));
       //obj_pos
-      error_contrib_obj_pos += (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*(XX[i].segment(7,3) - x_desired_[i].segment(7,3));
-      cost_contrib_obj_pos += (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*
-        Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - x_desired_[i].segment(7,3));
+      error_contrib_obj_pos += 
+        (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() * 
+          (XX[i].segment(7,3) - x_desired_[i].segment(7,3));
+      cost_contrib_obj_pos += 
+        (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() *
+          Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - 
+            x_desired_[i].segment(7,3));
       //ee_vel
-      error_contrib_ee_vel += (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*(XX[i].segment(10,3) - x_desired_[i].segment(10,3));
-      cost_contrib_ee_vel += (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*
-        Q_eff.at(i).block(10,10,3,3)*(XX[i].segment(10,3) - x_desired_[i].segment(10,3));
+      error_contrib_ee_vel += 
+        (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() * 
+          (XX[i].segment(10,3) - x_desired_[i].segment(10,3));
+      cost_contrib_ee_vel += 
+        (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() *
+          Q_eff.at(i).block(10,10,3,3) * (XX[i].segment(10,3) - 
+            x_desired_[i].segment(10,3));
       //obj_ang_vel
-      error_contrib_obj_ang_vel += (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*(XX[i].segment(13,3) - x_desired_[i].segment(13,3));
-      cost_contrib_obj_ang_vel += (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*
-        Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - x_desired_[i].segment(13,3));
+      error_contrib_obj_ang_vel += 
+        (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() * 
+          (XX[i].segment(13,3) - x_desired_[i].segment(13,3));
+      cost_contrib_obj_ang_vel += 
+        (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() *
+          Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - 
+            x_desired_[i].segment(13,3));
       //obj_vel
-      error_contrib_obj_vel += (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*(XX[i].segment(16,3) - x_desired_[i].segment(16,3));
-      cost_contrib_obj_vel += (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
-        Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3));
+      error_contrib_obj_vel += 
+        (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() * 
+          (XX[i].segment(16,3) - x_desired_[i].segment(16,3));
+      cost_contrib_obj_vel += 
+        (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() *
+          Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - 
+            x_desired_[i].segment(16,3));
 
-    cost = cost + 
-      (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
-      UU[i].transpose()*R_eff.at(i)*UU[i];
+      cost = cost + (XX[i] - x_desired_[i]).transpose() * 
+              Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
+                UU[i].transpose()*R_eff.at(i)*UU[i];
   }
-  cost = cost + 
-    (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+      cost = cost + (XX[N_] - x_desired_[N_]).transpose() * 
+              Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
 
-  error_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
-  error_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
-  error_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
-  error_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
-  error_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
-  error_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+  error_contrib_ee_pos += 
+    (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose() * 
+      (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
+  error_contrib_obj_orientation += 
+    (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose() * 
+      (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
+  error_contrib_obj_pos += 
+    (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose() * 
+      (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
+  error_contrib_ee_vel += 
+    (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose() * 
+      (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
+  error_contrib_obj_ang_vel += 
+    (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose() * 
+      (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
+  error_contrib_obj_vel += 
+    (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose() * 
+      (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
 
-  cost_contrib_ee_pos += (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose()*
-    Q_eff.at(N_).block(0,0,3,3)*(XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
-  cost_contrib_obj_orientation += (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose()*
-    Q_eff.at(N_).block(3,3,4,4)*(XX[N_].segment(3,4) - x_desired_[N_].segment(3,4));
-  cost_contrib_obj_pos += (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose()*
-    Q_eff.at(N_).block(7,7,3,3)*(XX[N_].segment(7,3) - x_desired_[N_].segment(7,3));
-  cost_contrib_ee_vel += (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose()*
-    Q_eff.at(N_).block(10,10,3,3)*(XX[N_].segment(10,3) - x_desired_[N_].segment(10,3));
-  cost_contrib_obj_ang_vel += (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose()*
-    Q_eff.at(N_).block(13,13,3,3)*(XX[N_].segment(13,3) - x_desired_[N_].segment(13,3));
-  cost_contrib_obj_vel += (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose()*
-    Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - x_desired_[N_].segment(16,3));
+  cost_contrib_ee_pos += 
+    (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose() *
+      Q_eff.at(N_).block(0,0,3,3) * 
+        (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
+  cost_contrib_obj_orientation += 
+    (XX[N_].segment(3,4) - x_desired_[N_].segment(3,4)).transpose() *
+      Q_eff.at(N_).block(3,3,4,4)*(XX[N_].segment(3,4) - 
+        x_desired_[N_].segment(3,4));
+  cost_contrib_obj_pos += 
+    (XX[N_].segment(7,3) - x_desired_[N_].segment(7,3)).transpose() *
+      Q_eff.at(N_).block(7,7,3,3)*(XX[N_].segment(7,3) - 
+        x_desired_[N_].segment(7,3));
+  cost_contrib_ee_vel += 
+    (XX[N_].segment(10,3) - x_desired_[N_].segment(10,3)).transpose() *
+      Q_eff.at(N_).block(10,10,3,3)*(XX[N_].segment(10,3) - 
+        x_desired_[N_].segment(10,3));
+  cost_contrib_obj_ang_vel += 
+    (XX[N_].segment(13,3) - x_desired_[N_].segment(13,3)).transpose() *
+      Q_eff.at(N_).block(13,13,3,3)*(XX[N_].segment(13,3) - 
+        x_desired_[N_].segment(13,3));
+  cost_contrib_obj_vel += 
+    (XX[N_].segment(16,3) - x_desired_[N_].segment(16,3)).transpose() *
+      Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - 
+        x_desired_[N_].segment(16,3));
+
+  if(cost_type == 5){
+    cost = cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
+  }
 
   if(verbose || print_cost_breakdown){
     std::cout<<"Error breakdown"<<std::endl;
@@ -544,14 +598,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
     std::cout<<"\t total cost contribution from w_obj: "<<cost_contrib_obj_ang_vel<<std::endl;
     std::cout<<"\t total cost contribution from v_obj: "<<cost_contrib_obj_vel<<std::endl;
 
-    std::cout<<"\t total cost is: "<<cost<<std::endl;
-    std::cout<<"\t total cost object terms only is : "<<cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel<<std::endl;
+    std::cout<<"\t total cost is: "<< cost <<std::endl;
+    std::cout<<"\t total cost object terms only is : "<< 
+      cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel << std::endl;
     std::cout<<"\n\n";
-
-  }
-
-  if(cost_type == 5){
-    cost = cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
   }
 
   // Return the cost and the rolled out state trajectory.
@@ -560,7 +610,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type,
 }
 
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::SimulatePDControl(
-  double Kp_for_cost_type_3, double Kd_for_cost_type_3,
+  double Kp_for_ee_pd_rollout, double Kd_for_ee_pd_rollout,
   bool force_tracking_disabled, bool verbose) const{
     // used to store the solutions from C3.
     vector<VectorXd> UU(N_, VectorXd::Zero(k_));
@@ -590,8 +640,8 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
     std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
 
     // Set the PD gains for the emulated tracking controller.
-    Eigen::MatrixXd Kp = Kp_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
-    Eigen::MatrixXd Kd = Kd_for_cost_type_3*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kd = Kd_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
 
     XX_new[0] = zfin_[0].segment(0, n_);
     // This will just be the original u from zfin_[0] for the first time step.
@@ -654,10 +704,8 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   if(verbose){
     std::cout << "ADMM Iteration: " << admm_iteration << std::endl;
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    // Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     for(int i = 0; i < N_; i++){
       verbose_delta.col(i) = delta->at(i);
-      // verbose_w.col(i) = w[i];
     }
     std::cout<<"delta: \n"<<verbose_delta<<std::endl;
   }
@@ -676,12 +724,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
-  if(x0[2] < options_.workspace_limits[2][3]){
-    std::cout<<x0.segment(0,3).transpose()<<std::endl;
-    std::cout<<"CAUTION: Initial state (curr or sample) is below the min z"<<
-    " height ("<<x0[2] <<" < "<<options_.workspace_limits[2][3] <<"). C3 plan will "<<
-    "have the z go up suddenly in the first step of the plan."<<std::endl;
-  }
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
@@ -716,13 +758,20 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    prog_.SetInitialGuess(x_[0], x0);
+    int index = solve_time_ / dt_;
+    double weight = (solve_time_ - index * dt_) / dt_;
     for (int i = 0; i < N_ - 1; i++) {
-      prog_.SetInitialGuess(x_[i], warm_start_x_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(lambda_[i],
-                            warm_start_lambda_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(x_[i],
+                            (1 - weight) * warm_start_x_[admm_iteration][i] +
+                                weight * warm_start_x_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(
+          lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] +
+                          weight * warm_start_lambda_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(u_[i],
+                            (1 - weight) * warm_start_u_[admm_iteration][i] +
+                                weight * warm_start_u_[admm_iteration][i + 1]);
     }
+    prog_.SetInitialGuess(x_[0], x0);
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 
@@ -765,7 +814,9 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(1);
+    // TODO: A newer version of OpenMP likely uses omp_set_max_active_levels
+    // instead of omp_set_nested. Consider updating this after testing.
+    omp_set_nested(1);  // Enable nested parallelism (important for sampling_c3_controller)
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)

@@ -141,6 +141,8 @@ class C3 {
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
+  // This function updates the LCS used for cost computation in case we want to consider a different number of contacts when computing the cost.
+  // This is useful for sampling C3, where we want to consider more contacts for computing cost than the ones used for the actual solve.
   void UpdateCostLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 

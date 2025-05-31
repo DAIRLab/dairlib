@@ -86,3 +86,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "update_context",
+    srcs = [
+        "update_context.cc"
+    ],
+    hdrs = [
+        "update_context.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)

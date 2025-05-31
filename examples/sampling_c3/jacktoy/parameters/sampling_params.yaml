@@ -24,6 +24,10 @@ grid_y_limits: [-0.16, 0.16]
 # clearance for sample projection.
 sample_projection_clearance: 0.008
 
+# parameters for sampling on shell.
+min_sampling_radius: 0.07
+max_sampling_radius: 0.10
+
 # Radians minimum and maximum angles from vertical (i.e. closest to top of
 # sphere) used for spherical surface sampling (2).
 min_angle_from_vertical: 0.2  #0.785

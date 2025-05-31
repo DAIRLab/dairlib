@@ -103,6 +103,7 @@ cc_library(
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//multibody:utils",
         "//multibody:geom_geom_collider",
+        "//common:update_context",
     ],
 )
 
@@ -124,6 +125,7 @@ cc_library(
         ":sampling_params",
         "//solvers:lcs",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//common:update_context",
     ],
     copts = [
         "-fopenmp",

@@ -9,8 +9,8 @@ enum SamplingStrategy {
   RANDOM_ON_CIRCLE_SAMPLING,
   RANDOM_ON_SPHERE_SAMPLING,
   FIXED_SAMPLE,
-  SAMPLE_ON_GRID,
-  SAMPLE_IN_SHELL
+  SAMPLE_ON_PERIMETER,
+  SAMPLE_ON_SHELL
 };
 
 enum ProgressMetric {
@@ -32,6 +32,8 @@ struct SamplingC3SamplingParams {
   std::vector<double> grid_x_limits;
   std::vector<double> grid_y_limits;
   double sample_projection_clearance;
+  double min_sampling_radius;
+  double max_sampling_radius;
   int num_additional_samples_repos;
   int num_additional_samples_c3;
   bool consider_best_buffer_sample_when_leaving_c3;
@@ -85,6 +87,8 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(grid_x_limits));
     a->Visit(DRAKE_NVP(grid_y_limits));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
+    a->Visit(DRAKE_NVP(min_sampling_radius));
+    a->Visit(DRAKE_NVP(max_sampling_radius));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));

@@ -7,6 +7,7 @@
 #include <drake/common/yaml/yaml_io.h>
 
 #include "common/find_resource.h"
+#include "common/update_context.h"
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -198,8 +199,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
-
-  void UpdateContext(Eigen::VectorXd lcs_state) const;
 
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;

@@ -798,7 +798,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
-    UpdateContext(candidate_states[i]);
+    UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                  candidate_states[i]);
 
     // Create an LCS object.
     // Preprocessing the contact pairs
@@ -863,7 +864,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
   // Reset the context to the current lcs state.
-  UpdateContext(x_lcs_curr);
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                x_lcs_curr);
 
   if (verbose_) {
     // Print the LCS matrices for verbose inspection.
@@ -1525,33 +1527,6 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
       x_pred_curr_plan_[n_q_ + 2],
       x_lcs_curr[n_q_ + 2] - nominal_acceleration * approximate_loop_dt,
       x_lcs_curr[n_q_ + 2] + nominal_acceleration * approximate_loop_dt);
-}
-
-// Helper function to update context of a plant with a given state.
-void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state) const {
-  // Update autodiff.
-  VectorXd xu_test(n_q_ + n_v_ + n_u_);
-
-  // u here is set to a vector of 1000s -- TODO why?
-  VectorXd test_u = 1000 * VectorXd::Ones(n_u_);
-
-  // Update context with respect to positions and velocities associated with
-  // the candidate state.
-  VectorXd test_q = lcs_state.head(n_q_);
-  VectorXd test_v = lcs_state.tail(n_v_);
-
-  xu_test << test_q, test_v, test_u;
-  auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
-
-  plant_ad_.SetPositionsAndVelocities(context_ad_,
-                                      xu_ad_test.head(n_q_ + n_v_));
-
-  multibody::SetInputsIfNew<AutoDiffXd>(plant_ad_, xu_ad_test.tail(n_u_),
-                                        context_ad_);
-
-  plant_.SetPositions(context_, test_q);
-  plant_.SetVelocities(context_, test_v);
-  multibody::SetInputsIfNew<double>(plant_, test_u, context_);
 }
 
 // Perform one step of C3.
@@ -2358,7 +2333,8 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
 
-  UpdateContext(lcs_x->get_data());
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                lcs_x->get_data());
 
   C3Options c3_options_for_curr_location = sampling_c3_options_.GetC3Options(
       crossed_cost_switching_threshold_,
@@ -2537,7 +2513,8 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   // Linearize about state with end effector in sample location.
   VectorXd x_sample = lcs_x->get_data();
   x_sample.head(3) = all_sample_locations_[best_sample_index_];
-  UpdateContext(x_sample);
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                x_sample);
 
   C3Options c3_options = sampling_c3_options_.GetC3Options(
       crossed_cost_switching_threshold_,
@@ -2554,7 +2531,8 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
       plant_, *context_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, contact_model_);
   // Revert the context.
-  UpdateContext(lcs_x->get_data());
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                lcs_x->get_data());
 }
 
 // Output port handlers for executing C3 and repositioning ports

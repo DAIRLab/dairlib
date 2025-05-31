@@ -137,11 +137,8 @@ void TargetGenerator::CalcObjectTarget(
   target->SetFromVector(target_obj_state);
 }
 
-// This function computes the quaternion error between the current orientation
-// and the desired final orientation. It then clamps that error with a
-// “look-ahead” quaternion and converts the clamped axis-angle error into an
-// angular-velocity target scaled by `angle_err_to_vel_factor_`. It also
-// commands 0 linear velocity.
+// Command zero linear velocity, and command angular velocity that scales with
+// orientation error, scaled by angle_err_to_vel_factor_.
 void TargetGenerator::CalcObjectVelocityTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {

@@ -974,27 +974,29 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       if (i == 0) {
         cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type_position_tracking,
-            sampling_c3_options_.Kp_for_cost_type_3,
-            sampling_c3_options_.Kd_for_cost_type_3, radio_out->channel[11],
+            sampling_c3_options_.Kp_for_ee_pd_rollout,
+            sampling_c3_options_.Kd_for_ee_pd_rollout, radio_out->channel[11],
             radio_out->channel[7], verbose_);
       } else {
         cost_trajectory_pair = test_c3_object->CalcCost(
             sampling_params_.cost_type_position_tracking,
-            sampling_c3_options_.Kp_for_cost_type_3,
-            sampling_c3_options_.Kd_for_cost_type_3, radio_out->channel[11],
+            sampling_c3_options_.Kp_for_ee_pd_rollout,
+            sampling_c3_options_.Kd_for_ee_pd_rollout, radio_out->channel[11],
             false, verbose_);
       }
     } else {
       if (i == 0) {
         cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, sampling_c3_options_.Kp_for_cost_type_3,
-            sampling_c3_options_.Kd_for_cost_type_3, radio_out->channel[11],
+            sampling_params_.cost_type,
+            sampling_c3_options_.Kp_for_ee_pd_rollout,
+            sampling_c3_options_.Kd_for_ee_pd_rollout, radio_out->channel[11],
             radio_out->channel[7], verbose_);
       } else {
-        cost_trajectory_pair = test_c3_object->CalcCost(
-            sampling_params_.cost_type, sampling_c3_options_.Kp_for_cost_type_3,
-            sampling_c3_options_.Kd_for_cost_type_3, radio_out->channel[11],
-            false, verbose_);
+        cost_trajectory_pair =
+            test_c3_object->CalcCost(sampling_params_.cost_type,
+                                     sampling_c3_options_.Kp_for_ee_pd_rollout,
+                                     sampling_c3_options_.Kd_for_ee_pd_rollout,
+                                     radio_out->channel[11], false, verbose_);
       }
     }
 

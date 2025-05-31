@@ -114,8 +114,8 @@ u_lambda_pose_tracking: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
 u_u_pose_tracking: [0.01, 0.01, 0.01]
 
 
-Kp_for_cost_type_3: 100
-Kd_for_cost_type_3: 0.5
+Kp_for_ee_pd_rollout: 100
+Kd_for_ee_pd_rollout: 0.5
 
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity
 # constraints also approaches 0.

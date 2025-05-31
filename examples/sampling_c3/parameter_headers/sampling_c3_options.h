@@ -41,8 +41,8 @@ struct SamplingC3Options {
   double w_U_pose_tracking;
 
   // Parameters used for cost computation function
-  double Kp_for_cost_type_3;
-  double Kd_for_cost_type_3;
+  double Kp_for_ee_pd_rollout;
+  double Kd_for_ee_pd_rollout;
 
   bool use_quaternion_dependent_cost;
   double q_quaternion_dependent_weight;
@@ -164,8 +164,8 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(w_G_position_tracking));
     a->Visit(DRAKE_NVP(w_U_position_tracking));
 
-    a->Visit(DRAKE_NVP(Kp_for_cost_type_3));
-    a->Visit(DRAKE_NVP(Kd_for_cost_type_3));
+    a->Visit(DRAKE_NVP(Kp_for_ee_pd_rollout));
+    a->Visit(DRAKE_NVP(Kd_for_ee_pd_rollout));
 
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));

@@ -44,13 +44,13 @@ class C3 {
   /// @return The cost and the full state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
     int simulate_dynamics_for_cost = 2, 
-    double Kp_for_cost_type_3 = 0.0, double Kd_for_cost_type_3 = 0.0,
+    double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
     bool force_tracking_disabled = false, bool print_cost_breakdown = false, 
     bool verbose = false) const;
-  /// This is a helper function to simulate the dynamics with PD tracking control for the end effector
-  /// plans and the control input plans when computing cost types 3,4 and 5.
+  
+  /// This is a helper function to simulate the dynamics with PD tracking control for the end effector plans and the control input plans when computing cost types 3,4 and 5.
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> SimulatePDControl(
-    double Kp_for_cost_type_3 = 0.0, double Kd_for_cost_type_3 = 0.0,
+    double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
     bool force_tracking_disabled = false, bool verbose = false) const;
 
   /// Solve a single ADMM step

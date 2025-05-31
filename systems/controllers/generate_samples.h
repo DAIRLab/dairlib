@@ -1,16 +1,15 @@
-#pragma once
 #include <random>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <numbers>
 
+#include "common/update_context.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_options.h"
 #include "systems/controllers/sampling_params.h"
-#include "common/update_context.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;

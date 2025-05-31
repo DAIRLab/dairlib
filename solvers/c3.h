@@ -43,15 +43,18 @@ class C3 {
   /// Compute the MPC cost, using previously solved MPC solution
   /// @return The cost and the full state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-    int simulate_dynamics_for_cost = 2, 
-    double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-    bool force_tracking_disabled = false, bool print_cost_breakdown = false, 
-    bool verbose = false) const;
-  
-  /// This is a helper function to simulate the dynamics with PD tracking control for the end effector plans and the control input plans when computing cost types 3,4 and 5.
-  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> SimulatePDControl(
-    double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-    bool force_tracking_disabled = false, bool verbose = false) const;
+      int simulate_dynamics_for_cost = 2, double Kp_for_ee_pd_rollout = 0.0,
+      double Kd_for_ee_pd_rollout = 0.0, bool force_tracking_disabled = false,
+      bool print_cost_breakdown = false, bool verbose = false) const;
+
+  /// This is a helper function to simulate the dynamics with PD tracking
+  /// control for the end effector plans and the control input plans when
+  /// computing cost types 3,4 and 5.
+  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
+                    double Kd_for_ee_pd_rollout = 0.0,
+                    bool force_tracking_disabled = false,
+                    bool verbose = false) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -62,7 +65,7 @@ class C3 {
   /// @return solution is saved in C3 object
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
-                std::vector<Eigen::MatrixXd>* G, int admm_iteration, 
+                std::vector<Eigen::MatrixXd>* G, int admm_iteration,
                 bool verbose = false);
 
   /// Solve a single QP
@@ -141,8 +144,10 @@ class C3 {
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
-  // This function updates the LCS used for cost computation in case we want to consider a different number of contacts when computing the cost.
-  // This is useful for sampling C3, where we want to consider more contacts for computing cost than the ones used for the actual solve.
+  // This function updates the LCS used for cost computation in case we want to
+  // consider a different number of contacts when computing the cost. This is
+  // useful for sampling C3, where we want to consider more contacts for
+  // computing cost than the ones used for the actual solve.
   void UpdateCostLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
@@ -154,9 +159,9 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_; // n_x
-  const int m_; // n_lambda
-  const int k_; // n_u
+  const int n_;  // n_x
+  const int m_;  // n_lambda
+  const int k_;  // n_u
   const C3Options options_;
 
  private:

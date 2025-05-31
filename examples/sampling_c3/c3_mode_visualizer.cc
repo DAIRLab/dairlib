@@ -51,16 +51,12 @@ void C3ModeVisualizer::OutputC3ModeVisualization(
   // Initialize knots to be a 3x2 matrix of zeros.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
 
-  // Check if the C3 mode input port has not received any data yet.
-  // This typically occurs when the visualizer starts before the controller,
-  // resulting in an uninitialized c3_mode input vector.
-  // In such cases, skip updating the visualization output.
+  // Only update trajectory if the C3 mode input port has received data.
+  // This check handles the case when the visualizer starts before the
+  // controller, resulting in an uninitialized c3_mode input vector.
   if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
               context, is_c3_mode_input_port_)
-          ->utime < 1e-3) {
-    // Timestamp too early - skipping trajectory update.
-    return;
-  } else {
+          ->utime > 1e-3) {
     // Evaluate input port to get the sample locations as an
     // lcmt_timestamped_saved_traj.
     const auto& is_c3_mode_lcmt =

@@ -7,6 +7,20 @@
 #include <Eigen/Dense>
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
+#include <vector>
+#include <string>
+#include <random>
+#include <stdexcept>
+#include <cmath>
+#include <iostream>
+#include <igl/readOBJ.h>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/algorithms/union.hpp>
+#include <boost/geometry/algorithms/buffer.hpp>
+#include <boost/geometry/strategies/buffer.hpp>
+
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -93,6 +107,15 @@ Eigen::VectorXd generate_sample_in_shell(
   const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
   const SamplingC3SamplingParams& sampling_params,
   const C3Options c3_options);
+
+Eigen::VectorXd generate_sample_mesh_buffer(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    const std::string& mesh_path,
+    const SamplingC3SamplingParams& sampling_params,
+    C3Options c3_options);
 
 bool check_collision(
     const int& n_q,

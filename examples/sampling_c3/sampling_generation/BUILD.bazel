@@ -14,3 +14,21 @@ cc_binary(
         "-lmpfr",
     ]
 )
+
+cc_binary(
+    name = "mesh_sampling_libigl",
+    srcs = [
+        "mesh_sampling_libigl.cc",
+    ],
+    copts = [
+        "-I/usr/include/eigen3",
+        "-I/usr/include/libigl/include",
+    ],
+    linkopts=[
+        "-lstdc++",
+        "-lboost_system", 
+        "-lboost_filesystem", 
+        "-lgmp", 
+        "-lmpfr",
+    ]
+)

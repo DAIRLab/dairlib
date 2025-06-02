@@ -10,7 +10,8 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         RANDOM_ON_SPHERE_SAMPLING, 
                         FIXED_SAMPLE,
                         SAMPLE_ON_GRID,
-                        SAMPLE_IN_SHELL};
+                        SAMPLE_IN_SHELL,
+                        SAMPLE_MESH_BUFFER};
 
 enum ProgressMetric { C3_COST,
                       CURRENT_POSITION_AND_ORIENTATION_COST,
@@ -68,6 +69,9 @@ struct SamplingC3SamplingParams {
   double c3_to_repos_cost_fraction_position_tracking;
   double repos_to_c3_cost_fraction_position_tracking;
   double repos_to_repos_cost_fraction_position_tracking;
+  double z_height;
+  double buffer_distance;
+  int num_additional_samples_mesh_buffer;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -121,5 +125,8 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(c3_to_repos_cost_fraction_position_tracking));
     a->Visit(DRAKE_NVP(repos_to_c3_cost_fraction_position_tracking));
     a->Visit(DRAKE_NVP(repos_to_repos_cost_fraction_position_tracking));
+    a->Visit(DRAKE_NVP(z_height));
+    a->Visit(DRAKE_NVP(buffer_distance));
+    a->Visit(DRAKE_NVP(num_additional_samples_mesh_buffer));
   }
 };

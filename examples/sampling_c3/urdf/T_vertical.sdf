@@ -20,9 +20,9 @@
       <visual name="vertical_link">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <box>
-            <size>0.16 0.04 0.04</size>
-          </box>
+          <mesh>
+            <uri>push_t_white.obj</uri>
+          </mesh>
         </geometry>
         <material>
           <diffuse>0 0 0 1</diffuse>
@@ -31,9 +31,9 @@
       <collision name="vertical_link_volume">
         <pose>0 0 0 0 0 0</pose>
             <geometry>
-          <box>
-            <size>0.16 0.04 0.04</size>
-          </box>
+          <mesh>
+            <uri>push_t_white.obj</uri>
+          </mesh>
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>

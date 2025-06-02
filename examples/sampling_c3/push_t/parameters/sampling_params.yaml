@@ -6,7 +6,7 @@
 # 4 means random sampling on a 2D grid and projecting it to the nearest point on the object surface on a fixed plane at 
 # the sampling height.
 control_loop_delay_ms: 0
-sampling_strategy: 4
+sampling_strategy: 6
 filter_samples_for_safety: true
 
 # This is the fixed sample location for sampling strategy 3.
@@ -121,3 +121,7 @@ repos_to_c3_cost_fraction_position_tracking: 0.5
 
 repos_to_repos_cost_fraction: 0.3
 repos_to_repos_cost_fraction_position_tracking: 0.1
+
+z_height: -0.01
+buffer_distance: 0.03
+num_additional_samples_mesh_buffer: 100

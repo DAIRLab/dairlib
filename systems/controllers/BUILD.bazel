@@ -102,6 +102,11 @@ cc_library(
         "//solvers:c3",
         "//multibody:utils",
         "//multibody:geom_geom_collider",
+        "@eigen//:eigen",
+        "@boost//:core",
+    ],
+    copts = [
+        "-I/usr/include/libigl/include",
     ],
 )
 
@@ -131,13 +136,12 @@ cc_library(
         ":quaternion_error_hessian",
         ":sampling_params",
         "//solvers:lcs",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",     
+        "@eigen//:eigen",
+        "@boost//:core",
     ],
     copts = [
-        "-fopenmp",
-    ],
-    linkopts = [
-        "-lgomp",
+        "-I/usr/include/libigl/include",
     ],
 )
 

@@ -181,6 +181,31 @@ int main(int argc, char** argv) {
     unioned_out.close();
     std::cout << "Unioned polygon points written to 'unioned_points.csv'." << std::endl;
 
+    // Remove polygons that are completely contained inside another polygon
+    std::vector<BGPolygon> filtered_polygons;
+    for (size_t i = 0; i < union_result.size(); ++i) {
+        bool is_contained = false;
+        for (size_t j = 0; j < union_result.size(); ++j) {
+            if (i == j) continue;
+            bool all_inside = true;
+            for (const auto& pt : union_result[i].outer()) {
+                if (!bg::within(pt, union_result[j])) {
+                    all_inside = false;
+                    break;
+                }
+            }
+            if (all_inside) {
+                is_contained = true;
+                break;
+            }
+        }
+        if (!is_contained) {
+            filtered_polygons.push_back(union_result[i]);
+        }
+    }
+    union_result = filtered_polygons;
+    std::cout << "Filtered polygons (removed contained): " << union_result.size() << std::endl;
+
     // Buffering the unioned polygons
     std::vector<BGPolygon> buffered_polygons;
     bg::strategy::buffer::distance_symmetric<double> distance_strategy(0.04);
@@ -200,15 +225,15 @@ int main(int argc, char** argv) {
 
     // Making outer rings from the buffered polygons
     std::vector<BGPoint> ring;
-    // for (const auto& poly : buffered_polygons) {
-    //     const auto& outer = poly.outer();
-    //     ring.insert(ring.end(), outer.begin(), outer.end());
-    // }
+    for (const auto& poly : buffered_polygons) {
+        const auto& outer = poly.outer();
+        ring.insert(ring.end(), outer.begin(), outer.end());
+    }
 
     // Use only the outer ring of the first buffered polygon
-    if (!buffered_polygons.empty()) {
-        ring = buffered_polygons[0].outer();
-    }
+    // if (!buffered_polygons.empty()) {
+    //     ring = buffered_polygons[0].outer();
+    // }
 
     std::cout << "Number of points in the ring: " << ring.size() << std::endl;
 
@@ -218,22 +243,7 @@ int main(int argc, char** argv) {
     }
     ring_out.close();
 
-    // Trying convex hull on the outer ring
-    std::vector<Point_2> convex_hull;
-    std::vector<Point_2> convex_hull_points;
-    for (const auto& bgpt : ring) {
-        convex_hull_points.push_back(Point_2(bg::get<0>(bgpt), bg::get<1>(bgpt)));
-    }
-    CGAL::convex_hull_2(convex_hull_points.begin(), convex_hull_points.end(), std::back_inserter(convex_hull));
-    std::cout << "Convex hull size: " << convex_hull.size() << std::endl;
-    std::ofstream hull_out("examples/sampling_c3/sampling_generation/convex_hull.csv");
-    for (const auto& pt : convex_hull) {
-        hull_out << pt.x() << "," << pt.y() << std::endl;
-    }
-    hull_out.close();
-
-
-    // Sampling points along the generated outer ring
+    // Defining sampling parameters and constants
     double total_length = 0;
     for (size_t i = 0; i < ring.size() - 1; ++i) {
         total_length += bg::distance(ring[i], ring[i + 1]);
@@ -248,12 +258,14 @@ int main(int argc, char** argv) {
 
     std::cout << "Total length: " << total_length << std::endl;
 
+    double min_distance = 0.03; 
 
+    // Generating sample points along the rings
     for (int i = 0; i < num_samples; ++i) {
         double target_length = i * segment_length;
         while (current_segment + 1 < ring.size() &&
                sum_length + bg::distance(ring[current_segment], ring[current_segment + 1]) < target_length) 
-               {
+        {
             sum_length += bg::distance(ring[current_segment], ring[current_segment + 1]);
             ++current_segment;
         }
@@ -265,7 +277,20 @@ int main(int argc, char** argv) {
         double ratio = seg == 0 ? 0 : remaining_length / seg;
         double x = bg::get<0>(ring[current_segment]) + ratio * (bg::get<0>(ring[current_segment + 1]) - bg::get<0>(ring[current_segment]));
         double y = bg::get<1>(ring[current_segment]) + ratio * (bg::get<1>(ring[current_segment + 1]) - bg::get<1>(ring[current_segment]));
-        sampled_points.emplace_back(x, y);
+        BGPoint candidate(x, y);
+
+        // Making sure point is valid for all polygons or ignoring it it
+        bool far_enough = true;
+        for (const auto& poly : union_result) {
+            double dist = bg::distance(candidate, poly);
+            if (dist < min_distance) {
+                far_enough = false;
+                break;
+            }
+        }
+        if (far_enough) {
+            sampled_points.emplace_back(candidate);
+        }
     }
     std::ofstream fout("examples/sampling_c3/sampling_generation/sampled_points.csv");
     for (const auto& pt : sampled_points) {

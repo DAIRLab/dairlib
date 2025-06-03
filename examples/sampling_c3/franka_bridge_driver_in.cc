@@ -102,7 +102,7 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &lcm, std::move(owned_diagram), franka_command_translator,
       lcm_channel_params.franka_input_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_bridge_driver_in_diagram");
+//   DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_bridge_driver_in_diagram");
   loop.Simulate();
 
   return 0;

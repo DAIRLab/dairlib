@@ -574,7 +574,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     if (intersections.empty()) {
         throw std::runtime_error("No intersections found at z = " + std::to_string(z_height));
     }
-
+    std::cout << "4: Found " << intersections.size() << " intersection points." << std::endl;
     // 5. Convert intersections to 2D points and create polygon ring
     std::vector<BGPoint> ring;
     for (const auto& pt : intersections) {
@@ -595,6 +595,19 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     }
     ring_file.close();
 
+    std::cout << "5: Created polygon with " << ring.size() << " points." << std::endl;
+
+    std::vector<BGPoint> downsampled_ring;
+    int skip = std::max(1, static_cast<int>(ring.size() / 200));  // Downsample to ~200 points
+    for (size_t i = 0; i < ring.size(); i += skip) {
+        downsampled_ring.push_back(ring[i]);
+    }
+    downsampled_ring.push_back(downsampled_ring.front());  // Close polygon if needed
+
+    BGPolygon downsampled_poly;
+    bg::assign_points(downsampled_poly, downsampled_ring);
+    bg::correct(downsampled_poly);
+
     // 6. Buffer the polygon
     std::vector<BGPolygon> buffered_polygons;
     bg::strategy::buffer::distance_symmetric<double> distance_strategy(0.03);
@@ -602,13 +615,13 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     bg::strategy::buffer::end_round end_strategy;
     bg::strategy::buffer::point_circle point_strategy(5);
     bg::strategy::buffer::side_straight side_strategy;
-    bg::buffer(poly, buffered_polygons, distance_strategy, side_strategy,
+    bg::buffer(downsampled_poly, buffered_polygons, distance_strategy, side_strategy,
                join_strategy, end_strategy, point_strategy);
 
     if (buffered_polygons.empty()) {
         throw std::runtime_error("Buffering resulted in no polygons.");
     }
-
+    std::cout << "6: Buffered polygon created with " << buffered_polygons.size() << " polygons." << std::endl;
     // 7. Sample points along the buffered polygon
     std::vector<BGPoint> sampled_points;
     const auto& outer = buffered_polygons.front().outer();
@@ -626,6 +639,8 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     double accumulated_length = 0.0;
     size_t current_segment = 0;
 
+    std::cout << "6.5: Segment length: " << segment_length << std::endl;
+
     for (int i = 0; i < num_samples; ++i) {
         double target_length = i * segment_length;
         while (current_segment + 1 < outer.size() &&
@@ -633,7 +648,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
             accumulated_length += bg::distance(outer[current_segment], outer[current_segment + 1]);
             ++current_segment;
         }
-        std::cout << "Current segment: " << current_segment << ", accumulated length: " << accumulated_length << std::endl;
+        // std::cout << "Current segment: " << current_segment << ", accumulated length: " << accumulated_length << std::endl;
         if (current_segment + 1 >= outer.size()) {
             break;
         }
@@ -644,12 +659,12 @@ Eigen::VectorXd generate_sample_mesh_buffer(
         double y = bg::get<1>(outer[current_segment]) + ratio * (bg::get<1>(outer[current_segment + 1]) - bg::get<1>(outer[current_segment]));
         BGPoint candidate(x, y);
         const double min_distance = 0.01;
-        std::cout << "Sampled point: (" << x << ", " << y << ")" << std::endl;
+        //std::cout << "Sampled point: (" << x << ", " << y << ")" << std::endl;
         // Min distance check
         bool far_enough = true;
         for (const auto& poly : ring) {
             double dist = bg::distance(candidate, poly);
-            std::cout << "Distance to polygon: " << dist << std::endl;
+            //std::cout << "Distance to polygon: " << dist << std::endl;
             if (dist < min_distance) {
                 far_enough = false;
                 break;

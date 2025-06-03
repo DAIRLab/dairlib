@@ -54,7 +54,7 @@ reposition_speed: 0.18    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
 repositioning_trajectory_type: 3   # 0 is spline, 1 is spherical, 2 is circular, 3 is piecewise linear.
-repositioning_waypoint_height: 0.06 # This is the height of the waypoints for the piecewise linear repositioning.
+repositioning_waypoint_height: 0.15 # This is the height of the waypoints for the piecewise linear repositioning.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc

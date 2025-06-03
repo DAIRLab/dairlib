@@ -317,12 +317,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
+//   DrawAndSaveDiagramGraph(*owned_diagram, "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/franka_osc_controller_diagram");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
+//   DrawAndSaveDiagramGraph(*loop.get_diagram(), "/home/sharanya/workspace/diagrams/" + FLAGS_demo_name + "/loop_franka_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

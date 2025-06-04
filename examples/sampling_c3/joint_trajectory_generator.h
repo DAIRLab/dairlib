@@ -9,8 +9,8 @@ namespace dairlib {
 class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   JointTrajectoryGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const Eigen::VectorXd& target_position);
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& target_position);
 
   const drake::systems::InputPort<double>& get_input_port_robot_state() const {
     return this->get_input_port(state_port_);
@@ -25,8 +25,8 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void CalcTraj(int joint_index, const drake::systems::Context<double>& context,
                 drake::AbstractValue* traj) const;

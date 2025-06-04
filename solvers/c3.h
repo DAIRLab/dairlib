@@ -29,34 +29,52 @@ class C3 {
     std::vector<Eigen::MatrixXd> U;
   };
   /// @param LCS LCS parameters
-  /// @param Q, R, G, U Cost Matrices
+  /// @param costs Cost Matrices
+  /// @param x_des Desired goal state
+  /// @param options C3 options
   C3(const LCS& LCS, const CostMatrices& costs,
      const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
   virtual ~C3() = default;
 
-  /// Solve the MPC problem
+  /// Solve the MPC problem.
   /// @param x0 The initial state of the system
   /// @return void
   void Solve(const Eigen::VectorXd& x0, bool verbose = false);
 
-  /// Compute the MPC cost, using previously solved MPC solution
-  /// @return The cost and the full state trajectory
+  /// Compute the MPC cost, using previously solved MPC solution.
+  /// @param cost_type The method of computing the cost
+  /// @param Kp_for_ee_pd_rollout Proportional gain for simulated EE PD control
+  /// used for some of the cost types
+  /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
+  /// used for some of the cost types
+  /// @param force_tracking_disabled Whether to simulate EE PD control with
+  /// feedforward u from the MPC solution
+  /// @param print_cost_breakdown Whether to print the cost breakdown
+  /// @param verbose Whether to print additional information
+  /// @return The cost and its associated state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-      int simulate_dynamics_for_cost = 2, double Kp_for_ee_pd_rollout = 0.0,
-      double Kd_for_ee_pd_rollout = 0.0, bool force_tracking_disabled = false,
-      bool print_cost_breakdown = false, bool verbose = false) const;
+      int cost_type = SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
+      double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
+      bool force_tracking_disabled = false, bool print_cost_breakdown = false,
+      bool verbose = false) const;
 
-  /// This is a helper function to simulate the dynamics with PD tracking
-  /// control for the end effector plans and the control input plans when
-  /// computing cost types 3,4 and 5.
+  /// Helper function to simulate the dynamics with PD control on the EE
+  /// location and velocity plans, and the control input plans.  Used for cost
+  /// types that simulate the impedance control.
+  /// @param Kp_for_ee_pd_rollout Proportional gain for simulated EE PD control
+  /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
+  /// @param force_tracking_disabled Whether to simulate EE PD control with
+  /// feedforward u from the MPC solution
+  /// @param verbose Whether to print additional information
+  /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                    double Kd_for_ee_pd_rollout = 0.0,
-                    bool force_tracking_disabled = false,
-                    bool verbose = false) const;
+    SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
+                        double Kd_for_ee_pd_rollout = 0.0,
+                        bool force_tracking_disabled = false,
+                        bool verbose = false) const;
 
-  /// Solve a single ADMM step
+  /// Solve a single ADMM step.
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
@@ -68,7 +86,7 @@ class C3 {
                 std::vector<Eigen::MatrixXd>* G, int admm_iteration,
                 bool verbose = false);
 
-  /// Solve a single QP
+  /// Solve a single QP.
   /// @param x0 The initial state of the system
   /// @param G A pointer to the G variables from previous step
   /// @param WD A pointer to the (w - delta) variables
@@ -82,7 +100,7 @@ class C3 {
                                        int admm_iteration,
                                        bool is_final_solve = false);
 
-  /// Solve the projection problem for all timesteps
+  /// Solve the projection problem for all timesteps.
   /// @param U Matrix for consensus cost
   /// @param WZ (z + w) variables
   /// @param admm_iteration ADMM iteration for accurate warm starting
@@ -99,7 +117,7 @@ class C3 {
   /// remove all constraints
   void RemoveConstraints();
 
-  /// Solve a projection step for a single knot point k
+  /// Solve a projection step for a single knot point k.
   /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
   /// @param E, F, H, c LCS contact parameters
@@ -112,7 +130,7 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
-  /// Solve a robust (friction cone) projection step for a single knot point k
+  /// Solve a robust (friction cone) projection step for a single knot point k.
   /// @param U Matrix for consensus cost
   /// @param delta_c A pointer to the copy of (z + w) variables
   /// @param E, F, H, c LCS contact parameters
@@ -144,11 +162,13 @@ class C3 {
  public:
   void UpdateCostMatrices(const C3::CostMatrices& costs);
   void UpdateLCS(const LCS& lcs);
-  // This function updates the LCS used for cost computation in case we want to
-  // consider a different number of contacts when computing the cost. This is
-  // useful for sampling C3, where we want to consider more contacts for
-  // computing cost than the ones used for the actual solve.
-  void UpdateCostLCS(const LCS& lcs);
+
+  /// Update the LCS used for cost computation.  This can differ from the LCS
+  /// used for the solve, e.g. if more contacts are used for cost than for
+  /// computing the plan.  NOTE:  This does not update the internal cost
+  /// matrices used for the solve (Q_, R_, G_, U_).  Those are updated via
+  /// UpdateCostMatrices.
+  void UpdateCostLCS(const LCS& lcs_for_cost);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
  protected:
@@ -159,14 +179,16 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_;  // n_x
-  const int m_;  // n_lambda
-  const int k_;  // n_u
+  const int n_; // n_x
+  const int m_; // n_lambda
+  const int k_; // n_u
   const C3Options options_;
 
  private:
+  // TODO: @bibit:  storing the LCS as a class variable makes the LCS matrices
+  // redundant.  Could consider removing LCS matrices as class variables.
   mutable LCS lcs_;
-  std::unique_ptr<LCS> LCS_for_cost_computation_;
+  std::unique_ptr<LCS> lcs_for_cost_;
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
   std::vector<Eigen::MatrixXd> D_;

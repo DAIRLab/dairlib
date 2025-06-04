@@ -47,6 +47,7 @@ class MultiposeVisualizer {
   /// @param weld_frame_to_world Welds the frame of the given name to the world
   /// @param meshcat Pointer to meshcat visualizer for option to attach to an
   /// existing meshcat instance
+  /// @param pose_trace_name Name of the pose trace to use in meshcat
   MultiposeVisualizer(
     std::string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
     std::string weld_frame_to_world = "",

@@ -24,7 +24,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
+EndEffectorPositionTrajectoryGenerator::EndEffectorPositionTrajectoryGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const Eigen::VectorXd& neutral_pose, bool teleop_neutral_pose,
     const std::string& end_effector_name)
@@ -50,16 +50,16 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
   if (teleop_neutral_pose) {
     this->DeclareAbstractOutputPort(
       "end_effector_trajectory", traj_inst,
-      &EndEffectorTrajectoryGenerator::CalcPoseShiftingTraj);
+      &EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj);
   }
   else {
     this->DeclareAbstractOutputPort(
       "end_effector_trajectory", traj_inst,
-      &EndEffectorTrajectoryGenerator::CalcNeutralPoseBasedTraj);
+      &EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj);
   }
 }
 
-void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
+void EndEffectorPositionTrajectoryGenerator::SetRemoteControlParameters(
     const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale,
     double z_scale) {
   neutral_pose_ = neutral_pose;
@@ -69,7 +69,7 @@ void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
   z_scale_ = z_scale;
 }
 
-void EndEffectorTrajectoryGenerator::CalcNeutralPoseBasedTraj(
+void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   const auto& trajectory_input =
@@ -100,7 +100,7 @@ void EndEffectorTrajectoryGenerator::CalcNeutralPoseBasedTraj(
   }
 }
 
-void EndEffectorTrajectoryGenerator::CalcPoseShiftingTraj(
+void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   const auto& trajectory_input =

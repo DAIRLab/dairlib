@@ -65,9 +65,9 @@ u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 u_lambda: [85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85]
 u_u: [30, 30, 30]
 
-# Parameters used in the QP projection method. See c3_qp.cc
-# As alpha -> 0, any error in complimentarity
-# constraints also approaches 0.
+
+# Parameters used in the QP projection method.  As alpha -> 0, any error in
+# complimentarity constraints also approaches 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1000
-penalize_deviation_from_previous_input_solution: true
+penalize_changes_in_u_across_solves: true

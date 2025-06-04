@@ -83,6 +83,7 @@ class LcmTrajectory {
   void AddTrajectory(const std::string& trajectory_name,
                      const Trajectory& trajectory);
 
+  /// Remove all trajectories
   void ClearTrajectories();
 
   /// Returns a vector of the names of the stored Trajectory objects

@@ -2,6 +2,8 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+// TODO: @bibit parameter-restructuring could consider seeing if any of these
+// changes beyond examples/franka/franka_sim_params.h are necessary?
 struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;

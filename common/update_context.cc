@@ -11,7 +11,7 @@ void UpdateContext(const int& n_q, const int& n_v, const int& n_u,
                    drake::systems::Context<double>* context,
                    drake::multibody::MultibodyPlant<AutoDiffXd>& plant_ad,
                    drake::systems::Context<AutoDiffXd>* context_ad,
-                   Eigen::VectorXd lcs_state) {
+                   Eigen::VectorXd x) {
   // Update autodiff.
   VectorXd xu_test(n_q + n_v + n_u);
 
@@ -21,8 +21,8 @@ void UpdateContext(const int& n_q, const int& n_v, const int& n_u,
 
   // Update context with respect to positions and velocities associated with
   // the candidate state.
-  VectorXd test_q = lcs_state.head(n_q);
-  VectorXd test_v = lcs_state.tail(n_v);
+  VectorXd test_q = x.head(n_q);
+  VectorXd test_v = x.tail(n_v);
   xu_test << test_q, test_v, test_u;
   auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
   plant_ad.SetPositionsAndVelocities(context_ad, xu_ad_test.head(n_q + n_v));

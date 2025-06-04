@@ -1,6 +1,5 @@
 franka_state_channel: FRANKA_STATE
 object_state_channel: OBJECT_STATE
-box_state_channel: BOX_STATE
 franka_input_channel: FRANKA_INPUT
 franka_input_echo: FRANKA_INPUT_ECHO
 

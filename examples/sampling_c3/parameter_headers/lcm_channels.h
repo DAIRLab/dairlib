@@ -2,10 +2,9 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaLcmChannels {
+struct SamplingC3LcmChannels {
   std::string franka_state_channel;
   std::string object_state_channel;
-  std::string box_state_channel;
   std::string franka_input_channel;
   std::string franka_input_echo;
   std::string osc_channel;
@@ -47,7 +46,6 @@ struct FrankaLcmChannels {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
     a->Visit(DRAKE_NVP(object_state_channel));
-    a->Visit(DRAKE_NVP(box_state_channel));
     a->Visit(DRAKE_NVP(franka_input_channel));
     a->Visit(DRAKE_NVP(franka_input_echo));
     a->Visit(DRAKE_NVP(osc_channel));

@@ -5,7 +5,8 @@
         <inertial>
             <pose>0 0 0 0 0 0</pose>
             <mass>0.052</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass
+            and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.00007072</ixx>
             <ixy>0</ixy>
@@ -44,7 +45,8 @@
         <inertial>
             <pose>0 0 0 0 1.5708 0</pose>
             <mass>0.052</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass
+            and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.00007072</ixx>
             <ixy>0</ixy>
@@ -83,7 +85,8 @@
         <inertial>
             <pose>0 0 0 1.5708 0 0</pose>
             <mass>0.052</mass>
-            <!-- Inertia values were calculated to be consistent with the mass and geometry size, assuming a uniform density. -->
+            <!-- Inertia values were calculated to be consistent with the mass
+            and geometry size, assuming a uniform density. -->
             <inertia>
             <ixx>0.00007072</ixx>
             <ixy>0</ixy>

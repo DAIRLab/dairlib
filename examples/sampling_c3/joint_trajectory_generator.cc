@@ -1,7 +1,5 @@
 #include "joint_trajectory_generator.h"
 
-#include <iostream>
-
 #include "systems/framework/output_vector.h"
 
 using Eigen::Map;
@@ -29,33 +27,34 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   radio_port_ =
-      this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
-          .get_index();
-  state_port_ = this->DeclareVectorInputPort(
-                        "x_franka", OutputVector<double>(plant.num_positions(),
-                                                         plant.num_velocities(),
-                                                         plant.num_actuators()))
-                    .get_index();
+    this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
+      .get_index();
+  state_port_ =
+    this->DeclareVectorInputPort(
+      "x_franka", OutputVector<double>(plant.num_positions(),
+      plant.num_velocities(), plant.num_actuators()))
+    .get_index();
 
   initial_position_index_ =
-      this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
+    this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
   initial_time_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+
   DeclareForcedDiscreteUpdateEvent(
       &JointTrajectoryGenerator::DiscreteVariableUpdate);
+
   joint_trajectory_ports_.resize(plant.num_positions());
   for (int i = 0; i < plant.num_positions(); ++i) {
     joint_trajectory_ports_[i] =
-        this->DeclareAbstractOutputPort(
-                "joint_traj_" + std::to_string(i),
-                []() {
-                  return drake::AbstractValue::Make<Trajectory<double>>(
-                      PiecewisePolynomial<double>(VectorXd::Zero(1)));
-                },
-                [this, i](const Context<double>& context,
-                          drake::AbstractValue* traj) {
-                  this->CalcTraj(i, context, traj);
-                })
-            .get_index();
+      this->DeclareAbstractOutputPort(
+        "joint_traj_" + std::to_string(i),
+          []() {
+            return drake::AbstractValue::Make<Trajectory<double>>(
+              PiecewisePolynomial<double>(VectorXd::Zero(1)));
+          },
+          [this, i](const Context<double>& context, drake::AbstractValue* traj){
+            this->CalcTraj(i, context, traj);
+          })
+          .get_index();
   }
 }
 
@@ -63,10 +62,10 @@ drake::systems::EventStatus JointTrajectoryGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   auto initial_positions =
-      discrete_state->get_mutable_value(initial_position_index_);
+    discrete_state->get_mutable_value(initial_position_index_);
   auto initial_time = discrete_state->get_mutable_value(initial_time_index_);
   const OutputVector<double>* franka_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   if (initial_time[0] == 0.0) {  // poll once
     initial_positions = franka_output->GetPositions();
     initial_time[0] = context.get_time();
@@ -79,12 +78,12 @@ void JointTrajectoryGenerator::CalcTraj(
     drake::AbstractValue* output) const {
   auto output_value = &output->get_mutable_value<Trajectory<double>>();
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          output_value);
+    (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      output_value);
   const OutputVector<double>* franka_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+    (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto initial_positions =
-      context.get_discrete_state(initial_position_index_).value();
+    context.get_discrete_state(initial_position_index_).value();
   auto initial_time = context.get_discrete_state(initial_time_index_).value();
 
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
@@ -97,12 +96,12 @@ void JointTrajectoryGenerator::CalcTraj(
   sampled_positions[1] << target_position_[joint_index];
   if (context.get_time() >= 1.0) {  // poll for a second
     *casted_traj =
-        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-            breaks, sampled_positions, MatrixXd::Zero(1, 1),
-            MatrixXd::Zero(1, 1));
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+        breaks, sampled_positions, MatrixXd::Zero(1, 1),
+        MatrixXd::Zero(1, 1));
   } else {
     *casted_traj = PiecewisePolynomial<double>(
-        franka_output->GetPositions().segment(joint_index, 1));
+      franka_output->GetPositions().segment(joint_index, 1));
   }
 }
 

@@ -214,9 +214,8 @@ void C3::UpdateLCS(const LCS& lcs) {
   auto Dn = D_.at(0).norm();
   auto An = A_.at(0).norm();
   AnDn_ = An / Dn;
-  // Scale the D, E, c, and H matrices by AnDn_ to have a better conditioned
-  // optimization problem.
-  for (int i = 0 ; i < N_; ++i) {
+
+  for (int i = 0; i < N_; ++i) {
     D_.at(i) *= AnDn_;
     E_.at(i) /= AnDn_;
     c_.at(i) /= AnDn_;
@@ -232,18 +231,16 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
-// This function updates the LCS used for cost computation in case we want to consider a different number of contacts when computing the cost.
-// This is useful for sampling C3, where we want to consider more contacts for computing cost than the ones used for the actual solve.
-void C3::UpdateCostLCS(const LCS& lcs) {
-  DRAKE_DEMAND(lcs.A_.size() == N_);
-  DRAKE_DEMAND(lcs.A_[0].rows() == n_);
-  DRAKE_DEMAND(lcs.A_[0].cols() == n_);
-  DRAKE_DEMAND(lcs.B_[0].cols() == k_);
+void C3::UpdateCostLCS(const LCS& lcs_for_cost) {
+  DRAKE_DEMAND(lcs_for_cost.A_.size() == N_);
+  DRAKE_DEMAND(lcs_for_cost.A_[0].rows() == n_);
+  DRAKE_DEMAND(lcs_for_cost.A_[0].cols() == n_);
+  DRAKE_DEMAND(lcs_for_cost.B_[0].cols() == k_);
   // Update the stored LCS object.
-  if (!LCS_for_cost_computation_){
-    LCS_for_cost_computation_ = std::make_unique<LCS>(lcs);
+  if (!lcs_for_cost_) {
+    lcs_for_cost_ = std::make_unique<LCS>(lcs_for_cost);
   }else{
-    *LCS_for_cost_computation_ = lcs;
+    *lcs_for_cost_ = lcs_for_cost;
   }
 }
 
@@ -267,14 +264,14 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
-    if(options_.penalize_deviation_from_previous_input_solution){
-      // Penalize deviation from previous input solution.
+    if (options_.penalize_changes_in_u_across_solves) {
+      // Penalize deviation from previous input solution:  input cost is
+      // (u-u_prev)' * R * (u-u_prev).
       input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
                                           -2 * R_.at(i) * u_sol_->at(i));
     }
     else{
-      // Do not penalize deviation from previous input solution.
-      // used by sampling C3.
+      // Penalize inputs:  input cost is u' * R * u.
       input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
                                           Eigen::VectorXd::Zero(k_));   
     }
@@ -291,15 +288,15 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
-  if(verbose){
+  if (verbose) {
     std::cout << "x0: " << x0.transpose() << std::endl;
     std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
-    // Make a printable delta and w matrix.
+    // Make matrix versions of variables for more compact printing.
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
     Eigen::MatrixXd verbose_zsol = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    for(int i = 0; i < N_; i++){
+    for(int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta[i];
       verbose_w.col(i) = w[i];
       verbose_zfin.col(i) = zfin_[i];
@@ -310,6 +307,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     std::cout<<"delta: \n"<<verbose_delta<<std::endl;
     std::cout<<"w: \n"<<verbose_w<<std::endl;
   }
+
   *w_sol_ = w;
   *delta_sol_ = delta;
 
@@ -337,9 +335,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
       1e6;
 }
 
-// This function relies on the previously computed zfin_ from the Solve function.
-// Calculate the C3 cost and feasible trajectory associated with applying a 
-// provided control input sequence to a system at a provided initial state.
+// This function relies on the previously computed zfin_ from Solve.
 std::pair<double,std::vector<Eigen::VectorXd>> 
   C3::CalcCost(int cost_type, 
                double Kp_for_ee_pd_rollout, 
@@ -351,28 +347,28 @@ std::pair<double,std::vector<Eigen::VectorXd>>
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 
-  // If cost_type is 0, simulate the dynamics to get the
-  // full state trajectory. 
-  if (cost_type == 0){
+  // Simulate the dynamics from the planned inputs. 
+  if (cost_type == SIMULATE_EE_AND_OBJECT) {
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_; i++){
+    for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
-      if(LCS_for_cost_computation_){
-        XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      if (lcs_for_cost_) {
+        XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
       else{
         XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       }
     }
   }
-  // If cost_type is 1, use the provided zfin_ trajectory for the full state.
-  else if(cost_type == 1){
-    for (int i = 0; i < N_; i++){
+
+  // Use the C3 plan.
+  else if (cost_type == USE_C3_PLAN) {
+    for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
-      if(i == N_-1){
-        if(LCS_for_cost_computation_){
-          XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      if (i == N_-1) {
+        if (lcs_for_cost_) {
+          XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
         else{
           XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
@@ -380,27 +376,28 @@ std::pair<double,std::vector<Eigen::VectorXd>>
       }
     }
   }
-  else if(cost_type == 2){
-    // If cost_type is 2, use z_fin for ee trajectory but simulate forward for 
-    // the object trajectory.
+
+  // Simulate the dynamics from the planned inputs only for the object; use the
+  // planned EE trajectory.
+  else if (cost_type == SIMULATE_OBJECT_AND_USE_C3_EE_PLAN) {
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_; i++){
+    for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
-      if(LCS_for_cost_computation_){
-        XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      if (lcs_for_cost_) {
+        XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
       else{
         XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       }
     }
     // Replace ee traj with those from zfin_.
-    for (int i = 0; i < N_; i++){
+    for (int i = 0; i < N_; i++) {
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      if(i == N_-1){
-        if(LCS_for_cost_computation_){
+      if (i == N_-1) {
+        if (lcs_for_cost_) {
           XX[i+1].segment(0,3) = 
-            LCS_for_cost_computation_->Simulate(XX[i], UU[i]).segment(0,3);
+            lcs_for_cost_->Simulate(XX[i], UU[i]).segment(0,3);
         }
         else{
           XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
@@ -408,24 +405,22 @@ std::pair<double,std::vector<Eigen::VectorXd>>
       }
     }
   }
-  else if(cost_type == 3){
-    // If cost_type is 3, try to emulate the real cost of the system associated 
-    // not only applying the u from the zfin_[0] but also the u associated with 
-    // tracking the position plan over time.
-    if(verbose){
-      std::cout<<"\nCOMPUTING COST TYPE 3"<<std::endl;
-    }
+
+  // Try to emulate the real cost of the system associated not only applying the
+  // planned u but also the u associated with tracking the position plan over
+  // time.
+  else if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN) {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
                                          verbose);
   }
-  else if(cost_type == 4){
-    // This is same as cost type 3 except the end effector position and 
-    // velocity plans are replaced with the plan from C3 at the end.
-    if(verbose){
-      std::cout<<"\nCOMPUTING COST TYPE 4"<<std::endl;
-    }
+
+  // The same as the previous cost type except the EE states are replaced with
+  // the plan from C3 at the end.
+  else if (
+    cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_REPLACE_EE_WITH_C3_PLAN)
+  {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
@@ -433,20 +428,20 @@ std::pair<double,std::vector<Eigen::VectorXd>>
 
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
-    for(int i = 0; i < N_; i++){
+    for(int i = 0; i < N_; i++) {
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
       XX[i].segment(10,3) = zfin_[i].segment(10,3);
-      if(i == N_-1){
+      if (i == N_-1) {
         XX[i+1].segment(0,3) = zfin_[i].segment(0,3);
         XX[i+1].segment(10,3) = zfin_[i].segment(10,3);
       }
     }
   }
-  else if (cost_type == 5){
-  // This is same as cost type 3 and 4 except we later include only object terms in the final cost. 
-    if(verbose){
-      std::cout<<"\nCOMPUTING COST TYPE 5"<<std::endl;
-    }
+
+  // The same as the previous cost type except only object terms contribute to
+  // the final cost. 
+  else if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY)
+  {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
@@ -475,63 +470,65 @@ std::pair<double,std::vector<Eigen::VectorXd>>
   double cost_contrib_obj_ang_vel = 0;
   double cost_contrib_obj_vel = 0;
 
-  for (int i = 0; i < N_; i++){
-    // Calculate the error and cost contributions for each state.
-      //ee_pos
-      error_contrib_ee_pos += 
-        (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
-          (XX[i].segment(0,3) - x_desired_[i].segment(0,3));
-      cost_contrib_ee_pos += 
-        (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
-          Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - 
-            x_desired_[i].segment(0,3));
-      //obj_orientation
-      error_contrib_obj_orientation += 
-        (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() * 
+  // Calculate the error and cost contributions for each state.
+  for (int i = 0; i < N_; i++) {
+    //ee_pos
+    error_contrib_ee_pos += 
+      (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
+        (XX[i].segment(0,3) - x_desired_[i].segment(0,3));
+    cost_contrib_ee_pos += 
+      (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
+        Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - 
+          x_desired_[i].segment(0,3));
+    //obj_orientation
+    error_contrib_obj_orientation += 
+      (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() * 
+        (XX[i].segment(3,4) - x_desired_[i].segment(3,4));
+    cost_contrib_obj_orientation += 
+      (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() *
+        Q_eff.at(i).block(3,3,4,4) * 
           (XX[i].segment(3,4) - x_desired_[i].segment(3,4));
-      cost_contrib_obj_orientation += 
-        (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose() *
-          Q_eff.at(i).block(3,3,4,4) * 
-            (XX[i].segment(3,4) - x_desired_[i].segment(3,4));
-      //obj_pos
-      error_contrib_obj_pos += 
-        (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() * 
-          (XX[i].segment(7,3) - x_desired_[i].segment(7,3));
-      cost_contrib_obj_pos += 
-        (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() *
-          Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - 
-            x_desired_[i].segment(7,3));
-      //ee_vel
-      error_contrib_ee_vel += 
-        (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() * 
-          (XX[i].segment(10,3) - x_desired_[i].segment(10,3));
-      cost_contrib_ee_vel += 
-        (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() *
-          Q_eff.at(i).block(10,10,3,3) * (XX[i].segment(10,3) - 
-            x_desired_[i].segment(10,3));
-      //obj_ang_vel
-      error_contrib_obj_ang_vel += 
-        (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() * 
-          (XX[i].segment(13,3) - x_desired_[i].segment(13,3));
-      cost_contrib_obj_ang_vel += 
-        (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() *
-          Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - 
-            x_desired_[i].segment(13,3));
-      //obj_vel
-      error_contrib_obj_vel += 
-        (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() * 
-          (XX[i].segment(16,3) - x_desired_[i].segment(16,3));
-      cost_contrib_obj_vel += 
-        (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() *
-          Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - 
-            x_desired_[i].segment(16,3));
+    //obj_pos
+    error_contrib_obj_pos += 
+      (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() * 
+        (XX[i].segment(7,3) - x_desired_[i].segment(7,3));
+    cost_contrib_obj_pos += 
+      (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose() *
+        Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - 
+          x_desired_[i].segment(7,3));
+    //ee_vel
+    error_contrib_ee_vel += 
+      (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() * 
+        (XX[i].segment(10,3) - x_desired_[i].segment(10,3));
+    cost_contrib_ee_vel += 
+      (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose() *
+        Q_eff.at(i).block(10,10,3,3) * (XX[i].segment(10,3) - 
+          x_desired_[i].segment(10,3));
+    //obj_ang_vel
+    error_contrib_obj_ang_vel += 
+      (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() * 
+        (XX[i].segment(13,3) - x_desired_[i].segment(13,3));
+    cost_contrib_obj_ang_vel += 
+      (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose() *
+        Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - 
+          x_desired_[i].segment(13,3));
+    //obj_vel
+    error_contrib_obj_vel += 
+      (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() * 
+        (XX[i].segment(16,3) - x_desired_[i].segment(16,3));
+    cost_contrib_obj_vel += 
+      (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose() *
+        Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - 
+          x_desired_[i].segment(16,3));
 
-      cost = cost + (XX[i] - x_desired_[i]).transpose() * 
-              Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
-                UU[i].transpose()*R_eff.at(i)*UU[i];
+    cost = cost + (XX[i] - x_desired_[i]).transpose() * 
+            Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
+              UU[i].transpose()*R_eff.at(i)*UU[i];
   }
-      cost = cost + (XX[N_] - x_desired_[N_]).transpose() * 
-              Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+
+  // Handle the N_th state.
+  cost = cost + (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(
+    XX[N_] - x_desired_[N_]);
 
   error_contrib_ee_pos += 
     (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose() * 
@@ -577,78 +574,91 @@ std::pair<double,std::vector<Eigen::VectorXd>>
       Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - 
         x_desired_[N_].segment(16,3));
 
-  if(cost_type == 5){
-    cost = cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
+  if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY) {
+    cost = cost_contrib_obj_pos + cost_contrib_obj_orientation +
+      cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
   }
 
-  if(verbose || print_cost_breakdown){
+  if (verbose || print_cost_breakdown) {
     std::cout<<"Error breakdown"<<std::endl;
-    std::cout<<"\t total error contribution from x_ee: "<<error_contrib_ee_pos<<std::endl;
-    std::cout<<"\t total error contribution from q_obj: "<<error_contrib_obj_orientation<<std::endl;
-    std::cout<<"\t total error contribution from x_obj: "<<error_contrib_obj_pos<<std::endl;
-    std::cout<<"\t total error contribution from v_ee: "<<error_contrib_ee_vel<<std::endl;
-    std::cout<<"\t total error contribution from w_obj: "<<error_contrib_obj_ang_vel<<std::endl;
-    std::cout<<"\t total error contribution from v_obj: "<<error_contrib_obj_vel<<std::endl;
+    std::cout<<"\t total error contribution from x_ee: "<<
+      error_contrib_ee_pos<<std::endl;
+    std::cout<<"\t total error contribution from q_obj: "<<
+      error_contrib_obj_orientation<<std::endl;
+    std::cout<<"\t total error contribution from x_obj: "<<
+      error_contrib_obj_pos<<std::endl;
+    std::cout<<"\t total error contribution from v_ee: "<<
+      error_contrib_ee_vel<<std::endl;
+    std::cout<<"\t total error contribution from w_obj: "<<
+      error_contrib_obj_ang_vel<<std::endl;
+    std::cout<<"\t total error contribution from v_obj: "<<
+      error_contrib_obj_vel<<std::endl;
 
     std::cout<<"\nCOST BREAKDOWN"<<std::endl;
-    std::cout<<"\t total cost contribution from x_ee: "<<cost_contrib_ee_pos<<std::endl;
-    std::cout<<"\t total cost contribution from q_obj: "<<cost_contrib_obj_orientation<<std::endl;
-    std::cout<<"\t total cost contribution from x_obj: "<<cost_contrib_obj_pos<<std::endl;
-    std::cout<<"\t total cost contribution from v_ee: "<<cost_contrib_ee_vel<<std::endl;
-    std::cout<<"\t total cost contribution from w_obj: "<<cost_contrib_obj_ang_vel<<std::endl;
-    std::cout<<"\t total cost contribution from v_obj: "<<cost_contrib_obj_vel<<std::endl;
+    std::cout<<"\t total cost contribution from x_ee: "<<
+      cost_contrib_ee_pos<<std::endl;
+    std::cout<<"\t total cost contribution from q_obj: "<<
+      cost_contrib_obj_orientation<<std::endl;
+    std::cout<<"\t total cost contribution from x_obj: "<<
+      cost_contrib_obj_pos<<std::endl;
+    std::cout<<"\t total cost contribution from v_ee: "<<
+      cost_contrib_ee_vel<<std::endl;
+    std::cout<<"\t total cost contribution from w_obj: "<<
+      cost_contrib_obj_ang_vel<<std::endl;
+    std::cout<<"\t total cost contribution from v_obj: "<<
+      cost_contrib_obj_vel<<std::endl;
 
     std::cout<<"\t total cost is: "<< cost <<std::endl;
     std::cout<<"\t total cost object terms only is : "<< 
-      cost_contrib_obj_pos + cost_contrib_obj_orientation + cost_contrib_obj_vel + cost_contrib_obj_ang_vel << std::endl;
+      cost_contrib_obj_pos + cost_contrib_obj_orientation +
+      cost_contrib_obj_vel + cost_contrib_obj_ang_vel << std::endl;
     std::cout<<"\n\n";
   }
 
-  // Return the cost and the rolled out state trajectory.
+  // Return the cost and associated state trajectory.
   std::pair <double, std::vector<VectorXd>> ret (cost, XX);
   return ret;
 }
 
-std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::SimulatePDControl(
-  double Kp_for_ee_pd_rollout, double Kd_for_ee_pd_rollout,
-  bool force_tracking_disabled, bool verbose) const{
-    // used to store the solutions from C3.
-    vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
-
-    // Set the UU and XX values to the z_fin values first for the emulated PD 
-    // controller to have for error computation in place of all 0s.
-    if(verbose){
+std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  C3::SimulatePDControl(
+    double Kp_for_ee_pd_rollout, double Kd_for_ee_pd_rollout,
+    bool force_tracking_disabled, bool verbose) const
+  {
+    if (verbose) {
       std::cout<<"\nSIMULATING PD CONTROL"<<std::endl;
     }
 
-    for (int i = 0; i < N_; i++){
+    // Obtain the solutions from C3.
+    vector<VectorXd> UU(N_, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_));
+    for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
-      if(i == N_-1){
-        if(LCS_for_cost_computation_){
-          XX[i+1] = LCS_for_cost_computation_->Simulate(XX[i], UU[i]);
+      if (i == N_-1) {
+        if (lcs_for_cost_) {
+          XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
         else{
           XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
         }
       }
     }
-
-    // Used to store modified solutions for the PD controller.
-    std::vector<Eigen::VectorXd> UU_new(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
-
+    
     // Set the PD gains for the emulated tracking controller.
     Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
     Eigen::MatrixXd Kd = Kd_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
 
+    // Obtain modified solutions for the PD controller.
+    std::vector<Eigen::VectorXd> UU_new(N_, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
+
     XX_new[0] = zfin_[0].segment(0, n_);
     // This will just be the original u from zfin_[0] for the first time step.
-    // if the radio input is true, then the u will only emulate position tracking 
-    // using the PD controller.
-    for (int i = 0; i < N_; i++){
-        if(force_tracking_disabled){
+    // if the radio input is true, then the u will only emulate position
+    // tracking using the PD controller.
+    for (int i = 0; i < N_; i++) {
+        if (force_tracking_disabled) {
           UU_new[i] =  Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
                        Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         }
@@ -657,12 +667,12 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
             Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
             Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
         }
-        if(LCS_for_cost_computation_){
+        if (lcs_for_cost_) {
 
-          if(verbose){
+          if (verbose) {
             std::cout<<"simulated step "<<i+1<<std::endl;
           }
-          XX_new[i+1] = LCS_for_cost_computation_->Simulate(XX_new[i], UU_new[i], verbose);
+          XX_new[i+1] = lcs_for_cost_->Simulate(XX_new[i], UU_new[i], verbose);
         }
         else{
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
@@ -681,10 +691,10 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
-  if(verbose){
+  if (verbose) {
     std::cout << "SolveQP Iteration: " << admm_iteration << std::endl;
     Eigen::MatrixXd verbose_z = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    for(int i = 0; i < N_; i++){
+    for(int i = 0; i < N_; i++) {
       verbose_z.col(i) = z[i];
     }
     std::cout<<"z: \n"<<verbose_z<<std::endl;
@@ -701,10 +711,10 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   } else {
     *delta = SolveProjection(U_, ZW, admm_iteration);
   }
-  if(verbose){
+  if (verbose) {
     std::cout << "ADMM Iteration: " << admm_iteration << std::endl;
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    for(int i = 0; i < N_; i++){
+    for(int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta->at(i);
     }
     std::cout<<"delta: \n"<<verbose_delta<<std::endl;
@@ -816,7 +826,8 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
     omp_set_num_threads(options_.num_threads);  // Set number of threads
     // TODO: A newer version of OpenMP likely uses omp_set_max_active_levels
     // instead of omp_set_nested. Consider updating this after testing.
-    omp_set_nested(1);  // Enable nested parallelism (important for sampling_c3_controller)
+    omp_set_nested(1);  // Enable nested parallelism (important for
+                        // sampling_c3_controller)
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)

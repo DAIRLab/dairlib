@@ -4,15 +4,15 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "joint_trajectory_generator.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
-#include "systems/controllers/osc/end_effector_force.h"
-#include "systems/controllers/osc/end_effector_orientation.h"
-#include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -47,6 +47,7 @@ using std::string;
 
 using systems::controllers::JointSpaceTrackingData;
 
+// TODO @bibit parameter overhaul
 DEFINE_string(
     osqp_settings,
     "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
@@ -66,16 +67,17 @@ DEFINE_string(demo_name, "jacktoy",
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  // load parameters
+  // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           base_path + "parameters/franka_osc_controller_params.yaml");
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3LcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(base_path +
                           "parameters/franka_osc_controller_params.yaml"),
@@ -84,49 +86,31 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-  DiagramBuilder<double> builder;
 
+  // Create a Franka-only plant.
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelsFromUrl(controller_params.franka_model)[0];
-  drake::multibody::ModelInstanceIndex ground_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
-  drake::multibody::ModelInstanceIndex platform_index = parser.AddModels(
-      FindResourceOrThrow(controller_params.platform_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+  parser.SetAutoRenaming(true);
+  parser.AddModelsFromUrl(controller_params.franka_model)[0];
+  parser.AddModels(
       FindResourceOrThrow(controller_params.end_effector_model))[0];
 
-  // Affix models to their locations relative to world frame
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("panda_link0"), X_WI);
+
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
           drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
       controller_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_franka_to_ground);
-
-  RigidTransform<double> X_F_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_world_to_franka);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   X_F_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_base"), T_EE_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("ground"), X_F_G_franka);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("platform"), X_F_P);
+                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
 
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
+  // Piece together the diagram.
+  DiagramBuilder<double> builder;
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto franka_command_pub =
@@ -151,8 +135,8 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_output_port_osc_debug(),
                     osc_debug_pub->get_input_port());
   }
-  //   This is a hard-coded initial position for the robot as used in the
-  // sampling_c3 experiments.
+  // WARNING:  Hard-coded initial joint configurations for the robot in the
+  // sampling c3 experiments.
   VectorXd target_position = VectorXd::Zero(7);
   target_position << 2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08;
   auto joint_traj_generator =
@@ -187,6 +171,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
+    // TODO @bibit don't hardcode parameter filepaths
     if (FLAGS_lcm_channels ==
         base_path + "shared_parameters/lcm_channels_simulation.yaml") {
       std::cerr << "In simulation, OSC needs to have "
@@ -225,7 +210,7 @@ int DoMain(int argc, char* argv[]) {
                   joint_traj_generator->get_input_port_robot_state());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("new_franka_osc_controller"));
+  owned_diagram->set_name(("franka_joint_osc_controller"));
   DrawAndSaveDiagramGraph(*owned_diagram,
                           "../diagrams/" + FLAGS_demo_name +
                               "/franka_joint_osc_controller_diagram");

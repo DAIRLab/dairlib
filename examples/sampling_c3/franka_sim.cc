@@ -21,7 +21,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
@@ -48,6 +48,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+// TODO @bibit parameter overhaul
 DEFINE_string(
     lcm_channels,
     "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
@@ -60,32 +61,30 @@ DEFINE_string(demo_name, "jacktoy",
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
-  // load parameters
+
+  // Load parameters.
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       base_path + "parameters/franka_sim_params.yaml");
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3LcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
 
-  // set simulation step
+  // Set simulation step.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
-  // load urdf models
+  // Build the simulation plant.
   Parser parser(&plant);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModelsFromUrl(sim_params.franka_model)[0];
-  drake::multibody::ModelInstanceIndex ground_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
-  drake::multibody::ModelInstanceIndex platform_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
+  parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
+  parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
+  parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex object_index =
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
 
-  // Affix models to their locations relative to world frame
+  // Affix models to their locations relative to world frame.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
           drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
@@ -94,14 +93,13 @@ int DoMain(int argc, char* argv[]) {
       drake::math::RotationMatrix<double>(), sim_params.p_franka_to_platform);
   RigidTransform<double> X_F_G_franka = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_franka_to_ground);
-
   RigidTransform<double> X_F_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_F_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_base"), T_EE_W);
+                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
                    plant.GetFrameByName("ground"), X_F_G_franka);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
@@ -148,7 +146,6 @@ int DoMain(int argc, char* argv[]) {
       plant, &simulator.get_mutable_context());
 
   VectorXd q = VectorXd::Zero(nq);
-  std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   q.tail(plant.num_positions(object_index)) = sim_params.q_init_object;

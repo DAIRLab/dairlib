@@ -5,6 +5,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+// TODO: @bibit parameter restructuring
 struct SamplingC3Options {
   // Hyperparameters
   int admm_iter;          // total number of ADMM iterations
@@ -96,13 +97,13 @@ struct SamplingC3Options {
 
   double qp_projection_alpha;
   double qp_projection_scaling;
-  bool penalize_deviation_from_previous_input_solution;
+  bool penalize_changes_in_u_across_solves;
 
   std::vector<std::vector<double>> mu_list;
   double planning_dt_pose_tracking;
   double planning_dt_position_tracking;
   int num_friction_directions;
-  int num_contacts_index;
+  int num_contacts_index;  // TODO @bibit make an enum for this
   int num_contacts_index_for_cost;
   int num_contacts_index_for_curr_location;
   std::vector<int> num_contacts_list;
@@ -202,7 +203,7 @@ struct SamplingC3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
-    a->Visit(DRAKE_NVP(penalize_deviation_from_previous_input_solution));
+    a->Visit(DRAKE_NVP(penalize_changes_in_u_across_solves));
   }
 
   C3Options GetC3Options(bool is_pose_tracking, int num_contacts_index) const {
@@ -296,8 +297,8 @@ struct SamplingC3Options {
 
     options->qp_projection_alpha = qp_projection_alpha;
     options->qp_projection_scaling = qp_projection_scaling;
-    options->penalize_deviation_from_previous_input_solution =
-        penalize_deviation_from_previous_input_solution;
+    options->penalize_changes_in_u_across_solves =
+        penalize_changes_in_u_across_solves;
 
     options->mu = mu_list[num_contacts_index];
     options->num_contacts = num_contacts_list[num_contacts_index];

@@ -3,6 +3,17 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+
+// Ways of computing C3 costs.
+enum C3CostComputationType {
+  SIMULATE_EE_AND_OBJECT,
+  USE_C3_PLAN,
+  SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
+  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN,
+  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_REPLACE_EE_WITH_C3_PLAN,
+  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY,
+};
+
 struct C3Options {
   // Hyperparameters
   int admm_iter;     // total number of ADMM iterations
@@ -53,7 +64,7 @@ struct C3Options {
 
   double qp_projection_alpha;
   double qp_projection_scaling;
-  bool penalize_deviation_from_previous_input_solution;
+  bool penalize_changes_in_u_across_solves;
   std::vector<double> mu;
   double dt;
   double solve_dt;
@@ -117,7 +128,7 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
-    a->Visit(DRAKE_NVP(penalize_deviation_from_previous_input_solution));
+    a->Visit(DRAKE_NVP(penalize_changes_in_u_across_solves));
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());

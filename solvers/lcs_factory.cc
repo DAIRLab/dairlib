@@ -469,86 +469,84 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
   closest_contacts.reserve(n_contacts);
 
   for (int i = 0; i < contact_geoms.size(); i++) {
-      DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+    DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
-      const auto& candidates = contact_geoms[i];
-      const int num_to_select = resolve_contacts_to_list[i];
+    const auto& candidates = contact_geoms[i];
+    const int num_to_select = resolve_contacts_to_list[i];
+
+    if (verbose && candidates.size() > 1) {
+      std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
+    }
+
+    std::vector<double> distances;
+    distances.reserve(candidates.size());
+    
+    for (const auto& pair : candidates) {
+      multibody::GeomGeomCollider collider(plant, pair);
+      auto [phi_i, J_i] = collider.EvalPolytope(context,
+                                                num_friction_directions);
+      distances.push_back(phi_i);
+      if (verbose) {
+        PrintVerboseContactInfo(plant, context, pair, phi_i);
+      }
+    }
+    
+    for (int j = 0; j < num_to_select; ++j) {
+      auto min_it = std::min_element(distances.begin(), distances.end());
+      int min_index = std::distance(distances.begin(), min_it);
+      closest_contacts.push_back(candidates[min_index]);
+      distances[min_index] = std::numeric_limits<double>::infinity();
 
       if (verbose && candidates.size() > 1) {
-          std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
+        std::cout << "   --> Chose option " << min_index << std::endl;
       }
-
-      std::vector<double> distances;
-      distances.reserve(candidates.size());
-      
-      for (const auto& pair : candidates) {
-          multibody::GeomGeomCollider collider(plant, pair);
-          auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
-          distances.push_back(phi_i);
-          if (verbose) {
-              PrintVerboseContactInfo(plant, context, pair, phi_i);
-          }
-      }
-      
-      for (int j = 0; j < num_to_select; ++j) {
-          auto min_it = std::min_element(distances.begin(), distances.end());
-          int min_index = std::distance(distances.begin(), min_it);
-          closest_contacts.push_back(candidates[min_index]);
-          distances[min_index] = std::numeric_limits<double>::infinity();
-
-          if (verbose && candidates.size() > 1) {
-              std::cout << "   --> Chose option " << min_index << std::endl;
-          }
-      }
+    }
   }
   DRAKE_DEMAND(closest_contacts.size() == n_contacts);
   return closest_contacts;
 }
 
-// THIS FUNCTION IS FOR DEBUGGING PURPOSES ONLY.
-// This is mostly a copy of the EvalPolytope function in the GeomGeomCollider class.
-// It is used to print out the contact information for a given pair of geometries.
-// Alternatively, you can return the witness points and the distance from GeomGeomCollider
-// and get rid of this function.
 void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
-                             const Context<double>& context,
-                             const SortedPair<GeometryId>& pair,
-                             const double phi_i) {
-    const auto& query_port = plant.get_geometry_query_input_port();
-    const auto& query_object =
-        query_port.template Eval<drake::geometry::QueryObject<double>>(context);
-    const auto& inspector = query_object.inspector();
+                                         const Context<double>& context,
+                                         const SortedPair<GeometryId>& pair,
+                                         const double phi_i) {
+  const auto& query_port = plant.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(context);
+  const auto& inspector = query_object.inspector();
 
-    // Get the witness points on each geometry.
-    const SignedDistancePair<double> signed_distance_pair =
-        query_object.ComputeSignedDistancePairClosestPoints(
-            pair.first(), pair.second());
+  // Get the witness points on each geometry.
+  const SignedDistancePair<double> signed_distance_pair =
+    query_object.ComputeSignedDistancePairClosestPoints(
+      pair.first(), pair.second());
 
-    const Eigen::Vector3d& p_ACa =
-        inspector.GetPoseInFrame(pair.first()).template cast<double>() *
-        signed_distance_pair.p_ACa;
-    const Eigen::Vector3d& p_BCb =
-        inspector.GetPoseInFrame(pair.second()).template cast<double>() *
-        signed_distance_pair.p_BCb;
+  const Eigen::Vector3d& p_ACa =
+    inspector.GetPoseInFrame(pair.first()).template cast<double>() *
+    signed_distance_pair.p_ACa;
+  const Eigen::Vector3d& p_BCb =
+    inspector.GetPoseInFrame(pair.second()).template cast<double>() *
+    signed_distance_pair.p_BCb;
 
-    // Represent the witness points as points in world frame.
-    RigidTransform T_body1_contact = RigidTransform(p_ACa);
-    const FrameId f1_id = inspector.GetFrameId(pair.first());
-    const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
-    RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
-    Eigen::Vector3d p_world_contact_a = T_world_body1 * T_body1_contact.translation();
+  // Represent the witness points as points in world frame.
+  RigidTransform T_body1_contact = RigidTransform(p_ACa);
+  const FrameId f1_id = inspector.GetFrameId(pair.first());
+  const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+  RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+  Eigen::Vector3d p_world_contact_a = T_world_body1 *
+    T_body1_contact.translation();
 
-    RigidTransform T_body2_contact = RigidTransform(p_BCb);
-    const FrameId f2_id = inspector.GetFrameId(pair.second());
-    const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
-    RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
-    Eigen::Vector3d p_world_contact_b = T_world_body2 * T_body2_contact.translation();
+  RigidTransform T_body2_contact = RigidTransform(p_BCb);
+  const FrameId f2_id = inspector.GetFrameId(pair.second());
+  const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+  RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+  Eigen::Vector3d p_world_contact_b = T_world_body2 *
+    T_body2_contact.translation();
 
-    std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
-              << ", " << inspector.GetName(pair.second())
-              << ") with phi = " << phi_i << " between world points ["
-              << p_world_contact_a.transpose() << "], ["
-              << p_world_contact_b.transpose() << "]" << std::endl;
+  std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
+            << ", " << inspector.GetName(pair.second())
+            << ") with phi = " << phi_i << " between world points ["
+            << p_world_contact_a.transpose() << "], ["
+            << p_world_contact_b.transpose() << "]" << std::endl;
 }
 
 }  // namespace solvers

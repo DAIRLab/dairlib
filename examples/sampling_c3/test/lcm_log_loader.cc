@@ -70,14 +70,14 @@ using solvers::LCSFactory;
 // Declare function that will generate samples around T location.
 std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
     const Eigen::VectorXd& x_lcs,
-    const SamplingC3SamplingParams& sampling_params, const int& num_vertical,
+    const SamplingParams& sampling_params, const int& num_vertical,
     const int& num_horizontal);
 
 // Declare function that will generate samples around jack location.
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>>
 GenerateEvenlySpacedSamplesAroundJack(
     const Eigen::VectorXd& x_lcs,
-    const SamplingC3SamplingParams& sampling_params, const int& num_vertical,
+    const SamplingParams& sampling_params, const int& num_vertical,
     const int& num_horizontal);
 
 // Declare helper function that will print a vector of Eigen::VectorXd in a
@@ -182,9 +182,8 @@ int DoMain(int argc, char* argv[]) {
   sampling_params_path.replace(sampling_params_path.find(to_replace),
                                to_replace.length(),
                                sampling_params_path_replacement);
-  SamplingC3SamplingParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(sampling_params_path +
-                                                          ".yaml");
+  SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
+    sampling_params_path + ".yaml");
   // NOTE:  hard code the number of additional samples to be 0, since this
   // script is just to debug a single C3 solve.
   sampling_params.num_additional_samples_c3 = 0;
@@ -1043,7 +1042,7 @@ int DoMain(int argc, char* argv[]) {
 */
 std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
     const Eigen::VectorXd& x_lcs,
-    const SamplingC3SamplingParams& sampling_params, const int& num_vertical,
+    const SamplingParams& sampling_params, const int& num_vertical,
     const int& num_horizontal) {
   // Extract sampling parameters.
   double sampling_height = 0.00;
@@ -1126,7 +1125,7 @@ std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>>
 GenerateEvenlySpacedSamplesAroundJack(
     const Eigen::VectorXd& x_lcs,
-    const SamplingC3SamplingParams& sampling_params, const int& num_vertical,
+    const SamplingParams& sampling_params, const int& num_vertical,
     const int& num_horizontal) {
   // Grab sampling parameters.
   double sampling_radius = sampling_params.sampling_radius;

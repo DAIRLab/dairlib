@@ -22,8 +22,9 @@ camera_target: [0.5, 0, 0.5]
 
 tool_attachment_frame: [0, 0, 0.107]
 # This is the z value of the base of the franka wrt the surface of the table.  
-p_world_to_franka: [0, 0, 0]
-p_franka_to_ground: [0, 0, -0.029]
+p_world_to_franka: [0, 0, 0]   # TODO @bibit get rid of this param since the
+                               # code assumes these origins align.
+p_franka_to_ground: [0, 0, -0.029]  # TODO @bibit could rename p_world_to_ground
 # This is the z value of the platform wrt to the base of the franka.
 p_franka_to_platform: [0, 0, -0.0145]
 

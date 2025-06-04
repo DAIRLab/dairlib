@@ -13,11 +13,11 @@
 #include <gflags/gflags.h>
 
 #include "common/parameters/franka_drake_lcm_driver_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "systems/franka_state_translator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/franka_state_translator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -36,6 +36,8 @@ using dairlib::systems::RobotOutputSender;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
 
+// TODO: @bibit don't build parameter yaml paths from folder name, to be
+// addressed with parameter overhaul.
 DEFINE_string(
     lcm_channels,
     "examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml",
@@ -54,8 +56,8 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3LcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   FrankaDrakeLcmDriverChannels franka_driver_channel_params =
       drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(
           FLAGS_franka_driver_channels);

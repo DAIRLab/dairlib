@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "common/blending_utils.h"
+#include "common/math_utils.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"

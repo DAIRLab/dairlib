@@ -11,7 +11,7 @@
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
-#include "generate_samples.h"
+#include "examples/sampling_c3/generate_samples.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
@@ -54,7 +54,7 @@ SamplingC3Controller::SamplingC3Controller(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     SamplingC3Options sampling_c3_options,
-    SamplingC3SamplingParams sampling_params, bool verbose)
+    SamplingParams sampling_params, bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),

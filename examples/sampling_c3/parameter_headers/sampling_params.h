@@ -1,7 +1,5 @@
 #pragma once
 
-// #include "solvers/c3_options.h"   Is this needed in this file?
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 enum SamplingStrategy {
@@ -9,8 +7,8 @@ enum SamplingStrategy {
   RANDOM_ON_CIRCLE_SAMPLING,
   RANDOM_ON_SPHERE_SAMPLING,
   FIXED_SAMPLE,
-  SAMPLE_ON_PERIMETER,
-  SAMPLE_ON_SHELL
+  PERIMETER_SAMPLING,
+  SHELL_SAMPLING
 };
 
 enum ProgressMetric {
@@ -20,11 +18,12 @@ enum ProgressMetric {
   MIN_PROGRESS_TO_CONTINUE
 };
 
-struct SamplingC3SamplingParams {
+// TODO: @bibit parameter restructuring should reconsider many of these contents
+struct SamplingParams {
   int control_loop_delay_ms;
   int sampling_strategy;
   bool filter_samples_for_safety;
-  std::vector<Eigen::VectorXd> fixed_sample_locations;
+  std::vector<Eigen::VectorXd> fixed_sample_locations;  // TODO: @bibit 3D?
   double sampling_radius;
   double min_angle_from_vertical;
   double max_angle_from_vertical;

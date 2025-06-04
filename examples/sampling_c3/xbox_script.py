@@ -1,3 +1,4 @@
+'''TODO @bibit document the controls somewhere'''
 import pygame
 import dairlib.lcmt_radio_out
 import lcm
@@ -51,11 +52,9 @@ def main():
                     latching_switch_y = not latching_switch_y
                     print("Force C3 Mode Status: " + str(latching_switch_y))
                 if event.button == 7:
-                    # Send signal when pressed
                     latching_switch_start = not latching_switch_start  
                     print("Print cost breakdown status: " + str(latching_switch_start))
                 if event.button == 6:
-                    # Send signal when pressed
                     latching_switch_back = not latching_switch_back  
                     print("Print current rot and pos cost status: " + str(latching_switch_back))
 

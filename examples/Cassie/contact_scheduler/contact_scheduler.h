@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "common/blending_utils.h"
+#include "common/math_utils.h"
 #include "dairlib/lcmt_contact_timing.hpp"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"

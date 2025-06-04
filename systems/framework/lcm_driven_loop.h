@@ -137,7 +137,7 @@ class LcmDrivenLoop {
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 const std::string& input_channel, bool is_forced_publish,
-                int queue_capacity=1)
+                int queue_capacity = 1)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish, queue_capacity){};
@@ -157,7 +157,7 @@ class LcmDrivenLoop {
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
                 const std::string& switch_channel, bool is_forced_publish,
-                int queue_capacity=1,
+                int queue_capacity = 1,
                 const std::string& backup_drive_channel = "")
       : drake_lcm_(drake_lcm),
         lcm_parser_(lcm_parser),
@@ -184,7 +184,8 @@ class LcmDrivenLoop {
       std::cout << "Constructing subscriber for " << name << std::endl;
       name_to_input_sub_map_.insert(std::make_pair(
           name, Subscriber<InputMessageType>(drake_lcm_, name)));
-      name_to_input_sub_map_.at(name).subscription_->set_queue_capacity(queue_capacity);
+      name_to_input_sub_map_.at(name).subscription_->set_queue_capacity(
+        queue_capacity);
     }
 
     // Make sure input_channels contains active_channel, and then set initial
@@ -294,8 +295,8 @@ class LcmDrivenLoop {
             is_new_state_message;
       });
 
-      // Pump drake's LCM subscribers to empty their internal queues
-      // until all LCM buffers are up-to-date.
+      // Pump drake's LCM subscribers to empty their internal queues until all
+      // LCM buffers are up-to-date.
       // Addresses https://github.com/RobotLocomotion/drake/issues/15234
       while (drake_lcm_->HandleSubscriptions(0) > 0);
 
@@ -336,8 +337,8 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
-        diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
-                                                       &diagram_context.get_mutable_discrete_state());
+        diagram_ptr_->CalcForcedDiscreteVariableUpdate(
+          diagram_context, &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);

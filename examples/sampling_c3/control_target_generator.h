@@ -12,7 +12,6 @@
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/systems/framework/leaf_system.h"
-inline constexpr double kPi = std::numbers::pi;
 
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewiseQuaternionSlerp;
@@ -58,10 +57,13 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   }
 
   void SetRemoteControlParameters(
-      const int& goal_mode, const Eigen::VectorXd& target_object_position,
+      const int& goal_mode,
+      const Eigen::VectorXd& target_object_position,
       const Eigen::VectorXd& target_object_orientation,
-      const double& lookahead_step_size, const double& lookahead_angle,
-      const double& angle_hysteresis, const double& angle_err_to_vel_factor,
+      const double& lookahead_step_size,
+      const double& lookahead_angle,
+      const double& angle_hysteresis,
+      const double& angle_err_to_vel_factor,
       const double& ee_target_z_offset_above_object,
       const double& position_success_threshold,
       const double& orientation_success_threshold,
@@ -142,7 +144,7 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
 };
 
 // Derived jacktoy target generator class.
-// This class will be used to generate targets for the jack toy.
+// This class will be used to generate targets for the jacktoy.
 // Nominal quaternions for the object.
 inline const Eigen::Quaterniond kQUAT_ALL_UP{
     0.8804762392171493, 0.27984814233312133, -0.3647051996310009,
@@ -177,7 +179,7 @@ class TargetGeneratorJacktoy : public TargetGenerator {
 
  protected:
   // Override the base class function to provide the valid orientations for the
-  // jack toy.
+  // jacktoy.
   const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
       const override {
     return nominal_orientations_;
@@ -188,111 +190,6 @@ class TargetGeneratorJacktoy : public TargetGenerator {
   const std::vector<Eigen::Quaterniond> nominal_orientations_{
       kQUAT_ALL_UP,   kQUAT_RED_DOWN,  kQUAT_BLUE_UP, kQUAT_ALL_DOWN,
       kQUAT_GREEN_UP, kQUAT_BLUE_DOWN, kQUAT_RED_UP,  kQUAT_GREEN_DOWN};
-};
-
-// push-t specific target generator class.
-// Nominal quaternions for the object.
-inline const Eigen::Quaterniond kQUAT_FLAT{1.0, 0.0, 0.0, 0.0};
-
-class TargetGeneratorPushT : public TargetGenerator {
- public:
-  TargetGeneratorPushT(
-      const drake::multibody::MultibodyPlant<double>& object_plant)
-      : TargetGenerator(object_plant) {}
-
- protected:
-  // Override the base class function to provide the valid orientations for the
-  // push-t.
-  const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
-      const override {
-    return nominal_orientations_;
-  }
-
- private:
-  // Nominal orientation for the T to be flat on the ground.
-  const std::vector<Eigen::Quaterniond> nominal_orientations_{kQUAT_FLAT};
-};
-
-// Derived box topple target generator class.
-// Nominal quaternions for the object.
-inline const Eigen::Quaterniond kQUAT_1{0.0, 1.0, 0.0, 0.0};
-inline const Eigen::Quaterniond kQUAT_2{0.7071, 0.7071, 0.0, 0.0};
-inline const Eigen::Quaterniond kQUAT_3{0.7071, -0.7071, 0.0, 0.0};
-inline const Eigen::Quaterniond kQUAT_4{0.7071, 0.0, 0.7071, 0.0};
-inline const Eigen::Quaterniond kQUAT_5{0.7071, 0.0, -0.7071, 0.0};
-inline const Eigen::Quaterniond kQUAT_6{1.0, 0.0, 0.0, 0.0};
-
-class TargetGeneratorBoxTopple : public TargetGenerator {
- public:
-  TargetGeneratorBoxTopple(
-      const drake::multibody::MultibodyPlant<double>& object_plant)
-      : TargetGenerator(object_plant) {}
-
- protected:
-  // Override the base class function to provide the valid orientations for the
-  // box topple.
-  const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
-      const override {
-    return nominal_orientations_;
-  }
-
- private:
-  // Nominal orientations for the box to be balanced on the ground.
-  const std::vector<Eigen::Quaterniond> nominal_orientations_{
-      kQUAT_1, kQUAT_2, kQUAT_3, kQUAT_4, kQUAT_5, kQUAT_6};
-};
-
-// ball rolling specific target generator class.
-// Nominal quaternions for the object.
-inline const Eigen::Quaterniond kQUAT_BALL{1.0, 0.0, 0.0, 0.0};
-class TargetGeneratorBallRolling : public TargetGenerator {
- public:
-  TargetGeneratorBallRolling(
-      const drake::multibody::MultibodyPlant<double>& object_plant)
-      : TargetGenerator(object_plant) {}
-
-  void SetBallRollingParameters(
-      const Eigen::VectorXd& target_final_object_orientation,
-      const double& traj_radius, const double& x_c, const double& y_c,
-      const double& lead_angle, const double& angle_hysteresis,
-      const double& angle_err_to_vel_factor,
-      const double& ee_target_z_offset_above_object,
-      const double& resting_object_height);
-
- protected:
-  // Override the base class function to provide the valid orientations for the
-  // ball rolling.
-  const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
-      const override {
-    return nominal_orientations_;
-  }
-
-  virtual void CalcObjectTarget(
-      const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const override;
-  // Final object position is always same as target position.
-  void OutputObjectFinalTarget(
-      const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const override {
-    // Reuse the target object position as the final object target since
-    // the ball rolling task doesn't have a final object target.
-    // Drake allows to read the already computed "object target vector".
-    const auto& obj_target =
-        this->get_output_port_object_target()
-            .template Eval<drake::systems::BasicVector<double>>(context);
-
-    // Copy that 7-element vector into the final-target port.
-    target->SetFromVector(obj_target.get_value());
-  }
-
- private:
-  // Nominal orientation for the ball to be upright.
-  const std::vector<Eigen::Quaterniond> nominal_orientations_{kQUAT_BALL};
-  Eigen::VectorXd target_final_object_orientation_;
-  double traj_radius_;
-  double x_c_;
-  double y_c_;
-  double lead_angle_;
 };
 
 }  // namespace systems

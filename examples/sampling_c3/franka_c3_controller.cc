@@ -13,19 +13,19 @@
 #include "common/eigen_utils.h"
 #include "control_target_generator.h"
 #include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
-#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
-#include "systems/controllers/sampling_params.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/sender_systems/c3_state_sender.h"
-#include "systems/sender_systems/sample_buffer_sender.h"
+#include "systems/senders/c3_state_sender.h"
+#include "systems/senders/sample_buffer_sender.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
 
@@ -51,6 +51,7 @@ using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using std::vector;
 
+// TODO: @bibit parameter overhaul, don't hardcode yaml filepaths
 DEFINE_string(
     lcm_channels,
     "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
@@ -65,7 +66,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  // load parameters
+  // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaC3ControllerParams controller_params =
@@ -75,309 +76,117 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
           base_path + "parameters/trajectory_params.yaml");
   // Sim params are only used to keep the offsets between different models
-  // in the scene consistent across all systems.
+  // in the scene consistent across all systems.  TODO @bibit redo
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       base_path + "parameters/franka_sim_params.yaml");
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3LcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   SamplingC3Options sampling_c3_options =
       drake::yaml::LoadYamlFile<SamplingC3Options>(
           base_path + "parameters/sampling_c3_options.yaml");
-
-  SamplingC3SamplingParams sampling_params;
-  sampling_params = drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+  SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
       controller_params.sampling_params_file);
 
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osqp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-
-  DiagramBuilder<double> plant_builder;
-
-  // Add models to plant.
+  // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser_franka.AddModelsFromUrl(controller_params.franka_model)[0];
-  drake::multibody::ModelInstanceIndex ground_index = parser_franka.AddModels(
-      FindResourceOrThrow(controller_params.ground_model))[0];
-  drake::multibody::ModelInstanceIndex platform_index = parser_franka.AddModels(
-      FindResourceOrThrow(controller_params.platform_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index =
-      parser_franka.AddModels(
-          FindResourceOrThrow(controller_params.end_effector_model))[0];
+  parser_franka.AddModelsFromUrl(controller_params.franka_model)[0];
+  parser_franka.AddModels(
+    FindResourceOrThrow(controller_params.end_effector_model))[0];
 
-  // Affix models to their locations relative to world frame.
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant_franka.WeldFrames(plant_franka.world_frame(),
+                          plant_franka.GetFrameByName("panda_link0"), X_WI);
+
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
           drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
       sim_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_ground);
-
-  RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
-
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                          plant_franka.GetFrameByName("panda_link0"), X_F_W);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_base"),
+                          plant_franka.GetFrameByName("end_effector_flange"),
                           T_EE_W);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
-                          plant_franka.GetFrameByName("ground"), X_F_G_franka);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
-                          plant_franka.GetFrameByName("platform"), X_F_P);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  /// adding the jack model
+  // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
   Parser parser_object(&plant_object, nullptr);
   parser_object.AddModels(controller_params.object_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-  /// Creating the plant for lcs which will contain only end effector and jack
-  auto [plant_for_lcs, scene_graph] =
-      AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  // Create the LCS plant containing a floating EE, object, and ground.
+  DiagramBuilder<double> plant_lcs_builder;
+  auto [plant_lcs, scene_graph] =
+      AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+  Parser parser_lcs(&plant_lcs);
+  parser_lcs.SetAutoRenaming(true);
+  parser_lcs.AddModels(controller_params.end_effector_simple_model);
+  parser_lcs.AddModels(controller_params.object_model);
+  parser_lcs.AddModels(controller_params.ground_model);
 
-  Parser parser_for_lcs(&plant_for_lcs);
-  parser_for_lcs.SetAutoRenaming(true);
-  /// Loading simple model of end effector (just a sphere) for the lcs plant
-  parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.object_model);
-  parser_for_lcs.AddModels(controller_params.ground_model);
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Eigen::Vector3d p_world_to_ground =
       sim_params.p_world_to_franka + sim_params.p_franka_to_ground;
   RigidTransform<double> X_W_G = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), p_world_to_ground);
-  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("base_link"), X_WI);
-  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("ground"), X_W_G);
-  plant_for_lcs.Finalize();
-  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
-      drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
+  plant_lcs.WeldFrames(plant_lcs.world_frame(),
+                       plant_lcs.GetFrameByName("base_link"), X_WI);
+  plant_lcs.WeldFrames(plant_lcs.world_frame(),
+                       plant_lcs.GetFrameByName("ground"), X_W_G);
+  plant_lcs.Finalize();
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
+      drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
 
-  auto plant_diagram = plant_builder.Build();
+  auto plant_lcs_diagram = plant_lcs_builder.Build();
   std::unique_ptr<drake::systems::Context<double>> diagram_context =
-      plant_diagram->CreateDefaultContext();
-  auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
-      plant_for_lcs, diagram_context.get());
-  auto plant_for_lcs_context_ad =
-      plant_for_lcs_autodiff->CreateDefaultContext();
+      plant_lcs_diagram->CreateDefaultContext();
+  auto& plant_lcs_context = plant_lcs_diagram->GetMutableSubsystemContext(
+      plant_lcs, diagram_context.get());
+  auto plant_lcs_context_ad =
+      plant_lcs_autodiff->CreateDefaultContext();
 
+  // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
-
-  //   Creating a map of contact geoms
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
-  //   Change contact geoms based on the demo_name
-  if (FLAGS_demo_name == "push_t") {
+  if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId horizontal_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("horizontal_link"))[0];
-    drake::geometry::GeometryId vertical_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("vertical_link"))[0];
-
-    drake::geometry::GeometryId corner_nxynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxynz"))[0];
-    drake::geometry::GeometryId corner_nxnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnynz"))[0];
-    drake::geometry::GeometryId corner_xynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xynz"))[0];
-
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
-
-    //   Creating a map of contact geoms
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["horizontal_link"] = horizontal_geoms;
-    contact_geoms["vertical_link"] = vertical_geoms;
-    contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
-    contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
-    contact_geoms["corner_xynz"] = corner_xynz_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["horizontal_link"]));
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["vertical_link"]));
-
-    //   Creating a list of contact pairs for the jack and the ground
-    SortedPair<GeometryId> ground_contact_1{
-        SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_2{
-        SortedPair(contact_geoms["corner_nxnynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_3{
-        SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
-
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if (sampling_c3_options.num_contacts_index == 2 ||
-        sampling_c3_options.num_contacts_index == 3) {
-      // If num_contacts_index is 2 or 3, we add an additional contact pair
-      // between the end effector and the ground.
-      std::vector<SortedPair<GeometryId>> ee_ground_contact{
-          SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-      contact_pairs.push_back(ee_ground_contact);
-    }
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
-    ground_object_contact_pairs.push_back(ground_contact_1);
-    ground_object_contact_pairs.push_back(ground_contact_2);
-    ground_object_contact_pairs.push_back(ground_contact_3);
-    contact_pairs.push_back(ground_object_contact_pairs);
-  } else if (FLAGS_demo_name == "box_topple") {
-    drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId box_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("box"))[0];
-
-    drake::geometry::GeometryId corner_xynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xynz"))[0];
-    drake::geometry::GeometryId corner_xnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xnynz"))[0];
-    drake::geometry::GeometryId corner_nxynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxynz"))[0];
-    drake::geometry::GeometryId corner_nxnynz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnynz"))[0];
-    drake::geometry::GeometryId corner_xyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xyz"))[0];
-    drake::geometry::GeometryId corner_xnyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xnyz"))[0];
-    drake::geometry::GeometryId corner_nxyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxyz"))[0];
-    drake::geometry::GeometryId corner_nxnyz_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnyz"))[0];
-
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
-
-    //   Creating a map of contact geoms
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["box"] = box_geoms;
-    contact_geoms["corner_xynz"] = corner_xynz_geoms;
-    contact_geoms["corner_xnynz"] = corner_xnynz_geoms;
-    contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
-    contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
-    contact_geoms["corner_xyz"] = corner_xyz_geoms;
-    contact_geoms["corner_xnyz"] = corner_xnyz_geoms;
-    contact_geoms["corner_nxyz"] = corner_nxyz_geoms;
-    contact_geoms["corner_nxnyz"] = corner_nxnyz_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["box"]));
-
-    //   Creating a list of contact pairs for the jack and the ground
-    SortedPair<GeometryId> ground_contact_1{
-        SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_2{
-        SortedPair(contact_geoms["corner_xnynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_3{
-        SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_4{
-        SortedPair(contact_geoms["corner_nxnynz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_5{
-        SortedPair(contact_geoms["corner_xyz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_6{
-        SortedPair(contact_geoms["corner_xnyz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_7{
-        SortedPair(contact_geoms["corner_nxyz"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_8{
-        SortedPair(contact_geoms["corner_nxnyz"], contact_geoms["GROUND"])};
-
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if (sampling_c3_options.num_contacts_index == 2 ||
-        sampling_c3_options.num_contacts_index == 3) {
-      // If num_contacts_index is 2 or 3, we add an additional contact pair
-      // between the end effector and the ground.
-      std::vector<SortedPair<GeometryId>> ee_ground_contact{
-          SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-      contact_pairs.push_back(ee_ground_contact);
-    }
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
-    ground_object_contact_pairs.push_back(ground_contact_1);
-    ground_object_contact_pairs.push_back(ground_contact_2);
-    ground_object_contact_pairs.push_back(ground_contact_3);
-    ground_object_contact_pairs.push_back(ground_contact_4);
-    ground_object_contact_pairs.push_back(ground_contact_5);
-    ground_object_contact_pairs.push_back(ground_contact_6);
-    ground_object_contact_pairs.push_back(ground_contact_7);
-    ground_object_contact_pairs.push_back(ground_contact_8);
-    contact_pairs.push_back(ground_object_contact_pairs);
-  } else if (FLAGS_demo_name == "jacktoy") {
-    drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("end_effector_simple"))[0];
     drake::geometry::GeometryId capsule1_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_1"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_1"))[0];
     drake::geometry::GeometryId capsule2_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_2"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_2"))[0];
     drake::geometry::GeometryId capsule3_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_3"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_3"))[0];
 
     drake::geometry::GeometryId capsule1_sphere1_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_1"))[1];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_1"))[1];
     drake::geometry::GeometryId capsule1_sphere2_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_1"))[2];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_1"))[2];
     drake::geometry::GeometryId capsule2_sphere1_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_2"))[1];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_2"))[1];
     drake::geometry::GeometryId capsule2_sphere2_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_2"))[2];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_2"))[2];
     drake::geometry::GeometryId capsule3_sphere1_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_3"))[1];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_3"))[1];
     drake::geometry::GeometryId capsule3_sphere2_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("capsule_3"))[2];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("capsule_3"))[2];
 
     drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("ground"))[0];
 
-    //   Creating a map of contact geoms
     contact_geoms["EE"] = ee_contact_points;
     contact_geoms["CAPSULE_1"] = capsule1_geoms;
     contact_geoms["CAPSULE_2"] = capsule2_geoms;
@@ -390,10 +199,8 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
     contact_geoms["GROUND"] = ground_geoms;
 
+    // EE-object contact pairs first.
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    //   Creating a list of contact pairs for the end effector and the jack to
-    //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
     ee_contact_pairs.push_back(
@@ -401,74 +208,38 @@ int DoMain(int argc, char* argv[]) {
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
 
-    //   Creating a list of contact pairs for the jack and the ground
-    SortedPair<GeometryId> ground_contact_1_1{SortedPair(
-        contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_1_2{SortedPair(
-        contact_geoms["CAPSULE_1_SPHERE_2"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_2_1{SortedPair(
-        contact_geoms["CAPSULE_2_SPHERE_1"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_2_2{SortedPair(
-        contact_geoms["CAPSULE_2_SPHERE_2"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_3_1{SortedPair(
-        contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"])};
-    SortedPair<GeometryId> ground_contact_3_2{SortedPair(
-        contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"])};
-
     contact_pairs.push_back(ee_contact_pairs);
 
+    // If desired, add an EE-ground contact pair.
     if (sampling_c3_options.num_contacts_index == 2 ||
         sampling_c3_options.num_contacts_index == 3) {
-      // If num_contacts_index is 2 or 3, we add an additional contact pair
-      // between the end effector and the ground.
       std::vector<SortedPair<GeometryId>> ee_ground_contact{
           SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
       contact_pairs.push_back(ee_ground_contact);
     }
+
+    // Object-ground contact pairs last.
     std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
-    ground_object_contact_pairs.push_back(ground_contact_1_1);
-    ground_object_contact_pairs.push_back(ground_contact_1_2);
-    ground_object_contact_pairs.push_back(ground_contact_2_1);
-    ground_object_contact_pairs.push_back(ground_contact_2_2);
-    ground_object_contact_pairs.push_back(ground_contact_3_1);
-    ground_object_contact_pairs.push_back(ground_contact_3_2);
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_1_SPHERE_2"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_2_SPHERE_1"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_2_SPHERE_2"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
+
     contact_pairs.push_back(ground_object_contact_pairs);
-  } else if (FLAGS_demo_name == "ball_rolling") {
-    drake::geometry::GeometryId ee_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId object_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("sphere"))[0];
-    drake::geometry::GeometryId ground_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("ground"))[0];
-
-    //   Creating a map of contact geoms
-    contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["SPHERE"] = object_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
-
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["SPHERE"]));
-    //   Creating a list of contact pairs for the jack and the ground
-    std::vector<SortedPair<GeometryId>> ground_contact{
-        SortedPair(contact_geoms["SPHERE"], contact_geoms["GROUND"])};
-
-    contact_pairs.push_back(ee_contact_pairs);
-
-    if (sampling_c3_options.num_contacts_index == 1) {
-      // If num_contacts_index is 2 or 3, we add an additional contact pair
-      // between the end effector and the ground.
-      std::vector<SortedPair<GeometryId>> ee_ground_contact{
-          SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-      contact_pairs.push_back(ee_ground_contact);
-    }
-    contact_pairs.push_back(ground_contact);
+  }
+  else {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
 
+  // Piece together the diagram.
   DiagramBuilder<double> builder;
 
   auto object_state_sub =
@@ -481,9 +252,6 @@ int DoMain(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
-
-  // System that takes in the state of the franka and jack and outputs a
-  // reduced order lcs state vector.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
@@ -491,41 +259,21 @@ int DoMain(int argc, char* argv[]) {
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
 
-  // Systems involved in setting up the target for the end effector and the
-  // object.
-  // Build the appropriate generator at run time
+  // Select the target generator based on the demo.
   std::unique_ptr<systems::TargetGenerator> target_generator;
-
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
         std::make_unique<systems::TargetGeneratorJacktoy>(plant_object);
-  } else if (FLAGS_demo_name == "box_topple") {
-    target_generator =
-        std::make_unique<systems::TargetGeneratorBoxTopple>(plant_object);
-  } else if (FLAGS_demo_name == "push_t") {
-    target_generator =
-        std::make_unique<systems::TargetGeneratorPushT>(plant_object);
-  } else if (FLAGS_demo_name == "ball_rolling") {
-    target_generator =
-        std::make_unique<systems::TargetGeneratorBallRolling>(plant_object);
-    auto* ball_target_generator_ptr =
-        static_cast<systems::TargetGeneratorBallRolling*>(
-            target_generator.get());
-    ball_target_generator_ptr->SetBallRollingParameters(
-        trajectory_params.fixed_target_orientation,
-        trajectory_params.traj_radius, trajectory_params.x_c,
-        trajectory_params.y_c, trajectory_params.lead_angle,
-        trajectory_params.angle_hysteresis,
-        trajectory_params.angle_err_to_vel_factor,
-        trajectory_params.ee_target_z_offset_above_object,
-        trajectory_params.resting_object_height);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
-
-  // Add to the diagram; the pointer you get back keeps the final static type.
   auto* control_target = builder.AddSystem(std::move(target_generator));
-  if (FLAGS_demo_name != "ball_rolling") {
+  // TODO @bibit this list just needs to exclude ball_rolling, as demos are
+  // added.
+  const std::vector<std::string> demos_with_target_params = {"jacktoy"};
+  if (std::find(demos_with_target_params.begin(),
+                demos_with_target_params.end(),
+                FLAGS_demo_name) != demos_with_target_params.end()) {
     control_target->SetRemoteControlParameters(
         trajectory_params.goal_mode, trajectory_params.fixed_target_position,
         trajectory_params.fixed_target_orientation,
@@ -541,8 +289,8 @@ int DoMain(int argc, char* argv[]) {
         trajectory_params.resting_object_height);
   }
 
-  //  Input sizes here are end effector position (3), object pose (7),
-  //  end effector velocity (3), and object velocity (6).
+  // Input sizes are EE position (3), object pose (7), EE velocity (3), object
+  // velocities (6).
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -578,13 +326,18 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   final_target_state_mux->get_input_port(3));
 
-  // Instantiating the sampling based c3 controller.
+  // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
-      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plant_for_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
+      plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
+      plant_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
       sampling_params);
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(controller_params.osqp_settings_file))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  controller->SetOsqpSolverOptions(solver_options);
 
-  // These systems publish the current and best planned trajectories.
+  // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_curr_plan_channel, &lcm,
@@ -602,8 +355,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_object_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // The following systems consume the planned trajectories and output it to an
-  // LCM publisher for debugging.
+  // C3 senders.
   auto c3_output_sender_curr_plan =
       builder.AddNamedSystem("c3_output_sender_curr_plan",
                              std::make_unique<systems::C3OutputSender>());
@@ -628,7 +380,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_force_best_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // These systems publish the tracking output.
+  // Systems for publishing the tracking output.
   auto actor_c3_execution_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_trajectory_exec_actor_channel, &lcm,
@@ -641,9 +393,14 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
-      sampling_params.N_sample_buffer, plant_for_lcs.num_positions());
 
+  // Sample-related senders/publishers.
+  auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
+      sampling_params.N_sample_buffer, plant_lcs.num_positions());
+  auto sample_buffer_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.sample_buffer_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto sample_locations_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, &lcm,
@@ -656,6 +413,8 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+
+  // Debugging publishers.
   auto controller_debug_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_sampling_c3_debug>(
           lcm_channel_params.sampling_c3_debug_channel, &lcm,
@@ -664,6 +423,8 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+
+  // Dynamically feasible plan publishers.
   auto dynamically_feasible_curr_plan_actor_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, &lcm,
@@ -680,22 +441,18 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto sample_buffer_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
-          lcm_channel_params.sample_buffer_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y", "end_effector_z",  "object_qw",
-      "object_qx",       "object_qy",      "object_qz",       "object_x",
-      "object_y",        "object_z",       "end_effector_vx", "end_effector_vy",
-      "end_effector_vz", "object_wx",      "object_wy",       "object_wz",
-      "object_vz",       "object_vz",      "object_vz",
+      "end_effector_x",  "end_effector_y",  "end_effector_z", 
+      "object_qw",       "object_qx",       "object_qy",       "object_qz",
+      "object_x",        "object_y",        "object_z",
+      "end_effector_vx", "end_effector_vy", "end_effector_vz",
+      "object_wx" ,      "object_wy",       "object_wz",
+      "object_vz",       "object_vz",       "object_vz",
   };
-  // This system consumes the final target, intermediate targe (used by the C3
-  // solve) and current lcs state and outputs them all.
+  // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
-      plant_for_lcs.num_positions() + plant_for_lcs.num_velocities(),
+      plant_lcs.num_positions() + plant_lcs.num_velocities(),
       state_names);
   auto c3_target_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
@@ -710,83 +467,60 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_final_target_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
-  // CONTROLLER INPUT CONNECTIONS
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
   builder.Connect(object_state_receiver->get_output_port(),
                   control_target->get_input_port_object_state());
-  // control_target output connections to mux set up earlier.
   builder.Connect(target_state_mux->get_output_port(),
                   controller->get_input_port_target());
   builder.Connect(final_target_state_mux->get_output_port(),
                   controller->get_input_port_final_target());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
-
-  // Sending xbox output to control target generator.
   builder.Connect(radio_sub->get_output_port(),
                   control_target->get_input_port_radio());
-
   builder.Connect(controller->get_output_port_c3_solution_curr_plan_actor(),
                   actor_trajectory_sender_curr_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_curr_plan_object(),
                   object_trajectory_sender_curr_plan->get_input_port());
-
   builder.Connect(controller->get_output_port_c3_solution_best_plan_actor(),
                   actor_trajectory_sender_best_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_best_plan_object(),
                   object_trajectory_sender_best_plan->get_input_port());
-
-  // DEBUGGING OUTPUT CONNECTIONS
   builder.Connect(controller->get_output_port_c3_solution_curr_plan(),
                   c3_output_sender_curr_plan->get_input_port_c3_solution());
-  builder.Connect(
-      controller->get_output_port_c3_intermediates_curr_plan(),
-      c3_output_sender_curr_plan->get_input_port_c3_intermediates());
-  builder.Connect(
-      controller->get_output_port_lcs_contact_jacobian_curr_plan(),
-      c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
+  builder.Connect(controller->get_output_port_c3_intermediates_curr_plan(),
+                  c3_output_sender_curr_plan->get_input_port_c3_intermediates());
+  builder.Connect(controller->get_output_port_lcs_contact_jacobian_curr_plan(),
+                  c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_debug(),
                   c3_output_publisher_curr_plan->get_input_port());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_force(),
                   c3_forces_publisher_curr_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_best_plan(),
                   c3_output_sender_best_plan->get_input_port_c3_solution());
-  builder.Connect(
-      controller->get_output_port_c3_intermediates_best_plan(),
-      c3_output_sender_best_plan->get_input_port_c3_intermediates());
-  builder.Connect(
-      controller->get_output_port_lcs_contact_jacobian_best_plan(),
-      c3_output_sender_best_plan->get_input_port_lcs_contact_info());
+  builder.Connect(controller->get_output_port_c3_intermediates_best_plan(),
+                  c3_output_sender_best_plan->get_input_port_c3_intermediates());
+  builder.Connect(controller->get_output_port_lcs_contact_jacobian_best_plan(),
+                  c3_output_sender_best_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_debug(),
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
                   c3_forces_publisher_best_plan->get_input_port());
-
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_actor(),
-      dynamically_feasible_curr_plan_actor_publisher->get_input_port());
-
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_best_plan_actor(),
-      dynamically_feasible_best_plan_actor_publisher->get_input_port());
-
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_object(),
-      dynamically_feasible_curr_plan_object_publisher->get_input_port());
-
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_object(),
-      dynamically_feasible_best_plan_object_publisher->get_input_port());
-
-  // ACTUAL AND TARGET LCS_STATE CONNECTIONS
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_actor(),
+                  dynamically_feasible_curr_plan_actor_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan_actor(),
+                  dynamically_feasible_best_plan_actor_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
+                  dynamically_feasible_curr_plan_object_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
+                  dynamically_feasible_best_plan_object_publisher->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(final_target_state_mux->get_output_port(),
@@ -799,18 +533,12 @@ int DoMain(int argc, char* argv[]) {
                   c3_final_target_state_publisher->get_input_port());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                   c3_actual_state_publisher->get_input_port());
-
-  // TRACKING TRAJECTORY CONNECTIONS
   builder.Connect(controller->get_output_port_c3_traj_execute_actor(),
                   actor_c3_execution_trajectory_sender->get_input_port());
   builder.Connect(controller->get_output_port_repos_traj_execute_actor(),
                   actor_repos_execution_trajectory_sender->get_input_port());
-
   builder.Connect(controller->get_output_port_traj_execute_actor(),
                   actor_tracking_trajectory_sender->get_input_port());
-
-  // Add connections to sample location sender system, cost sender system
-  // and c3_mode_sender system.
   builder.Connect(controller->get_output_port_all_sample_locations(),
                   sample_locations_publisher->get_input_port());
   builder.Connect(controller->get_output_port_all_sample_costs(),
@@ -829,24 +557,25 @@ int DoMain(int argc, char* argv[]) {
                   sample_buffer_sender->get_input_port_sample_costs());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_c3_controller"));
-  plant_diagram->set_name(("franka_c3_plant"));
+  owned_diagram->set_name(("sampling_c3_controller"));
+  plant_lcs_diagram->set_name(("lcs_plant"));
+  // TODO @bibit fix diagram filepaths
   DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name +
-                                              "/franka_c3_controller_diagram");
+                                              "/sampling_c3_controller_diagram");
   DrawAndSaveDiagramGraph(
-      *plant_diagram, "../diagrams/" + FLAGS_demo_name + "/franka_c3_plant");
+      *plant_lcs_diagram, "../diagrams/" + FLAGS_demo_name + "/lcs_plant_diagram");
 
-  // Run lcm-driven simulation
-  //   This buffer is used to store franka_state messages such that at the end
-  //   of a control loop, we have a more up-to-date state message. See
-  //   https://github.com/DAIRLab/dairlib/pull/366 for more details.
+  // Run lcm-driven simulation.  The buffer size argument is needed to ensure
+  // the latest messages are used in the control loop.  See
+  // https://github.com/DAIRLab/dairlib/pull/366 for more details.
   int lcm_buffer_size = 200;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
+  // TODO @bibit fix diagram filepaths
   DrawAndSaveDiagramGraph(
       *loop.get_diagram(),
-      "../diagrams/" + FLAGS_demo_name + "/loop_franka_c3_controller_diagram");
+      "../diagrams/" + FLAGS_demo_name + "/loop_sampling_c3_controller_diagram");
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();

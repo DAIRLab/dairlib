@@ -1089,9 +1089,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
+  // Only copy lambda solutions if a force tracking vector is provided.  E.g.,
+  // one is not provided in the Franka joint OSC.
   if (!force_tracking_data_vec_->empty()){
-    // We need to guard this because the force_tracking_vector_ is empty
-    // in the franka_joint_osc_controller.
     qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
     qp_output.lambda_h_sol = CopyVectorXdToStdVector(
       force_tracking_data_vec_->at(0)->GetLambdaDes());

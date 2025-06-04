@@ -1,4 +1,3 @@
-#pragma once
 #include <vector>
 
 #include <drake/perception/point_cloud.h>
@@ -15,8 +14,8 @@ using drake::perception::PointCloud;
 namespace systems {
 
 class PointCloudFromSampleBuffer : public drake::systems::LeafSystem<double> {
-  // This is a system that reads the sample_buffer over lcm and outputs a Drake
-  // PointCloud for visualization.
+  // This system reads the sample_buffer over lcm and outputs a Drake PointCloud
+  // for visualization.
  public:
   PointCloudFromSampleBuffer();
 

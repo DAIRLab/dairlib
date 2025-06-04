@@ -28,7 +28,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
         "//systems:robot_lcm_systems",
@@ -48,7 +48,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
         "//common",
         "//lcm:lcm_trajectory_saver",
@@ -72,7 +72,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
         "//common",
         ":joint_trajectory_generator",
@@ -108,14 +108,14 @@ cc_binary(
     deps = [
         ":c3_mode_visualizer",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
-        "//systems/sender_systems:sender_systems",
+        "//systems/senders:senders",
         "//systems:franka_kinematics",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -137,7 +137,7 @@ cc_binary(
         "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//common/parameters:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
@@ -162,7 +162,7 @@ cc_binary(
         "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//common/parameters:franka_drake_lcm_driver_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
@@ -187,14 +187,14 @@ cc_binary(
         "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//examples/sampling_c3/parameter_headers:trajectory_params",
-        "//systems/controllers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
         "//common",
         "//systems:franka_kinematics",
-        "//systems/sender_systems:sample_buffer_sender",
-        "//systems/sender_systems:sender_systems",
+        "//systems/senders:sample_buffer_sender",
+        "//systems/senders:senders",
         ":control_target_generator",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -231,9 +231,25 @@ cc_library(
         "@drake//:drake_shared_library",
         "//solvers:c3",
         "//examples/sampling_c3/parameter_headers:franka_c3_controller_params",
-        "//systems/controllers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
         "//lcm:lcm_trajectory_saver",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "generate_samples",
+    srcs = ["generate_samples.cc"],
+    hdrs = ["generate_samples.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//multibody:utils",
+        "//multibody:geom_geom_collider",
+        "//common:math_utils",
+        "//common:update_context",
     ],
 )
 

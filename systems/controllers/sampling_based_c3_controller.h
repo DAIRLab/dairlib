@@ -12,8 +12,8 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
+#include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
-#include "sampling_params.h"
 #include "solvers/c3.h"
 #include "solvers/c3_options.h"
 #include "solvers/c3_output.h"
@@ -52,7 +52,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
       SamplingC3Options sampling_c3_options,
-      SamplingC3SamplingParams sampling_params, bool verbose = false);
+      SamplingParams sampling_params, bool verbose = false);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -359,7 +359,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   solvers::ContactModel contact_model_;
 
   SamplingC3Options sampling_c3_options_;
-  SamplingC3SamplingParams sampling_params_;
+  SamplingParams sampling_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")

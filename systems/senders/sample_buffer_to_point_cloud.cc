@@ -1,6 +1,4 @@
-#include "systems/sender_systems/sample_buffer_to_point_cloud.h"
-
-#include <iostream>
+#include "systems/senders/sample_buffer_to_point_cloud.h"
 
 #include "dairlib/lcmt_sample_buffer.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
@@ -123,7 +121,7 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
     }
   }
 
-  // Output as a point cloud.  TODO eventually change colors to reflect cost.
+  // Output as a point cloud where the colors reflect costs.
   sample_buffer_point_cloud->resize(ee_samples.cols());
   sample_buffer_point_cloud->mutable_xyzs() = ee_samples;
   sample_buffer_point_cloud->mutable_rgbs() = rgbs.cast<uint8_t>();

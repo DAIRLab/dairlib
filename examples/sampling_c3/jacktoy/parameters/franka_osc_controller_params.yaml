@@ -7,7 +7,8 @@ ground_model: examples/sampling_c3/urdf/ground.urdf
 platform_model: examples/sampling_c3/urdf/platform.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
-p_world_to_franka: [0, 0, 0]
+p_world_to_franka: [0, 0, 0]   # TODO get rid of this param since the code
+                               # assumes these origins align.
 p_franka_to_ground: [0, 0, -0.029]
 # This is the z value of the platform wrt to the base of the franka.
 p_franka_to_platform: [0, 0, -0.0145]

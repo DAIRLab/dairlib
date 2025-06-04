@@ -12,8 +12,8 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
   env_.set("LogToConsole", "0");
-  env_.set("OutputFlag", "0");
-  env_.set("Threads", "5");
+  env_.set("OutputFlag", "0");    // TODO: @bibit document change
+  env_.set("Threads", "5");       // TODO: @bibit document change
   env_.start();
 }
 
@@ -67,7 +67,14 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 100000;  // big M variable
+  // initial state constraint
+//  if (warm_start_index == 0){
+//    for (int i = 0; i < n_; ++i){
+//      model.addConstr(delta_k[i] == delta_c[i]);
+//    }
+//  }
+
+  int M = 100000;  // big M variable   // TODO: @bibit document/test change
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 

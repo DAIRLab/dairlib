@@ -1,7 +1,12 @@
 <?xml version="1.0" ?>
+<!-- TODO: @bibit is this file needed? -->
 
 <robot name="end_effector_simple">
   <link name="end_effector_simple">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.01"/>
+    </inertial>
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -11,16 +16,12 @@
         <color rgba="1.0 1.0 1.0 1.0"/>
       </material>
     </visual>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.01"/>
-    </inertial>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>
-                  <drake:proximity_properties>
+      <drake:proximity_properties>
         <drake:mu_static value="1"/>
         <drake:mu_dynamic value="1"/>
       </drake:proximity_properties>

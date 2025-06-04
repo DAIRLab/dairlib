@@ -4,14 +4,14 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
-#include "lcm/lcm_trajectory.h"
-#include "multibody/multibody_utils.h"
-#include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/end_effector_force.h"
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
+#include "lcm/lcm_trajectory.h"
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -53,6 +53,7 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
+// TODO @bibit parameter overhaul
 DEFINE_string(
     osqp_settings,
     "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
@@ -72,17 +73,17 @@ DEFINE_string(demo_name, "jacktoy",
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  // load parameters
+  // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           base_path + "parameters/franka_osc_controller_params.yaml");
-
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  SamplingC3LcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(base_path +
                           "parameters/franka_osc_controller_params.yaml"),
@@ -91,50 +92,31 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-  DiagramBuilder<double> builder;
 
+  // Create a Franka-only plant.
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-
   parser.SetAutoRenaming(true);
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelsFromUrl(controller_params.franka_model)[0];
-  drake::multibody::ModelInstanceIndex ground_index =
-      parser.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
-  drake::multibody::ModelInstanceIndex platform_index = parser.AddModels(
-      FindResourceOrThrow(controller_params.platform_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-      FindResourceOrThrow(controller_params.end_effector_model))[0];
+  parser.AddModelsFromUrl(controller_params.franka_model)[0];
+  parser.AddModels(
+    FindResourceOrThrow(controller_params.end_effector_model))[0];
 
-  // Affix models to their locations relative to world frame
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("panda_link0"), X_WI);
+
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
           drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
       controller_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_franka_to_ground);
-
-  RigidTransform<double> X_F_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.p_world_to_franka);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   X_F_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_base"), T_EE_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("ground"), X_F_G_franka);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("platform"), X_F_P);
+                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
 
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
+  // Piece together the diagram.
+  DiagramBuilder<double> builder;
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
@@ -162,16 +144,13 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(
+      builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
           plant, plant_context.get(), controller_params.neutral_position,
           controller_params.teleop_neutral_position,
           controller_params.end_effector_name);
-  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      controller_params.neutral_position.data(),
-      controller_params.neutral_position.size());
   end_effector_trajectory->SetRemoteControlParameters(
-      neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
+      controller_params.neutral_position, controller_params.x_scale,
+      controller_params.y_scale, controller_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
@@ -227,11 +206,9 @@ int DoMain(int argc, char* argv[]) {
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
-  // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
-  // null space associated with trying to control 7 joints with 6 DOF.
-  // The value is currently set to 1.1 to have it be more vertical for the
-  // sampling_c3_examples example but not enough that it hits a singularity
-  // or ends up with too small a workspace.
+  // Since the Franka has 7 joints to control a 6 DOF EE command, add an
+  // additional tracking objective for joint 2 at a good configuration for the
+  // sampling C3 experiments.  1.1 joint target empirically works well.
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
@@ -248,6 +225,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {
+    // TODO @bibit don't hardcode parameter filepaths
     if (FLAGS_lcm_channels ==
         base_path + "shared_parameters/lcm_channels_simulation.yaml") {
       std::cerr << "In simulation, OSC needs to have "

@@ -44,9 +44,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   auto ln_ = prog.NewContinuousVariables(m_, "lambda");
   auto un_ = prog.NewContinuousVariables(k_, "u");
 
-  // This must be the parameter that regulates complimentarity violation. 
-  // As alpha tends to 0, the complimentarity condition is enforced more 
-  // strictly.
+  // As alpha -> 0, the complimentarity condition is enforced more strictly.
   double alpha = options_.qp_projection_alpha;
   double scaling = options_.qp_projection_scaling;
 
@@ -70,10 +68,8 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
 
   VectorXd cost_linear = -delta_c.transpose() * New_U;
 
-  //  prog.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
   prog.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
 
-  //  prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
   prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
 
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);

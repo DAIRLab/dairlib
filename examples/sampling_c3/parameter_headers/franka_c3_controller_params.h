@@ -4,6 +4,8 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+// TODO: @bibit this whole file should go away in favor of a newly-defined
+// SamplingC3ControllerParams class.
 struct FrankaC3ControllerParams {
   std::string sampling_params_file;
   std::string osqp_settings_file;

@@ -10,12 +10,12 @@
 namespace dairlib {
 namespace systems {
 
+/// A Drake system in the visualizer diagram for outputting a trajectory
+/// (lcmt_timestamped_saved_traj) based on the current C3 mode.  When in C3
+/// mode, the trajectory follows the EE location (to highlight the EE in pink).
+/// When not in C3 mode, the trajectory is at the origin (to hide the pink EE in
+/// the visualizer).
 class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
-  // This is a system that reads the is_c3_mode over lcm along with the current
-  // lcs state of the system and outputs a trajectory for visualization.
-  // This trajectory is a single 3d point at the current location of the end
-  // effector if we are in C3 mode. It is a single point at the origin if we are
-  // not in C3 mode.
  public:
   C3ModeVisualizer();
 

@@ -1,3 +1,4 @@
+'''TODO @bibit this file needs another pass'''
 import subprocess
 import os
 import glob
@@ -6,7 +7,7 @@ from datetime import date
 import sys
 import yaml
 
-def main(log_type, example_name):
+def main(log_type, demo_name):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     logdir = f"/mnt/data2/sharanya/logs/{year}/{curr_date}"
@@ -16,8 +17,9 @@ def main(log_type, example_name):
         os.mkdir(logdir)
 
     # franka_cr_controller params path
+    # TODO @bibit don't hardcode parameter paths
     franka_c3_controller_params_path = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "franka_c3_controller_params.yaml"
     )
 
@@ -25,48 +27,48 @@ def main(log_type, example_name):
         franka_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
 
     c3_gains = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "franka_c3_options_floating.yaml"
     )
     sampling_c3_options = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "sampling_c3_options.yaml"
     )
     sampling_params = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "sampling_params.yaml"
     )
 
     osc_gains = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "franka_osc_controller_params.yaml"
     )
     sim_params = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "franka_sim_params.yaml"
     )
     trajectory_params = os.path.join(
-        dair, "examples", "sampling_c3", example_name, "parameters", 
+        dair, "examples", "sampling_c3", demo_name, "parameters", 
         "trajectory_params.yaml"
     )
     ee_simple_model_urdf = dair + "examples/sampling_c3/urdf/end_effector_simple_model.urdf"
 
     object_sdf_dir = os.path.join(dair, "examples", "sampling_c3", "urdf")
 
-    if example_name == 'jacktoy':
+    if demo_name == 'jacktoy':
         object_sim_sdf = os.path.join(object_sdf_dir, "jack.sdf")
         object_c3_sdf = os.path.join(object_sdf_dir, "jack_ground.sdf")
-    elif example_name == 'push_t':
+    elif demo_name == 'push_t':
         object_sim_sdf = os.path.join(object_sdf_dir, "T_vertical_sim.sdf")
         object_c3_sdf = os.path.join(object_sdf_dir, "T_vertical.sdf")
-    elif example_name == 'box_topple':
+    elif demo_name == 'box_topple':
         object_sim_sdf = os.path.join(object_sdf_dir, "box_sim.sdf")
         object_c3_sdf = os.path.join(object_sdf_dir, "box.sdf")
-    elif example_name == 'ball_rolling':
+    elif demo_name == 'ball_rolling':
         object_sim_sdf = os.path.join(object_sdf_dir, "ball.sdf")
         object_c3_sdf = os.path.join(object_sdf_dir, "ball.sdf")
     else:
-        raise ValueError(f"Unknown example_name '{example_name}'. "
+        raise ValueError(f"Unknown demo_name '{demo_name}'. "
                          "Supported examples: jacktoy, push_t, box_topple, ball_rolling")
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
@@ -100,25 +102,25 @@ def main(log_type, example_name):
     subprocess.run(['cp', sampling_params, f'sampling_params_{log_num}.yaml'])
     subprocess.run(['cp', trajectory_params, f'trajectory_params_{log_num}.yaml'])
     subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}.urdf'])
-    if example_name == 'jacktoy':
+    if demo_name == 'jacktoy':
         subprocess.run(['cp', object_sim_sdf, f'jack_sim_sdf_{log_num}.sdf'])
         subprocess.run(['cp', object_c3_sdf, f'jack_c3_sdf_{log_num}.sdf'])
-    elif example_name == 'push_t':
+    elif demo_name == 'push_t':
         subprocess.run(['cp', object_sim_sdf, f't_sim_sdf_{log_num}.sdf'])
         subprocess.run(['cp', object_c3_sdf, f't_c3_sdf_{log_num}.sdf'])
-    elif example_name == 'box_topple':
+    elif demo_name == 'box_topple':
         subprocess.run(['cp', object_sim_sdf, f'box_sim_sdf_{log_num}.sdf'])
         subprocess.run(['cp', object_c3_sdf, f'box_c3_sdf_{log_num}.sdf'])
-    elif example_name == 'ball_rolling':
+    elif demo_name == 'ball_rolling':
         subprocess.run(['cp', object_sim_sdf, f'ball_sim_sdf_{log_num}.sdf'])
         subprocess.run(['cp', object_c3_sdf, f'ball_c3_sdf_{log_num}.sdf'])
     else:
-        raise ValueError(f"Unknown example_name '{example_name}'. "
+        raise ValueError(f"Unknown demo_name '{demo_name}'. "
                          "Supported examples: jacktoy, push_t, box_topple, ball_rolling")
     subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
 
 
 if __name__ == '__main__':
     log_type = sys.argv[1]
-    example_name = sys.argv[2]
-    main(log_type, example_name)
+    demo_name = sys.argv[2]
+    main(log_type, demo_name)

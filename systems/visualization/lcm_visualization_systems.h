@@ -23,11 +23,8 @@ namespace systems {
 class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
  public:
   explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                               std::string trajectory_name);
-  // Constructor for when system_name is provided
-  explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                               const std::string system_name,
-                               std::string trajectory_name);
+                               std::string trajectory_name,
+                               const std::string& system_name = "");
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -66,15 +63,9 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& model_file,
                          const std::string& translation_trajectory_name,
                          const std::string& orientation_trajectory_name,
+                         const std::string& system_name = "",
                          int num_poses = 5,
                          bool add_transparency = true);
-  // Constructor for when system_name is provided.
-  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                         const std::string& system_name,
-                         const std::string& model_file,
-                         const std::string& translation_trajectory_name,
-                         const std::string& orientation_trajectory_name,
-                         int num_poses = 5, bool add_transparency = true);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -103,13 +94,8 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   explicit LcmForceDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                           std::string force_trajectory_name,
                           std::string actor_trajectory_name,
-                          std::string lcs_force_trajectory_name);
-  // Constructor for when system_name is provided.
-  explicit LcmForceDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                          const std::string system_name,
-                          std::string force_trajectory_name,
-                          std::string actor_trajectory_name,
-                          std::string lcs_force_trajectory_name);
+                          std::string lcs_force_trajectory_name,
+                          const std::string& system_name = "");
 
   const drake::systems::InputPort<double>& get_input_port_actor_trajectory()
       const {

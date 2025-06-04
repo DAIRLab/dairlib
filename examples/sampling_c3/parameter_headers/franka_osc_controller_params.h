@@ -4,12 +4,13 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+// TODO: @bibit params need to be consolidated; unclear if this file will stand
 struct FrankaControllerParams : OSCGains {
   std::string franka_model;
   std::string end_effector_model;
+  std::string end_effector_name;
   std::string ground_model;
   std::string platform_model;
-  std::string end_effector_name;
 
   Eigen::VectorXd tool_attachment_frame;
   Eigen::VectorXd p_franka_to_ground;
@@ -56,9 +57,9 @@ struct FrankaControllerParams : OSCGains {
 
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
+    a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(platform_model));
-    a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));

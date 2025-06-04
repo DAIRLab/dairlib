@@ -3,4 +3,3 @@ cc_library(
     hdrs = ["franka_drake_lcm_driver_channels.h"],
     visibility = ["//visibility:public"],
 )
-

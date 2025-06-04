@@ -27,26 +27,11 @@ using Eigen::VectorXd;
 
 LcmTrajectoryDrawer::LcmTrajectoryDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    std::string trajectory_name)
-    : meshcat_(meshcat), trajectory_name_(std::move(trajectory_name)) {
-  this->set_name("LcmTrajectoryDrawer: " + trajectory_name_);
-  trajectory_input_port_ =
-      this->DeclareAbstractInputPort(
-              "lcmt_timestamped_saved_traj",
-              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
-          .get_index();
-
-  DeclarePerStepDiscreteUpdateEvent(&LcmTrajectoryDrawer::DrawTrajectory);
-}
-// Constructor for when system name is provided.
-LcmTrajectoryDrawer::LcmTrajectoryDrawer(
-    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    const std::string system_name,
-    std::string trajectory_name)
-    : meshcat_(meshcat), 
-      system_name_(std::move(system_name)),
-      trajectory_name_(std::move(trajectory_name)) {
-  this->set_name("LcmTrajectoryDrawer: " + system_name + trajectory_name_);
+    std::string trajectory_name, const std::string& system_name)
+    : meshcat_(meshcat),
+      trajectory_name_(std::move(trajectory_name)),
+      system_name_(std::move(system_name)) {
+  this->set_name("LcmTrajectoryDrawer: " + system_name_ + trajectory_name_);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -89,8 +74,8 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   }
 
   DRAKE_DEMAND(line_points.rows() == 3);
-  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_, line_points, line_width_,
-                    rgba_);
+  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_,
+                    line_points, line_width_, rgba_);
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -98,31 +83,9 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses,
-    bool add_transparency)
-    : meshcat_(meshcat),
-      translation_trajectory_name_(translation_trajectory_name),
-      orientation_trajectory_name_(orientation_trajectory_name),
-      N_(num_poses) {
-  this->set_name("LcmPoseDrawer: " + translation_trajectory_name);
-
-  multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat);
-  trajectory_input_port_ =
-      this->DeclareAbstractInputPort(
-              "lcmt_timestamped_saved_traj",
-              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
-          .get_index();
-
-  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
-}
-// Constructor for when system name is provided.
-LcmPoseDrawer::LcmPoseDrawer(
-    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string& orientation_trajectory_name,
     const std::string& system_name,
-    const std::string& model_file,
-    const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses, 
+    int num_poses,
     bool add_transparency)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
@@ -190,12 +153,11 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         quaternion_datapoints);
   }
 
-  // ASSUMING orientation and translation trajectories have the same breaks
+  // ASSUMING orientation and translation trajectories have the same breaks.
   // This recreates the trajectory using the knot points and then evaluates the
   // trajectory at equal intervals based on the parameters. If the num_poses is
   // equal to the number of knot points, then the poses will be the same as the
-  // knot points. This is what is happening for the sampling based controller as
-  // of now.
+  // knot points.
   VectorXd translation_breaks =
       VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
                           lcm_translation_traj.time_vector.tail(1)[0]);
@@ -213,45 +175,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 LcmForceDrawer::LcmForceDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     std::string actor_trajectory_name, std::string force_trajectory_name,
-    std::string lcs_force_trajectory_name)
-    : meshcat_(meshcat),
-      actor_trajectory_name_(std::move(actor_trajectory_name)),
-      force_trajectory_name_(std::move(force_trajectory_name)),
-      lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
-  this->set_name("LcmForceDrawer: " + force_trajectory_name_);
-  actor_trajectory_input_port_ =
-      this->DeclareAbstractInputPort(
-              "lcmt_timestamped_saved_traj: actor",
-              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
-          .get_index();
-
-  robot_time_input_port_ =
-      this->DeclareVectorInputPort("t_robot", 1).get_index();
-
-  force_trajectory_input_port_ =
-      this->DeclareAbstractInputPort("lcmt_c3_forces",
-                                     drake::Value<dairlib::lcmt_c3_forces>{})
-          .get_index();
-
-  meshcat_->SetProperty(force_path_, "visible", true, 0);
-
-  actor_last_update_time_index_ = this->DeclareDiscreteState(1);
-  forces_last_update_time_index_ = this->DeclareDiscreteState(1);
-  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
-                      actor_force_color_);
-  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
-                      actor_force_color_);
-  meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
-
-  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
-  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
-}
-// Constructor for when system name is provided.
-LcmForceDrawer::LcmForceDrawer(
-    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    const std::string system_name,
-    std::string actor_trajectory_name, std::string force_trajectory_name,
-    std::string lcs_force_trajectory_name)
+    std::string lcs_force_trajectory_name, const std::string& system_name)
     : meshcat_(meshcat),
       actor_trajectory_name_(std::move(actor_trajectory_name)),
       force_trajectory_name_(std::move(force_trajectory_name)),
@@ -522,8 +446,8 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  // Guarding the final state input port because it is not always connected as 
-  // in the case of the franka_example.
+  // Guarding the final state input port because it is not always connected,
+  // e.g. examples/franka.
   const auto* c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
     context, c3_state_final_target_input_port_);
   if (!c3_final_target || c3_final_target->utime < 1e-3) {
@@ -554,8 +478,10 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     meshcat_->SetTransform(
         c3_final_target_object_path_,
         RigidTransformd(
-            Eigen::Quaterniond(c3_final_target->state[3], c3_final_target->state[4],
-                               c3_final_target->state[5], c3_final_target->state[6]),
+            Eigen::Quaterniond(c3_final_target->state[3],
+                               c3_final_target->state[4],
+                               c3_final_target->state[5],
+                               c3_final_target->state[6]),
             Vector3d{c3_final_target->state[7], c3_final_target->state[8],
                      c3_final_target->state[9]}));
     meshcat_->SetTransform(

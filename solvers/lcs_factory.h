@@ -74,7 +74,7 @@ class LCSFactory {
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
 
-    /// Preprocess the contact pairs to select the closest contacts
+    /// Optionally preprocess contact pairs to select the closest contacts
     /// @param plant The MultibodyPlant
     /// @param context The plant context
     /// @param contact_geoms The contact geometries
@@ -83,18 +83,22 @@ class LCSFactory {
     /// @param num_contacts The number of contacts
     /// @param verbose Whether to print verbose information
     /// @return The closest contacts
-    static std::vector<drake::SortedPair<drake::geometry::GeometryId>> PreProcessor(
+    static std::vector<drake::SortedPair<drake::geometry::GeometryId>>
+        PreProcessor(
             const drake::multibody::MultibodyPlant<double>& plant,
             const drake::systems::Context<double>& context,
             const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
                 contact_geoms,
             const std::vector<int>& resolve_contacts_to_list,
-            int num_friction_directions, int num_contacts, bool verbose = false);
-    /// Print verbose contact information
+            int num_friction_directions, int num_contacts,
+            bool verbose = false);
+
+    /// This function is for debugging purposes.  This is largely a copy of the
+    /// EvalPolytope function in the GeomGeomCollider class with more verbosity.
     /// @param plant The MultibodyPlant
     /// @param context The plant context
     /// @param pair The contact pair
-    /// @param phi_i The sign distance
+    /// @param phi_i The signed distance
     static void PrintVerboseContactInfo(
         const drake::multibody::MultibodyPlant<double>& plant,
         const drake::systems::Context<double>& context,

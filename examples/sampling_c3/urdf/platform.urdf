@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-  <!-- This models the wooden block and aluminium sheet over which the franka is
-        mounted. We do not consider this for collisions. -->
+<!-- Models the wooden and aluminium sheet on which the franka is mounted. -->
 
 <robot name="platform">
-  <!-- Visual box to show the offset that connect franka to ground (table) -->
   <link name="platform">
      <visual>
         <origin xyz="-0.07 0 0" />

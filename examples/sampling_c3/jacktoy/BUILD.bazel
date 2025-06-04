@@ -23,13 +23,13 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_lcm_channels_jacktoy",
+    name = "lcm_channels_jacktoy",
     hdrs = [],
     data = [
         "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_lcm_channels",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

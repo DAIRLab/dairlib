@@ -12,10 +12,10 @@
 
 namespace dairlib {
 
-class EndEffectorTrajectoryGenerator
+class EndEffectorPositionTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorTrajectoryGenerator(
+  EndEffectorPositionTrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     const Eigen::VectorXd& neutral_pose,

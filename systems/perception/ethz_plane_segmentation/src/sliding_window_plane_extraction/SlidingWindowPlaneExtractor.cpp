@@ -284,12 +284,12 @@ bool SlidingWindowPlaneExtractor::isGloballyPlanar(const Eigen::Vector3d& normal
 
   for (const auto& pointWithNormal : pointsWithNormal) {
     const double normalDotPoint = normalVectorPlane.x() * pointWithNormal.first.x() + normalVectorPlane.y() * pointWithNormal.first.y() +
-        normalVectorPlane.z() * pointWithNormal.first.z();
+                                  normalVectorPlane.z() * pointWithNormal.first.z();
     const double distanceError = std::abs(normalDotPoint - normalDotSupportvector);
 
     const double dotProductNormals = normalVectorPlane.x() * pointWithNormal.second.x() +
-        normalVectorPlane.y() * pointWithNormal.second.y() +
-        normalVectorPlane.z() * pointWithNormal.second.z();
+                                     normalVectorPlane.y() * pointWithNormal.second.y() +
+                                     normalVectorPlane.z() * pointWithNormal.second.z();
 
     if (distanceError > parameters_.global_plane_fit_distance_error_threshold || dotProductNormals < dotProductThreshold) {
       return false;

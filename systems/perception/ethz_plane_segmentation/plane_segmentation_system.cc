@@ -34,7 +34,6 @@ PlaneSegmentationSystem::PlaneSegmentationSystem(std::string params_yaml) {
   int erosionType = cv::MORPH_ELLIPSE;
   margin_kernel_ = cv::getStructuringElement(
       erosionType, cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1));
-
 }
 
 void PlaneSegmentationSystem::CalcOutput(
@@ -48,12 +47,11 @@ void PlaneSegmentationSystem::CalcOutput(
   plane_extractor_->runExtraction(grid_map, "elevation");
 
   cv::Mat binary_image;
-  cv::Mat local_binary_image;
 
   const auto& planesMap = plane_extractor_->getSegmentedPlanesMap();
   for (const auto& label_plane : planesMap.labelPlaneParameters) {
     const int label = label_plane.first;
-    local_binary_image = planesMap.labeledImage == label;
+    cv::Mat local_binary_image = planesMap.labeledImage == label;
 
     // Try with safety margin
     cv::erode(local_binary_image, local_binary_image, margin_kernel_,

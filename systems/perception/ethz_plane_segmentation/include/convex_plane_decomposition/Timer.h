@@ -71,8 +71,6 @@ class Timer {
    */
   double getAverageInMilliseconds() const { return getTotalInMilliseconds() / numTimedIntervals_; }
 
-  uint64_t getLastIntervalInNanoseconds() const {return lastIntervalTime_.count();}
-
  private:
   int numTimedIntervals_;
   std::chrono::nanoseconds totalTime_;

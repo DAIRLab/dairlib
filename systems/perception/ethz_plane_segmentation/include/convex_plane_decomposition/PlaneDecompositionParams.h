@@ -18,7 +18,6 @@ struct PlaneDecompositionParams {
   double resolution;
   int kernelSize;
   int numberOfRepeats;
-  double gaussBlur;
 
   // sliding window
   int kernel_size;
@@ -51,7 +50,6 @@ struct PlaneDecompositionParams {
     a->Visit(DRAKE_NVP(resolution));
     a->Visit(DRAKE_NVP(kernelSize));
     a->Visit(DRAKE_NVP(numberOfRepeats));
-    a->Visit(DRAKE_NVP(gaussBlur));
     a->Visit(DRAKE_NVP(kernel_size));
     a->Visit(DRAKE_NVP(planarity_opening_filter));
     a->Visit(DRAKE_NVP(plane_inclination_threshold_degrees));
@@ -72,7 +70,6 @@ struct PlaneDecompositionParams {
     preprocessing_params.resolution = resolution;
     preprocessing_params.kernelSize = kernelSize;
     preprocessing_params.numberOfRepeats = numberOfRepeats;
-    preprocessing_params.gaussBlur = gaussBlur;
 
     sliding_window_params.kernel_size = kernel_size;
     sliding_window_params.planarity_opening_filter = planarity_opening_filter;

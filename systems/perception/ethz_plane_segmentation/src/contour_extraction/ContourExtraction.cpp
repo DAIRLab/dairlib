@@ -7,7 +7,6 @@
 
 #include <convex_plane_decomposition/GeometryUtils.h>
 #include <opencv2/imgproc.hpp>
-#include <algorithm>
 
 namespace convex_plane_decomposition {
 namespace contour_extraction {
@@ -39,13 +38,12 @@ std::vector<PlanarRegion> ContourExtraction::extractPlanarRegions(const Segmente
     cv::erode(binaryImage_, binaryImage_, marginKernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
     auto boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_);
 
-    // If safety margin makes the region disappear, skip
+    // If safety margin makes the region disappear -> try without
     if (boundariesAndInsets.empty()) {
-      continue;
-      // binaryImage_ = upSampledMap.labeledImage == label;
+      binaryImage_ = upSampledMap.labeledImage == label;
       // still 1 pixel erosion to remove the growth after upsampling
-      // cv::erode(binaryImage_, binaryImage_, insetKernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
-      // boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_);
+      cv::erode(binaryImage_, binaryImage_, insetKernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+      boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_);
     }
 
     const auto plane_parameters = getTransformLocalToGlobal(label_plane.second);
@@ -110,13 +108,6 @@ std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat
   };
 
   cv::findContours(binary_image, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
-
-//   for (int i = 0; i < contours.size(); i++) {
-//     auto contour_simple = simplifyCurve(contours.at(i), 20.0);
-//     if (contour_simple.size() > 2) {
-//       contours.at(i) = contour_simple;
-//     }
-//   }
 
   std::vector<CgalPolygonWithHoles2d> plane_polygons;
   for (int i = 0; i < contours.size(); i++) {

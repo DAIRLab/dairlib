@@ -6,7 +6,7 @@
 namespace drake {
 namespace trajectories {
 
-/*
+/*!
  *  A vector-valued trajectory represented as a linear combination of orthogonal
  *  polynomials
  */

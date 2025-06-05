@@ -29,7 +29,6 @@ terrains = {
 log_folder = "../sim_experiment_logs"
 
 gains_vel_cost = os.path.join(base_folder, "gains/mpfc_gains_default.yaml")
-gains_gait_cost = os.path.join(base_folder, "gains/mpfc_gains_gait_cost.yaml")
 
 
 def select_terrain_and_log_file():
@@ -57,34 +56,20 @@ def run(terrain: str, params: str, logfile: str, gains: str):
     builder.AddSystem(sim_diagram)
 
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(
-        diagram,
-        '../full_sim_diagram'
-    )
-
     context = diagram.CreateDefaultContext()
     sim_diagram.SetPlantInitialConditions(diagram, context)
 
     simulator = Simulator(diagram, context)
     simulator.set_publish_every_time_step(False)
     simulator.set_publish_at_initialization(False)
-    # simulator.set_target_realtime_rate(1.0)
+
+    simulator.set_target_realtime_rate(1.0)
 
     input("\n\n-- Press Enter to start the simulation --")
 
     simulator.AdvanceTo(25.0)
 
     sim_diagram.SaveLcmLog(logfile)
-
-
-def cost_comparison():
-    terrain = os.path.join(base_folder, 'terrains/perceptive_stairs.yaml')
-    params = os.path.join(base_folder, 'sim_opts_stairs.yaml')
-    logfile_vel = os.path.join(log_folder, 'stairs_vel_cost')
-    logfile_gait = os.path.join(log_folder, 'stairs_gait_cost')
-
-    run(terrain, params, logfile_gait, gains_gait_cost)
-    run(terrain, params, logfile_vel, gains_vel_cost)
 
 
 def main():

@@ -4,6 +4,7 @@ import glob
 import subprocess
 from pathlib import Path
 
+
 def convert_mp4(file_path):
     temp_file = file_path + '.temp.mp4'
     
@@ -31,6 +32,7 @@ def convert_mp4(file_path):
         
     except subprocess.CalledProcessError as e:
         print(f"Error converting {file_path}: {e}")
+
 
 def process_directory(root_dir):
     # Use Path object to walk through the directory

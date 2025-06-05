@@ -393,32 +393,6 @@ def perception_study_main(fname):
     np.savez(fname, results=results)
 
 
-def cost_study_main(fname):
-    n_trials = 60
-    params = "bindings/pydairlib/perceptive_locomotion/sim_experiments/sim_opts_stones.yaml"
-    gains = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_default.yaml"
-    gains_gait_cost = "bindings/pydairlib/perceptive_locomotion/sim_experiments/gains/mpfc_gains_gait_cost.yaml"
-
-    results_vel = {}
-    results_gait = {}
-    for terrain_size in [0.25, 0.3, 0.35, 0.4, 0.45]:
-        try:
-            results_vel[terrain_size] = run_study_parallel(
-                gains, params, n_trials, terrain_size, perceptive=False
-            )
-            results_gait[terrain_size] = run_study_parallel(
-                gains_gait_cost, params, n_trials, terrain_size, perceptive=False
-            )
-        except KeyboardInterrupt:
-            print("\nStudy terminated by user.")
-
-    np.savez(
-        fname,
-        results_vel=results_vel,
-        results_gait=results_gait
-    )
-
-
 def plot_timing_results(folder):
     fname = os.path.join(folder, 'timing_adaptation_results.npz')
     data = np.load(fname, allow_pickle=True)

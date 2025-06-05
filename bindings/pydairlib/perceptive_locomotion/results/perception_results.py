@@ -83,7 +83,7 @@ precomputed_results_fname = 'precomputed_segmentation_results.npz'
 def check_mpfc_debug_version(event):
     try:
         lcmt_alip_mpfc_debug_complete.decode(event.data)
-    except:
+    except Exception as e:
         return lcmt_alip_s2s_mpfc_debug
 
     return lcmt_alip_mpfc_debug_complete

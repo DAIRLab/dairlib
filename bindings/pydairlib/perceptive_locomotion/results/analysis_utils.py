@@ -12,9 +12,6 @@ import matplotlib.animation
 from grid_map import GridMap
 from matplotlib import pyplot as plt, patches
 
-from pydairlib.analysis.mbp_plotting_utils import process_state_channel
-from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
-
 # lcmtypes
 from dairlib import(
     lcmt_grid_map,
@@ -23,21 +20,6 @@ from dairlib import(
     lcmt_robot_output,
     lcmt_alip_s2s_mpfc_debug
 )
-
-from pydairlib.systems import (
-    PlaneSegmentationSystem,
-    GridMapSender
-)
-
-from pydairlib.perceptive_locomotion.terrain_segmentation import (
-    ConvexTerrainDecompositionSystem,
-    TerrainSegmentationSystem,
-    plot_polygons_with_holes,
-    plot_polygon,
-    segmentation_criteria as seg_criteria
-)
-
-from pydairlib.analysis.process_lcm_log import get_log_data
 
 from pydrake.all import DrakeLcm
 
@@ -49,7 +31,22 @@ from pydrake.systems.all import (
     LcmPublisherSystem,
 )
 
+from pydairlib.systems import (
+    PlaneSegmentationSystem,
+    GridMapSender
+)
+
+from pydairlib.perceptive_locomotion.terrain_segmentation import (
+    ConvexTerrainDecompositionSystem,
+    TerrainSegmentationSystem,
+    segmentation_criteria as seg_criteria
+)
+
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
+
+from pydairlib.analysis.process_lcm_log import get_log_data
+from pydairlib.analysis.mbp_plotting_utils import process_state_channel
+from pydairlib.analysis.cassie_plotting_utils import make_plant_and_context
 
 
 state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'

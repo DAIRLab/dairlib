@@ -12,21 +12,21 @@ namespace dairlib::geometry {
 class WhittlingSolver {
  public:
   WhittlingSolver() = default;
-  std::pair<Eigen::Vector2d, double> SolveForBestCut(
+  [[nodiscard]] std::pair<Eigen::Vector2d, double> SolveForBestCut(
       const Eigen::Vector2d &interior_vertex,
       const Eigen::MatrixXd &vertices,
       const Eigen::Vector2d& initial_guess) const;
 
  private:
-  double SquaredHingeLoss(
+  [[nodiscard]] double SquaredHingeLoss(
       const Eigen::Vector2d &direction, const Eigen::Vector2d &vertex,
       const Eigen::MatrixXd &vertices) const;
 
-  Eigen::Vector2d SquaredHingeLossGradient(
+  [[nodiscard]] Eigen::Vector2d SquaredHingeLossGradient(
       const Eigen::Vector2d &direction, const Eigen::Vector2d &vertex,
       const Eigen::MatrixXd &vertices) const;
 
-  double GetSearchDirection(const Eigen::Vector2d &direction,
+  [[nodiscard]] double GetSearchDirection(const Eigen::Vector2d &direction,
                             const Eigen::Vector2d &vertex,
                             const Eigen::MatrixXd &vertices) const;
 

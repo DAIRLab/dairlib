@@ -3,8 +3,12 @@
 #include "multibody/multibody_utils.h"
 #include "drake/systems/framework/leaf_system.h"
 
-/// System to translate an incoming lcmt_saved_traj message containing an ankle
-/// torque to a vector of desired robot ankle torques
+/*!
+ * Converter system for the OSC to sample an lcmt_saved_traj message
+ * representing stance-ankle torques into a vector of desired joint torques
+ * which is zero except for the current stance ankle, which is set to the
+ * desired value
+ */
 namespace dairlib::perceptive_locomotion {
 class CassieAnkleTorqueReceiver : public drake::systems::LeafSystem<double> {
  public:
@@ -19,9 +23,6 @@ class CassieAnkleTorqueReceiver : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_u() {
     return this->get_input_port(input_traj_input_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_u_vec() {
-    return this->get_input_port(input_value_input_port_);
-  }
 
  private:
 
@@ -31,7 +32,6 @@ class CassieAnkleTorqueReceiver : public drake::systems::LeafSystem<double> {
   const int nu_;
   drake::systems::InputPortIndex fsm_input_port_;
   drake::systems::InputPortIndex input_traj_input_port_;
-  drake::systems::InputPortIndex input_value_input_port_;
   const std::vector<int> left_right_fsm_states_;
   std::unordered_map<int, int> fsm_to_stance_ankle_map_;
 };

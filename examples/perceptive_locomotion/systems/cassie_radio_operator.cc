@@ -6,6 +6,15 @@
 namespace dairlib {
 namespace systems {
 
+static constexpr int kRadioDim = 18;
+static constexpr int kRotChannel = 3 + 2;
+static constexpr int kXChannel = 0 + 2;
+static constexpr int kYChannel = 1 + 2;
+
+static constexpr double x_vel_to_radio = 2.0/3.0;
+static constexpr double rot_vel_to_radio = 0.5;
+static constexpr double y_vel_to_radio = -2.0;
+
 using drake::systems::Context;
 using drake::systems::BasicVector;
 

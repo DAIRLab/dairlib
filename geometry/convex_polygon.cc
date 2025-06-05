@@ -25,17 +25,6 @@ void ConvexPolygon::ReExpressInNewFrame(const Matrix3d &R_WF) {
   bounding_box_.valid = false;
 }
 
-void ConvexPolygon::ReExpressInNewFrame(const Matrix3d& R_WF,
-                                        const Vector3d& p_OF_W) {
-  A_ = A_ * R_WF;
-  A_eq_ = A_eq_ * R_WF;
-  b_ -= A_ * p_OF_W;
-  b_eq_ -= A_eq_ * p_OF_W;
-
-  bounding_box_.valid = false;
-}
-
-
 void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
   if (A_.rows() == 0) {
     A_ = a.transpose();

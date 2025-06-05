@@ -12,17 +12,16 @@
 namespace dairlib {
 namespace perceptive_locomotion {
 
-using drake::systems::ConstantVectorSource;
-using drake::multibody::Frame;
-
 using Eigen::Vector3d;
 
+using drake::lcmt_point_cloud;
+using drake::multibody::Frame;
+using drake::systems::ConstantVectorSource;
+using drake::systems::lcm::LcmSubscriberSystem;
+
+using systems::RobotOutputReceiver;
 using perception::ElevationMappingSystem;
 using perception::elevation_mapping_params_io;
-using systems::RobotOutputReceiver;
-
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::lcmt_point_cloud;
 
 CassieElevationMappingLcmDiagram::CassieElevationMappingLcmDiagram(
     const std::string& params_yaml, const std::string& points_channel) {

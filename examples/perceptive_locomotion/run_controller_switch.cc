@@ -93,7 +93,6 @@ int do_main(int argc, char* argv[]) {
   msg.channel = FLAGS_new_channel;
   msg.blend_duration = FLAGS_blend_duration;
 
-
   int pub_count = 0;
   while (pub_count < 1) {
     // Wait for input message.

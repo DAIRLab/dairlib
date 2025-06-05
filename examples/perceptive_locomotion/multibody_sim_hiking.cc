@@ -39,9 +39,12 @@
 
 namespace dairlib {
 
-using systems::SubvectorPassThrough;
-using perception::IdealLandmarkSource;
-using perception::VoxelGridFilter;
+using Eigen::Matrix3d;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+using drake::math::RotationMatrix;
+using drake::math::RigidTransformd;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -58,11 +61,9 @@ using drake::perception::pc_flags::BaseField::kRGBs;
 using drake::perception::DepthImageToPointCloud;
 using drake::perception::PointCloudToLcm;
 
-using drake::math::RotationMatrix;
-using drake::math::RigidTransformd;
-using Eigen::Matrix3d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
+using systems::SubvectorPassThrough;
+using perception::VoxelGridFilter;
+using perception::IdealLandmarkSource;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");

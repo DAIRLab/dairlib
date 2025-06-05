@@ -69,8 +69,13 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
+using drake::trajectories::PiecewisePolynomial;
 
 using multibody::WorldYawViewFrame;
+using multibody::FixedJointEvaluator;
+using multibody::MakeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+
 using systems::FsmReceiver;
 using systems::controllers::AlipMPCInterfaceSystem;
 using systems::controllers::AlipMpcOutputReceiver;
@@ -79,12 +84,6 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-
-using multibody::FixedJointEvaluator;
-using multibody::MakeNameToVelocitiesMap;
-using multibody::MakeNameToPositionsMap;
-
-using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -135,10 +134,10 @@ int DoMain(int argc, char* argv[]) {
   auto context = plant.CreateDefaultContext();
 
   // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
+  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(
+      FLAGS_gains_filename);
   auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
       FLAGS_mpfc_gains_filename, "", plant, *context);
-
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -243,17 +242,16 @@ int DoMain(int argc, char* argv[]) {
 
   // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
-  vector<std::pair<const Vector3d, const Frame<double>&>> contact_points_in_each_state;
+  vector<std::pair<const Vector3d, const Frame<double>&>> contact_pts_per_state;
 
-  unordered_fsm_states = {left_stance_state, right_stance_state,
-                          post_left_double_support_state,
-                          post_right_double_support_state};
-  contact_points_in_each_state.push_back(left_toe_mid);
-  contact_points_in_each_state.push_back(right_toe_mid);
-  contact_points_in_each_state.push_back(left_toe_mid);
-  contact_points_in_each_state.push_back(right_toe_mid);
-
-
+  unordered_fsm_states = {
+      left_stance_state, right_stance_state,
+      post_left_double_support_state, post_right_double_support_state
+  };
+  contact_pts_per_state.push_back(left_toe_mid);
+  contact_pts_per_state.push_back(right_toe_mid);
+  contact_pts_per_state.push_back(left_toe_mid);
+  contact_pts_per_state.push_back(right_toe_mid);
 
   vector<int> left_right_support_fsm_states = {left_stance_state,
                                                right_stance_state};
@@ -274,7 +272,7 @@ int DoMain(int argc, char* argv[]) {
   systems::controllers::AlipComTrajGeneratorParams com_params{
       gains_mpc.gait_params.height,
       unordered_fsm_states,
-      contact_points_in_each_state,
+      contact_pts_per_state,
   };
 
   auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(
@@ -314,7 +312,6 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_input_port_toe_angle());
   builder.Connect(mpc_receiver->get_output_port_pitch(),
                   left_toe_angle_traj_gen->get_input_port_toe_angle());
-
 
   auto alip_input_receiver =
       builder.AddSystem<perceptive_locomotion::CassieAnkleTorqueReceiver>(
@@ -364,6 +361,7 @@ int DoMain(int argc, char* argv[]) {
   right_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
       plant, pos_idx_map.at("ankle_spring_joint_right"),
       vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+
   evaluators.add_evaluator(left_fixed_knee_spring.get());
   evaluators.add_evaluator(right_fixed_knee_spring.get());
   evaluators.add_evaluator(left_fixed_ankle_spring.get());
@@ -372,17 +370,12 @@ int DoMain(int argc, char* argv[]) {
   osc->AddKinematicConstraint(
       std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
-  // Soft constraint
-  // w_contact_relax shouldn't be too big, cause we want tracking error to be
-  // important
-  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
-  // Friction coefficient
   osc->SetContactFriction(gains.mu);
-
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   osc->SetLambdaContactRegularizationWeight(
       gains.w_lambda * gains.W_lambda_c_regularization);
 
-  // Add contact points (The position doesn't matter. It's not used in OSC)
+  // Add contact points
   const auto& pelvis = plant.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
@@ -397,6 +390,7 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+
   osc->AddContactPoint(
       "left_toe",
       std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
@@ -484,7 +478,6 @@ int DoMain(int argc, char* argv[]) {
       gains.W_pelvis_heading, plant);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
 
-
   // Swing toe joint tracking
   auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
@@ -503,11 +496,10 @@ int DoMain(int argc, char* argv[]) {
   auto swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant);
-  swing_hip_yaw_traj->AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
 
   osc->AddTrackingData(std::move(swing_toe_traj_left));
   osc->AddTrackingData(std::move(swing_toe_traj_right));

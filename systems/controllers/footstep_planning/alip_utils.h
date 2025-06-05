@@ -6,7 +6,7 @@
 
 namespace dairlib::systems::controllers::alip_utils {
 
-// Enum value also represents the sign of the y component of
+// stance enum value also represents the sign of the y component of
 // a nominal footstep during that stance period
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };

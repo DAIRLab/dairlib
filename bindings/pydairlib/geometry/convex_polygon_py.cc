@@ -45,7 +45,6 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
 
 py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))
-    .def("CalcHeightOfPoint", &ConvexPolygonSet::CalcHeightOfPoint)
     .def("ReExpressInNewFrame", py::overload_cast<const Eigen::Matrix3d&>(
          &ConvexPolygonSet::ReExpressInNewFrame))
     .def("ReExpressInNewFrame",

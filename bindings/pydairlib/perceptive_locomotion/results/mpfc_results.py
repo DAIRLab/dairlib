@@ -101,7 +101,7 @@ def velocity_tracking_plot(robot_output, mpc_debug, savefile=None):
     plt.ylim([-0.5, 1.0])
     ax = plt.gca()
     ax.autoscale(enable=True, axis='x', tight=True)
-    plt.title('Velocity Tracking - Beam', fontsize=28)
+    plt.title('Velocity Tracking', fontsize=28)
     plt.xlabel('Time (s)')
     plt.ylabel('Pelvis Velocity (m/s)')
     plt.legend(ncol=4, fontsize=20, columnspacing=0.5)

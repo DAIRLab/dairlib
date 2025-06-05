@@ -11,26 +11,37 @@ namespace geometry{
 class ConvexPolygonSet {
  public:
   ConvexPolygonSet() = default;
-  ConvexPolygonSet(std::vector<ConvexPolygon> set) : set_(std::move(set)) {};
+  explicit ConvexPolygonSet(
+      std::vector<ConvexPolygon> set) : set_(std::move(set)) {};
 
   /*!
    * Get the subset of footholds which contain a point closer than "threshold"
-   * to the query point
+   * to the query point. Constructs and solves a quadratic program with 3
+   * variables per polygon in this set.
    */
-  ConvexPolygonSet GetSubsetCloseToPoint(
+  [[nodiscard]] ConvexPolygonSet GetSubsetCloseToPoint(
       const Eigen::Vector3d &query_pt, double threshold) const;
 
+  /*!
+   * @return a const reference to the underlying vector of convex polygons
+   */
   const std::vector<ConvexPolygon>& polygons() const { return set_; }
   void clear() { set_.clear(); }
-  bool empty() {return set_.empty(); }
+  bool empty() { return set_.empty(); }
 
+  /*!
+   * ReExpress all of the convex polygons in this set in a new frame. See the
+   * corresponding method for ConvexPolygon.
+   */
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
-  void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF,
-                           const Eigen::Vector3d& p_OF_W);
 
-  void append(const ConvexPolygon& f) { set_.push_back(f); }
+  /*!
+   * Append the convex polygon p to this set
+   * @param p the polygon to apend
+   */
+  void append(const ConvexPolygon& p) { set_.push_back(p); }
+
   void CopyToLcm(lcmt_foothold_set* set) const;
-  double CalcHeightOfPoint(const Eigen::Vector3d& point) const;
 
   static ConvexPolygonSet CopyFromLcm(const lcmt_foothold_set& set);
   size_t size() const { return set_.size(); }

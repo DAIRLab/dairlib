@@ -463,7 +463,7 @@ def make_segmentation_videos(logfile, start_time, duration, env_name=''):
 
     for s in systems:
         savefile = os.path.join(save_folder, f'{env_name}_{s.get_name()}.mp4')
-        write_segmentation_results_video(s, logfile, savefile, duration)
+        write_segmentation_results_video(s, logfile, savefile, start=start_time, duration=duration)
 
 
 def segmentation_comparison_results_runner(env_config, logfolder):
@@ -526,12 +526,12 @@ def make_combined_iou_results_results_figures(logfolder, savefolder):
     utils.setup_plots()
     
     # Create a figure with 2 rows and 3 columns
-    fig, axs = plt.subplots(2, 3, figsize=(26, 13))
+    fig, axs = plt.subplots(2, 3, figsize=(20, 10))
     
     # Runtime edges for log scale
     runtime_edges = np.logspace(np.log10(1e-3), np.log10(3e-1), 21)
     # IoU edges
-    iou_edges = np.linspace(0, 1, 21)
+    iou_edges = np.linspace(0.5, 1, 21)
     
     # Plot each environment in its own column
     col = 0
@@ -722,8 +722,9 @@ def plot_hysteresis_comparison(logfile, savefile=None):
     results = utils.hysteresis_comparison(logfile)
     edges = np.linspace(np.min(results[0]['iou']), 1, 16)
     fig = plt.figure()
-
-    make_hist_figure(results, None, 'iou', edges)
+    ax = plt.gca()
+    make_hist_figure(ax, results, None, 'iou', edges)
+    ax.legend([r['name'] for r in results])
     plt.title('Temporal Consistency vs $k_{hyst}$')
     plt.xlabel('Frame-to-Frame IoU')
     fig.tight_layout()
@@ -820,6 +821,23 @@ def simulation_videos(data_root):
         )
 
 
+def cost_comparison_videos(data_root):
+    terrain_folder = 'bindings/pydairlib/perceptive_locomotion/sim_experiments/terrains/'
+    log_folder = os.path.join(data_root, 'sim_experiment_logs/')
+    out_folder = os.path.join(data_root, 'simulation_videos/')
+
+    write_mpfc_debug_video(
+        logfile=os.path.join(log_folder, 'stairs_gait_cost'),
+        savefile=os.path.join(out_folder, 'stairs_gait_cost.mp4'),
+        terrain_yaml=os.path.join(terrain_folder, 'perceptive_stairs.yaml')
+    )
+    write_mpfc_debug_video(
+        logfile=os.path.join(log_folder, 'stairs_vel_cost'),
+        savefile=os.path.join(out_folder, 'stairs_vel_cost.mp4'),
+        terrain_yaml=os.path.join(terrain_folder, 'perceptive_stairs.yaml')
+    )
+
+
 def get_user_results_gen_choice():
     option = input('\nWhich results should be generated?\n1: Simulation Videos'
                    '\n2: Moving obstacle videos\n3: Hardware perception results (Figures Only)'
@@ -827,20 +845,7 @@ def get_user_results_gen_choice():
     return int(option)
 
 
-def main():
-    parser = ArgumentParser()
-    parser.add_argument(
-        '--data_root',
-        type=str,
-        default=''
-    )
-    parser.add_argument(
-        '--rerun_plane_segmentation_comparisons',
-        type=bool,
-        default=False
-    )
-
-    args = parser.parse_args()
+def paper_main(args):
     if not args.data_root:
         raise RuntimeError(
             "Please provide the location of the data via the"
@@ -870,8 +875,6 @@ def main():
     pipeline_figure_log = os.path.join(args.data_root, 'lcmlog-vision-demo-sim')
 
     # Run the figure scripts
-    make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
-
     plot_hysteresis_comparison(
         hysteresis_comparison_log,
         os.path.join(output_folder, 'hysteresis_comparison.svg')
@@ -884,6 +887,7 @@ def main():
         save_all_results(args.data_root)
         results_folder = output_folder
 
+    make_convex_polygon_iou_figure(args.data_root, output_folder, 'Brick Steps')
     make_combined_iou_results_results_figures(results_folder, output_folder)
     make_segmentation_tiles(results_folder, output_folder)
     run_pipeline_figure_script(pipeline_figure_log)
@@ -905,6 +909,26 @@ def main():
             os.path.join(output_folder, 'mpfc_output_demo_animation.mp4'),
             duration=60
         )
+
+
+def scratch_main(args):
+    make_all_segmentation_videos(args.data_root)
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--data_root',
+        type=str,
+        default=''
+    )
+    parser.add_argument(
+        '--rerun_plane_segmentation_comparisons',
+        type=bool,
+        default=False
+    )
+    args = parser.parse_args()
+    paper_main(args)
 
 
 if __name__ == '__main__':

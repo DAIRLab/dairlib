@@ -41,10 +41,10 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   [[maybe_unused]] auto instance = AddCassieMultibody(
-      &plant, nullptr, true, urdf, true, false);
-  plant.Finalize();
+      &plant_, nullptr, true, urdf, true, false);
+  plant_.Finalize();
 
-  plant_context = plant.CreateDefaultContext();
+  plant_context_ = plant_.CreateDefaultContext();
 
   std::string gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
@@ -66,74 +66,74 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant_, mpc_gains_yaml, -1);
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
-      plant, plant_context.get());
+      plant_, plant_context_.get());
 
   auto osc_diagram = builder.AddSystem<MpfcOscDiagram>(
-      plant, gains_file, mpc_gains_yaml, osqp_options
+      plant_, gains_file, mpc_gains_yaml, osqp_options
   );
-  sim_diagram = builder.AddSystem<HikingSimDiagram>(
+  sim_diagram_ = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
   );
 
   std::map<std::string, drake::systems::sensors::CameraInfo> sensor_info;
   for (const auto& sensor_name : {"pelvis_depth"}) {
     sensor_info.insert(
-        {sensor_name, sim_diagram->get_depth_camera_info(sensor_name)}
+        {sensor_name, sim_diagram_->get_depth_camera_info(sensor_name)}
     );
   }
 
-  perception = builder.AddSystem(PerceptionModuleDiagram::Make(
+  perception_ = builder.AddSystem(PerceptionModuleDiagram::Make(
       _elevation_mapping_params_yaml, sensor_info));
 
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto state_pub_dispatcher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
           "NETWORK_CASSIE_STATE_DISPATCHER",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.005)
   );
   auto osc_debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_osc_output>(
           "OSC_DEBUG_WALKING",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto input_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_input>(
           "OSC_WALKING",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto mpc_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_alip_mpfc_debug_complete>(
           "ALIP_S2S_MPFC_DEBUG",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.01)
   );
   auto grid_map_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_grid_map>(
           "CASSIE_ELEVATION_MAP",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           1.0 / 30.0)
   );
   auto foothold_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_foothold_set>(
           "FOOTHOLDS_PROCESSED",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           1.0 / 30.0)
   );
@@ -161,27 +161,27 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   );
 
   builder.Connect(
-      sim_diagram->get_output_port_cassie_out(),
-      perception->get_input_port_cassie_out()
+      sim_diagram_->get_output_port_cassie_out(),
+      perception_->get_input_port_cassie_out()
   );
   builder.Connect(
-      perception->get_output_port_robot_output(),
+      perception_->get_output_port_robot_output(),
       osc_diagram->get_input_port_state()
   );
   builder.Connect(
-      perception->get_output_port_robot_output(),
+      perception_->get_output_port_robot_output(),
       state_pub_dispatcher->get_input_port()
   );
   builder.Connect(
-      sim_diagram->get_output_port_depth_image(),
-      perception->get_input_port_depth_image("pelvis_depth")
+      sim_diagram_->get_output_port_depth_image(),
+      perception_->get_input_port_depth_image("pelvis_depth")
   );
   builder.Connect(
       goal_position->get_output_port(),
       radio_operator->get_input_port_target_xy()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      sim_diagram_->get_output_port_state(),
       radio_operator->get_input_port_state()
   );
   builder.Connect(
@@ -189,11 +189,11 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       mpfc->get_input_port_vdes()
   );
   builder.Connect(
-      sim_diagram->get_output_port_lcm_radio(),
+      sim_diagram_->get_output_port_lcm_radio(),
       osc_diagram->get_input_port_radio()
   );
   builder.Connect(
-      perception->get_output_port_robot_output(),
+      perception_->get_output_port_robot_output(),
       mpfc->get_input_port_state()
   );
   builder.Connect(
@@ -202,18 +202,18 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
   );
   builder.Connect(
       osc_diagram->get_output_port_actuation(),
-      sim_diagram->get_input_port_actuation()
+      sim_diagram_->get_input_port_actuation()
   );
   builder.Connect(
       radio_operator->get_output_port_radio(),
-      sim_diagram->get_input_port_radio()
+      sim_diagram_->get_input_port_radio()
   );
   builder.Connect(
-      perception->get_output_port_state(),
+      perception_->get_output_port_state(),
       plant_visualizer->get_input_port()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      sim_diagram_->get_output_port_state(),
       mpfc_visualizer->get_input_port_state()
   );
   builder.Connect(
@@ -225,7 +225,7 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
                   osc_debug_pub->get_input_port());
   builder.Connect(osc_diagram->get_output_port_u_lcm(),
                   input_pub->get_input_port());
-  builder.Connect(sim_diagram->get_output_port_state_lcm(),
+  builder.Connect(sim_diagram_->get_output_port_state_lcm(),
                   state_pub->get_input_port());
   builder.Connect(mpfc->get_output_port_mpfc_debug(),
                   mpc_pub->get_input_port());
@@ -241,7 +241,7 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
       "elevation"
   );
   output_port_elevation_map_ = builder.ExportOutput(
-      perception->get_output_port_elevation_map(),
+      perception_->get_output_port_elevation_map(),
       "grid_map"
   );
   builder.ConnectInput(
@@ -261,27 +261,27 @@ PerceptiveFullSimDiagram::PerceptiveFullSimDiagram(const std::string& mpc_gains_
 
 void PerceptiveFullSimDiagram::SetPlantInitialConditions(
     Diagram<double> *diagram, Context<double> *context) {
-  auto [q, v] = sim_diagram->SetPlantInitialConditionFromIK(
+  auto [q, v] = sim_diagram_->SetPlantInitialConditionFromIK(
       diagram, context, Eigen::Vector3d::Zero(), 0.1, 0.95
   );
-  perception->InitializeEkf(context, q, v);
+  perception_->InitializeEkf(context, q, v);
 
   Eigen::VectorXd x = Eigen::VectorXd::Zero(q.rows() + v.rows());
   x.head(q.rows()) = q;
   v.tail(v.rows()) = v;
-  perception->InitializeElevationMap(x, context);
+  perception_->InitializeElevationMap(x, context);
 }
 
 drake::math::RigidTransformd PerceptiveFullSimDiagram::GetCassiePelvisPoseInWorld(
     const Context<double>& context) const {
-  const auto& sim_plant = sim_diagram->get_plant();
+  const auto& sim_plant = sim_diagram_->get_plant();
   const auto& plant_context = sim_plant.GetMyContextFromRoot(context);
   return sim_plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
 }
 
 void PerceptiveFullSimDiagram::SaveLcmLog(const std::string &fname) {
-  lcm_log_sink.WriteLog(fname);
-  lcm_log_sink.clear();
+  lcm_log_sink_.WriteLog(fname);
+  lcm_log_sink_.clear();
 }
 
 }

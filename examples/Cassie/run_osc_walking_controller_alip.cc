@@ -108,9 +108,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
-  // Get contact frames and position (doesn't matter whether we use
-  // plant or plant_wospr because the contact frames exit in both
-  // plants)
+  // Get contact frames and position
   auto left_toe = LeftToeFront(plant);
   auto left_heel = LeftToeRear(plant);
   auto right_toe = RightToeFront(plant);

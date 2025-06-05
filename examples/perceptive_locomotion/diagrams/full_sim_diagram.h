@@ -9,7 +9,7 @@
 namespace dairlib::perceptive_locomotion {
 
 /*!
- * Drake diagram with the MPFC, OSC, and a multibody plant sim.
+ * Drake diagram with the MPFC, OSC, and a MultibodyPlant sim.
  * Uses ground truth state and terrain information for the controller.
  */
 class FullSimDiagram : public drake::systems::Diagram<double> {
@@ -32,12 +32,12 @@ class FullSimDiagram : public drake::systems::Diagram<double> {
       const drake::systems::Context<double>& root_context) const;
 
  private:
-  lcm::LcmLogSink lcm_log_sink{};
+  lcm::LcmLogSink lcm_log_sink_{};
 
-  drake::multibody::MultibodyPlant<double> plant{0.0};
-  std::unique_ptr<drake::systems::Context<double>> plant_context;
+  drake::multibody::MultibodyPlant<double> plant_{0.0};
+  std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
-  HikingSimDiagram* sim_diagram;
+  HikingSimDiagram* sim_diagram_;
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 };

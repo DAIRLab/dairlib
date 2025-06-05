@@ -49,6 +49,10 @@ void PlaneSegmentationSystem::CalcOutput(
   cv::Mat binary_image;
 
   const auto& planesMap = plane_extractor_->getSegmentedPlanesMap();
+
+  // replicate the planar region extraction routine, but move all of the planar
+  // regions into a single binary steppability mask instead of defining the
+  // countours, in order to compare against S3
   for (const auto& label_plane : planesMap.labelPlaneParameters) {
     const int label = label_plane.first;
     cv::Mat local_binary_image = planesMap.labeledImage == label;

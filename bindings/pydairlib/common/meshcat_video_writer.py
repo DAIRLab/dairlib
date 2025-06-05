@@ -9,7 +9,9 @@ from pydairlib.common.meshcat_chrome_capture import MeshcatChromeCapture
 
 
 def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
-                                 channel_to_port_map, video_out_path, start=0, duration=-1,
+                                 channel_to_port_map, video_out_path,
+                                 start: float = 0.0,
+                                 duration: float = -1.0,
                                  window_size=(1440, 1080)):
     capture = MeshcatChromeCapture(meshcat, window_size=window_size)
 
@@ -22,7 +24,7 @@ def write_meshcat_video_from_log(diagram, lcm_log, meshcat, channel_to_type_map,
     t = dt
     frame = 0
     with tempfile.TemporaryDirectory() as temp_dir:
-        while not playback.finished() and (duration < 0 or frame * dt <= duration):
+        while not playback.finished() and (duration < 0.0 or frame * dt <= duration):
             playback.advance(t)
             # save screenshot
             frame_filename = os.path.join(temp_dir, f"frame_{frame:06d}.png")

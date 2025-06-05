@@ -41,7 +41,8 @@ class PerceptiveFullSimDiagram : public drake::systems::Diagram<double> {
   }
 
   /*
-   * input port for the raw elevation map
+   * Output port for the raw elevation map directly from the elevation mapping
+   * system
    */
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_elevation_map_);
@@ -55,17 +56,17 @@ class PerceptiveFullSimDiagram : public drake::systems::Diagram<double> {
       const drake::systems::Context<double>& root_context) const;
 
  private:
-  lcm::LcmLogSink lcm_log_sink{};
+  lcm::LcmLogSink lcm_log_sink_{};
 
-  drake::multibody::MultibodyPlant<double> plant{0.0};
-  std::unique_ptr<drake::systems::Context<double>> plant_context;
+  drake::multibody::MultibodyPlant<double> plant_{0.0};
+  std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
   drake::systems::InputPortIndex input_port_footholds_;
   drake::systems::InputPortIndex input_port_grid_map_;
 
   drake::systems::OutputPortIndex output_port_elevation_map_;
-  HikingSimDiagram* sim_diagram;
-  PerceptionModuleDiagram* perception;
+  HikingSimDiagram* sim_diagram_;
+  PerceptionModuleDiagram* perception_;
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 };

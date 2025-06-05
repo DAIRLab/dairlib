@@ -104,17 +104,5 @@ ConvexPolygonSet ConvexPolygonSet::CopyFromLcm(const lcmt_foothold_set& set_lcm)
   return set;
 }
 
-double  ConvexPolygonSet::CalcHeightOfPoint(const Eigen::Vector3d& point) const {
-  double zmax = -std::numeric_limits<double>::infinity();
-  for (const auto& poly : set_) {
-    if (not poly.PointViolatesInequalities(point)) {
-      const auto& [A, b] = poly.GetEqualityConstraintMatrices();
-      double z = (b - A.leftCols<2>() * point.head<2>())(0);
-      zmax = (z > zmax) ? z : zmax;
-    }
-  }
-  return zmax;
-}
-
 }
 }

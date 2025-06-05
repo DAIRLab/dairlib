@@ -239,12 +239,12 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
 
     footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, radius);
   } else {
-    std::cerr << "WARNING: No new footholds specified!\n";
+    std::cerr << "ALIP S2S MPFC: Input foothold message is empty!\n";
   }
 
   if (footholds_filt.empty()) {
     if (not foothold_set.empty()) {
-      std::cerr << "WARNING: Pruning QP eliminated all potential footholds!\n";
+      std::cerr << "ALIP S2S MPFC: Pruning QP eliminated all footholds!\n";
     }
     footholds_filt = prev_footholds;
   }
@@ -252,6 +252,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
 
   const auto& prev_mpc_sol =
       context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
+
   // TODO (@Brian-Acosta) set the default state instead of this hack
   Vector3d footstep_in_stance_frame = Vector3d::Zero();
   if (prev_mpc_sol.pp.size() > 0) {

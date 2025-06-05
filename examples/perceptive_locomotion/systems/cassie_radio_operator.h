@@ -6,8 +6,10 @@
 namespace dairlib {
 namespace systems {
 
-/// A thin wrapper to give a radio signal to the appropriate sim blocks
-/// to do global position control
+/*!
+ * Provides a state-based radio command (horizontal and yaw position) for
+ * repeatable simulation experiments.
+ */
 class CassieRadioOperator : public drake::systems::LeafSystem<double> {
  public:
   CassieRadioOperator(const drake::multibody::MultibodyPlant<double>& plant,
@@ -54,17 +56,6 @@ class CassieRadioOperator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-
-  static constexpr int kRadioDim = 18;
-  static constexpr int kRotChannel = 3 + 2;
-  static constexpr int kXChannel = 0 + 2;
-  static constexpr int kYChannel = 1 + 2;
-
-  static constexpr double x_vel_to_radio = 2.0/3.0;
-  static constexpr double rot_vel_to_radio = 0.5;
-  static constexpr double y_vel_to_radio = -2.0;
-
-
 };
 
 }

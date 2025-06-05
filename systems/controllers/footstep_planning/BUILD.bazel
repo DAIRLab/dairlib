@@ -3,11 +3,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "contact_modes",
-    hdrs = ["contact_modes.h"],
-)
-
-cc_library(
     name = "mpfc_system_interface",
     hdrs = ["mpfc_system_interface.h"],
     deps = [
@@ -22,8 +17,8 @@ cc_library(
     deps = [
         ":alip_s2s_mpfc",
         "//lcm:lcm_trajectory_saver",
-        "//systems/framework:vector",
         "//systems/filters:s2s_kalman_filter",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],
@@ -124,10 +119,10 @@ cc_library(
     hdrs = ["swing_foot_traj_solver.h"],
     deps = [
         "//common:eigen_utils",
+        "//common:legendre",
         "//common:legendre_polynomial_trajectory",
         "//solvers:fcc_qp_solver",
         "//solvers:legendre_coefficient_variables",
-        "//common:legendre",
         "@drake//:drake_shared_library",
     ],
 )

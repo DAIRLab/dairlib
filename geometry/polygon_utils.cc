@@ -1,16 +1,21 @@
+// stl
 #include <iostream>
 #include <algorithm>
 #include <memory>
 #include <chrono>
 #include <cmath>
 
+// acd2d
+#include "acd2d.h"
+
+// dairlib
 #include "polygon_utils.h"
 #include "whittling_solver.h"
-#include "drake/solvers/osqp_solver.h"
-#include "drake/solvers/gurobi_solver.h"
 
 
 namespace dairlib::geometry {
+
+using std::vector;
 
 using Eigen::MatrixXd;
 using Eigen::Matrix2d;
@@ -23,9 +28,147 @@ using drake::geometry::optimization::VPolytope;
 using drake::geometry::optimization::HPolyhedron;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
-using drake::solvers::OsqpSolver;
 
 namespace {
+
+/*!
+ * Convenience struct to represent a polygon as a list of facets
+ * for fast halfspace intersections.
+ */
+struct facet {
+  Eigen::Vector2d a_;
+  double b_;
+  Eigen::Vector2d v0_;
+  Eigen::Vector2d v1_;
+
+  bool redundant(Eigen::Vector2d a,  double b) {
+    return (a.dot(v0_) > b and a.dot(v1_) > b);
+  }
+
+  bool intersects(Eigen::Vector2d a, double b) {
+    return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+  }
+
+  // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
+  static facet intersect(facet f0, facet f1, Eigen::Vector2d a, double b) {
+    assert(f0.intersects(a, b) and f0.intersects(a, b));
+    Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
+    A.row(0) = f0.a_.transpose();
+    A.row(1) = a.transpose();
+    Eigen::Vector2d v0 = A.inverse() * Eigen::Vector2d(f0.b_, b);
+    A.row(0) = f1.a_.transpose();
+    Eigen::Vector2d v1 = A.inverse() * Eigen::Vector2d(f1.b_, b);
+    return {a, b, v0, v1};
+  }
+};
+
+bool vertex_in_poly(
+    const Eigen::VectorXd &vert,
+    const Eigen::MatrixXd &poly,
+    double tol = 1e-4) {
+  DRAKE_DEMAND(vert.rows() == poly.rows());
+  for (int i = 0; i < poly.cols(); i++) {
+    if (vert.isApprox(poly.col(i), tol)) { return true; }
+  }
+  return false;
+}
+
+bool is_degenerate(const Eigen::MatrixXd &verts) {
+  int n = verts.cols();
+  for (int i = 0; i < n; i++) {
+    const auto &v = verts.col(i);
+    for (int j = i + 1; j < n; j++) {
+      const auto &p = verts.col(j);
+      if ((v - p).squaredNorm() < 1e-10) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+VectorXd centroid (const MatrixXd& verts) {
+  DRAKE_DEMAND(verts.size() > 0);
+  const int n = verts.cols();
+  const int m = verts.rows();
+  double sum_weight = 0;
+  VectorXd center = VectorXd::Zero(m);
+  for(int i = 0; i < n; i++) {
+    int idx_prev = (i - 1 < 0) ? n - 1 : i - 1;
+    int idx_next = (i + 1) % n;
+    double w = (verts.col(i) - verts.col(idx_prev)).norm() +
+        (verts.col(i) - verts.col(idx_next)).norm();
+    center += w * verts.col(i);
+    sum_weight += w;
+  }
+  return (1.0 / sum_weight) * center;
+}
+
+acd2d::cd_poly MakeAcdPoly(
+    const MatrixXd& verts,
+    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
+  DRAKE_DEMAND(verts.rows() == 2);
+  acd2d::cd_poly poly(type);
+  poly.beginPoly();
+  for(int i = 0; i < verts.cols(); i++) {
+    const auto& v = verts.col(i);
+    poly.addVertex(buf, v(0), v(1));
+  }
+  poly.endPoly();
+  return poly;
+}
+
+acd2d::cd_polygon MakeAcdPolygon(
+    const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d,
+    acd2d::cd_databuffer& buf) {
+  acd2d::cd_polygon polygon{};
+  polygon.push_back(MakeAcdPoly(
+      poly2d.first, buf, acd2d::cd_poly::POLYTYPE::POUT));
+  for (const auto& h : poly2d.second) {
+    polygon.push_back(MakeAcdPoly(h, buf, acd2d::cd_poly::POLYTYPE::PIN));
+  }
+  return polygon;
+}
+
+MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
+  int n = poly.getSize();
+  if (n < 3) {
+    return MatrixXd::Zero(2, 0);
+  }
+  MatrixXd verts = MatrixXd::Zero(2, n);
+  auto ptr = poly.getHead();
+  DRAKE_DEMAND(ptr != nullptr);
+  int i = 0;
+  do {
+    verts.col(i)(0) = ptr->getPos().get()[0];
+    verts.col(i)(1) = ptr->getPos().get()[1];
+    i++;
+    ptr = ptr->getNext();
+  } while (ptr != poly.getHead());
+  return verts;
+}
+
+double PolygonArea(const MatrixXd& verts) {
+  // https://en.wikipedia.org/wiki/Shoelace_formula
+
+  if (verts.cols() < 3) {
+    return 0;
+  }
+
+  double a_sum = 0;
+  int n = verts.cols();
+
+  // Note: This should also be correct for c = 0, if we really need that speedup
+  Vector2d c = centroid(verts);
+  for (int i = 0; i < n; i++) {
+    Vector2d p = verts.col(i) - c;
+    Vector2d q = verts.col((i+1) % n) - c;
+    a_sum += p(0) * q(1) - p(1) * q(0);
+  }
+  return 0.5 * a_sum;
+}
+
+
 std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
   const auto& verts = poly_in.vertices();
   DRAKE_DEMAND(verts.rows() == 2);
@@ -50,6 +193,21 @@ bool contained(const std::vector<facet>& facets, const Vector2d& v) {
   }
   return true;
 }
+
+bool ValidateHoles(const MatrixXd& boundary, const std::vector<MatrixXd>& holes) {
+  for (const auto& hole : holes) {
+    auto v = VPolytope(hole).GetMinimalRepresentation();
+    auto facets = FacetsFrom2dSortedConvexVPolytope(v);
+    for (int i  = 0; i < boundary.cols(); i++) {
+      if (contained(facets, boundary.col(i))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
 
 double distance_to_boundary(
     const std::vector<facet>& facets, const Vector2d& v) {
@@ -298,100 +456,4 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
 
   return footholds;
 }
-
-VectorXd centroid (const MatrixXd& verts) {
-  DRAKE_DEMAND(verts.size() > 0);
-  const int n = verts.cols();
-  const int m = verts.rows();
-  double sum_weight = 0;
-  VectorXd center = VectorXd::Zero(m);
-  for(int i = 0; i < n; i++) {
-    int idx_prev = (i - 1 < 0) ? n - 1 : i - 1;
-    int idx_next = (i + 1) % n;
-    double w = (verts.col(i) - verts.col(idx_prev)).norm() +
-               (verts.col(i) - verts.col(idx_next)).norm();
-    center += w * verts.col(i);
-    sum_weight += w;
-  }
-  return (1.0 / sum_weight) * center;
-}
-
-acd2d::cd_poly MakeAcdPoly(
-    const MatrixXd& verts,
-    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
-  DRAKE_DEMAND(verts.rows() == 2);
-  acd2d::cd_poly poly(type);
-  poly.beginPoly();
-  for(int i = 0; i < verts.cols(); i++) {
-    const auto& v = verts.col(i);
-    poly.addVertex(buf, v(0), v(1));
-  }
-  poly.endPoly();
-  return poly;
-}
-
-acd2d::cd_polygon MakeAcdPolygon(
-    const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d,
-    acd2d::cd_databuffer& buf) {
-  acd2d::cd_polygon polygon{};
-  polygon.push_back(MakeAcdPoly(
-      poly2d.first, buf, acd2d::cd_poly::POLYTYPE::POUT));
-  for (const auto& h : poly2d.second) {
-    polygon.push_back(MakeAcdPoly(h, buf, acd2d::cd_poly::POLYTYPE::PIN));
-  }
-  return polygon;
-}
-
-MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
-  int n = poly.getSize();
-  if (n < 3) {
-    return MatrixXd::Zero(2, 0);
-  }
-  MatrixXd verts = MatrixXd::Zero(2, n);
-  auto ptr = poly.getHead();
-  DRAKE_DEMAND(ptr != nullptr);
-  int i = 0;
-  do {
-    verts.col(i)(0) = ptr->getPos().get()[0];
-    verts.col(i)(1) = ptr->getPos().get()[1];
-    i++;
-    ptr = ptr->getNext();
-  } while (ptr != poly.getHead());
-  return verts;
-}
-
-bool ValidateHoles(const MatrixXd& boundary, const std::vector<MatrixXd>& holes) {
-  for (const auto& hole : holes) {
-    auto v = VPolytope(hole).GetMinimalRepresentation();
-    auto facets = FacetsFrom2dSortedConvexVPolytope(v);
-    for (int i  = 0; i < boundary.cols(); i++) {
-      if (contained(facets, boundary.col(i))) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-double PolygonArea(const MatrixXd& verts) {
-  // https://en.wikipedia.org/wiki/Shoelace_formula
-
-  if (verts.cols() < 3) {
-    return 0;
-  }
-
-  double a_sum = 0;
-  int n = verts.cols();
-
-  // Note: This should also be correct for c = 0, if we really need that speedup
-  Vector2d c = centroid(verts);
-  for (int i = 0; i < n; i++) {
-    Vector2d p = verts.col(i) - c;
-    Vector2d q = verts.col((i+1) % n) - c;
-    a_sum += p(0) * q(1) - p(1) * q(0);
-  }
-  return 0.5 * a_sum;
-}
-
-
 }

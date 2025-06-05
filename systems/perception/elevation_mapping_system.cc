@@ -245,45 +245,6 @@ double ElevationMappingSystem::CalcMapOffsetFromContactState(
   return map_offset;
 }
 
-double ElevationMappingSystem::CalcMapOffsetFromPointCloud(
-    const PointCloudType::Ptr pc, const GridMap &map) const {
-  double err_sum = 0;
-  int err_count = 0;
-
-  const std::string steppability_layer = "segmentation";
-  const std::string elevation_layer = "elevation";
-
-  const auto interp_method_check =  grid_map::InterpolationMethods::INTER_NEAREST;
-  const auto interp_method_height = grid_map::InterpolationMethods::INTER_NEAREST;
-
-  for (const auto & pt : pc->points) {
-    if (not map.isInside(pt.getArray3fMap().head<2>().cast<double>())) {
-      continue;
-    }
-    bool use_point = map.exists(steppability_layer);
-    // if the steppability segmentation exists, check it to determine if the
-    // point is steppable, otherwise just assume it is
-    use_point = use_point ? map.atPosition(
-        steppability_layer,
-        pt.getArray3fMap().head<2>().cast<double>(), interp_method_check) != 0 : true;
-
-    if (use_point) {
-      double err = pt.z - map.atPosition(
-          elevation_layer, pt.getArray3fMap().head<2>().cast<double>(),
-          interp_method_height);
-      if (not std::isnan(err) and not std::isinf(err)) {
-        err_sum += err;
-        ++err_count;
-      }
-    }
-  }
-  double err_avg = err_count == 0 ? 0 : err_sum / err_count;
-  if (std::isnan(err_avg) or std::isinf(err_avg) or abs(err_avg) > 0.1) {
-    return 0;
-  }
-  return err_avg;
-}
-
 std::map<std::string, PointCloudType::Ptr>
 ElevationMappingSystem::CollectNewPointClouds(
     const Context<double>& context, State<double>* state) const {
@@ -432,9 +393,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
-    double visual_map_offset = 0; //CalcMapOffsetFromPointCloud(pc_processed, map.getRawGridMap());
-    double map_offset = 0.5 * (visual_map_offset + proprioceptive_map_offset);
-    map.shift_map_z(map_offset);
+    map.shift_map_z(proprioceptive_map_offset);
     
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
@@ -448,22 +407,6 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   profiling.process_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   return drake::systems::EventStatus::Succeeded();
-}
-
-void ElevationMappingSystem::ReInitialize(
-    Context<double>* root_context, const GridMap &init_map, std::string layer) const {
-
-  Context<double>& context = this->GetMyMutableContextFromRoot(root_context);
-
-  auto& map = context.get_mutable_abstract_state<ElevationMap>(
-      elevation_map_state_index_);
-
-  GridMap tmp_map_in(init_map);
-  tmp_map_in["elevation"] = tmp_map_in[layer];
-
-  GridMap tmp_map_out = map.getRawGridMap();
-  tmp_map_out.addDataFrom(tmp_map_in, false, true, false, {"elevation"});
-  map.setRawGridMap(tmp_map_out);
 }
 
 void ElevationMappingSystem::InitializeFlatTerrain(

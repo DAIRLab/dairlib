@@ -9,7 +9,6 @@
 
 namespace rs2_systems {
 
-
 class SingleRSInterface {
  public:
   SingleRSInterface();

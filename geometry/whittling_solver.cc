@@ -1,6 +1,5 @@
 #include "whittling_solver.h"
 #include <algorithm>
-#include <iostream>
 
 namespace dairlib::geometry {
 
@@ -19,7 +18,8 @@ double cross(const Vector2d& v0, const Vector2d& v1) {
 }
 
 Eigen::Vector2d Rotate(const Vector2d& v, double a) {
-  return v.x() * Vector2d(std::cos(a) , std::sin(a)) + v.y() * Vector2d(-std::sin(a), std::cos(a));
+  return v.x() * Vector2d(std::cos(a) , std::sin(a)) +
+         v.y() * Vector2d(-std::sin(a), std::cos(a));
 }
 
 }
@@ -29,16 +29,18 @@ std::pair<Eigen::Vector2d, double> WhittlingSolver::SolveForBestCut(
     const Eigen::Vector2d& initial_guess) const {
   assert(vertices.rows() == 2);
 
-  double beta = 0.8;
-  double eps = 1e-8;
+  constexpr double beta = 0.8;
+  constexpr double eps = 1e-8;
+  constexpr int iteration_limit = 50;
 
   Vector2d x = initial_guess.normalized();
 
   int count = 0;
   double dx = 10;
-  while (dx > eps and count < 50) {
+  while (dx > eps and count < iteration_limit) {
     dx = GetSearchDirection(x, interior_vertex, vertices);
-    if (dx == 0) { break; } // can't improve current direction
+    if (dx == 0) { break; } // can't improve current direction,
+                            // avoids divide by zero in step-size normalization.
 
     // line search
     double t = 0.1 / fabs(dx);
@@ -48,10 +50,9 @@ std::pair<Eigen::Vector2d, double> WhittlingSolver::SolveForBestCut(
       if (t < 1e-20) { break; }
     }
     x = Rotate(x, t * dx);
-    x.normalize(); // normalizing x always decreases the cost
+    x.normalize();
     ++count;
   }
-//
   return {x, x.dot(interior_vertex)};
 }
 

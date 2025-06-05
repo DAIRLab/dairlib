@@ -5,7 +5,6 @@ numberOfRepeats: 1              # Number of times to apply the same filter
 # grid map filtering parameters
 resolution: -1      # Resampling resolution, set negative to skip, requires inpainting to be used
 kernelSize: 5       # Kernel size of the median filter, either 3 or 5
-gaussBlur: 2.0
 
 # plane segmentation parameters
 kernel_size: 3                                        # Size of the sliding window patch used for normal vector calculation and planarity detection. Should be an odd number and at least 3.

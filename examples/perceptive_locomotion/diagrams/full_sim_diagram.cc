@@ -36,10 +36,10 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   [[maybe_unused]] auto instance = AddCassieMultibody(
-      &plant, nullptr, true, urdf, true, false);
-  plant.Finalize();
+      &plant_, nullptr, true, urdf, true, false);
+  plant_.Finalize();
 
-  plant_context = plant.CreateDefaultContext();
+  plant_context_ = plant_.CreateDefaultContext();
 
   std::string osc_gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
@@ -60,7 +60,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
-  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant, mpc_gains_yaml, -1);
+  auto mpfc = builder.AddSystem<CassieMPFCDiagram<Alips2sMPFCSystem>>(plant_, mpc_gains_yaml, -1);
 
   std::vector<ConvexPolygon> footholds =
       multibody::LoadSteppingStonesFromYaml(terrain_yaml).footholds;
@@ -69,40 +69,40 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       drake::Value<ConvexPolygonSet>(footholds));
 
   auto radio_operator = builder.AddSystem<CassieRadioOperator>(
-      plant, plant_context.get());
+      plant_, plant_context_.get());
 
   auto osc_diagram = builder.AddSystem<MpfcOscDiagram>(
-      plant, osc_gains_file, mpc_gains_yaml, osqp_options
+      plant_, osc_gains_file, mpc_gains_yaml, osqp_options
   );
-  sim_diagram = builder.AddSystem<HikingSimDiagram>(
+  sim_diagram_ = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
   );
 
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_output>(
           "CASSIE_STATE_SIMULATION",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto osc_debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_osc_output>(
           "OSC_DEBUG_WALKING",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto input_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_robot_input>(
           "OSC_WALKING",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.001)
   );
   auto mpc_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_alip_mpfc_debug_complete>(
           "ALIP_S2S_MPFC_DEBUG",
-          &lcm_log_sink,
+          &lcm_log_sink_,
           {TriggerType::kPeriodic},
           0.01)
   );
@@ -125,7 +125,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       mpfc->get_input_port_footholds()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram_->get_output_port_state_lcm(),
       osc_diagram->get_input_port_state()
   );
   builder.Connect(
@@ -133,7 +133,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       radio_operator->get_input_port_target_xy()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      sim_diagram_->get_output_port_state(),
       radio_operator->get_input_port_state()
   );
   builder.Connect(
@@ -141,11 +141,11 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
       mpfc->get_input_port_vdes()
   );
   builder.Connect(
-      sim_diagram->get_output_port_lcm_radio(),
+      sim_diagram_->get_output_port_lcm_radio(),
       osc_diagram->get_input_port_radio()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram_->get_output_port_state_lcm(),
       mpfc->get_input_port_state()
   );
   builder.Connect(
@@ -154,18 +154,18 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
   );
   builder.Connect(
       osc_diagram->get_output_port_actuation(),
-      sim_diagram->get_input_port_actuation()
+      sim_diagram_->get_input_port_actuation()
   );
   builder.Connect(
       radio_operator->get_output_port_radio(),
-      sim_diagram->get_input_port_radio()
+      sim_diagram_->get_input_port_radio()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      sim_diagram_->get_output_port_state(),
       plant_visualizer->get_input_port()
   );
   builder.Connect(
-      sim_diagram->get_output_port_state(),
+      sim_diagram_->get_output_port_state(),
       mpfc_visualizer->get_input_port_state()
   );
   builder.Connect(
@@ -177,7 +177,7 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
                   osc_debug_pub->get_input_port());
   builder.Connect(osc_diagram->get_output_port_u_lcm(),
                   input_pub->get_input_port());
-  builder.Connect(sim_diagram->get_output_port_state_lcm(),
+  builder.Connect(sim_diagram_->get_output_port_state_lcm(),
                   state_pub->get_input_port());
   builder.Connect(mpfc->get_output_port_mpfc_debug(),
                   mpc_pub->get_input_port());
@@ -187,21 +187,21 @@ FullSimDiagram::FullSimDiagram(const std::string& mpc_gains_yaml,
 
 void FullSimDiagram::SetPlantInitialConditions(
     Diagram<double> *diagram, Context<double> *context) {
-  auto [q, v] = sim_diagram->SetPlantInitialConditionFromIK(
+  auto [q, v] = sim_diagram_->SetPlantInitialConditionFromIK(
       diagram, context, Eigen::Vector3d::Zero(), 0.1, 0.95
   );
 }
 
 drake::math::RigidTransformd FullSimDiagram::GetCassiePelvisPoseInWorld(
     const Context<double>& context) const {
-  const auto& sim_plant = sim_diagram->get_plant();
+  const auto& sim_plant = sim_diagram_->get_plant();
   const auto& plant_context = sim_plant.GetMyContextFromRoot(context);
   return sim_plant.GetBodyByName("pelvis").EvalPoseInWorld(plant_context);
 }
 
 void FullSimDiagram::SaveLcmLog(const std::string &fname) {
-  lcm_log_sink.WriteLog(fname);
-  lcm_log_sink.clear();
+  lcm_log_sink_.WriteLog(fname);
+  lcm_log_sink_.clear();
 }
 
 }

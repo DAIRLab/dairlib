@@ -5,11 +5,12 @@
 namespace dairlib::geometry {
 
 
-/// Class representing a convex polygon consisting of a single
-/// equality constraint a'x = b defining the polygon plane, and
-/// arbitrary inequality constraints defining the extents of the
-/// polygon. No effort is made to check feasibility or reasonableness of any
-/// combination of constraints. No frame information is supplied.
+/// Class representing a 2D convex polygon embedded in 3D space.
+/// Each convex polygon consists of a single equality constraint a'x = b
+/// defining the polygon plane, and arbitrary inequality constraints defining
+/// the extents of the polygon. No effort is made to check feasibility or
+/// reasonableness of any combination of constraints.
+/// No frame information is supplied.
 class ConvexPolygon {
  public:
   ConvexPolygon()= default;
@@ -70,13 +71,13 @@ class ConvexPolygon {
 
   /*!
    * Performs an in place rotation of the constraints Ax <= b such that
-   * A (R_WF) x <= b. In other words, moves the constraint from applying to
+   * A (R_WF x) <= b. In other words, moves the constraint from applying to
    * vectors in frame W, to vectors in frame F
    */
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
 
   /*!
-   * Performs an in place rotation and translation
+   * Performs an in-place rotation and translation
    * of the constraints Ax <= b such that
    * A (R_WF x + p_OF_W) <= b. In other words, moves the constraint from
    * applying to vectors in frame W, to vectors in frame F
@@ -87,17 +88,17 @@ class ConvexPolygon {
   Eigen::Matrix3Xd GetVertices();
 
   static ConvexPolygon MakeFlatGround(double half_len=100.0) {
-    ConvexPolygon foothold;
-    foothold.SetPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
-    foothold.AddFace(Eigen::Vector3d::UnitX(),
+    ConvexPolygon ground;
+    ground.SetPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
+    ground.AddFace(Eigen::Vector3d::UnitX(),
                      half_len * Eigen::Vector3d::UnitX());
-    foothold.AddFace(-Eigen::Vector3d::UnitX(),
+    ground.AddFace(-Eigen::Vector3d::UnitX(),
                      -half_len * Eigen::Vector3d::UnitX());
-    foothold.AddFace(Eigen::Vector3d::UnitY(),
+    ground.AddFace(Eigen::Vector3d::UnitY(),
                      half_len * Eigen::Vector3d::UnitY());
-    foothold.AddFace(-Eigen::Vector3d::UnitY(),
+    ground.AddFace(-Eigen::Vector3d::UnitY(),
                      -half_len * Eigen::Vector3d::UnitY());
-    return foothold;
+    return ground;
   }
 
   void CalcBoundingBox();

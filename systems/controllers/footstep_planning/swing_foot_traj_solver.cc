@@ -5,13 +5,12 @@
 
 namespace dairlib::systems::controllers {
 
+using drake::Polynomial;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
 using drake::trajectories::PathParameterizedTrajectory;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::LegendrePolynomialTrajectory;
-
-using drake::Polynomial;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;

@@ -9,7 +9,7 @@ namespace dairlib::systems {
 
 /*
  * To account for floating base drift when providing a dummy foothold, provide
- * a foothold where the height of the foothold is always the mininum of the two
+ * a foothold where the height of the foothold is always the minimum of the two
  * contact points
  */
 class FlatTerrainFootholdSource : public drake::systems::LeafSystem<double> {

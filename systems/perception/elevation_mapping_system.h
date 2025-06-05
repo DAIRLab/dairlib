@@ -4,6 +4,8 @@
 #include "camera_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_contact.hpp"
+
+// elevation mapping
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
@@ -29,6 +31,10 @@ struct elevation_map_update_params {
   double map_update_rate_hz_ = 30;
 };
 
+
+/*!
+ * Parent struct for nested elevation mapping system parameters.
+ */
 struct elevation_mapping_params {
   std::vector<sensor_pose_params> sensor_poses;
   std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts;
@@ -43,6 +49,9 @@ struct elevation_mapping_params {
   Eigen::Vector3d point_cloud_bias;
 };
 
+/*!
+ * Centralised i/o for nested elevation mapping parameters.
+ */
 struct elevation_mapping_params_io {
   std::vector<std::map<std::string, std::string>> sensor_poses;
   std::map<std::string, std::string> contact_frames;
@@ -124,7 +133,13 @@ struct elevation_mapping_params_io {
   };
 };
 
-
+/*!
+ * Drake leaf system implementing the robot-centric elevation mapping framework
+ * by Peter Fankhauser. Designed for fast-update rates in a single-threaded
+ * application, so only supports raw map updates (no map fusion). Designed to
+ * support multiple sensor streams, each of which has a unique sensor name,
+ * but has only been tested with one sensor at a time so far.
+ */
 class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ElevationMappingSystem);
@@ -170,15 +185,6 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
                 const drake::multibody::Frame<double>&>> contacts,
       drake::systems::Context<double>&) const;
 
-
-  /*!
- * Re-initalize the elevation map to match the specified layer of init_map
- * @param context
- * @param layer
- */
-  void ReInitialize(drake::systems::Context<double>* root_context,
-                    const grid_map::GridMap& init_map, std::string layer) const;
-
  private:
 
   drake::systems::EventStatus ElevationMapUpdateEvent(
@@ -198,10 +204,6 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   double CalcMapOffsetFromContactState(
       lcmt_contact contact_msg,
       const std::string& prev_contact,
-      const grid_map::GridMap& map) const;
-
-  double CalcMapOffsetFromPointCloud(
-      const elevation_mapping::PointCloudType::Ptr pc,
       const grid_map::GridMap& map) const;
 
   std::map<std::string, elevation_mapping::PointCloudType::Ptr>

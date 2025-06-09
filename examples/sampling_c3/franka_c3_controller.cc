@@ -207,22 +207,19 @@ if(FLAGS_demo_name == "push_t") {
     drake::geometry::GeometryId ee_contact_points =
         plant_for_lcs.GetCollisionGeometriesForBody(
             plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-    drake::geometry::GeometryId horizontal_geoms =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("horizontal_link"))[0];
     drake::geometry::GeometryId vertical_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
             plant_for_lcs.GetBodyByName("vertical_link"))[0];
 
     drake::geometry::GeometryId corner_nxynz_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxynz"))[0];
+            plant_for_lcs.GetBodyByName("vertical_link"))[1];
     drake::geometry::GeometryId corner_nxnynz_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_nxnynz"))[0];
+            plant_for_lcs.GetBodyByName("vertical_link"))[2];
     drake::geometry::GeometryId corner_xynz_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("corner_xynz"))[0];
+            plant_for_lcs.GetBodyByName("vertical_link"))[3];
 
     drake::geometry::GeometryId ground_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
@@ -230,7 +227,6 @@ if(FLAGS_demo_name == "push_t") {
 
     //   Creating a map of contact geoms
     contact_geoms["EE"] = ee_contact_points;
-    contact_geoms["horizontal_link"] = horizontal_geoms;
     contact_geoms["vertical_link"] = vertical_geoms;
     contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
     contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
@@ -241,8 +237,6 @@ if(FLAGS_demo_name == "push_t") {
 
     //   Creating a list of contact pairs for the end effector and the jack to
     //   hand over to lcs factory in the controller to resolve
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["horizontal_link"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["vertical_link"]));
 

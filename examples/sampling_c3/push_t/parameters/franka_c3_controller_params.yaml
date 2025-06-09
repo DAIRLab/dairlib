@@ -9,7 +9,7 @@ end_effector_model: examples/sampling_c3/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
 end_effector_simple_model: examples/sampling_c3/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: end_effector_simple
-jack_model: examples/sampling_c3/urdf/T_vertical.sdf
+jack_model: examples/sampling_c3/urdf/controller_push_t_white.sdf
 ground_model: examples/sampling_c3/urdf/ground_modified.sdf
 platform_model: examples/sampling_c3/urdf/platform.urdf
 

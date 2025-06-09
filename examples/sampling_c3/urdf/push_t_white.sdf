@@ -26,7 +26,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_0_volume">
@@ -53,7 +53,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_1_volume">
@@ -81,7 +81,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_2_volume">
@@ -109,7 +109,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_3_volume">
@@ -137,7 +137,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_4_volume">
@@ -165,7 +165,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_5_volume">
@@ -193,7 +193,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_6_volume">
@@ -221,7 +221,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_7_volume">
@@ -249,7 +249,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_8_volume">
@@ -277,7 +277,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0 0 0 1</diffuse>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
         </material>
       </visual>
       <collision name="convex_9_volume">

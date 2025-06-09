@@ -50,13 +50,9 @@
           </sphere>
         </geometry>
         <drake:proximity_properties>
-        <!-- <drake:compliant_hydroelastic/>
-        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> -0.12 0.08 -0.02 0 0 0</pose>
+        <pose> -0.12000000 0.08000000 -0.02000000 0 0 0</pose>
       </collision>   
       <collision name="corner_nxnynz">
         <geometry>
@@ -65,13 +61,9 @@
           </sphere>
         </geometry>
         <drake:proximity_properties>
-        <!-- <drake:compliant_hydroelastic/>
-        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> -0.12 -0.08 -0.02 0 0 0</pose>
+        <pose> -0.12000000 -0.08000000 -0.02000000 0 0 0</pose>
       </collision>
       <collision name="corner_xynz">
         <geometry>
@@ -80,13 +72,9 @@
           </sphere>
         </geometry>
         <drake:proximity_properties>
-        <!-- <drake:compliant_hydroelastic/>
-        <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-        <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-        <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> 0.08 0.0 -0.02 0 0 0</pose>
+        <pose> 0.08000000 0.00000000 -0.02000000 0 0 0</pose>
       </collision>
     </link>
   </model>

@@ -36,8 +36,6 @@ dynamically_feasible_curr_plan_channel: DYNAMICALLY_FEASIBLE_CURR_PLAN
 dynamically_feasible_best_actor_plan_channel: DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN
 dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN
 
-curr_and_best_sample_costs_channel: CURR_AND_BEST_SAMPLE_COSTS
-                                            # lcmt_timestamped_saved_traj
 is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
 target_generator_info_channel: TARGET_GEN_INFO  # lcmt_timestamped_saved_traj
 sampling_c3_debug_channel: SAMPLING_C3_DEBUG

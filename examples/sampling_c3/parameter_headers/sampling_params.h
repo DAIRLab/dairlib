@@ -2,6 +2,10 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+// TODO @bibit temporary, this import should go away when cost type is elsewhere
+#include "solvers/c3_options.h"
+
+
 enum SamplingStrategy {
   RADIALLY_SYMMETRIC_SAMPLING,
   RANDOM_ON_CIRCLE_SAMPLING,
@@ -13,14 +17,22 @@ enum SamplingStrategy {
 
 enum ProgressMetric {
   C3_COST,
-  CURRENT_POSITION_AND_ORIENTATION_COST,
-  POSITION_OR_ORIENTATION_ERROR,
-  MIN_PROGRESS_TO_CONTINUE
+  CONFIG_COST,
+  POS_OR_ROT_COST,
+  CONFIG_PROGRESS_OVER_LOOPS
+};
+
+// TODO @bibit should this be part of repositioning parameters?
+enum RepositioningTrajectoryType {
+  SPLINE,
+  SPHERICAL,
+  CIRCULAR,
+  PIECEWISE_LINEAR
 };
 
 // TODO: @bibit parameter restructuring should reconsider many of these contents
 struct SamplingParams {
-  int control_loop_delay_ms;
+  int control_loop_delay_ms;  // TODO @bibit does not belong here
   int sampling_strategy;
   bool filter_samples_for_safety;
   std::vector<Eigen::VectorXd> fixed_sample_locations;  // TODO: @bibit 3D?
@@ -43,19 +55,20 @@ struct SamplingParams {
   double reposition_speed;
   double use_straight_line_traj_under;
   double use_straight_line_traj_within_angle;
-  int repositioning_trajectory_type;
+  RepositioningTrajectoryType repositioning_trajectory_type;
+  double use_straight_line_traj_under_piecewise_linear;
   double repositioning_waypoint_height;
   int N_sample_buffer;
   double pos_error_sample_retention;
   double ang_error_sample_retention;
-  int cost_type;
-  int cost_type_position_tracking;
+  C3CostComputationType cost_type;
+  C3CostComputationType cost_type_position_tracking;
   bool use_different_contacts_to_compute_cost;
   int num_control_loops_to_wait;
   int num_control_loops_to_wait_position_tracking;
-  int track_c3_progress_via;
-  double min_percentage_decrease_in_cost_to_continue;
-  int num_control_loops_to_wait_for_progress;
+  ProgressMetric track_c3_progress_via;
+  double progress_enforced_cost_drop;
+  int progress_enforced_over_n_loops;
   double cost_switching_threshold_distance;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
@@ -98,19 +111,41 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
-    a->Visit(DRAKE_NVP(repositioning_trajectory_type));
+    a->Visit(DRAKE_NVP(use_straight_line_traj_under_piecewise_linear));
     a->Visit(DRAKE_NVP(repositioning_waypoint_height));
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
-    a->Visit(DRAKE_NVP(cost_type));
-    a->Visit(DRAKE_NVP(cost_type_position_tracking));
+
+    // Load yaml integers into custom enum type.
+    int raw_cost_type = static_cast<int>(cost_type);
+    int raw_cost_type_position_tracking = static_cast<int>(
+      cost_type_position_tracking);
+    a->Visit(drake::MakeNameValue("cost_type", &raw_cost_type));
+    a->Visit(drake::MakeNameValue("cost_type_position_tracking",
+                                  &raw_cost_type_position_tracking));
+    cost_type = static_cast<C3CostComputationType>(raw_cost_type);
+    cost_type_position_tracking = static_cast<C3CostComputationType>(
+      raw_cost_type_position_tracking);
+
+    int raw_track_c3_progress_via = static_cast<int>(track_c3_progress_via);
+    a->Visit(drake::MakeNameValue("track_c3_progress_via",
+                                  &raw_track_c3_progress_via));
+    track_c3_progress_via = static_cast<ProgressMetric>(
+      raw_track_c3_progress_via);
+
+    int raw_repositioning_trajectory_type = static_cast<int>(
+      repositioning_trajectory_type);
+    a->Visit(drake::MakeNameValue("repositioning_trajectory_type",
+                                  &raw_repositioning_trajectory_type));
+    repositioning_trajectory_type = static_cast<RepositioningTrajectoryType>(
+      raw_repositioning_trajectory_type);
+
     a->Visit(DRAKE_NVP(use_different_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait_position_tracking));
-    a->Visit(DRAKE_NVP(track_c3_progress_via));
-    a->Visit(DRAKE_NVP(min_percentage_decrease_in_cost_to_continue));
-    a->Visit(DRAKE_NVP(num_control_loops_to_wait_for_progress));
+    a->Visit(DRAKE_NVP(progress_enforced_cost_drop));
+    a->Visit(DRAKE_NVP(progress_enforced_over_n_loops));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));

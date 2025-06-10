@@ -22,7 +22,6 @@ struct SamplingC3Options {
   bool end_on_qp_step;
   bool use_predicted_x0_c3;
   bool use_predicted_x0_repos;
-  bool at_least_predict_first_planned_trajectory_knot;
   bool use_predicted_x0_reset_mechanism;
   double solve_time_filter_alpha;
   double publish_frequency;
@@ -54,7 +53,6 @@ struct SamplingC3Options {
       r_vector;  // This is common for both position and pose tracking
 
   std::vector<double> g_vector_pose_tracking;
-  std::vector<double> g_vector_pose_tracking_for_curr_location;
   std::vector<double> g_x_pose_tracking;
   std::vector<std::vector<double>> g_gamma_pose_tracking;
   std::vector<std::vector<double>> g_lambda_n_pose_tracking;
@@ -63,7 +61,6 @@ struct SamplingC3Options {
   std::vector<double> g_u_pose_tracking;
 
   std::vector<double> u_vector_pose_tracking;
-  std::vector<double> u_vector_pose_tracking_for_curr_location;
   std::vector<double> u_x_pose_tracking;
   std::vector<std::vector<double>> u_gamma_pose_tracking;
   std::vector<std::vector<double>> u_lambda_n_pose_tracking;
@@ -72,7 +69,6 @@ struct SamplingC3Options {
   std::vector<double> u_u_pose_tracking;
 
   std::vector<double> g_vector_position_tracking;
-  std::vector<double> g_vector_position_tracking_for_curr_location;
   std::vector<double> q_vector_position_tracking;
   double w_Q_position_tracking;
   double w_R_position_tracking;
@@ -87,7 +83,6 @@ struct SamplingC3Options {
   std::vector<double> g_u_position_tracking;
 
   std::vector<double> u_vector_position_tracking;
-  std::vector<double> u_vector_position_tracking_for_curr_location;
   std::vector<double> u_x_position_tracking;
   std::vector<std::vector<double>> u_gamma_position_tracking;
   std::vector<std::vector<double>> u_lambda_n_position_tracking;
@@ -105,20 +100,15 @@ struct SamplingC3Options {
   int num_friction_directions;
   int num_contacts_index;  // TODO @bibit make an enum for this
   int num_contacts_index_for_cost;
-  int num_contacts_index_for_curr_location;
   std::vector<int> num_contacts_list;
   std::vector<std::vector<int>> resolve_contacts_to_list;
   Eigen::MatrixXd Q_pose_tracking;
   Eigen::MatrixXd Q_position_tracking;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G_pose_tracking;
-  Eigen::MatrixXd G_pose_tracking_for_curr_location;
   Eigen::MatrixXd U_pose_tracking;
-  Eigen::MatrixXd U_pose_tracking_for_curr_location;
   Eigen::MatrixXd G_position_tracking;
-  Eigen::MatrixXd G_position_tracking_for_curr_location;
   Eigen::MatrixXd U_position_tracking;
-  Eigen::MatrixXd U_position_tracking_for_curr_location;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -134,7 +124,6 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(end_on_qp_step));
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
     a->Visit(DRAKE_NVP(use_predicted_x0_repos));
-    a->Visit(DRAKE_NVP(at_least_predict_first_planned_trajectory_knot));
     a->Visit(DRAKE_NVP(use_predicted_x0_reset_mechanism));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
@@ -152,7 +141,6 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
-    a->Visit(DRAKE_NVP(num_contacts_index_for_curr_location));
     a->Visit(DRAKE_NVP(num_contacts_list));
     a->Visit(DRAKE_NVP(resolve_contacts_to_list));
 

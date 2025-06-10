@@ -41,7 +41,6 @@ num_friction_directions: 2
 # contacts.
 num_contacts_index: 0
 num_contacts_index_for_cost: 5
-num_contacts_index_for_curr_location: 0
 
 # num_contacts changes based on the num_contacts_index.
 num_contacts_list: [4, 6, 5, 7, 5, 9, 5]
@@ -57,7 +56,6 @@ resolve_contacts_to_list: [[1,3],
 N: 5
 use_predicted_x0_c3: true                                                       # Does not go into c3_options struct
 use_predicted_x0_repos: true                                                    # Does not go into c3_options struct                             
-at_least_predict_first_planned_trajectory_knot: false                           # Does not go into c3_options struct
 use_predicted_x0_reset_mechanism: true                                          # Does not go into c3_options struct
 
 solve_time_filter_alpha: 0.95

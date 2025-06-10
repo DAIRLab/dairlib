@@ -36,9 +36,10 @@ q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 q_init_object: [-0.3347435, -0.026718954, 0.8878204, 0.31518626, 0.4, 0.30, 0.03]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
+# TODO @bibit all of these seem like they should be in visualizer params, not here.
 visualizer_sample_locations_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 visualizer_c3_mode_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
-visualize_c3_workspace: true
+visualize_c3_workspace: false
 visualize_c3_state: true
 visualize_is_c3_mode: true
 
@@ -49,7 +50,7 @@ visualize_execution_plan: false
 visualizer_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 visualizer_df_curr_sample_end_effector_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 visualizer_curr_sample_traj_object_model: examples/sampling_c3/urdf/jack.sdf
-visualize_pose_trace_curr: true
+visualize_pose_trace_curr: false
 visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: false
 

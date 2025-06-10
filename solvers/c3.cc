@@ -337,7 +337,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 
 // This function relies on the previously computed zfin_ from Solve.
 std::pair<double,std::vector<Eigen::VectorXd>> 
-  C3::CalcCost(int cost_type, 
+  C3::CalcCost(C3CostComputationType cost_type,
                double Kp_for_ee_pd_rollout, 
                double Kd_for_ee_pd_rollout,
                bool force_tracking_disabled, 

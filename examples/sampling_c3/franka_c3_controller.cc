@@ -409,10 +409,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_costs_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto curr_and_best_sample_costs_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.curr_and_best_sample_costs_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   // Debugging publishers.
   auto controller_debug_publisher = builder.AddSystem(
@@ -545,8 +541,6 @@ int DoMain(int argc, char* argv[]) {
                   sample_costs_publisher->get_input_port());
   builder.Connect(controller->get_output_port_is_c3_mode(),
                   is_c3_mode_publisher->get_input_port());
-  builder.Connect(controller->get_output_port_curr_and_best_sample_costs(),
-                  curr_and_best_sample_costs_publisher->get_input_port());
   builder.Connect(controller->get_output_port_debug(),
                   controller_debug_publisher->get_input_port());
   builder.Connect(sample_buffer_sender->get_output_port_sample_buffer(),

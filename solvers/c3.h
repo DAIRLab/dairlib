@@ -39,6 +39,7 @@ class C3 {
 
   /// Solve the MPC problem.
   /// @param x0 The initial state of the system
+  /// @param verbose Whether to print additional information
   /// @return void
   void Solve(const Eigen::VectorXd& x0, bool verbose = false);
 
@@ -54,7 +55,7 @@ class C3 {
   /// @param verbose Whether to print additional information
   /// @return The cost and its associated state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-      int cost_type = SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
+      C3CostComputationType cost_type = SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
       double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
       bool force_tracking_disabled = false, bool print_cost_breakdown = false,
       bool verbose = false) const;
@@ -70,9 +71,9 @@ class C3 {
   /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
     SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                        double Kd_for_ee_pd_rollout = 0.0,
-                        bool force_tracking_disabled = false,
-                        bool verbose = false) const;
+                      double Kd_for_ee_pd_rollout = 0.0,
+                      bool force_tracking_disabled = false,
+                      bool verbose = false) const;
 
   /// Solve a single ADMM step.
   /// @param x0 The initial state of the system
@@ -80,6 +81,7 @@ class C3 {
   /// @param w The scaled dual variables from the previous step
   /// @param G A pointer to the G variables from previous step
   /// @param admm_iteration ADMM iteration for accurate warm starting
+  /// @param verbose Whether to print additional information
   /// @return solution is saved in C3 object
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,

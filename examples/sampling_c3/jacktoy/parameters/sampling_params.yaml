@@ -55,6 +55,7 @@ circular_repositioning_height: 0.00
 reposition_speed: 0.20    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
+use_straight_line_traj_under_piecewise_linear: 0.008  # for PWL repositioning
 repositioning_trajectory_type: 1   # 0 is spline, 1 is spherical, 2 is circular.
 repositioning_waypoint_height: 0.06 # This is the height of the waypoints for the piecewise linear repositioning.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
@@ -85,11 +86,14 @@ num_control_loops_to_wait_position_tracking: 20
 track_c3_progress_via: 3  # 0: C3 cost,
                           # 1: current position and orientation cost,
                           # 2: position and orientation error
-                          # 3: min % decrease in current position and orientation cost
-# If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
-# in order to continue in C3 mode. If not, it has to switch to repositioning.
-min_percentage_decrease_in_cost_to_continue: -1.8
-num_control_loops_to_wait_for_progress: 12
+                          # 3: min cost fraction decrease in current position
+                          #    and orientation cost
+
+# For productivity type defined by an enforced cost drop over a number of
+# control loops, the below define the fraction of the cost that has to be
+# dropped over the number of control loops.
+progress_enforced_cost_drop: 0.018
+progress_enforced_over_n_loops: 12
 
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a
 ####### lookahead for the trajectory type i.e. trajectory_type in the

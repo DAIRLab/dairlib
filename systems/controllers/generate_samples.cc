@@ -48,8 +48,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   }
   std::vector<Eigen::VectorXd> candidate_states(num_samples);
 
-  std::cout << "Generating " << num_samples << " samples with strategy "
-            << sampling_params.sampling_strategy << std::endl;
+  //std::cout << "Generating " << num_samples << " samples with strategy "
+  //          << sampling_params.sampling_strategy << std::endl;
 
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
@@ -62,7 +62,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       drake::geometry::GeometryId geom_id = (j == 0) ? pair.first() : pair.second();
       const drake::geometry::Shape& shape = inspector.GetShape(geom_id);
       std::string shape_type = shape.to_string();
-      std::cout << "GeometryId " << geom_id << " is of type: " << shape_type << std::endl;
+      // std::cout << "GeometryId " << geom_id << " is of type: " << shape_type << std::endl;
     }
     }
   }
@@ -82,7 +82,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
             std::string::size_type end_pos = shape_type.find("'", fname_pos);
             if (end_pos != std::string::npos) {
               mesh_filename = shape_type.substr(fname_pos, end_pos - fname_pos);
-              std::cout << "Found mesh filename: " << mesh_filename << std::endl;
+              // std::cout << "Found mesh filename: " << mesh_filename << std::endl;
             }
           }
         }
@@ -574,7 +574,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     if (intersections.empty()) {
         throw std::runtime_error("No intersections found at z = " + std::to_string(z_height));
     }
-    std::cout << "4: Found " << intersections.size() << " intersection points." << std::endl;
+    // std::cout << "4: Found " << intersections.size() << " intersection points." << std::endl;
     // 5. Convert intersections to 2D points and create polygon ring
     std::vector<BGPoint> ring;
     for (const auto& pt : intersections) {
@@ -595,7 +595,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     }
     ring_file.close();
 
-    std::cout << "5: Created polygon with " << ring.size() << " points." << std::endl;
+    // std::cout << "5: Created polygon with " << ring.size() << " points." << std::endl;
 
     std::vector<BGPoint> downsampled_ring;
     int skip = std::max(1, static_cast<int>(ring.size() / 200));  // Downsample to ~200 points
@@ -621,7 +621,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     if (buffered_polygons.empty()) {
         throw std::runtime_error("Buffering resulted in no polygons.");
     }
-    std::cout << "6: Buffered polygon created with " << buffered_polygons.size() << " polygons." << std::endl;
+    //std::cout << "6: Buffered polygon created with " << buffered_polygons.size() << " polygons." << std::endl;
     // 7. Sample points along the buffered polygon
     std::vector<BGPoint> sampled_points;
     const auto& outer = buffered_polygons.front().outer();
@@ -630,7 +630,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
         total_length += bg::distance(outer[i], outer[i + 1]);
     }
 
-    std::cout << "Total length of outer polygon: " << total_length << std::endl;
+    //std::cout << "Total length of outer polygon: " << total_length << std::endl;
     if (total_length == 0.0) {
         throw std::runtime_error("Total length of outer polygon is zero.");
     }
@@ -639,7 +639,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     double accumulated_length = 0.0;
     size_t current_segment = 0;
 
-    std::cout << "6.5: Segment length: " << segment_length << std::endl;
+    //std::cout << "6.5: Segment length: " << segment_length << std::endl;
 
     for (int i = 0; i < num_samples; ++i) {
         double target_length = i * segment_length;

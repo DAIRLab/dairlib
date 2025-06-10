@@ -70,8 +70,8 @@ ang_error_sample_retention: 0.0349  # 0.087 rad = 5 deg
 # 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
-cost_type: 5
-cost_type_position_tracking: 5
+cost_type: 4
+cost_type_position_tracking: 4
 use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
@@ -113,7 +113,7 @@ hysteresis_between_repos_targets_position_tracking: 60000000000000
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
 # repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
 use_relative_hysteresis: true
-c3_to_repos_cost_fraction: 0.75
+c3_to_repos_cost_fraction: 1
 c3_to_repos_cost_fraction_position_tracking: 0.6
 
 repos_to_c3_cost_fraction: 0.9
@@ -123,5 +123,5 @@ repos_to_repos_cost_fraction: 0.3
 repos_to_repos_cost_fraction_position_tracking: 0.1
 
 z_height: -0.01
-buffer_distance: 0.03
+buffer_distance: 0.04
 num_additional_samples_mesh_buffer: 100

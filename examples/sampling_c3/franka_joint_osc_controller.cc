@@ -216,9 +216,6 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-//   DrawAndSaveDiagramGraph(*loop.get_diagram(),
-//                           "../diagrams/" + FLAGS_demo_name +
-//                               "/loop_franka_joint_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

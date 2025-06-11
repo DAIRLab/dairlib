@@ -21,7 +21,7 @@ namespace dairlib {
 namespace systems {
 
 // Public call for generating samples.
-std::vector<Eigen::VectorXd> generate_sample_states(
+std::vector<Eigen::VectorXd> GenerateSampleStates(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs, const bool& is_doing_c3,
     const SamplingParams& sampling_params,
@@ -51,68 +51,69 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   }
 
   // Split function calls based on sampling strategy.
-  if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING) {
+  SamplingStrategy strategy = sampling_params.sampling_strategy;
+  if (strategy == SamplingStrategy::kRadiallySymmetric) {
     for (int i = 0; i < num_samples; i++) {
-      candidate_states[i].head(3) = radially_symmetric_sampling(
+      candidate_states[i].head(3) = RadiallySymmetricSampling(
         n_q, n_v, x_lcs, num_samples, i, sampling_params.sampling_radius,
         sampling_params.sampling_height);
       if (sampling_params.filter_samples_for_safety &&
-          !sample_in_workspace(candidate_states[i], sampling_c3_options)) {
+          !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
         throw std::runtime_error(
           "Error:  Radially symmetric sample location is outside workspace.");
       }
     }
-  } else if (sampling_params.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING) {
+  } else if (strategy == SamplingStrategy::kRandomOnCircle) {
     for (int i = 0; i < num_samples; i++) {
       do {
-        candidate_states[i].head(3) = random_on_circle_sampling(
+        candidate_states[i].head(3) = RandomOnCircleSampling(
           n_q, n_v, x_lcs, sampling_params.sampling_radius,
           sampling_params.sampling_height);
       } while (sampling_params.filter_samples_for_safety &&
-               !sample_in_workspace(candidate_states[i], sampling_c3_options));
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
-  } else if (sampling_params.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING) {
+  } else if (strategy == SamplingStrategy::kRandomOnSphere) {
     for (int i = 0; i < num_samples; i++) {
       do {
-        candidate_states[i].head(3) = random_on_sphere_sampling(
+        candidate_states[i].head(3) = RandomOnSphereSampling(
           n_q, n_v, x_lcs, sampling_params.sampling_radius,
           sampling_params.min_angle_from_vertical,
           sampling_params.max_angle_from_vertical);
       } while (sampling_params.filter_samples_for_safety &&
-               !sample_in_workspace(candidate_states[i], sampling_c3_options));
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
-  } else if (sampling_params.sampling_strategy == FIXED_SAMPLE) {
+  } else if (strategy == SamplingStrategy::kFixed) {
     if (num_samples > sampling_params.fixed_sample_locations.size()) {
       throw std::runtime_error(
         "Error:  More fixed samples requested than provided.");
     }
     for (int i = 0; i < num_samples; i++) {
-      candidate_states[i].head(3) = fixed_sample(
+      candidate_states[i].head(3) = FixedSample(
         sampling_params.sampling_height,
         sampling_params.fixed_sample_locations[i]);
       if (sampling_params.filter_samples_for_safety &&
-          !sample_in_workspace(candidate_states[i], sampling_c3_options)) {
+          !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
         throw std::runtime_error(
           "Error:  Fixed sample location is outside workspace.");
       }
     }
-  } else if (sampling_params.sampling_strategy == PERIMETER_SAMPLING) {
+  } else if (strategy == SamplingStrategy::kRandomOnPerimeter) {
     for (int i = 0; i < num_samples; i++) {
       do {
-        candidate_states[i].head(3) = perimeter_sampling(
+        candidate_states[i].head(3) = PerimeterSampling(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, sampling_c3_options);
       } while (sampling_params.filter_samples_for_safety &&
-               !sample_in_workspace(candidate_states[i], sampling_c3_options));
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
-  } else if (sampling_params.sampling_strategy == SHELL_SAMPLING) {
+  } else if (strategy == SamplingStrategy::kRandomOnShell) {
     for (int i = 0; i < num_samples; i++) {
       do {
-        candidate_states[i].head(3) = shell_sampling(
+        candidate_states[i].head(3) = ShellSampling(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, sampling_c3_options);
       } while (sampling_params.filter_samples_for_safety &&
-               !sample_in_workspace(candidate_states[i], sampling_c3_options));
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
   } else {
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
@@ -120,9 +121,9 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   return candidate_states;
 }
 
-// RADIALLY_SYMMETRIC_SAMPLING:  Equally spaced on perimeter of circle of fixed
-// radius and height. This generates angle offsets from world frame.
-Eigen::Vector3d radially_symmetric_sampling(
+// kRadiallySymmetric:  Equally spaced on perimeter of circle of fixed radius
+// and height. This generates angle offsets from world frame.
+Eigen::Vector3d RadiallySymmetricSampling(
     const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
     const int& num_samples, const int& i, const double& sampling_radius,
     const double& sampling_height) {
@@ -138,9 +139,8 @@ Eigen::Vector3d radially_symmetric_sampling(
   return sample;
 }
 
-// RANDOM_ON_CIRCLE_SAMPLING:  Random on perimeter of circle of fixed radius and
-// height.
-Eigen::Vector3d random_on_circle_sampling(
+// kRandomOnCircle:  Random on perimeter of circle of fixed radius and height.
+Eigen::Vector3d RandomOnCircleSampling(
   const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
   const double& sampling_radius, const double& sampling_height) {
   // Center the sampling circle on the current object location.
@@ -157,9 +157,9 @@ Eigen::Vector3d random_on_circle_sampling(
   return sample;
 }
 
-// RANDOM_ON_SPHERE_SAMPLING:  Random on surface of sphere of fixed radius
-// within elevation angles.
-Eigen::Vector3d random_on_sphere_sampling(
+// kRandomOnSphere:  Random on surface of sphere of fixed radius within
+// elevation angles.
+Eigen::Vector3d RandomOnSphereSampling(
     const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
     const double& sampling_radius, const double& min_angle_from_vertical,
     const double& max_angle_from_vertical) {
@@ -179,9 +179,9 @@ Eigen::Vector3d random_on_sphere_sampling(
   return sample;
 }
 
-// FIXED_SAMPLE
-Eigen::Vector3d fixed_sample(const double& sampling_height,
-                             Eigen::VectorXd fixed_sample_location) {
+// kFixed
+Eigen::Vector3d FixedSample(const double& sampling_height,
+                             const Eigen::VectorXd& fixed_sample_location) {
   Eigen::Vector3d sample = Vector3d::Zero();
   sample[0] = fixed_sample_location[0];
   sample[1] = fixed_sample_location[1];
@@ -189,7 +189,7 @@ Eigen::Vector3d fixed_sample(const double& sampling_height,
   return sample;
 }
 
-// PERIMETER_SAMPLING:  Random on (roughly) inflated perimeter of 2D slice of
+// kRandomOnPerimeter:  Random on (roughly) inflated perimeter of 2D slice of
 // object on its z=0 body plane, (roughly) projected vertically to pre-specified
 // sample height.  The precise steps are:
 //  1) Sample points in the body frame's (x, y, z=0) plane.  These may not be
@@ -210,7 +210,7 @@ Eigen::Vector3d fixed_sample(const double& sampling_height,
 //
 // TODO: @bibit implement a more general perimeter strategy without requiring
 // the above assumptions.
-Eigen::Vector3d perimeter_sampling(
+Eigen::Vector3d PerimeterSampling(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs,
     drake::multibody::MultibodyPlant<double>& plant,
@@ -251,19 +251,19 @@ Eigen::Vector3d perimeter_sampling(
 
       // Project samples to specified sampling height in world frame.
       candidate_state[2] = sampling_params.sampling_height;
-    } while (!sample_is_within_distance_of_surface(
+    } while (!IsSampleWithinDistanceOfSurface(
       n_q, n_v, n_u, 0.0, false, candidate_state, plant, context, plant_ad,
       context_ad, contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
-    Eigen::VectorXd projected_state = project_outside_object(
-        candidate_state, min_distance_index, sampling_params, plant, context,
+    Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
+        candidate_state, min_distance_index, sampling_params, plant, *context,
         contact_geoms);
 
     // Check the desired clearance is satisfied; otherwise try again.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
                   projected_state);
-    if (sample_is_within_distance_of_surface(
+    if (IsSampleWithinDistanceOfSurface(
       n_q, n_v, n_u, sampling_params.sample_projection_clearance, true,
       projected_state, plant, context, plant_ad, context_ad, contact_geoms,
       sampling_c3_options, min_distance_index)) {
@@ -286,11 +286,11 @@ Eigen::Vector3d perimeter_sampling(
 }
 
 
-// SHELL_SAMPLING:  Random on inflated 3D shell surrounding the object.  Makes a
+// kRandomOnShell:  Random on inflated 3D shell surrounding the object.  Makes a
 // light assumption that the body origin is roughly centered on its geometry.
 //
 // TODO: @bibit this strategy is largely untested.
-Eigen::Vector3d shell_sampling(
+Eigen::Vector3d ShellSampling(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs,
     drake::multibody::MultibodyPlant<double>& plant,
@@ -335,19 +335,19 @@ Eigen::Vector3d shell_sampling(
       candidate_state[1] =
           y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
       candidate_state[2] = z_samplec + sampling_radius * cos(elevation_theta);
-    } while (!sample_is_within_distance_of_surface(
+    } while (!IsSampleWithinDistanceOfSurface(
       n_q, n_v, n_u, 0.0, false, candidate_state, plant, context, plant_ad,
       context_ad, contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
-    Eigen::VectorXd projected_state = project_outside_object(
-        candidate_state, min_distance_index, sampling_params, plant, context,
+    Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
+        candidate_state, min_distance_index, sampling_params, plant, *context,
         contact_geoms);
 
     // Check the desired clearance is satisfied; otherwise try again.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
                   projected_state);
-    if (sample_is_within_distance_of_surface(
+    if (IsSampleWithinDistanceOfSurface(
       n_q, n_v, n_u, sampling_params.sample_projection_clearance, true,
       projected_state, plant, context, plant_ad, context_ad, contact_geoms,
       sampling_c3_options, min_distance_index)) {
@@ -365,10 +365,10 @@ Eigen::Vector3d shell_sampling(
   }
 }
 
-bool sample_in_workspace(const Eigen::VectorXd& candidate_state,
+bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {
   double candidate_radius =
-      sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
+    sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
   if (candidate_state[0] < sampling_c3_options.workspace_limits[0][3] // x min
    || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] // x max
    || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] // y min
@@ -381,16 +381,16 @@ bool sample_in_workspace(const Eigen::VectorXd& candidate_state,
   return true;
 }
 
-double get_ee_radius_from_plant(
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
+double GetEERadiusFromPlant(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
     const std::vector<
       std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_geoms)
 {
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
-    query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
+    query_port.template Eval<drake::geometry::QueryObject<double>>(context);
   const auto& inspector = query_object.inspector();
 
   // Locate the EE and obtain its radius.
@@ -403,7 +403,7 @@ double get_ee_radius_from_plant(
   throw std::runtime_error("End effector geometry is not a sphere!");
 }
 
-bool sample_is_within_distance_of_surface(
+bool IsSampleWithinDistanceOfSurface(
     const int& n_q, const int& n_v, const int& n_u,
     const double& clearance_distance,
     const bool& factor_in_ee_radius,
@@ -443,83 +443,43 @@ bool sample_is_within_distance_of_surface(
   double min_distance = *min_distance_it;
 
   // Factor the EE radius into the clearance distance if requested.
-  // TODO: @bibit confirm this change works with the T example.
   double ee_radius_contribution = 0.0;
   if (factor_in_ee_radius) {
-    ee_radius_contribution = get_ee_radius_from_plant(
-      plant, context, contact_geoms);
+    ee_radius_contribution = GetEERadiusFromPlant(
+      plant, *context, contact_geoms);
   }
 
   // Require that min_distance be at least 1 mm within the clearance distance.
   return min_distance <= clearance_distance + ee_radius_contribution - 1e-3;
 }
 
-Eigen::VectorXd project_outside_object(
+Eigen::VectorXd ProjectSampleOutsideObject(
     Eigen::VectorXd& candidate_state, int min_distance_index,
     const SamplingParams& sampling_params,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms) {
 
-  /// TODO: @bibit figure out how/if we can use the below commented out lines
-  /// instead of the longer code between the 'vvvv' and '^^^^' lines.
-  // multibody::GeomGeomCollider collider(
-  //   plant, contact_geoms.at(0).at(min_distance_index));
-  // auto [p_world_contact_a, p_world_contact_b] = collider.CalcWitnessPoints(
-  //   context);
-
-  /// vvvv
-  const auto& query_port = plant.get_geometry_query_input_port();
-  const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
-  const auto& inspector = query_object.inspector();
-  SortedPair<GeometryId> verbose_test_pair =
-      contact_geoms.at(0).at(min_distance_index);
-
-  // Get the witness points on each geometry.
-  const SignedDistancePair<double> signed_distance_pair =
-    query_object.ComputeSignedDistancePairClosestPoints(
-      verbose_test_pair.first(), verbose_test_pair.second());
-
-  const Eigen::Vector3d& p_ACa =
-    inspector.GetPoseInFrame(verbose_test_pair.first())
-      .template cast<double>() *
-    signed_distance_pair.p_ACa;
-  const Eigen::Vector3d& p_BCb =
-    inspector.GetPoseInFrame(verbose_test_pair.second())
-      .template cast<double>() *
-    signed_distance_pair.p_BCb;
-
-  // Represent the witness points as points in world frame.
-  RigidTransform T_body1_contact = RigidTransform(p_ACa);
-  const FrameId f1_id = inspector.GetFrameId(verbose_test_pair.first());
-  const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
-  RigidTransform T_world_body1 = body1->EvalPoseInWorld(*context);
-  Eigen::Vector3d p_world_contact_a =
-    T_world_body1 * T_body1_contact.translation();
-
-  RigidTransform T_body2_contact = RigidTransform(p_BCb);
-  const FrameId f2_id = inspector.GetFrameId(verbose_test_pair.second());
-  const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
-  RigidTransform T_world_body2 = body2->EvalPoseInWorld(*context);
-  Eigen::Vector3d p_world_contact_b =
-    T_world_body2 * T_body2_contact.translation();
-  /// ^^^^^
+  // Compute the witness points between the penetrating sample and the object
+  // surface.
+  multibody::GeomGeomCollider collider(
+    plant, contact_geoms.at(0).at(min_distance_index));
+  auto [p_world_contact_a, p_world_contact_b] = collider.CalcWitnessPoints(
+    context);
 
   // Get the EE radius to factor into the projection.
-  double ee_radius = get_ee_radius_from_plant(plant, context, contact_geoms);
+  double ee_radius = GetEERadiusFromPlant(plant, context, contact_geoms);
 
   // Find vector in direction from sample to contact point on object.
   Eigen::Vector3d a_to_b = p_world_contact_b - p_world_contact_a;
-  // Normalize the vector.
   Eigen::Vector3d a_to_b_normalized = a_to_b.normalized();
   // Add clearance to point b in the same direction.
   Eigen::Vector3d p_world_contact_b_clearance =
-      p_world_contact_b +
-      (ee_radius + sampling_params.sample_projection_clearance) *
-          a_to_b_normalized;
+    p_world_contact_b +
+    (ee_radius + sampling_params.sample_projection_clearance) *
+      a_to_b_normalized;
   candidate_state.head(3) = p_world_contact_b_clearance;
   return candidate_state;
 }

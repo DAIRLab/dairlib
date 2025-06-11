@@ -8,7 +8,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace systems {
 
-Eigen::MatrixXd reposition(
+Eigen::MatrixXd Reposition(
     const int& n_q,
     const int& n_x,
     const int& N,
@@ -44,34 +44,34 @@ Eigen::MatrixXd reposition(
   RepositioningTrajectoryType traj_type =
     sampling_params.repositioning_trajectory_type;
   if ((travel_distance < sampling_params.use_straight_line_traj_under &&
-       traj_type == RepositioningTrajectoryType::SPLINE) ||
-      ((traj_type == RepositioningTrajectoryType::SPHERICAL ||
-        traj_type == RepositioningTrajectoryType::CIRCULAR) &&
+       traj_type == RepositioningTrajectoryType::kSpline) ||
+      ((traj_type == RepositioningTrajectoryType::kSpherical ||
+        traj_type == RepositioningTrajectoryType::kCircular) &&
        travel_angle < sampling_params.use_straight_line_traj_within_angle) ||
-      (traj_type == RepositioningTrajectoryType::PIECEWISE_LINEAR &&
+      (traj_type == RepositioningTrajectoryType::kPiecewiseLinear &&
        xy_travel_distance <
          sampling_params.use_straight_line_traj_under_piecewise_linear)) {
-    reposition_straight_line(
+    RepositionStraightLine(
       knots, n_q, n_x, N, x_lcs, repos_target, dt, is_doing_c3,
       finished_reposition_flag, sampling_params);
   }
-  else if (traj_type == RepositioningTrajectoryType::SPLINE) {
-    reposition_spline(
+  else if (traj_type == RepositioningTrajectoryType::kSpline) {
+    RepositionSpline(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
       finished_reposition_flag, sampling_params, sampling_c3_options);
   }
-  else if (traj_type == RepositioningTrajectoryType::SPHERICAL) {
-    reposition_spherical(
+  else if (traj_type == RepositioningTrajectoryType::kSpherical) {
+    RepositionSpherical(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
       finished_reposition_flag, sampling_params, sampling_c3_options);
   }
-  else if (traj_type == RepositioningTrajectoryType::CIRCULAR) {
-    reposition_circular(
+  else if (traj_type == RepositioningTrajectoryType::kCircular) {
+    RepositionCircular(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
       finished_reposition_flag, sampling_params);
   }
-  else if (traj_type == RepositioningTrajectoryType::PIECEWISE_LINEAR) {
-    reposition_piecewise_linear(
+  else if (traj_type == RepositioningTrajectoryType::kPiecewiseLinear) {
+    RepositionPiecewiseLinear(
       knots, N, x_lcs, repos_target, dt, is_doing_c3, finished_reposition_flag,
       sampling_params);
   }
@@ -79,7 +79,7 @@ Eigen::MatrixXd reposition(
   return knots;
 }
 
-void reposition_straight_line(
+void RepositionStraightLine(
     Eigen::MatrixXd& knots, const int& n_q, const int& n_x, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
@@ -115,7 +115,7 @@ void reposition_straight_line(
   }
 }
 
-void reposition_spline(
+void RepositionSpline(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
@@ -178,7 +178,7 @@ void reposition_spline(
   }
 }
 
-void reposition_spherical(
+void RepositionSpherical(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
@@ -293,7 +293,7 @@ void reposition_spherical(
   }
 }
 
-void reposition_circular(
+void RepositionCircular(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
@@ -415,7 +415,7 @@ void reposition_circular(
 // The piecewise linear trajectory uses three legs:  go up from current location
 // to a fixed repositioning height, move in a straight line to right above the
 // sample, then move down to the sample.
-void reposition_piecewise_linear(
+void RepositionPiecewiseLinear(
     Eigen::MatrixXd& knots, const int& N, const Eigen::VectorXd& x_lcs,
     const Eigen::Vector3d& repos_target, const double& dt,
     const bool& is_doing_c3, bool& finished_reposition_flag,

@@ -7,33 +7,33 @@
 
 
 enum SamplingStrategy {
-  RADIALLY_SYMMETRIC_SAMPLING,
-  RANDOM_ON_CIRCLE_SAMPLING,
-  RANDOM_ON_SPHERE_SAMPLING,
-  FIXED_SAMPLE,
-  PERIMETER_SAMPLING,
-  SHELL_SAMPLING
+  kRadiallySymmetric,
+  kRandomOnCircle,
+  kRandomOnSphere,
+  kFixed,
+  kRandomOnPerimeter,
+  kRandomOnShell
 };
 
 enum ProgressMetric {
-  C3_COST,
-  CONFIG_COST,
-  POS_OR_ROT_COST,
-  CONFIG_PROGRESS_OVER_LOOPS
+  kC3Cost,
+  kConfigCost,
+  kPosOrRotCost,
+  kConfigProgressOverLoops
 };
 
 // TODO @bibit should this be part of repositioning parameters?
 enum RepositioningTrajectoryType {
-  SPLINE,
-  SPHERICAL,
-  CIRCULAR,
-  PIECEWISE_LINEAR
+  kSpline,
+  kSpherical,
+  kCircular,
+  kPiecewiseLinear
 };
 
 // TODO: @bibit parameter restructuring should reconsider many of these contents
 struct SamplingParams {
   int control_loop_delay_ms;  // TODO @bibit does not belong here
-  int sampling_strategy;
+  SamplingStrategy sampling_strategy;
   bool filter_samples_for_safety;
   std::vector<Eigen::VectorXd> fixed_sample_locations;  // TODO: @bibit 3D?
   double sampling_radius;
@@ -89,7 +89,6 @@ struct SamplingParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
-    a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(filter_samples_for_safety));
     a->Visit(DRAKE_NVP(fixed_sample_locations));
     a->Visit(DRAKE_NVP(sampling_radius));
@@ -133,6 +132,10 @@ struct SamplingParams {
                                   &raw_track_c3_progress_via));
     track_c3_progress_via = static_cast<ProgressMetric>(
       raw_track_c3_progress_via);
+
+    int raw_sampling_strategy = static_cast<int>(sampling_strategy);
+    a->Visit(drake::MakeNameValue("sampling_strategy", &raw_sampling_strategy));
+    sampling_strategy = static_cast<SamplingStrategy>(raw_sampling_strategy);
 
     int raw_repositioning_trajectory_type = static_cast<int>(
       repositioning_trajectory_type);

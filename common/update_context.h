@@ -27,6 +27,6 @@ void UpdateContext(const int& n_q, const int& n_v, const int& n_u,
                    drake::systems::Context<double>* context,
                    drake::multibody::MultibodyPlant<AutoDiffXd>& plant_ad,
                    drake::systems::Context<AutoDiffXd>* context_ad,
-                   Eigen::VectorXd x);
+                   const Eigen::VectorXd& x);
 
 }  // namespace dairlib

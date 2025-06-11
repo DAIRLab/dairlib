@@ -133,9 +133,9 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   double resting_object_height_;
 
   enum GoalMode {
-    CHANGING_GOAL_RANDOM,
-    CHANGING_GOAL_ORIENTATION_SEQUENCE,
-    FIXED_GOAL
+    kRandom,
+    kOrientationSequence,
+    kFixed
   };
   GoalMode goal_mode_;
 

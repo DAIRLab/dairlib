@@ -39,7 +39,8 @@ C3ModeVisualizer::C3ModeVisualizer() {
 void C3ModeVisualizer::OutputC3ModeVisualization(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* c3_mode_visualization_traj) const {
-  // TODO: @bibit does this have to have 2 knot points, or can it just be 1?
+  // NOTE:  LcmTrajectory needs at least two knot points, so create a dummy
+  // second knot also at the desired C3 mode visualization location.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
 
   // Only update trajectory if the C3 mode input port has received data.

@@ -6,12 +6,12 @@
 
 // Ways of computing C3 costs.
 enum C3CostComputationType {
-  SIMULATE_EE_AND_OBJECT,
-  USE_C3_PLAN,
-  SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
-  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN,
-  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_REPLACE_EE_WITH_C3_PLAN,
-  SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY,
+  kSimLCS,
+  kUseC3Plan,
+  kSimLCSReplaceC3EEPlan,
+  kSimImpedance,
+  kSimImpedanceReplaceC3EEPlan,
+  kSimImpedanceObjectCostOnly,
 };
 
 struct C3Options {

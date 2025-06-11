@@ -55,7 +55,7 @@ class C3 {
   /// @param verbose Whether to print additional information
   /// @return The cost and its associated state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-      C3CostComputationType cost_type = SIMULATE_OBJECT_AND_USE_C3_EE_PLAN,
+      C3CostComputationType cost_type = kSimLCSReplaceC3EEPlan,
       double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
       bool force_tracking_disabled = false, bool print_cost_breakdown = false,
       bool verbose = false) const;

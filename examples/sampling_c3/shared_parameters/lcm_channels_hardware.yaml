@@ -38,7 +38,6 @@ dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN
 
 is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
 target_generator_info_channel: TARGET_GEN_INFO  # lcmt_timestamped_saved_traj
-sampling_c3_debug_channel: SAMPLING_C3_DEBUG
-                                            # lcmt_sampling_c3_debug
+sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO

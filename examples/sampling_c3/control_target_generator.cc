@@ -284,10 +284,10 @@ void TargetGenerator::OutputTargetGeneratorInfo(
 
 void TargetGenerator::OnGoalReached() const {
   // Reset the target object orientation and position.
-  if (goal_mode_ == CHANGING_GOAL_RANDOM) {
+  if (goal_mode_ == GoalMode::kRandom) {
     SetRandomizedTargetFinalObjectPosition();
     SetRandomizedTargetFinalObjectOrientation();
-  } else if (goal_mode_ == CHANGING_GOAL_ORIENTATION_SEQUENCE) {
+  } else if (goal_mode_ == GoalMode::kOrientationSequence) {
     // Set the next orientation in the sequence.
     CycleThroughOrientationSequence();
   } else {

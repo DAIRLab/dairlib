@@ -42,36 +42,26 @@ namespace systems {
 
 
 enum SampleIndex {
-  CURRENT_LOCATION_INDEX,
-  SAMPLE_INDEX_1,
-  SAMPLE_INDEX_2,
-  SAMPLE_INDEX_3,
-  SAMPLE_INDEX_4,
-  SAMPLE_INDEX_5,
-  SAMPLE_INDEX_6,
-  SAMPLE_INDEX_7,
-  SAMPLE_INDEX_8,
-  SAMPLE_INDEX_9,
-  SAMPLE_INDEX_10,
-  SAMPLE_INDEX_11,
-  SAMPLE_INDEX_12   // Need to expand if want to reference more samples.
+  kCurrentLocation,
+  kCurrentReposTarget // Only represents current reposition target when in
+                      // reposition mode.
+  // Could expand this enum if want to reference more samples.
 };
-const SampleIndex CURRENT_REPOSITION_INDEX = SAMPLE_INDEX_1;
 
 enum ModeSwitchReason {
-  MODE_SWITCH_REASON_NONE,
-  MODE_SWITCH_TO_C3_COST,
-  MODE_SWITCH_TO_C3_REACHED_REPOS_GOAL,
-  MODE_SWITCH_TO_REPOS_COST,
-  MODE_SWITCH_TO_REPOS_UNPRODUCTIVE,
-  MODE_SWITCH_TO_C3_XBOX
+  kNoSwitch,
+  kToC3Cost,
+  kToC3ReachedReposTarget,
+  kToReposCost,
+  kToReposUnproductive,
+  kToC3Xbox
 };
 
 enum PursuedTargetSource {
-  TARGET_SOURCE_NONE,
-  TARGET_SOURCE_PREVIOUS,
-  TARGET_SOURCE_NEW_SAMPLE,
-  TARGET_SOURCE_FROM_BUFFER
+  kNoTarget,
+  kPrevious,
+  kNewSample,
+  kFromBuffer
 };
 
 class SamplingC3Controller : public drake::systems::LeafSystem<double> {
@@ -384,15 +374,20 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_lambda_;
   int n_u_;
   int max_num_samples_;
-  mutable double dt_ = 0.1;
+  int N_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
+
+  /// TODO: @bibit There are many mutable class variables, which is not best
+  /// practice in the Drake systems framework.  These could be converted to
+  /// discrete state variables.
+  mutable double dt_ = 0.1;
+
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> U_;
-  int N_;
 
   // Keep track of current C3 execution's best seen cost.
   mutable int best_progress_steps_ago_;
@@ -413,16 +408,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // C3 solution for current location.
   mutable std::shared_ptr<solvers::C3> c3_curr_plan_;
-  // TODO: these are currently unused but may be useful if implementing warm
-  // start.
+  // TODO: these are currently assigned values but go unused -- may be useful if
+  // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
   mutable std::vector<Eigen::VectorXd> delta_curr_plan_;
   mutable std::vector<Eigen::VectorXd> w_curr_plan_;
 
   // C3 solution for best sample location.
   mutable std::shared_ptr<solvers::C3> c3_best_plan_;
-  // TODO: these are currently unused but may be useful if implementing warm
-  // start.
+  // TODO: these are currently assigned values but go unused -- may be useful if
+  // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_best_plan_;
   mutable std::vector<Eigen::VectorXd> delta_best_plan_;
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
@@ -438,7 +433,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Samples and associated costs computed in current control loop.
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>>
-      all_sample_dynamically_feasible_plans_;
+    all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
@@ -460,9 +455,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable bool crossed_cost_switching_threshold_ = false;
   mutable int num_threads_to_use_;
 
-  mutable SampleIndex best_sample_index_ = CURRENT_LOCATION_INDEX;
-  mutable ModeSwitchReason mode_switch_reason_ = MODE_SWITCH_REASON_NONE;
-  mutable PursuedTargetSource pursued_target_source_ = TARGET_SOURCE_NONE;
+  mutable SampleIndex best_sample_index_ = kCurrentLocation;
+  mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
+  mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
 };
 
 }  // namespace systems

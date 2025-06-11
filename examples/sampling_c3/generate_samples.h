@@ -20,7 +20,7 @@ namespace systems {
 
 
 /// Public function
-std::vector<Eigen::VectorXd> generate_sample_states(
+std::vector<Eigen::VectorXd> GenerateSampleStates(
     const int& n_q,
     const int& n_v,
     const int& n_u,
@@ -38,7 +38,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 );
 
 /// Individual sampling strategies returning 3D EE position
-Eigen::Vector3d radially_symmetric_sampling(
+Eigen::Vector3d RadiallySymmetricSampling(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -48,7 +48,7 @@ Eigen::Vector3d radially_symmetric_sampling(
     const double& sampling_height
 );
 
-Eigen::Vector3d random_on_circle_sampling(
+Eigen::Vector3d RandomOnCircleSampling(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -56,7 +56,7 @@ Eigen::Vector3d random_on_circle_sampling(
     const double& sampling_height
 );
 
-Eigen::Vector3d random_on_sphere_sampling(
+Eigen::Vector3d RandomOnSphereSampling(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -67,12 +67,12 @@ Eigen::Vector3d random_on_sphere_sampling(
 
 // TODO: @bibit make the fixed sample locations in 3D to avoid needing to pass
 // in a sampling height.
-Eigen::Vector3d fixed_sample(
+Eigen::Vector3d FixedSample(
     const double& sampling_height,
-    Eigen::VectorXd fixed_sample_location
+    const Eigen::VectorXd& fixed_sample_location
 );
 
-Eigen::Vector3d perimeter_sampling(
+Eigen::Vector3d PerimeterSampling(
     const int& n_q,
     const int& n_v,
     const int& n_u,
@@ -88,7 +88,7 @@ Eigen::Vector3d perimeter_sampling(
     const SamplingC3Options sampling_c3_options
 );
 
-Eigen::Vector3d shell_sampling(
+Eigen::Vector3d ShellSampling(
     const int& n_q,
     const int& n_v,
     const int& n_u,
@@ -108,16 +108,16 @@ Eigen::Vector3d shell_sampling(
 /// Helper functions
 
 /// Whether the candidate state's EE location is within the robot workspace.
-bool sample_in_workspace(
+bool IsSampleInWorkspace(
     const Eigen::VectorXd& candidate_state,
     const SamplingC3Options& sampling_c3_options
 );
 
 /// Find and return the end effector radius from the plant.
 /// WARNING:  assumes EE-object pairs are first in contact_geoms.
-double get_ee_radius_from_plant(
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
+double GetEERadiusFromPlant(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms
@@ -127,7 +127,7 @@ double get_ee_radius_from_plant(
 /// the surface of the object.  Can factor in the EE radius if a real clearance
 /// distance between the EE and the object is desired; otherwise this is the
 /// distance from the center of the EE to the surface of the object.
-bool sample_is_within_distance_of_surface(
+bool IsSampleWithinDistanceOfSurface(
     const int& n_q,
     const int& n_v,
     const int& n_u,
@@ -147,14 +147,12 @@ bool sample_is_within_distance_of_surface(
 
 /// Project an EE candidate location outside the object such that the clearance
 /// distance in the sampling parameters is satisfied.
-/// TODO: @bibit much of this is a complete (and less efficient)
-/// reimplementation of GeomGeomCollider::CalcWitnessPoints.
-Eigen::VectorXd project_outside_object(
+Eigen::VectorXd ProjectSampleOutsideObject(
     Eigen::VectorXd& candidate_state,
     int min_distance_index,
     const SamplingParams& sampling_params,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms

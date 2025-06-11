@@ -143,8 +143,7 @@ int DoMain(int argc, char* argv[]) {
       plant_lcs_diagram->CreateDefaultContext();
   auto& plant_lcs_context = plant_lcs_diagram->GetMutableSubsystemContext(
       plant_lcs, diagram_context.get());
-  auto plant_lcs_context_ad =
-      plant_lcs_autodiff->CreateDefaultContext();
+  auto plant_lcs_context_ad = plant_lcs_autodiff->CreateDefaultContext();
 
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;

@@ -336,33 +336,32 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 }
 
 // This function relies on the previously computed zfin_ from Solve.
-std::pair<double,std::vector<Eigen::VectorXd>> 
-  C3::CalcCost(C3CostComputationType cost_type,
-               double Kp_for_ee_pd_rollout, 
-               double Kd_for_ee_pd_rollout,
-               bool force_tracking_disabled, 
-               bool print_cost_breakdown, 
-               bool verbose) const{
-
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
+    C3CostComputationType cost_type,
+    double Kp_for_ee_pd_rollout,
+    double Kd_for_ee_pd_rollout,
+    bool force_tracking_disabled,
+    bool print_cost_breakdown,
+    bool verbose) const {
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 
-  // Simulate the dynamics from the planned inputs. 
-  if (cost_type == SIMULATE_EE_AND_OBJECT) {
+  // Simulate the dynamics from the planned inputs.
+  if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
-      else{
+      else {
         XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       }
     }
   }
 
   // Use the C3 plan.
-  else if (cost_type == USE_C3_PLAN) {
+  else if (cost_type == C3CostComputationType::kUseC3Plan) {
     for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
@@ -370,7 +369,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
         if (lcs_for_cost_) {
           XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
-        else{
+        else {
           XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
         }
       }
@@ -379,7 +378,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
 
   // Simulate the dynamics from the planned inputs only for the object; use the
   // planned EE trajectory.
-  else if (cost_type == SIMULATE_OBJECT_AND_USE_C3_EE_PLAN) {
+  else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++) {
@@ -387,7 +386,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
-      else{
+      else {
         XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       }
     }
@@ -399,7 +398,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
           XX[i+1].segment(0,3) = 
             lcs_for_cost_->Simulate(XX[i], UU[i]).segment(0,3);
         }
-        else{
+        else {
           XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
         }
       }
@@ -409,7 +408,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
   // Try to emulate the real cost of the system associated not only applying the
   // planned u but also the u associated with tracking the position plan over
   // time.
-  else if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN) {
+  else if (cost_type == C3CostComputationType::kSimImpedance) {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
@@ -418,9 +417,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
 
   // The same as the previous cost type except the EE states are replaced with
   // the plan from C3 at the end.
-  else if (
-    cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_REPLACE_EE_WITH_C3_PLAN)
-  {
+  else if (cost_type == C3CostComputationType::kSimImpedanceReplaceC3EEPlan) {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
@@ -440,8 +437,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
 
   // The same as the previous cost type except only object terms contribute to
   // the final cost. 
-  else if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY)
-  {
+  else if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          force_tracking_disabled, 
@@ -574,7 +570,7 @@ std::pair<double,std::vector<Eigen::VectorXd>>
       Q_eff.at(N_).block(16,16,3,3)*(XX[N_].segment(16,3) - 
         x_desired_[N_].segment(16,3));
 
-  if (cost_type == SIMULATE_IMPEDANCE_WITH_C3_INPUT_PLAN_OBJECT_COSTS_ONLY) {
+  if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
     cost = cost_contrib_obj_pos + cost_contrib_obj_orientation +
       cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
   }

@@ -296,10 +296,7 @@ LCSFactory::ComputeContactJacobian(
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
   std::vector<VectorXd> contact_points;
   for (int i = 0; i < n_contacts; i++) {
-    multibody::GeomGeomCollider collider(
-        plant,
-        contact_geoms[i]);  // deleted num_friction_directions (check with
-    // Michael about changes in geomgeom)
+    multibody::GeomGeomCollider collider(plant, contact_geoms[i]);
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
     // TODO(yangwill): think about if we want to push back both witness points

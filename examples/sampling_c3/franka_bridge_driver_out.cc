@@ -101,15 +101,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*franka_state_translator, *franka_state_pub);
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_bridge_driver_out"));
+  owned_diagram->set_name(("sampling_c3_franka_bridge_driver_out"));
 
   systems::LcmDrivenLoop<drake::lcmt_panda_status> loop(
       &lcm, std::move(owned_diagram), franka_state_translator,
       franka_driver_channel_params.franka_status_channel, true);
-  // TODO: @bibit fix diagram filepaths
-  DrawAndSaveDiagramGraph(
-      *loop.get_diagram(),
-      "../diagrams/" + FLAGS_demo_name + "/franka_bridge_driver_out_diagram");
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

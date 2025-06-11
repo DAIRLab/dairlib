@@ -97,7 +97,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*franka_command_translator, *franka_command_pub);
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_bridge_driver_in"));
+  owned_diagram->set_name(("sampling_c3_franka_bridge_driver_in"));
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &lcm, std::move(owned_diagram), franka_command_translator,

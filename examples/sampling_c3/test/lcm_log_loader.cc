@@ -92,7 +92,6 @@ void PythonFriendlyVectorOfVectorXdToFile(
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
   if (argc != 3) {
     std::cerr << "Usage: " << argv[0]
               << " --demo_name={DEMO} <log_folder> <time_into_log>"
@@ -886,9 +885,8 @@ int DoMain(int argc, char* argv[]) {
     contact_pairs.push_back(ground_contact);
   }
 
-  plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*plant_diagram,
-                          base_path + "test/franka_c3_plant_in_log_loader");
+  plant_diagram->set_name(("sampling_c3_test_plant_" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*plant_diagram);
 
   // Create the controller.  The last bool argument is the verbose flag.
   bool verbose = true;
@@ -904,10 +902,8 @@ int DoMain(int argc, char* argv[]) {
   auto controller_context = controller->CreateDefaultContext();
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_c3_controller"));
-
-  DrawAndSaveDiagramGraph(
-      *owned_diagram, base_path + "test/franka_c3_controller_in_log_loader");
+  owned_diagram->set_name(("sampling_c3_controller_test_" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*owned_diagram);
 
   // Fix static input ports.
   controller->get_input_port_radio().FixValue(

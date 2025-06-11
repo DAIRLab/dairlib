@@ -1,4 +1,5 @@
 #include "generate_samples.h"
+#include "multibody/geom_geom_collider.h"
 
 #include <math.h>
 #include <iostream>
@@ -461,6 +462,15 @@ Eigen::VectorXd project_outside_object(
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms) {
+
+  /// TODO: @bibit figure out how/if we can use the below commented out lines
+  /// instead of the longer code between the 'vvvv' and '^^^^' lines.
+  // multibody::GeomGeomCollider collider(
+  //   plant, contact_geoms.at(0).at(min_distance_index));
+  // auto [p_world_contact_a, p_world_contact_b] = collider.CalcWitnessPoints(
+  //   context);
+
+  /// vvvv
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
       query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
@@ -496,6 +506,7 @@ Eigen::VectorXd project_outside_object(
   RigidTransform T_world_body2 = body2->EvalPoseInWorld(*context);
   Eigen::Vector3d p_world_contact_b =
     T_world_body2 * T_body2_contact.translation();
+  /// ^^^^^
 
   // Get the EE radius to factor into the projection.
   double ee_radius = get_ee_radius_from_plant(plant, context, contact_geoms);

@@ -8,9 +8,12 @@ namespace dairlib {
 void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
                              std::string path) {
   // Default path
-  if (path.empty()){
-    path = "../" + diagram.get_name();
+  if (path.empty()) {
+    path = "../diagrams/" + diagram.get_name();
   }
+
+  // Create the directory if it does not exist
+  std::system("mkdir -p ../diagrams");
 
   // Save Graphviz string to a file
   std::ofstream out(path);

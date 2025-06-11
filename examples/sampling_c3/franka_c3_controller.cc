@@ -551,13 +551,10 @@ int DoMain(int argc, char* argv[]) {
                   sample_buffer_sender->get_input_port_sample_costs());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("sampling_c3_controller"));
-  plant_lcs_diagram->set_name(("lcs_plant"));
-  // TODO @bibit fix diagram filepaths
-  DrawAndSaveDiagramGraph(*owned_diagram, "../diagrams/" + FLAGS_demo_name +
-                                              "/sampling_c3_controller_diagram");
-  DrawAndSaveDiagramGraph(
-      *plant_lcs_diagram, "../diagrams/" + FLAGS_demo_name + "/lcs_plant_diagram");
+  owned_diagram->set_name(("sampling_c3_controller_" + FLAGS_demo_name));
+  plant_lcs_diagram->set_name(("sampling_c3_lcs_plant" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*owned_diagram);
+  DrawAndSaveDiagramGraph(*plant_lcs_diagram);
 
   // Run lcm-driven simulation.  The buffer size argument is needed to ensure
   // the latest messages are used in the control loop.  See
@@ -566,10 +563,6 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
-  // TODO @bibit fix diagram filepaths
-  DrawAndSaveDiagramGraph(
-      *loop.get_diagram(),
-      "../diagrams/" + FLAGS_demo_name + "/loop_sampling_c3_controller_diagram");
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();

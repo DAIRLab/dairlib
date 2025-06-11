@@ -699,8 +699,8 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(
-      *diagram, "../diagrams/" + FLAGS_demo_name + "/visualizer_diagram");
+  diagram->set_name(("sampling_c3_visualizer_" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

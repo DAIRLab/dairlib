@@ -210,17 +210,15 @@ int DoMain(int argc, char* argv[]) {
                   joint_traj_generator->get_input_port_robot_state());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_joint_osc_controller"));
-  DrawAndSaveDiagramGraph(*owned_diagram,
-                          "../diagrams/" + FLAGS_demo_name +
-                              "/franka_joint_osc_controller_diagram");
+  owned_diagram->set_name(("sampling_c3_franka_joint_osc_controller"));
+  DrawAndSaveDiagramGraph(*owned_diagram);
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram(),
-                          "../diagrams/" + FLAGS_demo_name +
-                              "/loop_franka_joint_osc_controller_diagram");
+//   DrawAndSaveDiagramGraph(*loop.get_diagram(),
+//                           "../diagrams/" + FLAGS_demo_name +
+//                               "/loop_franka_joint_osc_controller_diagram");
   loop.Simulate();
   return 0;
 }

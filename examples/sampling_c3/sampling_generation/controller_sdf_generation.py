@@ -8,13 +8,13 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
     <link name="vertical_link">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.5</mass>
+        <mass>1</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-            <ixx>0.0001333</ixx>
-            <iyy>0.0011333 </iyy>
-            <izz>0.0011333 </izz>
+            <ixx>0.003</ixx>
+            <iyy>0.003 </iyy>
+            <izz>0.007 </izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>

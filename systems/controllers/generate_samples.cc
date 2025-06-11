@@ -56,16 +56,16 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
   const auto& inspector = query_object.inspector();
 
-  for (unsigned i = 0; i < contact_geoms.size(); ++i) {
-    for (const auto& pair : contact_geoms[i]) {
-    for (int j = 0; j < 2; ++j) {
-      drake::geometry::GeometryId geom_id = (j == 0) ? pair.first() : pair.second();
-      const drake::geometry::Shape& shape = inspector.GetShape(geom_id);
-      std::string shape_type = shape.to_string();
-      // std::cout << "GeometryId " << geom_id << " is of type: " << shape_type << std::endl;
-    }
-    }
-  }
+  // for (unsigned i = 0; i < contact_geoms.size(); ++i) {
+  //   for (const auto& pair : contact_geoms[i]) {
+  //   for (int j = 0; j < 2; ++j) {
+  //     drake::geometry::GeometryId geom_id = (j == 0) ? pair.first() : pair.second();
+  //     const drake::geometry::Shape& shape = inspector.GetShape(geom_id);
+  //     std::string shape_type = shape.to_string();
+  //     std::cout << "GeometryId " << geom_id << " is of type: " << shape_type << std::endl;
+  //   }
+  //   }
+  // }
 
   std::string mesh_filename;
   for (unsigned i = 0; i < contact_geoms.size(); ++i) {
@@ -690,6 +690,9 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     // 8. Return a random valid sample as Eigen::VectorXd
     std::random_device rd;
     std::mt19937 gen(rd());
+
+      
+
     std::uniform_int_distribution<> rand_idx(0, static_cast<int>(sampled_points.size()) - 1);
     int idx = rand_idx(gen);
 

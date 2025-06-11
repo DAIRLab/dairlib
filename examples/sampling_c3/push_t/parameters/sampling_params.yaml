@@ -54,7 +54,7 @@ reposition_speed: 0.18    # m/s
 use_straight_line_traj_under: 0.12  # distance [m] below which repositioning
                                     # uses a straight line instead of spline
 repositioning_trajectory_type: 3   # 0 is spline, 1 is spherical, 2 is circular, 3 is piecewise linear.
-repositioning_waypoint_height: 0.15 # This is the height of the waypoints for the piecewise linear repositioning.
+repositioning_waypoint_height: 0.1 # This is the height of the waypoints for the piecewise linear repositioning.
 use_straight_line_traj_within_angle: 0.3  # angle [rad] below which spherical
                                           # repositioning uses a straight line
                                           # instead of the spherical arc
@@ -70,14 +70,14 @@ ang_error_sample_retention: 0.0349  # 0.087 rad = 5 deg
 # 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
-cost_type: 4
-cost_type_position_tracking: 4
+cost_type: 5
+cost_type_position_tracking: 5
 use_different_contacts_to_compute_cost: true
 
 # Number of control loops to wait while C3 doesn't do anything beneficial before
 # switching to repositioning.
-num_control_loops_to_wait: 5
-num_control_loops_to_wait_position_tracking: 5
+num_control_loops_to_wait: 20
+num_control_loops_to_wait_position_tracking: 20
 
 # How to measure C3's progress.
 track_c3_progress_via: 3  # 0: C3 cost,
@@ -87,7 +87,7 @@ track_c3_progress_via: 3  # 0: C3 cost,
 # If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
 # in order to continue in C3 mode. If not, it has to switch to repositioning.
 min_percentage_decrease_in_cost_to_continue: -10
-num_control_loops_to_wait_for_progress: 10
+num_control_loops_to_wait_for_progress: 40
 
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a
 ####### lookahead for the trajectory type i.e. trajectory_type in the
@@ -101,19 +101,24 @@ travel_cost_per_meter: 0
 
 finished_reposition_cost: 1000000000
 
+
 c3_to_repos_hysteresis: 300000
 c3_to_repos_hysteresis_position_tracking: 300000
 
 repos_to_c3_hysteresis: 200000
 repos_to_c3_hysteresis_position_tracking: 200000
 
+
 hysteresis_between_repos_targets: 60000000000000
 hysteresis_between_repos_targets_position_tracking: 60000000000000
+
+
+
 
 # With relative hysteresis, eg. a c3_to_repos_cost_fraction of 0.2 means that the 
 # repositioning cost needs to be 20% lower than the current c3 cost to switch to repositioning.
 use_relative_hysteresis: true
-c3_to_repos_cost_fraction: 1
+c3_to_repos_cost_fraction: 0.75
 c3_to_repos_cost_fraction_position_tracking: 0.6
 
 repos_to_c3_cost_fraction: 0.9

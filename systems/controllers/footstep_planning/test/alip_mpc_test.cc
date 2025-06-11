@@ -19,7 +19,7 @@ struct mpc_profiling_data {
   double miqp_solve_time;
 };
 
-std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
+geometry::ConvexPolygonSet GetRandomFootholds(int n, double r) {
   std::vector<ConvexPolygon> footholds;
   for (int i = 0; i < n; i++) {
     Vector3d origin = Vector3d::Random();
@@ -39,7 +39,7 @@ std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
     }
     footholds.push_back(foothold);
   }
-  return footholds;
+  return geometry::ConvexPolygonSet(footholds);
 }
 
 mpc_profiling_data TestRandomFootholds(int n, double r) {

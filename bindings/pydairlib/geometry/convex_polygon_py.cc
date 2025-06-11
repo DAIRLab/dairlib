@@ -45,11 +45,7 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
 
 py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))
-    .def("ReExpressInNewFrame", py::overload_cast<const Eigen::Matrix3d&>(
-         &ConvexPolygonSet::ReExpressInNewFrame))
-    .def("ReExpressInNewFrame",
-         py::overload_cast<const Eigen::Matrix3d&, const Eigen::Vector3d&>(
-         &ConvexPolygonSet::ReExpressInNewFrame))
+    .def("ReExpressInNewFrame", &ConvexPolygonSet::ReExpressInNewFrame)
     .def("size", &ConvexPolygonSet::size)
     .def("polygons", &ConvexPolygonSet::polygons, py_rvp::copy);
 

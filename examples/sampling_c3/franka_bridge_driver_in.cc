@@ -13,8 +13,8 @@
 #include <gflags/gflags.h>
 
 #include "common/parameters/franka_drake_lcm_driver_channels.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "systems/franka_state_translator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -61,19 +61,11 @@ int DoMain(int argc, char* argv[]) {
   FrankaDrakeLcmDriverChannels franka_driver_channel_params =
       drake::yaml::LoadYamlFile<FrankaDrakeLcmDriverChannels>(
           FLAGS_franka_driver_channels);
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      base_path + "parameters/franka_sim_params.yaml");
 
   DiagramBuilder<double> builder;
 
   MultibodyPlant<double> plant(0.0);
-
-  Parser parser(&plant);
-  parser.AddModelsFromUrl(sim_params.franka_model);
-  RigidTransform<double> W_X_R = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   W_X_R);
+  AddFrankaToPlant(&plant, nullptr, false, false);
   plant.Finalize();
 
   auto pos_map = multibody::MakeNameToPositionsMap(plant);

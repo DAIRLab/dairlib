@@ -194,13 +194,14 @@ struct SamplingC3Options {
     a->Visit(DRAKE_NVP(penalize_changes_in_u_across_solves));
   }
 
-  C3Options GetC3Options(bool is_pose_tracking, int num_contacts_index) const {
+  C3Options GetC3Options(bool& is_pose_tracking,
+                         const int& num_contacts_index) const {
     C3Options c3_options;
     SetCommonC3Options(&c3_options, num_contacts_index);
     if (is_pose_tracking) {
-      SetPoseTrackingOptions(c3_options, num_contacts_index);
+      SetPoseTrackingOptions(&c3_options, num_contacts_index);
     } else {
-      SetPositionTrackingOptions(c3_options, num_contacts_index);
+      SetPositionTrackingOptions(&c3_options, num_contacts_index);
     }
     return c3_options;
   }
@@ -257,7 +258,8 @@ struct SamplingC3Options {
   }
 
   // Function to set the common parameters for the C3Options object
-  void SetCommonC3Options(C3Options* options, int num_contacts_index) const {
+  void SetCommonC3Options(C3Options* options,
+                          const int& num_contacts_index) const {
     options->admm_iter = admm_iter;
     options->rho = rho;
     options->rho_scale = rho_scale;
@@ -293,58 +295,58 @@ struct SamplingC3Options {
   }
 
   // Function to set position tracking parameters
-  void SetPositionTrackingOptions(C3Options& options,
-                                  int num_contacts_index) const {
-    options.dt = planning_dt_position_tracking;
-    options.w_Q = w_Q_position_tracking;
-    options.w_R = w_R_position_tracking;
-    options.w_G = w_G_position_tracking;
-    options.w_U = w_U_position_tracking;
-    options.q_vector = q_vector_position_tracking;
-    options.r_vector = r_vector;
+  void SetPositionTrackingOptions(C3Options* options,
+                                  const int& num_contacts_index) const {
+    options->dt = planning_dt_position_tracking;
+    options->w_Q = w_Q_position_tracking;
+    options->w_R = w_R_position_tracking;
+    options->w_G = w_G_position_tracking;
+    options->w_U = w_U_position_tracking;
+    options->q_vector = q_vector_position_tracking;
+    options->r_vector = r_vector;
 
-    options.g_x = g_x_position_tracking;
-    options.g_gamma = g_gamma_position_tracking[num_contacts_index];
-    options.g_lambda_n = g_lambda_n_position_tracking[num_contacts_index];
-    options.g_lambda_t = g_lambda_t_position_tracking[num_contacts_index];
-    options.g_lambda = g_lambda_position_tracking[num_contacts_index];
-    options.g_u = g_u_position_tracking;
+    options->g_x = g_x_position_tracking;
+    options->g_gamma = g_gamma_position_tracking[num_contacts_index];
+    options->g_lambda_n = g_lambda_n_position_tracking[num_contacts_index];
+    options->g_lambda_t = g_lambda_t_position_tracking[num_contacts_index];
+    options->g_lambda = g_lambda_position_tracking[num_contacts_index];
+    options->g_u = g_u_position_tracking;
 
-    options.u_x = u_x_position_tracking;
-    options.u_gamma = u_gamma_position_tracking[num_contacts_index];
-    options.u_lambda_n = u_lambda_n_position_tracking[num_contacts_index];
-    options.u_lambda_t = u_lambda_t_position_tracking[num_contacts_index];
-    options.u_lambda = u_lambda_position_tracking[num_contacts_index];
-    options.u_u = u_u_position_tracking;
+    options->u_x = u_x_position_tracking;
+    options->u_gamma = u_gamma_position_tracking[num_contacts_index];
+    options->u_lambda_n = u_lambda_n_position_tracking[num_contacts_index];
+    options->u_lambda_t = u_lambda_t_position_tracking[num_contacts_index];
+    options->u_lambda = u_lambda_position_tracking[num_contacts_index];
+    options->u_u = u_u_position_tracking;
 
-    PopulateCostMatricesFromVectors(&options);
+    PopulateCostMatricesFromVectors(options);
   }
 
   // Function to set pose tracking parameters
-  void SetPoseTrackingOptions(C3Options& options,
-                              int num_contacts_index) const {
-    options.dt = planning_dt_pose_tracking;
-    options.w_Q = w_Q_pose_tracking;
-    options.w_R = w_R_pose_tracking;
-    options.w_G = w_G_pose_tracking;
-    options.w_U = w_U_pose_tracking;
-    options.q_vector = q_vector_pose_tracking;
-    options.r_vector = r_vector;
+  void SetPoseTrackingOptions(C3Options* options,
+                              const int& num_contacts_index) const {
+    options->dt = planning_dt_pose_tracking;
+    options->w_Q = w_Q_pose_tracking;
+    options->w_R = w_R_pose_tracking;
+    options->w_G = w_G_pose_tracking;
+    options->w_U = w_U_pose_tracking;
+    options->q_vector = q_vector_pose_tracking;
+    options->r_vector = r_vector;
 
-    options.g_x = g_x_pose_tracking;
-    options.g_gamma = g_gamma_pose_tracking[num_contacts_index];
-    options.g_lambda_n = g_lambda_n_pose_tracking[num_contacts_index];
-    options.g_lambda_t = g_lambda_t_pose_tracking[num_contacts_index];
-    options.g_lambda = g_lambda_pose_tracking[num_contacts_index];
-    options.g_u = g_u_pose_tracking;
+    options->g_x = g_x_pose_tracking;
+    options->g_gamma = g_gamma_pose_tracking[num_contacts_index];
+    options->g_lambda_n = g_lambda_n_pose_tracking[num_contacts_index];
+    options->g_lambda_t = g_lambda_t_pose_tracking[num_contacts_index];
+    options->g_lambda = g_lambda_pose_tracking[num_contacts_index];
+    options->g_u = g_u_pose_tracking;
 
-    options.u_x = u_x_pose_tracking;
-    options.u_gamma = u_gamma_pose_tracking[num_contacts_index];
-    options.u_lambda_n = u_lambda_n_pose_tracking[num_contacts_index];
-    options.u_lambda_t = u_lambda_t_pose_tracking[num_contacts_index];
-    options.u_lambda = u_lambda_pose_tracking[num_contacts_index];
-    options.u_u = u_u_pose_tracking;
+    options->u_x = u_x_pose_tracking;
+    options->u_gamma = u_gamma_pose_tracking[num_contacts_index];
+    options->u_lambda_n = u_lambda_n_pose_tracking[num_contacts_index];
+    options->u_lambda_t = u_lambda_t_pose_tracking[num_contacts_index];
+    options->u_lambda = u_lambda_pose_tracking[num_contacts_index];
+    options->u_u = u_u_pose_tracking;
 
-    PopulateCostMatricesFromVectors(&options);
+    PopulateCostMatricesFromVectors(options);
   }
 };

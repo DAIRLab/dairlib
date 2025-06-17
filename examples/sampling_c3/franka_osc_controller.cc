@@ -4,8 +4,9 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/osc_params.h"
 #include "systems/controllers/osc/end_effector_force.h"
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
@@ -60,7 +61,7 @@ DEFINE_string(
     "Filepath containing qp settings");
 DEFINE_string(
     controller_parameters,
-    "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
+    "examples/sampling_c3/shared_parameters/osc_params.yaml",
     "Controller settings such as channels.");
 DEFINE_string(
     lcm_channels,
@@ -79,15 +80,11 @@ int DoMain(int argc, char* argv[]) {
   // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          base_path + "parameters/franka_osc_controller_params.yaml");
+  SamplingC3OSCParams osc_params =
+      drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
+          "examples/sampling_c3/shared_parameters/osc_params.yaml");
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
-  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(base_path +
-                          "parameters/franka_osc_controller_params.yaml"),
-      {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -95,23 +92,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a Franka-only plant.
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, nullptr);
-  parser.SetAutoRenaming(true);
-  parser.AddModelsFromUrl(controller_params.franka_model)[0];
-  parser.AddModels(
-    FindResourceOrThrow(controller_params.end_effector_model))[0];
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("panda_link0"), X_WI);
-
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      controller_params.tool_attachment_frame);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
-
+  AddFrankaToPlant(&plant);
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
@@ -145,16 +126,15 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
-          plant, plant_context.get(), controller_params.neutral_position,
-          controller_params.teleop_neutral_position,
-          controller_params.end_effector_name);
+          plant, plant_context.get(), osc_params.neutral_position,
+          osc_params.teleop_neutral_position, kEndEffectorName);
   end_effector_trajectory->SetRemoteControlParameters(
-      controller_params.neutral_position, controller_params.x_scale,
-      controller_params.y_scale, controller_params.z_scale);
+      osc_params.neutral_position, osc_params.x_scale,
+      osc_params.y_scale, osc_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
-      controller_params.track_end_effector_orientation);
+      osc_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto radio_sub =
@@ -162,7 +142,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  if (controller_params.publish_debug_info) {
+  if (osc_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -173,36 +153,34 @@ int DoMain(int argc, char* argv[]) {
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "end_effector_target", controller_params.K_p_end_effector,
-          controller_params.K_d_end_effector, controller_params.W_end_effector,
+          "end_effector_target", osc_params.K_p_end_effector,
+          osc_params.K_d_end_effector, osc_params.W_end_effector,
           plant, plant);
-  end_effector_position_tracking_data->AddPointToTrack(
-      controller_params.end_effector_name);
+  end_effector_position_tracking_data->AddPointToTrack(kEndEffectorName);
   const VectorXd& end_effector_acceleration_limits =
-      controller_params.end_effector_acceleration * Vector3d::Ones();
+      osc_params.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<JointSpaceTrackingData>(
-          "panda_joint2_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
+          "panda_joint2_target", osc_params.K_p_mid_link,
+          osc_params.K_d_mid_link, osc_params.W_mid_link, plant,
           plant);
   mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
                                                            "panda_joint2dot");
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_params.W_ee_lambda, plant, plant,
-          controller_params.end_effector_name, Vector3d::Zero());
+          "end_effector_force", osc_params.W_ee_lambda, plant, plant,
+          kEndEffectorName, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
           "end_effector_orientation_target",
-          controller_params.K_p_end_effector_rot,
-          controller_params.K_d_end_effector_rot,
-          controller_params.W_end_effector_rot, plant, plant);
-  end_effector_orientation_tracking_data->AddFrameToTrack(
-      controller_params.end_effector_name);
+          osc_params.K_p_end_effector_rot,
+          osc_params.K_d_end_effector_rot,
+          osc_params.W_end_effector_rot, plant, plant);
+  end_effector_orientation_tracking_data->AddFrameToTrack(kEndEffectorName);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
@@ -213,18 +191,18 @@ int DoMain(int argc, char* argv[]) {
                             1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
-  osc->SetAccelerationCostWeights(gains.W_acceleration);
-  osc->SetInputCostWeights(gains.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+  osc->SetAccelerationCostWeights(osc_params.W_acceleration);
+  osc->SetInputCostWeights(osc_params.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(osc_params.W_input_smoothing_regularization);
   osc->SetAccelerationConstraints(
-      controller_params.enforce_acceleration_constraints);
+      osc_params.enforce_acceleration_constraints);
 
-  osc->SetContactFriction(controller_params.mu);
+  osc->SetContactFriction(osc_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();
 
-  if (controller_params.cancel_gravity_compensation) {
+  if (osc_params.cancel_gravity_compensation) {
     // TODO @bibit don't hardcode parameter filepaths
     if (FLAGS_lcm_channels ==
         base_path + "shared_parameters/lcm_channels_simulation.yaml") {

@@ -10,7 +10,8 @@
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.0195"/>
+        <!-- Use slightly larger radius for visualization purposes. -->
+        <sphere radius="0.0198"/>
       </geometry>
       <material>
         <color rgba="1.0 1.0 1.0 1.0"/>

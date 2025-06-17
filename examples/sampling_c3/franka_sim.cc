@@ -21,6 +21,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
@@ -33,6 +34,7 @@ using drake::geometry::GeometrySet;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::Context;
@@ -68,43 +70,13 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
 
-  // Set simulation step.
+  // Build the simulation plant.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-
-  // Build the simulation plant.
-  Parser parser(&plant);
-  parser.SetAutoRenaming(true);
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelsFromUrl(sim_params.franka_model)[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex object_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
-
-  // Affix models to their locations relative to world frame.
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      sim_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_ground);
-  RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   X_F_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("ground"), X_F_G_franka);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("platform"), X_F_P);
-
+  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
+  ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
+                                                     sim_params.object_model);
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
 

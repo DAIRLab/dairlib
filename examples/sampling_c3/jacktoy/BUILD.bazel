@@ -48,22 +48,10 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_osc_controller_params_jacktoy",
+    name = "sampling_c3_controller_params_jacktoy",
     hdrs = [],
     data = [
-        "parameters/franka_osc_controller_params.yaml",
-    ],
-    deps = [
-        "//examples/sampling_c3/parameter_headers:franka_osc_controller_params",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_c3_controller_params_jacktoy",
-    hdrs = [],
-    data = [
-        "parameters/franka_c3_controller_params.yaml",
+        "parameters/sampling_c3_controller_params.yaml",
         "parameters/sampling_params.yaml",
         "//examples/sampling_c3:shared_params_yamls",
     ],

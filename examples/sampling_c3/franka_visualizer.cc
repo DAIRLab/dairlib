@@ -15,10 +15,11 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/c3_mode_visualizer.h"
-#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/visualizer_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "multibody/com_pose_system.h"
@@ -58,6 +59,7 @@ using drake::geometry::MeshcatPointCloudVisualizer;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
+using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::RigidBody;
 using drake::multibody::SpatialInertia;
@@ -71,7 +73,6 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
-std::vector<std::filesystem::path> g_temp_files_to_cleanup;
 
 // TODO @bibit don't hardcode parameter filepaths
 // TODO @bibit this whole file needs an additional pass
@@ -82,123 +83,17 @@ DEFINE_string(
 DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
-// TODO @bibit edit model illustration properties instead of writing temporary
-// URDF files with overwritten colors.
-void HandleSignal(int signal) {
-  std::cerr << "\nCaught signal " << signal << ", cleaning up..." << std::endl;
-  for (const auto& path : g_temp_files_to_cleanup) {
-    try {
-      if (std::filesystem::exists(path)) {
-        std::filesystem::remove(path);
-        std::cerr << "Deleted: " << path << std::endl;
-      }
-    } catch (const std::exception& e) {
-      std::cerr << "Failed to delete " << path << ": " << e.what() << std::endl;
-    }
-  }
-
-  std::_Exit(1);  // Ensure clean and fast exit
-}
-
-void RegisterSignalHandlers() {
-  std::signal(SIGINT, HandleSignal);   // Ctrl+C
-  std::signal(SIGTERM, HandleSignal);  // procman stop
-}
-
-// Function to replace all <color> tags with a specific RGBA color in urdfs.
-std::string ReplaceUrdfColorWithRgba(const std::string& urdf,
-                                     const std::string& rgba) {
-  std::string modified = urdf;
-  std::regex color_tag(R"(<color\s+rgba="[^"]*"\s*/>)");
-  std::string new_color = "<color rgba=\"" + rgba + "\"/>";
-  modified = std::regex_replace(modified, color_tag, new_color);
-  return modified;
-}
-
-// Function to replace all <diffuse> tags with a specific color in sdfs.
-std::string ReplaceSdfDiffuseWithColor(std::string sdf_content,
-                                       const std::string& new_color_rgba) {
-  size_t pos = 0;
-  while ((pos = sdf_content.find("<diffuse>", pos)) != std::string::npos) {
-    size_t end_pos = sdf_content.find("</diffuse>", pos);
-    if (end_pos != std::string::npos) {
-      // Replace the content inside <diffuse>...</diffuse> with the new color
-      sdf_content.replace(pos + 9, end_pos - (pos + 9), new_color_rgba);
-      pos = end_pos + 10;  // Move past the </diffuse> tag
-    }
-  }
-  return sdf_content;
-}
-
-std::string WriteTempModelWithColorChange(const std::string& original_path,
-                                          const std::string& new_color_rgba,
-                                          const std::string& new_model_name) {
-  // Read original model
-  std::ifstream in(original_path);
-  std::string content((std::istreambuf_iterator<char>(in)),
-                      std::istreambuf_iterator<char>());
-  in.close();
-
-  // Modify the material color based on file type
-  if (original_path.ends_with(".sdf")) {
-    content = ReplaceSdfDiffuseWithColor(content, new_color_rgba);
-  } else if (original_path.ends_with(".urdf")) {
-    content = ReplaceUrdfColorWithRgba(content, new_color_rgba);
-  } else {
-    throw std::runtime_error(
-        "Unsupported model file format (must be .urdf or .sdf)");
-  }
-
-  // Write to a temporary file
-  std::filesystem::path temp_path =
-      std::filesystem::temp_directory_path() /
-      (new_model_name +
-       std::filesystem::path(original_path).extension().string());
-  std::ofstream out(temp_path);
-  out << content;
-  out.close();
-
-  // Return relative path
-  return std::filesystem::relative(temp_path, std::filesystem::current_path())
-      .string();
-}
-
-// TODO @bibit see if this can happen by editing Drake's illustration properties
-// instead of requiring intermediate URDF
-void ModifyUrdfRadiusInFile(const std::string& urdf_file_path,
-                            double new_radius) {
-  // Read existing content
-  std::ifstream in(urdf_file_path);
-  if (!in.is_open()) {
-    throw std::runtime_error("Failed to open URDF file: " + urdf_file_path);
-  }
-  std::string urdf_content((std::istreambuf_iterator<char>(in)),
-                           std::istreambuf_iterator<char>());
-  in.close();
-
-  // Replace radius values
-  std::regex radius_regex(R"(radius\s*=\s*\"[0-9eE\.\+-]+\")");
-  std::string new_radius_str = "radius=\"" + std::to_string(new_radius) + "\"";
-  urdf_content = std::regex_replace(urdf_content, radius_regex, new_radius_str);
-
-  // Write updated content back to the same file
-  std::ofstream out(urdf_file_path);
-  if (!out.is_open()) {
-    throw std::runtime_error("Failed to write to URDF file: " + urdf_file_path);
-  }
-  out << urdf_content;
-  out.close();
-}
-
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      base_path + "parameters/franka_sim_params.yaml");
-  FrankaC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          base_path + "parameters/franka_c3_controller_params.yaml");
+  // TODO @bibit why are all of these parameters needed?
+  SamplingC3VisualizerParams vis_params =
+      drake::yaml::LoadYamlFile<SamplingC3VisualizerParams>(
+          base_path + "parameters/visualizer_params.yaml");
+  SamplingC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          base_path + "parameters/sampling_c3_controller_params.yaml");
   SamplingC3Options sampling_c3_options =
       drake::yaml::LoadYamlFile<SamplingC3Options>(
           base_path + "parameters/sampling_c3_options.yaml");
@@ -214,61 +109,21 @@ int do_main(int argc, char* argv[]) {
 
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-
-  Parser parser(&plant, &scene_graph);
-  parser.SetAutoRenaming(true);
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelsFromUrl(sim_params.franka_model)[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
-  parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex object_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
-
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      sim_params.tool_attachment_frame);
-  RigidTransform<double> X_F_P = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_platform);
-  RigidTransform<double> X_F_G_franka = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_franka_to_ground);
-
-  RigidTransform<double> X_F_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.p_world_to_franka);
-
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   X_F_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("ground"), X_F_G_franka);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                   plant.GetFrameByName("platform"), X_F_P);
-
+  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
+  ModelInstanceIndex object_index = AddObjectToPlant(
+    &plant, &scene_graph, vis_params.object_vis_model);
   plant.Finalize();
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
-  Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModelsFromUrl(controller_params.franka_model)[0];
-  parser_franka.AddModels(
-    FindResourceOrThrow(controller_params.end_effector_model))[0];
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                          plant_franka.GetFrameByName("panda_link0"), X_WI);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_flange"),
-                          T_EE_W);
-
+  AddFrankaToPlant(&plant_franka, nullptr, true, false);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  Parser parser_object(&plant_object, nullptr);
-  parser_object.AddModels(controller_params.object_model);
+  AddObjectToPlant(&plant_object, nullptr,
+                   vis_params.object_vis_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
@@ -294,8 +149,8 @@ int do_main(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
-          object_context.get(), sim_params.end_effector_name,
-          sim_params.object_body_name, false);
+          object_context.get(), kEndEffectorName,
+          controller_params.object_body_name, false);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(object_state_receiver->get_output_port(),
@@ -348,6 +203,10 @@ int do_main(int argc, char* argv[]) {
   auto dynamically_feasible_trajectory_sub_object_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, lcm));
+  auto dynamically_feasible_trajectory_sub_actor_best = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.dynamically_feasible_best_actor_plan_channel,
+          lcm));
 
   auto sample_location_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -373,11 +232,11 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
   drake::geometry::MeshcatVisualizerParams params;
-  params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
+  params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
+  meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
-  if (sim_params.visualize_c3_workspace) {
+  if (vis_params.visualize_c3_workspace) {
     // Extracting limits and calculating workspace dimensions based on
     // workspace_limits
     double width = sampling_c3_options.workspace_limits[0][4] -
@@ -401,7 +260,7 @@ int do_main(int argc, char* argv[]) {
     meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
   }
 
-  if (sim_params.visualize_execution_plan) {
+  if (vis_params.visualize_execution_plan) {
     auto c3_exec_trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
             meshcat, "end_effector_position_target", "c3_exec_");
@@ -423,7 +282,7 @@ int do_main(int argc, char* argv[]) {
                     repos_trajectory_drawer_actor->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_center_of_mass_plan_curr) {
+  if (vis_params.visualize_center_of_mass_plan_curr) {
     auto trajectory_drawer_actor_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
             meshcat, "end_effector_position_target", "curr_");
@@ -442,7 +301,7 @@ int do_main(int argc, char* argv[]) {
                     trajectory_drawer_object_curr->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_center_of_mass_plan_best) {
+  if (vis_params.visualize_center_of_mass_plan_best) {
     auto trajectory_drawer_actor_best =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
             meshcat, "end_effector_position_target", "best_");
@@ -461,119 +320,96 @@ int do_main(int argc, char* argv[]) {
                     trajectory_drawer_object_best->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_pose_trace_curr) {
-    // Replace the color in the object model with a new color for visualization.
-    std::string visualizer_curr_sample_traj_object_model =
-        sim_params.object_model;
+  if (vis_params.visualize_c3_plan_curr) {
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, visualizer_curr_sample_traj_object_model,
+        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
         "object_position_target", "object_orientation_target",
-        "plans/curr_planned", sampling_c3_options.N, true);
+        "plans/curr_planned", sampling_c3_options.N, true,
+        vis_params.c3_curr_object_color);
+    builder.Connect(trajectory_sub_object_curr->get_output_port(),
+                    object_pose_drawer_curr->get_input_port_trajectory());
 
-    std::string visualizer_curr_sample_end_effector_model =
-        WriteTempModelWithColorChange(
-            FindResourceOrThrow(sim_params.end_effector_visualization_model),
-            "1 1 1 1", "curr_sample_end_effector_model");
-    g_temp_files_to_cleanup.push_back(
-        visualizer_curr_sample_end_effector_model);
     auto end_effector_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            visualizer_curr_sample_end_effector_model,
+            FindResourceOrThrow(vis_params.ee_vis_model),
             "end_effector_position_target", "end_effector_orientation_target",
-            "plans/curr_planned", sampling_c3_options.N, false);
-
-    builder.Connect(trajectory_sub_object_curr->get_output_port(),
-                    object_pose_drawer_curr->get_input_port_trajectory());
+            "plans/curr_planned", sampling_c3_options.N, false,
+            vis_params.c3_curr_ee_color);
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_pose_drawer_curr->get_input_port_trajectory());
 
-    std::string visualizer_df_curr_sample_end_effector_model =
-        WriteTempModelWithColorChange(
-            FindResourceOrThrow(sim_params.end_effector_visualization_model),
-            "0.5 1.0 0.5 1.0", "curr_sample_end_effector_model");
-    g_temp_files_to_cleanup.push_back(
-        visualizer_df_curr_sample_end_effector_model);
-    auto dynamically_feasible_actor_pose_drawer_curr_actor =
-        builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(visualizer_df_curr_sample_end_effector_model),
-            "ee_position_target", "end_effector_orientation_target",
-            "plans/dynamically_feasible_curr_plan_actor",
-            sampling_c3_options.N + 1, false);
-    builder.Connect(
-        dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
-        dynamically_feasible_actor_pose_drawer_curr_actor
-            ->get_input_port_trajectory());
-
-    std::string visualizer_df_curr_sample_traj_object_model =
-        sim_params.object_model;
     auto dynamically_feasible_object_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            FindResourceOrThrow(visualizer_df_curr_sample_traj_object_model),
+            FindResourceOrThrow(vis_params.object_vis_model),
             "object_position_target", "object_orientation_target",
             "plans/dynamically_feasible_curr_plan",
-            sampling_c3_options.N + 1, true);
+            sampling_c3_options.N + 1, true, vis_params.df_curr_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
         dynamically_feasible_object_pose_drawer_curr
             ->get_input_port_trajectory());
+
+    auto dynamically_feasible_actor_pose_drawer_curr_actor =
+        builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.ee_vis_model),
+            "ee_position_target", "end_effector_orientation_target",
+            "plans/dynamically_feasible_curr_plan",
+            sampling_c3_options.N + 1, false, vis_params.df_curr_ee_color);
+    builder.Connect(
+        dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
+        dynamically_feasible_actor_pose_drawer_curr_actor
+            ->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_pose_trace_best) {
-    // Replace the color in the object model with a new color for visualization.
-    std::string visualizer_best_sample_traj_object_model =
-        WriteTempModelWithColorChange(
-            FindResourceOrThrow(sim_params.object_model), "1 0.64 0 1",
-            "best_sample_traj_object_model");
-    g_temp_files_to_cleanup.push_back(visualizer_best_sample_traj_object_model);
+  if (vis_params.visualize_c3_plan_best) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,
-        FindResourceOrThrow(visualizer_best_sample_traj_object_model),
+        FindResourceOrThrow(vis_params.object_vis_model),
         "object_position_target", "object_orientation_target",
-        "plans/best_planned");
+        "plans/best_planned", sampling_c3_options.N, true,
+        vis_params.c3_best_object_color);
+    builder.Connect(trajectory_sub_object_best->get_output_port(),
+                    object_pose_drawer_best->get_input_port_trajectory());
 
-    std::string visualizer_best_sample_end_effector_model =
-        WriteTempModelWithColorChange(
-            FindResourceOrThrow(sim_params.end_effector_visualization_model),
-            "1 0.64 0 1", "best_sample_end_effector_model");
-    g_temp_files_to_cleanup.push_back(
-        visualizer_best_sample_end_effector_model);
     auto end_effector_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            FindResourceOrThrow(
-                sim_params.visualizer_best_sample_end_effector_model),
+            FindResourceOrThrow(vis_params.ee_vis_model),
             "end_effector_position_target", "end_effector_orientation_target",
-            "plans/best_planned", sampling_c3_options.N, false);
-
-    builder.Connect(trajectory_sub_object_best->get_output_port(),
-                    object_pose_drawer_best->get_input_port_trajectory());
+            "plans/best_planned", sampling_c3_options.N, false,
+            vis_params.c3_best_ee_color);
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_pose_drawer_best->get_input_port_trajectory());
 
-    std::string visualizer_df_best_sample_traj_object_model =
-        WriteTempModelWithColorChange(
-            FindResourceOrThrow(sim_params.object_model), "1 0.64 0 1",
-            "best_sample_end_effector_model");
-    g_temp_files_to_cleanup.push_back(
-        visualizer_df_best_sample_traj_object_model);
     auto dynamically_feasible_object_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            FindResourceOrThrow(
-                sim_params.visualizer_best_sample_traj_object_model),
+            FindResourceOrThrow(vis_params.object_vis_model),
             "object_position_target", "object_orientation_target",
             "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
-            true);
+            true, vis_params.df_best_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best
             ->get_input_port_trajectory());
+
+    auto dynamically_feasible_actor_pose_drawer_best_actor =
+        builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.ee_vis_model),
+            "ee_position_target", "end_effector_orientation_target",
+            "plans/dynamically_feasible_best_plan",
+            sampling_c3_options.N + 1, false, vis_params.df_best_ee_color);
+    builder.Connect(
+        dynamically_feasible_trajectory_sub_actor_best->get_output_port(),
+        dynamically_feasible_actor_pose_drawer_best_actor
+            ->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_sample_locations) {
+  if (vis_params.visualize_sample_locations) {
     // This drawer object is used to visualize the sample locations.
     // This isn't designed to be used for visualizing sample locations but we
     // use it for that purpose since the sample_location_sender sends out an
@@ -584,23 +420,20 @@ int do_main(int argc, char* argv[]) {
     if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
       from_buffer = 1;
     }
-    std::string visualizer_sample_locations_model =
-        WriteTempModelWithColorChange(
-            sim_params.end_effector_visualization_model, "1.0 1.0 0.0 1.0",
-            "sample_locations_model");
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, visualizer_sample_locations_model,
+        meshcat,
+        FindResourceOrThrow(vis_params.ee_vis_model),
         "sample_locations", "end_effector_orientation_target", "samples",
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
                  sampling_params.num_additional_samples_repos + 1) +
             1,
-        false);
+        false, vis_params.sample_color);
 
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_sample_buffer) {
+  if (vis_params.visualize_sample_buffer) {
     auto sample_buffer_to_point_cloud_converter =
         builder.AddSystem<systems::PointCloudFromSampleBuffer>();
     auto sample_buffer_point_cloud_visualizer =
@@ -619,7 +452,7 @@ int do_main(int argc, char* argv[]) {
                         ->get_input_port_new_sample_costs());
   }
 
-  if (sim_params.visualize_c3_state) {
+  if (vis_params.visualize_c3_state) {
     auto c3_target_drawer =
         builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
     builder.Connect(c3_state_actual_sub->get_output_port(),
@@ -630,7 +463,7 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_final_target());
   }
 
-  if (sim_params.visualize_c3_forces_curr) {
+  if (vis_params.visualize_c3_forces_curr) {
     auto end_effector_force_drawer_curr =
         builder.AddSystem<systems::LcmForceDrawer>(
             meshcat, "end_effector_position_target",
@@ -646,7 +479,7 @@ int do_main(int argc, char* argv[]) {
         end_effector_force_drawer_curr->get_input_port_robot_time());
   }
 
-  if (sim_params.visualize_c3_forces_best) {
+  if (vis_params.visualize_c3_forces_best) {
     auto end_effector_force_drawer_best =
         builder.AddSystem<systems::LcmForceDrawer>(
             meshcat, "end_effector_position_target",
@@ -662,21 +495,16 @@ int do_main(int argc, char* argv[]) {
         end_effector_force_drawer_best->get_input_port_robot_time());
   }
 
-  if (sim_params.visualize_is_c3_mode) {
+  if (vis_params.visualize_is_c3_mode) {
     auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
     builder.Connect(is_c3_mode_sub->get_output_port(),
                     c3_mode_visualizer->get_input_port_is_c3_mode());
     builder.Connect(reduced_order_model_receiver->get_output_port(),
                     c3_mode_visualizer->get_input_port_curr_lcs_state());
-    std::string visualizer_c3_mode_model = WriteTempModelWithColorChange(
-        FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
-        "1.0 0.43 1.0 1.0", "c3_mode_model");
-    ModifyUrdfRadiusInFile(visualizer_c3_mode_model, 0.0198);
-    g_temp_files_to_cleanup.push_back(visualizer_c3_mode_model);
     auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(visualizer_c3_mode_model),
+        meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
         "c3_mode_visualization", "end_effector_orientation_target", "c3_mode",
-        1, false);
+        1, false, vis_params.is_c3_mode_color);
     builder.Connect(
         c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
         is_c3_mode_drawer->get_input_port_trajectory());
@@ -733,6 +561,5 @@ int do_main(int argc, char* argv[]) {
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  dairlib::RegisterSignalHandlers();
   return dairlib::do_main(argc, argv);
 }

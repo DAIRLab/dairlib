@@ -65,7 +65,8 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& orientation_trajectory_name,
                          const std::string& system_name = "",
                          int num_poses = 5,
-                         bool add_transparency = true);
+                         bool add_transparency = true,
+                         const Eigen::VectorXd& rgb = Eigen::VectorXd());
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);

@@ -4,8 +4,9 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_osc_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/osc_params.h"
 #include "systems/controllers/osc/end_effector_force.h"
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
@@ -54,7 +55,7 @@ DEFINE_string(
     "Filepath containing qp settings");
 DEFINE_string(
     controller_parameters,
-    "examples/sampling_c3/jacktoy/parameters/franka_osc_controller_params.yaml",
+    "examples/sampling_c3/shared_parameters/osc_params.yaml",
     "Controller settings such as channels.");
 DEFINE_string(
     lcm_channels,
@@ -73,15 +74,11 @@ int DoMain(int argc, char* argv[]) {
   // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          base_path + "parameters/franka_osc_controller_params.yaml");
+  SamplingC3OSCParams osc_params =
+      drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
+        "examples/sampling_c3/shared_parameters/osc_params.yaml");
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
-  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(base_path +
-                          "parameters/franka_osc_controller_params.yaml"),
-      {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -89,23 +86,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a Franka-only plant.
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, nullptr);
-  parser.SetAutoRenaming(true);
-  parser.AddModelsFromUrl(controller_params.franka_model)[0];
-  parser.AddModels(
-      FindResourceOrThrow(controller_params.end_effector_model))[0];
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("panda_link0"), X_WI);
-
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      controller_params.tool_attachment_frame);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("end_effector_flange"), T_EE_W);
-
+  AddFrankaToPlant(&plant);
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
@@ -127,7 +108,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  if (controller_params.publish_debug_info) {
+  if (osc_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -161,16 +142,16 @@ int DoMain(int argc, char* argv[]) {
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
 
-  osc->SetAccelerationCostWeights(gains.W_acceleration);
-  osc->SetInputCostWeights(gains.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+  osc->SetAccelerationCostWeights(osc_params.W_acceleration);
+  osc->SetInputCostWeights(osc_params.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(osc_params.W_input_smoothing_regularization);
 
-  osc->SetContactFriction(controller_params.mu);
+  osc->SetContactFriction(osc_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();
 
-  if (controller_params.cancel_gravity_compensation) {
+  if (osc_params.cancel_gravity_compensation) {
     // TODO @bibit don't hardcode parameter filepaths
     if (FLAGS_lcm_channels ==
         base_path + "shared_parameters/lcm_channels_simulation.yaml") {

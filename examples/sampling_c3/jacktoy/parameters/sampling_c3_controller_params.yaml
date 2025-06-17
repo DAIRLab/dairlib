@@ -1,0 +1,11 @@
+sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.yaml
+
+osqp_settings_file: examples/sampling_c3/shared_parameters/franka_c3_qp_settings.yaml
+
+object_model: examples/sampling_c3/urdf/jack_ground.sdf
+
+# Note:  Use capsule_1 body name as representative of the pose of the entire
+# jack model.  This works because capsule_1's origin is the same as the jack's.
+object_body_name: capsule_1
+
+include_end_effector_orientation: false

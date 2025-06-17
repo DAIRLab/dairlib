@@ -12,9 +12,9 @@
 
 #include "common/eigen_utils.h"
 #include "control_target_generator.h"
-#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/trajectory_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
@@ -69,16 +69,12 @@ int DoMain(int argc, char* argv[]) {
   // Load parameters.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          base_path + "parameters/franka_c3_controller_params.yaml");
+  SamplingC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          base_path + "parameters/sampling_c3_controller_params.yaml");
   SamplingC3TrajectoryParams trajectory_params =
       drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
           base_path + "parameters/trajectory_params.yaml");
-  // Sim params are only used to keep the offsets between different models
-  // in the scene consistent across all systems.  TODO @bibit redo
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      base_path + "parameters/franka_sim_params.yaml");
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   SamplingC3Options sampling_c3_options =
@@ -89,52 +85,23 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
-  Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModelsFromUrl(controller_params.franka_model)[0];
-  parser_franka.AddModels(
-    FindResourceOrThrow(controller_params.end_effector_model))[0];
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                          plant_franka.GetFrameByName("panda_link0"), X_WI);
-
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      sim_params.tool_attachment_frame);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_flange"),
-                          T_EE_W);
-
+  AddFrankaToPlant(&plant_franka);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  Parser parser_object(&plant_object, nullptr);
-  parser_object.AddModels(controller_params.object_model);
+  AddObjectToPlant(&plant_object, nullptr, controller_params.object_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
-      AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  Parser parser_lcs(&plant_lcs);
-  parser_lcs.SetAutoRenaming(true);
-  parser_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_lcs.AddModels(controller_params.object_model);
-  parser_lcs.AddModels(controller_params.ground_model);
-
-  Eigen::Vector3d p_world_to_ground =
-      sim_params.p_world_to_franka + sim_params.p_franka_to_ground;
-  RigidTransform<double> X_W_G = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), p_world_to_ground);
-  plant_lcs.WeldFrames(plant_lcs.world_frame(),
-                       plant_lcs.GetFrameByName("base_link"), X_WI);
-  plant_lcs.WeldFrames(plant_lcs.world_frame(),
-                       plant_lcs.GetFrameByName("ground"), X_W_G);
+    AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model);
   plant_lcs.Finalize();
+
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
 
@@ -254,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
-          object_context.get(), controller_params.end_effector_name,
+          object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
 

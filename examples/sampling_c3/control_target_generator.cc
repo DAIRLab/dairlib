@@ -3,7 +3,7 @@
 #include <math.h>
 #include <drake/common/yaml/yaml_io.h>
 
-#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "lcm/lcm_trajectory.h"
 
 using Eigen::VectorXd;

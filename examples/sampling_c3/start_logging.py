@@ -18,13 +18,13 @@ def main(log_type, demo_name):
 
     # franka_cr_controller params path
     # TODO @bibit don't hardcode parameter paths
-    franka_c3_controller_params_path = os.path.join(
+    sampling_c3_controller_params_path = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "franka_c3_controller_params.yaml"
+        "sampling_c3_controller_params.yaml"
     )
 
-    with open(franka_c3_controller_params_path) as f:
-        franka_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
+    with open(sampling_c3_controller_params_path) as f:
+        sampling_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
 
     c3_gains = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
@@ -41,7 +41,7 @@ def main(log_type, demo_name):
 
     osc_gains = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "franka_osc_controller_params.yaml"
+        "osc_params.yaml"
     )
     sim_params = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
@@ -94,7 +94,7 @@ def main(log_type, demo_name):
     
     os.chdir(log_num)
     logname = f'{log_type}log-{log_num}'
-    subprocess.run(['cp', franka_c3_controller_params_path, f'franka_c3_controller_params_{log_num}.yaml'])
+    subprocess.run(['cp', sampling_c3_controller_params_path, f'sampling_c3_controller_params_{log_num}.yaml'])
     subprocess.run(['cp', osc_gains, f'osc_gains_{log_num}.yaml'])
     subprocess.run(['cp', sim_params, f'sim_params_{log_num}.yaml'])
     subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])

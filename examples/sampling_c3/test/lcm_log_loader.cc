@@ -17,7 +17,8 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "solvers/c3_output.h"
@@ -36,7 +37,7 @@
 
 /////// WARNING!! //////
 // This version of the log loader will not work for logs collected post March
-// 31st, 2025 due to the changes made to franka_c3_controller_params.h as per
+// 31st, 2025 due to the changes made to sampling_c3_controller_params.h as per
 // this commit where the safe params were removed:
 // https://github.com/DAIRLab/dairlib/commit/c381e5cd89500cfd3d702ada6d3c659fe8bbb43e#diff-a6f0508e6ca4588155b0f75ba718f66042ed9d05ee1b7727a963820c6fcf0cca
 // This is because the log loader is trying to read a vector of c3_options files
@@ -117,18 +118,18 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "  in microseconds: " << time_into_log_in_microsecs << std::endl;
 
   // Load the recorded parameters:  (1/4) Controller parameters.
-  std::string franka_c3_controller_params_path = log_filepath;
+  std::string sampling_c3_controller_params_path = log_filepath;
   std::string to_replace = "simlog-";
-  std::string franka_c3_controller_params_path_replacement =
-      "franka_c3_controller_params_";
-  franka_c3_controller_params_path.replace(
-      franka_c3_controller_params_path.find(to_replace), to_replace.length(),
-      franka_c3_controller_params_path_replacement);
-  FrankaC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          franka_c3_controller_params_path + ".yaml");
-  std::cout << "path of franka_c3_controller_params loaded: "
-            << franka_c3_controller_params_path << std::endl;
+  std::string sampling_c3_controller_params_path_replacement =
+      "sampling_c3_controller_params_";
+  sampling_c3_controller_params_path.replace(
+      sampling_c3_controller_params_path.find(to_replace), to_replace.length(),
+      sampling_c3_controller_params_path_replacement);
+  SamplingC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          sampling_c3_controller_params_path + ".yaml");
+  std::cout << "path of sampling_c3_controller_params loaded: "
+            << sampling_c3_controller_params_path << std::endl;
 
   // (2/4) C3 parameters.
   std::string c3_gains_path = log_filepath;
@@ -557,23 +558,8 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
-
-  Parser parser_for_lcs(&plant_for_lcs);
-  parser_for_lcs.SetAutoRenaming(true);
-
-  // Load simple model of end effector (just a sphere) for the lcs plant.
-  parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-  parser_for_lcs.AddModels(controller_params.object_model);
-  parser_for_lcs.AddModels(controller_params.ground_model);
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Eigen::Vector3d p_world_to_ground =
-      sim_params.p_world_to_franka + sim_params.p_franka_to_ground;
-  RigidTransform<double> X_W_G = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), p_world_to_ground);
-  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("base_link"), X_WI);
-  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                           plant_for_lcs.GetFrameByName("ground"), X_W_G);
+  AddLCSModelsToPlant(&plant_for_lcs, &scene_graph,
+                      controller_params.object_model);
   plant_for_lcs.Finalize();
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
@@ -998,12 +984,12 @@ int DoMain(int argc, char* argv[]) {
   PythonFriendlyVectorOfVectorXdToFile("costs", {costs});
   PythonFriendlyVectorOfVectorXdToFile("x_lcs_desired", {x_lcs_desired});
   PythonFriendlyVectorOfVectorXdToFile("p_world_to_franka",
-                                       {sim_params.p_world_to_franka});
+                                       {kWorldToFrankaOffset});
   PythonFriendlyVectorOfVectorXdToFile("p_franka_to_ground",
-                                       {sim_params.p_franka_to_ground});
+                                       {kFrankaToGroundOffset});
 
   std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '"
-            << controller_params.end_effector_simple_model << "')" << std::endl;
+            << kEndEffectorSimpleModel << "')" << std::endl;
   std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" << sim_params.object_model
             << "')" << std::endl;
 #endif

@@ -12,20 +12,26 @@ cc_library(
 )
 
 cc_library(
+    name = "visualizer_params",
+    hdrs = ["visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "lcm_channels",
     hdrs = ["lcm_channels.h"],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
-    name = "franka_c3_controller_params",
-    hdrs = ["franka_c3_controller_params.h"],
+    name = "sampling_c3_controller_params",
+    hdrs = ["sampling_c3_controller_params.h"],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
-    name = "franka_osc_controller_params",
-    hdrs = ["franka_osc_controller_params.h"],
+    name = "osc_params",
+    hdrs = ["osc_params.h"],
     visibility = ["//visibility:public"],
 )
 

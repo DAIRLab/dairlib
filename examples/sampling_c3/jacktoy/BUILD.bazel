@@ -62,13 +62,13 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_params_jacktoy",
+    name = "goal_params_jacktoy",
     hdrs = [],
     data = [
-        "parameters/trajectory_params.yaml",
+        "parameters/goal_params.yaml",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:trajectory_params",
+        "//examples/sampling_c3/parameter_headers:goal_params",
         "//solvers:c3",
         "@drake//:drake_shared_library",
     ],

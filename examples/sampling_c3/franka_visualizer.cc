@@ -90,7 +90,7 @@ int do_main(int argc, char* argv[]) {
   // TODO @bibit why are all of these parameters needed?
   SamplingC3VisualizerParams vis_params =
       drake::yaml::LoadYamlFile<SamplingC3VisualizerParams>(
-          base_path + "parameters/visualizer_params.yaml");
+          base_path + "parameters/vis_params.yaml");
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           base_path + "parameters/sampling_c3_controller_params.yaml");

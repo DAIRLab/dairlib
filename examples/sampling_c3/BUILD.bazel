@@ -193,8 +193,9 @@ cc_binary(
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//examples/sampling_c3/parameter_headers:trajectory_params",
+        "//examples/sampling_c3/parameter_headers:goal_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
         "//common",
         "//systems:franka_kinematics",
         "//systems/senders:sample_buffer_sender",
@@ -235,7 +236,7 @@ cc_library(
         "@drake//:drake_shared_library",
         "//solvers:c3",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:goal_params",
         "//lcm:lcm_trajectory_saver",
         "@lcm",
     ],
@@ -264,7 +265,7 @@ cc_library(
     deps = [
         "//solvers:c3",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
-        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
         "//common:math_utils",
         "@drake//:drake_shared_library",
     ],

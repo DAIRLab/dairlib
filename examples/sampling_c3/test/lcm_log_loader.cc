@@ -189,6 +189,9 @@ int DoMain(int argc, char* argv[]) {
   sampling_params.num_additional_samples_c3 = 0;
   sampling_params.num_additional_samples_repos = 0;
 
+  // (5/5) dummy reposition parameters (should not matter).
+  RepositionParams reposition_params;
+
   // Create an instance of the LCM log handler.
   lcm::LCM lcm;
   lcm::LogFile log_file(log_filepath, "r");
@@ -884,7 +887,7 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       plant_for_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
-      sampling_params, verbose);
+      sampling_params, reposition_params, verbose);
   auto controller_context = controller->CreateDefaultContext();
 
   auto owned_diagram = builder.Build();

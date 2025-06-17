@@ -106,6 +106,7 @@ cc_library(
         "//solvers:lcs",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
         "//common:update_context",
     ],
     copts = [

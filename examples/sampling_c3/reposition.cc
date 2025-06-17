@@ -8,6 +8,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace systems {
 
+// TODO: @bibit comments in this file could get cleaned up
 Eigen::MatrixXd Reposition(
     const int& n_q,
     const int& n_x,
@@ -17,7 +18,7 @@ Eigen::MatrixXd Reposition(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
 
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);
@@ -41,39 +42,39 @@ Eigen::MatrixXd Reposition(
   double xy_travel_distance = curr_to_goal_vec.head(2).norm();
 
   // Use a straight line trajectory if close to the target.
-  RepositioningTrajectoryType traj_type =
-    sampling_params.repositioning_trajectory_type;
-  if ((travel_distance < sampling_params.use_straight_line_traj_under &&
+  RepositioningTrajectoryType traj_type = reposition_params.traj_type;
+  if ((travel_distance <
+         reposition_params.use_straight_line_traj_under_spline &&
        traj_type == RepositioningTrajectoryType::kSpline) ||
       ((traj_type == RepositioningTrajectoryType::kSpherical ||
         traj_type == RepositioningTrajectoryType::kCircular) &&
-       travel_angle < sampling_params.use_straight_line_traj_within_angle) ||
+       travel_angle < reposition_params.use_straight_line_traj_within_angle) ||
       (traj_type == RepositioningTrajectoryType::kPiecewiseLinear &&
        xy_travel_distance <
-         sampling_params.use_straight_line_traj_under_piecewise_linear)) {
+         reposition_params.use_straight_line_traj_under_piecewise_linear)) {
     RepositionStraightLine(
       knots, n_q, n_x, N, x_lcs, repos_target, dt, is_doing_c3,
-      finished_reposition_flag, sampling_params);
+      finished_reposition_flag, reposition_params);
   }
   else if (traj_type == RepositioningTrajectoryType::kSpline) {
     RepositionSpline(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
-      finished_reposition_flag, sampling_params, sampling_c3_options);
+      finished_reposition_flag, reposition_params, sampling_c3_options);
   }
   else if (traj_type == RepositioningTrajectoryType::kSpherical) {
     RepositionSpherical(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
-      finished_reposition_flag, sampling_params, sampling_c3_options);
+      finished_reposition_flag, reposition_params, sampling_c3_options);
   }
   else if (traj_type == RepositioningTrajectoryType::kCircular) {
     RepositionCircular(
       knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
-      finished_reposition_flag, sampling_params);
+      finished_reposition_flag, reposition_params);
   }
   else if (traj_type == RepositioningTrajectoryType::kPiecewiseLinear) {
     RepositionPiecewiseLinear(
       knots, N, x_lcs, repos_target, dt, is_doing_c3, finished_reposition_flag,
-      sampling_params);
+      reposition_params);
   }
 
   return knots;
@@ -83,8 +84,7 @@ void RepositionStraightLine(
     Eigen::MatrixXd& knots, const int& n_q, const int& n_x, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const SamplingParams& sampling_params) {
-  // Extract a few values.
+    const RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
   double travel_distance = curr_to_goal_vec.norm();
@@ -92,7 +92,7 @@ void RepositionStraightLine(
   Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
   times[0] = 0;
   // Ensure the times used to define PiecewisePolynomial are increasing.
-  double total_travel_time = travel_distance/sampling_params.reposition_speed;
+  double total_travel_time = travel_distance / reposition_params.speed;
   times[1] = std::max(total_travel_time, 0.0001);
 
   Eigen::MatrixXd points = Eigen::MatrixXd::Zero(n_x, 2);
@@ -119,9 +119,8 @@ void RepositionSpline(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
-  // Extract a few values.
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
@@ -133,17 +132,16 @@ void RepositionSpline(
   Eigen::Vector3d p1 =
       current_ee_location + 0.25 * curr_to_goal_vec - current_object_location;
   p1 = current_object_location +
-        sampling_params.spline_width * p1 / p1.norm();
+        reposition_params.spline_width * p1 / p1.norm();
   Eigen::Vector3d p2 =
       current_ee_location + 0.75 * curr_to_goal_vec - current_object_location;
   p2 = current_object_location +
-        sampling_params.spline_width * p2 / p2.norm();
+        reposition_params.spline_width * p2 / p2.norm();
 
   for (int i = 0; i < N; i++) {
     // This is a curve_fraction and is not in the units of time or distance.
     // When it is 0, it is the current location. When it is 1, it is the goal.
-    double total_travel_time = travel_distance /
-      sampling_params.reposition_speed;
+    double total_travel_time = travel_distance / reposition_params.speed;
     double t_spline = (i)*dt / total_travel_time;
 
     if (i == 1 && t_spline >= 1 && !is_doing_c3) {
@@ -182,9 +180,8 @@ void RepositionSpherical(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
-  // Extract a few values.
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
 
@@ -197,12 +194,10 @@ void RepositionSpherical(
   double travel_angle = std::acos(std::clamp(v1.dot(v2), -0.9999, 0.9999));
 
   // Get the two waypoints as the ends of the arc trajectory.
-  Eigen::Vector3d waypoint1 =
-    current_object_location +
-    v1 * sampling_params.spherical_repositioning_radius;
-  Eigen::Vector3d waypoint2 =
-    current_object_location +
-    v2 * sampling_params.spherical_repositioning_radius;
+  Eigen::Vector3d waypoint1 = current_object_location +
+                              v1 * reposition_params.sphere_radius;
+  Eigen::Vector3d waypoint2 = current_object_location +
+                              v2 * reposition_params.sphere_radius;
 
   Eigen::Vector3d v3 = v1.cross(v2).normalized();
   Eigen::Vector3d v4 = v3.cross(v1).normalized();
@@ -224,9 +219,8 @@ void RepositionSpherical(
   // x = x_c + r*cos(theta)*v1 + r*sin(theta)*v4
   // ...where theta should be [0, travel_angle] and r*dtheta should be the
   // desired travel distance.
-  double dtheta = sampling_params.reposition_speed * dt /
-                  sampling_params.spherical_repositioning_radius;
-  double step_size = sampling_params.reposition_speed * dt;
+  double dtheta = reposition_params.speed*dt / reposition_params.sphere_radius;
+  double step_size = reposition_params.speed * dt;
 
   knots.col(0) = x_lcs;
   int i = 1;
@@ -249,7 +243,7 @@ void RepositionSpherical(
   while ((dtheta0 + (i - leg1_i) * dtheta < travel_angle) && (i < N)) {
     Eigen::Vector3d arc_point =
       current_object_location +
-      sampling_params.spherical_repositioning_radius *
+      reposition_params.sphere_radius *
         (std::cos(dtheta0 + (i - leg1_i) * dtheta) * v1 +
           std::sin(dtheta0 + (i - leg1_i) * dtheta) * v4);
 
@@ -297,23 +291,21 @@ void RepositionCircular(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const SamplingParams& sampling_params) {
-  // Extract a few values.
+    const RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
 
   // Current object projection onto the plane of the circle.
   Eigen::Vector3d current_object_projection = current_object_location;
-  current_object_projection(2) =
-    sampling_params.circular_repositioning_height;
+  current_object_projection(2) = reposition_params.circle_height;
 
   // Project current ee location onto the plane of the circle.
   Eigen::Vector3d curr_ee_projection = current_ee_location;
-  curr_ee_projection(2) = sampling_params.circular_repositioning_height;
+  curr_ee_projection(2) = reposition_params.circle_height;
 
   // project best sample onto the repositioning plane.
   Eigen::Vector3d best_sample_projection = repos_target;
-  best_sample_projection(2) = sampling_params.circular_repositioning_height;
+  best_sample_projection(2) = reposition_params.circle_height;
 
   Eigen::Vector3d v1 =
     (curr_ee_projection - current_object_projection).normalized();
@@ -324,12 +316,10 @@ void RepositionCircular(
   double travel_angle = std::acos(v1.dot(v2));
 
   // Define the waypoints for the circular trajectory.
-  Eigen::Vector3d waypoint1 =
-    current_object_projection +
-    sampling_params.circular_repositioning_radius * v1;
-  Eigen::Vector3d waypoint2 =
-    current_object_projection +
-    sampling_params.circular_repositioning_radius * v2;
+  Eigen::Vector3d waypoint1 = current_object_projection +
+                              reposition_params.circle_radius * v1;
+  Eigen::Vector3d waypoint2 = current_object_projection +
+                              reposition_params.circle_radius * v2;
 
   // Compute tangent vector to the circle at waypoint1.
   Eigen::Vector3d v3 = v1.cross(v2).normalized();
@@ -346,9 +336,8 @@ void RepositionCircular(
   // angular velocity. The angular velocity is given by omega = v/r. The
   // angular velocity is given by omega = dtheta/dt. Therefore, dtheta =
   // v/r*dt. This is the increment in the angle in the time dt.
-  double dtheta = sampling_params.reposition_speed * dt /
-                  sampling_params.circular_repositioning_radius;
-  double step_size = sampling_params.reposition_speed * dt;
+  double dtheta = reposition_params.speed*dt / reposition_params.circle_radius;
+  double step_size = reposition_params.speed * dt;
 
   knots.col(0) = x_lcs;
   int i = 1;
@@ -374,10 +363,10 @@ void RepositionCircular(
   while (((i - leg1_i) * dtheta < travel_angle) && (i < N)) {
     Eigen::Vector3d arc_point =
       current_object_projection +
-      sampling_params.circular_repositioning_radius *
+      reposition_params.circle_radius *
         (std::cos(dtheta0 + (i - leg1_i) * dtheta) * v1 +
           std::sin(dtheta0 + (i - leg1_i) * dtheta) * v4);
-    arc_point(2) = sampling_params.circular_repositioning_height;
+    arc_point(2) = reposition_params.circle_height;
 
     Eigen::VectorXd next_lcs_state = x_lcs;
     next_lcs_state.head(3) = arc_point;
@@ -419,20 +408,19 @@ void RepositionPiecewiseLinear(
     Eigen::MatrixXd& knots, const int& N, const Eigen::VectorXd& x_lcs,
     const Eigen::Vector3d& repos_target, const double& dt,
     const bool& is_doing_c3, bool& finished_reposition_flag,
-    const SamplingParams& sampling_params) {
-  // Extract a few values.
+    const RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
 
   // Define the waypoints for the three-leg repositioning.
   Eigen::Vector3d waypoint_above_ee = current_ee_location;
-  waypoint_above_ee(2) = sampling_params.repositioning_waypoint_height;
+  waypoint_above_ee(2) = reposition_params.pwl_waypoint_height;
 
   Eigen::Vector3d waypoint_above_sample = repos_target;
-  waypoint_above_sample(2) = sampling_params.repositioning_waypoint_height;
+  waypoint_above_sample(2) = reposition_params.pwl_waypoint_height;
 
   knots.col(0) = x_lcs;
   int i = 1;
-  double step_size = sampling_params.reposition_speed * dt;
+  double step_size = reposition_params.speed * dt;
 
   // First leg: straight line from current EE location to waypoint_above_ee.
   double dist_to_wp1 = (current_ee_location - waypoint_above_ee).norm();
@@ -489,7 +477,7 @@ void RepositionPiecewiseLinear(
     if (j == 1 && !is_doing_c3) {
       finished_reposition_flag = true;
     }
-  }  
+  }
 }
 
 }   // namespace systems

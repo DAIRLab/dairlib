@@ -13,6 +13,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
 #include "solvers/c3_options.h"
@@ -75,7 +76,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
       SamplingC3Options sampling_c3_options,
-      SamplingParams sampling_params, bool verbose = false);
+      SamplingParams sampling_params, RepositionParams reposition_params,
+      bool verbose = false);
 
   // Input ports
   const drake::systems::InputPort<double>&
@@ -362,6 +364,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   SamplingC3Options sampling_c3_options_;
   SamplingParams sampling_params_;
+  RepositionParams reposition_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")

@@ -9,6 +9,7 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "systems/framework/state_vector.h"
+#include "examples/sampling_c3/parameter_headers/goal_params.h"
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -132,11 +133,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   double resting_object_height_;
 
-  enum GoalMode {
-    kRandom,
-    kOrientationSequence,
-    kFixed
-  };
   GoalMode goal_mode_;
 
   mutable int goal_counter_ = 1;

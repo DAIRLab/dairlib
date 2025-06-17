@@ -1,6 +1,6 @@
 #include <Eigen/Core>
 
-#include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
 namespace dairlib {
@@ -18,7 +18,7 @@ Eigen::MatrixXd Reposition(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options
 );
 
@@ -34,7 +34,7 @@ void RepositionStraightLine(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params
+    const RepositionParams& reposition_params
 );
 void RepositionSpline(
     Eigen::MatrixXd& knots,
@@ -45,7 +45,7 @@ void RepositionSpline(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options);
 void RepositionSpherical(
     Eigen::MatrixXd& knots,
@@ -56,7 +56,7 @@ void RepositionSpherical(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params,
+    const RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options);
 void RepositionCircular(
     Eigen::MatrixXd& knots,
@@ -67,7 +67,7 @@ void RepositionCircular(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params);
+    const RepositionParams& reposition_params);
 void RepositionPiecewiseLinear(
     Eigen::MatrixXd& knots,
     const int& N,
@@ -76,7 +76,7 @@ void RepositionPiecewiseLinear(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const SamplingParams& sampling_params);
+    const RepositionParams& reposition_params);
 
 }   // namespace systems
 }   // namespace dairlib

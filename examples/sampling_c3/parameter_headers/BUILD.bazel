@@ -36,13 +36,19 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_params",
-    hdrs = ["trajectory_params.h"],
+    name = "goal_params",
+    hdrs = ["goal_params.h"],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "sampling_params",
     hdrs = ["sampling_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "reposition_params",
+    hdrs = ["reposition_params.h"],
     visibility = ["//visibility:public"],
 )

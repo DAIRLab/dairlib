@@ -16,8 +16,9 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
-#include "examples/sampling_c3/parameter_headers/trajectory_params.h"
+#include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -72,9 +73,9 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           base_path + "parameters/sampling_c3_controller_params.yaml");
-  SamplingC3TrajectoryParams trajectory_params =
-      drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
-          base_path + "parameters/trajectory_params.yaml");
+  SamplingC3GoalParams goal_params =
+      drake::yaml::LoadYamlFile<SamplingC3GoalParams>(
+          base_path + "parameters/goal_params.yaml");
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
   SamplingC3Options sampling_c3_options =
@@ -82,6 +83,9 @@ int DoMain(int argc, char* argv[]) {
           base_path + "parameters/sampling_c3_options.yaml");
   SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
       controller_params.sampling_params_file);
+  RepositionParams reposition_params =
+      drake::yaml::LoadYamlFile<RepositionParams>(
+          controller_params.reposition_params_file);
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
@@ -241,18 +245,18 @@ int DoMain(int argc, char* argv[]) {
                 demos_with_target_params.end(),
                 FLAGS_demo_name) != demos_with_target_params.end()) {
     control_target->SetRemoteControlParameters(
-        trajectory_params.goal_mode, trajectory_params.fixed_target_position,
-        trajectory_params.fixed_target_orientation,
-        trajectory_params.lookahead_step_size,
-        trajectory_params.lookahead_angle, trajectory_params.angle_hysteresis,
-        trajectory_params.angle_err_to_vel_factor,
-        trajectory_params.ee_target_z_offset_above_object,
-        trajectory_params.position_success_threshold,
-        trajectory_params.orientation_success_threshold,
-        trajectory_params.random_goal_x_limits,
-        trajectory_params.random_goal_y_limits,
-        trajectory_params.random_goal_radius_limits,
-        trajectory_params.resting_object_height);
+        goal_params.goal_mode, goal_params.fixed_target_position,
+        goal_params.fixed_target_orientation,
+        goal_params.lookahead_step_size,
+        goal_params.lookahead_angle, goal_params.angle_hysteresis,
+        goal_params.angle_err_to_vel_factor,
+        goal_params.ee_target_z_offset_above_object,
+        goal_params.position_success_threshold,
+        goal_params.orientation_success_threshold,
+        goal_params.random_goal_x_limits,
+        goal_params.random_goal_y_limits,
+        goal_params.random_goal_radius_limits,
+        goal_params.resting_object_height);
   }
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
@@ -296,7 +300,7 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
       plant_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
-      sampling_params);
+      sampling_params, reposition_params);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))

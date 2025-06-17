@@ -55,7 +55,8 @@ SamplingC3Controller::SamplingC3Controller(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     SamplingC3Options sampling_c3_options,
-    SamplingParams sampling_params, bool verbose)
+    SamplingParams sampling_params, RepositionParams reposition_params,
+    bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
@@ -63,6 +64,7 @@ SamplingC3Controller::SamplingC3Controller(
       contact_pairs_(contact_geoms),
       sampling_c3_options_(std::move(sampling_c3_options)),
       sampling_params_(std::move(sampling_params)),
+      reposition_params_(std::move(reposition_params)),
       G_(std::vector<MatrixXd>(sampling_c3_options_.N,
                                sampling_c3_options_.G_position_tracking)),
       U_(std::vector<MatrixXd>(sampling_c3_options_.N,
@@ -483,7 +485,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
   // Exclude the EE goal from the comparison, since that always changes to be
-  // above the current jack location.
+  // above the current object location.
   if (!x_final_target_.segment(3, n_x_-3).isApprox(
       x_lcs_final_des.value().segment(3, n_x_-3), 1e-5)) {
     std::cout << "Detected goal change!" << std::endl;
@@ -1218,7 +1220,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // Generate knot points according to the repositioning strategy.
   Eigen::MatrixXd knots = Reposition(
     n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
-    finished_reposition_flag_, sampling_params_, sampling_c3_options_);
+    finished_reposition_flag_, reposition_params_, sampling_c3_options_);
 
   // Update predicted next state if in this mode.
   if (!is_doing_c3_) {
@@ -1264,24 +1266,24 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
 // Maintain the sample buffer:  prune outdated samples and add new.
 void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
-  // Determine if samples are outdated by comparing to the current jack position
-  // and orientation.
-  Vector3d jack_pos = x_lcs.segment(n_q_-3, 3);
-  Eigen::Vector4d jack_quat = x_lcs.segment(3, 4).normalized();
+  // Determine if samples are outdated by comparing to the current object
+  // position and orientation.
+  Vector3d object_pos = x_lcs.segment(n_q_-3, 3);
+  Eigen::Vector4d object_quat = x_lcs.segment(3, 4).normalized();
 
   MatrixXd buffer_xyzs =
     sample_buffer_.block(0, 7, sampling_params_.N_sample_buffer, 3);
   MatrixXd buffer_quats =
     sample_buffer_.block(0, 3, sampling_params_.N_sample_buffer, 4);
 
-  // First, remove outdated samples that have moved too much from current jack
+  // First, remove outdated samples that have moved too much from current object
   // configuration.
-  VectorXd quat_dots = (buffer_quats * jack_quat).array().abs();
+  VectorXd quat_dots = (buffer_quats * object_quat).array().abs();
   VectorXd angles = (2.0 * quat_dots.array().acos());
   Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_rot =
     (angles.array() < sampling_params_.ang_error_sample_retention);
 
-  MatrixXd pos_deltas = buffer_xyzs.rowwise() - jack_pos.transpose();
+  MatrixXd pos_deltas = buffer_xyzs.rowwise() - object_pos.transpose();
   VectorXd distances = pos_deltas.rowwise().norm();
   Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_pos =
     (distances.array() < sampling_params_.pos_error_sample_retention);
@@ -1337,7 +1339,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       VectorXd new_config = x_lcs.segment(0, n_q_);
       new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
       // Ensure a normalized quaternion is written to the buffer.
-      new_config.segment(3, 4) = jack_quat;
+      new_config.segment(3, 4) = object_quat;
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
         all_sample_costs_[i - retained_count];

@@ -8,6 +8,7 @@
 // SamplingC3ControllerParams class.
 struct SamplingC3ControllerParams {
   std::string sampling_params_file;
+  std::string reposition_params_file;
   std::string osqp_settings_file;
   std::string object_model;
   std::string object_body_name;
@@ -19,6 +20,7 @@ struct SamplingC3ControllerParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(sampling_params_file));
+    a->Visit(DRAKE_NVP(reposition_params_file));
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(object_body_name));

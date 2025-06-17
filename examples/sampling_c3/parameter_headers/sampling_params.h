@@ -22,13 +22,6 @@ enum ProgressMetric {
   kConfigProgressOverLoops
 };
 
-// TODO @bibit should this be part of repositioning parameters?
-enum RepositioningTrajectoryType {
-  kSpline,
-  kSpherical,
-  kCircular,
-  kPiecewiseLinear
-};
 
 // TODO: @bibit parameter restructuring should reconsider many of these contents
 struct SamplingParams {
@@ -48,16 +41,6 @@ struct SamplingParams {
   int num_additional_samples_repos;
   int num_additional_samples_c3;
   bool consider_best_buffer_sample_when_leaving_c3;
-  double spline_width;
-  double spherical_repositioning_radius;
-  double circular_repositioning_radius;
-  double circular_repositioning_height;
-  double reposition_speed;
-  double use_straight_line_traj_under;
-  double use_straight_line_traj_within_angle;
-  RepositioningTrajectoryType repositioning_trajectory_type;
-  double use_straight_line_traj_under_piecewise_linear;
-  double repositioning_waypoint_height;
   int N_sample_buffer;
   double pos_error_sample_retention;
   double ang_error_sample_retention;
@@ -103,15 +86,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));
-    a->Visit(DRAKE_NVP(spline_width));
-    a->Visit(DRAKE_NVP(spherical_repositioning_radius));
-    a->Visit(DRAKE_NVP(circular_repositioning_radius));
-    a->Visit(DRAKE_NVP(circular_repositioning_height));
-    a->Visit(DRAKE_NVP(reposition_speed));
-    a->Visit(DRAKE_NVP(use_straight_line_traj_under));
-    a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
-    a->Visit(DRAKE_NVP(use_straight_line_traj_under_piecewise_linear));
-    a->Visit(DRAKE_NVP(repositioning_waypoint_height));
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
@@ -136,13 +110,6 @@ struct SamplingParams {
     int raw_sampling_strategy = static_cast<int>(sampling_strategy);
     a->Visit(drake::MakeNameValue("sampling_strategy", &raw_sampling_strategy));
     sampling_strategy = static_cast<SamplingStrategy>(raw_sampling_strategy);
-
-    int raw_repositioning_trajectory_type = static_cast<int>(
-      repositioning_trajectory_type);
-    a->Visit(drake::MakeNameValue("repositioning_trajectory_type",
-                                  &raw_repositioning_trajectory_type));
-    repositioning_trajectory_type = static_cast<RepositioningTrajectoryType>(
-      raw_repositioning_trajectory_type);
 
     a->Visit(DRAKE_NVP(use_different_contacts_to_compute_cost));
     a->Visit(DRAKE_NVP(num_control_loops_to_wait));

@@ -1,4 +1,5 @@
 sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.yaml
+reposition_params_file: examples/sampling_c3/jacktoy/parameters/reposition_params.yaml
 
 osqp_settings_file: examples/sampling_c3/shared_parameters/franka_c3_qp_settings.yaml
 

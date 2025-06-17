@@ -47,9 +47,9 @@ def main(log_type, demo_name):
         dair, "examples", "sampling_c3", demo_name, "parameters", 
         "franka_sim_params.yaml"
     )
-    trajectory_params = os.path.join(
+    goal_params = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "trajectory_params.yaml"
+        "goal_params.yaml"
     )
     ee_simple_model_urdf = dair + "examples/sampling_c3/urdf/end_effector_simple_model.urdf"
 
@@ -100,7 +100,7 @@ def main(log_type, demo_name):
     subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])
     subprocess.run(['cp', sampling_c3_options, f'sampling_c3_options_{log_num}.yaml'])
     subprocess.run(['cp', sampling_params, f'sampling_params_{log_num}.yaml'])
-    subprocess.run(['cp', trajectory_params, f'trajectory_params_{log_num}.yaml'])
+    subprocess.run(['cp', goal_params, f'goal_params_{log_num}.yaml'])
     subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}.urdf'])
     if demo_name == 'jacktoy':
         subprocess.run(['cp', object_sim_sdf, f'jack_sim_sdf_{log_num}.sdf'])

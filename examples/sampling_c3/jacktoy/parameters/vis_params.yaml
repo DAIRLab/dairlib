@@ -5,8 +5,6 @@ visualizer_publish_rate: 30
 camera_pose: [1.5, 0, 0.6]
 camera_target: [0.5, 0, 0.5]
 
-# TODO: maybe there needs to be some more of these for visualizing other samples
-# TODO @bibit all of these seem like they should be in visualizer params, not here.
 visualize_c3_workspace: false
 visualize_c3_state: true
 
@@ -19,6 +17,8 @@ visualize_is_c3_mode: true
 visualize_sample_locations: true
 visualize_sample_buffer: true
 
+# Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
+# empty, the colors defined in the URDF/SDF files will be used.
 is_c3_mode_color: [1.0, 0.43, 1.0]
 sample_color: [1.0, 1.0, 0.0]
 

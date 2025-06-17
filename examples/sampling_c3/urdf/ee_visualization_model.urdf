@@ -1,6 +1,4 @@
 <?xml version="1.0" ?>
-<!-- TODO: @bibit is this file needed? -->
-
 <robot name="end_effector_simple">
   <link name="end_effector_simple">
     <inertial>

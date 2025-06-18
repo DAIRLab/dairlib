@@ -1,0 +1,2 @@
+[console_scripts]
+pygalmesh = pygalmesh._cli:cli

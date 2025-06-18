@@ -11,7 +11,8 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         FIXED_SAMPLE,
                         SAMPLE_ON_GRID,
                         SAMPLE_IN_SHELL,
-                        SAMPLE_MESH_BUFFER};
+                        SAMPLE_MESH_BUFFER,
+                        SAMPLE_MESH_DRAKE};
 
 enum ProgressMetric { C3_COST,
                       CURRENT_POSITION_AND_ORIENTATION_COST,

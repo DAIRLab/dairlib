@@ -1,0 +1,2 @@
+[console_scripts]
+meshio = meshio._cli:main

@@ -19,6 +19,10 @@ using drake::geometry::GeometryId;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::geometry::SignedDistancePair;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
+using drake::systems::DiagramBuilder;
+using drake::multibody::AddMultibodyPlantSceneGraph;
 
 namespace dairlib{
 namespace systems{
@@ -68,6 +72,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   // }
 
   std::string mesh_filename;
+  drake::geometry::GeometryId mesh_geometry_id;
   for (unsigned i = 0; i < contact_geoms.size(); ++i) {
     for (const auto& pair : contact_geoms[i]) {
       for (int j = 0; j < 2; ++j) {
@@ -82,13 +87,24 @@ std::vector<Eigen::VectorXd> generate_sample_states(
             std::string::size_type end_pos = shape_type.find("'", fname_pos);
             if (end_pos != std::string::npos) {
               mesh_filename = shape_type.substr(fname_pos, end_pos - fname_pos);
+              mesh_geometry_id = geom_id; 
+              std::cout << inspector.GetProximityProperties(mesh_geometry_id) << std::endl;
+
+              // Save the mesh geometry id as a string
               // std::cout << "Found mesh filename: " << mesh_filename << std::endl;
+              std::cout << "Found mesh geometry id: " << mesh_geometry_id << std::endl;
             }
           }
         }
       }
     }
   }
+
+  
+  std::cout << "All geometries in scene_graph:\n";
+  for (auto id : inspector.GetAllGeometryIds()) {
+      std::cout << "  GeometryId: " << id << "\n";
+  } 
 
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
@@ -180,10 +196,21 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         !is_sample_within_workspace(candidate_states[i], c3_options));
     }
   }
+  else if(sampling_params.sampling_strategy == SAMPLE_MESH_DRAKE){
+    // This method of sampling uses the inputted obj file to set potential sampling positions by building a buffer,
+    // and then picks n of those positions to sample from.
+    for (int i = 0; i < num_samples; i++){
+      do{
+        candidate_states[i] = generate_sample_mesh_drake(
+          n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, 
+          mesh_filename, sampling_params, query_object, c3_options, mesh_geometry_id);
+      } while(sampling_params.filter_samples_for_safety &&
+        !is_sample_within_workspace(candidate_states[i], c3_options));
+    }
+  }
   else{
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
   }
-
   return candidate_states;
 }
 
@@ -506,7 +533,6 @@ Eigen::VectorXd generate_sample_in_shell(
     }
     
     // Generate a new sample if the projected sample is on the top or bottom surface of the object. i.e not near the sampling height.
-    double epsilon = 0.001;
     if (projected_state[2] < -0.01){
       continue;
     }
@@ -531,7 +557,7 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     C3Options c3_options
 ) {
   const double z_height = sampling_params.z_height;
-  const double buffer_distance = sampling_params.buffer_distance;
+  // const double buffer_distance = sampling_params.buffer_distance;
   const int num_samples = sampling_params.num_additional_samples_mesh_buffer;
     // 1. Load mesh
     Eigen::MatrixXd V;
@@ -705,7 +731,183 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     return out;
 }
 
+Eigen::VectorXd generate_sample_mesh_drake(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const std::string& mesh_path,
+    const SamplingC3SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    C3Options c3_options,
+    const drake::geometry::GeometryId mesh_geometry_id
+) {
+    const double buffer_distance = sampling_params.buffer_distance;
+    const double z_height = sampling_params.z_height;
+    const int max_attempts = 100;
+    int attempts = 0;
+    double distance = 0;
 
+    using Mesh = drake::geometry::TriangleSurfaceMesh<double>;
+    Mesh mesh = drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0);
+    //drake::geometry::Mesh mesh(mesh_path, 1.0);
+    const auto& vertices = mesh.vertices();
+    int num_tri = mesh.num_triangles();
+    double total_area = mesh.total_area();
+    Eigen::VectorXd q_vec = x_lcs.head(n_q);
+    Eigen::Vector3d object_xyz = q_vec.tail(3);
+    double trans_x = object_xyz[0];
+    double trans_y = object_xyz[1];
+    double trans_z = object_xyz[2];
+    Eigen::Quaterniond quat_object(q_vec[n_q - 7], q_vec[n_q - 6],
+                                   q_vec[n_q - 5], q_vec[n_q - 4]);
+    Eigen::Matrix3d R = quat_object.toRotationMatrix();
+    Eigen::Vector3d t(trans_x, trans_y, trans_z);
+
+    struct Face {double area; Eigen::Vector3d normal; std::array<Eigen::Vector3d, 3> v;};
+    std::vector<Face> faces;
+    faces.reserve(num_tri);
+    for (int i = 0; i < num_tri; ++i) {
+      auto tri = mesh.triangles()[i];
+        Eigen::Vector3d v0 = R * vertices[tri.vertex(0)] + t;
+        Eigen::Vector3d v1 = R * vertices[tri.vertex(1)] + t;
+        Eigen::Vector3d v2 = R * vertices[tri.vertex(2)] + t;
+        Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+        double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+        faces.push_back({area, normal, {v0, v1, v2}});
+    }
+    if (faces.empty()) {
+        throw std::runtime_error("No faces found in the mesh.");
+    }
+    do {
+      std::cout << "Number of faces: " << faces.size() << std::endl;
+      std::mt19937 gen(std::random_device{}());
+      std::uniform_real_distribution<double> dis(0.0, total_area);
+      double target_area = dis(gen);
+      const Face* selected_face = nullptr;
+      for (const auto& face : faces) {
+          if (target_area < face.area) {
+              selected_face = &face;
+              break;
+          }
+          target_area -= face.area;
+      }
+      if (!selected_face) {
+          throw std::runtime_error("No face selected based on area.");
+      }
+
+      std::uniform_real_distribution<double> dis_u(0.0, 1.0);
+      double a = std::pow(dis_u(gen), 0.6);
+      double b = std::pow(dis_u(gen), 0.6);
+      // double a = dis_u(gen), b = dis_u(gen);
+      if (a + b > 1.0) {
+          a = 1.0 - a;
+          b = 1.0 - b;
+      }
+      const auto& point_vector = selected_face->v;
+      Eigen::Vector3d sample_point = (1.0 - a - b) * point_vector[0] + a * point_vector[1] + b * point_vector[2];
+      std::uniform_real_distribution<double> yaw_rot(0,0);
+      double yaw = yaw_rot(gen);
+      Eigen::Vector3d rotated_normal = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) * selected_face->normal;
+      Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * rotated_normal;
+      projected_sample_point[2] = -z_height;
+      
+      Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+      candidate_state[0] = projected_sample_point[0];
+      candidate_state[1] = projected_sample_point[1];
+      candidate_state[2] = projected_sample_point[2];
+      candidate_state.segment(3, n_q - 3) = x_lcs.segment(3, n_q - 3);
+
+      Eigen::VectorXd new_candidate_state = Eigen::VectorXd::Zero(13);
+      new_candidate_state.segment(0, 7) = candidate_state.segment(3, n_q - 3);
+      new_candidate_state.segment(7, 6) = candidate_state.segment(n_q + 3, n_v - 3);
+
+      UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+      
+      // DiagramBuilder<double> builder;
+
+      // // Create plant + SceneGraph
+      // auto [plant_new, scene_graph_new] = AddMultibodyPlantSceneGraph(&builder, 0.0);
+      // Parser parser(&plant_new);
+      // parser.AddModels("examples/sampling_c3/urdf/controller_push_t_white.sdf");
+      // plant_new.Finalize();
+
+      // auto diagram_new = builder.Build();
+      // auto diagram_context = diagram_new->CreateDefaultContext();
+
+      // // Extract plant context
+      // auto& plant_context_new = plant_new.GetMyMutableContextFromRoot(diagram_context.get());
+      // auto* plant_context_new_ptr = &plant_context_new;
+
+      // // Extract scene graph context
+      // auto& scene_graph_new_context = scene_graph_new.GetMyMutableContextFromRoot(diagram_context.get());
+
+      // // Evaluate the QueryObject
+      // const auto& query_object_new =
+      //     scene_graph_new.get_query_output_port()
+      //               .template Eval<drake::geometry::QueryObject<double>>(scene_graph_new_context);
+
+      // // Run signed-distance query
+      // auto results_new = query_object_new.ComputeSignedDistanceToPoint(projected_sample_point);
+
+      // // Retrieve shape types via inspector
+      // const auto& inspector_new = query_object_new.inspector();
+      // std::unordered_map<drake::geometry::GeometryId, std::string> geometry_types;
+      // std::cout << results_new.size() << " results found.\n";
+      // for (const auto& r : results_new) {
+      //   const auto& shape = inspector_new.GetShape(r.id_G); // no new Shape()
+      //   std::cout << "ID " << r.id_G << ", distance " << r.distance
+      //             << ", shape type: " << shape.type_name() << "\n";
+      // }
+
+      auto& inspector = query_object.inspector();
+      std::cout << "Proximity geometries:";
+      for (auto id : inspector.GetAllGeometryIds()) {
+        if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
+          std::cout << id << " ";
+      }
+      std::cout << "\n";
+      auto pose = inspector.GetPoseInFrame(mesh_geometry_id); // 34
+      std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
+      std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
+
+
+
+      // std::cout << "Distance to mesh: " << distance << std::endl;
+      // bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+
+      int min_distance_index = 1;
+    
+      bool in_collision = check_collision(
+        n_q, n_v, n_u, 
+        candidate_state, 
+        plant, context, 
+        plant_ad, context_ad, 
+        contact_geoms,
+        sampling_params, 
+        c3_options, 
+        min_distance_index
+      );
+
+      if (!in_collision) {
+        std::cout << "Sample point is not in collision with the object." << std::endl;
+        // Update the context with the candidate state.
+        UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+        std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
+        return candidate_state;
+      }
+      std::cout << "Attempt #: " << attempts + 1 << " - Sample point is in collision with the object." << std::endl;
+      std::cout << "Sampled point: " << projected_sample_point.transpose() << std::endl;
+      ++attempts;
+    }
+    while (attempts < max_attempts);
+    throw std::runtime_error("Failed to generate a valid sample after " + std::to_string(max_attempts) + " attempts.");
+}
 
 bool check_collision(
   const int& n_q,

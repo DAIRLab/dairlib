@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
+#include "multibody/hydroelastic_geom_collider.h"
 #include <vector>
 #include <string>
 #include <random>
@@ -20,7 +21,15 @@
 #include <boost/geometry/algorithms/union.hpp>
 #include <boost/geometry/algorithms/buffer.hpp>
 #include <boost/geometry/strategies/buffer.hpp>
-
+#include <drake/geometry/meshcat.h>
+#include <drake/geometry/query_object.h>
+#include <drake/geometry/scene_graph.h>
+#include <drake/geometry/shape_specification.h>
+#include <drake/geometry/proximity/triangle_surface_mesh.h>
+#include <drake/geometry/proximity/obj_to_surface_mesh.h>
+#include <drake/geometry/geometry_state.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/systems/framework/diagram_builder.h>
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -116,6 +125,22 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     const std::string& mesh_path,
     const SamplingC3SamplingParams& sampling_params,
     C3Options c3_options);
+
+Eigen::VectorXd generate_sample_mesh_drake(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const std::string& mesh_path,
+    const SamplingC3SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    C3Options c3_options,
+    const drake::geometry::GeometryId mesh_geometry_id);
 
 bool check_collision(
     const int& n_q,

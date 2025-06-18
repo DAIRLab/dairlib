@@ -102,6 +102,7 @@ cc_library(
         "//solvers:c3",
         "//multibody:utils",
         "//multibody:geom_geom_collider",
+        "//multibody:hydroelastic_geom_collider",
         "@eigen//:eigen",
         "@boost//:core",
     ],

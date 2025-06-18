@@ -1,0 +1,5 @@
+Wheel-Version: 1.0
+Generator: gmsh_wheel
+Root-Is-Purelib: true
+Tag: py2-none-manylinux_2_24_x86_64
+Tag: py3-none-manylinux_2_24_x86_64

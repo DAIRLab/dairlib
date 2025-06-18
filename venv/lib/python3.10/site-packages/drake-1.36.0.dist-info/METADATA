@@ -1,0 +1,39 @@
+Metadata-Version: 2.1
+Name: drake
+Version: 1.36.0
+Summary: Model-based design and verification for robotics
+Home-page: https://drake.mit.edu
+Author: Drake Development Team
+Author-email: drake-users@mit.edu
+License: Various
+Platform: linux_x86_64
+Platform: macosx_x86_64
+Platform: macosx_arm64
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: BSD License
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: PyYAML
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: pydot
+
+Drake ("dragon" in Middle English) is a toolbox started by the Robot Locomotion
+Group at the MIT Computer Science and Artificial Intelligence Lab (CSAIL).
+The development team has now grown significantly, with core development led by
+the Toyota Research Institute.
+It is a collection of tools for analyzing the dynamics of our robots and
+building control systems for them, with a heavy emphasis on optimization-based
+design/analysis.
+
+See https://drake.mit.edu/pip.html for installation instructions and caveats.
+

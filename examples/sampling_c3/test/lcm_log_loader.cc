@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "time into log in seconds: " << time_into_log << std::endl;
   std::cout << "  in microseconds: " << time_into_log_in_microsecs << std::endl;
 
-  // Load the recorded parameters:  (1/4) Controller parameters.
+  // Load the recorded parameters:  (1/6) Controller parameters.
   std::string sampling_c3_controller_params_path = log_filepath;
   std::string to_replace = "simlog-";
   std::string sampling_c3_controller_params_path_replacement =
@@ -131,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "path of sampling_c3_controller_params loaded: "
             << sampling_c3_controller_params_path << std::endl;
 
-  // (2/4) C3 parameters.
+  // (2/6) C3 parameters.
   std::string c3_gains_path = log_filepath;
   std::string c3_gains_path_replacement = "c3_gains_";
   c3_gains_path.replace(c3_gains_path.find(to_replace), to_replace.length(),
@@ -168,7 +168,7 @@ int DoMain(int argc, char* argv[]) {
   //  c3_options.Q_pose = c3_options.w_Q * q_pose.asDiagonal();
   //  std::cout<<"Updated Q"<<std::endl;
 
-  // (3/4) Sim parameters.
+  // (3/6) Sim parameters.
   std::string sim_params_path = log_filepath;
   std::string sim_params_path_replacement = "sim_params_";
   sim_params_path.replace(sim_params_path.find(to_replace), to_replace.length(),
@@ -176,7 +176,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaSimParams sim_params =
       drake::yaml::LoadYamlFile<FrankaSimParams>(sim_params_path + ".yaml");
 
-  // (4/4) Sampling parameters.
+  // (4/6) Sampling parameters.
   std::string sampling_params_path = log_filepath;
   std::string sampling_params_path_replacement = "sampling_params_";
   sampling_params_path.replace(sampling_params_path.find(to_replace),
@@ -189,7 +189,17 @@ int DoMain(int argc, char* argv[]) {
   sampling_params.num_additional_samples_c3 = 0;
   sampling_params.num_additional_samples_repos = 0;
 
-  // (5/5) dummy reposition parameters (should not matter).
+  // (5/6) Progress parameters.
+  std::string progress_params_path = log_filepath;
+  std::string progress_params_path_replacement = "progress_params_";
+  progress_params_path.replace(progress_params_path.find(to_replace),
+                               to_replace.length(),
+                               progress_params_path_replacement);
+  SamplingC3ProgressParams progress_params =
+    drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
+      progress_params_path + ".yaml");
+
+  // (6/6) dummy reposition parameters (should not matter).
   RepositionParams reposition_params;
 
   // Create an instance of the LCM log handler.
@@ -886,8 +896,9 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plant_for_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
-      sampling_params, reposition_params, verbose);
+      plant_for_lcs_context_ad.get(), contact_pairs, controller_params,
+      sampling_c3_options, sampling_params, reposition_params, progress_params,
+      verbose);
   auto controller_context = controller->CreateDefaultContext();
 
   auto owned_diagram = builder.Build();

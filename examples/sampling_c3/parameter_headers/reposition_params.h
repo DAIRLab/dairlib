@@ -46,6 +46,7 @@ struct RepositionParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    ENUM_DESERIALIZE(a, traj_type);
     a->Visit(DRAKE_NVP(speed));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under_spline));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
@@ -55,9 +56,5 @@ struct RepositionParams {
     a->Visit(DRAKE_NVP(circle_radius));
     a->Visit(DRAKE_NVP(circle_height));
     a->Visit(DRAKE_NVP(pwl_waypoint_height));
-
-    int raw_traj_type = static_cast<int>(traj_type);
-    a->Visit(drake::MakeNameValue("traj_type", &raw_traj_type));
-    traj_type = static_cast<RepositioningTrajectoryType>(raw_traj_type);
   }
 };

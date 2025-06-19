@@ -58,7 +58,7 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   }
 
   void SetRemoteControlParameters(
-      const int& goal_mode,
+      const GoalMode& goal_mode,
       const Eigen::VectorXd& target_object_position,
       const Eigen::VectorXd& target_object_orientation,
       const double& lookahead_step_size,

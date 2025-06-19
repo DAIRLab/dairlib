@@ -196,6 +196,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:goal_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
         "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:progress_params",
         "//common",
         "//systems:franka_kinematics",
         "//systems/senders:sample_buffer_sender",

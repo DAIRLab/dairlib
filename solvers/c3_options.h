@@ -4,7 +4,23 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
-// Ways of computing C3 costs.
+/* Ways of computing C3 costs after solving the MPC problem:
+  0. kSimLCS:                       Simulate the LCS dynamics from the planned
+                                    inputs.
+  1. kUseC3Plan:                    Use the C3 planned trajectory and inputs.
+  2. kSimLCSReplaceC3EEPlan:        Simulate the LCS dynamics from the planned
+                                    inputs only for the object; use the planned
+                                    EE trajectory.
+  3. kSimImpedance:                 Try to emulate the real cost of the system
+                                    associated not only applying the planned
+                                    inputs, but also tracking the planned EE
+                                    trajectory with an impedance controller.
+  4. kSimImpedanceReplaceC3EEPlan:  The same as kSimImpedance except the EE
+                                    states are replaced with the plan from C3 at
+                                    the end.
+  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
+                                    object terms contribute to the final cost.
+*/
 enum C3CostComputationType {
   kSimLCS,
   kUseC3Plan,
@@ -67,7 +83,7 @@ struct C3Options {
   bool penalize_changes_in_u_across_solves;
   std::vector<double> mu;
   double dt;
-  double solve_dt;
+  double solve_dt;    // unused
   int num_friction_directions;
   int num_contacts;
   Eigen::MatrixXd Q;

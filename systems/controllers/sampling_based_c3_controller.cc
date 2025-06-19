@@ -54,8 +54,11 @@ SamplingC3Controller::SamplingC3Controller(
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
+    SamplingC3ControllerParams controller_params,
     SamplingC3Options sampling_c3_options,
-    SamplingParams sampling_params, RepositionParams reposition_params,
+    SamplingParams sampling_params,
+    RepositionParams reposition_params,
+    SamplingC3ProgressParams progress_params,
     bool verbose)
     : plant_(plant),
       context_(context),
@@ -63,20 +66,19 @@ SamplingC3Controller::SamplingC3Controller(
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
       sampling_c3_options_(std::move(sampling_c3_options)),
+      controller_params_(std::move(controller_params)),
       sampling_params_(std::move(sampling_params)),
       reposition_params_(std::move(reposition_params)),
-      G_(std::vector<MatrixXd>(sampling_c3_options_.N,
-                               sampling_c3_options_.G_position_tracking)),
-      U_(std::vector<MatrixXd>(sampling_c3_options_.N,
-                               sampling_c3_options_.U_position_tracking)),
+      progress_params_(std::move(progress_params)),
+      G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G)),
+      U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U)),
       N_(sampling_c3_options_.N),
       verbose_(verbose) {
   this->set_name("sampling_c3_controller");
 
   // Build C3Options from SamplingC3Options.
   C3Options c3_options = sampling_c3_options_.GetC3Options(
-    crossed_cost_switching_threshold_,
-    sampling_c3_options_.num_contacts_index);
+    crossed_cost_switching_threshold_);
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -100,16 +102,13 @@ SamplingC3Controller::SamplingC3Controller(
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
-        2 * sampling_c3_options_
-                .num_contacts_list[sampling_c3_options_.num_contacts_index] +
+        2 * sampling_c3_options_.num_contacts +
         2 * sampling_c3_options_.num_friction_directions *
-            sampling_c3_options_
-                .num_contacts_list[sampling_c3_options_.num_contacts_index];
+            sampling_c3_options_.num_contacts;
   } else if (sampling_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ = 2 * sampling_c3_options_.num_friction_directions *
-                sampling_c3_options_
-                    .num_contacts_list[sampling_c3_options_.num_contacts_index];
+                sampling_c3_options_.num_contacts;
   } else {
     std::cerr << ("Unknown or unsupported contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -424,7 +423,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
   return LCS(A, B, D, d, E, F, H, c, sampling_c3_options_.N,
-             sampling_c3_options_.planning_dt_position_tracking);
+             sampling_c3_options_.planning_dt_position);
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -512,7 +511,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // If the object is close to desired XY location, track its full pose.
   if (!crossed_cost_switching_threshold_) {
     if ((x_lcs_curr.segment(n_q_-3,2)-x_lcs_final_des.value().segment(n_q_-3,2))
-          .norm() < sampling_params_.cost_switching_threshold_distance) {
+          .norm() < progress_params_.cost_switching_threshold_distance) {
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 
@@ -527,8 +526,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Build C3Options from SamplingC3Options based on the
   // crossed_cost_switching_threshold_ flag.
   C3Options c3_options = sampling_c3_options_.GetC3Options(
-    crossed_cost_switching_threshold_,
-    sampling_c3_options_.num_contacts_index);
+    crossed_cost_switching_threshold_);
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
@@ -577,9 +575,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<std::shared_ptr<solvers::C3>> c3_objects(
     num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
-  C3CostComputationType cost_type = sampling_params_.cost_type;
+  C3CostComputationType cost_type = progress_params_.cost_type;
   if (!crossed_cost_switching_threshold_) {
-    cost_type = sampling_params_.cost_type_position_tracking;
+    cost_type = progress_params_.cost_type_position;
   }
 
 // Parallelize over computing C3 costs for each sample.
@@ -592,7 +590,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     Eigen::VectorXd test_state = candidate_states.at(i);
     solvers::LCS test_system = lcs_candidates.at(i);
 
-    // Set up C3 with proper projection type.
+    // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
@@ -603,10 +601,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object = std::make_shared<C3QP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
-
-    if (sampling_params_.use_different_contacts_to_compute_cost) {
-      test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
-    }
+    test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
@@ -627,11 +622,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Add travel cost (just looking at xy displacement, not also z).
     double xy_travel_distance = (test_state.head(2)-x_lcs_curr.head(2)).norm();
     all_sample_costs_[i] =
-      c3_cost + sampling_params_.travel_cost_per_meter * xy_travel_distance;
+      c3_cost + progress_params_.travel_cost_per_meter * xy_travel_distance;
 
     // Add additional costs based on repositioning progress.
     if ((i == SampleIndex::kCurrentReposTarget) && finished_reposition_flag_) {
-      all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
+      all_sample_costs_[i] += progress_params_.finished_reposition_cost;
       finished_reposition_flag_ = false;
     }
   }
@@ -648,27 +643,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Set up hysteresis values based on if the cost switching threshold has been
   // crossed.
-  double c3_to_repos_hysteresis = sampling_params_.c3_to_repos_hysteresis;
-  double repos_to_c3_hysteresis = sampling_params_.repos_to_c3_hysteresis;
-  double hysteresis_between_repos_targets =
-    sampling_params_.hysteresis_between_repos_targets;
-  double c3_to_repos_cost_fraction = sampling_params_.c3_to_repos_cost_fraction;
-  double repos_to_c3_cost_fraction = sampling_params_.repos_to_c3_cost_fraction;
-  double repos_to_repos_cost_fraction =
-    sampling_params_.repos_to_repos_cost_fraction;
+  double hyst_c3_to_repos = progress_params_.hyst_c3_to_repos;
+  double hyst_repos_to_c3 = progress_params_.hyst_repos_to_c3;
+  double hyst_repos_to_repos = progress_params_.hyst_repos_to_repos;
+  double hyst_c3_to_repos_frac = progress_params_.hyst_c3_to_repos_frac;
+  double hyst_repos_to_c3_frac = progress_params_.hyst_repos_to_c3_frac;
+  double hyst_repos_to_repos_frac = progress_params_.hyst_repos_to_repos_frac;
   if (!crossed_cost_switching_threshold_) {
-    c3_to_repos_hysteresis =
-      sampling_params_.c3_to_repos_hysteresis_position_tracking;
-    repos_to_c3_hysteresis =
-      sampling_params_.repos_to_c3_hysteresis_position_tracking;
-    hysteresis_between_repos_targets =
-      sampling_params_.hysteresis_between_repos_targets_position_tracking;
-    c3_to_repos_cost_fraction =
-      sampling_params_.c3_to_repos_cost_fraction_position_tracking;
-    repos_to_c3_cost_fraction =
-      sampling_params_.repos_to_c3_cost_fraction_position_tracking;
-    repos_to_repos_cost_fraction =
-      sampling_params_.repos_to_repos_cost_fraction_position_tracking;
+    hyst_c3_to_repos = progress_params_.hyst_c3_to_repos_position;
+    hyst_repos_to_c3 = progress_params_.hyst_repos_to_c3_position;
+    hyst_repos_to_repos = progress_params_.hyst_repos_to_repos_position;
+    hyst_c3_to_repos_frac = progress_params_.hyst_c3_to_repos_frac_position;
+    hyst_repos_to_c3_frac = progress_params_.hyst_repos_to_c3_frac_position;
+    hyst_repos_to_repos_frac =
+      progress_params_.hyst_repos_to_repos_frac_position;
   }
 
   // Review the cost results to determine the best sample.
@@ -722,10 +710,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis.
     else if (
-      ((!sampling_params_.use_relative_hysteresis &&
-        curr_cost > best_other_cost + c3_to_repos_hysteresis) ||
-       (sampling_params_.use_relative_hysteresis &&
-        curr_cost > best_other_cost + c3_to_repos_cost_fraction*curr_cost)) &&
+      ((!progress_params_.use_relative_hysteresis &&
+        curr_cost > best_other_cost + hyst_c3_to_repos) ||
+       (progress_params_.use_relative_hysteresis &&
+        curr_cost > best_other_cost + hyst_c3_to_repos_frac*curr_cost)) &&
       !force_c3_mode)
     {
       is_doing_c3_ = false;
@@ -759,11 +747,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // hysteresis amount better than the current repositioning target, then
       // continue pursuing the previous repositioning target.
       if (
-        (repos_target_cost < best_other_cost + hysteresis_between_repos_targets
-         && !sampling_params_.use_relative_hysteresis) ||
-        (repos_target_cost < best_other_cost + repos_to_repos_cost_fraction*
+        (repos_target_cost < best_other_cost + hyst_repos_to_repos
+         && !progress_params_.use_relative_hysteresis) ||
+        (repos_target_cost < best_other_cost + hyst_repos_to_repos_frac*
           repos_target_cost
-         && sampling_params_.use_relative_hysteresis))
+         && progress_params_.use_relative_hysteresis))
       {
         best_sample_index_ = SampleIndex::kCurrentReposTarget;
         best_other_cost = repos_target_cost;
@@ -778,10 +766,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
         pursued_target_source_ = PursuedTargetSource::kNewSample;
-        if (!sampling_params_.use_relative_hysteresis) {
-          best_other_cost += hysteresis_between_repos_targets;
+        if (!progress_params_.use_relative_hysteresis) {
+          best_other_cost += hyst_repos_to_repos;
         } else {
-          best_other_cost += repos_to_repos_cost_fraction*repos_target_cost;
+          best_other_cost += hyst_repos_to_repos_frac*repos_target_cost;
         }
       }
     }
@@ -795,14 +783,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
     // Switch to C3 if the current sample is better, with hysteresis.
     else if (
-      (!sampling_params_.use_relative_hysteresis &&
-       best_other_cost > curr_cost + repos_to_c3_hysteresis) ||
-      (sampling_params_.use_relative_hysteresis &&
-       best_other_cost > curr_cost + repos_to_c3_cost_fraction*best_other_cost))
+      (!progress_params_.use_relative_hysteresis &&
+       best_other_cost > curr_cost + hyst_repos_to_c3) ||
+      (progress_params_.use_relative_hysteresis &&
+       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost))
     {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
-      if (repos_target_cost > sampling_params_.finished_reposition_cost) {
+      if (repos_target_cost > progress_params_.finished_reposition_cost) {
         mode_switch_reason_ = ModeSwitchReason::kToC3ReachedReposTarget;
         std::cout << "Switching to C3 because reached repositioning target"
                   << std::endl;
@@ -884,7 +872,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Add delay.
   std::this_thread::sleep_for(
-    std::chrono::milliseconds(sampling_params_.control_loop_delay_ms));
+    std::chrono::milliseconds(controller_params_.control_loop_delay_ms));
 
   // End of control loop cleanup.
   auto finish = std::chrono::high_resolution_clock::now();
@@ -1066,8 +1054,8 @@ void SamplingC3Controller::UpdateCostMatrices(
   }
 }
 
-// Create LCS objects (for the C3 solve and optionally also for the C3 cost
-// calculation) for each sample.
+// Create LCS objects (for the C3 solve and also for the C3 cost calculation)
+// for each sample.
 std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
 SamplingC3Controller::CreateLCSObjectsForSamples(
     const std::vector<Eigen::VectorXd>& candidate_states,
@@ -1086,41 +1074,29 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
       LCSFactory::PreProcessor(
         plant_, *context_, contact_pairs_,
-        sampling_c3_options_.resolve_contacts_to_list
-          [sampling_c3_options_.num_contacts_index],
-        c3_options.num_friction_directions, c3_options.num_contacts, verbose_);
+        sampling_c3_options_.resolve_contacts_to,
+        c3_options.num_friction_directions, verbose_);
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
       contact_model_);
     lcs_candidates.push_back(lcs_object_sample);
 
-    // Optionally create different LCS objects for cost calculation.
-    if (sampling_params_.use_different_contacts_to_compute_cost) {
-      if (verbose_) {
-        std::cout << "Using different number of contacts to compute cost."
-                  << std::endl;
-      }
-      vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
-      resolved_contact_pairs_for_cost_simulation = LCSFactory::PreProcessor(
-        plant_, *context_, contact_pairs_,
-        sampling_c3_options_.resolve_contacts_to_list
-          [sampling_c3_options_.num_contacts_index_for_cost],
+    // Create different LCS objects for cost calculation.
+    vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
+    resolved_contact_pairs_for_cost_simulation = LCSFactory::PreProcessor(
+      plant_, *context_, contact_pairs_,
+      sampling_c3_options_.resolve_contacts_to_for_cost,
+      sampling_c3_options_.num_friction_directions, verbose_);
+    solvers::LCS lcs_object_sample_for_cost_simulation =
+      solvers::LCSFactory::LinearizePlantToLCS(
+        plant_, *context_, plant_ad_, *context_ad_,
+        resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.num_contacts_list
-          [sampling_c3_options_.num_contacts_index_for_cost],
-        verbose_);
-      solvers::LCS lcs_object_sample_for_cost_simulation =
-        solvers::LCSFactory::LinearizePlantToLCS(
-          plant_, *context_, plant_ad_, *context_ad_,
-          resolved_contact_pairs_for_cost_simulation,
-          sampling_c3_options_.num_friction_directions,
-          sampling_c3_options_
-            .mu_list[sampling_c3_options_.num_contacts_index_for_cost],
-          dt_, N_, contact_model_);
-      lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
-    }
+        sampling_c3_options_.mu_for_cost, dt_, N_, contact_model_);
+    lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
+
   // Reset the context to the current lcs state.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 x_lcs_curr);
@@ -1457,7 +1433,7 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   // costs.  Maintain this history and check for progress.
   object_config_cost_history_.push(curr_pos_and_rot_cost);
   int max_history_length =
-    sampling_params_.progress_enforced_over_n_loops;
+    progress_params_.progress_enforced_over_n_loops;
   if (object_config_cost_history_.size() > max_history_length) {
     object_config_cost_history_.pop();
   }
@@ -1476,7 +1452,7 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
 
   // Keep track of how many control loops have passed since the best seen
   // progress metric in this mode.
-  ProgressMetric progress_metric = sampling_params_.track_c3_progress_via;
+  ProgressMetric progress_metric = progress_params_.track_c3_progress_via;
   if (((progress_metric == ProgressMetric::kC3Cost) && updated_cost)
    || ((progress_metric == ProgressMetric::kConfigCost) && updated_config_cost)
    || ((progress_metric == ProgressMetric::kPosOrRotCost) &&
@@ -1487,13 +1463,13 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   }
 
   // Detect if progress was sufficient according to progress metric.
-  int num_control_loops_to_wait = sampling_params_.num_control_loops_to_wait;
+  int num_control_loops_to_wait = progress_params_.num_control_loops_to_wait;
   if (!crossed_cost_switching_threshold_) {
     num_control_loops_to_wait =
-      sampling_params_.num_control_loops_to_wait_position_tracking;
+      progress_params_.num_control_loops_to_wait_position;
   }
-  if (progress_metric == ProgressMetric::kConfigProgressOverLoops) {
-    if (cost_progress_fraction > -sampling_params_.progress_enforced_cost_drop)
+  if (progress_metric == ProgressMetric::kConfigCostDrop) {
+    if (cost_progress_fraction > -progress_params_.progress_enforced_cost_drop)
     { met_minimum_progress = false; }
   }
   else if (best_progress_steps_ago_ > num_control_loops_to_wait)
@@ -1659,16 +1635,14 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
                 lcs_x->get_data());
 
   C3Options c3_options = sampling_c3_options_.GetC3Options(
-    crossed_cost_switching_threshold_,
-    sampling_c3_options_.num_contacts_index);
+    crossed_cost_switching_threshold_);
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
-    sampling_c3_options_.resolve_contacts_to_list
-      [sampling_c3_options_.num_contacts_index],
-    c3_options.num_friction_directions, c3_options.num_contacts, verbose_);
+    sampling_c3_options_.resolve_contacts_to,
+    c3_options.num_friction_directions, verbose_);
 
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
@@ -1834,16 +1808,14 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
                 x_sample);
 
   C3Options c3_options = sampling_c3_options_.GetC3Options(
-    crossed_cost_switching_threshold_,
-    sampling_c3_options_.num_contacts_index);
+    crossed_cost_switching_threshold_);
 
   // Preprocess the contact pairs.
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
     plant_, *context_, contact_pairs_,
-    sampling_c3_options_.resolve_contacts_to_list[
-      sampling_c3_options_.num_contacts_index],
-    c3_options.num_friction_directions, c3_options.num_contacts, verbose_);
+    sampling_c3_options_.resolve_contacts_to,
+    c3_options.num_friction_directions, verbose_);
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
     c3_options.num_friction_directions, c3_options.mu, contact_model_);

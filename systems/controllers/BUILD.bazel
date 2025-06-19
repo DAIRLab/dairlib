@@ -104,9 +104,11 @@ cc_library(
         "//examples/sampling_c3:reposition",
         "//common:quaternion_error_hessian",
         "//solvers:lcs",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:sampling_params",
         "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:progress_params",
         "//common:update_context",
     ],
     copts = [

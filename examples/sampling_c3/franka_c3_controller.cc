@@ -19,6 +19,7 @@
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
+#include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -86,6 +87,9 @@ int DoMain(int argc, char* argv[]) {
   RepositionParams reposition_params =
       drake::yaml::LoadYamlFile<RepositionParams>(
           controller_params.reposition_params_file);
+  SamplingC3ProgressParams progress_params =
+      drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
+          controller_params.progress_params_file);
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
@@ -180,15 +184,12 @@ int DoMain(int argc, char* argv[]) {
 
     contact_pairs.push_back(ee_contact_pairs);
 
-    // If desired, add an EE-ground contact pair.
-    if (sampling_c3_options.num_contacts_index == 2 ||
-        sampling_c3_options.num_contacts_index == 3) {
+    // EE-ground contact pair second.
       std::vector<SortedPair<GeometryId>> ee_ground_contact{
           SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
       contact_pairs.push_back(ee_ground_contact);
-    }
 
-    // Object-ground contact pairs last.
+    // Object-ground contact pairs third.
     std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"]));
@@ -299,8 +300,8 @@ int DoMain(int argc, char* argv[]) {
   // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
-      plant_lcs_context_ad.get(), contact_pairs, sampling_c3_options,
-      sampling_params, reposition_params);
+      plant_lcs_context_ad.get(), contact_pairs, controller_params,
+      sampling_c3_options, sampling_params, reposition_params, progress_params);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))

@@ -74,36 +74,36 @@ class LCSFactory {
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
 
-    /// Optionally preprocess contact pairs to select the closest contacts
-    /// @param plant The MultibodyPlant
-    /// @param context The plant context
-    /// @param contact_geoms The contact geometries
-    /// @param resolve_contacts_to_list The number of contacts to resolve to
-    /// @param num_friction_directions The number of friction directions
-    /// @param num_contacts The number of contacts
-    /// @param verbose Whether to print verbose information
-    /// @return The closest contacts
-    static std::vector<drake::SortedPair<drake::geometry::GeometryId>>
-        PreProcessor(
-            const drake::multibody::MultibodyPlant<double>& plant,
-            const drake::systems::Context<double>& context,
-            const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-                contact_geoms,
-            const std::vector<int>& resolve_contacts_to_list,
-            int num_friction_directions, int num_contacts,
-            bool verbose = false);
+  /// Optionally preprocess contact pairs to select the closest contacts
+  /// @param plant The MultibodyPlant
+  /// @param context The plant context
+  /// @param contact_geoms The contact geometries
+  /// @param resolve_contacts_to_list The number of contacts to resolve to
+  /// @param num_friction_directions The number of friction directions
+  /// @param verbose Whether to print verbose information
+  /// @return The closest contacts
+  static std::vector<drake::SortedPair<drake::geometry::GeometryId>>
+      PreProcessor(
+          const drake::multibody::MultibodyPlant<double>& plant,
+          const drake::systems::Context<double>& context,
+          const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+              contact_geoms,
+          const std::vector<int>& resolve_contacts_to_list,
+          int num_friction_directions,
+          bool verbose = false);
 
-    /// This function is for debugging purposes.  This is largely a copy of the
-    /// EvalPolytope function in the GeomGeomCollider class with more verbosity.
-    /// @param plant The MultibodyPlant
-    /// @param context The plant context
-    /// @param pair The contact pair
-    /// @param phi_i The signed distance
-    static void PrintVerboseContactInfo(
-        const drake::multibody::MultibodyPlant<double>& plant,
-        const drake::systems::Context<double>& context,
-        const drake::SortedPair<drake::geometry::GeometryId>& pair,
-        const double phi_i);
+ private:
+  /// This function is for debugging purposes.  This is largely a copy of the
+  /// EvalPolytope function in the GeomGeomCollider class with more verbosity.
+  /// @param plant The MultibodyPlant
+  /// @param context The plant context
+  /// @param pair The contact pair
+  /// @param phi_i The signed distance
+  static void PrintVerboseContactInfo(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::Context<double>& context,
+      const drake::SortedPair<drake::geometry::GeometryId>& pair,
+      const double phi_i);
 };
 
 }  // namespace solvers

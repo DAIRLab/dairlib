@@ -56,7 +56,7 @@ TargetGenerator::TargetGenerator(
 }
 
 void TargetGenerator::SetRemoteControlParameters(
-    const int& goal_mode,
+    const GoalMode& goal_mode,
     const Eigen::VectorXd& target_object_position,
     const Eigen::VectorXd& target_object_orientation,
     const double& lookahead_step_size,
@@ -71,7 +71,7 @@ void TargetGenerator::SetRemoteControlParameters(
     const Eigen::VectorXd& random_goal_radius_limits,
     const double& resting_object_height)
 {
-  goal_mode_ = static_cast<GoalMode>(goal_mode);
+  goal_mode_ = goal_mode;
   target_final_object_position_ = target_object_position;
   target_final_object_orientation_ = target_object_orientation;
   lookahead_step_size_ = lookahead_step_size;

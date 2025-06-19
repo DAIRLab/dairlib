@@ -68,8 +68,7 @@ Eigen::Vector3d RandomOnSphereSampling(
 // TODO: @bibit make the fixed sample locations in 3D to avoid needing to pass
 // in a sampling height.
 Eigen::Vector3d FixedSample(
-    const double& sampling_height,
-    const Eigen::VectorXd& fixed_sample_location
+    const Eigen::Vector3d& fixed_sample_location
 );
 
 Eigen::Vector3d PerimeterSampling(

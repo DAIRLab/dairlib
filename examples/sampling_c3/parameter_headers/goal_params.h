@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/file_utils.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
@@ -16,7 +17,7 @@ enum GoalMode {
 };
 
 struct SamplingC3GoalParams {
-  int goal_mode;
+  GoalMode goal_mode;
 
   /// Parameters used for multiple goal modes.
   /// Success thresholds for position and orientation.
@@ -52,7 +53,7 @@ struct SamplingC3GoalParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(goal_mode));
+    ENUM_DESERIALIZE(a, goal_mode);
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_height));

@@ -1,8 +1,8 @@
 # Goal mode options (defined as GoalMode enum in goal_params.h):
-#   0. random:                randomly generate a new goal.
-#   1. orientation sequence:  keep position goal the same, and cycle through a
+#   0. kRandom:               randomly generate a new goal.
+#   1. kOrientationSequence:  keep position goal the same, and cycle through a
 #                             sequence of orientations.
-#   2. fixed:                 keep the same goal.
+#   2. kFixedGoal:            keep the same goal.
 goal_mode: 0  
 
 ### Parameters used for multiple goal modes.

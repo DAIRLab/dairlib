@@ -456,14 +456,12 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
   const MultibodyPlant<double>& plant, const Context<double>& context,
   const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
   const vector<int>& resolve_contacts_to_list,
-  int num_friction_directions, int num_contacts,
-  bool verbose) {
+  int num_friction_directions, bool verbose) {
 
-  int n_contacts = num_contacts;
-  // Return contacts as per the resolve_contacts_to_list
-  std::vector<SortedPair<GeometryId>> closest_contacts;
-  // Reserve space for the closest contacts
-  closest_contacts.reserve(n_contacts);
+  int n_contacts = std::accumulate(
+    resolve_contacts_to_list.begin(), resolve_contacts_to_list.end(), 0);
+  std::vector<SortedPair<GeometryId>> resolved_contacts;
+  resolved_contacts.reserve(n_contacts);
 
   for (int i = 0; i < contact_geoms.size(); i++) {
     DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
@@ -491,7 +489,7 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
     for (int j = 0; j < num_to_select; ++j) {
       auto min_it = std::min_element(distances.begin(), distances.end());
       int min_index = std::distance(distances.begin(), min_it);
-      closest_contacts.push_back(candidates[min_index]);
+      resolved_contacts.push_back(candidates[min_index]);
       distances[min_index] = std::numeric_limits<double>::infinity();
 
       if (verbose && candidates.size() > 1) {
@@ -499,8 +497,8 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
       }
     }
   }
-  DRAKE_DEMAND(closest_contacts.size() == n_contacts);
-  return closest_contacts;
+  DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
+  return resolved_contacts;
 }
 
 void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,

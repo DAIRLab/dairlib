@@ -88,9 +88,11 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         "Error:  More fixed samples requested than provided.");
     }
     for (int i = 0; i < num_samples; i++) {
+      if (sampling_params.fixed_sample_locations.cols() != 3) {
+        throw std::runtime_error("Error:  Fixed sample locations must be 3D.");
+      }
       candidate_states[i].head(3) = FixedSample(
-        sampling_params.sampling_height,
-        sampling_params.fixed_sample_locations[i]);
+        sampling_params.fixed_sample_locations.row(i));
       if (sampling_params.filter_samples_for_safety &&
           !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
         throw std::runtime_error(
@@ -180,13 +182,8 @@ Eigen::Vector3d RandomOnSphereSampling(
 }
 
 // kFixed
-Eigen::Vector3d FixedSample(const double& sampling_height,
-                             const Eigen::VectorXd& fixed_sample_location) {
-  Eigen::Vector3d sample = Vector3d::Zero();
-  sample[0] = fixed_sample_location[0];
-  sample[1] = fixed_sample_location[1];
-  sample[2] = sampling_height;
-  return sample;
+Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location) {
+  return fixed_sample_location;
 }
 
 // kRandomOnPerimeter:  Random on (roughly) inflated perimeter of 2D slice of

@@ -202,7 +202,7 @@ cc_binary(
         "//systems:franka_kinematics",
         "//systems/senders:sample_buffer_sender",
         "//systems/senders:senders",
-        ":control_target_generator",
+        ":goal_generator",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -228,9 +228,9 @@ cc_library(
 )
 
 cc_library(
-    name = "control_target_generator",
-    srcs = ["control_target_generator.cc"],
-    hdrs = ["control_target_generator.h"],
+    name = "goal_generator",
+    srcs = ["goal_generator.cc"],
+    hdrs = ["goal_generator.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

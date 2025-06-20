@@ -11,7 +11,7 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "control_target_generator.h"
+#include "goal_generator.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
@@ -209,10 +209,10 @@ int DoMain(int argc, char* argv[]) {
           controller_params.include_end_effector_orientation);
 
   // Select the target generator based on the demo.
-  std::unique_ptr<systems::TargetGenerator> target_generator;
+  std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
-        std::make_unique<systems::TargetGeneratorJacktoy>(plant_object);
+        std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(plant_object);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }

@@ -20,9 +20,10 @@ using drake::trajectories::PiecewiseQuaternionSlerp;
 namespace dairlib {
 namespace systems {
 
-class TargetGenerator : public drake::systems::LeafSystem<double> {
+class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
  public:
-  TargetGenerator(const drake::multibody::MultibodyPlant<double>& object_plant);
+  SamplingC3GoalGenerator(
+    const drake::multibody::MultibodyPlant<double>& object_plant);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -93,7 +94,7 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   virtual void OutputObjectFinalTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
-  virtual void OutputTargetGeneratorInfo(
+  virtual void OutputGoalGeneratorInfo(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* target) const;
 
@@ -167,11 +168,11 @@ inline const Eigen::Quaterniond kQUAT_GREEN_DOWN{
     -0.8204732385702831, 0.42470820027786693, 0.1759198966061614,
     0.3398511429799875};
 
-class TargetGeneratorJacktoy : public TargetGenerator {
+class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  public:
-  TargetGeneratorJacktoy(
+  SamplingC3GoalGeneratorJacktoy(
       const drake::multibody::MultibodyPlant<double>& object_plant)
-      : TargetGenerator(object_plant) {}
+      : SamplingC3GoalGenerator(object_plant) {}
 
  protected:
   // Override the base class function to provide the valid orientations for the

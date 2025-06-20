@@ -1,75 +1,52 @@
-'''TODO @bibit this file needs another pass'''
 import subprocess
 import os
+import os.path as op
 import glob
 import codecs
 from datetime import date
 import sys
 import yaml
 
+
 def main(log_type, demo_name):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"/mnt/data2/sharanya/logs/{year}/{curr_date}"
-    dair = f"{os.getenv('HOME')}/workspace/dairlib/"
+    logdir = f"/mnt/data2/bibit/logs/{year}/{curr_date}"
+    dair = op.abspath(op.join(op.dirname(__file__), "../../"))
 
-    if not os.path.isdir(logdir):
+    if not op.isdir(logdir):
         os.mkdir(logdir)
 
-    # franka_cr_controller params path
-    # TODO @bibit don't hardcode parameter paths
-    sampling_c3_controller_params_path = os.path.join(
+    # Hardcoded sampling_c3_controller_params path.
+    sampling_c3_controller_params_path = op.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
         "sampling_c3_controller_params.yaml"
     )
 
     with open(sampling_c3_controller_params_path) as f:
-        sampling_c3_controller_params = yaml.load(f, Loader=yaml.FullLoader)
+        controller_params = yaml.load(f, Loader=yaml.FullLoader)
 
-    c3_gains = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "franka_c3_options_floating.yaml"
-    )
-    sampling_c3_options = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "sampling_c3_options.yaml"
-    )
-    sampling_params = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "sampling_params.yaml"
-    )
+    sampling_c3_params_path = op.join(dair, controller_params['sampling_c3_options_file'])
+    repos_params_path = op.join(dair, controller_params['reposition_params_file'])
+    progress_params_path = op.join(dair, controller_params['progress_params_file'])
+    sampling_params_path = op.join(dair, controller_params['sampling_params_file'])
+    goal_params_path = op.join(dair, controller_params['goal_params_file'])
+    sim_params_path = op.join(dair, controller_params['sim_params_file'])
+    osc_params_path = op.join(dair, controller_params['osc_params_file'])
+    osqp_params_path = op.join(dair, controller_params['osqp_settings_file'])
+    osc_qp_params_path = op.join(dair, controller_params['osc_qp_settings_file'])
 
-    osc_gains = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "osc_params.yaml"
-    )
-    sim_params = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "sim_params.yaml"
-    )
-    goal_params = os.path.join(
-        dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "goal_params.yaml"
-    )
-    ee_simple_model_urdf = dair + "examples/sampling_c3/urdf/end_effector_simple_model.urdf"
+    with open(sim_params_path) as f:
+        sim_params = yaml.load(f, Loader=yaml.FullLoader)
 
-    object_sdf_dir = os.path.join(dair, "examples", "sampling_c3", "urdf")
+    # c3 gains, sampling c3 options, sampling, osc, sim, goal
 
-    if demo_name == 'jacktoy':
-        object_sim_sdf = os.path.join(object_sdf_dir, "jack.sdf")
-        object_c3_sdf = os.path.join(object_sdf_dir, "jack_ground.sdf")
-    elif demo_name == 'push_t':
-        object_sim_sdf = os.path.join(object_sdf_dir, "T_vertical_sim.sdf")
-        object_c3_sdf = os.path.join(object_sdf_dir, "T_vertical.sdf")
-    elif demo_name == 'box_topple':
-        object_sim_sdf = os.path.join(object_sdf_dir, "box_sim.sdf")
-        object_c3_sdf = os.path.join(object_sdf_dir, "box.sdf")
-    elif demo_name == 'ball_rolling':
-        object_sim_sdf = os.path.join(object_sdf_dir, "ball.sdf")
-        object_c3_sdf = os.path.join(object_sdf_dir, "ball.sdf")
-    else:
-        raise ValueError(f"Unknown demo_name '{demo_name}'. "
-                         "Supported examples: jacktoy, push_t, box_topple, ball_rolling")
+    object_c3_urdf = op.join(dair, controller_params['object_model'])
+    object_sim_urdf = op.join(dair, sim_params['object_model'])
+
+    # NOTE:  must match kEndEffectorSimpleModel in sampling_c3_utils.h
+    ee_simple_model_urdf = op.join(
+        dair, "examples/sampling_c3/urdf/end_effector_simple_model.urdf")
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
@@ -77,8 +54,8 @@ def main(log_type, demo_name):
     os.chdir(logdir)
 
     try:
-        directories = glob.glob(os.path.join(logdir, "*"))    
-        directory_names = [os.path.basename(d) for d in directories if os.path.isdir(d)]
+        directories = glob.glob(op.join(logdir, "*"))
+        directory_names = [op.basename(d) for d in directories if op.isdir(d)]
         last_log = max([int(name) for name in directory_names if name.isdigit()])
         log_num = str(last_log+1).zfill(6)
     except:
@@ -89,34 +66,33 @@ def main(log_type, demo_name):
             f.write(str(commit_tag))
             f.write("\n\ngit diff:\n\n")
             f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
-    if not os.path.isdir(log_num):
+    if not op.isdir(log_num):
         os.mkdir(log_num)
     
     os.chdir(log_num)
     logname = f'{log_type}log-{log_num}'
-    subprocess.run(['cp', sampling_c3_controller_params_path, f'sampling_c3_controller_params_{log_num}.yaml'])
-    subprocess.run(['cp', osc_gains, f'osc_gains_{log_num}.yaml'])
-    subprocess.run(['cp', sim_params, f'sim_params_{log_num}.yaml'])
-    subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])
-    subprocess.run(['cp', sampling_c3_options, f'sampling_c3_options_{log_num}.yaml'])
-    subprocess.run(['cp', sampling_params, f'sampling_params_{log_num}.yaml'])
-    subprocess.run(['cp', goal_params, f'goal_params_{log_num}.yaml'])
-    subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}.urdf'])
-    if demo_name == 'jacktoy':
-        subprocess.run(['cp', object_sim_sdf, f'jack_sim_sdf_{log_num}.sdf'])
-        subprocess.run(['cp', object_c3_sdf, f'jack_c3_sdf_{log_num}.sdf'])
-    elif demo_name == 'push_t':
-        subprocess.run(['cp', object_sim_sdf, f't_sim_sdf_{log_num}.sdf'])
-        subprocess.run(['cp', object_c3_sdf, f't_c3_sdf_{log_num}.sdf'])
-    elif demo_name == 'box_topple':
-        subprocess.run(['cp', object_sim_sdf, f'box_sim_sdf_{log_num}.sdf'])
-        subprocess.run(['cp', object_c3_sdf, f'box_c3_sdf_{log_num}.sdf'])
-    elif demo_name == 'ball_rolling':
-        subprocess.run(['cp', object_sim_sdf, f'ball_sim_sdf_{log_num}.sdf'])
-        subprocess.run(['cp', object_c3_sdf, f'ball_c3_sdf_{log_num}.sdf'])
-    else:
-        raise ValueError(f"Unknown demo_name '{demo_name}'. "
-                         "Supported examples: jacktoy, push_t, box_topple, ball_rolling")
+
+    # Parameter files.
+    subprocess.run(['cp',sampling_c3_controller_params_path, f'sampling_c3_controller_params_{log_num}.yaml'])
+    subprocess.run(['cp',sampling_c3_params_path, f'sampling_c3_params_{log_num}.yaml'])
+    subprocess.run(['cp',repos_params_path, f'repos_params_{log_num}.yaml'])
+    subprocess.run(['cp',progress_params_path, f'progress_params_{log_num}.yaml'])
+    subprocess.run(['cp',sampling_params_path, f'sampling_params_{log_num}.yaml'])
+    subprocess.run(['cp',goal_params_path, f'goal_params_{log_num}.yaml'])
+    subprocess.run(['cp',sim_params_path, f'sim_params_{log_num}.yaml'])
+    subprocess.run(['cp',osc_params_path, f'osc_params_{log_num}.yaml'])
+    subprocess.run(['cp',osqp_params_path, f'osqp_params_{log_num}.yaml'])
+    subprocess.run(['cp',osc_qp_params_path, f'osc_qp_params_{log_num}.yaml'])
+
+    # URDFs/SDFs with original file extensions.
+    ee_simple_model_ext = op.splitext(ee_simple_model_urdf)[1]
+    object_c3_ext = op.splitext(object_c3_urdf)[1]
+    object_sim_ext = op.splitext(object_sim_urdf)[1]
+    subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}{ee_simple_model_ext}'])
+    subprocess.run(['cp', object_c3_urdf, f'object_c3_urdf_{log_num}{object_c3_ext}'])
+    subprocess.run(['cp', object_sim_urdf, f'object_sim_urdf_{log_num}{object_sim_ext}'])
+
+    # Begin logging.
     subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
 
 

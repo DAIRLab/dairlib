@@ -1,8 +1,6 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
-# TODO @bibit much of this file seems unnecessary?
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(

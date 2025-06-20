@@ -8,7 +8,6 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace systems {
 
-// TODO: @bibit comments in this file could get cleaned up
 Eigen::MatrixXd Reposition(
     const int& n_q,
     const int& n_x,
@@ -23,10 +22,8 @@ Eigen::MatrixXd Reposition(
 
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);
 
-  // Get the current end effector location.
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
-
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
 
   // Get two unit vectors in the plane of the arc between the current and goal
@@ -139,21 +136,15 @@ void RepositionSpline(
         reposition_params.spline_width * p2 / p2.norm();
 
   for (int i = 0; i < N; i++) {
-    // This is a curve_fraction and is not in the units of time or distance.
-    // When it is 0, it is the current location. When it is 1, it is the goal.
     double total_travel_time = travel_distance / reposition_params.speed;
     double t_spline = (i)*dt / total_travel_time;
+    t_spline = std::min(1.0, t_spline); // Don't overshoot end of the spline.
 
-    if (i == 1 && t_spline >= 1 && !is_doing_c3) {
-      // If it can get there in one step, then set finished_reposition_flag
-      // to true.
+    // Set finished_reposition_flag if only one step is required.
+    if (i == 1 && t_spline == 1 && !is_doing_c3) {
       finished_reposition_flag = true;
-      std::cout
-        << "WARNING! Using spline but finished repositioning in one step."
-        << std::endl;
+      std::cout<<"WARNING! Spline finished repositioning in 1 step."<<std::endl;
     }
-    // Don't overshoot the end of the spline.
-    t_spline = std::min(1.0, t_spline);
 
     Eigen::Vector3d next_ee_loc =
       p0 + t_spline * (-3 * p0 + 3 * p1) +
@@ -162,8 +153,8 @@ void RepositionSpline(
 
     // Set the next LCS state as the current state with updated end effector
     // location and zero end effector velocity. Note that this means that the
-    // object does not move in the planned trajectory. An alternative is that
-    // we could simulate the object's motion with 0 input.
+    // object does not move in the planned trajectory. TODO An alternative is to
+    // simulate the object's motion with 0 input.
     Eigen::VectorXd next_lcs_state = x_lcs;
     next_lcs_state.head(3) = next_ee_loc;
     next_lcs_state.segment(n_q, 3) = Eigen::Vector3d::Zero();
@@ -269,7 +260,7 @@ void RepositionSpherical(
     i++;
   }
 
-  // Enforce minimum z height for end effector, with a small buffer.
+  // Enforce minimum z height for end effector.
   for (int j = 0; j < i; j++) {
     if (knots(2, j) < sampling_c3_options.workspace_limits[2][3]) {
       knots(2, j) = sampling_c3_options.workspace_limits[2][3];
@@ -295,15 +286,11 @@ void RepositionCircular(
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
 
-  // Current object projection onto the plane of the circle.
+  // Project positions to the plane of the circle.
   Eigen::Vector3d current_object_projection = current_object_location;
   current_object_projection(2) = reposition_params.circle_height;
-
-  // Project current ee location onto the plane of the circle.
   Eigen::Vector3d curr_ee_projection = current_ee_location;
   curr_ee_projection(2) = reposition_params.circle_height;
-
-  // project best sample onto the repositioning plane.
   Eigen::Vector3d best_sample_projection = repos_target;
   best_sample_projection(2) = reposition_params.circle_height;
 
@@ -312,7 +299,7 @@ void RepositionCircular(
   Eigen::Vector3d v2 =
     (best_sample_projection - current_object_projection).normalized();
 
-  // Compute travel angle
+  // Compute travel angle.
   double travel_angle = std::acos(v1.dot(v2));
 
   // Define the waypoints for the circular trajectory.
@@ -345,8 +332,6 @@ void RepositionCircular(
   // waypoint1.
   double dist_to_wp1 = (current_ee_location - waypoint1).norm();
   while ((i * step_size < dist_to_wp1) && (i < N)) {
-    // The division by dist_to_wp1 is to normalize the direction vector from
-    // the current ee location to waypoint1.
     Eigen::Vector3d straight_line_point =
       current_ee_location +
       i * step_size / dist_to_wp1 * (waypoint1 - current_ee_location);
@@ -414,7 +399,6 @@ void RepositionPiecewiseLinear(
   // Define the waypoints for the three-leg repositioning.
   Eigen::Vector3d waypoint_above_ee = current_ee_location;
   waypoint_above_ee(2) = reposition_params.pwl_waypoint_height;
-
   Eigen::Vector3d waypoint_above_sample = repos_target;
   waypoint_above_sample(2) = reposition_params.pwl_waypoint_height;
 

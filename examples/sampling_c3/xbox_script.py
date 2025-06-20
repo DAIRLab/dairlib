@@ -1,4 +1,23 @@
-'''TODO @bibit document the controls somewhere'''
+"""Teleoperation controls for sampling C3 controller using an xbox controller.
+
+Button presses:
+- A: Toggle teleoperation mode
+- X: Toggle force tracking mode
+- Y: Toggle force C3 mode
+- Start: Print cost breakdown
+- Back: Print current rotation and position cost
+
+Mapping to radio channels:
+- Channel 0: x-direction teleop
+- Channel 1: y-direction teleop
+- Channel 2: z-direction teleop
+- Channel 6: Back button (print current rotation and position cost)
+- Channel 7: Start button (print cost breakdown)
+- Channel 11: X button (force tracking mode)
+- Channel 12: Y button (force C3 mode)
+- Channel 14: A button (teleoperation mode)
+"""
+
 import pygame
 import dairlib.lcmt_radio_out
 import lcm
@@ -21,13 +40,11 @@ def main():
     done = False
     i = 0
     latching_switch_a = 1
-    latching_switch_b = 1
     latching_switch_x = 0
     latching_switch_y = 0
     latching_switch_start = 0
     latching_switch_back = 0
     print("Teleop Status: " + str(latching_switch_a))
-    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
 
 
@@ -42,9 +59,6 @@ def main():
                 if event.button == 0:
                     latching_switch_a = not latching_switch_a
                     print("Teleop Status: " + str(latching_switch_a))
-                if event.button == 1:
-                    latching_switch_b = not latching_switch_b
-                    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
                 if event.button == 2:
                     latching_switch_x = not latching_switch_x
                     print("Force Tracking Status: " + str(not latching_switch_x))
@@ -63,14 +77,11 @@ def main():
         radio_msg.channel[0] = -joystick.get_axis(1)
         radio_msg.channel[1] = -joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
-        radio_msg.channel[3] = joystick.get_axis(3)
         radio_msg.channel[6] = latching_switch_back
         radio_msg.channel[7] = latching_switch_start
-        radio_msg.channel[13] = latching_switch_b
-        radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x
         radio_msg.channel[12] = latching_switch_y
-        radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
+        radio_msg.channel[14] = latching_switch_a
 
         publisher.publish("SAMPLING_C3_RADIO", radio_msg.encode())
 

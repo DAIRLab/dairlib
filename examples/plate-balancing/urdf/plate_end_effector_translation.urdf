@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="plate">
+  <link name="base_link"/>
+  <link name="plate_x"/>
+  <link name="plate_y"/>
+  <link name="plate">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.37"/>
+      <inertia ixx="0.00048818" ixy="0" ixz="0" iyy="0.00048818" iyz="0" izz="0.00097241"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+      <geometry>
+        <cylinder radius="0.0725" length="0.01"/>
+      </geometry>
+    </visual>
+    <collision name="middle_right">
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.0725 0.0 0.004"/>
+    </collision>
+    <collision name="top_left">
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.03625 0.06278  0.004"/>
+    </collision>
+    <collision name="bottom_left">
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.03625 -0.06278  0.004"/>
+    </collision>
+  </link>
+  <joint name="plate_x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="plate_x"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="plate_y" type="prismatic">
+    <parent link="plate_x"/>
+    <child link="plate_y"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <joint name="plate_z" type="prismatic">
+    <parent link="plate_y"/>
+    <child link="plate"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="plate_x" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_x"/>
+    <joint name="plate_x"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_y" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_y"/>
+    <joint name="plate_y"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_z" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_z"/>
+    <joint name="plate_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+</robot>

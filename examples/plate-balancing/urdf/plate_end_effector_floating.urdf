@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="plate">
+  <link name="base_link"/>
+  <link name="plate_x"/>
+  <link name="plate_y"/>
+  <link name="plate_rx"/>
+  <link name="plate_ry"/>
+  <link name="plate_rz"/>
+  <link name="plate">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.066667 0 0.01"/>
+      <mass value="2"/>
+      <inertia ixx="0.053413" ixy="0" ixz="-2.1684e-19" iyy="0.071191" iyz="0" izz="0.12452"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.01"/>
+      <geometry>
+        <box size="0.2 0.2 0.02"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.1 0.0 0.02"/>
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.1 0.1 0.02"/>
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.1 -0.1 0.02"/>
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+    </visual>
+    <collision name="middle_right">
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.2 0.0 0.01"/>
+    </collision>
+    <collision name="top_left">
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.2 0.2 0.01"/>
+    </collision>
+    <collision name="bottom_left">
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.2 -0.2 0.01"/>
+    </collision>
+  </link>
+  <joint name="plate_x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="plate_x"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="plate_y" type="prismatic">
+    <parent link="plate_x"/>
+    <child link="plate_y"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <joint name="plate_z" type="prismatic">
+    <parent link="plate_y"/>
+    <child link="plate_rx"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <joint name="plate_rx" type="revolute">
+    <parent link="plate_rx"/>
+    <child link="plate_ry"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="plate_ry" type="revolute">
+    <parent link="plate_ry"/>
+    <child link="plate_rz"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <joint name="plate_rz" type="revolute">
+    <parent link="plate_rz"/>
+    <child link="plate"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="plate_x" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_x"/>
+    <joint name="plate_x"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_y" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_y"/>
+    <joint name="plate_y"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_z" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_z"/>
+    <joint name="plate_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_rx" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_rx"/>
+    <joint name="plate_rx"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_ry" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_ry"/>
+    <joint name="plate_ry"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_rz" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_rz"/>
+    <joint name="plate_rz"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+</robot>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="plate">
+  <link name="plate">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.37"/>
+      <inertia ixx="0.00048818" ixy="0" ixz="0" iyy="0.00048818" iyz="0" izz="0.00097241"/>
+    </inertial>
+    <collision name="collision">
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+      <geometry>
+        <cylinder radius="0.0725" length="0.008"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
+        <drake:mesh_resolution_hint value="0.06"/>
+        <drake:mu_dynamic value="0.4"/>
+        <drake:mu_static value="0.4"/>
+      </drake:proximity_properties>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+      <material name="silver">
+        <color rgba="0.75 0.75 0.75 0.99"/>
+      </material>
+      <geometry>
+        <cylinder radius="0.0725" length="0.008"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>

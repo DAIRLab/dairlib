@@ -29,6 +29,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:franka_sim_params",
         "//common",
@@ -50,6 +51,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:osc_params",
         "//common",
@@ -75,6 +77,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:osc_params",
         "//common",
@@ -142,6 +145,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//common/parameters:franka_drake_lcm_driver_channels",
         "//common",
@@ -167,6 +171,7 @@ cc_binary(
     ],
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//common/parameters:franka_drake_lcm_driver_channels",
         "//common",
@@ -182,8 +187,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "franka_c3_controller",
-    srcs = ["franka_c3_controller.cc"],
+    name = "franka_sampling_c3_controller",
+    srcs = ["franka_sampling_c3_controller.cc"],
     data = [
         ":urdfs",
         "@drake_models//:franka_description",
@@ -193,10 +198,6 @@ cc_binary(
     deps = [
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//examples/sampling_c3/parameter_headers:goal_params",
-        "//examples/sampling_c3/parameter_headers:sampling_params",
-        "//examples/sampling_c3/parameter_headers:reposition_params",
-        "//examples/sampling_c3/parameter_headers:progress_params",
         "//common",
         "//systems:franka_kinematics",
         "//systems/senders:sample_buffer_sender",

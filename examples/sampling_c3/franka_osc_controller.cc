@@ -5,6 +5,7 @@
 
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/osc_params.h"
 #include "systems/controllers/osc/end_effector_force.h"
@@ -54,40 +55,33 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-// TODO @bibit parameter overhaul
-DEFINE_string(
-    osqp_settings,
-    "examples/sampling_c3/shared_parameters/franka_osc_qp_settings.yaml",
-    "Filepath containing qp settings");
-DEFINE_string(
-    controller_parameters,
-    "examples/sampling_c3/shared_parameters/osc_params.yaml",
-    "Controller settings such as channels.");
-DEFINE_string(
-    lcm_channels,
-    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-    "Filepath containing lcm channels");
+DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "jacktoy",
-              "Name for the demo, used when building filepaths for output.");
+              "Demo within sampling_c3; used to find controller params file");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
-  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   // Load parameters.
-  drake::yaml::LoadYamlOptions yaml_options;
-  yaml_options.allow_yaml_with_no_cpp = true;
+  std::string controller_params_path = "examples/sampling_c3/" +
+    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  SamplingC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          controller_params_path);
   SamplingC3OSCParams osc_params =
       drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
-          "examples/sampling_c3/shared_parameters/osc_params.yaml");
+          controller_params.osc_params_file);
+  std::string lcm_channels_file = FLAGS_is_simulation ?
+      controller_params.lcm_channels_simulation_file :
+      controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings))
+          FindResourceOrThrow(controller_params.osc_qp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // Create a Franka-only plant.
@@ -203,12 +197,9 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
 
   if (osc_params.cancel_gravity_compensation) {
-    // TODO @bibit don't hardcode parameter filepaths
-    if (FLAGS_lcm_channels ==
-        base_path + "shared_parameters/lcm_channels_simulation.yaml") {
-      std::cerr << "In simulation, OSC needs to have "
-                   "cancel_gravity_compensation: false"
-                << std::endl;
+    if (FLAGS_is_simulation) {
+      std::cerr<<"Sim OSC needs cancel_gravity_compensation: false"<<std::endl;
+      return -1;
       return -1;
     }
     auto gravity_compensator =
@@ -219,11 +210,8 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
-    if (FLAGS_lcm_channels ==
-        base_path + "shared_parameters/lcm_channels_hardware.yaml") {
-      std::cerr
-          << "In hardware, OSC needs to have cancel_gravity_compensation: true"
-          << std::endl;
+    if (!FLAGS_is_simulation) {
+      std::cerr<<"HW OSC needs cancel_gravity_compensation: true"<<std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),

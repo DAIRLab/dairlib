@@ -15,11 +15,6 @@
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
-#include "examples/sampling_c3/parameter_headers/goal_params.h"
-#include "examples/sampling_c3/parameter_headers/sampling_params.h"
-#include "examples/sampling_c3/parameter_headers/reposition_params.h"
-#include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -53,43 +48,28 @@ using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using std::vector;
 
-// TODO: @bibit parameter overhaul, don't hardcode yaml filepaths
-DEFINE_string(
-    lcm_channels,
-    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-    "Filepath containing lcm channels");
+
+DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "jacktoy",
-              "Name for the demo, used when building filepaths for output.");
+              "Demo within sampling_c3; used to find controller params file");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
-  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   // Load parameters.
-  drake::yaml::LoadYamlOptions yaml_options;
-  yaml_options.allow_yaml_with_no_cpp = true;
+  std::string controller_params_path = "examples/sampling_c3/" +
+    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
-          base_path + "parameters/sampling_c3_controller_params.yaml");
-  SamplingC3GoalParams goal_params =
-      drake::yaml::LoadYamlFile<SamplingC3GoalParams>(
-          base_path + "parameters/goal_params.yaml");
+          controller_params_path);
+  std::string lcm_channels_file = FLAGS_is_simulation ?
+      controller_params.lcm_channels_simulation_file :
+      controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
-  SamplingC3Options sampling_c3_options =
-      drake::yaml::LoadYamlFile<SamplingC3Options>(
-          base_path + "parameters/sampling_c3_options.yaml");
-  SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
-      controller_params.sampling_params_file);
-  RepositionParams reposition_params =
-      drake::yaml::LoadYamlFile<RepositionParams>(
-          controller_params.reposition_params_file);
-  SamplingC3ProgressParams progress_params =
-      drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
-          controller_params.progress_params_file);
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
@@ -107,7 +87,8 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model);
+  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model,
+                      controller_params.include_end_effector_orientation);
   plant_lcs.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
@@ -124,10 +105,20 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
+  // All demos include the end effector and ground.
+  drake::geometry::GeometryId ee_contact_points =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("end_effector_simple"))[0];
+  drake::geometry::GeometryId ground_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground"))[0];
+  contact_geoms["EE"] = ee_contact_points;
+  contact_geoms["GROUND"] = ground_geoms;
+  std::vector<SortedPair<GeometryId>> ee_ground_contact{
+      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
+  contact_pairs.push_back(ee_ground_contact);
+
   if (FLAGS_demo_name == "jacktoy") {
-    drake::geometry::GeometryId ee_contact_points =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("end_effector_simple"))[0];
     drake::geometry::GeometryId capsule1_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("capsule_1"))[0];
@@ -157,11 +148,6 @@ int DoMain(int argc, char* argv[]) {
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("capsule_3"))[2];
 
-    drake::geometry::GeometryId ground_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("ground"))[0];
-
-    contact_geoms["EE"] = ee_contact_points;
     contact_geoms["CAPSULE_1"] = capsule1_geoms;
     contact_geoms["CAPSULE_2"] = capsule2_geoms;
     contact_geoms["CAPSULE_3"] = capsule3_geoms;
@@ -171,9 +157,8 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["CAPSULE_2_SPHERE_2"] = capsule2_sphere2_geoms;
     contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
     contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
-    contact_geoms["GROUND"] = ground_geoms;
 
-    // EE-object contact pairs first.
+    // EE-object contact pairs second.
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
@@ -181,13 +166,7 @@ int DoMain(int argc, char* argv[]) {
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
-
     contact_pairs.push_back(ee_contact_pairs);
-
-    // EE-ground contact pair second.
-      std::vector<SortedPair<GeometryId>> ee_ground_contact{
-          SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-      contact_pairs.push_back(ee_ground_contact);
 
     // Object-ground contact pairs third.
     std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
@@ -203,7 +182,6 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
-
     contact_pairs.push_back(ground_object_contact_pairs);
   }
   else {
@@ -239,25 +217,26 @@ int DoMain(int argc, char* argv[]) {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
   auto* control_target = builder.AddSystem(std::move(target_generator));
-  // TODO @bibit this list just needs to exclude ball_rolling, as demos are
-  // added.
+  // TODO:  this list just needs to exclude ball_rolling, as demos are added.
   const std::vector<std::string> demos_with_target_params = {"jacktoy"};
   if (std::find(demos_with_target_params.begin(),
                 demos_with_target_params.end(),
                 FLAGS_demo_name) != demos_with_target_params.end()) {
     control_target->SetRemoteControlParameters(
-        goal_params.goal_mode, goal_params.fixed_target_position,
-        goal_params.fixed_target_orientation,
-        goal_params.lookahead_step_size,
-        goal_params.lookahead_angle, goal_params.angle_hysteresis,
-        goal_params.angle_err_to_vel_factor,
-        goal_params.ee_target_z_offset_above_object,
-        goal_params.position_success_threshold,
-        goal_params.orientation_success_threshold,
-        goal_params.random_goal_x_limits,
-        goal_params.random_goal_y_limits,
-        goal_params.random_goal_radius_limits,
-        goal_params.resting_object_height);
+        controller_params.goal_params.goal_mode,
+        controller_params.goal_params.fixed_target_position,
+        controller_params.goal_params.fixed_target_orientation,
+        controller_params.goal_params.lookahead_step_size,
+        controller_params.goal_params.lookahead_angle,
+        controller_params.goal_params.angle_hysteresis,
+        controller_params.goal_params.angle_err_to_vel_factor,
+        controller_params.goal_params.ee_target_z_offset_above_object,
+        controller_params.goal_params.position_success_threshold,
+        controller_params.goal_params.orientation_success_threshold,
+        controller_params.goal_params.random_goal_x_limits,
+        controller_params.goal_params.random_goal_y_limits,
+        controller_params.goal_params.random_goal_radius_limits,
+        controller_params.goal_params.resting_object_height);
   }
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
@@ -300,13 +279,7 @@ int DoMain(int argc, char* argv[]) {
   // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
-      plant_lcs_context_ad.get(), contact_pairs, controller_params,
-      sampling_c3_options, sampling_params, reposition_params, progress_params);
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osqp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-  controller->SetOsqpSolverOptions(solver_options);
+      plant_lcs_context_ad.get(), contact_pairs, controller_params);
 
   // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(
@@ -367,7 +340,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Sample-related senders/publishers.
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
-      sampling_params.N_sample_buffer, plant_lcs.num_positions());
+      controller_params.sampling_params.N_sample_buffer,
+      plant_lcs.num_positions());
   auto sample_buffer_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
           lcm_channel_params.sample_buffer_channel, &lcm,

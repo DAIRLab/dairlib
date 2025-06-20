@@ -74,33 +74,29 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
 
-// TODO @bibit don't hardcode parameter filepaths
-// TODO @bibit this whole file needs an additional pass
-DEFINE_string(
-    lcm_channels,
-    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-    "Filepath containing lcm channels");
+DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
-  // TODO @bibit why are all of these parameters needed?
-  SamplingC3VisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<SamplingC3VisualizerParams>(
-          base_path + "parameters/vis_params.yaml");
+  // Load parameters.
+  std::string controller_params_path = "examples/sampling_c3/" +
+    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
-          base_path + "parameters/sampling_c3_controller_params.yaml");
-  SamplingC3Options sampling_c3_options =
-      drake::yaml::LoadYamlFile<SamplingC3Options>(
-          base_path + "parameters/sampling_c3_options.yaml");
-  SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
-      controller_params.sampling_params_file);
+          controller_params_path);
+  SamplingC3VisualizerParams vis_params =
+      drake::yaml::LoadYamlFile<SamplingC3VisualizerParams>(
+          controller_params.vis_params_file);
+  SamplingC3Options sampling_c3_options = controller_params.sampling_c3_options;
+  SamplingParams sampling_params = controller_params.sampling_params;
+  std::string lcm_channels_file = FLAGS_is_simulation ?
+      controller_params.lcm_channels_simulation_file :
+      controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -237,16 +233,13 @@ int do_main(int argc, char* argv[]) {
   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
   if (vis_params.visualize_c3_workspace) {
-    // Extracting limits and calculating workspace dimensions based on
-    // workspace_limits
+    // Note:  There are also robot radius limits which are not visualized.
     double width = sampling_c3_options.workspace_limits[0][4] -
                    sampling_c3_options.workspace_limits[0][3];   // x
     double depth = sampling_c3_options.workspace_limits[1][4] -
                    sampling_c3_options.workspace_limits[1][3];   // y
     double height = sampling_c3_options.workspace_limits[2][4] -
                     sampling_c3_options.workspace_limits[2][3];  // z
-
-    // Calculate the center of the workspace based on the limits
     Vector3d workspace_center = {
         0.5 * (sampling_c3_options.workspace_limits[0][4] +
                sampling_c3_options.workspace_limits[0][3]),
@@ -410,12 +403,6 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_sample_locations) {
-    // This drawer object is used to visualize the sample locations.
-    // This isn't designed to be used for visualizing sample locations but we
-    // use it for that purpose since the sample_location_sender sends out an
-    // lcmt_timestamped_traj with a trajectory by the name sample_locations.
-    // The last argument "end_effector_orientation_target" is a dummy argument
-    // here that is not used.
     int from_buffer = 0;
     if (sampling_params.consider_best_buffer_sample_when_leaving_c3) {
       from_buffer = 1;
@@ -423,7 +410,7 @@ int do_main(int argc, char* argv[]) {
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,
         FindResourceOrThrow(vis_params.ee_vis_model),
-        "sample_locations", "end_effector_orientation_target", "samples",
+        "sample_locations", "unused_orientation_name", "samples",
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
                  sampling_params.num_additional_samples_repos + 1) +
             1,
@@ -542,13 +529,11 @@ int do_main(int argc, char* argv[]) {
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
-  /// Set realtime rate. Otherwise, runs as fast as possible
   auto simulator =
       std::make_unique<Simulator<double>>(*diagram, std::move(context));
   simulator->set_publish_every_time_step(false);
   simulator->set_publish_at_initialization(false);
-  simulator->set_target_realtime_rate(
-      1.0);  // may need to change this to param.real_time_rate?
+  simulator->set_target_realtime_rate(1.0);
   simulator->Initialize();
 
   drake::log()->info("visualizer started");

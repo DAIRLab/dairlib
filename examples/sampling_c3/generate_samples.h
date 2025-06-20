@@ -65,8 +65,6 @@ Eigen::Vector3d RandomOnSphereSampling(
     const double& max_angle_from_vertical
 );
 
-// TODO: @bibit make the fixed sample locations in 3D to avoid needing to pass
-// in a sampling height.
 Eigen::Vector3d FixedSample(
     const Eigen::Vector3d& fixed_sample_location
 );

@@ -41,7 +41,7 @@ cc_library(
     name = "franka_sim_params_jacktoy",
     hdrs = [],
     data = [
-        "parameters/franka_sim_params.yaml",
+        "parameters/sim_params.yaml",
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:franka_sim_params",

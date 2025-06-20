@@ -30,8 +30,6 @@ static const Eigen::Vector3d kWorldToFrankaOffset = {0, 0, 0};
 static const Eigen::Vector3d kWorldToGroundOffset = kWorldToFrankaOffset +
                                                     kFrankaToGroundOffset;
 
-// static constexpr bool kIncludeEEOrientation = false; TODO @bibit include this?
-
 /// Add the Franka to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
@@ -59,9 +57,12 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param object_model the model of the object to add to the plant
+/// @param include_end_effector_orientation whether to include the end effector
+/// orientation as DOFs in the plant. True is currently unimplemented.
 void AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const std::string& object_model = "");
+    const std::string& object_model = "",
+    const bool& include_end_effector_orientation = false);
 
 }   // namespace dairlib

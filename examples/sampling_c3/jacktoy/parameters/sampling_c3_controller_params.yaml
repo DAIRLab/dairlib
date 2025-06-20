@@ -1,7 +1,17 @@
-sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.yaml
+sampling_c3_options_file: examples/sampling_c3/jacktoy/parameters/sampling_c3_options.yaml
 reposition_params_file: examples/sampling_c3/jacktoy/parameters/reposition_params.yaml
 progress_params_file: examples/sampling_c3/jacktoy/parameters/progress_params.yaml
-osqp_settings_file: examples/sampling_c3/shared_parameters/franka_c3_qp_settings.yaml
+sampling_params_file: examples/sampling_c3/jacktoy/parameters/sampling_params.yaml
+goal_params_file: examples/sampling_c3/jacktoy/parameters/goal_params.yaml
+
+sim_params_file: examples/sampling_c3/jacktoy/parameters/sim_params.yaml
+vis_params_file: examples/sampling_c3/jacktoy/parameters/vis_params.yaml
+osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
+osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
+osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
+franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
+lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
+lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 # Note:  Use capsule_1 body name as representative of the pose of the entire
 # jack model.  This works because capsule_1's origin is the same as the jack's.

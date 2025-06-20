@@ -45,7 +45,7 @@ def main(log_type, demo_name):
     )
     sim_params = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 
-        "franka_sim_params.yaml"
+        "sim_params.yaml"
     )
     goal_params = os.path.join(
         dair, "examples", "sampling_c3", demo_name, "parameters", 

@@ -64,7 +64,12 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
 void AddLCSModelsToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
-    const std::string& object_model) {
+    const std::string& object_model,
+    const bool& include_end_effector_orientation) {
+  // Cannot currently handle end effector orientation (would just require new
+  // EE simple model with orientation DOFs).
+  DRAKE_ASSERT(!include_end_effector_orientation);
+
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(kEndEffectorSimpleModel);

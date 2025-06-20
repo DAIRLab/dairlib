@@ -2,6 +2,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+#include "common/file_utils.h"
 #include "solvers/c3_options.h"
 
 

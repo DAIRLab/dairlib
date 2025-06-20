@@ -205,8 +205,8 @@ Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location) {
 //     vertical projection results in an even perimeter around the geometry.
 //  3) The side walls of the object are vertical.
 //
-// TODO: @bibit implement a more general perimeter strategy without requiring
-// the above assumptions.
+// TODO:  implement a more general perimeter strategy without requiring the
+// above assumptions.
 Eigen::Vector3d PerimeterSampling(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs,
@@ -286,7 +286,7 @@ Eigen::Vector3d PerimeterSampling(
 // kRandomOnShell:  Random on inflated 3D shell surrounding the object.  Makes a
 // light assumption that the body origin is roughly centered on its geometry.
 //
-// TODO: @bibit this strategy is largely untested.
+// TODO:  this strategy is largely untested.
 Eigen::Vector3d ShellSampling(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs,

@@ -22,6 +22,7 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
@@ -50,11 +51,7 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-// TODO @bibit parameter overhaul
-DEFINE_string(
-    lcm_channels,
-    "examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml",
-    "Filepath containing lcm channels");
+
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "jacktoy",
@@ -62,13 +59,19 @@ DEFINE_string(demo_name, "jacktoy",
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  std::string base_path = "examples/sampling_c3/" + FLAGS_demo_name + "/";
 
   // Load parameters.
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      base_path + "parameters/franka_sim_params.yaml");
+  std::string controller_params_path = "examples/sampling_c3/" +
+    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  SamplingC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          controller_params_path);
+  std::string lcm_channels_file =
+      controller_params.lcm_channels_simulation_file;
   SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(FLAGS_lcm_channels);
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
+  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+      controller_params.sim_params_file);
 
   // Build the simulation plant.
   DiagramBuilder<double> builder;

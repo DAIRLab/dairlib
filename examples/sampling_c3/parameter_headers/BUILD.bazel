@@ -27,6 +27,13 @@ cc_library(
     name = "sampling_c3_controller_params",
     hdrs = ["sampling_c3_controller_params.h"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:progress_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:goal_params",
+    ],
 )
 
 cc_library(
@@ -53,10 +60,12 @@ cc_library(
     name = "reposition_params",
     hdrs = ["reposition_params.h"],
     visibility = ["//visibility:public"],
+    deps = ["//common:file_utils"],
 )
 
 cc_library(
     name = "progress_params",
     hdrs = ["progress_params.h"],
     visibility = ["//visibility:public"],
+    deps = ["//common:file_utils"],
 )

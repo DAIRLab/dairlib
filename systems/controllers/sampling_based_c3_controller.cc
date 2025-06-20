@@ -55,21 +55,17 @@ SamplingC3Controller::SamplingC3Controller(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     SamplingC3ControllerParams controller_params,
-    SamplingC3Options sampling_c3_options,
-    SamplingParams sampling_params,
-    RepositionParams reposition_params,
-    SamplingC3ProgressParams progress_params,
     bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
-      sampling_c3_options_(std::move(sampling_c3_options)),
       controller_params_(std::move(controller_params)),
-      sampling_params_(std::move(sampling_params)),
-      reposition_params_(std::move(reposition_params)),
-      progress_params_(std::move(progress_params)),
+      sampling_c3_options_(controller_params_.sampling_c3_options),
+      sampling_params_(controller_params_.sampling_params),
+      reposition_params_(controller_params_.reposition_params),
+      progress_params_(controller_params_.progress_params),
       G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G)),
       U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U)),
       N_(sampling_c3_options_.N),
@@ -110,36 +106,36 @@ SamplingC3Controller::SamplingC3Controller(
     n_lambda_ = 2 * sampling_c3_options_.num_friction_directions *
                 sampling_c3_options_.num_contacts;
   } else {
-    std::cerr << ("Unknown or unsupported contact model") << std::endl;
+    std::cerr << ("Unknown or unsupported contact model: " +
+      sampling_c3_options_.contact_model) << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
 
-  // Creates placeholder lcs to construct base C3 problem
   // Placeholder LCS will have correct size as it's already determined by the
-  // contact model
+  // contact model.
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-    c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
-                                             C3::CostMatrices(Q_, R_, G_, U_),
-                                             x_desired_placeholder, c3_options);
+      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
+    c3_best_plan_ = std::make_unique<C3MIQP>(
+      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
+      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
+      x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(
         lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
-    c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                           C3::CostMatrices(Q_, R_, G_, U_),
-                                           x_desired_placeholder, c3_options);
-    c3_buffer_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                             C3::CostMatrices(Q_, R_, G_, U_),
-                                             x_desired_placeholder, c3_options);
+    c3_best_plan_ = std::make_unique<C3QP>(
+      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
+    c3_buffer_plan_ = std::make_unique<C3QP>(
+      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);

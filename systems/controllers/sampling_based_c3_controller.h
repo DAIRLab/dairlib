@@ -77,10 +77,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      SamplingC3ControllerParams controller_params,
-      SamplingC3Options sampling_c3_options,
-      SamplingParams sampling_params, RepositionParams reposition_params,
-      SamplingC3ProgressParams progress_params, bool verbose = false);
+      SamplingC3ControllerParams controller_params, bool verbose = false);
 
   // Input ports
   const drake::systems::InputPort<double>&
@@ -192,13 +189,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>&
   get_output_port_sample_buffer_costs() const {
     return this->get_output_port(sample_buffer_costs_port_);
-  }
-
-  // The solver options need not be done twice i.e. one for each c3 solution
-  // object.  // TODO @bibit check this
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
-    solver_options_ = options;
-    c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   }
 
  private:
@@ -368,7 +358,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   SamplingC3ControllerParams controller_params_;
   SamplingC3Options sampling_c3_options_;
   SamplingParams sampling_params_;
-  RepositionParams reposition_params_;
+  SamplingC3RepositionParams reposition_params_;
   SamplingC3ProgressParams progress_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
@@ -387,9 +377,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
 
-  /// TODO: @bibit There are many mutable class variables, which is not best
-  /// practice in the Drake systems framework.  These could be converted to
-  /// discrete state variables.
+  /// TODO:  There are many mutable class variables, which is not best practice
+  /// in the Drake systems framework.  These could be converted to discrete
+  /// state variables.
   mutable double dt_ = 0.1;
 
   mutable std::vector<Eigen::MatrixXd> Q_;

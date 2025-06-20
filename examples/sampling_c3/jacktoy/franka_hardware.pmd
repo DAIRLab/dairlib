@@ -1,6 +1,6 @@
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/franka_visualizer --demo_name=jacktoy --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/sampling_c3/franka_visualizer --is_simulation=false --demo_name=jacktoy";
         host = "sampling_c3_localhost";
     }
     cmd "xbox" {
@@ -18,12 +18,12 @@ group "operator" {
 }
 
 group "controllers (hardware)" {
-    cmd "franka_c3" {
-        exec = "bazel-bin/examples/sampling_c3/franka_c3_controller --demo_name=jacktoy --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+    cmd "sampling_c3" {
+        exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=false --demo_name=jacktoy;
         host = "sampling_c3_localhost";
     }
     cmd "franka_osc" {
-        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --demo_name=jacktoy --lcm_url=udpm://239.255.76.67:7667?ttl=1 --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=false --demo_name=jacktoy --lcm_url=udpm://239.255.76.67:7667?ttl=1;
         host = "franka_control";
     }
 }
@@ -37,7 +37,7 @@ group "debug" {
 
 group "drivers" {
     cmd "move_to_init" {
-        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --demo_name=jacktoy --lcm_channels=examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml";
+        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --is_simulation=false --demo_name=jacktoy";
         host = "franka_control";
     }
     cmd "franka_driver_out" {
@@ -56,7 +56,7 @@ group "drivers" {
 
 
 script "init_experiment" {
-    stop cmd "franka_c3";
+    stop cmd "sampling_c3";
     stop cmd "franka_osc";
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
@@ -86,7 +86,7 @@ script "start_experiment" {
     wait ms 5000;
     stop cmd "move_to_init";
     start cmd "franka_osc";
-    start cmd "franka_c3";
+    start cmd "sampling_c3";
 }
 
 script "start_operator_commands" {

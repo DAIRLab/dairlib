@@ -44,7 +44,7 @@
 // which is no longer the case.
 
 DEFINE_string(demo_name, "unkown",
-              "Name for the demo, used when building filepaths for output.");
+              "Demo within sampling_c3; used to find controller params file");
 
 // Uncomment this line to output cost information for evenly spaced samples.
 // #define DO_SAMPLE_VISUALIZATIONS
@@ -118,6 +118,8 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "  in microseconds: " << time_into_log_in_microsecs << std::endl;
 
   // Load the recorded parameters:  (1/6) Controller parameters.
+  // TODO @bibit these need to be loaded from the stored log copy, not from the
+  // filepath in the controller params
   std::string sampling_c3_controller_params_path = log_filepath;
   std::string to_replace = "simlog-";
   std::string sampling_c3_controller_params_path_replacement =
@@ -200,7 +202,7 @@ int DoMain(int argc, char* argv[]) {
       progress_params_path + ".yaml");
 
   // (6/6) dummy reposition parameters (should not matter).
-  RepositionParams reposition_params;
+  SamplingC3RepositionParams reposition_params;
 
   // Create an instance of the LCM log handler.
   lcm::LCM lcm;
@@ -572,7 +574,8 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   AddLCSModelsToPlant(&plant_for_lcs, &scene_graph,
-                      controller_params.object_model);
+                      controller_params.object_model,
+                      controller_params.include_end_effector_orientation);
   plant_for_lcs.Finalize();
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
@@ -627,6 +630,7 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
+    // TODO @bibit contact pair ordering needs to be (ee-ground, ee-jack, jack-ground)
     //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
@@ -897,7 +901,6 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<dairlib::systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       plant_for_lcs_context_ad.get(), contact_pairs, controller_params,
-      sampling_c3_options, sampling_params, reposition_params, progress_params,
       verbose);
   auto controller_context = controller->CreateDefaultContext();
 

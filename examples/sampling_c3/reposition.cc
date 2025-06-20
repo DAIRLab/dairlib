@@ -18,7 +18,7 @@ Eigen::MatrixXd Reposition(
     const double& dt,
     const bool& is_doing_c3,
     bool& finished_reposition_flag,
-    const RepositionParams& reposition_params,
+    const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
 
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);
@@ -84,7 +84,7 @@ void RepositionStraightLine(
     Eigen::MatrixXd& knots, const int& n_q, const int& n_x, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const RepositionParams& reposition_params) {
+    const SamplingC3RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
   double travel_distance = curr_to_goal_vec.norm();
@@ -119,7 +119,7 @@ void RepositionSpline(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const RepositionParams& reposition_params,
+    const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
@@ -180,7 +180,7 @@ void RepositionSpherical(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const RepositionParams& reposition_params,
+    const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
@@ -291,7 +291,7 @@ void RepositionCircular(
     Eigen::MatrixXd& knots, const int& n_q, const int& N,
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
-    const RepositionParams& reposition_params) {
+    const SamplingC3RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d current_object_location = x_lcs.segment(n_q-3, 3);
 
@@ -408,7 +408,7 @@ void RepositionPiecewiseLinear(
     Eigen::MatrixXd& knots, const int& N, const Eigen::VectorXd& x_lcs,
     const Eigen::Vector3d& repos_target, const double& dt,
     const bool& is_doing_c3, bool& finished_reposition_flag,
-    const RepositionParams& reposition_params) {
+    const SamplingC3RepositionParams& reposition_params) {
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
 
   // Define the waypoints for the three-leg repositioning.

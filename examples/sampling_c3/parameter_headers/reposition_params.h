@@ -2,6 +2,8 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+#include "common/file_utils.h"
+
 
 /* Repositioning trajectory type options:
   0. kSpline:           move from current to target with spline that distorts
@@ -20,7 +22,7 @@ enum RepositioningTrajectoryType {
   kPiecewiseLinear
 };
 
-struct RepositionParams {
+struct SamplingC3RepositionParams {
   RepositioningTrajectoryType traj_type;
 
   /// Parameters used for multiple repositioning trajectory types.

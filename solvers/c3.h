@@ -187,7 +187,7 @@ class C3 {
   const C3Options options_;
 
  private:
-  // TODO: @bibit:  storing the LCS as a class variable makes the LCS matrices
+  // TODO:  storing the LCS as a class variable makes the LCS matrices
   // redundant.  Could consider removing LCS matrices as class variables.
   mutable LCS lcs_;
   std::unique_ptr<LCS> lcs_for_cost_;

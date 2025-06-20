@@ -7,7 +7,7 @@ group "simulations" {
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/franka_visualizer --demo_name=jacktoy";
+        exec = "bazel-bin/examples/sampling_c3/franka_visualizer --is_simulation=true --demo_name=jacktoy";
         host = "localhost";
     }
     cmd "drake-director" {
@@ -26,15 +26,15 @@ group "operator" {
 
 group "controllers" {    
     cmd "move_to_init" {
-        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --demo_name=jacktoy";
+        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --is_simulation=true --demo_name=jacktoy";
         host = "localhost";
     }
     cmd "franka_osc" {
-        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --demo_name=jacktoy";
+        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=true --demo_name=jacktoy";
         host = "localhost";
     }
-    cmd "franka_c3" {
-        exec = "bazel-bin/examples/sampling_c3/franka_c3_controller --demo_name=jacktoy";
+    cmd "sampling_c3" {
+        exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=true --demo_name=jacktoy";
         host = "localhost";
     }
 }
@@ -51,7 +51,7 @@ script "start_experiment_no_logs"{
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
-    restart cmd "franka_c3";
+    restart cmd "sampling_c3";
 }
 
 script "start_experiment_with_logs"{
@@ -59,11 +59,11 @@ script "start_experiment_with_logs"{
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;
-    restart cmd "franka_c3";
+    restart cmd "sampling_c3";
 }
 
 script "end_experiment"{
-    stop cmd "franka_c3";
+    stop cmd "sampling_c3";
     stop cmd "franka_osc";
     stop cmd "franka_sim";
     wait ms 10;

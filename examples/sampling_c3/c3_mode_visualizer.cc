@@ -1,7 +1,5 @@
 #include "examples/sampling_c3/c3_mode_visualizer.h"
 
-#include <iostream>
-
 #include "lcm/lcm_trajectory.h"
 #include "systems/framework/timestamped_vector.h"
 

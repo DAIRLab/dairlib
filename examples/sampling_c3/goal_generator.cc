@@ -3,7 +3,7 @@
 #include <math.h>
 #include <drake/common/yaml/yaml_io.h>
 
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "lcm/lcm_trajectory.h"
 
 using Eigen::VectorXd;
@@ -161,16 +161,13 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
 
 // Randomly generates final position within the specified goal limits in x/y/r.
 void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition() const {
-  std::uniform_real_distribution<double> x_dis(
-    goal_params_.random_goal_x_limits[0], goal_params_.random_goal_x_limits[1]);
-  std::uniform_real_distribution<double> y_dis(
-    goal_params_.random_goal_y_limits[0], goal_params_.random_goal_y_limits[1]);
-  double x = x_dis(rng_);
-  double y = y_dis(rng_);
+  double x, y = 0;
   while ((sqrt(x * x + y * y) > goal_params_.random_goal_radius_limits[1]) ||
-         (sqrt(x * x + y * y) < goal_params_.random_goal_radius_limits[0])) {
-    x = x_dis(rng_);
-    y = y_dis(rng_);
+  (sqrt(x * x + y * y) < goal_params_.random_goal_radius_limits[0])) {
+    double x = RandomUniform(goal_params_.random_goal_x_limits[0],
+                            goal_params_.random_goal_x_limits[1]);
+    double y = RandomUniform(goal_params_.random_goal_y_limits[0],
+                            goal_params_.random_goal_y_limits[1]);
   }
 
   target_final_object_position_ << x, y, goal_params_.resting_object_height;
@@ -182,7 +179,8 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition() const {
 void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectOrientation() const {
   const auto& valid_orientations = GetNominalOrientations();
   std::uniform_int_distribution<int> dis(0, valid_orientations.size() - 1);
-  int random_index = dis(rng_);
+  std::mt19937 rng{std::random_device{}()};
+  int random_index = dis(rng);
   Eigen::Quaterniond quat_nominal = valid_orientations.at(random_index);
 
   // Add random yaw in world frame.  Ensure at least 90 degrees away if no
@@ -196,8 +194,7 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectOrientation() const 
       target_final_object_orientation_[0], target_final_object_orientation_[1],
       target_final_object_orientation_[2], target_final_object_orientation_[3]);
   }
-  std::uniform_real_distribution<double> yaw_dis(min_yaw, max_yaw);
-  double yaw = yaw_dis(rng_);
+  double yaw = RandomUniform(min_yaw, max_yaw);
   Eigen::Quaterniond quat_world_yaw(
     Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
   Eigen::Quaterniond quat_final = quat_world_yaw * quat_nominal;

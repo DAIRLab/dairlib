@@ -2,8 +2,8 @@
 
 #include <drake/perception/point_cloud.h>
 
-#include "Eigen/Core"
-#include "Eigen/Dense"
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "drake/systems/framework/leaf_system.h"
 

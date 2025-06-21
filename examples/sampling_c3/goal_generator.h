@@ -1,17 +1,16 @@
-
 #include <vector>
-
-#include <drake/multibody/plant/multibody_plant.h>
 #include <numbers>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
-#include "Eigen/Core"
-#include "Eigen/Dense"
+#include "common/math_utils.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "systems/framework/state_vector.h"
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
 using drake::systems::BasicVector;
@@ -110,8 +109,6 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     GenerateLineTrajectoryWithLookahead(
       const Eigen::Quaterniond& quat_curr_orientation,
       const Eigen::Vector3d& obj_curr_position) const;
-
-  mutable std::mt19937 rng_{std::random_device{}()};
 
   // Input ports
   drake::systems::InputPortIndex radio_port_;

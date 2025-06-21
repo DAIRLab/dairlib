@@ -1,7 +1,7 @@
 #include <vector>
 
-#include "Eigen/Core"
-#include "Eigen/Dense"
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 

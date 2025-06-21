@@ -1,6 +1,4 @@
 #include <math.h>
-
-#include <iostream>
 #include <vector>
 
 #include <drake/common/find_resource.h>

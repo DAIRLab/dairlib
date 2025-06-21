@@ -1,15 +1,7 @@
-#include <csignal>
-#include <fstream>
-#include <iostream>
-#include <regex>
-
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
-#include <drake/multibody/parsing/parser.h>
-#include <drake/systems/primitives/multiplexer.h>
-#include <filesystem>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
@@ -39,10 +31,12 @@
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 namespace dairlib {

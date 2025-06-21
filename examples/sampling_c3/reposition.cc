@@ -8,6 +8,8 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace systems {
 
+// TODO @bibit further cleanup could require +/- z workspace limits instead of
+// sampling_c3_options
 Eigen::MatrixXd Reposition(
     const int& n_q,
     const int& n_x,

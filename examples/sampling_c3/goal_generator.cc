@@ -13,8 +13,10 @@ namespace systems {
 
 SamplingC3GoalGenerator::SamplingC3GoalGenerator(
     const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params) :
-  goal_params_(goal_params) {
+    const SamplingC3GoalParams& goal_params,
+    const std::vector<Eigen::Quaterniond>& nominal_orientations) :
+  goal_params_(goal_params),
+  nominal_orientations_(nominal_orientations) {
   // INPUT PORTS
   radio_port_ = this->DeclareAbstractInputPort(
       "lcmt_radio_out",

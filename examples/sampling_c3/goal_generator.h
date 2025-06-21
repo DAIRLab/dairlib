@@ -17,6 +17,29 @@
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewiseQuaternionSlerp;
 
+
+// Define the nominal orientations for the jack demo.
+inline const Eigen::Quaterniond kQuatAllUp{
+  0.88047623921714, 0.279848142333121, -0.36470519963100, -0.115916895959295};
+inline const Eigen::Quaterniond kQuatRedDown{
+  0.88047623921714, 0.279848142333121, 0.36470519963100, 0.115916895959295};
+inline const Eigen::Quaterniond kQuatBlueUp{
+  0.70455634261098, -0.060003000646865, 0.455768038939282, -0.5406250962371};
+inline const Eigen::Quaterniond kQuatAllDown{
+  0.455768038939282, -0.54062509623716, 0.70455634261098, -0.0600030006468661};
+inline const Eigen::Quaterniond kQuatGreenUp{
+  0.364705199631001, 0.115916895959295, 0.88047623921714, 0.279848142333121};
+inline const Eigen::Quaterniond kQuatBlueDown{
+  0.0600030006468662, 0.70455634261098, 0.5406250962371, 0.45576803893928};
+inline const Eigen::Quaterniond kQuatRedUp{
+  -0.27984814233312, 0.88047623921714, -0.115916895959295, 0.36470519963100};
+inline const Eigen::Quaterniond kQuatGreenDown{
+  -0.82047323857028, 0.424708200277866, 0.17591989660616, 0.33985114297998};
+inline const std::vector<Eigen::Quaterniond> kNominalOrientationsJack{
+  kQuatAllUp,   kQuatRedDown,  kQuatBlueUp, kQuatAllDown,
+  kQuatGreenUp, kQuatBlueDown, kQuatRedUp,  kQuatGreenDown};
+
+
 namespace dairlib {
 namespace systems {
 
@@ -24,7 +47,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
  public:
   SamplingC3GoalGenerator(
     const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params);
+    const SamplingC3GoalParams& goal_params,
+    const std::vector<Eigen::Quaterniond>& nominal_orientations);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -60,37 +84,30 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  const SamplingC3GoalParams goal_params_;
+  const std::vector<Eigen::Quaterniond>& GetNominalOrientations() const {
+    return nominal_orientations_; }
 
- protected:
-  // Purely virtual functions that have to be implemented in the derived
-  // classes.
-  virtual const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
-      const = 0;
-
-  // Base class functions used in the derived classes.
-  virtual void CalcEndEffectorTarget(
+  void CalcEndEffectorTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
-  virtual void CalcObjectTarget(
+  void CalcObjectTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
-  virtual void CalcObjectVelocityTarget(
+  void CalcObjectVelocityTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
-  virtual void OutputObjectFinalTarget(
+  void OutputObjectFinalTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
-  virtual void OutputGoalGeneratorInfo(
+  void OutputGoalGeneratorInfo(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* target) const;
-
-  virtual void SetRandomizedTargetFinalObjectPosition() const;
-  virtual void SetRandomizedTargetFinalObjectOrientation() const;
-  virtual void CycleThroughOrientationSequence() const;
+  void SetRandomizedTargetFinalObjectPosition() const;
+  void SetRandomizedTargetFinalObjectOrientation() const;
+  void CycleThroughOrientationSequence() const;
   void OnGoalReached() const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
-  GenerateLineTrajectoryWithLookahead(
+    GenerateLineTrajectoryWithLookahead(
       const Eigen::Quaterniond& quat_curr_orientation,
       const Eigen::Vector3d& obj_curr_position) const;
 
@@ -105,6 +122,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex object_final_target_port_;
   drake::systems::OutputPortIndex target_gen_info_port_;
 
+  const SamplingC3GoalParams goal_params_;
+  const std::vector<Eigen::Quaterniond> nominal_orientations_;
   mutable Eigen::VectorXd target_final_object_position_;
   mutable Eigen::VectorXd target_final_object_orientation_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
@@ -112,45 +131,13 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   mutable int orientation_index_ = -1;
 };
 
-// Derived jacktoy goal generator class.
-// Nominal quaternions for the object.
-inline const Eigen::Quaterniond kQuatAllUp{
-  0.88047623921714, 0.279848142333121, -0.36470519963100, -0.115916895959295};
-inline const Eigen::Quaterniond kQuatRedDown{
-  0.88047623921714, 0.279848142333121, 0.36470519963100, 0.115916895959295};
-inline const Eigen::Quaterniond kQuatBlueUp{
-  0.70455634261098, -0.060003000646865, 0.455768038939282, -0.5406250962371};
-inline const Eigen::Quaterniond kQuatAllDown{
-  0.455768038939282, -0.54062509623716, 0.70455634261098, -0.0600030006468661};
-inline const Eigen::Quaterniond kQuatGreenUp{
-  0.364705199631001, 0.115916895959295, 0.88047623921714, 0.279848142333121};
-inline const Eigen::Quaterniond kQuatBlueDown{
-  0.0600030006468662, 0.70455634261098, 0.5406250962371, 0.45576803893928};
-inline const Eigen::Quaterniond kQuatRedUp{
-  -0.27984814233312, 0.88047623921714, -0.115916895959295, 0.36470519963100};
-inline const Eigen::Quaterniond kQuatGreenDown{
-  -0.82047323857028, 0.424708200277866, 0.17591989660616, 0.33985114297998};
-
 class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorJacktoy(
-      const drake::multibody::MultibodyPlant<double>& object_plant,
-      const SamplingC3GoalParams& goal_params)
-      : SamplingC3GoalGenerator(object_plant, goal_params) {}
-
- protected:
-  // Override the base class function to provide the valid orientations for the
-  // jacktoy.
-  const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
-      const override {
-    return nominal_orientations_;
-  }
-
- private:
-  // Nominal orientations for the jack to be balanced on the ground.
-  const std::vector<Eigen::Quaterniond> nominal_orientations_{
-      kQuatAllUp,   kQuatRedDown,  kQuatBlueUp, kQuatAllDown,
-      kQuatGreenUp, kQuatBlueDown, kQuatRedUp,  kQuatGreenDown};
+    const drake::multibody::MultibodyPlant<double>& object_plant,
+    const SamplingC3GoalParams& goal_params) :
+      SamplingC3GoalGenerator(
+        object_plant, goal_params, kNominalOrientationsJack) {}
 };
 
 }  // namespace systems

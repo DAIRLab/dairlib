@@ -23,7 +23,8 @@ namespace systems {
 class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
  public:
   SamplingC3GoalGenerator(
-    const drake::multibody::MultibodyPlant<double>& object_plant);
+    const drake::multibody::MultibodyPlant<double>& object_plant,
+    const SamplingC3GoalParams& goal_params);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -58,21 +59,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(target_gen_info_port_);
   }
 
-  void SetRemoteControlParameters(
-      const GoalMode& goal_mode,
-      const Eigen::VectorXd& target_object_position,
-      const Eigen::VectorXd& target_object_orientation,
-      const double& lookahead_step_size,
-      const double& lookahead_angle,
-      const double& angle_hysteresis,
-      const double& angle_err_to_vel_factor,
-      const double& ee_target_z_offset_above_object,
-      const double& position_success_threshold,
-      const double& orientation_success_threshold,
-      const Eigen::VectorXd& random_goal_x_limits,
-      const Eigen::VectorXd& random_goal_y_limits,
-      const Eigen::VectorXd& random_goal_radius_limits,
-      const double& resting_object_height);
+ private:
+  const SamplingC3GoalParams goal_params_;
 
  protected:
   // Purely virtual functions that have to be implemented in the derived
@@ -80,8 +68,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   virtual const std::vector<Eigen::Quaterniond>& GetNominalOrientations()
       const = 0;
 
-  // These are the base class functions that will be used in the derived
-  // classes.
+  // Base class functions used in the derived classes.
   virtual void CalcEndEffectorTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
@@ -118,61 +105,38 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex object_final_target_port_;
   drake::systems::OutputPortIndex target_gen_info_port_;
 
-  // Parameters for the target generator.
   mutable Eigen::VectorXd target_final_object_position_;
   mutable Eigen::VectorXd target_final_object_orientation_;
-  double lookahead_step_size_;
-  double lookahead_angle_;
-  double angle_hysteresis_;
-  double angle_err_to_vel_factor_;
-  double ee_target_z_offset_above_object_;
-  double position_success_threshold_;
-  double orientation_success_threshold_;
-  Eigen::VectorXd random_goal_x_limits_;
-  Eigen::VectorXd random_goal_y_limits_;
-  Eigen::VectorXd random_goal_radius_limits_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
-  double resting_object_height_;
-
-  GoalMode goal_mode_;
-
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;
 };
 
-// Derived jacktoy target generator class.
-// This class will be used to generate targets for the jacktoy.
+// Derived jacktoy goal generator class.
 // Nominal quaternions for the object.
-inline const Eigen::Quaterniond kQUAT_ALL_UP{
-    0.8804762392171493, 0.27984814233312133, -0.3647051996310009,
-    -0.11591689595929514};
-inline const Eigen::Quaterniond kQUAT_RED_DOWN{
-    0.8804762392171495, 0.27984814233312133, 0.3647051996310008,
-    0.11591689595929511};
-inline const Eigen::Quaterniond kQUAT_BLUE_UP{
-    0.7045563426109883, -0.06000300064686593, 0.45576803893928247,
-    -0.540625096237162};
-inline const Eigen::Quaterniond kQUAT_ALL_DOWN{
-    0.45576803893928264, -0.5406250962371619, 0.7045563426109882,
-    -0.060003000646866145};
-inline const Eigen::Quaterniond kQUAT_GREEN_UP{
-    0.36470519963100106, 0.11591689595929516, 0.8804762392171492,
-    0.27984814233312133};
-inline const Eigen::Quaterniond kQUAT_BLUE_DOWN{
-    0.060003000646866235, 0.7045563426109882, 0.540625096237162,
-    0.4557680389392827};
-inline const Eigen::Quaterniond kQUAT_RED_UP{
-    -0.2798481423331213, 0.8804762392171495, -0.11591689595929505,
-    0.3647051996310012};
-inline const Eigen::Quaterniond kQUAT_GREEN_DOWN{
-    -0.8204732385702831, 0.42470820027786693, 0.1759198966061614,
-    0.3398511429799875};
+inline const Eigen::Quaterniond kQuatAllUp{
+  0.88047623921714, 0.279848142333121, -0.36470519963100, -0.115916895959295};
+inline const Eigen::Quaterniond kQuatRedDown{
+  0.88047623921714, 0.279848142333121, 0.36470519963100, 0.115916895959295};
+inline const Eigen::Quaterniond kQuatBlueUp{
+  0.70455634261098, -0.060003000646865, 0.455768038939282, -0.5406250962371};
+inline const Eigen::Quaterniond kQuatAllDown{
+  0.455768038939282, -0.54062509623716, 0.70455634261098, -0.0600030006468661};
+inline const Eigen::Quaterniond kQuatGreenUp{
+  0.364705199631001, 0.115916895959295, 0.88047623921714, 0.279848142333121};
+inline const Eigen::Quaterniond kQuatBlueDown{
+  0.0600030006468662, 0.70455634261098, 0.5406250962371, 0.45576803893928};
+inline const Eigen::Quaterniond kQuatRedUp{
+  -0.27984814233312, 0.88047623921714, -0.115916895959295, 0.36470519963100};
+inline const Eigen::Quaterniond kQuatGreenDown{
+  -0.82047323857028, 0.424708200277866, 0.17591989660616, 0.33985114297998};
 
 class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorJacktoy(
-      const drake::multibody::MultibodyPlant<double>& object_plant)
-      : SamplingC3GoalGenerator(object_plant) {}
+      const drake::multibody::MultibodyPlant<double>& object_plant,
+      const SamplingC3GoalParams& goal_params)
+      : SamplingC3GoalGenerator(object_plant, goal_params) {}
 
  protected:
   // Override the base class function to provide the valid orientations for the
@@ -185,8 +149,8 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  private:
   // Nominal orientations for the jack to be balanced on the ground.
   const std::vector<Eigen::Quaterniond> nominal_orientations_{
-      kQUAT_ALL_UP,   kQUAT_RED_DOWN,  kQUAT_BLUE_UP, kQUAT_ALL_DOWN,
-      kQUAT_GREEN_UP, kQUAT_BLUE_DOWN, kQUAT_RED_UP,  kQUAT_GREEN_DOWN};
+      kQuatAllUp,   kQuatRedDown,  kQuatBlueUp, kQuatAllDown,
+      kQuatGreenUp, kQuatBlueDown, kQuatRedUp,  kQuatGreenDown};
 };
 
 }  // namespace systems

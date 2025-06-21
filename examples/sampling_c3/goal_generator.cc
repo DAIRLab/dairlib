@@ -12,7 +12,9 @@ namespace dairlib {
 namespace systems {
 
 SamplingC3GoalGenerator::SamplingC3GoalGenerator(
-    const drake::multibody::MultibodyPlant<double>& object_plant) {
+    const drake::multibody::MultibodyPlant<double>& object_plant,
+    const SamplingC3GoalParams& goal_params) :
+  goal_params_(goal_params) {
   // INPUT PORTS
   radio_port_ = this->DeclareAbstractInputPort(
       "lcmt_radio_out",
@@ -50,38 +52,10 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
       dairlib::lcmt_timestamped_saved_traj(),
       &SamplingC3GoalGenerator::OutputGoalGeneratorInfo)
     .get_index();
-}
 
-void SamplingC3GoalGenerator::SetRemoteControlParameters(
-    const GoalMode& goal_mode,
-    const Eigen::VectorXd& target_object_position,
-    const Eigen::VectorXd& target_object_orientation,
-    const double& lookahead_step_size,
-    const double& lookahead_angle,
-    const double& angle_hysteresis,
-    const double& angle_err_to_vel_factor,
-    const double& ee_target_z_offset_above_object,
-    const double& position_success_threshold,
-    const double& orientation_success_threshold,
-    const Eigen::VectorXd& random_goal_x_limits,
-    const Eigen::VectorXd& random_goal_y_limits,
-    const Eigen::VectorXd& random_goal_radius_limits,
-    const double& resting_object_height)
-{
-  goal_mode_ = goal_mode;
-  target_final_object_position_ = target_object_position;
-  target_final_object_orientation_ = target_object_orientation;
-  lookahead_step_size_ = lookahead_step_size;
-  lookahead_angle_ = lookahead_angle;
-  angle_hysteresis_ = angle_hysteresis;
-  angle_err_to_vel_factor_ = angle_err_to_vel_factor;
-  ee_target_z_offset_above_object_ = ee_target_z_offset_above_object;
-  position_success_threshold_ = position_success_threshold;
-  orientation_success_threshold_ = orientation_success_threshold;
-  random_goal_x_limits_ = random_goal_x_limits;
-  random_goal_y_limits_ = random_goal_y_limits;
-  random_goal_radius_limits_ = random_goal_radius_limits;
-  resting_object_height_ = resting_object_height;
+  // Start with the fixed goal from the goal params.
+  target_final_object_position_ = goal_params_.fixed_target_position;
+  target_final_object_orientation_ = goal_params_.fixed_target_orientation;
 }
 
 // Fixes the EE target to be a fixed offset above the object.
@@ -92,7 +66,7 @@ void SamplingC3GoalGenerator::CalcEndEffectorTarget(
     (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
   VectorXd end_effector_position = object_state->GetPositions().tail(3);
-  end_effector_position[2] += ee_target_z_offset_above_object_;
+  end_effector_position[2] += goal_params_.ee_target_z_offset_above_object;
   target->SetFromVector(end_effector_position);
 }
 
@@ -119,8 +93,8 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
                                            curr_quat.inverse());
   double object_angular_error = angle_axis_diff.angle();
 
-  if ((object_position_error < position_success_threshold_) &&
-      (object_angular_error < orientation_success_threshold_)) {
+  if ((object_position_error < goal_params_.position_success_threshold) &&
+      (object_angular_error < goal_params_.orientation_success_threshold)) {
     std::cout << "\nMet pose goal!\n" << std::endl;
     OnGoalReached();
   }
@@ -156,7 +130,7 @@ void SamplingC3GoalGenerator::CalcObjectVelocityTarget(
   auto orientation_trajectory =
     PiecewiseQuaternionSlerp<double>({0, 1}, {y_quat, y_quat_des});
   double lookahead_fraction =
-    std::min(lookahead_angle_ / angle_axis_diff.angle(), 1.0);
+    std::min(goal_params_.lookahead_angle / angle_axis_diff.angle(), 1.0);
   Eigen::MatrixXd y_quat_lookahead =
     orientation_trajectory.value(lookahead_fraction);
   Eigen::Quaterniond y_quat_lookahead_quat(
@@ -167,7 +141,7 @@ void SamplingC3GoalGenerator::CalcObjectVelocityTarget(
                                                         y_quat.inverse());
   VectorXd angle_error = angle_axis_diff_to_lookahead.angle() *
                          angle_axis_diff_to_lookahead.axis();
-  angle_error *= angle_err_to_vel_factor_;
+  angle_error *= goal_params_.angle_err_to_vel_factor;
 
   VectorXd target_obj_velocity = VectorXd::Zero(6);
   target_obj_velocity << angle_error, VectorXd::Zero(3);
@@ -185,20 +159,19 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
 
 // Randomly generates final position within the specified goal limits in x/y/r.
 void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition() const {
-  std::uniform_real_distribution<double> x_dis(random_goal_x_limits_[0],
-                                               random_goal_x_limits_[1]);
-  std::uniform_real_distribution<double> y_dis(random_goal_y_limits_[0],
-                                               random_goal_y_limits_[1]);
+  std::uniform_real_distribution<double> x_dis(
+    goal_params_.random_goal_x_limits[0], goal_params_.random_goal_x_limits[1]);
+  std::uniform_real_distribution<double> y_dis(
+    goal_params_.random_goal_y_limits[0], goal_params_.random_goal_y_limits[1]);
   double x = x_dis(rng_);
   double y = y_dis(rng_);
-  while ((sqrt(x * x + y * y) > random_goal_radius_limits_[1]) ||
-         (sqrt(x * x + y * y) < random_goal_radius_limits_[0])) {
+  while ((sqrt(x * x + y * y) > goal_params_.random_goal_radius_limits[1]) ||
+         (sqrt(x * x + y * y) < goal_params_.random_goal_radius_limits[0])) {
     x = x_dis(rng_);
     y = y_dis(rng_);
   }
 
-  Eigen::VectorXd target_final_object_position(3);
-  target_final_object_position_ << x, y, resting_object_height_;
+  target_final_object_position_ << x, y, goal_params_.resting_object_height;
 }
 
 // Randomly generates final orientation from the set of valid orientations plus
@@ -265,10 +238,10 @@ void SamplingC3GoalGenerator::OutputGoalGeneratorInfo(
 
 void SamplingC3GoalGenerator::OnGoalReached() const {
   // Reset the target object orientation and position.
-  if (goal_mode_ == GoalMode::kRandom) {
+  if (goal_params_.goal_mode == GoalMode::kRandom) {
     SetRandomizedTargetFinalObjectPosition();
     SetRandomizedTargetFinalObjectOrientation();
-  } else if (goal_mode_ == GoalMode::kOrientationSequence) {
+  } else if (goal_params_.goal_mode == GoalMode::kOrientationSequence) {
     // Set the next orientation in the sequence.
     CycleThroughOrientationSequence();
   } else {
@@ -290,7 +263,8 @@ SamplingC3GoalGenerator::GenerateLineTrajectoryWithLookahead(
 
   Eigen::Vector3d distance_vector = end_point - start_point;
   Eigen::Vector3d unit_vector = distance_vector.normalized();
-  double step_size = std::min(lookahead_step_size_, distance_vector.norm());
+  double step_size = std::min(goal_params_.lookahead_step_size,
+                              distance_vector.norm());
   target_obj_position = start_point + step_size * unit_vector;
 
   // Second handle orientation lookahead.
@@ -304,14 +278,14 @@ SamplingC3GoalGenerator::GenerateLineTrajectoryWithLookahead(
 
   // Enforce consistency near 180 degrees.
   if ((axis.dot(last_rotation_axis_) < 0) &&
-      (M_PI - angle < angle_hysteresis_)) {
+      (M_PI - angle < goal_params_.angle_hysteresis)) {
     angle = 2 * M_PI - angle;
     axis = -axis;
   }
   last_rotation_axis_ = axis;
 
   // Enforce the lookahead.
-  angle = std::min(angle, lookahead_angle_);
+  angle = std::min(angle, goal_params_.lookahead_angle);
 
   // Apply the rotation.
   Eigen::AngleAxis<double> angle_axis_relative(angle, axis);

@@ -212,32 +212,12 @@ int DoMain(int argc, char* argv[]) {
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
-        std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(plant_object);
+        std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
+            plant_object, controller_params.goal_params);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
   auto* control_target = builder.AddSystem(std::move(target_generator));
-  // TODO:  this list just needs to exclude ball_rolling, as demos are added.
-  const std::vector<std::string> demos_with_target_params = {"jacktoy"};
-  if (std::find(demos_with_target_params.begin(),
-                demos_with_target_params.end(),
-                FLAGS_demo_name) != demos_with_target_params.end()) {
-    control_target->SetRemoteControlParameters(
-        controller_params.goal_params.goal_mode,
-        controller_params.goal_params.fixed_target_position,
-        controller_params.goal_params.fixed_target_orientation,
-        controller_params.goal_params.lookahead_step_size,
-        controller_params.goal_params.lookahead_angle,
-        controller_params.goal_params.angle_hysteresis,
-        controller_params.goal_params.angle_err_to_vel_factor,
-        controller_params.goal_params.ee_target_z_offset_above_object,
-        controller_params.goal_params.position_success_threshold,
-        controller_params.goal_params.orientation_success_threshold,
-        controller_params.goal_params.random_goal_x_limits,
-        controller_params.goal_params.random_goal_y_limits,
-        controller_params.goal_params.random_goal_radius_limits,
-        controller_params.goal_params.resting_object_height);
-  }
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
   // velocities (6).

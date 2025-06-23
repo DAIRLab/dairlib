@@ -3,17 +3,19 @@
 #include <string>
 #include <vector>
 
+#include <c3/core/c3_options.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/c3_options.h"
 
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 /// Outputs a lcmt_timestamped_saved_traj
@@ -21,7 +23,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit C3TrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      C3Options c3_options);
+      c3::LCSOptions c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);
@@ -54,7 +56,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex object_trajectory_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  C3Options c3_options_;
+  c3::LCSOptions options_;
 
   bool publish_end_effector_orientation_ = false;
 
@@ -69,4 +71,6 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
 };
 
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

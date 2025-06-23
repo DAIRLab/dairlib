@@ -2,15 +2,18 @@
 
 #include <utility>
 
+#include <c3/systems/framework/c3_output.h>
+#include <c3/multibody/lcs_factory.h>
+
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/plate-balancing/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_output.h"
-#include "solvers/lcs.h"
 
-namespace dairlib {
-
+using c3::multibody::LCSFactory;
+using c3::systems::C3Output;
+using c3::LCSOptions;
+using dairlib::systems::TimestampedVector;
 using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -18,27 +21,21 @@ using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
-using solvers::LCS;
-using systems::TimestampedVector;
 
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
-    : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
+    const drake::multibody::MultibodyPlant<double>& plant, LCSOptions options)
+    : plant_(plant), options_(std::move(options)), N_(options.N) {
   this->set_name("c3_trajectory_generator");
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  } else if (c3_options_.contact_model == "anitescu") {
-    n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  }
+  n_lambda_ = LCSFactory::GetNumContactVariables(options);
   n_u_ = plant_.num_actuators();
 
   c3_solution_port_ =
@@ -151,4 +148,6 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
 }
 
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

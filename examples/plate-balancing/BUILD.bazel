@@ -62,6 +62,10 @@ cc_binary(
         ":urdfs",
         "@drake_models//:franka_description",
     ],
+    copts = [
+        "-Iexternal",
+        "-Wno-sign-compare",
+    ],
     deps = [
         ":parameters",
         "//common",
@@ -70,12 +74,13 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
-        "//systems/controllers:c3_controller",
-        "//systems/controllers:lcs_factory_system",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives:radio_parser",
         "//systems/trajectory_optimization:c3_output_systems",
+        "@c3//core:c3",
+        "@c3//core:options",
+        "@c3//systems:systems",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -138,6 +143,7 @@ cc_library(
         "parameters/franka_osc_controller_params.h",
         "parameters/franka_sim_params.h",
         "parameters/franka_sim_scene_params.h",
+        "parameters/plate_balancing_c3_controller_options.h"
     ],
     data = glob([
         "*yaml",

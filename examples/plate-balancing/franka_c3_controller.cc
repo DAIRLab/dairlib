@@ -1,6 +1,11 @@
 
+#include <c3/core/c3.h>
+#include <c3/core/solver_options_io.h>
+#include <c3/systems/c3_controller.h>
+#include <c3/systems/lcs_factory_system.h>
 #include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
+#include <drake/common/text_logging.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
@@ -12,23 +17,18 @@
 #include "examples/plate-balancing/parameters/franka_c3_controller_params.h"
 #include "examples/plate-balancing/parameters/franka_c3_scene_params.h"
 #include "examples/plate-balancing/parameters/franka_lcm_channels.h"
+#include "examples/plate-balancing/parameters/plate_balancing_c3_controller_options.h"
 #include "examples/plate-balancing/systems/c3_state_sender.h"
 #include "examples/plate-balancing/systems/c3_trajectory_generator.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
-#include "systems/controllers/c3/lcs_factory_system.h"
-#include "systems/controllers/c3/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
 
-namespace dairlib {
-
-using dairlib::solvers::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
@@ -44,16 +44,90 @@ using Eigen::MatrixXd;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
 
-DEFINE_string(controller_settings,
-              "examples/plate-balancing/parameters/franka_c3_controller_params.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
-DEFINE_string(lcm_channels,
-              "examples/plate-balancing/parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
+using c3::C3;
+using c3::ConstraintVariable;
+using c3::SolverOptionsFromYaml;
+using c3::systems::C3Controller;
+using c3::systems::LCSFactorySystem;
+
+using dairlib::multibody::MakeNameToPositionsMap;
+using dairlib::multibody::MakeNameToVelocitiesMap;
+using dairlib::systems::FrankaKinematics;
+using dairlib::systems::ObjectStateReceiver;
+using dairlib::systems::RadioToVector;
+using dairlib::systems::RobotOutputReceiver;
+using dairlib::systems::PlateBalancingTargetGenerator;
+using dairlib::systems::LcmDrivenLoop;
+using dairlib::systems::C3StateSender;
+using dairlib::systems::C3OutputSender;
+
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
+
+DEFINE_string(
+    controller_settings,
+    "examples/plate-balancing/parameters/franka_c3_controller_params.yaml",
+    "Controller settings such as channels. Attempting to minimize "
+    "number of gflags");
+DEFINE_string(
+    lcm_channels,
+    "examples/plate-balancing/parameters/lcm_channels_simulation.yaml",
+    "Filepath containing lcm channels");
+
+C3Controller* AddC3ControllerToBuilder(
+    DiagramBuilder<double>& builder, MultibodyPlant<double>& plant_for_lcs,
+    PlateBalancingC3ControllerOptions& controller_options) {
+  // Get state and input dimensions from the plant.
+  int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
+  int n_u = plant_for_lcs.num_actuators();
+
+  // Create cost matrices based on C3 options.
+  auto cost = C3::CreateCostMatricesFromC3Options(controller_options,
+                                                  controller_options.N);
+
+  // Add the C3 controller to the builder.
+  auto controller =
+      builder.AddSystem<C3Controller>(plant_for_lcs, cost, controller_options);
+
+  // Add workspace limits as linear constraints.
+  if (controller_options.workspace_limits.size() > 0) {
+    // Number of constraints to be added
+    int n_c = controller_options.workspace_limits.size();
+    drake::log()->info("Adding %d Workspace constraints", n_c);
+    Eigen::MatrixXd A = MatrixXd::Zero(n_c, n_x);
+    Eigen::VectorXd lb = VectorXd::Zero(n_c);
+    Eigen::VectorXd ub = VectorXd::Zero(n_c);
+    for (int i = 0; i < n_c; ++i) {
+      A.block(i, 0, 1, 3) =
+          controller_options.workspace_limits[i].segment(0, 3).transpose();
+      lb[i] = controller_options.workspace_limits[i][3];
+      ub[i] = controller_options.workspace_limits[i][4];
+    }
+    controller->AddLinearConstraint(A, lb, ub, c3::ConstraintVariable::STATE);
+  }
+  // Add horizontal and vertical input limits as linear constraints
+  if (controller_options.u_horizontal_limits.size() == 2 &&
+      controller_options.u_vertical_limits.size() == 2) {
+    drake::log()->info(
+        "Adding horizontal and vertical input limits to C3 controller. "
+        "Horizontal limits (x, y): [%f, %f], Vertical limits (z): [%f, %f]",
+        controller_options.u_horizontal_limits[0],
+        controller_options.u_horizontal_limits[1],
+        controller_options.u_vertical_limits[0],
+        controller_options.u_vertical_limits[1]);
+    Eigen::MatrixXd A = MatrixXd::Identity(3, n_u);
+    Eigen::Vector3d lb = {controller_options.u_horizontal_limits[0],
+                          controller_options.u_horizontal_limits[0],
+                          controller_options.u_vertical_limits[0]};
+    Eigen::Vector3d ub = {controller_options.u_horizontal_limits[1],
+                          controller_options.u_horizontal_limits[1],
+                          controller_options.u_vertical_limits[1]};
+    controller->AddLinearConstraint(A, lb, ub, c3::ConstraintVariable::INPUT);
+  }
+  return controller;
+}
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -67,16 +141,16 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_controller_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
-  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      controller_params.c3_options_file[controller_params.scene_index]);
+  PlateBalancingC3ControllerOptions controller_options =
+      drake::yaml::LoadYamlFile<PlateBalancingC3ControllerOptions>(
+          controller_params.c3_options_file[controller_params.scene_index]);
   FrankaC3SceneParams scene_params =
       drake::yaml::LoadYamlFile<FrankaC3SceneParams>(
           controller_params.c3_scene_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+      drake::yaml::LoadYamlFile<SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
@@ -135,6 +209,7 @@ int DoMain(int argc, char* argv[]) {
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
   plant_for_lcs.Finalize();
+
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
 
@@ -179,14 +254,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm));
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
-  auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          scene_params.end_effector_name, "tray",
-          controller_params.include_end_effector_orientation);
+      builder.AddSystem<RobotOutputReceiver>(plant_franka);
+  auto tray_state_receiver = builder.AddSystem<ObjectStateReceiver>(plant_tray);
+  auto reduced_order_model_receiver = builder.AddSystem<FrankaKinematics>(
+      plant_franka, franka_context.get(), plant_tray, tray_context.get(),
+      scene_params.end_effector_name, "tray",
+      controller_params.include_end_effector_orientation);
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
@@ -216,10 +289,10 @@ int DoMain(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  auto radio_to_vector = builder.AddSystem<RadioToVector>();
 
   auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>(
+      builder.AddSystem<PlateBalancingTargetGenerator>(
           plant_tray, scene_params.end_effector_thickness,
           controller_params.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
@@ -240,16 +313,18 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
-  builder.Connect(plate_balancing_target->get_output_port_tray_velocity_target(),
-                  target_state_mux->get_input_port(3));
-  auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
+  builder.Connect(
+      plate_balancing_target->get_output_port_tray_velocity_target(),
+      target_state_mux->get_input_port(3));
+  auto lcs_factory = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
-      *plate_context_ad, contact_pairs, c3_options);
+      *plate_context_ad, contact_pairs, controller_options);
+
   auto controller =
-      builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options);
-  auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
-                                                        c3_options);
+      AddC3ControllerToBuilder(builder, plant_for_lcs, controller_options);
+
+  auto c3_trajectory_generator = builder.AddSystem<systems::C3TrajectoryGenerator>(
+      plant_for_lcs, controller_options);
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -258,11 +333,11 @@ int DoMain(int argc, char* argv[]) {
       "tray_vz",         "tray_vz",        "tray_vz",
   };
   auto c3_state_sender =
-      builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
+      builder.AddSystem<C3StateSender>(3 + 7 + 3 + 6, state_names);
   c3_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
-  auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
-  controller->SetOsqpSolverOptions(solver_options);
+  auto c3_output_sender = builder.AddSystem<C3OutputSender>();
+  controller->SetSolverOptions(solver_options);
 
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(franka_state_receiver->get_output_port(),
@@ -318,19 +393,24 @@ int DoMain(int argc, char* argv[]) {
   //  DrawAndSaveDiagramGraph(*plant_diagram);
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+  LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
-  //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
+  //  auto& controller_context =
+  //  loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
-  //  controller->get_input_port_target().FixValue(&controller_context, x_des);
+  //  controller->get_input_port_target().FixValue(&controller_context,
+  //  x_des);
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }
 
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib
-
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::plate_balancing::DoMain(argc, argv);
+}

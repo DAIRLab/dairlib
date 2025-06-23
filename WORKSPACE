@@ -11,13 +11,15 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.33.0"
+DRAKE_COMMIT = "v1.36.0"
 
-DRAKE_CHECKSUM = "2713ad1ea53ed7b9cfe1ba751eeeab7dc173408753ead21b7bafb0436b92dcf3"
-#DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b"
+# DRAKE_CHECKSUM = "2713ad1ea53ed7b9cfe1ba751eeeab7dc173408753ead21b7bafb0436b92dcf3" #1.33.0
+DRAKE_CHECKSUM = "0f8aeba6f37393ddfbe81d8c0304493437ea572f00f22c4f48781d3168fb1fd3"  #1.36.0
+# DRAKE_CHECKSUM = "93b70df1d0a2ad93942bea644f83af38b3cf82b2ba2e2f102c87b22ef061c9c3" #1.38.0
+# DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b" #1.42.0
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
-#DRAKE_CHECKSUM = "0" * 64
+# DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
 load("//:environ.bzl", "drake_repository", "inekf_repository")
@@ -187,4 +189,13 @@ http_archive(
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
+)
+
+# Adding LCM as a dependency.
+http_archive(
+    name = "lcm",
+    sha256 = "149d7076369d261e6adbb25d713dc9e30aeba415f4fc62bb41e748b2eb229b46",
+    url = "https://github.com/lcm-proj/lcm/archive/refs/tags/v1.4.0.tar.gz",
+    strip_prefix = "lcm-1.4.0",
+    build_file = "@//tools/workspace/lcm:BUILD.bazel",
 )

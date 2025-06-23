@@ -24,3 +24,5 @@ use_repo(
     non_module_boost_repositories,
     "boost",
 )
+
+bazel_dep(name = "rules_java", version="8.13.0",)

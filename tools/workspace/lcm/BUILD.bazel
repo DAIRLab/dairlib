@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "lcm_gen",
+    srcs = [
+        "lcm-gen/lcm_gen.c",
+        "lcm-gen/lcm_gen_util.c",
+        "lcm-gen/lcm_gen_util.h",  # include .h in srcs so Bazel knows it
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "lcm_core",
+    srcs = glob(["lcm/*.c", "lcm/*.cpp"]),
+    hdrs = glob(["lcm/*.h"]),
+    includes = ["lcm"],  # Use subdirectory for proper include paths
+    visibility = ["//visibility:public"],
+)

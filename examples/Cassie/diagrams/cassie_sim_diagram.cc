@@ -50,8 +50,8 @@ CassieSimDiagram::CassieSimDiagram(
   scene_graph_->set_name("scene_graph");
 
   plant_ = builder.AddSystem(std::move(plant));
-  plant_->set_discrete_contact_solver(
-      drake::multibody::DiscreteContactSolver::kSap);
+  plant_->set_discrete_contact_approximation(
+      drake::multibody::DiscreteContactApproximation::kSap);
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
   multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
                             Eigen::Vector3d(0, 0, 1));
@@ -98,7 +98,7 @@ CassieSimDiagram::CassieSimDiagram(
   builder.Connect(cassie_motor_->get_output_port(),
                   state_sender->get_input_port_effort());
   builder.Connect(
-      plant_->get_geometry_poses_output_port(),
+      plant_->get_geometry_pose_output_port(),
       scene_graph_->get_source_pose_port(plant_->get_source_id().value()));
   builder.Connect(scene_graph_->get_query_output_port(),
                   plant_->get_geometry_query_input_port());

@@ -1,9 +1,6 @@
 # Change this to change the scene
-<<<<<<< Updated upstream
 scene_index: 1
-=======
-scene_index: 2
->>>>>>> Stashed changes
+
 
 # =========== Optional ==============
 # To include end effectory orientation in the LCS state

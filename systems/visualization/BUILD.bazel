@@ -16,6 +16,7 @@ cc_library(
         "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
+        "@c3//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )

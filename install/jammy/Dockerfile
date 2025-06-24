@@ -1,6 +1,6 @@
 FROM ubuntu:jammy
 WORKDIR ./dairlib
-ENV DAIRLIB_DOCKER_VERSION_25=25
+ENV DAIRLIB_DOCKER_VERSION_26=26
 COPY . .
 RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip clang-12 clang-format-12 ca-certificates gnupg
 

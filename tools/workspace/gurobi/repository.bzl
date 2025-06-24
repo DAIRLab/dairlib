@@ -82,7 +82,7 @@ gurobi_repository = repository_rule(
 )
 
 def _gurobi_extension_impl(module_ctx):
-    gurobi_repository(name = "gurobi")
+    gurobi_repository(name = "my_gurobi")
 
 gurobi_extension = module_extension(
     implementation = _gurobi_extension_impl,

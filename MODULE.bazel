@@ -27,7 +27,6 @@ use_repo(
     "gflags",
     "glib",
     "gtest",
-    "gurobi",
     "lapack",
     "lcm",
     "meshcat",
@@ -46,6 +45,10 @@ use_repo(
 bazel_dep(name = "gazelle", version = "0.44.0")
 
 bazel_dep(name = "osqp", version = "0.6.3.bcr.2")
+
+# Use gurobi_cxx, which Drake deprecated
+gurobi_extension = use_extension("@dairlib//tools/workspace/gurobi:repository.bzl", "gurobi_extension")
+use_repo(gurobi_extension, "gurobi")
 
 # Here we introduce Drake as a module dependency, but note that Drake is not
 # published to any Bazel registry. Below, we'll override it with a github

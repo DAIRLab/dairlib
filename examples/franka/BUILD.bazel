@@ -278,7 +278,7 @@ cc_library(
         "parameters/franka_sim_scene_params.h",
     ],
     data = glob([
-        "*yaml",
+        "parameters/*.yaml",
     ]),
     deps = [
         "@drake//:drake_shared_library",

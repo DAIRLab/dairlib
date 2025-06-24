@@ -458,7 +458,7 @@ cc_binary(
 cc_binary(
     name = "run_dircon_squatting",
     srcs = ["run_dircon_squatting.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    data = glob(["urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_fixed_point_solver",
         ":cassie_utils",
@@ -497,7 +497,7 @@ cc_binary(
 cc_binary(
     name = "run_dircon_walking",
     srcs = ["run_dircon_walking.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    data = glob(["urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
         "//common",

@@ -9,6 +9,8 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 /// Outputs a lcmt_timestamped_saved_traj
@@ -49,4 +51,6 @@ class C3StateSender : public drake::systems::LeafSystem<double> {
 };
 
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

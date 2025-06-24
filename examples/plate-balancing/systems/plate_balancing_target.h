@@ -7,6 +7,8 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 class PlateBalancingTargetGenerator
@@ -34,8 +36,8 @@ class PlateBalancingTargetGenerator
     return this->get_output_port(tray_target_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_tray_velocity_target()
-  const {
+  const drake::systems::OutputPort<double>&
+  get_output_port_tray_velocity_target() const {
     return this->get_output_port(tray_velocity_target_port_);
   }
 
@@ -50,8 +52,9 @@ class PlateBalancingTargetGenerator
                              drake::systems::BasicVector<double>* target) const;
   void CalcTrayTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
-  void CalcTrayVelocityTarget(const drake::systems::Context<double>& context,
-                      drake::systems::BasicVector<double>* target) const;
+  void CalcTrayVelocityTarget(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -69,13 +72,14 @@ class PlateBalancingTargetGenerator
   Eigen::Vector3d first_target_;
   Eigen::Vector3d second_target_;
   Eigen::Vector3d third_target_;
-//  const double delay_at_top_ = 10.0;
+  //  const double delay_at_top_ = 10.0;
   const double delay_at_top_ = 3.0;
   double target_threshold_;
   double x_scale_;
   double y_scale_;
   double z_scale_;
 };
-
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

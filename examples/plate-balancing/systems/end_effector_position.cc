@@ -1,5 +1,7 @@
 #include "end_effector_position.h"
+
 #include <iostream>
+
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
@@ -17,8 +19,11 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
 namespace dairlib {
-
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const Eigen::Vector3d& neutral_pose) {
+namespace examples {
+namespace plate_balancing {
+namespace systems {
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
+    const Eigen::Vector3d& neutral_pose) {
   // Input/Output Setup
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
@@ -59,7 +64,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   if (radio_out->value()[14]) {
     PiecewisePolynomial<double> result;
     VectorXd y_0 = neutral_pose_;
-    if (radio_out->value()[10]){
+    if (radio_out->value()[10]) {
       y_0(0) += radio_out->value()[0] * x_scale_;
       y_0(1) += radio_out->value()[1] * y_scale_;
       y_0(2) += radio_out->value()[2] * z_scale_;
@@ -74,5 +79,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     }
   }
 }
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

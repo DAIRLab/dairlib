@@ -7,7 +7,9 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
-
+namespace examples {
+namespace plate_balancing {
+namespace systems {
 class ExternalForceGenerator : public drake::systems::LeafSystem<double> {
  public:
   ExternalForceGenerator(drake::multibody::BodyIndex body_index);
@@ -24,8 +26,10 @@ class ExternalForceGenerator : public drake::systems::LeafSystem<double> {
                                   double z_scale);
 
  private:
-  void CalcSpatialForce(const drake::systems::Context<double>& context,
-                        std::vector<drake::multibody::ExternallyAppliedSpatialForce<double>>* spatial_forces) const;
+  void CalcSpatialForce(
+      const drake::systems::Context<double>& context,
+      std::vector<drake::multibody::ExternallyAppliedSpatialForce<double>>*
+          spatial_forces) const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::OutputPortIndex spatial_force_port_;
@@ -34,5 +38,7 @@ class ExternalForceGenerator : public drake::systems::LeafSystem<double> {
   double y_scale_ = 0;
   double z_scale_ = 0;
 };
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

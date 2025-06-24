@@ -2,15 +2,8 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaC3ControllerParams {
-  int scene_index;
-  std::vector<std::string> c3_options_file;
-  std::vector<std::string> c3_scene_file;
-  std::string osqp_settings_file;
-
-  bool include_end_effector_orientation;
-  double target_frequency;
-
+struct PlateBalancingTargetConfig {
+  
   double near_target_threshold;
   std::vector<Eigen::Vector3d> first_target;
   std::vector<Eigen::Vector3d> second_target;
@@ -21,14 +14,6 @@ struct FrankaC3ControllerParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(c3_options_file));
-    a->Visit(DRAKE_NVP(c3_scene_file));
-    a->Visit(DRAKE_NVP(osqp_settings_file));
-
-    a->Visit(DRAKE_NVP(include_end_effector_orientation));
-    a->Visit(DRAKE_NVP(target_frequency));
-    a->Visit(DRAKE_NVP(scene_index));
-
     a->Visit(DRAKE_NVP(first_target));
     a->Visit(DRAKE_NVP(second_target));
     a->Visit(DRAKE_NVP(third_target));

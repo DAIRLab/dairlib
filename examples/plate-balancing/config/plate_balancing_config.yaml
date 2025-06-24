@@ -1,0 +1,27 @@
+# Change this to change the scene
+<<<<<<< Updated upstream
+scene_index: 1
+=======
+scene_index: 2
+>>>>>>> Stashed changes
+
+# =========== Optional ==============
+# To include end effectory orientation in the LCS state
+include_end_effector_orientation: false
+
+# ======= DO NOT EDIT ================
+file_names:
+  - 1_testing.yaml
+  - 2_supports.yaml
+  - 3_rotated_supports.yaml
+  - 4_wall.yaml
+c3_controller_options_directory: examples/plate-balancing/config/C3/controller-options/
+c3_scene_config_directory: examples/plate-balancing/config/C3/scene-config/
+c3_osqp_settings_file: examples/plate-balancing/config/C3/solver_settings.yaml
+simulation_scene_config_directory: examples/plate-balancing/config/Simulation/scene-config/
+simulation_config_file: examples/plate-balancing/config/Simulation/simulation_config.yaml
+osc_contoller_config_file: examples/plate-balancing/config/OSC/controller_config.yaml
+osc_osqp_setting_file: examples/plate-balancing/config/OSC/solver_settings.yaml
+lcm_hardware_settings_file: examples/plate-balancing/config/LCM/lcm_channels_hardware.yaml
+lcm_simulation_settings_file: examples/plate-balancing/config/LCM/lcm_channels_simulation.yaml
+plate_balancing_target_config_file: examples/plate-balancing/config/plate_balancing_target_config.yaml

@@ -1,9 +1,9 @@
 group "simulations" {
-    cmd "franka_sim" {
-        exec = "bazel-bin/examples/plate-balancing/franka_sim";
+    cmd "plate_balancing_simulation" {
+        exec = "bazel-bin/examples/plate-balancing/run_simulation";
         host = "localhost";
     }
-    cmd "franka_kinematics" {
+    cmd "forward_kinematics" {
         exec = "bazel-bin/examples/plate-balancing/forward_kinematics_for_lcs";
         host = "localhost";
     }
@@ -11,7 +11,7 @@ group "simulations" {
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/plate-balancing/franka_visualizer";
+        exec = "bazel-bin/examples/plate-balancing/run_visualizer";
         host = "localhost";
     }
     cmd "start_logging" {
@@ -21,12 +21,12 @@ group "operator" {
 }
 
 group "controllers" {
-    cmd "franka_osc" {
-        exec = "bazel-bin/examples/plate-balancing/franka_osc_controller";
+    cmd "dairlab_osc" {
+        exec = "bazel-bin/examples/plate-balancing/run_osc_controller";
         host = "localhost";
     }
-    cmd "franka_c3" {
-        exec = "bazel-bin/examples/plate-balancing/franka_c3_controller";
+    cmd "dairlab_c3" {
+        exec = "bazel-bin/examples/plate-balancing/run_c3_controller";
         host = "localhost";
     }
     cmd "mujoco_mpc" {
@@ -43,16 +43,16 @@ group "debug" {
 }
 
 script "c3_mpc" {
-    start cmd "franka_sim";
-    start cmd "franka_osc";
-    start cmd "franka_c3";
+    start cmd "plate_balancing_simulation";
+    start cmd "dairlab_osc";
+    start cmd "dairlab_c3";
 }
 
 script "mjmpc_with_drake_sim" {
-    start cmd "franka_sim";
-    start cmd "franka_osc";
+    start cmd "run_simuplate_balancing_simulationlation";
+    start cmd "dairlab_osc";
     start cmd "mujoco_mpc";
-    start cmd "franka_kinematics";
+    start cmd "forward_kinematics";
 }
 
 script "start_operator_commands" {

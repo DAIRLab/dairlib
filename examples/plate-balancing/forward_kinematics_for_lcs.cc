@@ -1,4 +1,3 @@
-
 #include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
@@ -11,25 +10,27 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/plate-balancing/parameters/franka_c3_controller_params.h"
-#include "examples/plate-balancing/parameters/franka_c3_scene_params.h"
-#include "examples/plate-balancing/parameters/franka_lcm_channels.h"
+#include "common/find_resource.h"
+#include "examples/plate-balancing/parameters/c3_scene_config.h"
+#include "examples/plate-balancing/parameters/lcm_channel_config.h"
+#include "examples/plate-balancing/parameters/plate_balancing_config.h"
+#include "examples/plate-balancing/parameters/plate_balancing_target_config.h"
 #include "examples/plate-balancing/systems/c3_state_sender.h"
 #include "examples/plate-balancing/systems/c3_trajectory_generator.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
-#include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-namespace dairlib {
+DEFINE_string(plate_balancing_config,
+              "examples/plate-balancing/config/plate_balancing_config.yaml",
+              "Controller settings such as channels. Attempting to minimize "
+              "number of gflags");
+DEFINE_bool(simulation, true, "Running in simulation or hardware");
 
-using dairlib::solvers::LCSFactory;
-using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
@@ -41,38 +42,43 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
-
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
 
-DEFINE_string(controller_settings,
-              "examples/plate-balancing/parameters/franka_c3_controller_params.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
-DEFINE_string(lcm_channels,
-              "examples/plate-balancing/parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
+using dairlib::multibody::MakeNameToPositionsMap;
+using dairlib::multibody::MakeNameToVelocitiesMap;
+using dairlib::systems::LcmDrivenLoop;
+using dairlib::systems::ObjectStateReceiver;
+using dairlib::systems::RadioToVector;
+using dairlib::systems::RobotOutputReceiver;
+
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-  // load parameters
+  // Load parameters from YAML files
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          FLAGS_controller_settings);
-  FrankaC3SceneParams scene_params =
-      drake::yaml::LoadYamlFile<FrankaC3SceneParams>(
-          controller_params.c3_scene_file[controller_params.scene_index]);
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
+  PlateBalancingConfig main_config =
+      drake::yaml::LoadYamlFile<PlateBalancingConfig>(
+          FLAGS_plate_balancing_config);
+  PlateBalancingTargetConfig target_config =
+      drake::yaml::LoadYamlFile<PlateBalancingTargetConfig>(
+          main_config.plate_balancing_target_config_file);
+  C3SceneConfig scene_params = drake::yaml::LoadYamlFile<C3SceneConfig>(
+      main_config.get_c3_scene_config_file());
+  LcmChannelConfig lcm_channel_params =
+      drake::yaml::LoadYamlFile<LcmChannelConfig>(
+          FLAGS_simulation ? main_config.lcm_simulation_settings_file
+                           : main_config.lcm_hardware_settings_file);
+
+  // Build the MultibodyPlant for Franka
   DiagramBuilder<double> plant_builder;
-
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModelsFromUrl(scene_params.franka_model);
@@ -80,6 +86,7 @@ int DoMain(int argc, char* argv[]) {
       parser_franka.AddModels(
           FindResourceOrThrow(scene_params.end_effector_model))[0];
 
+  // Weld frames for Franka
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
@@ -94,32 +101,38 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  ///
+  // Build the MultibodyPlant for the tray
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
   parser_tray.AddModels(scene_params.object_models[0]);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
+  // Build the overall diagram
   DiagramBuilder<double> builder;
 
+  // Add LCM subscribers for tray and radio state
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          lcm_channel_params.radio_channel, &lcm));
+
+  // Add state receivers and kinematics system
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
+      builder.AddSystem<RobotOutputReceiver>(plant_franka);
+  auto tray_state_receiver = builder.AddSystem<ObjectStateReceiver>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
           scene_params.end_effector_name, "tray",
-          controller_params.include_end_effector_orientation);
-  auto radio_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          lcm_channel_params.radio_channel, &lcm));
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+          main_config.include_end_effector_orientation);
 
+  // Add systems for radio parsing and C3 state handling
+  auto radio_to_vector = builder.AddSystem<RadioToVector>();
+
+  // Define state names for C3 state sender
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -129,29 +142,32 @@ int DoMain(int argc, char* argv[]) {
   };
   auto c3_state_sender =
       builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
+
+  // Add plate balancing target generator
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(
           plant_tray, scene_params.end_effector_thickness,
-          controller_params.near_target_threshold);
+          target_config.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
-      controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],
-      controller_params.third_target[controller_params.scene_index], controller_params.x_scale,
-      controller_params.y_scale, controller_params.z_scale);
+      target_config.first_target[main_config.scene_index],
+      target_config.second_target[main_config.scene_index],
+      target_config.third_target[main_config.scene_index],
+      target_config.x_scale, target_config.y_scale, target_config.z_scale);
+
+  // Add multiplexer for target state
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+
+  // Add constant vector sources for zero velocities
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
   auto tray_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
-  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
-                  target_state_mux->get_input_port(2));
-  builder.Connect(tray_zero_velocity_source->get_output_port(),
-                  target_state_mux->get_input_port(3));
 
-
+  // Add LCM publishers for C3 state
   auto c3_actual_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, &lcm,
@@ -161,6 +177,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_target_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
+  // Connect the systems
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(tray_state_receiver->get_output_port(),
                   plate_balancing_target->get_input_port_tray_state());
@@ -184,11 +201,16 @@ int DoMain(int argc, char* argv[]) {
                   c3_actual_state_publisher->get_input_port());
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   c3_target_state_publisher->get_input_port());
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(2));
+  builder.Connect(tray_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(3));
+
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_forward_kinematics"));
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+  LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
@@ -199,6 +221,10 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::plate_balancing::DoMain(argc, argv);
+}

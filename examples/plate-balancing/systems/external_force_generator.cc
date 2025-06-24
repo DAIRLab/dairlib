@@ -8,7 +8,9 @@ using drake::systems::Context;
 using drake::systems::EventStatus;
 
 namespace dairlib {
-
+namespace examples {
+namespace plate_balancing {
+namespace systems {
 ExternalForceGenerator::ExternalForceGenerator(
     drake::multibody::BodyIndex body_index)
     : body_index_(body_index) {
@@ -58,5 +60,7 @@ void ExternalForceGenerator::CalcSpatialForce(
     spatial_forces->at(0).body_index = body_index_;
   }
 }
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

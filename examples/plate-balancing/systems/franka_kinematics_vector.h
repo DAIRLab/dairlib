@@ -6,8 +6,12 @@
 #include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
-namespace systems {
+  
+using systems::TimestampedVector;
 
+namespace examples {
+namespace plate_balancing {
+namespace systems {
 /// FrankaKinematicsVector stores the robot output as a TimestampedVector
 ///    * positions
 ///    * velocities
@@ -172,6 +176,7 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
   const int num_positions_;
   const int num_velocities_;
 };
-
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

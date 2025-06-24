@@ -8,17 +8,11 @@ object_publish_rate: 1000
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 
-scene_index: 1
 visualize_drake_sim: false
 publish_efforts: true
 publish_object_velocities: false
 
 tool_attachment_frame: [0, 0, 0.107]
-
-sim_scene_file: [examples/plate-balancing/parameters/sim_scenes/empty_scene.yaml,
-                 examples/plate-balancing/parameters/sim_scenes/supports_scene.yaml,
-                 examples/plate-balancing/parameters/sim_scenes/supports_rotated_scene.yaml,
-                 examples/plate-balancing/parameters/sim_scenes/wall_scene.yaml]
 
 # Workspace Limits
 world_x_limits: [[0.4, 0.6],

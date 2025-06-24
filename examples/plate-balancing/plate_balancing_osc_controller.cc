@@ -1,11 +1,11 @@
-
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/plate-balancing/parameters/franka_lcm_channels.h"
-#include "examples/plate-balancing/parameters/franka_osc_controller_params.h"
+#include "examples/plate-balancing/parameters/lcm_channel_config.h"
+#include "examples/plate-balancing/parameters/osc_controller_config.h"
+#include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/systems/end_effector_force.h"
 #include "examples/plate-balancing/systems/end_effector_orientation.h"
 #include "examples/plate-balancing/systems/end_effector_position.h"
@@ -33,8 +33,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
-namespace dairlib {
-
 using drake::math::RigidTransform;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
@@ -45,61 +43,80 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+
+DEFINE_string(plate_balancing_config,
+              "examples/plate-balancing/config/plate_balancing_config.yaml",
+              "Controller settings such as channels. Attempting to minimize "
+              "number of gflags");
+DEFINE_bool(simulation, true, "Running in simulation or hardware");
+
+namespace dairlib {
+
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
-
+using systems::GravityCompensationRemover;
+using systems::LcmDrivenLoop;
+using systems::LcmOrientationTrajectoryReceiver;
+using systems::LcmTrajectoryReceiver;
+using systems::RadioToVector;
+using systems::RobotCommandSender;
+using systems::RobotOutputReceiver;
 using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::OperationalSpaceControl;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_string(osqp_settings,
-              "examples/plate-balancing/parameters/franka_osc_qp_settings.yaml",
-              "Filepath containing qp settings");
-DEFINE_string(controller_parameters,
-              "examples/plate-balancing/parameters/franka_osc_controller_params.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
-DEFINE_string(lcm_channels,
-              "examples/plate-balancing/parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
+namespace examples {
+namespace plate_balancing {
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // load parameters
+  // Load parameters from YAML files
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          FLAGS_controller_parameters);
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  PlateBalancingConfig main_config =
+      drake::yaml::LoadYamlFile<PlateBalancingConfig>(
+          FLAGS_plate_balancing_config);
+  LcmChannelConfig lcm_channel_params =
+      drake::yaml::LoadYamlFile<LcmChannelConfig>(
+          FLAGS_simulation ? main_config.lcm_simulation_settings_file
+                           : main_config.lcm_hardware_settings_file);
+  OSCControllerConfig controller_config =
+      drake::yaml::LoadYamlFile<OSCControllerConfig>(
+          main_config.osc_contoller_config_file);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
+      FindResourceOrThrow(main_config.osc_contoller_config_file), {}, {},
+      yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings))
+          FindResourceOrThrow(main_config.osc_osqp_setting_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+  // Build the Drake diagram
   DiagramBuilder<double> builder;
 
+  // Create and configure the MultibodyPlant
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModelsFromUrl(controller_params.franka_model);
+  parser.AddModelsFromUrl(controller_config.franka_model);
 
+  // Weld the robot to the world frame
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
 
-  if (!controller_params.end_effector_name.empty()) {
+  // Add the end effector if specified in the config
+  if (!controller_config.end_effector_name.empty()) {
     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-        FindResourceOrThrow(controller_params.end_effector_model))[0];
+        FindResourceOrThrow(controller_config.end_effector_model))[0];
     RigidTransform<double> T_EE_W =
         RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                               controller_params.tool_attachment_frame);
+                               controller_config.tool_attachment_frame);
     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                     plant.GetFrameByName(controller_params.end_effector_name,
+                     plant.GetFrameByName(controller_config.end_effector_name,
                                           end_effector_index),
                      T_EE_W);
   } else {
@@ -110,20 +127,20 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
+  // Create LCM interface
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  // Add LCM systems for communication
+  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm));
   auto end_effector_position_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_position_target");
+      builder.AddSystem<LcmTrajectoryReceiver>("end_effector_position_target");
   auto end_effector_force_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_force_target");
+      builder.AddSystem<LcmTrajectoryReceiver>("end_effector_force_target");
   auto end_effector_orientation_receiver =
-      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
+      builder.AddSystem<LcmOrientationTrajectoryReceiver>(
           "end_effector_orientation_target");
   auto franka_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -133,28 +150,31 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.osc_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto franka_command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
-  auto osc_command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto franka_command_sender = builder.AddSystem<RobotCommandSender>(plant);
+  auto osc_command_sender = builder.AddSystem<RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
+      builder.AddSystem<systems::EndEffectorTrajectoryGenerator>(
+          controller_config.neutral_position);
   end_effector_trajectory->SetRemoteControlParameters(
-      controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
+      controller_config.neutral_position, controller_config.x_scale,
+      controller_config.y_scale, controller_config.z_scale);
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
+      builder.AddSystem<systems::EndEffectorOrientationTrajectoryGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
-      controller_params.track_end_effector_orientation);
+      controller_config.track_end_effector_orientation);
   auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
+      builder.AddSystem<systems::EndEffectorForceTrajectoryGenerator>();
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
-  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+  auto radio_to_vector = builder.AddSystem<RadioToVector>();
+
+  // Add and configure the Operational Space Controller (OSC)
+  auto osc = builder.AddSystem<OperationalSpaceControl>(
       plant, plant_context.get(), false);
-  if (controller_params.publish_debug_info) {
+
+  // Add debug publisher if specified
+  if (controller_config.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             lcm_channel_params.osc_debug_channel, &lcm,
@@ -163,38 +183,39 @@ int DoMain(int argc, char* argv[]) {
                     osc_debug_pub->get_input_port());
   }
 
+  // Configure tracking data for OSC
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "end_effector_target", controller_params.K_p_end_effector,
-          controller_params.K_d_end_effector, controller_params.W_end_effector,
+          "end_effector_target", controller_config.K_p_end_effector,
+          controller_config.K_d_end_effector, controller_config.W_end_effector,
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack(
-      controller_params.end_effector_name);
+      controller_config.end_effector_name);
   const VectorXd& end_effector_acceleration_limits =
-      controller_params.end_effector_acceleration * Vector3d::Ones();
+      controller_config.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<JointSpaceTrackingData>(
-          "panda_joint2_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
+          "panda_joint2_target", controller_config.K_p_mid_link,
+          controller_config.K_d_mid_link, controller_config.W_mid_link, plant,
           plant);
   mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
                                                            "panda_joint2dot");
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_params.W_ee_lambda, plant,
-          controller_params.end_effector_name, Vector3d::Zero());
+          "end_effector_force", controller_config.W_ee_lambda, plant,
+          controller_config.end_effector_name, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
           "end_effector_orientation_target",
-          controller_params.K_p_end_effector_rot,
-          controller_params.K_d_end_effector_rot,
-          controller_params.W_end_effector_rot, plant, plant);
+          controller_config.K_p_end_effector_rot,
+          controller_config.K_d_end_effector_rot,
+          controller_config.W_end_effector_rot, plant, plant);
   end_effector_orientation_tracking_data->AddFrameToTrack(
-      controller_params.end_effector_name);
+      controller_config.end_effector_name);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
@@ -205,25 +226,22 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-//  osc->SetAccelerationConstraints(
-//      controller_params.enforce_acceleration_constraints);
 
-  osc->SetContactFriction(controller_params.mu);
+  osc->SetContactFriction(controller_config.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();
 
-  if (controller_params.cancel_gravity_compensation) {
+  // Connect systems in the diagram
+  if (controller_config.cancel_gravity_compensation) {
     auto gravity_compensator =
-        builder.AddSystem<systems::GravityCompensationRemover>(plant,
-                                                               *plant_context);
+        builder.AddSystem<GravityCompensationRemover>(plant, *plant_context);
     builder.Connect(osc->get_output_port_osc_command(),
                     gravity_compensator->get_input_port());
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
-    if (FLAGS_lcm_channels ==
-        "examples/plate-balancing/parameters/lcm_channels_hardware.yaml") {
+    if (!FLAGS_simulation) {
       std::cerr << "Using hardware lcm channels but not cancelling gravity "
                    "compensation. Please check the OSC settings"
                 << std::endl;
@@ -271,17 +289,22 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(end_effector_force_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_force"));
 
+  // Build the complete diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_osc_controller"));
+  owned_diagram->set_name(("plate_balancing/osc_controller"));
+
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+  LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
   return 0;
 }
-
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::plate_balancing::DoMain(argc, argv);
+}

@@ -2,8 +2,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaSimParams {
-  std::vector<std::string> sim_scene_file;
+struct SimulationConfig {
   std::string franka_model;
   std::string end_effector_model;
   std::string tray_model;
@@ -17,7 +16,6 @@ struct FrankaSimParams {
   double object_publish_rate;
   double visualizer_publish_rate;
 
-  int scene_index;
   bool visualize_drake_sim;
   bool publish_efforts;
   bool publish_object_velocities;
@@ -42,7 +40,6 @@ struct FrankaSimParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(sim_scene_file));
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(tray_model));
@@ -56,7 +53,6 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
 
-    a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(visualize_drake_sim));
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(publish_object_velocities));

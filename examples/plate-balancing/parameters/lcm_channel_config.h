@@ -3,7 +3,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
-struct FrankaLcmChannels {
+struct LcmChannelConfig {
   std::string franka_state_channel;
   std::string tray_state_channel;
   std::string object_state_channel;

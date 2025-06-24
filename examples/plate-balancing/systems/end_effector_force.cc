@@ -10,8 +10,8 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -21,7 +21,9 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
 namespace dairlib {
-
+namespace examples {
+namespace plate_balancing {
+namespace systems {
 EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
@@ -82,5 +84,7 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
     }
   }
 }
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

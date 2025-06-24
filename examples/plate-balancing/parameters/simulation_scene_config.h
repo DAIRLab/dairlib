@@ -3,7 +3,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 // Currently this scene only defines static environment obstacles
-struct FrankaSimSceneParams {
+struct SimulationSceneConfig {
   std::vector<std::string> environment_models;
   std::vector<Eigen::VectorXd> environment_orientations;
   std::vector<Eigen::VectorXd> environment_positions;

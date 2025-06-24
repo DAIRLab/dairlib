@@ -21,18 +21,16 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/plate-balancing/parameters/franka_lcm_channels.h"
-#include "examples/plate-balancing/parameters/franka_sim_params.h"
-#include "examples/plate-balancing/parameters/franka_sim_scene_params.h"
+#include "examples/plate-balancing/parameters/lcm_channel_config.h"
+#include "examples/plate-balancing/parameters/plate_balancing_config.h"
+#include "examples/plate-balancing/parameters/simulation_config.h"
+#include "examples/plate-balancing/parameters/simulation_scene_config.h"
 #include "examples/plate-balancing/systems/external_force_generator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-namespace dairlib {
-
-using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::GeometrySet;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransform;
@@ -44,34 +42,51 @@ using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
-using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-DEFINE_string(lcm_channels,
-              "examples/plate-balancing/parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
+namespace dairlib {
+
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
+using systems::AddActuationRecieverAndStateSenderLcm;
+using systems::ObjectStateSender;
+using systems::RadioToVector;
+using systems::SubvectorPassThrough;
+
+namespace examples {
+namespace plate_balancing {
+
+DEFINE_string(plate_balancing_config,
+              "examples/plate-balancing/config/plate_balancing_config.yaml",
+              "Controller settings such as channels.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  // load parameters
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/plate-balancing/parameters/franka_sim_params.yaml");
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
-  FrankaSimSceneParams scene_params =
-      drake::yaml::LoadYamlFile<FrankaSimSceneParams>(
-          sim_params.sim_scene_file[sim_params.scene_index]);
 
-  // load urdf and sphere
+  // Load parameters from YAML files.
+  PlateBalancingConfig main_config =
+      drake::yaml::LoadYamlFile<PlateBalancingConfig>(
+          FLAGS_plate_balancing_config);
+  SimulationConfig sim_params = drake::yaml::LoadYamlFile<SimulationConfig>(
+      main_config.simulation_config_file);
+  LcmChannelConfig lcm_channel_params =
+      drake::yaml::LoadYamlFile<LcmChannelConfig>(
+          main_config.lcm_simulation_settings_file);
+  SimulationSceneConfig scene_params =
+      drake::yaml::LoadYamlFile<SimulationSceneConfig>(
+          main_config.get_simulation_scene_config_file());
+
+  // Build the Drake diagram.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
+
+  // Add MultibodyPlant and SceneGraph.
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
+  // Parse models and add them to the plant.
   Parser parser(&plant);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
@@ -84,9 +99,8 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  // Weld frames to position the robot and objects in the world.
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
@@ -97,7 +111,7 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  // we WANT to model collisions between link5 and the supports
+  // Define collision geometries and filter groups.
   const drake::geometry::GeometrySet& franka_geom_set =
       plant.CollectRegisteredGeometries({&plant.GetBodyByName("panda_link0"),
                                          &plant.GetBodyByName("panda_link1"),
@@ -140,39 +154,50 @@ int DoMain(int argc, char* argv[]) {
       {"franka", franka_only_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
-  /* -------------------------------------------------------------------------------------------*/
 
+  // Add LCM interface system.
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
+
+  // Add systems for sending and receiving robot actuation commands and state.
   AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
-  auto tray_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, sim_params.publish_object_velocities, tray_index);
+
+  // Add systems for sending tray state.
+  auto tray_state_sender = builder.AddSystem<ObjectStateSender>(
+      plant, sim_params.publish_object_velocities, tray_index);
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
-  auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, sim_params.publish_object_velocities, object_index);
+
+  // Add systems for sending object state.
+  auto object_state_sender = builder.AddSystem<ObjectStateSender>(
+      plant, sim_params.publish_object_velocities, object_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm,
           1.0 / sim_params.object_publish_rate));
 
+  // Connect tray state sender and publisher.
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
+
+  // Connect object state sender and publisher.
   builder.Connect(plant.get_state_output_port(object_index),
                   object_state_sender->get_input_port_state());
   builder.Connect(object_state_sender->get_output_port(),
                   object_state_pub->get_input_port());
 
-  auto external_force_generator = builder.AddSystem<ExternalForceGenerator>(
-      plant.GetBodyByName("tray").index());
+  // Add external force generator and connect it to the radio subscriber.
+  auto external_force_generator =
+      builder.AddSystem<systems::ExternalForceGenerator>(
+          plant.GetBodyByName("tray").index());
   external_force_generator->SetRemoteControlParameters(
       sim_params.external_force_scaling[0],
       sim_params.external_force_scaling[1],
@@ -180,52 +205,59 @@ int DoMain(int argc, char* argv[]) {
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &drake_lcm));
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  auto radio_to_vector = builder.AddSystem<RadioToVector>();
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(radio_to_vector->get_output_port(),
                   external_force_generator->get_input_port_radio());
   builder.Connect(external_force_generator->get_output_port_spatial_force(),
                   plant.get_applied_spatial_force_input_port());
 
-  int nq = plant.num_positions();
-  int nv = plant.num_velocities();
-
+  // Add visualizer if enabled.
   if (sim_params.visualize_drake_sim) {
     drake::visualization::AddDefaultVisualization(&builder);
   }
 
+  // Build the diagram.
   auto diagram = builder.Build();
 
+  // Create a simulator.
   drake::systems::Simulator<double> simulator(*diagram);
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(sim_params.realtime_rate);
 
+  // Set initial state.
   auto& plant_context = diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context());
 
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
   VectorXd q = VectorXd::Zero(nq);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
   q.segment(plant.num_positions(franka_index),
             plant.num_positions(tray_index)) =
-      sim_params.q_init_tray[sim_params.scene_index];
+      sim_params.q_init_tray[main_config.scene_index];
   q.tail(plant.num_positions(object_index)) =
-      sim_params.q_init_object[sim_params.scene_index];
+      sim_params.q_init_object[main_config.scene_index];
 
   plant.SetPositions(&plant_context, q);
 
   VectorXd v = VectorXd::Zero(nv);
   plant.SetVelocities(&plant_context, v);
 
+  // Initialize and run the simulation.
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }
-
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  dairlib::examples::plate_balancing::DoMain(argc, argv);
+}

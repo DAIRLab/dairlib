@@ -1,17 +1,23 @@
 #include "plate_balancing_target.h"
 
 #include <iostream>
+
 #include <Eigen/Geometry>
 
 #include "dairlib/lcmt_radio_out.hpp"
 
-using dairlib::systems::StateVector;
+using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using Eigen::VectorXd;
 
 namespace dairlib {
+
+using systems::StateVector;
+
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
@@ -37,10 +43,11 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
                               "tray_target", BasicVector<double>(7),
                               &PlateBalancingTargetGenerator::CalcTrayTarget)
                           .get_index();
-  tray_velocity_target_port_ = this->DeclareVectorOutputPort(
-                              "tray_velocity_target", BasicVector<double>(6),
-                              &PlateBalancingTargetGenerator::CalcTrayVelocityTarget)
-                          .get_index();
+  tray_velocity_target_port_ =
+      this->DeclareVectorOutputPort(
+              "tray_velocity_target", BasicVector<double>(6),
+              &PlateBalancingTargetGenerator::CalcTrayVelocityTarget)
+          .get_index();
   sequence_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   within_target_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   time_entered_target_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -179,7 +186,7 @@ void PlateBalancingTargetGenerator::CalcTrayVelocityTarget(
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
   Eigen::Quaterniond y_quat_des(1, 0, 0, 0);
-  const VectorX<double> &q = tray_state->GetPositions();
+  const VectorX<double>& q = tray_state->GetPositions();
   Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
   VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
@@ -191,9 +198,11 @@ void PlateBalancingTargetGenerator::CalcTrayVelocityTarget(
   //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
   //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
   //  tray_position(2) = 0.45;
-  target_tray_state << angle_error, VectorXd::Zero(3);  // tray orientation is flat
+  target_tray_state << angle_error,
+      VectorXd::Zero(3);  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }
-
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

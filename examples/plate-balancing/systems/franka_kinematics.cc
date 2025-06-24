@@ -3,18 +3,21 @@
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
 
-namespace dairlib {
-
-using drake::multibody::MultibodyPlant;
 using drake::multibody::JacobianWrtVariable;
+using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
+namespace dairlib {
+
 using systems::OutputVector;
 using systems::StateVector;
 using systems::TimestampedVector;
 
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
@@ -43,7 +46,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
   object_state_port_ =
       this->DeclareVectorInputPort(
               "x_object", StateVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities()))
+                                              object_plant.num_velocities()))
           .get_index();
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
   num_object_positions_ = 7;
@@ -58,11 +61,8 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
               &FrankaKinematics::ComputeLCSState)
           .get_index();
   lcs_input_port_ =
-      this->DeclareVectorOutputPort(
-              "u_lcs",
-              BasicVector<double>(
-                  3),
-              &FrankaKinematics::ComputeLCSInput)
+      this->DeclareVectorOutputPort("u_lcs", BasicVector<double>(3),
+                                    &FrankaKinematics::ComputeLCSInput)
           .get_index();
 }
 
@@ -144,6 +144,7 @@ void FrankaKinematics::ComputeLCSInput(
 
   lcs_input->SetFromVector(J_ee * franka_output->GetEfforts());
 }
-
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

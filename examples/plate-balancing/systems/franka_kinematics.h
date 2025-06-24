@@ -2,27 +2,31 @@
 
 #include <string>
 #include <vector>
-#include <drake/multibody/plant/multibody_plant.h>
-#include "examples/plate-balancing/systems/franka_kinematics_vector.h"
 
-#include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/timestamped_vector.h"
+#include <drake/multibody/plant/multibody_plant.h>
+
+#include "examples/plate-balancing/systems/franka_kinematics_vector.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/state_vector.h"
+#include "systems/framework/timestamped_vector.h"
+
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 namespace systems {
 
 /// Outputs a lcmt_timestamped_saved_traj
 class FrankaKinematics : public drake::systems::LeafSystem<double> {
  public:
-  explicit FrankaKinematics(const drake::multibody::MultibodyPlant<double>& franka_plant,
-                            drake::systems::Context<double>* franka_context,
-                            const drake::multibody::MultibodyPlant<double>& object_plant,
-                            drake::systems::Context<double>* object_context,
-                            const std::string& end_effector_name,
-                            const std::string& object_name,
-                            bool include_end_effector_orientation);
+  explicit FrankaKinematics(
+      const drake::multibody::MultibodyPlant<double>& franka_plant,
+      drake::systems::Context<double>* franka_context,
+      const drake::multibody::MultibodyPlant<double>& object_plant,
+      drake::systems::Context<double>* object_context,
+      const std::string& end_effector_name, const std::string& object_name,
+      bool include_end_effector_orientation);
 
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);
@@ -41,12 +45,10 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  void ComputeLCSState(
-      const drake::systems::Context<double>& context,
-      FrankaKinematicsVector<double>* lcs_state) const;
-  void ComputeLCSInput(
-      const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* lcs_input) const;
+  void ComputeLCSState(const drake::systems::Context<double>& context,
+                       FrankaKinematicsVector<double>* lcs_state) const;
+  void ComputeLCSInput(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* lcs_input) const;
 
   drake::systems::InputPortIndex franka_state_port_;
   drake::systems::InputPortIndex object_state_port_;
@@ -67,6 +69,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   std::string object_name_;
   const bool include_end_effector_orientation_;
 };
-
 }  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

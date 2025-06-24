@@ -12,8 +12,11 @@ using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 
 namespace dairlib {
-
-EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGenerator() {
+namespace examples {
+namespace plate_balancing {
+namespace systems {
+EndEffectorOrientationTrajectoryGenerator::
+    EndEffectorOrientationTrajectoryGenerator() {
   auto pp = drake::trajectories::PiecewiseQuaternionSlerp<double>();
 
   trajectory_port_ =
@@ -26,8 +29,9 @@ EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGener
           .get_index();
   PiecewiseQuaternionSlerp<double> empty_slerp_traj;
   Trajectory<double>& traj_inst = empty_slerp_traj;
-  this->DeclareAbstractOutputPort("end_effector_orientation", traj_inst,
-                                  &EndEffectorOrientationTrajectoryGenerator::CalcTraj)
+  this->DeclareAbstractOutputPort(
+          "end_effector_orientation", traj_inst,
+          &EndEffectorOrientationTrajectoryGenerator::CalcTraj)
       .get_index();
 }
 
@@ -53,5 +57,7 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     *casted_traj = result;
   }
 }
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

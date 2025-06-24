@@ -4,7 +4,9 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
-
+namespace examples {
+namespace plate_balancing {
+namespace systems {
 class EndEffectorTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
@@ -33,5 +35,7 @@ class EndEffectorTrajectoryGenerator
   double y_scale_;
   double z_scale_;
 };
-
+}  // namespace systems
+}  // namespace plate_balancing
+}  // namespace examples
 }  // namespace dairlib

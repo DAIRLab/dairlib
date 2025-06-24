@@ -67,7 +67,6 @@ SamplingC3Controller::SamplingC3Controller(
       N_(c3_options_.N),
       verbose_(verbose){
   this->set_name("sampling_c3_controller");
-
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * sampling_c3_options_.Q_position);
@@ -417,6 +416,33 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+
+  std::string mesh_path;
+
+  {
+    const auto& query_port = plant_.get_geometry_query_input_port();
+    const auto& query_object =
+      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+    const auto& inspector = query_object.inspector();
+
+    for (auto id : inspector.GetAllGeometryIds()) {
+      const auto& shape = inspector.GetShape(id);
+      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
+      auto p = s.find("filename='");
+      if (p != std::string::npos) {
+        p += strlen("filename='");
+        auto q = s.find("'", p);
+        mesh_path = s.substr(p, q - p);
+        break;
+      }
+    }
+    if (mesh_path.empty()) {
+      throw std::runtime_error("SamplingC3Controller: no mesh found in SceneGraph");
+    }
+  }
+
+  // 2) Load it exactly once:
+  drake::geometry::TriangleSurfaceMesh<double> mesh = drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, /*scale=*/1.0);      
   auto start = std::chrono::high_resolution_clock::now();
 
   // Evaluate input ports.
@@ -688,7 +714,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   //std::cout << "Generating sample states..." << std::endl;
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_);
+    plant_, context_, plant_ad_, context_ad_, contact_pairs_, mesh);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)

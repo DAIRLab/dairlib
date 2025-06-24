@@ -40,7 +40,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms){
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    drake::geometry::TriangleSurfaceMesh<double> mesh){
 
   // Determine number of samples based on mode.
   int num_samples;
@@ -71,7 +72,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   //   }
   // }
 
-  std::string mesh_filename;
+  std::string mesh_path;
   drake::geometry::GeometryId mesh_geometry_id;
   for (unsigned i = 0; i < contact_geoms.size(); ++i) {
     for (const auto& pair : contact_geoms[i]) {
@@ -86,12 +87,12 @@ std::vector<Eigen::VectorXd> generate_sample_states(
             fname_pos += 10; // length of "filename='"
             std::string::size_type end_pos = shape_type.find("'", fname_pos);
             if (end_pos != std::string::npos) {
-              mesh_filename = shape_type.substr(fname_pos, end_pos - fname_pos);
+              mesh_path = shape_type.substr(fname_pos, end_pos - fname_pos);
               mesh_geometry_id = geom_id; 
               std::cout << inspector.GetProximityProperties(mesh_geometry_id) << std::endl;
 
               // Save the mesh geometry id as a string
-              // std::cout << "Found mesh filename: " << mesh_filename << std::endl;
+              // std::cout << "Found mesh filename: " << mesh_path << std::endl;
               std::cout << "Found mesh geometry id: " << mesh_geometry_id << std::endl;
             }
           }
@@ -191,7 +192,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     for (int i = 0; i < num_samples; i++){
       do{
         candidate_states[i] = generate_sample_mesh_buffer(
-          n_q, n_v, n_u, x_lcs, mesh_filename, sampling_params, c3_options);
+          n_q, n_v, n_u, x_lcs, mesh_path, sampling_params, c3_options);
       } while(sampling_params.filter_samples_for_safety &&
         !is_sample_within_workspace(candidate_states[i], c3_options));
     }
@@ -203,7 +204,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       do{
         candidate_states[i] = generate_sample_mesh_drake(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, 
-          mesh_filename, sampling_params, query_object, c3_options, mesh_geometry_id);
+          mesh_path, sampling_params, query_object, c3_options, mesh_geometry_id, mesh);
       } while(sampling_params.filter_samples_for_safety &&
         !is_sample_within_workspace(candidate_states[i], c3_options));
     }
@@ -745,7 +746,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
     const SamplingC3SamplingParams& sampling_params,
     const drake::geometry::QueryObject<double>& query_object,
     C3Options c3_options,
-    const drake::geometry::GeometryId mesh_geometry_id
+    const drake::geometry::GeometryId mesh_geometry_id, 
+    const drake::geometry::TriangleSurfaceMesh<double>& mesh
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -753,8 +755,6 @@ Eigen::VectorXd generate_sample_mesh_drake(
     int attempts = 0;
     double distance = 0;
 
-    using Mesh = drake::geometry::TriangleSurfaceMesh<double>;
-    Mesh mesh = drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0);
     //drake::geometry::Mesh mesh(mesh_path, 1.0);
     const auto& vertices = mesh.vertices();
     int num_tri = mesh.num_triangles();
@@ -829,42 +829,6 @@ Eigen::VectorXd generate_sample_mesh_drake(
 
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
-      // DiagramBuilder<double> builder;
-
-      // // Create plant + SceneGraph
-      // auto [plant_new, scene_graph_new] = AddMultibodyPlantSceneGraph(&builder, 0.0);
-      // Parser parser(&plant_new);
-      // parser.AddModels("examples/sampling_c3/urdf/controller_push_t_white.sdf");
-      // plant_new.Finalize();
-
-      // auto diagram_new = builder.Build();
-      // auto diagram_context = diagram_new->CreateDefaultContext();
-
-      // // Extract plant context
-      // auto& plant_context_new = plant_new.GetMyMutableContextFromRoot(diagram_context.get());
-      // auto* plant_context_new_ptr = &plant_context_new;
-
-      // // Extract scene graph context
-      // auto& scene_graph_new_context = scene_graph_new.GetMyMutableContextFromRoot(diagram_context.get());
-
-      // // Evaluate the QueryObject
-      // const auto& query_object_new =
-      //     scene_graph_new.get_query_output_port()
-      //               .template Eval<drake::geometry::QueryObject<double>>(scene_graph_new_context);
-
-      // // Run signed-distance query
-      // auto results_new = query_object_new.ComputeSignedDistanceToPoint(projected_sample_point);
-
-      // // Retrieve shape types via inspector
-      // const auto& inspector_new = query_object_new.inspector();
-      // std::unordered_map<drake::geometry::GeometryId, std::string> geometry_types;
-      // std::cout << results_new.size() << " results found.\n";
-      // for (const auto& r : results_new) {
-      //   const auto& shape = inspector_new.GetShape(r.id_G); // no new Shape()
-      //   std::cout << "ID " << r.id_G << ", distance " << r.distance
-      //             << ", shape type: " << shape.type_name() << "\n";
-      // }
-
       auto& inspector = query_object.inspector();
       std::cout << "Proximity geometries:";
       for (auto id : inspector.GetAllGeometryIds()) {

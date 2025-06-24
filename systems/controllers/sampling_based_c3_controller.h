@@ -22,6 +22,8 @@
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
+#include <drake/geometry/proximity/triangle_surface_mesh.h>
+#include <drake/geometry/proximity/obj_to_surface_mesh.h>
 #include <queue>
 
 
@@ -483,7 +485,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                             TARGET_SOURCE_NEW_SAMPLE,
                             TARGET_SOURCE_FROM_BUFFER};
   mutable PursuedTargetSource pursued_target_source_ = TARGET_SOURCE_NONE;
-
 };
 
 }  // namespace systems

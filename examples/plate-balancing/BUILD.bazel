@@ -33,7 +33,7 @@ cc_binary(
 
 cc_binary(
     name = "run_osc_controller",
-    srcs = ["plate_balancing_osc_controller.cc"],
+    srcs = ["franka_osc_controller.cc"],
     data = [
         ":urdfs",
         "@drake_models//:franka_description",

@@ -97,10 +97,10 @@ int do_main(int argc, char* argv[]) {
                          : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
 
   if (FLAGS_contact_solver == "SAP") {
-    plant_->set_discrete_contact_approximation(
+    plant.set_discrete_contact_approximation(
         drake::multibody::DiscreteContactApproximation::kSap);
   } else if (FLAGS_contact_solver == "TAMSI") {
-    plant_->set_discrete_contact_approximation(
+    plant.set_discrete_contact_approximation(
         drake::multibody::DiscreteContactApproximation::kTamsi);
   } else {
     std::cerr << "Unknown contact solver setting." << std::endl;

@@ -983,7 +983,7 @@ void CassieStateEstimator::CopyEstimatedContactForces(
     contact_info.timestamp = contact_msg->timestamp;
     contact_info.body1_name = toe_frames_[i]->body().name();
     contact_info.body2_name = world_.name();
-    memcpy(contact_info.contact_force,
+    memcpy(contact_info.contact_force.data(),
            context.get_discrete_state(contact_forces_idx_)
                .get_value()
                .segment(i * SPACE_DIM, (i + 1) * SPACE_DIM)

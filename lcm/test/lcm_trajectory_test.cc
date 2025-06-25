@@ -70,7 +70,7 @@ class LcmTrajectoryTest : public ::testing::Test {
     trajectories_[1] = traj_2_;
 
     lcm_traj_ = LcmTrajectory(trajectories_, trajectory_names_, TEST_NAME,
-                              TEST_DESCRIPTION, true);
+                              TEST_DESCRIPTION);
   }
 
   LcmTrajectory::Trajectory traj_1_;

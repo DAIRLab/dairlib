@@ -12,12 +12,12 @@ build_jammy_task:
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
-      ...
+      //...
     - bazel test
       --define=WITH_SNOPT=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
-      ...
+      //...
 build_focal_task:
   timeout_in: 120m
   container:
@@ -32,12 +32,12 @@ build_focal_task:
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
-      ...
+      //...
     - bazel test
       --define=WITH_SNOPT=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
-      ...
+      //...
 drake_master_build_task:
   timeout_in: 120m
   container:

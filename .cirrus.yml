@@ -9,12 +9,14 @@ build_jammy_task:
     - export CXX=clang++-12
     - bazel build
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       //...
@@ -29,12 +31,14 @@ build_focal_task:
     - export CXX=clang++-12
     - bazel build
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       //...
@@ -50,12 +54,14 @@ drake_master_build_task:
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
+      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 

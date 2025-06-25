@@ -16,6 +16,8 @@ bazel_dep(name = "apple_support", version = "1.17.1")
 # Add the Bazel rules we need.
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
 
 use_repo(
     drake_dep_repositories,
@@ -75,7 +77,7 @@ DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
-#DRAKE_CHECKSUM = "0" * 64
+# DRAKE_CHECKSUM = "0" * 64
 
 # This declares the `@drake` module as a source code archive from github.
 # See README.md for instructions to use a local path, instead.

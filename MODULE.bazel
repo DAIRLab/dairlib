@@ -34,7 +34,6 @@ use_repo(
     "opencl",
     "pybind11",
     "pycodestyle",
-    "python",
     "snopt",
     "spdlog",
     "styleguide",
@@ -71,12 +70,12 @@ bazel_dep(name = "inekf")
 # this will also work to override inekf 
 
 # You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
-DRAKE_COMMIT = "v1.42.0"
-DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b"
+DRAKE_COMMIT = "v1.39.0"
+DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589b6"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
-# DRAKE_CHECKSUM = "0" * 64
+#DRAKE_CHECKSUM = "0" * 64
 
 # This declares the `@drake` module as a source code archive from github.
 # See README.md for instructions to use a local path, instead.
@@ -106,3 +105,17 @@ archive_override(
     sha256 = INEKF_CHECKSUM,
     strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
 )
+
+# Use the host system /usr/bin/python3.
+python_repository = use_repo_rule(
+    "@drake//tools/workspace/python:repository.bzl",
+    "python_repository",
+)
+
+python_repository(
+    name = "python",
+    linux_interpreter_path = "/usr/bin/python3",
+    requirements_flavor = "build",
+)
+
+register_toolchains("@python//:all")

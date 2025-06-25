@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # look in WORKSPACE file for appropriate commit number
-DRAKE_COMMIT=$(grep -oP '(?<=DRAKE_COMMIT = ")(.*)(?=")' $(dirname "$0")/../WORKSPACE)
+DRAKE_COMMIT=$(grep -oP '(?<=DRAKE_COMMIT = ")(.*)(?=")' $(dirname "$0")/../MODULE.bazel)
 
 ubuntu_codename=$(lsb_release -sc)
 

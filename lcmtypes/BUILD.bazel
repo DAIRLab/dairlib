@@ -56,6 +56,7 @@ drake_java_binary(
     visibility = ["//visibility:private"],
     runtime_deps = [
         ":lcmtypes_robot_java",
+        "@c3//lcmtypes:lcmtypes_c3_java",
         "@drake//lcmtypes:lcmtypes_drake_java",
     ],
 )

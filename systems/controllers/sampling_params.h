@@ -73,6 +73,7 @@ struct SamplingC3SamplingParams {
   double z_height;
   double buffer_distance;
   int num_additional_samples_mesh_buffer;
+  std::string base_name;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -129,5 +130,6 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(z_height));
     a->Visit(DRAKE_NVP(buffer_distance));
     a->Visit(DRAKE_NVP(num_additional_samples_mesh_buffer));
+    a->Visit(DRAKE_NVP(base_name));
   }
 };

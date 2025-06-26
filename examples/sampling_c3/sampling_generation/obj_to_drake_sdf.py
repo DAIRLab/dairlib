@@ -2,10 +2,16 @@ import os
 import trimesh
 from lxml import etree as ET
 
-def main(obj_file, model_name=None, density=1000.0, resolution=100000, max_hulls=10):
-    # Paths and names
+def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=100000, max_hulls=10):
+    # Normalize input paths
     obj_file = os.path.abspath(obj_file)
-    obj_dir, obj_base = os.path.split(obj_file)
+    if output_dir is None:
+        output_dir = os.path.dirname(obj_file)
+    else:
+        output_dir = os.path.abspath(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+
+    obj_base = os.path.basename(obj_file)
     obj_name = os.path.splitext(obj_base)[0]
     if model_name is None:
         model_name = obj_name
@@ -27,7 +33,7 @@ def main(obj_file, model_name=None, density=1000.0, resolution=100000, max_hulls
     # Export convex hulls as separate OBJs
     convex_paths = []
     for i, m in enumerate(convex_meshes):
-        out_path = os.path.join(obj_dir, f"{obj_name}_convex_{i}.obj")
+        out_path = os.path.join(output_dir, f"{obj_name}_convex_{i}.obj")
         m.export(out_path)
         convex_paths.append(out_path)
 
@@ -37,7 +43,7 @@ def main(obj_file, model_name=None, density=1000.0, resolution=100000, max_hulls
     ET.register_namespace(drake_ns, drake_uri)
 
     # Write SDF
-    sdf_path = os.path.join(obj_dir, obj_name + ".sdf")
+    sdf_path = os.path.join(output_dir, obj_name + ".sdf")
     sdf = ET.Element('sdf', version="1.7")
     model = ET.SubElement(sdf, 'model', name=model_name)
     link = ET.SubElement(model, 'link', name="vertical_link")
@@ -93,6 +99,8 @@ def main(obj_file, model_name=None, density=1000.0, resolution=100000, max_hulls
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python obj_to_drake_sdf.py path/to/model.obj")
+        print("Usage: python obj_to_drake_sdf.py path/to/model.obj [output_dir]")
         exit(1)
-    main(sys.argv[1])
+    obj_path = sys.argv[1]
+    out_dir = sys.argv[2] if len(sys.argv) > 2 else None
+    main(obj_path, out_dir)

@@ -22,6 +22,10 @@ group "operator" {
         exec = "python3 examples/sampling_c3/start_logging.py sim push_t";
         host = "localhost";
     }
+    cmd "generate_files" {
+        exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
+        host = "localhost";
+    }
 }
 
 group "controllers" {    
@@ -48,6 +52,8 @@ group "debug" {
 
 script "start_experiment_no_logs"{
     stop cmd "start_logging";
+    restart cmd "generate_files";
+    wait ms 50;
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;

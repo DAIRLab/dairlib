@@ -815,7 +815,7 @@ Eigen::VectorXd generate_sample_mesh_drake(
       double yaw = yaw_rot(gen);
       Eigen::Vector3d rotated_normal = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) * selected_face->normal;
       Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * rotated_normal;
-      projected_sample_point[2] = -z_height;
+      projected_sample_point[2] = -0.029+z_height;
       
       Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
       candidate_state[0] = projected_sample_point[0];
@@ -829,6 +829,7 @@ Eigen::VectorXd generate_sample_mesh_drake(
 
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
+      // All for debugging, need to reimplement ComputeSignedDistanceToPoint later.
       auto& inspector = query_object.inspector();
       std::cout << "Proximity geometries:";
       for (auto id : inspector.GetAllGeometryIds()) {
@@ -840,7 +841,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
       std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
       std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
 
-
+      // drake::geometry::SignedDistanceToPointResult<double> result = query_object.ComputeSignedDistanceToPoint(sample_point, mesh_geometry_id);
+      // distance = result.distance;
 
       // std::cout << "Distance to mesh: " << distance << std::endl;
       // bool in_collision = (distance <= sampling_params.sample_projection_clearance);

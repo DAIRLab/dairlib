@@ -83,8 +83,8 @@ C3Controller* AddC3ControllerToBuilder(
   int n_u = plant_for_lcs.num_actuators();
 
   // Create cost matrices based on C3 options.
-  auto cost = C3::CreateCostMatricesFromC3Options(controller_options,
-                                                  controller_options.N);
+  auto cost = C3::CreateCostMatricesFromC3Options(
+      controller_options.c3_options, controller_options.lcs_factory_options.N);
 
   // Add the C3 controller to the builder.
   auto controller =
@@ -326,15 +326,15 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   // Add LCS factory and C3 controller
   auto lcs_factory = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
-      *plate_context_ad, contact_pairs, controller_options);
+      *plate_context_ad, contact_pairs, controller_options.lcs_factory_options);
 
   auto controller = AddC3ControllerToBuilder(
       builder, plant_for_lcs, controller_options, solver_options);
 
   // Add C3 trajectory generator and state sender
   auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
-                                                        controller_options);
+      builder.AddSystem<systems::C3TrajectoryGenerator>(
+          plant_for_lcs, controller_options.lcs_factory_options);
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",

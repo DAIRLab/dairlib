@@ -1,8 +1,8 @@
 #pragma once
 
-#include <c3/core/c3_options.h>
+#include <c3/systems/c3_controller_options.h>
 
-using namespace c3;
+using namespace c3::systems;
 
 namespace dairlib {
 namespace examples {

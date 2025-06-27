@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include <c3/core/c3_options.h>
+#include <c3/multibody/lcs_factory_options.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/find_resource.h"
@@ -23,7 +23,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit C3TrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      c3::LCSOptions c3_options);
+      c3::LCSFactoryOptions lcs_factory_options);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);
@@ -56,7 +56,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex object_trajectory_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  c3::LCSOptions options_;
+  c3::LCSFactoryOptions options_;
 
   bool publish_end_effector_orientation_ = false;
 

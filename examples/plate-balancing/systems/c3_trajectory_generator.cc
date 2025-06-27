@@ -2,17 +2,17 @@
 
 #include <utility>
 
-#include <c3/systems/framework/c3_output.h>
 #include <c3/multibody/lcs_factory.h>
+#include <c3/systems/framework/c3_output.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/plate-balancing/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 
+using c3::LCSFactoryOptions;
 using c3::multibody::LCSFactory;
 using c3::systems::C3Output;
-using c3::LCSOptions;
 using dairlib::systems::TimestampedVector;
 using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
@@ -28,8 +28,10 @@ namespace plate_balancing {
 namespace systems {
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, LCSOptions options)
-    : plant_(plant), options_(std::move(options)), N_(options.N) {
+    const drake::multibody::MultibodyPlant<double>& plant, LCSFactoryOptions options)
+    : plant_(plant),
+      options_(options),
+      N_(options.N) {
   this->set_name("c3_trajectory_generator");
 
   n_q_ = plant_.num_positions();

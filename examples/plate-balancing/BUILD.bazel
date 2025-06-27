@@ -148,7 +148,7 @@ cc_library(
         "parameters/plate_balancing_c3_controller_options.h"
     ],
     data = glob([
-        "*yaml",
+        "**/*.yaml",
     ]),
     deps = [
         "@drake//:drake_shared_library",

@@ -1176,6 +1176,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       best_progress_steps_ago_ = -1;
     }
 
+
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis. Use absolute hysteresis values or percentage based hysteresis
     // based on the flag.

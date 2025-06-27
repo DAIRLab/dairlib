@@ -47,7 +47,7 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
           <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
-      <collision name="corner_nxynz_">
+      <collision name="CORNER_XMAX">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -56,9 +56,9 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
         <drake:proximity_properties>
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> {CORNER_NXYNZ} 0 0 0</pose>
+        <pose> {CORNER_XMAX} 0 0 0</pose>
       </collision>   
-      <collision name="corner_nxnynz">
+      <collision name="CORNER_XMIN">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -67,9 +67,20 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
         <drake:proximity_properties>
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> {CORNER_NXNYNZ} 0 0 0</pose>
+        <pose> {CORNER_XMIN} 0 0 0</pose>
+      </collision>   
+      <collision name="CORNER_YMAX">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_YMAX} 0 0 0</pose>
       </collision>
-      <collision name="corner_xynz">
+      <collision name="CORNER_YMIN">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -78,7 +89,7 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
         <drake:proximity_properties>
         <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
-        <pose> {CORNER_XYNZ} 0 0 0</pose>
+        <pose> {CORNER_YMIN} 0 0 0</pose>
       </collision>
     </link>
   </model>
@@ -99,29 +110,32 @@ def get_obj_corners(obj_file):
     if not vertices:
         raise RuntimeError(f"No vertices found in {obj_file}")
     arr = np.array(vertices)
-    min_x = np.min(arr[:,0])
-    max_x = np.max(arr[:,0])
-    min_y = np.min(arr[:,1])
-    max_y = np.max(arr[:,1])
+    min_x = np.argmin(arr[:,0])
+    max_x = np.argmax(arr[:,0])
+    min_y = np.argmin(arr[:,1])
+    max_y = np.argmax(arr[:,1])
     min_z = np.min(arr[:,2])
     max_z = np.max(arr[:,2])
-    mid_y = (min_y + max_y) / 2.0
-    # corner_nxynz: min x, max y, min z
-    c_nxynz = f"{min_x:.8f} {max_y:.8f} {min_z:.8f}"
-    # corner_nxnynz: min x, min y, min z
-    c_nxnynz = f"{min_x:.8f} {min_y:.8f} {min_z:.8f}"
-    # corner_xynz: max x, mid y, min z
-    c_xynz = f"{max_x:.8f} {mid_y:.8f} {min_z:.8f}"
-    return c_nxynz, c_nxnynz, c_xynz
+
+    c_x_min = f"{arr[min_x][0]:.8f} {arr[min_x][1]:.8f} {min_z:.8f}"
+
+    c_x_max = f"{arr[max_x][0]:.8f} {arr[max_x][1]:.8f} {min_z:.8f}"
+
+    c_y_min = f"{arr[min_y][0]:.8f} {arr[min_y][1]:.8f} {min_z:.8f}"
+
+    c_y_max = f"{arr[max_y][0]:.8f} {arr[max_y][1]:.8f} {min_z:.8f}"
+
+    return c_x_min, c_x_max, c_y_min, c_y_max
 
 def make_sdf(obj_filename, output_path=None):
-    c_nxynz, c_nxnynz, c_xynz = get_obj_corners(obj_filename)
+    c_x_min, c_x_max, c_y_min, c_y_max = get_obj_corners(obj_filename)
     obj_basename = os.path.basename(obj_filename)
     sdf_xml = SDF_TEMPLATE.format(
         OBJ=obj_basename,
-        CORNER_NXYNZ=c_nxynz,
-        CORNER_NXNYNZ=c_nxnynz,
-        CORNER_XYNZ=c_xynz,
+        CORNER_XMIN = c_x_min,
+        CORNER_XMAX = c_x_max,
+        CORNER_YMIN = c_y_min,
+        CORNER_YMAX = c_y_max,
     )
     if output_path:
         with open(output_path, 'w') as f:

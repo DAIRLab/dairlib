@@ -1,0 +1,218 @@
+[33mcommit 3e52d10714322ab41c8848efb1b0bf6b8afdfd50[m[33m ([m[1;36mHEAD -> [m[1;32mpush_everything[m[33m, [m[1;31morigin/push_everything[m[33m)[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Thu Jun 26 13:42:45 2025 -0400
+
+    automated sdf generation and yaml updating for new objects
+
+[33mcommit 49d2437227c23a01f62c39ee909aba91c914ffad[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Tue Jun 24 15:09:23 2025 -0400
+
+    refactored sampling to not load obj every loop
+
+[33mcommit d2406fa923ea7e26e7a005de9b03aec044774118[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Wed Jun 18 14:48:21 2025 -0400
+
+    non-failing drake script with wrong distance calculation
+
+[33mcommit 51885b3898f1418a364e61f8dbf64e2df7490ab2[m
+Author: ericcui <ericcui@sas.upenn.edu>
+Date:   Wed Jun 11 16:04:41 2025 -0400
+
+    Fixed inertia issues.
+
+[33mcommit 8a2fc34aa2acfb5f3d84f878441a82b0302ff362[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Tue Jun 10 16:01:05 2025 -0400
+
+    added controller sdf generation script
+
+[33mcommit e8d8016d51edb543e2af94afc5cd640325f2aaa5[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Mon Jun 9 15:58:02 2025 -0400
+
+    got rid of changes that were breaking things, added parametric sdf generation, single link version
+
+[33mcommit c9bb9d197d43b81ca7ebc7e9aa050023697e15d8[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Tue Jun 3 15:15:18 2025 -0400
+
+    non generalized version of multiple items in sim!
+
+[33mcommit 9a5f571e980539096802366574592d884668b85e[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Mon Jun 2 13:30:07 2025 -0400
+
+    implemented buffer as a sampling strategy that the simulator can use
+
+[33mcommit 120a13870bcf56b372cc4c0e21776d979e401860[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Wed May 28 14:02:15 2025 -0400
+
+    non watertight mesh sampling point generation
+
+[33mcommit fa6f06dfa327d8d2bab7559eaa4ef4e1e0942a22[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Fri May 23 15:32:22 2025 -0400
+
+    cpp implementation of mesh sampling
+
+[33mcommit 1d972424278441ada1f5a4a0d0df6c02351e50fa[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Thu May 22 10:58:40 2025 -0400
+
+    implemented python mesh sampling baseline
+
+[33mcommit 39e735bb2b5e13249a71a108196c211e01b7b4a7[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Tue May 20 15:52:30 2025 -0400
+
+    added obj to urdf generation
+
+[33mcommit d1277f14d62d05a79f157f98eddec6a0ce5e2684[m
+Merge: 2cc58bb8f 09f7519e3
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Tue May 20 11:58:00 2025 -0400
+
+    Merge remote-tracking branch 'origin/sampling_based_c3_dev' into push_everything
+
+[33mcommit 2cc58bb8f493635e2cb71d2a7fb08f6dbeb8d525[m
+Author: siddhantmody <sidmody@seas.upenn.edu>
+Date:   Mon May 19 14:18:11 2025 -0400
+
+    New branch for push_everything with drake version updates
+
+[33mcommit 09f7519e38b3d3ee82ab8af896accb2c6ebd1d3a[m[33m ([m[1;31morigin/sampling_based_c3_dev[m[33m, [m[1;32msampling_based_c3_dev[m[33m)[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 19:02:25 2025 -0400
+
+    Changes to get the full branch to build with the newest version of drake without any breaking changes.
+
+[33mcommit a8aed4a8014077109b1eef94cd12d54f59783e35[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 17:04:33 2025 -0400
+
+    Making sure franka-joint_osc reads the paths correctly based on demo names.
+
+[33mcommit ac3ae463cb188e14018c5fe23e01449768aede09[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:57:13 2025 -0400
+
+    Added sampling_c3_options to logging script.
+
+[33mcommit 2854aafc3633b720d465aa33bd29f9dbce0f8055[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:44:58 2025 -0400
+
+    Keeping drake at the last version that uses drake/manipulation/models for now while drake_models external repo is still an issue.
+
+[33mcommit a60b66c25bc7168f88fb3d8bb6c60bf44cfe13fc[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:38:12 2025 -0400
+
+    Matching the c3 Solve API to that of Will's branch.
+
+[33mcommit f660fef2ce911f4a83097acceb642c736dd1e521[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:35:57 2025 -0400
+
+    new line change.
+
+[33mcommit ab0837a5aacae1fd548a4f34f68e68f6f066ba93[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:34:03 2025 -0400
+
+    Removing new line change from gitignore.
+
+[33mcommit 890974211992f9c430ce7cd2773cb78bfb1cd63f[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:32:59 2025 -0400
+
+    Removing bazelisk related MODULE files from gitignore. These show up if you build using bazelisk instead of bazel.
+
+[33mcommit d5656d1552af011ad6a30ae54338ca2d9a574d7d[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:27:42 2025 -0400
+
+    Isolating xbox changes to new script under sampling_c3.
+
+[33mcommit 5a718dbaf676487a1e0c2a36c577671e5f88b4ae[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 16:02:53 2025 -0400
+
+    Updating bazeliskrc files to use bazel version 7.1.1
+
+[33mcommit 97edf16f43c11cafdabd7a289ddce5bb282c6e6a[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 15:51:41 2025 -0400
+
+    Deleted all old svg files and moved target directory for new diagrams to /workspace/diagrams/{DEMO_NAME}.
+
+[33mcommit e888220d7357b048394aadbe52b263ecd2bddd6c[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Fri May 16 14:57:35 2025 -0400
+
+    Removed some stuff out of the gitignore and moved the virutal environments out of the dairlib folder.
+
+[33mcommit 577431a2d184707dde1f409599d50d424778b52d[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 15 22:19:43 2025 -0400
+
+    Isolated sampling_c3_options related to resolving contacts etc. into a file separate from c3_options.h
+
+[33mcommit 36f0165999c6753b533886ec99940b64251704a5[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 15 16:35:08 2025 -0400
+
+    Changes related to new drake version.
+
+[33mcommit 98a130ed14c0587de8f63b321c10074b1e054a51[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 15 12:16:01 2025 -0400
+
+    Deleted LCSFactoryPreprocessor and made it a function inside LCSFactory.
+
+[33mcommit b9924054681a9e679cc6783acfa63e7813f24ba8[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 15 11:32:50 2025 -0400
+
+    Built a shared control_target_generator that now lives under sampling_c3.
+
+[33mcommit f12c2b7c19decdd0a72205543fffabd34a6bb9ac[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Wed May 14 14:44:12 2025 -0400
+
+    Moved osc related systems out of sender systems and into dairlib/systems. Moved joint_traj generator and c3_mode visualizer to sampling c3 since they are only used by our examples. Moved franka-state_translator to sampling_c3 since it is only used by the franka_bridge_drivers.
+
+[33mcommit d4550eb7f92d6f6c0bb3dd73c1e89a128e0c3392[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Wed May 14 13:29:16 2025 -0400
+
+    Moved c3_mode_visualizer out of sender systems and into the sampling-c3 folder.
+
+[33mcommit dda4e759c8b255a78022aa8d736f295ed21c151a[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Tue May 13 16:47:04 2025 -0400
+
+    Made everything that didn't need to got through a sender, directly output the lcm message from controller output port except sample buffer sender.
+
+[33mcommit 8d156f9b386fafe0e00d9f9171a4d1c5b955fee9[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 8 13:41:40 2025 -0400
+
+    Removed some more changes that were made to systems/c3 that are no longer required.
+
+[33mcommit 97c14a09290ab93488f0e32c044016b757e3318a[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 8 13:35:02 2025 -0400
+
+    Reverted a change from franka example.
+
+[33mcommit 221cd1a2c90bcaa8a626ce3b86abf96b7acf718d[m
+Author: sharanyashastry <sshastry@seas.upenn.edu>
+Date:   Thu May 8 13:13:33 2025 -0400
+
+    Deleted jack.urdf since we use jack.sdf
+
+[33mcomm

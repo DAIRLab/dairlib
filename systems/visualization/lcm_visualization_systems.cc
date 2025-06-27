@@ -27,9 +27,11 @@ using Eigen::VectorXd;
 
 LcmTrajectoryDrawer::LcmTrajectoryDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    std::string trajectory_name)
-    : meshcat_(meshcat), trajectory_name_(std::move(trajectory_name)) {
-  this->set_name("LcmTrajectoryDrawer: " + trajectory_name_);
+    std::string trajectory_name, const std::string& system_name)
+    : meshcat_(meshcat),
+      trajectory_name_(std::move(trajectory_name)),
+      system_name_(std::move(system_name)) {
+  this->set_name("LcmTrajectoryDrawer: " + system_name_ + trajectory_name_);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -72,8 +74,8 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   }
 
   DRAKE_DEMAND(line_points.rows() == 3);
-  meshcat_->SetLine("/trajectories/" + trajectory_name_, line_points, 100,
-                    rgba_);
+  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_,
+                    line_points, line_width_, rgba_);
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -81,24 +83,26 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses,
-    bool add_transparency)
+    const std::string& orientation_trajectory_name,
+    const std::string& system_name,
+    int num_poses,
+    bool add_transparency,
+    const Eigen::VectorXd& rgb)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),
       N_(num_poses) {
-  this->set_name("LcmPoseDrawer: " + translation_trajectory_name);
+  this->set_name("LcmPoseDrawer: " + system_name + translation_trajectory_name);
 
   Eigen::VectorXd alpha_scale;
   if (add_transparency) {
-    alpha_scale = 1.0 * VectorXd::LinSpaced(N_ - 1, 0.2, 0.5);
+    alpha_scale = 1.0 * VectorXd::LinSpaced(N_, 0.5, 0.1);
   } else {
-    alpha_scale = 1.0 * VectorXd::Ones(N_ - 1);
+    alpha_scale = 1.0 * VectorXd::Ones(N_);
   }
-  alpha_scale.reverseInPlace();
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_ - 1, alpha_scale, "", meshcat);
+      model_file, N_, alpha_scale, "", meshcat, system_name, rgb);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -120,7 +124,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
-  MatrixXd object_poses = MatrixXd::Zero(7, N_ - 1);
+  MatrixXd object_poses = MatrixXd::Zero(7, N_);
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
@@ -150,14 +154,18 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         quaternion_datapoints);
   }
 
-  // ASSUMING orientation and translation trajectories have the same breaks
+  // ASSUMING orientation and translation trajectories have the same breaks.
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points.
   VectorXd translation_breaks =
       VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
                           lcm_translation_traj.time_vector.tail(1)[0]);
   for (int i = 0; i < object_poses.cols(); ++i) {
     object_poses.col(i) << orientation_trajectory.value(
-        translation_breaks(i + 1)),
-        translation_trajectory.value(translation_breaks(i + 1));
+        translation_breaks(i)),
+        translation_trajectory.value(translation_breaks(i));
   }
 
   multipose_visualizer_->DrawPoses(object_poses);
@@ -168,12 +176,12 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 LcmForceDrawer::LcmForceDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     std::string actor_trajectory_name, std::string force_trajectory_name,
-    std::string lcs_force_trajectory_name)
+    std::string lcs_force_trajectory_name, const std::string& system_name)
     : meshcat_(meshcat),
       actor_trajectory_name_(std::move(actor_trajectory_name)),
       force_trajectory_name_(std::move(force_trajectory_name)),
       lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
-  this->set_name("LcmForceDrawer: " + force_trajectory_name_);
+  this->set_name("LcmForceDrawer: " + system_name + force_trajectory_name_);
   actor_trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj: actor",
@@ -302,7 +310,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     auto force_norm = force.norm();
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
-    if (force_norm >= 0.5) {
+    if (force_norm >= 0.01) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             contact_force_color_);
@@ -346,6 +354,10 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
     bool draw_ee)
     : meshcat_(meshcat), draw_tray_(draw_tray), draw_ee_(draw_ee) {
   this->set_name("LcmC3TargetDrawer");
+  c3_state_final_target_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: final_target",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
   c3_state_target_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_state: target",
                                      drake::Value<dairlib::lcmt_c3_state>{})
@@ -361,12 +373,18 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 
   // TODO(yangwill): Clean up all this visualization, move to separate
   // visualization directory1
-  meshcat_->SetObject(c3_target_object_path_ + "/x-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_final_target_object_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
-  meshcat_->SetObject(c3_target_object_path_ + "/y-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_final_target_object_path_ + "/y-axis", cylinder_for_tray_,
                       {0, 1, 0, 1});
-  meshcat_->SetObject(c3_target_object_path_ + "/z-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_final_target_object_path_ + "/z-axis", cylinder_for_tray_,
                       {0, 0, 1, 1});
+  meshcat_->SetObject(c3_target_object_path_ + "/x-axis", cylinder_for_tray_,
+                      {1, 0, 0, 0.3});
+  meshcat_->SetObject(c3_target_object_path_ + "/y-axis", cylinder_for_tray_,
+                      {0, 1, 0, 0.3});
+  meshcat_->SetObject(c3_target_object_path_ + "/z-axis", cylinder_for_tray_,
+                      {0, 0, 1, 0.3});
   meshcat_->SetObject(c3_actual_object_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
   meshcat_->SetObject(c3_actual_object_path_ + "/y-axis", cylinder_for_tray_,
@@ -405,19 +423,22 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   auto z_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
                       0.5 * Vector3d{0.0, 0.0, 0.05});
-  meshcat_->SetTransform(c3_target_object_path_ + "/x-axis", x_axis_transform, 0.0);
-  meshcat_->SetTransform(c3_target_object_path_ + "/y-axis", y_axis_transform, 0.0);
-  meshcat_->SetTransform(c3_target_object_path_ + "/z-axis", z_axis_transform, 0.0);
-  meshcat_->SetTransform(c3_actual_object_path_ + "/x-axis", x_axis_transform, 0.0);
-  meshcat_->SetTransform(c3_actual_object_path_ + "/y-axis", y_axis_transform, 0.0);
-  meshcat_->SetTransform(c3_actual_object_path_ + "/z-axis", z_axis_transform, 0.0);
+  meshcat_->SetTransform(c3_final_target_object_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_final_target_object_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_final_target_object_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/z-axis", z_axis_transform);
   if (draw_ee_){
-    meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee, 0.0);
-    meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee, 0.0);
-    meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee, 0.0);
-    meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee, 0.0);
-    meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee, 0.0);
-    meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee, 0.0);
+    meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
+    meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
+    meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee);
+    meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee);
+    meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee);
+    meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee);
   }
 
   DeclarePerStepDiscreteUpdateEvent(&LcmC3TargetDrawer::DrawC3State);
@@ -426,6 +447,13 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  // Guarding the final state input port because it is not always connected,
+  // e.g. examples/franka.
+  const auto* c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+    context, c3_state_final_target_input_port_);
+  if (!c3_final_target || c3_final_target->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
   if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
                                                    c3_state_target_input_port_)
           ->utime < 1e-3) {
@@ -449,6 +477,15 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
       context, c3_state_actual_input_port_);
   if (draw_tray_) {
     meshcat_->SetTransform(
+        c3_final_target_object_path_,
+        RigidTransformd(
+            Eigen::Quaterniond(c3_final_target->state[3],
+                               c3_final_target->state[4],
+                               c3_final_target->state[5],
+                               c3_final_target->state[6]),
+            Vector3d{c3_final_target->state[7], c3_final_target->state[8],
+                     c3_final_target->state[9]}));
+    meshcat_->SetTransform(
         c3_target_object_path_,
         RigidTransformd(
             Eigen::Quaterniond(c3_target->state[3], c3_target->state[4],
@@ -467,11 +504,11 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     meshcat_->SetTransform(
         c3_target_ee_path_,
         RigidTransformd(Vector3d{c3_target->state[0], c3_target->state[1],
-                                 c3_target->state[2]}), context.get_time());
+                                 c3_target->state[2]}));
     meshcat_->SetTransform(
         c3_actual_ee_path_,
         RigidTransformd(Vector3d{c3_actual->state[0], c3_actual->state[1],
-                                 c3_actual->state[2]}), context.get_time());
+                                 c3_actual->state[2]}));
   }
   return drake::systems::EventStatus::Succeeded();
 }

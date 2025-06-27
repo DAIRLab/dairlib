@@ -63,3 +63,10 @@ u_lambda_n: [100, 100, 100]
 u_lambda_t: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 u_lambda: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50]
 u_u: [30, 30, 30]
+
+
+# Parameters used in the QP projection method.  As alpha -> 0, any error in
+# complimentarity constraints also approaches 0.
+qp_projection_alpha: 0.01
+qp_projection_scaling: 1000
+penalize_changes_in_u_across_solves: true

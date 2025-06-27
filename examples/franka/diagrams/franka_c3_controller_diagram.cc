@@ -21,7 +21,7 @@
 #include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_c3_scene_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
-#include "systems/sender_systems/c3_state_sender.h"
+#include "systems/senders/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
 #include "systems/franka_kinematics.h"
 #include "examples/franka/systems/plate_balancing_target.h"

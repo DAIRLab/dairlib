@@ -17,18 +17,22 @@ namespace multibody {
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          string weld_frame_to_world)
     : MultiposeVisualizer(model_file, num_poses,
-                          Eigen::VectorXd::Constant(num_poses, 1.0)) {}
+                          Eigen::VectorXd::Constant(num_poses, 1.0),
+                          weld_frame_to_world) {}
 
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          double alpha_scale,
                                          string weld_frame_to_world)
     : MultiposeVisualizer(model_file, num_poses,
-                          Eigen::VectorXd::Constant(num_poses, alpha_scale)) {}
+                          Eigen::VectorXd::Constant(num_poses, alpha_scale),
+                          weld_frame_to_world) {}
 
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          const Eigen::VectorXd& alpha_scale,
                                          string weld_frame_to_world,
-                                         std::shared_ptr<Meshcat> meshcat)
+                                         std::shared_ptr<Meshcat> meshcat,
+                                         const std::string& pose_trace_name,
+                                         const Eigen::VectorXd& rgb)
     : num_poses_(num_poses) {
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
@@ -37,7 +41,7 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   std::tie(plant_, scene_graph) =
       drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
 
-  Parser parser(plant_, scene_graph, "pose_trace");
+  Parser parser(plant_, scene_graph, pose_trace_name + "_pose_trace");
   parser.SetAutoRenaming(true);
   // Add num_poses copies of the plant, giving each a unique name
   for (int i = 0; i < num_poses_; i++) {
@@ -74,7 +78,12 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
           double new_alpha = alpha_scale(i - 2) * phong.a();
           new_alpha = std::max(new_alpha, 0.0);
           new_alpha = std::min(new_alpha, 1.0);
-          phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
+          if (rgb.size() == 3) {
+            phong.set(rgb(0), rgb(1), rgb(2), new_alpha);
+          }
+          else {
+            phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
+          }
 
           new_props.UpdateProperty("phong", "diffuse", phong);
           scene_graph->AssignRole(plant_->get_source_id().value(), geometry_id,

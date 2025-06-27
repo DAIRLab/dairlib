@@ -1,4 +1,4 @@
-#include "systems/sender_systems/c3_state_sender.h"
+#include "systems/senders/c3_state_sender.h"
 #include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {

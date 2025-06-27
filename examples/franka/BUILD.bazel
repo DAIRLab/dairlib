@@ -84,7 +84,7 @@ cc_binary(
         "//common",
         "//examples/franka/systems:franka_systems",
         "//systems:franka_kinematics",
-        "//systems/sender_systems:c3_state_sender",
+        "//systems/senders:c3_state_sender",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -112,7 +112,7 @@ cc_binary(
         "//common",
         "//examples/franka/systems:franka_systems",
         "//systems:franka_kinematics",
-        "//systems/sender_systems:c3_state_sender",
+        "//systems/senders:c3_state_sender",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -140,7 +140,7 @@ cc_binary(
         "//common",
         "//examples/franka/systems:franka_systems",
         "//systems:franka_kinematics",
-        "//systems/sender_systems:c3_state_sender",
+        "//systems/senders:c3_state_sender",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -271,7 +271,6 @@ cc_library(
     hdrs = [
         "parameters/franka_c3_controller_params.h",
         "parameters/franka_c3_scene_params.h",
-        "parameters/franka_drake_lcm_driver_channels.h",
         "parameters/franka_lcm_channels.h",
         "parameters/franka_osc_controller_params.h",
         "parameters/franka_sim_params.h",
@@ -282,5 +281,6 @@ cc_library(
     ]),
     deps = [
         "@drake//:drake_shared_library",
+        "//common/parameters:franka_drake_lcm_driver_channels",
     ],
 )

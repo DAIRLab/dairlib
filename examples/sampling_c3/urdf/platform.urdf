@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Models the wooden and aluminium sheet on which the franka is mounted. -->
+
+<robot name="platform">
+  <link name="platform">
+     <visual>
+        <origin xyz="-0.07 0 0" />
+        <geometry>
+           <box size="0.3 0.6 0.029"/>
+        </geometry>
+     </visual>
+     <collision>
+        <origin xyz="-0.07 0 0" />
+        <geometry>
+           <box size="0.3 0.6 0.029"/>
+        </geometry>
+     </collision>
+  </link>
+</robot>

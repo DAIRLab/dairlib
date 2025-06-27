@@ -96,16 +96,25 @@ LCS& LCS::operator=(const LCS& lcs) {
   return *this;
 }
 
-const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
+const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
+                             bool verbose) {
   VectorXd x_final;
   // calculate force
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
 
-  auto flag = LCPSolver.SolveLcpLemke(
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
+
+  if (flag == 0) {
+    std::cout << "LCP failed: returning x_init" << std::endl;
+    return x_init;
+  }
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
+  if (verbose) {
+    std::cout<<"\tLCP simulated force is "<<force.transpose()<<std::endl;
+  }
   return x_final;
 }
 

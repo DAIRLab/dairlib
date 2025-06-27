@@ -42,6 +42,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
+  DRAKE_DEMAND(mu.size() == n_contacts);
   int n_v = plant.num_velocities();
   int n_q = plant.num_positions();
 
@@ -123,9 +124,9 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
 
-  MatrixXd A(n_x, n_x);
-  MatrixXd B(n_x, n_u);
-  VectorXd d(n_x);
+  MatrixXd A = MatrixXd::Zero(n_x, n_x);
+  MatrixXd B = MatrixXd::Zero(n_x, n_u);
+  VectorXd d = VectorXd::Zero(n_x);
 
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);
@@ -295,10 +296,7 @@ LCSFactory::ComputeContactJacobian(
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
   std::vector<VectorXd> contact_points;
   for (int i = 0; i < n_contacts; i++) {
-    multibody::GeomGeomCollider collider(
-        plant,
-        contact_geoms[i]);  // deleted num_friction_directions (check with
-    // Michael about changes in geomgeom)
+    multibody::GeomGeomCollider collider(plant, contact_geoms[i]);
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
     // TODO(yangwill): think about if we want to push back both witness points
@@ -452,6 +450,98 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     d.push_back(d_k);
   }
   return LCS(A, B, D, d, E, F, H, c, other.dt_);
+}
+
+vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
+  const MultibodyPlant<double>& plant, const Context<double>& context,
+  const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+  const vector<int>& resolve_contacts_to_list,
+  int num_friction_directions, bool verbose) {
+
+  int n_contacts = std::accumulate(
+    resolve_contacts_to_list.begin(), resolve_contacts_to_list.end(), 0);
+  std::vector<SortedPair<GeometryId>> resolved_contacts;
+  resolved_contacts.reserve(n_contacts);
+
+  for (int i = 0; i < contact_geoms.size(); i++) {
+    DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+
+    const auto& candidates = contact_geoms[i];
+    const int num_to_select = resolve_contacts_to_list[i];
+
+    if (verbose && candidates.size() > 1) {
+      std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
+    }
+
+    std::vector<double> distances;
+    distances.reserve(candidates.size());
+    
+    for (const auto& pair : candidates) {
+      multibody::GeomGeomCollider collider(plant, pair);
+      auto [phi_i, J_i] = collider.EvalPolytope(context,
+                                                num_friction_directions);
+      distances.push_back(phi_i);
+      if (verbose) {
+        PrintVerboseContactInfo(plant, context, pair, phi_i);
+      }
+    }
+    
+    for (int j = 0; j < num_to_select; ++j) {
+      auto min_it = std::min_element(distances.begin(), distances.end());
+      int min_index = std::distance(distances.begin(), min_it);
+      resolved_contacts.push_back(candidates[min_index]);
+      distances[min_index] = std::numeric_limits<double>::infinity();
+
+      if (verbose && candidates.size() > 1) {
+        std::cout << "   --> Chose option " << min_index << std::endl;
+      }
+    }
+  }
+  DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
+  return resolved_contacts;
+}
+
+void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
+                                         const Context<double>& context,
+                                         const SortedPair<GeometryId>& pair,
+                                         const double phi_i) {
+  const auto& query_port = plant.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(context);
+  const auto& inspector = query_object.inspector();
+
+  // Get the witness points on each geometry.
+  const SignedDistancePair<double> signed_distance_pair =
+    query_object.ComputeSignedDistancePairClosestPoints(
+      pair.first(), pair.second());
+
+  const Eigen::Vector3d& p_ACa =
+    inspector.GetPoseInFrame(pair.first()).template cast<double>() *
+    signed_distance_pair.p_ACa;
+  const Eigen::Vector3d& p_BCb =
+    inspector.GetPoseInFrame(pair.second()).template cast<double>() *
+    signed_distance_pair.p_BCb;
+
+  // Represent the witness points as points in world frame.
+  RigidTransform T_body1_contact = RigidTransform(p_ACa);
+  const FrameId f1_id = inspector.GetFrameId(pair.first());
+  const Body<double>* body1 = plant.GetBodyFromFrameId(f1_id);
+  RigidTransform T_world_body1 = body1->EvalPoseInWorld(context);
+  Eigen::Vector3d p_world_contact_a = T_world_body1 *
+    T_body1_contact.translation();
+
+  RigidTransform T_body2_contact = RigidTransform(p_BCb);
+  const FrameId f2_id = inspector.GetFrameId(pair.second());
+  const Body<double>* body2 = plant.GetBodyFromFrameId(f2_id);
+  RigidTransform T_world_body2 = body2->EvalPoseInWorld(context);
+  Eigen::Vector3d p_world_contact_b = T_world_body2 *
+    T_body2_contact.translation();
+
+  std::cout << "Contact pair: (" << inspector.GetName(pair.first()) 
+            << ", " << inspector.GetName(pair.second())
+            << ") with phi = " << phi_i << " between world points ["
+            << p_world_contact_a.transpose() << "], ["
+            << p_world_contact_b.transpose() << "]" << std::endl;
 }
 
 }  // namespace solvers

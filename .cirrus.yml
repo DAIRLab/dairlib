@@ -27,12 +27,13 @@ drake_master_build_task:
   allow_failures: true
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
-    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build
+      --override_module=drake=$PWD/../drake
       --local_resources=memory=24000
       --local_resources=cpu=8
       //...
     - bazel test
+      --override_module=drake=$PWD/../drake
       --local_resources=memory=24000
       --local_resources=cpu=8
       //...

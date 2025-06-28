@@ -4,7 +4,6 @@
 
 #include <Eigen/Dense>
 
-#include "gurobi_c++.h"
 #include "solvers/c3.h"
 #include "solvers/lcs.h"
 

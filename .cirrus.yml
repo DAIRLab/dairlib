@@ -1,22 +1,20 @@
+registry_config: ENCRYPTED[!535c7d428d36e0e05cf4533e449f5e383978ab82b019f8f381bac70f322f27c8f2cdc48ac83d3ef890fe348f8678288a!]
+
 build_jammy_task:
   timeout_in: 120m
   container:
-    dockerfile: install/jammy/Dockerfile
+    image: michaelposa/jammy-dairlib-base
     cpu: 8
     memory: 24
   test_script:
     - export CC=clang-12
     - export CXX=clang++-12
     - bazel build
-      --define=WITH_SNOPT=OFF
-      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
       //...
     - bazel test
-      --define=WITH_SNOPT=OFF
-      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       //...
@@ -24,7 +22,7 @@ build_jammy_task:
 drake_master_build_task:
   timeout_in: 120m
   container:
-    dockerfile: install/focal/Dockerfile
+    image: michaelposa/jammy-dairlib-base
     cpu: 8
     memory: 24
   allow_failures: true
@@ -32,15 +30,11 @@ drake_master_build_task:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build
-      --define=WITH_SNOPT=OFF
-      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 
       //...
     - bazel test
-      --define=WITH_SNOPT=OFF
-      --define=WITH_GUROBI=OFF
       --local_ram_resources=24000
       --local_cpu_resources=8
       --jobs=8 

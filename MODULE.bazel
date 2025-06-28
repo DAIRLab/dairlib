@@ -18,7 +18,6 @@ bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_python", version = "1.0.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
-
 use_repo(
     drake_dep_repositories,
     "blas",
@@ -72,10 +71,10 @@ bazel_dep(name = "inekf")
 # this will also work to override inekf 
 
 # You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
-DRAKE_COMMIT = "v1.39.0"
+DRAKE_VERSION = "v1.39.0"
 DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589b6"
 
-# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # DRAKE_CHECKSUM = "0" * 64
 
@@ -83,11 +82,11 @@ DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589
 # See README.md for instructions to use a local path, instead.
 archive_override(
     module_name = "drake",
-    urls = [x.format(DRAKE_COMMIT) for x in [
+    urls = [x.format(DRAKE_VERSION) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
     sha256 = DRAKE_CHECKSUM,
-    strip_prefix = "drake-{}".format(DRAKE_COMMIT.lstrip("v")),
+    strip_prefix = "drake-{}".format(DRAKE_VERSION.lstrip("v")),
 )
 
 INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"

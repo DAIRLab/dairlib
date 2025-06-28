@@ -1,5 +1,7 @@
 #include "systems/controllers/safe_velocity_controller.h"
 
+#include "drake/common/text_logging.h"
+
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::VectorX;

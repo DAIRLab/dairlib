@@ -1,26 +1,122 @@
-###############################################################################
-# Bazel now uses Bzlmod by default to manage external dependencies.
-# Please consider migrating your external dependencies from WORKSPACE to MODULE.bazel.
-#
-# For more details, please check https://github.com/bazelbuild/bazel/issues/18958
-###############################################################################
-
-
-# Boost
-# Famous C++ library that has given rise to many new additions to the C++ Standard Library
-# Makes @boost available for use: For example, add `@boost//:algorithm` to your deps.
-# For more, see https://github.com/nelhage/rules_boost and https://www.boost.org
-bazel_dep(name = "rules_boost", repo_name = "com_github_nelhage_rules_boost")
-archive_override(
-    module_name = "rules_boost",
-    urls = ["https://github.com/nelhage/rules_boost/archive/refs/heads/master.tar.gz"],
-    strip_prefix = "rules_boost-master",
-    # It is recommended to edit the above URL and the below sha256 to point to a specific version of this repository.
-    # integrity = "sha256-...",
+## MODULE.bazel
+module(
+    name = "dairlib"
 )
 
-non_module_boost_repositories = use_extension("@com_github_nelhage_rules_boost//:boost/repositories.bzl", "non_module_dependencies")
+drake_dep_repositories = use_extension(
+    "@drake//tools/workspace:default.bzl",
+    "drake_dep_repositories",
+)
+
+# If you don't want to support building on macOS, you may remove the next line.
+# Note that it must appear prior to loading "rules_cc", per the documentation:
+#  https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
+bazel_dep(name = "apple_support", version = "1.17.1")
+
+# Add the Bazel rules we need.
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
 use_repo(
-    non_module_boost_repositories,
-    "boost",
+    drake_dep_repositories,
+    "blas",
+    "buildifier",
+    "drake_models",
+    "eigen",
+    "fmt",
+    "gflags",
+    "glib",
+    "gtest",
+    "lapack",
+    "lcm",
+    "meshcat",
+    "mosek",
+    "opencl",
+    "pybind11",
+    "pycodestyle",
+    "snopt",
+    "spdlog",
+    "styleguide",
+    "x11",
+    "zlib",
+    "gurobi",
 )
+
+bazel_dep(name = "gazelle", version = "0.44.0")
+
+bazel_dep(name = "osqp", version = "0.6.3.bcr.2")
+
+# Use gurobi_cxx, which Drake deprecated
+gurobi_extension = use_extension("@dairlib//tools/workspace/gurobi:repository.bzl", "gurobi_extension")
+use_repo(gurobi_extension, "my_gurobi")
+
+# Replace Drake's Gurobi repository with ours.
+override_repo(
+    drake_dep_repositories,
+    gurobi = "my_gurobi",
+)
+
+# Here we introduce Drake as a module dependency, but note that Drake is not
+# published to any Bazel registry. Below, we'll override it with a github
+# source archive.
+bazel_dep(name = "drake")
+
+bazel_dep(name = "inekf")
+
+# By default, this example always uses the latest Drake master branch.
+
+# To use a local version of drake, use
+# build --override_module=drake=/home/user/stuff/drake
+# this will also work to override inekf 
+
+# You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
+DRAKE_VERSION = "v1.39.0"
+DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589b6"
+
+# Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+# DRAKE_CHECKSUM = "0" * 64
+
+# This declares the `@drake` module as a source code archive from github.
+# See README.md for instructions to use a local path, instead.
+archive_override(
+    module_name = "drake",
+    urls = [x.format(DRAKE_VERSION) for x in [
+        "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
+    ]],
+    sha256 = DRAKE_CHECKSUM,
+    strip_prefix = "drake-{}".format(DRAKE_VERSION.lstrip("v")),
+)
+
+INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"
+INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2edf"
+
+
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+#INEKF_CHECKSUM = "0" * 64
+
+# This declares the `@inekf` module as a source code archive from github.
+archive_override(
+    module_name = "inekf",
+    urls = [x.format(INEKF_COMMIT) for x in [
+        "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
+    ]],
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
+)
+
+# Use the host system /usr/bin/python3.
+python_repository = use_repo_rule(
+    "@drake//tools/workspace/python:repository.bzl",
+    "python_repository",
+)
+
+python_repository(
+    name = "python",
+    linux_interpreter_path = "/usr/bin/python3",
+    requirements_flavor = "build",
+)
+
+register_toolchains("@python//:all")

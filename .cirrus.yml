@@ -6,8 +6,6 @@ build_jammy_task:
     cpu: 8
     memory: 24G
   test_script:
-    - export CC=clang-12
-    - export CXX=clang++-12
     - bazel build
       --local_resources=memory=24000
       --local_resources=cpu=8

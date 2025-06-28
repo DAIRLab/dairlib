@@ -4,8 +4,8 @@ build_jammy_task:
   timeout_in: 120m
   container:
     image: docker.io/michaelposa/jammy-dair-base:latest
-    cpu: 8
-    memory: 24G
+    cpu: 2
+    memory: 4G
   test_script:
     - export CC=clang-12
     - export CXX=clang++-12
@@ -23,8 +23,8 @@ drake_master_build_task:
   timeout_in: 120m
   container:
     image: docker.io/michaelposa/jammy-dair-base
-    cpu: 8
-    memory: 24G
+    cpu: 2
+    memory: 4G
   allow_failures: true
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake

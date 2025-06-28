@@ -1,7 +1,7 @@
 build_jammy_task:
   timeout_in: 120m
   container:
-    image: docker.io/michaelposa/jammy-dair-base:latest
+    image: docker.io/library/alpine:latest
     registry_config: ENCRYPTED[!8f84e0623383db578a46c5e5fbaa403ce539c95df7f6ed4c3654a80ad98ca80ca8c0359c73d40c8679e982fbfb9b9e6c!]
     cpu: 2
     memory: 4G

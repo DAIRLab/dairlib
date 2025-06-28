@@ -1,8 +1,8 @@
 build_jammy_task:
   timeout_in: 120m
   container:
-    image: docker.io/library/alpine:latest
-    registry_config: ENCRYPTED[!8f84e0623383db578a46c5e5fbaa403ce539c95df7f6ed4c3654a80ad98ca80ca8c0359c73d40c8679e982fbfb9b9e6c!]
+    image: docker.io/michaelposa/jammy-dair-base:latest
+    registry_config: ENCRYPTED[!d6dc09b37f70c71314fbd39ba44a49c65dd0dbf952e75f47d36a1c25decf2961f176c6ce22fa5ba41784ea6a694597c6!]
     cpu: 2
     memory: 4G
   test_script:
@@ -22,7 +22,7 @@ drake_master_build_task:
   timeout_in: 120m
   container:
     image: docker.io/michaelposa/jammy-dair-base
-    registry_config: ENCRYPTED[!8f84e0623383db578a46c5e5fbaa403ce539c95df7f6ed4c3654a80ad98ca80ca8c0359c73d40c8679e982fbfb9b9e6c!]
+    registry_config: ENCRYPTED[!d6dc09b37f70c71314fbd39ba44a49c65dd0dbf952e75f47d36a1c25decf2961f176c6ce22fa5ba41784ea6a694597c6!]
     cpu: 2
     memory: 4G
   allow_failures: true

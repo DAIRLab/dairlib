@@ -1,8 +1,6 @@
-
 build_jammy_task:
   timeout_in: 120m
   container:
-    registry_config: ENCRYPTED[!535c7d428d36e0e05cf4533e449f5e383978ab82b019f8f381bac70f322f27c8f2cdc48ac83d3ef890fe348f8678288a!]
     image: docker.io/michaelposa/jammy-dairlib-base
     cpu: 8
     memory: 24

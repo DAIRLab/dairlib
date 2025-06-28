@@ -1,4 +1,4 @@
-registry_config: ENCRYPTED[!7d95d6c7ce6baa5c38a634d9db7ecafe88771e1424988f01e5a07a476f6740f59eb0e4f96b8c568b6023d5481909709b!]
+registry_config: ENCRYPTED[!ef5a2dede25f7b3ad7db5344394011f257986f990d67cfe475c23075057745f9629ac3a7660f9b0a4026e94105c4bd02!]
 
 build_jammy_task:
   timeout_in: 120m

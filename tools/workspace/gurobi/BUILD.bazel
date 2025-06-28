@@ -1,0 +1,13 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+selects.config_setting_group(
+    name = "enabled",
+    match_any = [
+        ":enabled_via_flag",
+    ],
+)
+
+config_setting(
+    name = "enabled_via_flag",
+    flag_values = {"@drake//tools/flags:with_gurobi": "True"},
+)

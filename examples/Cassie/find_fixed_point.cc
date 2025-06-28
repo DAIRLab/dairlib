@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+#include "drake/common/text_logging.h"
 
 DEFINE_double(height, 1, "Fixed height,");
 DEFINE_double(toe_spread, .2, "Fixed height,");

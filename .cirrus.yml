@@ -1,8 +1,9 @@
+registry_config: ENCRYPTED[!8f84e0623383db578a46c5e5fbaa403ce539c95df7f6ed4c3654a80ad98ca80ca8c0359c73d40c8679e982fbfb9b9e6c!]
+
 build_jammy_task:
   timeout_in: 120m
   container:
-    registry_config: ENCRYPTED[!8f84e0623383db578a46c5e5fbaa403ce539c95df7f6ed4c3654a80ad98ca80ca8c0359c73d40c8679e982fbfb9b9e6c!]
-    image: docker.io/michaelposa/jammy-dairlib-base
+    image: docker.io/michaelposa/jammy-dair-base:latest
     cpu: 8
     memory: 24
   test_script:
@@ -23,7 +24,7 @@ build_jammy_task:
 drake_master_build_task:
   timeout_in: 120m
   container:
-    image: docker.io/michaelposa/jammy-dairlib-base
+    image: docker.io/michaelposa/jammy-dair-base
     cpu: 8
     memory: 24
   allow_failures: true

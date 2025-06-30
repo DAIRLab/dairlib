@@ -11,6 +11,7 @@
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
+#include "systems/controllers/face.h"
 
 #include "solvers/c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
@@ -42,6 +43,7 @@ using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using systems::Face;
 
 namespace systems {
 
@@ -320,6 +322,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputSampleBufferCosts(
     const drake::systems::Context<double>& context,
     Eigen::VectorXd* sample_buffer_costs) const;
+
+  drake::geometry::TriangleSurfaceMesh<double>* mesh_;
+  std::vector<Face> faces_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;

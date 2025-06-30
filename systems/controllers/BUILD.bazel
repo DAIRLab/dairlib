@@ -93,12 +93,18 @@ cc_library(
 )
 
 cc_library(
+    name = "face",
+    hdrs = ["face.h"],
+)
+
+cc_library(
     name = "generate_samples",
     srcs = ["generate_samples.cc"],
     hdrs = ["generate_samples.h"],
     deps = [
         "@drake//:drake_shared_library",
         ":sampling_params",
+        ":face",
         "//solvers:c3",
         "//multibody:utils",
         "//multibody:geom_geom_collider",
@@ -130,6 +136,7 @@ cc_library(
         "//multibody:utils",
         "//solvers:c3",
         "//solvers:c3_output",
+        ":face",
         "//solvers:solver_options_io",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

@@ -250,8 +250,8 @@ SamplingC3Controller::SamplingC3Controller(
     "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_jacobian,
     &SamplingC3Controller::OutputLCSContactJacobianCurrPlan
   ).get_index();
+#include "systems/controllers/face.h"
 
-  // Best sample plan output ports.
   // This output port is being kept so it can go into a C3outputSender which is what we use to grab downstream forces 
   // for visualization.
   c3_solution_best_plan_port_ = this->DeclareAbstractOutputPort(
@@ -398,24 +398,6 @@ SamplingC3Controller::SamplingC3Controller(
   if (verbose_) {
     std::cout << "Initial filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
-}
-
-
-LCS SamplingC3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
-  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
-  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, sampling_c3_options_.planning_dt_position_tracking);
-}
-
-drake::systems::EventStatus SamplingC3Controller::ComputePlan(
-    const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
 
   std::string mesh_path;
 
@@ -442,7 +424,56 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // 2) Load it exactly once:
-  drake::geometry::TriangleSurfaceMesh<double> mesh = drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, /*scale=*/1.0);      
+  mesh_ = new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+  const auto& vertices = mesh_->vertices();
+  int num_tri = mesh_->num_triangles();
+  // Eigen::VectorXd q_vec = x_lcs.head(n_q_);
+  // Eigen::Vector3d object_xyz = q_vec.tail(3);
+  // double trans_x = object_xyz[0];
+  // double trans_y = object_xyz[1];
+  // double trans_z = object_xyz[2];
+  // Eigen::Quaterniond quat_object(q_vec[n_q_ - 7], q_vec[n_q_ - 6],
+  //                                 q_vec[n_q_ - 5], q_vec[n_q_ - 4]);
+  // Eigen::Matrix3d R = quat_object.toRotationMatrix();
+  // Eigen::Vector3d t(trans_x, trans_y, trans_z);
+
+  faces_.reserve(num_tri);
+  for (int i = 0; i < num_tri; ++i) {
+    auto tri = mesh_->triangles()[i];
+    Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+    Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+    Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+    Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+    if (std::abs(normal[2]) < 0.8) {
+      double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+      faces_.push_back({area, normal, {v0, v1, v2}});
+    }
+  }
+  if (faces_.empty()) {
+      throw std::runtime_error("No valid faces found in the mesh.");
+  }
+}
+
+
+LCS SamplingC3Controller::CreatePlaceholderLCS() const {
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, sampling_c3_options_.planning_dt_position_tracking);
+}
+
+drake::systems::EventStatus SamplingC3Controller::ComputePlan(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+
+  
+
+
   auto start = std::chrono::high_resolution_clock::now();
 
   // Evaluate input ports.
@@ -712,9 +743,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate multiple samples and include current location as first item.
   //std::cout << "Generating sample states..." << std::endl;
+  auto gss_start = std::chrono::high_resolution_clock::now();
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_, mesh);
+    plant_, context_, plant_ad_, context_ad_, contact_pairs_, *mesh_, faces_);
+
+  auto gss_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> gss_elapsed = gss_end - gss_start;
+  std::cout << "Elapsed time: " << gss_elapsed.count() << " seconds" << std::endl;
+
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -1394,10 +1431,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   filtered_solve_time_ = (1 - solve_time_filter_constant_) * solve_time +
                          (solve_time_filter_constant_)*filtered_solve_time_;
 
-  if (verbose_) {
+  if (true) {
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
+  std::cout << std::endl;
 
   return drake::systems::EventStatus::Succeeded();
 }

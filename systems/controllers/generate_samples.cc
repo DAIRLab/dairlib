@@ -1,4 +1,5 @@
 #include "generate_samples.h"
+
 // #include <random>
 // #include <iostream>
 // #include <vector>
@@ -41,7 +42,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
-    drake::geometry::TriangleSurfaceMesh<double> mesh){
+    drake::geometry::TriangleSurfaceMesh<double> mesh,
+    std::vector<Face> faces){
 
   // Determine number of samples based on mode.
   int num_samples;
@@ -89,11 +91,11 @@ std::vector<Eigen::VectorXd> generate_sample_states(
             if (end_pos != std::string::npos) {
               mesh_path = shape_type.substr(fname_pos, end_pos - fname_pos);
               mesh_geometry_id = geom_id; 
-              std::cout << inspector.GetProximityProperties(mesh_geometry_id) << std::endl;
+              //std::cout << inspector.GetProximityProperties(mesh_geometry_id) << std::endl;
 
               // Save the mesh geometry id as a string
               // std::cout << "Found mesh filename: " << mesh_path << std::endl;
-              std::cout << "Found mesh geometry id: " << mesh_geometry_id << std::endl;
+              //std::cout << "Found mesh geometry id: " << mesh_geometry_id << std::endl;
             }
           }
         }
@@ -102,9 +104,9 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   }
 
   
-  std::cout << "All geometries in scene_graph:\n";
+  //std::cout << "All geometries in scene_graph:\n";
   for (auto id : inspector.GetAllGeometryIds()) {
-      std::cout << "  GeometryId: " << id << "\n";
+      //std::cout << "  GeometryId: " << id << "\n";
   } 
 
   // Determine which sampling strategy to use.
@@ -204,7 +206,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       do{
         candidate_states[i] = generate_sample_mesh_drake(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, 
-          mesh_path, sampling_params, query_object, c3_options, mesh_geometry_id, mesh);
+          mesh_path, sampling_params, query_object, c3_options, mesh_geometry_id, mesh, faces);
       } while(sampling_params.filter_samples_for_safety &&
         !is_sample_within_workspace(candidate_states[i], c3_options));
     }
@@ -747,7 +749,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
     const drake::geometry::QueryObject<double>& query_object,
     C3Options c3_options,
     const drake::geometry::GeometryId mesh_geometry_id, 
-    const drake::geometry::TriangleSurfaceMesh<double>& mesh
+    const drake::geometry::TriangleSurfaceMesh<double>& mesh,
+    std::vector<Face> faces
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -756,51 +759,62 @@ Eigen::VectorXd generate_sample_mesh_drake(
     double distance = 0;
 
     //drake::geometry::Mesh mesh(mesh_path, 1.0);
-    const auto& vertices = mesh.vertices();
-    int num_tri = mesh.num_triangles();
-    double total_area = mesh.total_area();
+    
     Eigen::VectorXd q_vec = x_lcs.head(n_q);
     Eigen::Vector3d object_xyz = q_vec.tail(3);
     double trans_x = object_xyz[0];
     double trans_y = object_xyz[1];
     double trans_z = object_xyz[2];
     Eigen::Quaterniond quat_object(q_vec[n_q - 7], q_vec[n_q - 6],
-                                   q_vec[n_q - 5], q_vec[n_q - 4]);
+                                    q_vec[n_q - 5], q_vec[n_q - 4]);
     Eigen::Matrix3d R = quat_object.toRotationMatrix();
     Eigen::Vector3d t(trans_x, trans_y, trans_z);
+    
+    double total_area = 0;
+    std::vector<Face> faces_world;
+    faces_world.reserve(faces.size());
 
-    struct Face {double area; Eigen::Vector3d normal; std::array<Eigen::Vector3d, 3> v;};
-    std::vector<Face> faces;
-    faces.reserve(num_tri);
-    for (int i = 0; i < num_tri; ++i) {
-      auto tri = mesh.triangles()[i];
-        Eigen::Vector3d v0 = R * vertices[tri.vertex(0)] + t;
-        Eigen::Vector3d v1 = R * vertices[tri.vertex(1)] + t;
-        Eigen::Vector3d v2 = R * vertices[tri.vertex(2)] + t;
-        Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
-        double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-        faces.push_back({area, normal, {v0, v1, v2}});
+    for (int i = 0; i < faces.size(); i++) {
+        Face transformed_face;
+        transformed_face.v[0] = R * faces[i].v[0] + t;
+        transformed_face.v[1] = R * faces[i].v[1] + t;
+        transformed_face.v[2] = R * faces[i].v[2] + t;
+        transformed_face.normal = R * faces[i].normal;
+        transformed_face.area = faces[i].area;
+
+        total_area += transformed_face.area;
+        faces_world.emplace_back(transformed_face);
     }
-    if (faces.empty()) {
-        throw std::runtime_error("No faces found in the mesh.");
-    }
+
     do {
-      std::cout << "Number of faces: " << faces.size() << std::endl;
+      auto sample_start = std::chrono::high_resolution_clock::now();
+
       std::mt19937 gen(std::random_device{}());
       std::uniform_real_distribution<double> dis(0.0, total_area);
       double target_area = dis(gen);
       const Face* selected_face = nullptr;
-      for (const auto& face : faces) {
+
+      auto sample_end1 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> uniform_elapsed = sample_end1 - sample_start;
+      //std::cout << "Sample from uniform: " << uniform_elapsed.count() << " seconds" << std::endl;
+
+      int count = faces_world.size();
+      for (const auto& face : faces_world) {
           if (target_area < face.area) {
               selected_face = &face;
               break;
           }
           target_area -= face.area;
+          count--;
       }
       if (!selected_face) {
           throw std::runtime_error("No face selected based on area.");
       }
+      auto sample_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> sample_elapsed = sample_end - sample_start;
+      //std::cout << "Select face: " << sample_elapsed.count() << " seconds" << std::endl;
 
+      auto on_face_start = std::chrono::high_resolution_clock::now();
       std::uniform_real_distribution<double> dis_u(0.0, 1.0);
       double a = std::pow(dis_u(gen), 0.6);
       double b = std::pow(dis_u(gen), 0.6);
@@ -815,8 +829,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
       double yaw = yaw_rot(gen);
       Eigen::Vector3d rotated_normal = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) * selected_face->normal;
       Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * rotated_normal;
-      projected_sample_point[2] = -0.029+z_height;
-      
+      projected_sample_point[2] = z_height;
+
       Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
       candidate_state[0] = projected_sample_point[0];
       candidate_state[1] = projected_sample_point[1];
@@ -827,19 +841,27 @@ Eigen::VectorXd generate_sample_mesh_drake(
       new_candidate_state.segment(0, 7) = candidate_state.segment(3, n_q - 3);
       new_candidate_state.segment(7, 6) = candidate_state.segment(n_q + 3, n_v - 3);
 
+      auto on_face_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> on_face_elapsed = on_face_end - on_face_start;
+      //std::cout << "Sample on face: " << on_face_elapsed.count() << " seconds" << std::endl;
+
+
+
+      auto collision_start = std::chrono::high_resolution_clock::now();
+
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
       // All for debugging, need to reimplement ComputeSignedDistanceToPoint later.
       auto& inspector = query_object.inspector();
-      std::cout << "Proximity geometries:";
+      //std::cout << "Proximity geometries:";
       for (auto id : inspector.GetAllGeometryIds()) {
-        if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
-          std::cout << id << " ";
+        // if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
+        //   std::cout << id << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       auto pose = inspector.GetPoseInFrame(mesh_geometry_id); // 34
-      std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
-      std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
+      // std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
+      // std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
 
       // drake::geometry::SignedDistanceToPointResult<double> result = query_object.ComputeSignedDistanceToPoint(sample_point, mesh_geometry_id);
       // distance = result.distance;
@@ -859,16 +881,19 @@ Eigen::VectorXd generate_sample_mesh_drake(
         c3_options, 
         min_distance_index
       );
+      auto collision_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
+      //std::cout << "Do collision: " << collision_elapsed.count() << " seconds" << std::endl;
 
       if (!in_collision) {
-        std::cout << "Sample point is not in collision with the object." << std::endl;
+        //std::cout << "Sample point is not in collision with the object." << std::endl;
         // Update the context with the candidate state.
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
-        std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
+        //std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
         return candidate_state;
       }
-      std::cout << "Attempt #: " << attempts + 1 << " - Sample point is in collision with the object." << std::endl;
-      std::cout << "Sampled point: " << projected_sample_point.transpose() << std::endl;
+      //std::cout << "Attempt #: " << attempts + 1 << " - Sample point is in collision with the object." << std::endl;
+      //std::cout << "Sampled point: " << projected_sample_point.transpose() << std::endl;
       ++attempts;
     }
     while (attempts < max_attempts);
@@ -891,7 +916,7 @@ bool check_collision(
   // This function returns a boolean value indicating whether the sample is in collision with the object or not.
   // If the sample is in collision with the object, the function modifies a reference to the index of the closest pair 
   // of contact geoms so that the projection function need not recompute the closest pair.
-  
+
   // Update the context of the plant with the candidate state.
   UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state); 
 

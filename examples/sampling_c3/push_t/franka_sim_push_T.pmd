@@ -54,6 +54,16 @@ script "start_experiment_no_logs"{
     stop cmd "start_logging";
     restart cmd "generate_files";
     wait ms 50;
+    restart cmd "visualizer";
+    wait ms 500;
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
+    wait ms 50;
+    restart cmd "franka_c3";
+}
+
+script "start_experiment_no_gen"{
+    stop cmd "start_logging";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
     wait ms 50;

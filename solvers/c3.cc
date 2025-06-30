@@ -507,6 +507,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool 
       (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
       UU[i].transpose()*R_eff.at(i)*UU[i];
   }
+  //std::cout << "XX: " << XX[0] << std::endl; 
   cost = cost + 
     (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
 

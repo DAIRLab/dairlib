@@ -1,6 +1,6 @@
 # https://github.com/mikedh/trimesh
 
-o textured_mesh.obj
+#o textured_mesh.obj
 v 0.04196292 0.07747410 -0.01888852
 v 0.04169562 0.07758438 -0.01856872
 v 0.04097450 0.07670757 -0.01940289

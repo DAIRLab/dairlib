@@ -8,6 +8,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/hydroelastic_geom_collider.h"
+#include "systems/controllers/face.h"
 #include <vector>
 #include <string>
 #include <random>
@@ -38,6 +39,9 @@ using Eigen::Vector3d;
 #define PI 3.14159265359
 
 namespace dairlib{
+
+using systems::Face;
+
 namespace systems{
 
 // Public function signature.
@@ -54,7 +58,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
-    drake::geometry::TriangleSurfaceMesh<double> mesh);
+    drake::geometry::TriangleSurfaceMesh<double> mesh,
+    std::vector<Face> faces);
 
 // Private function signatures.
 bool is_sample_within_workspace(
@@ -142,7 +147,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
     const drake::geometry::QueryObject<double>& query_object,
     C3Options c3_options,
     const drake::geometry::GeometryId mesh_geometry_id,
-    const drake::geometry::TriangleSurfaceMesh<double>& mesh);
+    const drake::geometry::TriangleSurfaceMesh<double>& mesh,
+    std::vector<Face> faces);
 
 bool check_collision(
     const int& n_q,

@@ -48,17 +48,19 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     model = ET.SubElement(sdf, 'model', name=model_name)
     link = ET.SubElement(model, 'link', name="vertical_link")
 
-    # Inertia
+    # Inertia 
+    ratio = 1 / mass
+
     inertial = ET.SubElement(link, "inertial")
     ET.SubElement(inertial, "pose").text = "0 0 0 0 0 0"
-    ET.SubElement(inertial, "mass").text = f"{mass:.6g}"
+    ET.SubElement(inertial, "mass").text = f"{ratio * mass:.6g}"
     inertia_elem = ET.SubElement(inertial, "inertia")
-    ET.SubElement(inertia_elem, "ixx").text = f"{inertia[0,0]:.8g}"
-    ET.SubElement(inertia_elem, "iyy").text = f"{inertia[1,1]:.8g}"
-    ET.SubElement(inertia_elem, "izz").text = f"{inertia[2,2]:.8g}"
-    ET.SubElement(inertia_elem, "ixy").text = f"{inertia[0,1]:.8g}"
-    ET.SubElement(inertia_elem, "ixz").text = f"{inertia[0,2]:.8g}"
-    ET.SubElement(inertia_elem, "iyz").text = f"{inertia[1,2]:.8g}"
+    ET.SubElement(inertia_elem, "ixx").text = f"{ratio * inertia[0,0]:.8g}"
+    ET.SubElement(inertia_elem, "iyy").text = f"{ratio * inertia[1,1]:.8g}"
+    ET.SubElement(inertia_elem, "izz").text = f"{ratio * inertia[2,2]:.8g}"
+    ET.SubElement(inertia_elem, "ixy").text = f"{ratio * inertia[0,1]:.8g}"
+    ET.SubElement(inertia_elem, "ixz").text = f"{ratio * inertia[0,2]:.8g}"
+    ET.SubElement(inertia_elem, "iyz").text = f"{ratio * inertia[1,2]:.8g}"
 
     # For each convex hull, add visual and collision
     for i, convex_path in enumerate(convex_paths):

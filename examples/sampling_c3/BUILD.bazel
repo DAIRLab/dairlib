@@ -9,8 +9,8 @@ cc_library(
 
 filegroup(
     name = "all_example_params_yamls",
-    srcs = glob(["*/parameters/*.yaml"]),
     visibility = ["//visibility:public"],
+    data = ["//examples/sampling_c3/jacktoy:parameters"],
 )
 
 filegroup(

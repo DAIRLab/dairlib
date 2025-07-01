@@ -392,7 +392,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
       TriggerTypeSet({TriggerType::kForced}));
   ContactForcePublisher::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution(),
-      lcs_factory->get_output_port_lcs_contact_jacobian(),
+      lcs_factory->get_output_port_lcs_contact_description(),
       lcm_channel_params.c3_force_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
 

@@ -24,7 +24,7 @@ workspace_margins: 0.05
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]
 
-lcs_options:
+lcs_factory_options:
   #options are 'stewart_and_trinkle' or 'anitescu'
   # contact_model : 'stewart_and_trinkle'
   contact_model: "anitescu"

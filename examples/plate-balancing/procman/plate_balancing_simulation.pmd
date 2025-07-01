@@ -15,7 +15,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 start_logging.py sim";
+        exec = "python3 examples/plate-balancing/start_logging.py sim";
         host = "localhost";
     }
 }

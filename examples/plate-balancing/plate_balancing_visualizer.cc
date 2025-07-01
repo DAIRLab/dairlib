@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <c3/lcmt_forces.hpp>
+#include <c3/lcmt_contact_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/common/find_resource.h>
@@ -176,7 +176,7 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, lcm));
   auto trajectory_sub_force =
-      builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_forces>(
+      builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_contact_forces>(
           lcm_channel_params.c3_force_channel, lcm));
 
   // Create LCM subscribers for C3 states.

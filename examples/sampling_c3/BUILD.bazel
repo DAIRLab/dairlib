@@ -269,3 +269,8 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
+py_binary(
+    name = "visualize_mesh",
+    srcs = ["visualize_mesh.py"],
+)

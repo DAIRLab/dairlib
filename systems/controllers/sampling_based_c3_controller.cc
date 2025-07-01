@@ -438,6 +438,9 @@ SamplingC3Controller::SamplingC3Controller(
   // Eigen::Vector3d t(trans_x, trans_y, trans_z);
 
   faces_.reserve(num_tri);
+  face_bins_.reserve(num_tri+1);
+  face_bins_.push_back(0);
+  int j = 0;
   for (int i = 0; i < num_tri; ++i) {
     auto tri = mesh_->triangles()[i];
     Eigen::Vector3d v0 = vertices[tri.vertex(0)];
@@ -447,6 +450,8 @@ SamplingC3Controller::SamplingC3Controller(
     if (std::abs(normal[2]) < 0.8) {
       double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
       faces_.push_back({area, normal, {v0, v1, v2}});
+      face_bins_.push_back(face_bins_[j] + area);
+      j++;
     }
   }
   if (faces_.empty()) {
@@ -746,7 +751,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   auto gss_start = std::chrono::high_resolution_clock::now();
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_, *mesh_, faces_);
+    plant_, context_, plant_ad_, context_ad_, contact_pairs_, *mesh_, faces_, face_bins_);
 
   auto gss_end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> gss_elapsed = gss_end - gss_start;
@@ -1433,7 +1438,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   if (true) {
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;
-    std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
+    //std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
   std::cout << std::endl;
 

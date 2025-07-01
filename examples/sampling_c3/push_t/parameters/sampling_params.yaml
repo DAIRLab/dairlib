@@ -87,7 +87,7 @@ track_c3_progress_via: 3  # 0: C3 cost,
 # If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
 # in order to continue in C3 mode. If not, it has to switch to repositioning.
 min_percentage_decrease_in_cost_to_continue: -10
-num_control_loops_to_wait_for_progress: 25
+num_control_loops_to_wait_for_progress: 20
 
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a
 ####### lookahead for the trajectory type i.e. trajectory_type in the
@@ -130,4 +130,4 @@ repos_to_repos_cost_fraction_position_tracking: 0.3
 z_height: 0.01
 buffer_distance: 0.05
 num_additional_samples_mesh_buffer: 100
-base_name: your_mesh_centered
+base_name: trapezoid

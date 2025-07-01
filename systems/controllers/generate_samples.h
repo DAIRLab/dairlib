@@ -59,7 +59,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     drake::geometry::TriangleSurfaceMesh<double> mesh,
-    std::vector<Face> faces);
+    std::vector<Face> faces,
+    std::vector<double> face_bins);
 
 // Private function signatures.
 bool is_sample_within_workspace(
@@ -148,7 +149,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
     C3Options c3_options,
     const drake::geometry::GeometryId mesh_geometry_id,
     const drake::geometry::TriangleSurfaceMesh<double>& mesh,
-    std::vector<Face> faces);
+    std::vector<Face> faces,
+    std::vector<double> face_bins);
 
 bool check_collision(
     const int& n_q,
@@ -163,6 +165,8 @@ bool check_collision(
     const SamplingC3SamplingParams& sampling_params,
     C3Options c3_options,
     int& min_distance_index);
+
+int find_bin(const double* bins, int n, double x);
 
 void UpdateContext(
     const int& n_q,

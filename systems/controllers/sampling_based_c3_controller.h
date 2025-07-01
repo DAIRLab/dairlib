@@ -324,6 +324,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     Eigen::VectorXd* sample_buffer_costs) const;
 
   drake::geometry::TriangleSurfaceMesh<double>* mesh_;
+  std::vector<double> face_bins_;
   std::vector<Face> faces_;
 
   drake::systems::InputPortIndex radio_port_;

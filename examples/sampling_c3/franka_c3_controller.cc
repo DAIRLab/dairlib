@@ -10,6 +10,10 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "drake/geometry/scene_graph.h"
+#include "drake/geometry/scene_graph_inspector.h"
+#include "drake/geometry/geometry_roles.h" 
+
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"
@@ -155,6 +159,7 @@ int DoMain(int argc, char* argv[]) {
   /// Creating the plant for lcs which will contain only end effector and jack
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+
 
   Parser parser_for_lcs(&plant_for_lcs);
   parser_for_lcs.SetAutoRenaming(true);
@@ -968,6 +973,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);
+
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();

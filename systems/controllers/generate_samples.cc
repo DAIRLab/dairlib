@@ -43,7 +43,8 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     drake::geometry::TriangleSurfaceMesh<double> mesh,
-    std::vector<Face> faces){
+    std::vector<Face> faces,
+    std::vector<double> face_bins){
 
   // Determine number of samples based on mode.
   int num_samples;
@@ -206,7 +207,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       do{
         candidate_states[i] = generate_sample_mesh_drake(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms, 
-          mesh_path, sampling_params, query_object, c3_options, mesh_geometry_id, mesh, faces);
+          mesh_path, sampling_params, query_object, c3_options, mesh_geometry_id, mesh, faces, face_bins);
       } while(sampling_params.filter_samples_for_safety &&
         !is_sample_within_workspace(candidate_states[i], c3_options));
     }
@@ -750,7 +751,8 @@ Eigen::VectorXd generate_sample_mesh_drake(
     C3Options c3_options,
     const drake::geometry::GeometryId mesh_geometry_id, 
     const drake::geometry::TriangleSurfaceMesh<double>& mesh,
-    std::vector<Face> faces
+    std::vector<Face> faces,
+    std::vector<double> face_bins
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -787,32 +789,25 @@ Eigen::VectorXd generate_sample_mesh_drake(
     }
 
     do {
-      auto sample_start = std::chrono::high_resolution_clock::now();
+      auto sample_start0 = std::chrono::high_resolution_clock::now();
 
       std::mt19937 gen(std::random_device{}());
       std::uniform_real_distribution<double> dis(0.0, total_area);
-      double target_area = dis(gen);
+      double target = dis(gen);
       const Face* selected_face = nullptr;
 
-      auto sample_end1 = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> uniform_elapsed = sample_end1 - sample_start;
-      //std::cout << "Sample from uniform: " << uniform_elapsed.count() << " seconds" << std::endl;
+      auto sample_end0 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> sample_elapsed0 = sample_end0 - sample_start0;
+      //std::cout << "Sample from uniform: " << sample_elapsed0.count() << " seconds" << std::endl;
+      
+      auto sample_start2 = std::chrono::high_resolution_clock::now();
+      
+      int face_idx = find_bin(face_bins.data(), face_bins.size(), target);
+      selected_face = &faces_world[face_idx];
 
-      int count = faces_world.size();
-      for (const auto& face : faces_world) {
-          if (target_area < face.area) {
-              selected_face = &face;
-              break;
-          }
-          target_area -= face.area;
-          count--;
-      }
-      if (!selected_face) {
-          throw std::runtime_error("No face selected based on area.");
-      }
-      auto sample_end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> sample_elapsed = sample_end - sample_start;
-      //std::cout << "Select face: " << sample_elapsed.count() << " seconds" << std::endl;
+      auto sample_end2 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> sample_elapsed2 = sample_end2 - sample_start2;
+      //std::cout << "Select face binary search: " << sample_elapsed2.count() << " seconds" << std::endl;
 
       auto on_face_start = std::chrono::high_resolution_clock::now();
       std::uniform_real_distribution<double> dis_u(0.0, 1.0);
@@ -870,17 +865,50 @@ Eigen::VectorXd generate_sample_mesh_drake(
       // bool in_collision = (distance <= sampling_params.sample_projection_clearance);
 
       int min_distance_index = 1;
-    
+
       bool in_collision = check_collision(
-        n_q, n_v, n_u, 
-        candidate_state, 
-        plant, context, 
-        plant_ad, context_ad, 
-        contact_geoms,
-        sampling_params, 
-        c3_options, 
-        min_distance_index
-      );
+          n_q, n_v, n_u, 
+          candidate_state, 
+          plant, context, 
+          plant_ad, context_ad, 
+          contact_geoms,
+          sampling_params, 
+          c3_options, 
+          min_distance_index
+        );
+
+      // bool in_collision = true;
+
+      // // Test check collision
+      // for (int i = 1; i < 40; i++) {
+      //   Eigen::VectorXd raw = Eigen::VectorXd::Zero(3);
+      //   raw[0] = 0;
+      //   raw[1] = static_cast<double>(i)/100;
+      //   raw[2] = 0;
+      //   raw = R * raw + t;
+
+      //   //std::cout << object_xyz[0] << ", " << object_xyz[1] << ", " << object_xyz[2] << std::endl;
+      //   //std::cout << raw.transpose() << std::endl;
+
+      //   candidate_state.segment(0,3) = raw;
+      
+      //   in_collision = check_collision(
+      //     n_q, n_v, n_u, 
+      //     candidate_state, 
+      //     plant, context, 
+      //     plant_ad, context_ad, 
+      //     contact_geoms,
+      //     sampling_params, 
+      //     c3_options, 
+      //     min_distance_index
+      //   );
+      //   std::cout << "Collision result " << i << ": " << in_collision << std::endl;
+
+      // }
+      
+
+
+
       auto collision_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
       //std::cout << "Do collision: " << collision_elapsed.count() << " seconds" << std::endl;
@@ -938,9 +966,26 @@ bool check_collision(
   min_distance_index = std::distance(distances.begin(), min_distance_it);
   double min_distance = *min_distance_it;
 
+  std::cout << min_distance << std::endl;
+
   return min_distance <= sampling_params.sample_projection_clearance - 1e-3;
 }
 
+// Helper function to binary search over bin edges 
+int find_bin(const double* bins, int n, double x) {
+    int low = 0;
+    int high = n - 1;  
+
+    while (low < high - 1) {  
+        int mid = (high + low) / 2;
+        if (bins[mid] <= x) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
 
 // Helper function to update context of a plant with a given state.
 void UpdateContext(

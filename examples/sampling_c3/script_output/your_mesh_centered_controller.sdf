@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<sdf version="1.7">
-  <model name="t_shape">    
+<sdf version="1.7" xmlns:drake="https://drake.mit.edu/schemas/drake">  
+<model name="t_shape">    
     <link name="vertical_link">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
@@ -21,7 +21,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered.obj</uri>
+            <uri>examples/sampling_c3/script_output/your_mesh_centered.obj</uri>
           </mesh>
         </geometry>
         <material>

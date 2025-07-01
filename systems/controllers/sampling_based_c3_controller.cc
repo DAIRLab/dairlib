@@ -8,7 +8,8 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+//#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "quaternion_error_hessian.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
@@ -924,6 +925,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           N_, VectorXd::Zero(n_x_ + n_lambda + n_u_));
       }
 
+
       // Set up C3 MIQP.
       std::shared_ptr<solvers::C3> test_c3_object;
 
@@ -949,8 +951,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
+
+
       // test_c3_object->Solve(test_state, delta, w, verbose_);
       test_c3_object->Solve(test_state, verbose_);
+
       // Get the state solution and calculate the cost.
       // This is taking in the xbox input to change the way we calculate cost
       // type 3 based on if force tracking is on or off.

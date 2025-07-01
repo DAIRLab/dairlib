@@ -16,12 +16,6 @@
 #include <cmath>
 #include <iostream>
 #include <igl/readOBJ.h>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point_xy.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
-#include <boost/geometry/algorithms/union.hpp>
-#include <boost/geometry/algorithms/buffer.hpp>
-#include <boost/geometry/strategies/buffer.hpp>
 #include <drake/geometry/meshcat.h>
 #include <drake/geometry/query_object.h>
 #include <drake/geometry/scene_graph.h>

@@ -4,22 +4,10 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "urdfs",
-    data = glob([
-        "urdf/**",
-    ]),
-)
-
-cc_library(
     name = "parameters",
     data = glob([
-        "*yaml",
+        "parameters/*.yaml",
     ]),
-)
-
-cc_library(
-    name = "franka_hardware",
-    deps = [],
 )
 
 cc_library(

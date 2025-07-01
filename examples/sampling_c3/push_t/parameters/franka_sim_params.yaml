@@ -7,7 +7,8 @@ ground_model: examples/sampling_c3/urdf/ground_modified.sdf
 platform_model: examples/sampling_c3/urdf/platform.urdf
 #jack_model: examples/sampling_c3/script_output/your_mesh_centered.sdf
 #jack_model: examples/sampling_c3/urdf/T_vertical_sim_og.sdf
-jack_model: examples/sampling_c3/script_output/trapezoid.sdf
+jack_model: examples/sampling_c3/urdf/push_t_white.sdf
+#jack_model: examples/sampling_c3/script_output/box.sdf
 
 # jack_model: examples/sampling_c3/urdf/jack_tagged.urdf
 # Note:  Use capsule_1 body name as representative of the pose of the entire

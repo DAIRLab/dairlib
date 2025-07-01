@@ -110,7 +110,6 @@ cc_library(
         "//multibody:geom_geom_collider",
         "//multibody:hydroelastic_geom_collider",
         "@eigen//:eigen",
-        "@boost//:core",
     ],
     copts = [
         "-I/usr/include/libigl/include",
@@ -146,7 +145,6 @@ cc_library(
         "//solvers:lcs",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",     
         "@eigen//:eigen",
-        "@boost//:core",
     ],
     copts = [
         "-I/usr/include/libigl/include",

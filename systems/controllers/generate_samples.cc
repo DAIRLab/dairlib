@@ -547,9 +547,6 @@ Eigen::VectorXd generate_sample_in_shell(
   }
 }
 
-namespace bg = boost::geometry;
-using BGPoint = bg::model::d2::point_xy<double>;
-using BGPolygon = bg::model::polygon<BGPoint>;
 
 Eigen::VectorXd generate_sample_mesh_buffer(
     const int& n_q,
@@ -560,178 +557,174 @@ Eigen::VectorXd generate_sample_mesh_buffer(
     const SamplingC3SamplingParams& sampling_params,
     C3Options c3_options
 ) {
-  const double z_height = sampling_params.z_height;
-  // const double buffer_distance = sampling_params.buffer_distance;
-  const int num_samples = sampling_params.num_additional_samples_mesh_buffer;
-    // 1. Load mesh
-    Eigen::MatrixXd V;
-    Eigen::MatrixXi F;
-    if (!igl::readOBJ(mesh_path, V, F)) {
-        throw std::runtime_error("Could not open mesh file: " + mesh_path);
-    }
+  // const double z_height = sampling_params.z_height;
+  // // const double buffer_distance = sampling_params.buffer_distance;
+  // const int num_samples = sampling_params.num_additional_samples_mesh_buffer;
+  //   // 1. Load mesh
+  //   Eigen::MatrixXd V;
+  //   Eigen::MatrixXi F;
+  //   if (!igl::readOBJ(mesh_path, V, F)) {
+  //       throw std::runtime_error("Could not open mesh file: " + mesh_path);
+  //   }
 
-    // 2. Extract rotation and translation from x_lcs
-    Eigen::VectorXd test_q = x_lcs.head(n_q);
-    Eigen::Vector3d object_xyz = test_q.tail(3);
-    double trans_x = object_xyz[0];
-    double trans_y = object_xyz[1];
-    double trans_z = object_xyz[2];
+  //   // 2. Extract rotation and translation from x_lcs
+  //   Eigen::VectorXd test_q = x_lcs.head(n_q);
+  //   Eigen::Vector3d object_xyz = test_q.tail(3);
+  //   double trans_x = object_xyz[0];
+  //   double trans_y = object_xyz[1];
+  //   double trans_z = object_xyz[2];
 
-    Eigen::Quaterniond quat_object(test_q[n_q - 7], test_q[n_q - 6],
-                                   test_q[n_q - 5], test_q[n_q - 4]);
-    Eigen::Matrix3d R = quat_object.toRotationMatrix();
-    Eigen::Vector3d t(trans_x, trans_y, trans_z);
+  //   Eigen::Quaterniond quat_object(test_q[n_q - 7], test_q[n_q - 6],
+  //                                  test_q[n_q - 5], test_q[n_q - 4]);
+  //   Eigen::Matrix3d R = quat_object.toRotationMatrix();
+  //   Eigen::Vector3d t(trans_x, trans_y, trans_z);
 
-    // 3. Apply transformation
-    for (int i = 0; i < V.rows(); ++i) {
-        V.row(i) = (R * V.row(i).transpose()).transpose() + t.transpose();
-    }
+  //   // 3. Apply transformation
+  //   for (int i = 0; i < V.rows(); ++i) {
+  //       V.row(i) = (R * V.row(i).transpose()).transpose() + t.transpose();
+  //   }
 
-    // 4. Find intersection points with the slicing plane
-    std::vector<Eigen::Vector3d> intersections;
-    for (int i = 0; i < F.rows(); ++i) {
-        for (int j = 0; j < 3; ++j) {
-            Eigen::Vector3d p1 = V.row(F(i, j));
-            Eigen::Vector3d p2 = V.row(F(i, (j + 1) % 3));
-            if ((p1.z() - z_height) * (p2.z() - z_height) < 0) {
-                double t = (z_height - p1.z()) / (p2.z() - p1.z());
-                Eigen::Vector3d intersect = p1 + t * (p2 - p1);
-                intersections.push_back(intersect);
-            }
-        }
-    }
+  //   // 4. Find intersection points with the slicing plane
+  //   std::vector<Eigen::Vector3d> intersections;
+  //   for (int i = 0; i < F.rows(); ++i) {
+  //       for (int j = 0; j < 3; ++j) {
+  //           Eigen::Vector3d p1 = V.row(F(i, j));
+  //           Eigen::Vector3d p2 = V.row(F(i, (j + 1) % 3));
+  //           if ((p1.z() - z_height) * (p2.z() - z_height) < 0) {
+  //               double t = (z_height - p1.z()) / (p2.z() - p1.z());
+  //               Eigen::Vector3d intersect = p1 + t * (p2 - p1);
+  //               intersections.push_back(intersect);
+  //           }
+  //       }
+  //   }
 
-    if (intersections.empty()) {
-        throw std::runtime_error("No intersections found at z = " + std::to_string(z_height));
-    }
-    // std::cout << "4: Found " << intersections.size() << " intersection points." << std::endl;
-    // 5. Convert intersections to 2D points and create polygon ring
-    std::vector<BGPoint> ring;
-    for (const auto& pt : intersections) {
-        ring.emplace_back(pt.x(), pt.y());
-    }
+  //   if (intersections.empty()) {
+  //       throw std::runtime_error("No intersections found at z = " + std::to_string(z_height));
+  //   }
+  //   // std::cout << "4: Found " << intersections.size() << " intersection points." << std::endl;
+  //   // 5. Convert intersections to 2D points and create polygon ring
+ 
+  //   for (const auto& pt : intersections) {
+  //       ring.emplace_back(pt.x(), pt.y());
+  //   }
 
-    BGPolygon poly;
-    bg::assign_points(poly, ring);
-    bg::correct(poly);
+  //   std::ofstream ring_file("examples/sampling_c3/sampling_generation/new_ring.csv");
+  //   if (!ring_file.is_open()) {
+  //     throw std::runtime_error("Failed to open new_ring.csv for writing.");
+  //   }
+  //   // ring_file << "x,y\n";
+  //   for (const auto& pt : ring) {
+  //     ring_file << bg::get<0>(pt) << "," << bg::get<1>(pt) << "\n";
+  //   }
+  //   ring_file.close();
 
-    std::ofstream ring_file("examples/sampling_c3/sampling_generation/new_ring.csv");
-    if (!ring_file.is_open()) {
-      throw std::runtime_error("Failed to open new_ring.csv for writing.");
-    }
-    // ring_file << "x,y\n";
-    for (const auto& pt : ring) {
-      ring_file << bg::get<0>(pt) << "," << bg::get<1>(pt) << "\n";
-    }
-    ring_file.close();
+  //   // std::cout << "5: Created polygon with " << ring.size() << " points." << std::endl;
 
-    // std::cout << "5: Created polygon with " << ring.size() << " points." << std::endl;
+  //   std::vector<BGPoint> downsampled_ring;
+  //   int skip = std::max(1, static_cast<int>(ring.size() / 200));  // Downsample to ~200 points
+  //   for (size_t i = 0; i < ring.size(); i += skip) {
+  //       downsampled_ring.push_back(ring[i]);
+  //   }
+  //   downsampled_ring.push_back(downsampled_ring.front());  // Close polygon if needed
 
-    std::vector<BGPoint> downsampled_ring;
-    int skip = std::max(1, static_cast<int>(ring.size() / 200));  // Downsample to ~200 points
-    for (size_t i = 0; i < ring.size(); i += skip) {
-        downsampled_ring.push_back(ring[i]);
-    }
-    downsampled_ring.push_back(downsampled_ring.front());  // Close polygon if needed
+  //   BGPolygon downsampled_poly;
+  //   bg::assign_points(downsampled_poly, downsampled_ring);
+  //   bg::correct(downsampled_poly);
 
-    BGPolygon downsampled_poly;
-    bg::assign_points(downsampled_poly, downsampled_ring);
-    bg::correct(downsampled_poly);
+  //   // 6. Buffer the polygon
+  //   std::vector<BGPolygon> buffered_polygons;
+  //   bg::strategy::buffer::distance_symmetric<double> distance_strategy(0.03);
+  //   bg::strategy::buffer::join_round join_strategy;
+  //   bg::strategy::buffer::end_round end_strategy;
+  //   bg::strategy::buffer::point_circle point_strategy(5);
+  //   bg::strategy::buffer::side_straight side_strategy;
+  //   bg::buffer(downsampled_poly, buffered_polygons, distance_strategy, side_strategy,
+  //              join_strategy, end_strategy, point_strategy);
 
-    // 6. Buffer the polygon
-    std::vector<BGPolygon> buffered_polygons;
-    bg::strategy::buffer::distance_symmetric<double> distance_strategy(0.03);
-    bg::strategy::buffer::join_round join_strategy;
-    bg::strategy::buffer::end_round end_strategy;
-    bg::strategy::buffer::point_circle point_strategy(5);
-    bg::strategy::buffer::side_straight side_strategy;
-    bg::buffer(downsampled_poly, buffered_polygons, distance_strategy, side_strategy,
-               join_strategy, end_strategy, point_strategy);
+  //   if (buffered_polygons.empty()) {
+  //       throw std::runtime_error("Buffering resulted in no polygons.");
+  //   }
+  //   //std::cout << "6: Buffered polygon created with " << buffered_polygons.size() << " polygons." << std::endl;
+  //   // 7. Sample points along the buffered polygon
+  //   std::vector<BGPoint> sampled_points;
+  //   const auto& outer = buffered_polygons.front().outer();
+  //   double total_length = 0.0;
+  //   for (size_t i = 0; i < outer.size() - 1; ++i) {
+  //       total_length += bg::distance(outer[i], outer[i + 1]);
+  //   }
 
-    if (buffered_polygons.empty()) {
-        throw std::runtime_error("Buffering resulted in no polygons.");
-    }
-    //std::cout << "6: Buffered polygon created with " << buffered_polygons.size() << " polygons." << std::endl;
-    // 7. Sample points along the buffered polygon
-    std::vector<BGPoint> sampled_points;
-    const auto& outer = buffered_polygons.front().outer();
-    double total_length = 0.0;
-    for (size_t i = 0; i < outer.size() - 1; ++i) {
-        total_length += bg::distance(outer[i], outer[i + 1]);
-    }
+  //   //std::cout << "Total length of outer polygon: " << total_length << std::endl;
+  //   if (total_length == 0.0) {
+  //       throw std::runtime_error("Total length of outer polygon is zero.");
+  //   }
 
-    //std::cout << "Total length of outer polygon: " << total_length << std::endl;
-    if (total_length == 0.0) {
-        throw std::runtime_error("Total length of outer polygon is zero.");
-    }
+  //   double segment_length = total_length / num_samples;
+  //   double accumulated_length = 0.0;
+  //   size_t current_segment = 0;
 
-    double segment_length = total_length / num_samples;
-    double accumulated_length = 0.0;
-    size_t current_segment = 0;
+  //   //std::cout << "6.5: Segment length: " << segment_length << std::endl;
 
-    //std::cout << "6.5: Segment length: " << segment_length << std::endl;
+  //   for (int i = 0; i < num_samples; ++i) {
+  //       double target_length = i * segment_length;
+  //       while (current_segment + 1 < outer.size() &&
+  //              accumulated_length + bg::distance(outer[current_segment], outer[current_segment + 1]) < target_length) {
+  //           accumulated_length += bg::distance(outer[current_segment], outer[current_segment + 1]);
+  //           ++current_segment;
+  //       }
+  //       // std::cout << "Current segment: " << current_segment << ", accumulated length: " << accumulated_length << std::endl;
+  //       if (current_segment + 1 >= outer.size()) {
+  //           break;
+  //       }
+  //       double remaining_length = target_length - accumulated_length;
+  //       double seg_length = bg::distance(outer[current_segment], outer[current_segment + 1]);
+  //       double ratio = seg_length == 0 ? 0 : remaining_length / seg_length;
+  //       double x = bg::get<0>(outer[current_segment]) + ratio * (bg::get<0>(outer[current_segment + 1]) - bg::get<0>(outer[current_segment]));
+  //       double y = bg::get<1>(outer[current_segment]) + ratio * (bg::get<1>(outer[current_segment + 1]) - bg::get<1>(outer[current_segment]));
+  //       BGPoint candidate(x, y);
+  //       const double min_distance = 0.01;
+  //       //std::cout << "Sampled point: (" << x << ", " << y << ")" << std::endl;
+  //       // Min distance check
+  //       bool far_enough = true;
+  //       for (const auto& poly : ring) {
+  //           double dist = bg::distance(candidate, poly);
+  //           //std::cout << "Distance to polygon: " << dist << std::endl;
+  //           if (dist < min_distance) {
+  //               far_enough = false;
+  //               break;
+  //           }
+  //       }
+  //       if (far_enough) {
+  //           sampled_points.emplace_back(x, y);
+  //       }
+  //   }
+  //   std::ofstream sampled_points_file("examples/sampling_c3/sampling_generation/new_sampled_points.csv");
+  //   if (!sampled_points_file.is_open()) {
+  //     throw std::runtime_error("Failed to open new_sampled_points.csv for writing.");
+  //   }
+  //   // sampled_points_file << "x,y\n";
+  //   for (const auto& pt : sampled_points) {
+  //     sampled_points_file << bg::get<0>(pt) << "," << bg::get<1>(pt) << "\n";
+  //   }
+  //   sampled_points_file.close();
+  //   if (sampled_points.empty()) {
+  //       throw std::runtime_error("No valid sampled points found.");
+  //   }
 
-    for (int i = 0; i < num_samples; ++i) {
-        double target_length = i * segment_length;
-        while (current_segment + 1 < outer.size() &&
-               accumulated_length + bg::distance(outer[current_segment], outer[current_segment + 1]) < target_length) {
-            accumulated_length += bg::distance(outer[current_segment], outer[current_segment + 1]);
-            ++current_segment;
-        }
-        // std::cout << "Current segment: " << current_segment << ", accumulated length: " << accumulated_length << std::endl;
-        if (current_segment + 1 >= outer.size()) {
-            break;
-        }
-        double remaining_length = target_length - accumulated_length;
-        double seg_length = bg::distance(outer[current_segment], outer[current_segment + 1]);
-        double ratio = seg_length == 0 ? 0 : remaining_length / seg_length;
-        double x = bg::get<0>(outer[current_segment]) + ratio * (bg::get<0>(outer[current_segment + 1]) - bg::get<0>(outer[current_segment]));
-        double y = bg::get<1>(outer[current_segment]) + ratio * (bg::get<1>(outer[current_segment + 1]) - bg::get<1>(outer[current_segment]));
-        BGPoint candidate(x, y);
-        const double min_distance = 0.01;
-        //std::cout << "Sampled point: (" << x << ", " << y << ")" << std::endl;
-        // Min distance check
-        bool far_enough = true;
-        for (const auto& poly : ring) {
-            double dist = bg::distance(candidate, poly);
-            //std::cout << "Distance to polygon: " << dist << std::endl;
-            if (dist < min_distance) {
-                far_enough = false;
-                break;
-            }
-        }
-        if (far_enough) {
-            sampled_points.emplace_back(x, y);
-        }
-    }
-    std::ofstream sampled_points_file("examples/sampling_c3/sampling_generation/new_sampled_points.csv");
-    if (!sampled_points_file.is_open()) {
-      throw std::runtime_error("Failed to open new_sampled_points.csv for writing.");
-    }
-    // sampled_points_file << "x,y\n";
-    for (const auto& pt : sampled_points) {
-      sampled_points_file << bg::get<0>(pt) << "," << bg::get<1>(pt) << "\n";
-    }
-    sampled_points_file.close();
-    if (sampled_points.empty()) {
-        throw std::runtime_error("No valid sampled points found.");
-    }
-
-    // 8. Return a random valid sample as Eigen::VectorXd
-    std::random_device rd;
-    std::mt19937 gen(rd());
+  //   // 8. Return a random valid sample as Eigen::VectorXd
+  //   std::random_device rd;
+  //   std::mt19937 gen(rd());
 
       
 
-    std::uniform_int_distribution<> rand_idx(0, static_cast<int>(sampled_points.size()) - 1);
-    int idx = rand_idx(gen);
+  //   std::uniform_int_distribution<> rand_idx(0, static_cast<int>(sampled_points.size()) - 1);
+  //   int idx = rand_idx(gen);
 
-    Eigen::VectorXd out = Eigen::VectorXd::Zero(n_q + n_v);
-    out[0] = sampled_points[idx].x();
-    out[1] = sampled_points[idx].y();
-    out[2] = z_height;
-    out.segment(3, n_q - 3) = x_lcs.segment(3, n_q - 3);
-    out.tail(n_v).setZero();
+    Eigen::VectorXd out = Eigen::VectorXd::Zero(19);
+    // out[0] = sampled_points[idx].x();
+    // out[1] = sampled_points[idx].y();
+    // out[2] = z_height;
+    // out.segment(3, n_q - 3) = x_lcs.segment(3, n_q - 3);
+    // out.tail(n_v).setZero();
     return out;
 }
 
@@ -858,24 +851,26 @@ Eigen::VectorXd generate_sample_mesh_drake(
       // std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
       // std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
 
-      // drake::geometry::SignedDistanceToPointResult<double> result = query_object.ComputeSignedDistanceToPoint(sample_point, mesh_geometry_id);
-      // distance = result.distance;
+      const auto& results = query_object.ComputeSignedDistanceToPoint(sample_point);
+      const drake::geometry::SignedDistanceToPoint<double>& result = results[0];      
+      
+      distance = result.distance;
 
-      // std::cout << "Distance to mesh: " << distance << std::endl;
-      // bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+      std::cout << "Distance to mesh: " << distance << std::endl;
+      bool in_collision = (distance <= sampling_params.sample_projection_clearance);
 
       int min_distance_index = 1;
 
-      bool in_collision = check_collision(
-          n_q, n_v, n_u, 
-          candidate_state, 
-          plant, context, 
-          plant_ad, context_ad, 
-          contact_geoms,
-          sampling_params, 
-          c3_options, 
-          min_distance_index
-        );
+      // bool in_collision = check_collision(
+      //     n_q, n_v, n_u, 
+      //     candidate_state, 
+      //     plant, context, 
+      //     plant_ad, context_ad, 
+      //     contact_geoms,
+      //     sampling_params, 
+      //     c3_options, 
+      //     min_distance_index
+      //   );
 
       // bool in_collision = true;
 
@@ -966,7 +961,7 @@ bool check_collision(
   min_distance_index = std::distance(distances.begin(), min_distance_it);
   double min_distance = *min_distance_it;
 
-  std::cout << min_distance << std::endl;
+  //std::cout << min_distance << std::endl;
 
   return min_distance <= sampling_params.sample_projection_clearance - 1e-3;
 }

@@ -354,6 +354,9 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 // Or, use the zfin_ trajectory if cost_type is false.
 std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
   // Extract the locally stored state and control sequences.
+  std::cout << "before" << std::endl;
+
+
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 
@@ -620,6 +623,7 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>> C3::Simula
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
         }
     }
+
     return {XX_new, UU_new};
 }
 
@@ -727,7 +731,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 
+  //std::cout << "Before osqp solve" << std::endl;
   MathematicalProgramResult result = osqp_.Solve(prog_);
+  //std::cout << "After osqp solve" << std::endl;
 
   if (result.is_success()) {
     for (int i = 0; i < N_; i++) {

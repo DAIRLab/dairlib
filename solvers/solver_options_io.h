@@ -49,12 +49,22 @@ struct SolverOptionsFromYaml {
     options.SetOption(CommonSolverOption::kPrintToConsole, print_to_console);
     options.SetOption(CommonSolverOption::kPrintFileName, log_file_name);
     for (const auto& [key, val] : int_options) {
-      options.SetOption(id, key, val);
+      //std::cout << key << ", " << val << ", " << typeid(val).name() << std::endl;
+      if (key != "linsys_solver") {
+        options.SetOption(id, key, val);
+      }
     }
     for (const auto& [key, val] : double_options) {
-      options.SetOption(id, key, val);
+      //std::cout << key << ", " << val << ", " << typeid(val).name() << std::endl;
+      if (key == "adaptive_rho_interval") {
+        int val_int = static_cast<int>(val);
+        options.SetOption(id, key, val_int);
+      } else {
+        options.SetOption(id, key, val);
+      }
     }
     for (const auto& [key, val] : string_options) {
+      //std::cout << key << ", " << val << ", " << typeid(val).name() << std::endl;
       options.SetOption(id, key, val);
     }
     return options;

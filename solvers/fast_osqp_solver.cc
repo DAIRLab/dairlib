@@ -319,7 +319,7 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
   SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
   SetFastOsqpSolverSetting(options_int, "adaptive_rho",
                            &(settings->adaptive_rho));
-  SetFastOsqpSolverSetting(options_int, "adaptive_rho_interval",  //TODO @bibit change to int
+  SetFastOsqpSolverSetting(options_int, "adaptive_rho_interval",
                            &(settings->adaptive_rho_interval));
   SetFastOsqpSolverSetting(options_double, "adaptive_rho_tolerance",
                            &(settings->adaptive_rho_tolerance));

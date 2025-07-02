@@ -6,7 +6,7 @@ int_options:
   warm_start: 1
   scaling: 1
   adaptive_rho: 1
-  adaptive_rho_interval: 0  # TODO @bibit move to int
+  adaptive_rho_interval: 0
   polish: 1
   polish_refine_iter: 1
   scaled_termination: 1

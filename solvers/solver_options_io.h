@@ -1,9 +1,6 @@
 #pragma once
 
 #include "drake/solvers/solver_options.h"
-#include "drake/solvers/osqp_solver.h"  // TODO @bibit may not need
-#include "solvers/fast_osqp_solver.h"
-#include <iostream>
 
 
 namespace dairlib::solvers {

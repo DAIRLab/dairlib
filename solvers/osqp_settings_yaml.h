@@ -15,7 +15,6 @@ struct OSQPSettingsYaml {
   double eps_prim_inf;
   double eps_dual_inf;
   double alpha;
-  int linsys_solver;  // TODO @bibit might need to be linsys_solver everywhere
   double delta;
   int polish;
   int polish_refine_iter;
@@ -39,7 +38,6 @@ struct OSQPSettingsYaml {
     a->Visit(DRAKE_NVP(eps_prim_inf));
     a->Visit(DRAKE_NVP(eps_dual_inf));
     a->Visit(DRAKE_NVP(alpha));
-    a->Visit(DRAKE_NVP(linsys_solver));
     a->Visit(DRAKE_NVP(delta));
     a->Visit(DRAKE_NVP(polish));
     a->Visit(DRAKE_NVP(polish_refine_iter));

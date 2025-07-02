@@ -25,7 +25,4 @@ double_options:
   adaptive_rho_fraction: 0.4
   time_limit: 1.0
 
-enum_options:
-  linsys_solver: 0
-
 string_options: {}

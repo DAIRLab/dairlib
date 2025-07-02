@@ -2,11 +2,10 @@
 
 #include "drake/solvers/solver_options.h"
 
-
 namespace dairlib::solvers {
 
-using drake::solvers::SolverOptions;
 using drake::solvers::CommonSolverOption;
+using drake::solvers::SolverOptions;
 
 /*
  * Struct containing solver options loaded from a YAML.
@@ -35,7 +34,7 @@ struct SolverOptionsFromYaml {
   std::map<std::string, double> double_options;
   std::map<std::string, std::string> string_options;
 
-  template<typename Archive>
+  template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(print_to_console));
     a->Visit(DRAKE_NVP(log_file_name));
@@ -61,4 +60,4 @@ struct SolverOptionsFromYaml {
   }
 };
 
-}
+}  // namespace dairlib::solvers

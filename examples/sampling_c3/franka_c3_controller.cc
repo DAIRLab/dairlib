@@ -9,11 +9,6 @@
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
-
-#include "drake/geometry/scene_graph.h"
-#include "drake/geometry/scene_graph_inspector.h"
-#include "drake/geometry/geometry_roles.h" 
-
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/franka_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/franka_lcm_channels.h"

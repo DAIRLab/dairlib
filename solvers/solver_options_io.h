@@ -1,7 +1,7 @@
 #pragma once
 
 #include "drake/solvers/solver_options.h"
-
+#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::solvers {
 
@@ -50,7 +50,9 @@ struct SolverOptionsFromYaml {
     options.SetOption(CommonSolverOption::kPrintFileName, log_file_name);
     for (const auto& [key, val] : int_options) {
       //std::cout << key << ", " << val << ", " << typeid(val).name() << std::endl;
-      if (key != "linsys_solver") {
+      if (key == "linsys_solver") {
+        //options.SetOption(id, "osqp_linsys_solver_type", val);
+      } else {
         options.SetOption(id, key, val);
       }
     }

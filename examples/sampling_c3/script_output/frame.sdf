@@ -1,24 +1,24 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <sdf version="1.7">
-  <model name="your_mesh_centered">
+  <model name="frame">
     <link name="vertical_link">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>1</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>0.0013410859</ixx>
-          <iyy>0.0037805728</iyy>
-          <izz>0.0047956966</izz>
-          <ixy>0.00012752152</ixy>
-          <ixz>-1.6544051e-05</ixz>
-          <iyz>5.5528569e-06</iyz>
+          <ixx>0.00081807507</ixx>
+          <iyy>0.0012501515</iyy>
+          <izz>0.0020148933</izz>
+          <ixy>-3.9201525e-20</ixy>
+          <ixz>2.5667665e-21</ixz>
+          <iyz>1.2250477e-21</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_0.obj</uri>
+            <uri>frame_convex_0.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -29,7 +29,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_0.obj</uri>
+            <uri>frame_convex_0.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -44,7 +44,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_1.obj</uri>
+            <uri>frame_convex_1.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -55,7 +55,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_1.obj</uri>
+            <uri>frame_convex_1.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -70,7 +70,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_2.obj</uri>
+            <uri>frame_convex_2.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -81,7 +81,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_2.obj</uri>
+            <uri>frame_convex_2.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -96,7 +96,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_3.obj</uri>
+            <uri>frame_convex_3.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -107,7 +107,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_3.obj</uri>
+            <uri>frame_convex_3.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -122,7 +122,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_4.obj</uri>
+            <uri>frame_convex_4.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -133,7 +133,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_4.obj</uri>
+            <uri>frame_convex_4.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -148,7 +148,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_5.obj</uri>
+            <uri>frame_convex_5.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -159,7 +159,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_5.obj</uri>
+            <uri>frame_convex_5.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -174,7 +174,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_6.obj</uri>
+            <uri>frame_convex_6.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -185,7 +185,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_6.obj</uri>
+            <uri>frame_convex_6.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -200,7 +200,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_7.obj</uri>
+            <uri>frame_convex_7.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -211,7 +211,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_7.obj</uri>
+            <uri>frame_convex_7.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -226,7 +226,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_8.obj</uri>
+            <uri>frame_convex_8.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -237,7 +237,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_8.obj</uri>
+            <uri>frame_convex_8.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
@@ -252,7 +252,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_9.obj</uri>
+            <uri>frame_convex_9.obj</uri>
           </mesh>
         </geometry>
         <material>
@@ -263,7 +263,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>your_mesh_centered_convex_9.obj</uri>
+            <uri>frame_convex_9.obj</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">

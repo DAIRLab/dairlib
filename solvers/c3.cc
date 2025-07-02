@@ -354,9 +354,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
 // Or, use the zfin_ trajectory if cost_type is false.
 std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type, bool force_tracking_disabled, bool print_cost_breakdown, bool verbose) const{
   // Extract the locally stored state and control sequences.
-  std::cout << "before" << std::endl;
-
-
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 

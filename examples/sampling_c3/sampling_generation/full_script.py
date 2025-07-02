@@ -98,4 +98,12 @@ if __name__ == "__main__":
         traj_yaml["fixed_target_position"][-1] = float(-0.029-min_z_height)
     save_yaml(traj_yaml_path, traj_yaml)
 
+    # 4. sampling_params.yaml
+    sampling_yaml_path = "examples/sampling_c3/push_t/parameters/sampling_params.yaml"
+    sampling_yaml = load_yaml(sampling_yaml_path)
+    sampling_yaml["z_height"] = float(-0.029-min_z_height)
+    if "z_height" in sampling_yaml and isinstance(sampling_yaml["z_height"], list):
+        sampling_yaml["z_height"][-1] = float(-0.029-min_z_height)
+    save_yaml(sampling_yaml_path, sampling_yaml)
+
     print("\n✅ All YAML files updated and pipeline completed successfully.")

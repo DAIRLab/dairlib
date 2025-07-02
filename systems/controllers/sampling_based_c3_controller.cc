@@ -424,20 +424,12 @@ SamplingC3Controller::SamplingC3Controller(
     }
   }
 
-  // 2) Load it exactly once:
+  // Only load mesh once
   mesh_ = new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
   const auto& vertices = mesh_->vertices();
   int num_tri = mesh_->num_triangles();
-  // Eigen::VectorXd q_vec = x_lcs.head(n_q_);
-  // Eigen::Vector3d object_xyz = q_vec.tail(3);
-  // double trans_x = object_xyz[0];
-  // double trans_y = object_xyz[1];
-  // double trans_z = object_xyz[2];
-  // Eigen::Quaterniond quat_object(q_vec[n_q_ - 7], q_vec[n_q_ - 6],
-  //                                 q_vec[n_q_ - 5], q_vec[n_q_ - 4]);
-  // Eigen::Matrix3d R = quat_object.toRotationMatrix();
-  // Eigen::Vector3d t(trans_x, trans_y, trans_z);
 
+  // Set up vector of faces + cumulative area vector (in object frame)
   faces_.reserve(num_tri);
   face_bins_.reserve(num_tri+1);
   face_bins_.push_back(0);
@@ -748,15 +740,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Generate multiple samples and include current location as first item.
-  //std::cout << "Generating sample states..." << std::endl;
-  auto gss_start = std::chrono::high_resolution_clock::now();
+  // auto gss_start = std::chrono::high_resolution_clock::now();
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
     plant_, context_, plant_ad_, context_ad_, contact_pairs_, *mesh_, faces_, face_bins_);
 
-  auto gss_end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> gss_elapsed = gss_end - gss_start;
-  std::cout << "Elapsed time: " << gss_elapsed.count() << " seconds" << std::endl;
+  // auto gss_end = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double> gss_elapsed = gss_end - gss_start;
+  //std::cout << "Elapsed time: " << gss_elapsed.count() << " seconds" << std::endl;
 
 
   // Add the previous best repositioning target to the candidate states at the
@@ -1441,11 +1432,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   filtered_solve_time_ = (1 - solve_time_filter_constant_) * solve_time +
                          (solve_time_filter_constant_)*filtered_solve_time_;
 
-  if (true) {
+  if (verbose_) {
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;
-    //std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
+    std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
-  std::cout << std::endl;
 
   return drake::systems::EventStatus::Succeeded();
 }

@@ -547,7 +547,7 @@ Eigen::VectorXd generate_sample_in_shell(
   }
 }
 
-
+// BROKEN due to boost dependency
 Eigen::VectorXd generate_sample_mesh_buffer(
     const int& n_q,
     const int& n_v,
@@ -752,8 +752,6 @@ Eigen::VectorXd generate_sample_mesh_drake(
     const int max_attempts = 100;
     int attempts = 0;
     double distance = 0;
-
-    //drake::geometry::Mesh mesh(mesh_path, 1.0);
     
     Eigen::VectorXd q_vec = x_lcs.head(n_q);
     Eigen::Vector3d object_xyz = q_vec.tail(3);
@@ -766,7 +764,7 @@ Eigen::VectorXd generate_sample_mesh_drake(
     Eigen::Vector3d t(trans_x, trans_y, trans_z);
     
     double total_area = 0;
-    std::vector<Face> faces_world;
+    std::vector<Face> faces_world; // face vector in world frame
     faces_world.reserve(faces.size());
 
     for (int i = 0; i < faces.size(); i++) {
@@ -782,24 +780,25 @@ Eigen::VectorXd generate_sample_mesh_drake(
     }
 
     do {
-      auto sample_start0 = std::chrono::high_resolution_clock::now();
+      // auto sample_start0 = std::chrono::high_resolution_clock::now();
 
       std::mt19937 gen(std::random_device{}());
       std::uniform_real_distribution<double> dis(0.0, total_area);
       double target = dis(gen);
       const Face* selected_face = nullptr;
 
-      auto sample_end0 = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> sample_elapsed0 = sample_end0 - sample_start0;
+      // auto sample_end0 = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> sample_elapsed0 = sample_end0 - sample_start0;
       //std::cout << "Sample from uniform: " << sample_elapsed0.count() << " seconds" << std::endl;
       
-      auto sample_start2 = std::chrono::high_resolution_clock::now();
+      // auto sample_start2 = std::chrono::high_resolution_clock::now();
       
-      int face_idx = find_bin(face_bins.data(), face_bins.size(), target);
+      // Binary search to find index of selected face (weighted by area)
+      int face_idx = find_bin(face_bins.data(), face_bins.size(), target); 
       selected_face = &faces_world[face_idx];
 
-      auto sample_end2 = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> sample_elapsed2 = sample_end2 - sample_start2;
+      // auto sample_end2 = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> sample_elapsed2 = sample_end2 - sample_start2;
       //std::cout << "Select face binary search: " << sample_elapsed2.count() << " seconds" << std::endl;
 
       auto on_face_start = std::chrono::high_resolution_clock::now();
@@ -813,24 +812,15 @@ Eigen::VectorXd generate_sample_mesh_drake(
       }
       const auto& point_vector = selected_face->v;
       Eigen::Vector3d sample_point = (1.0 - a - b) * point_vector[0] + a * point_vector[1] + b * point_vector[2];
-      std::uniform_real_distribution<double> yaw_rot(0,0);
-      double yaw = yaw_rot(gen);
-      Eigen::Vector3d rotated_normal = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) * selected_face->normal;
-      Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * rotated_normal;
+      Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * selected_face->normal;
       projected_sample_point[2] = z_height;
 
       Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
-      candidate_state[0] = projected_sample_point[0];
-      candidate_state[1] = projected_sample_point[1];
-      candidate_state[2] = projected_sample_point[2];
-      candidate_state.segment(3, n_q - 3) = x_lcs.segment(3, n_q - 3);
+      candidate_state.segment(0, 3) = projected_sample_point; // ee position
+      candidate_state.segment(3, 7) = x_lcs.segment(3, 7);    // object orientation/position
 
-      Eigen::VectorXd new_candidate_state = Eigen::VectorXd::Zero(13);
-      new_candidate_state.segment(0, 7) = candidate_state.segment(3, n_q - 3);
-      new_candidate_state.segment(7, 6) = candidate_state.segment(n_q + 3, n_v - 3);
-
-      auto on_face_end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> on_face_elapsed = on_face_end - on_face_start;
+      // auto on_face_end = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> on_face_elapsed = on_face_end - on_face_start;
       //std::cout << "Sample on face: " << on_face_elapsed.count() << " seconds" << std::endl;
 
 
@@ -839,79 +829,45 @@ Eigen::VectorXd generate_sample_mesh_drake(
 
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
-      // All for debugging, need to reimplement ComputeSignedDistanceToPoint later.
       auto& inspector = query_object.inspector();
       //std::cout << "Proximity geometries:";
-      for (auto id : inspector.GetAllGeometryIds()) {
-        // if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
-        //   std::cout << id << " ";
-      }
+      // for (auto id : inspector.GetAllGeometryIds()) {
+      //    if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
+      //      std::cout << id << " ";
+      // }
       //std::cout << "\n";
       auto pose = inspector.GetPoseInFrame(mesh_geometry_id); // 34
-      // std::cout << "Pose of 34: " << pose.translation().transpose() << std::endl;
-      // std::cout << "Projected sample point: " << projected_sample_point.transpose() << std::endl;
 
-      const auto& results = query_object.ComputeSignedDistanceToPoint(sample_point);
-      const drake::geometry::SignedDistanceToPoint<double>& result = results[0];      
+      // const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
+      // const drake::geometry::SignedDistanceToPoint<double>& result = results[1];  // Index 1 = vertical link
       
-      distance = result.distance;
+      // distance = result.distance;
+      // //std::cout << "Distance to mesh: " << distance << std::endl;
 
-      std::cout << "Distance to mesh: " << distance << std::endl;
-      bool in_collision = (distance <= sampling_params.sample_projection_clearance);
-
+      // bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+      
+      
       int min_distance_index = 1;
-
-      // bool in_collision = check_collision(
-      //     n_q, n_v, n_u, 
-      //     candidate_state, 
-      //     plant, context, 
-      //     plant_ad, context_ad, 
-      //     contact_geoms,
-      //     sampling_params, 
-      //     c3_options, 
-      //     min_distance_index
-      //   );
-
-      // bool in_collision = true;
-
-      // // Test check collision
-      // for (int i = 1; i < 40; i++) {
-      //   Eigen::VectorXd raw = Eigen::VectorXd::Zero(3);
-      //   raw[0] = 0;
-      //   raw[1] = static_cast<double>(i)/100;
-      //   raw[2] = 0;
-      //   raw = R * raw + t;
-
-      //   //std::cout << object_xyz[0] << ", " << object_xyz[1] << ", " << object_xyz[2] << std::endl;
-      //   //std::cout << raw.transpose() << std::endl;
-
-      //   candidate_state.segment(0,3) = raw;
-      
-      //   in_collision = check_collision(
-      //     n_q, n_v, n_u, 
-      //     candidate_state, 
-      //     plant, context, 
-      //     plant_ad, context_ad, 
-      //     contact_geoms,
-      //     sampling_params, 
-      //     c3_options, 
-      //     min_distance_index
-      //   );
-      //   std::cout << "Collision result " << i << ": " << in_collision << std::endl;
-
-      // }
-      
+      bool in_collision = check_collision(
+          n_q, n_v, n_u, 
+          candidate_state, 
+          plant, context, 
+          plant_ad, context_ad, 
+          contact_geoms,
+          sampling_params, 
+          c3_options, 
+          min_distance_index
+      );
 
 
 
-      auto collision_end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
+      // auto collision_end = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
       //std::cout << "Do collision: " << collision_elapsed.count() << " seconds" << std::endl;
 
       if (!in_collision) {
-        //std::cout << "Sample point is not in collision with the object." << std::endl;
-        // Update the context with the candidate state.
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+        //std::cout << "Sample point is not in collision with the object." << std::endl;
         //std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
         return candidate_state;
       }

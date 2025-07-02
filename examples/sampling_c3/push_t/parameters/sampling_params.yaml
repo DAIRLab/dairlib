@@ -10,7 +10,7 @@ sampling_strategy: 7
 filter_samples_for_safety: true
 
 # This is the fixed sample location for sampling strategy 3.
-fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
+fixed_sample_locations: [[0.45, 0.34], [0.27, 0.455], [0.27, 0.225]]
 
 # Size of sampling circle; used for both circle perimeter (0, 1) and spherical
 # surface sampling (2).
@@ -87,7 +87,7 @@ track_c3_progress_via: 3  # 0: C3 cost,
 # If the next two parameters are say 10 and 10, then it means there has to be a drop in cost by 10% for 10 control loops
 # in order to continue in C3 mode. If not, it has to switch to repositioning.
 min_percentage_decrease_in_cost_to_continue: -10
-num_control_loops_to_wait_for_progress: 20
+num_control_loops_to_wait_for_progress: 60
 
 ####### WARNING!! Make sure that if we want to do orientation tracking and use a
 ####### lookahead for the trajectory type i.e. trajectory_type in the
@@ -127,7 +127,7 @@ repos_to_c3_cost_fraction_position_tracking: 0.5
 repos_to_repos_cost_fraction: 0.5
 repos_to_repos_cost_fraction_position_tracking: 0.3
 
-z_height: 0.01
+z_height: -0.009000000000000001
 buffer_distance: 0.05
 num_additional_samples_mesh_buffer: 100
-base_name: box
+base_name: frame

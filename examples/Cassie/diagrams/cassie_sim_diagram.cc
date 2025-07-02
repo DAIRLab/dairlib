@@ -42,7 +42,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 CassieSimDiagram::CassieSimDiagram(
-    std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
+    std::shared_ptr<drake::multibody::MultibodyPlant<double>> plant,
     const std::string& urdf, bool visualize, double mu, double stiffness,
     double dissipation_rate) {
   DiagramBuilder<double> builder;

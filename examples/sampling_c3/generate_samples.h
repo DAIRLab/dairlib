@@ -129,7 +129,6 @@ bool IsSampleWithinDistanceOfSurface(
     const int& n_v,
     const int& n_u,
     const double& clearance_distance,
-    const bool& factor_in_ee_radius,
     const Eigen::VectorXd& candidate_state,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,

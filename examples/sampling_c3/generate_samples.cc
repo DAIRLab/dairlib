@@ -238,7 +238,6 @@ Eigen::Vector3d PerimeterSampling(
       double z_sample = 0;
 
       // Convert to world frame using the current object state.
-      Eigen::VectorXd x_lcs_world = x_lcs;
       Eigen::Quaterniond quat_object(x_lcs(3), x_lcs(4), x_lcs(5), x_lcs(6));
       Eigen::Vector3d object_position = x_lcs.segment(7, 3);
       candidate_state = x_lcs;
@@ -249,19 +248,19 @@ Eigen::Vector3d PerimeterSampling(
       // Project samples to specified sampling height in world frame.
       candidate_state[2] = sampling_params.sampling_height;
     } while (!IsSampleWithinDistanceOfSurface(
-      n_q, n_v, n_u, 0.0, false, candidate_state, plant, context, plant_ad,
-      context_ad, contact_geoms, sampling_c3_options, min_distance_index));
+      n_q, n_v, n_u, 0.0, candidate_state, plant, context, plant_ad, context_ad,
+      contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
     Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
-        candidate_state, min_distance_index, sampling_params, plant, *context,
-        contact_geoms);
+      candidate_state, min_distance_index, sampling_params, plant, *context,
+      contact_geoms);
 
     // Check the desired clearance is satisfied; otherwise try again.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
                   projected_state);
     if (IsSampleWithinDistanceOfSurface(
-      n_q, n_v, n_u, sampling_params.sample_projection_clearance, true,
+      n_q, n_v, n_u, sampling_params.sample_projection_clearance,
       projected_state, plant, context, plant_ad, context_ad, contact_geoms,
       sampling_c3_options, min_distance_index)) {
       continue;
@@ -333,8 +332,8 @@ Eigen::Vector3d ShellSampling(
           y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
       candidate_state[2] = z_samplec + sampling_radius * cos(elevation_theta);
     } while (!IsSampleWithinDistanceOfSurface(
-      n_q, n_v, n_u, 0.0, false, candidate_state, plant, context, plant_ad,
-      context_ad, contact_geoms, sampling_c3_options, min_distance_index));
+      n_q, n_v, n_u, 0.0, candidate_state, plant, context, plant_ad, context_ad,
+      contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
     Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
@@ -345,7 +344,7 @@ Eigen::Vector3d ShellSampling(
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
                   projected_state);
     if (IsSampleWithinDistanceOfSurface(
-      n_q, n_v, n_u, sampling_params.sample_projection_clearance, true,
+      n_q, n_v, n_u, sampling_params.sample_projection_clearance,
       projected_state, plant, context, plant_ad, context_ad, contact_geoms,
       sampling_c3_options, min_distance_index)) {
       continue;
@@ -390,7 +389,8 @@ double GetEERadiusFromPlant(
     query_port.template Eval<drake::geometry::QueryObject<double>>(context);
   const auto& inspector = query_object.inspector();
 
-  // Locate the EE and obtain its radius.
+  // Locate the EE and obtain its radius.  The first set of contact geoms has
+  // the EE and ground.
   GeometryId ee_geom_id = contact_geoms.at(0).at(0).first();
   const drake::geometry::Shape& shape = inspector.GetShape(ee_geom_id);
   const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(&shape);
@@ -403,15 +403,14 @@ double GetEERadiusFromPlant(
 bool IsSampleWithinDistanceOfSurface(
     const int& n_q, const int& n_v, const int& n_u,
     const double& clearance_distance,
-    const bool& factor_in_ee_radius,
     const Eigen::VectorXd& candidate_state,
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
+      std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+      contact_geoms,
     SamplingC3Options sampling_c3_options,
     int& min_distance_index)
 {
@@ -421,14 +420,12 @@ bool IsSampleWithinDistanceOfSurface(
 
   // Find the closest pair if there are multiple pairs
   std::vector<double> distances;
-
-  for (int i = 0; i < contact_geoms.at(0).size(); i++) {
-    // Evaluate the distance for each pair
-    SortedPair<GeometryId> pair{(contact_geoms.at(0)).at(i)};
+  for (int i = 0; i < contact_geoms.at(1).size(); i++) {
+    SortedPair<GeometryId> pair{(contact_geoms.at(1)).at(i)};
     multibody::GeomGeomCollider collider(plant, pair);
 
     auto [phi_i, J_i] = collider.EvalPolytope(
-        *context, sampling_c3_options.num_friction_directions);
+      *context, sampling_c3_options.num_friction_directions);
     distances.push_back(phi_i);
   }
 
@@ -439,15 +436,8 @@ bool IsSampleWithinDistanceOfSurface(
   min_distance_index = std::distance(distances.begin(), min_distance_it);
   double min_distance = *min_distance_it;
 
-  // Factor the EE radius into the clearance distance if requested.
-  double ee_radius_contribution = 0.0;
-  if (factor_in_ee_radius) {
-    ee_radius_contribution = GetEERadiusFromPlant(
-      plant, *context, contact_geoms);
-  }
-
   // Require that min_distance be at least 1 mm within the clearance distance.
-  return min_distance <= clearance_distance + ee_radius_contribution - 1e-3;
+  return min_distance <= clearance_distance - 1e-3;
 }
 
 Eigen::VectorXd ProjectSampleOutsideObject(
@@ -462,20 +452,18 @@ Eigen::VectorXd ProjectSampleOutsideObject(
   // Compute the witness points between the penetrating sample and the object
   // surface.
   multibody::GeomGeomCollider collider(
-    plant, contact_geoms.at(0).at(min_distance_index));
+    plant, contact_geoms.at(1).at(min_distance_index));
   auto [p_world_contact_a, p_world_contact_b] = collider.CalcWitnessPoints(
     context);
 
-  // Get the EE radius to factor into the projection.
-  double ee_radius = GetEERadiusFromPlant(plant, context, contact_geoms);
-
   // Find vector in direction from sample to contact point on object.
   Eigen::Vector3d a_to_b = p_world_contact_b - p_world_contact_a;
+  double penetration_depth = a_to_b.norm();
   Eigen::Vector3d a_to_b_normalized = a_to_b.normalized();
   // Add clearance to point b in the same direction.
   Eigen::Vector3d p_world_contact_b_clearance =
     p_world_contact_b +
-    (ee_radius + sampling_params.sample_projection_clearance) *
+    (penetration_depth + sampling_params.sample_projection_clearance) *
       a_to_b_normalized;
   candidate_state.head(3) = p_world_contact_b_clearance;
   return candidate_state;

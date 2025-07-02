@@ -164,10 +164,10 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition() const {
   double x, y = 0;
   while ((sqrt(x * x + y * y) > goal_params_.random_goal_radius_limits[1]) ||
   (sqrt(x * x + y * y) < goal_params_.random_goal_radius_limits[0])) {
-    double x = RandomUniform(goal_params_.random_goal_x_limits[0],
-                            goal_params_.random_goal_x_limits[1]);
-    double y = RandomUniform(goal_params_.random_goal_y_limits[0],
-                            goal_params_.random_goal_y_limits[1]);
+    x = RandomUniform(goal_params_.random_goal_x_limits[0],
+                      goal_params_.random_goal_x_limits[1]);
+    y = RandomUniform(goal_params_.random_goal_y_limits[0],
+                      goal_params_.random_goal_y_limits[1]);
   }
 
   target_final_object_position_ << x, y, goal_params_.resting_object_height;

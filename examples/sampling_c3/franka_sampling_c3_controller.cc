@@ -184,6 +184,48 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
     contact_pairs.push_back(ground_object_contact_pairs);
   }
+  else if (FLAGS_demo_name == "push_t") {
+    drake::geometry::GeometryId vertical_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[0];
+    drake::geometry::GeometryId horizontal_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("horizontal_link"))[0];
+
+    drake::geometry::GeometryId top_left_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[1];
+    drake::geometry::GeometryId top_right_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[2];
+    drake::geometry::GeometryId bottom_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[3];
+
+    contact_geoms["VERTICAL_LINK"] = vertical_geoms;
+    contact_geoms["HORIZONTAL_LINK"] = horizontal_geoms;
+    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
+    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
+    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+
+    // EE-object contact pairs second.
+    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["HORIZONTAL_LINK"]));
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["VERTICAL_LINK"]));
+    contact_pairs.push_back(ee_contact_pairs);
+
+    // Object-ground contact pairs third.
+    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
+    contact_pairs.push_back(ground_object_contact_pairs);
+  }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
@@ -213,6 +255,10 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
+            plant_object, controller_params.goal_params);
+  } else if (FLAGS_demo_name == "push_t") {
+    target_generator =
+        std::make_unique<systems::SamplingC3GoalGeneratorPushT>(
             plant_object, controller_params.goal_params);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);

@@ -453,19 +453,21 @@ Eigen::VectorXd ProjectSampleOutsideObject(
   // surface.
   multibody::GeomGeomCollider collider(
     plant, contact_geoms.at(1).at(min_distance_index));
-  auto [p_world_contact_a, p_world_contact_b] = collider.CalcWitnessPoints(
+  auto [p_world_contact_ee, p_world_contact_obj] = collider.CalcWitnessPoints(
     context);
 
-  // Find vector in direction from sample to contact point on object.
-  Eigen::Vector3d a_to_b = p_world_contact_b - p_world_contact_a;
-  double penetration_depth = a_to_b.norm();
-  Eigen::Vector3d a_to_b_normalized = a_to_b.normalized();
-  // Add clearance to point b in the same direction.
-  Eigen::Vector3d p_world_contact_b_clearance =
-    p_world_contact_b +
-    (penetration_depth + sampling_params.sample_projection_clearance) *
-      a_to_b_normalized;
-  candidate_state.head(3) = p_world_contact_b_clearance;
+  // Get the EE radius to factor into the projection.
+  double ee_radius = GetEERadiusFromPlant(plant, context, contact_geoms);
+
+  // Find vector in direction from EE to object witness points.
+  Eigen::Vector3d ee_to_obj = p_world_contact_obj - p_world_contact_ee;
+  Eigen::Vector3d ee_to_obj_normalized = ee_to_obj.normalized();
+  // Add clearance to the object in the same direction.
+  Eigen::Vector3d p_world_contact_obj_clearance =
+    p_world_contact_obj +
+    (ee_radius + sampling_params.sample_projection_clearance) *
+      ee_to_obj_normalized;
+  candidate_state.head(3) = p_world_contact_obj_clearance;
   return candidate_state;
 }
 

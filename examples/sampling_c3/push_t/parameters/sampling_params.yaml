@@ -27,7 +27,7 @@ ang_error_sample_retention: 0.0349  # 0.0349 rad = 2 deg
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.02  # kRandomOnPerimeter, kRandomOnShell
+sample_projection_clearance: 0.02   # kRandomOnPerimeter, kRandomOnShell
 min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
 max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 

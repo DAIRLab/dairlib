@@ -165,7 +165,6 @@ def main():
          'eps_prim_inf': 1e-6,
          'eps_dual_inf': 1e-6,
          'alpha': 1.6,
-         'linsys_solver': 0,
          'delta': 1e-6,
          'polish': 1,
          'polish_refine_iter': 3,

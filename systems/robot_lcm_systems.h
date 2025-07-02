@@ -20,6 +20,8 @@
 namespace dairlib {
 namespace systems {
 
+constexpr int DEFAULT_MODEL_INSTANCE_INDEX = 88888888;
+
 /// @file This file contains classes dealing with sending/receiving
 /// LCM messages related to a robot.
 
@@ -145,9 +147,10 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      bool publish_velocities = true,
       drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+          drake::multibody::default_model_instance());
 
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant);

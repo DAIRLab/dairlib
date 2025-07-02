@@ -1,6 +1,9 @@
 #pragma once
 
 #include "drake/solvers/solver_options.h"
+#include "drake/solvers/osqp_solver.h"  // TODO @bibit may not need
+#include "solvers/fast_osqp_solver.h"
+#include <iostream>
 
 
 namespace dairlib::solvers {
@@ -34,6 +37,7 @@ struct SolverOptionsFromYaml {
   std::map<std::string, int> int_options;
   std::map<std::string, double> double_options;
   std::map<std::string, std::string> string_options;
+  std::map<std::string, int> enum_options;
 
   template<typename Archive>
   void Serialize(Archive* a) {
@@ -42,6 +46,7 @@ struct SolverOptionsFromYaml {
     a->Visit(DRAKE_NVP(int_options));
     a->Visit(DRAKE_NVP(double_options));
     a->Visit(DRAKE_NVP(string_options));
+    a->Visit(DRAKE_NVP(enum_options));
   }
 
   SolverOptions GetAsSolverOptions(const drake::solvers::SolverId& id) {
@@ -56,6 +61,21 @@ struct SolverOptionsFromYaml {
     }
     for (const auto& [key, val] : string_options) {
       options.SetOption(id, key, val);
+    }
+    for (const auto& [key, val] : enum_options) {
+      if (key == "linsys_solver") {
+        std::cout << "Trying to set linsys solver..." << std::endl;
+        if (val == 0) {
+          options.SetOption(id, "linsys_solver", 0); //QDLDL_SOLVER);
+        }
+        else if (val == 1) {
+          options.SetOption(id, "linsys_solver", 1); //MKL_PARDISO_SOLVER);
+        } else {
+          std::cerr << ("Unknown osqp_linsys_solver_type: " + val) << std::endl;
+        }
+        // std::cout << "Skipping setting osqp solver" << std::endl;
+      }
+      else {std::cerr << ("Unknown OSQP enum: " + key) << std::endl;}
     }
     return options;
   }

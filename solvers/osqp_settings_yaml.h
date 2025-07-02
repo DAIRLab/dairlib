@@ -15,7 +15,7 @@ struct OSQPSettingsYaml {
   double eps_prim_inf;
   double eps_dual_inf;
   double alpha;
-  int linsys_solver;
+  int linsys_solver;  // TODO @bibit might need to be linsys_solver everywhere
   double delta;
   int polish;
   int polish_refine_iter;

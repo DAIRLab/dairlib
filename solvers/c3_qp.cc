@@ -78,7 +78,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 1);
   solver_options.SetOption(OsqpSolver::id(), "rho", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);
+  solver_options.SetOption(OsqpSolver::id(), "osqp_linsys_solver_type", QDLDL_SOLVER);  //0); // TODO @bibit might need to be osqp_linsys_solver_type
   prog.SetSolverOptions(solver_options);
 
   MathematicalProgramResult result = osqp_.Solve(prog);

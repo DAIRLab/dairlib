@@ -103,6 +103,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+  std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
   // All demos include the end effector and ground.
@@ -116,7 +118,6 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["GROUND"] = ground_geoms;
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-  contact_pairs.push_back(ee_ground_contact);
 
   if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId capsule1_geoms =
@@ -158,18 +159,13 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
     contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
 
-    // EE-object contact pairs second.
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
-    contact_pairs.push_back(ee_contact_pairs);
 
-    // Object-ground contact pairs third.
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
@@ -182,7 +178,6 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
-    contact_pairs.push_back(ground_object_contact_pairs);
   }
   else if (FLAGS_demo_name == "push_t") {
     drake::geometry::GeometryId vertical_geoms =
@@ -208,27 +203,25 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
     contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
 
-    // EE-object contact pairs second.
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["HORIZONTAL_LINK"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["VERTICAL_LINK"]));
-    contact_pairs.push_back(ee_contact_pairs);
 
-    // Object-ground contact pairs third.
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
-    contact_pairs.push_back(ground_object_contact_pairs);
   }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
+  // Order:  EE-ground, EE-object, object-ground.
+  contact_pairs.push_back(ee_ground_contact);
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_object_contact_pairs);
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;

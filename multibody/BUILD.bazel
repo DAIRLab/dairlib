@@ -100,7 +100,7 @@ cc_test(
 
 cc_library(
     name = "ball_urdf",
-    data = glob(["multibody/ball.urdf"]),
+    data = glob(["ball.urdf"]),
 )
 
 cc_library(

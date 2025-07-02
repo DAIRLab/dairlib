@@ -97,11 +97,11 @@ int do_main(int argc, char* argv[]) {
                          : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
 
   if (FLAGS_contact_solver == "SAP") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kSap);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kSap);
   } else if (FLAGS_contact_solver == "TAMSI") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kTamsi);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kTamsi);
   } else {
     std::cerr << "Unknown contact solver setting." << std::endl;
   }
@@ -177,7 +177,7 @@ int do_main(int argc, char* argv[]) {
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
-      plant.get_geometry_poses_output_port(),
+      plant.get_geometry_pose_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());

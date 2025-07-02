@@ -1,8 +1,8 @@
 load(
-    "@drake//tools/skylark:drake_lcm.bzl",
-    "drake_lcm_cc_library",
-    "drake_lcm_java_library",
-    "drake_lcm_py_library",
+    "@drake//tools/workspace/lcm:lcm.bzl",
+    "lcm_cc_library",
+    "lcm_java_library",
+    "lcm_py_library",
 )
 load(
     "@drake//tools/skylark:drake_java.bzl",
@@ -15,45 +15,39 @@ package(default_visibility = ["//visibility:public"])
 #Lcm libraries
 
 #Lcm libraries
-drake_lcm_cc_library(
+lcm_cc_library(
     name = "lcmt_robot",
     lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
 )
 
 #Lcm libraries
-drake_lcm_cc_library(
+lcm_cc_library(
     name = "lcmtypes_robot_archive",
     lcm_package = "archive.dairlib",
     lcm_srcs = glob(["archive/*.lcm"]),
 )
 
-drake_lcm_java_library(
+lcm_java_library(
     name = "lcmtypes_robot_java",
     lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
 )
 
-drake_lcm_py_library(
+lcm_py_library(
     name = "lcmtypes_robot_py",
     add_current_package_to_imports = True,  # Use //:module_py instead.
     extra_srcs = ["__init__.py"],
     lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
-    deps = [
-        "@drake//:module_py",
-    ],
 )
 
-drake_lcm_py_library(
+lcm_py_library(
     name = "lcmtypes_robot_archive_py",
     add_current_package_to_imports = True,  # Use //:module_py instead.
     extra_srcs = ["__init__.py"],
     lcm_package = "archive.dairlib",
     lcm_srcs = glob(["archive/*.lcm"]),
-    deps = [
-        "@drake//:module_py",
-    ],
 )
 
 drake_java_binary(

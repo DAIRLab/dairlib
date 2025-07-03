@@ -71,8 +71,8 @@ bazel_dep(name = "inekf")
 # this will also work to override inekf 
 
 # You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
-DRAKE_VERSION = "v1.39.0"
-DRAKE_CHECKSUM = "63eb9455181ce9aeb9746e60531fbd4fbe731ea44539276e662e1236a78589b6"
+DRAKE_VERSION = "v1.42.0"
+DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b"
 
 # Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

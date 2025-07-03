@@ -7,7 +7,7 @@
 #                           surface (roughly planar).
 #   5. kRandomOnShell:      random samples on a shell offset past the object
 #                           surface.
-sampling_strategy: 2
+sampling_strategy: 4
 
 ### Parameters relevant for all sampling strategies.
 filter_samples_for_safety: true
@@ -21,24 +21,23 @@ num_additional_samples_c3: 2
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
 N_sample_buffer: 100
-pos_error_sample_retention: 0.005
-ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
+pos_error_sample_retention: 0.003
+ang_error_sample_retention: 0.0349  # 0.0349 rad = 2 deg
 
 # Shared across multiple sampling strategies.
-sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
-sampling_height: 0.04  # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.008  # kRandomOnPerimeter, kRandomOnShell
-min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell
-max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell
+sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
+sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
+sample_projection_clearance: 0.02   # kRandomOnPerimeter, kRandomOnShell
+min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
+max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 
 # kFixed parameters.
-fixed_sample_locations: [[0.45, 0.340, 0.04],    # sample 1
-                         [0.27, 0.455, 0.04],   # sample 2
-                         [0.27, 0.225, 0.04]]   # sample 3
+fixed_sample_locations: [[0.45, 0.270, 0.270],   # sample 1
+                         [0.34, 0.455, 0.225]]   # sample 2
 
 # kRandomOnPerimeter parameters.
-grid_x_limits: [-0.16, 0.16]
-grid_y_limits: [-0.16, 0.16]
+grid_x_limits: [-0.12, 0.08]
+grid_y_limits: [-0.08, 0.08]
 
 # kRandomOnShell parameters.
 min_sampling_radius: 0.07

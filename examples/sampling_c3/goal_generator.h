@@ -38,6 +38,11 @@ inline const std::vector<Eigen::Quaterniond> kNominalOrientationsJack{
   kQuatAllUp,   kQuatRedDown,  kQuatBlueUp, kQuatAllDown,
   kQuatGreenUp, kQuatBlueDown, kQuatRedUp,  kQuatGreenDown};
 
+// Define the nominal orientations for any planar demo.
+inline const Eigen::Quaterniond kQUAT_FLAT{1.0, 0.0, 0.0, 0.0};
+inline const std::vector<Eigen::Quaterniond> kNominalOrientationsPlanar{
+  kQUAT_FLAT};
+
 
 namespace dairlib {
 namespace systems {
@@ -136,6 +141,18 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
       SamplingC3GoalGenerator(
         object_plant, goal_params, kNominalOrientationsJack) {}
 };
+
+
+// class TargetGeneratorPushT : public TargetGenerator {
+class SamplingC3GoalGeneratorPushT : public SamplingC3GoalGenerator {
+ public:
+  SamplingC3GoalGeneratorPushT(
+    const drake::multibody::MultibodyPlant<double>& object_plant,
+    const SamplingC3GoalParams& goal_params) :
+      SamplingC3GoalGenerator(
+        object_plant, goal_params, kNominalOrientationsPlanar) {}
+};
+
 
 }  // namespace systems
 }  // namespace dairlib

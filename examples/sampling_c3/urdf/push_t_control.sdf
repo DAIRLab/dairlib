@@ -40,7 +40,7 @@
           <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
-      <collision name= "top_left_sphere">  <!-- corner_nxynz -->
+      <collision name= "top_left_sphere">
         <pose> -0.12 0.08 -0.02 0 0 0 </pose>
         <geometry>
           <sphere>
@@ -48,7 +48,7 @@
           </sphere>
         </geometry>
       </collision>
-      <collision name= "top_right_sphere">  <!-- corner_nxnynz -->
+      <collision name= "top_right_sphere">
         <pose> -0.12 -0.08 -0.02 0 0 0 </pose>
         <geometry>
           <sphere>
@@ -56,7 +56,7 @@
           </sphere>
         </geometry>
       </collision>
-      <collision name= "bottom_sphere">  <!-- corner_xynz -->
+      <collision name= "bottom_sphere">
         <pose> 0.08 0.0 -0.02 0 0 0 </pose>
         <geometry>
           <sphere>

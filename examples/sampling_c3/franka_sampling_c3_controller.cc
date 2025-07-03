@@ -216,6 +216,36 @@ int DoMain(int argc, char* argv[]) {
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
+  else if (FLAGS_demo_name == "anything") {
+    drake::geometry::GeometryId mesh_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[0];
+
+    drake::geometry::GeometryId top_left_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[1];
+    drake::geometry::GeometryId top_right_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[2];
+    drake::geometry::GeometryId bottom_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[3];
+
+    contact_geoms["OBJECT_MESH"] = mesh_geoms;
+    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
+    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
+    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH"]));
+
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
+  }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
@@ -250,9 +280,9 @@ int DoMain(int argc, char* argv[]) {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
             plant_object, controller_params.goal_params);
-  } else if (FLAGS_demo_name == "push_t") {
+  } else if ((FLAGS_demo_name == "push_t") || (FLAGS_demo_name == "anything")) {
     target_generator =
-        std::make_unique<systems::SamplingC3GoalGeneratorPushT>(
+        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
             plant_object, controller_params.goal_params);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);

@@ -143,10 +143,9 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
 };
 
 
-// class TargetGeneratorPushT : public TargetGenerator {
-class SamplingC3GoalGeneratorPushT : public SamplingC3GoalGenerator {
+class SamplingC3GoalGeneratorPlanar : public SamplingC3GoalGenerator {
  public:
-  SamplingC3GoalGeneratorPushT(
+  SamplingC3GoalGeneratorPlanar(
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params) :
       SamplingC3GoalGenerator(

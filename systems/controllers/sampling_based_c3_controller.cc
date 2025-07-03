@@ -400,55 +400,68 @@ SamplingC3Controller::SamplingC3Controller(
     std::cout << "Initial filtered_solve_time_: " << filtered_solve_time_ << std::endl;
   }
 
-  std::string mesh_path;
+  std::vector<std::string> mesh_paths;
+  const auto& query_port = plant_.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const auto& inspector = query_object.inspector();
+  for (auto id : inspector.GetAllGeometryIds()) {
+    const auto& shape = inspector.GetShape(id);
+    std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
 
-  {
-    const auto& query_port = plant_.get_geometry_query_input_port();
-    const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-    const auto& inspector = query_object.inspector();
-
-    for (auto id : inspector.GetAllGeometryIds()) {
-      const auto& shape = inspector.GetShape(id);
-      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
-      auto p = s.find("filename='");
-      if (p != std::string::npos) {
-        p += strlen("filename='");
-        auto q = s.find("'", p);
-        mesh_path = s.substr(p, q - p);
-        break;
-      }
-    }
-    if (mesh_path.empty()) {
-      throw std::runtime_error("SamplingC3Controller: no mesh found in SceneGraph");
+    auto p = s.find("filename='");
+    if (p != std::string::npos) {
+      p += strlen("filename='");
+      auto q = s.find("'", p);
+      std::string path = s.substr(p, q - p);
+      mesh_paths.push_back(path);
     }
   }
 
-  // Only load mesh once
-  mesh_ = new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
-  const auto& vertices = mesh_->vertices();
-  int num_tri = mesh_->num_triangles();
+  if (mesh_paths.empty()) {
+    throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
+  }
+  
+  // TODO: remove, only used for deprecated sampling strategy 6
+  mesh_ = new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_paths[0], 1.0));
 
-  // Set up vector of faces + cumulative area vector (in object frame)
+  int num_tri = 0;
+  std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
+  for (const std::string& mesh_path : mesh_paths) {
+    drake::geometry::TriangleSurfaceMesh<double>* mesh = 
+      new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+    meshes.push_back(mesh);
+    num_tri += mesh->num_triangles();
+  }
+
+  std::cout << "Num triangles: " << num_tri << std::endl;
+
+  int j = 0;
   faces_.reserve(num_tri);
   face_bins_.reserve(num_tri+1);
-  face_bins_.push_back(0);
-  int j = 0;
-  for (int i = 0; i < num_tri; ++i) {
-    auto tri = mesh_->triangles()[i];
-    Eigen::Vector3d v0 = vertices[tri.vertex(0)];
-    Eigen::Vector3d v1 = vertices[tri.vertex(1)];
-    Eigen::Vector3d v2 = vertices[tri.vertex(2)];
-    Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
-    if (std::abs(normal[2]) < 0.8) {
-      double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-      faces_.push_back({area, normal, {v0, v1, v2}});
-      face_bins_.push_back(face_bins_[j] + area);
-      j++;
+  face_bins_.push_back(0.0);
+  for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
+    const auto& vertices = mesh->vertices();
+    int num_tri = mesh->num_triangles();
+
+    for (int i = 0; i < num_tri; ++i) {
+      auto tri = mesh->triangles()[i];
+      Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+      Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+      Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+      Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+
+      if (std::abs(normal[2]) < 0.8) {
+        double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+        faces_.push_back({area, normal, {v0, v1, v2}});
+        face_bins_.push_back(face_bins_[j] + area);
+        j++;
+      }
     }
   }
+
   if (faces_.empty()) {
-      throw std::runtime_error("No valid faces found in the mesh.");
+    throw std::runtime_error("No valid faces found in any of the meshes.");
   }
 }
 
@@ -745,7 +758,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_, c3_options_,
     plant_, context_, plant_ad_, context_ad_, contact_pairs_, *mesh_, faces_, face_bins_);
 
-  // auto gss_end = std::chrono::high_resolution_clock::now();
+  std::cout << "generated sample" << std::endl;
+    // auto gss_end = std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double> gss_elapsed = gss_end - gss_start;
   //std::cout << "Elapsed time: " << gss_elapsed.count() << " seconds" << std::endl;
 

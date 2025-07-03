@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import os
+from lxml import etree as ET
 
 SDF_TEMPLATE = """<?xml version="1.0"?>
 <sdf version="1.7">
@@ -20,33 +21,7 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
             <iyz>0.0</iyz>
         </inertia>
       </inertial>
-
-      <visual name="vertical_link">
-        <pose>0 0 0 0 0 0</pose>
-        <geometry>
-          <mesh>
-            <uri>{OBJ}</uri>
-          </mesh>
-        </geometry>
-        <material>
-          <diffuse>0 0 0 1</diffuse>
-        </material>
-      </visual>
-      <collision name="vertical_link_volume">
-        <pose>0 0 0 0 0 0</pose>
-            <geometry>
-          <mesh>
-            <uri>{OBJ}</uri>
-          </mesh>
-        </geometry>
-        <drake:proximity_properties>
-          <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-          <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
-          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
-        </drake:proximity_properties>
-      </collision>
+      {CONVEX_PARTS}
       <collision name="corner_nxynz_">
         <geometry>
           <sphere>
@@ -114,11 +89,56 @@ def get_obj_corners(obj_file):
     c_xynz = f"{max_x:.8f} {mid_y:.8f} {min_z:.8f}"
     return c_nxynz, c_nxnynz, c_xynz
 
+def make_convex_parts(convex_paths):
+    drake_uri = "uri:drake"
+    ET.register_namespace("drake", drake_uri)
+
+    link = ET.Element('link', name="vertical_link")
+
+    for i, convex_path in enumerate(convex_paths):
+        convex_obj = os.path.basename(convex_path)
+
+        visual = ET.SubElement(link, "visual", name=f"convex_{i}")
+        ET.SubElement(visual, "pose").text = "0 0 0 0 0 0"
+        geometry = ET.SubElement(visual, "geometry")
+        mesh_elem = ET.SubElement(geometry, "mesh")
+        ET.SubElement(mesh_elem, "uri").text = convex_obj
+        material = ET.SubElement(visual, "material")
+        ET.SubElement(material, "diffuse").text = "0 0 0 1"
+
+        collision = ET.SubElement(link, "collision", name=f"convex_{i}_volume")
+        ET.SubElement(collision, "pose").text = "0 0 0 0 0 0"
+        geometry = ET.SubElement(collision, "geometry")
+        mesh_elem = ET.SubElement(geometry, "mesh")
+        ET.SubElement(mesh_elem, "uri").text = convex_obj
+
+        prox = ET.SubElement(
+            collision,
+            ET.QName(drake_uri, "proximity_properties")
+        )
+        ET.SubElement(prox, ET.QName(drake_uri, "compliant_hydroelastic"))
+        ET.SubElement(prox, ET.QName(drake_uri, "hydroelastic_modulus")).text = "3.0e7"
+        ET.SubElement(prox, ET.QName(drake_uri, "mesh_resolution_hint")).text = "0.18"
+        ET.SubElement(prox, ET.QName(drake_uri, "hunt_crossley_dissipation")).text = "10"
+        ET.SubElement(prox, ET.QName(drake_uri, "mu_dynamic")).text = "0.3"
+
+    # Serialize only the children of <link>, joining them into one string
+    parts = []
+    for child in link:
+        parts.append(ET.tostring(child, pretty_print=True, encoding="unicode"))
+
+    return ''.join(parts)
+
 def make_sdf(obj_filename, output_path=None):
     c_nxynz, c_nxnynz, c_xynz = get_obj_corners(obj_filename)
     obj_basename = os.path.basename(obj_filename)
+    base_name = os.path.splitext(obj_basename)[0]
+
+    convex_files = [f"{base_name}_convex_{i}.obj" for i in range(10)]
+    convex_parts = make_convex_parts(convex_files)
+
     sdf_xml = SDF_TEMPLATE.format(
-        OBJ=obj_basename,
+        CONVEX_PARTS = convex_parts,
         CORNER_NXYNZ=c_nxynz,
         CORNER_NXNYNZ=c_nxnynz,
         CORNER_XYNZ=c_xynz,

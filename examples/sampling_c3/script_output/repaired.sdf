@@ -4,14 +4,14 @@
     <link name="vertical_link">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.2</mass>
+        <mass>1</mass>
         <inertia>
-          <ixx>0.00026784096</ixx>
-          <iyy>0.00075726141</iyy>
-          <izz>0.00096002978</izz>
-          <ixy>-2.5590369e-05</ixy>
-          <ixz>-3.311804e-06</ixz>
-          <iyz>-1.118235e-06</iyz>
+          <ixx>0.0013392048</ixx>
+          <iyy>0.003786307</iyy>
+          <izz>0.0048001489</izz>
+          <ixy>-0.00012795184</ixy>
+          <ixz>-1.655902e-05</ixz>
+          <iyz>-5.5911749e-06</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">

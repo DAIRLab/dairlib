@@ -128,6 +128,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
                                            plant_.world_frame(),
                                            plant_.world_frame(), &Jv_WCb);
 
+
   auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
       signed_distance_pair.nhat_BA_W, 0);
 

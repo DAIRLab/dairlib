@@ -830,34 +830,34 @@ Eigen::VectorXd generate_sample_mesh_drake(
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
       auto& inspector = query_object.inspector();
-      //std::cout << "Proximity geometries:";
-      // for (auto id : inspector.GetAllGeometryIds()) {
-      //    if (inspector.NumGeometriesWithRole(drake::geometry::Role::kProximity) > 0)
-      //      std::cout << id << " ";
-      // }
-      //std::cout << "\n";
       auto pose = inspector.GetPoseInFrame(mesh_geometry_id); // 34
 
-      // const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
-      // const drake::geometry::SignedDistanceToPoint<double>& result = results[1];  // Index 1 = vertical link
-      
-      // distance = result.distance;
-      // //std::cout << "Distance to mesh: " << distance << std::endl;
+      const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
 
-      // bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+      distance = 10000;
+      for (int i = 1; i < 11; i++) { // indices of convex objects
+          if (results[i].distance < distance) {
+             distance = results[i].distance;
+          } 
+      }
+      
+  
+      std::cout << "Distance to mesh: " << distance << std::endl;
+
+      bool in_collision = (distance <= sampling_params.sample_projection_clearance);
       
       
-      int min_distance_index = 1;
-      bool in_collision = check_collision(
-          n_q, n_v, n_u, 
-          candidate_state, 
-          plant, context, 
-          plant_ad, context_ad, 
-          contact_geoms,
-          sampling_params, 
-          c3_options, 
-          min_distance_index
-      );
+      // int min_distance_index = 1;
+      // in_collision = check_collision(
+      //     n_q, n_v, n_u, 
+      //     candidate_state, 
+      //     plant, context, 
+      //     plant_ad, context_ad, 
+      //     contact_geoms,
+      //     sampling_params, 
+      //     c3_options, 
+      //     min_distance_index
+      // );
 
 
 

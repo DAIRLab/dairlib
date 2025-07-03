@@ -49,25 +49,19 @@ if __name__ == "__main__":
     controller_sdf_path = os.path.join(output_dir, f"{base_name}_controller.sdf")
     combined_sdf_path = os.path.join(output_dir, f"{base_name}.sdf")
 
-    # 1. controller_sdf_generation.py
-    run_command(
-        ["python", "examples/sampling_c3/sampling_generation/controller_sdf_generation.py", obj_file, controller_sdf_path],
-        "Controller SDF generation"
-    )
-
-    # 2. obj_to_drake_sdf.py
+    # 1. obj_to_drake_sdf.py
     run_command(
         ["python", "examples/sampling_c3/sampling_generation/obj_to_drake_sdf.py", obj_file, output_dir],
         "OBJ to Drake SDF"
     )
 
-    # 3. combine_obj_files.py
+    # 2. controller_sdf_generation.py
     run_command(
-        ["python", "examples/sampling_c3/sampling_generation/combine_script.py", convex_name, output_dir],
-        "Combining convex OBJ files"
+        ["python", "examples/sampling_c3/sampling_generation/controller_sdf_generation.py", obj_file, controller_sdf_path],
+        "Controller SDF generation"
     )
 
-    # 4. obj_min_z_plane.py
+    # 3. obj_min_z_plane.py
     z_output = run_command(
         ["python", "examples/sampling_c3/sampling_generation/obj_min_z_plane.py", obj_file],
         "Extracting min z-height"

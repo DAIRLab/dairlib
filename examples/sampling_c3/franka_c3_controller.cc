@@ -28,6 +28,10 @@
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
 
+#include <drake/geometry/query_object.h>
+#include <drake/geometry/scene_graph.h>
+#include "multibody/geom_geom_collider.h"
+
 namespace dairlib {
 
 using dairlib::solvers::LCSFactory;
@@ -212,19 +216,17 @@ if(FLAGS_demo_name == "push_t") {
         drake::geometry::GeometryId ee_contact_points =
             plant_for_lcs.GetCollisionGeometriesForBody(
                 plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-        drake::geometry::GeometryId vertical_geoms =
-            plant_for_lcs.GetCollisionGeometriesForBody(
-                plant_for_lcs.GetBodyByName("vertical_link"))[0];
-
+         
+            
         drake::geometry::GeometryId corner_nxynz_geoms =
             plant_for_lcs.GetCollisionGeometriesForBody(
-                plant_for_lcs.GetBodyByName("vertical_link"))[1];
+                plant_for_lcs.GetBodyByName("vertical_link"))[10];
         drake::geometry::GeometryId corner_nxnynz_geoms =
             plant_for_lcs.GetCollisionGeometriesForBody(
-                plant_for_lcs.GetBodyByName("vertical_link"))[2];
+                plant_for_lcs.GetBodyByName("vertical_link"))[11];
         drake::geometry::GeometryId corner_xynz_geoms =
             plant_for_lcs.GetCollisionGeometriesForBody(
-                plant_for_lcs.GetBodyByName("vertical_link"))[3];
+                plant_for_lcs.GetBodyByName("vertical_link"))[12];
 
         drake::geometry::GeometryId ground_geoms =
             plant_for_lcs.GetCollisionGeometriesForBody(
@@ -232,7 +234,6 @@ if(FLAGS_demo_name == "push_t") {
 
         //   Creating a map of contact geoms
         contact_geoms["EE"] = ee_contact_points;
-        contact_geoms["vertical_link"] = vertical_geoms;
         contact_geoms["corner_nxynz"] = corner_nxynz_geoms;
         contact_geoms["corner_nxnynz"] = corner_nxnynz_geoms;
         contact_geoms["corner_xynz"] = corner_xynz_geoms;
@@ -240,11 +241,19 @@ if(FLAGS_demo_name == "push_t") {
 
         std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
+        // Get all collision geometry IDs associated with your body "vertical_link"
+        const Body<double>& body = plant_for_lcs.GetBodyByName("vertical_link");
+        std::vector<GeometryId> all_geoms = plant_for_lcs.GetCollisionGeometriesForBody(body);
+        std::vector<GeometryId> geom_ids(all_geoms.begin(), all_geoms.begin() + 10); 
+
         //   Creating a list of contact pairs for the end effector and the jack to
         //   hand over to lcs factory in the controller to resolve
-        ee_contact_pairs.push_back(
-            SortedPair(contact_geoms["EE"], contact_geoms["vertical_link"]));
-
+        for (int i = 0; i < geom_ids.size(); i++) {
+            ee_contact_pairs.push_back(
+                SortedPair(contact_geoms["EE"], geom_ids[i]));
+        }
+        contact_pairs.push_back(ee_contact_pairs);
+        
         //   Creating a list of contact pairs for the jack and the ground
         SortedPair<GeometryId> ground_contact_1{
         SortedPair(contact_geoms["corner_nxynz"], contact_geoms["GROUND"])};
@@ -252,8 +261,6 @@ if(FLAGS_demo_name == "push_t") {
         SortedPair(contact_geoms["corner_nxnynz"], contact_geoms["GROUND"])};
         SortedPair<GeometryId> ground_contact_3{
         SortedPair(contact_geoms["corner_xynz"], contact_geoms["GROUND"])};
-
-        contact_pairs.push_back(ee_contact_pairs);
 
         if(sampling_c3_options.num_contacts_index == 2 || sampling_c3_options.num_contacts_index == 3){
             // If num_contacts_index is 2 or 3, we add an additional contact pair 
@@ -266,7 +273,9 @@ if(FLAGS_demo_name == "push_t") {
         ground_object_contact_pairs.push_back(ground_contact_1);
         ground_object_contact_pairs.push_back(ground_contact_2);
         ground_object_contact_pairs.push_back(ground_contact_3);
-        contact_pairs.push_back(ground_object_contact_pairs);
+        contact_pairs.push_back(ground_object_contact_pairs); 
+
+
     } else {
         std::cout << "not vertical" << std::endl;
 
@@ -974,6 +983,7 @@ else if(FLAGS_demo_name == "ball_rolling"){
   loop.Simulate();
   return 0;
 }
+
 
 }  // namespace dairlib
 

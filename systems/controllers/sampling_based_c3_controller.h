@@ -24,6 +24,9 @@
 #include "solvers/lcs_factory.h"
 #include "solvers/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/controllers/face.h"
+#include <drake/geometry/proximity/triangle_surface_mesh.h>
+#include <drake/geometry/proximity/obj_to_surface_mesh.h>
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -40,6 +43,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using systems::TimestampedVector;
+using systems::Face;
 
 namespace systems {
 
@@ -311,6 +315,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputSampleBufferCosts(
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* sample_buffer_costs) const;
+
+  std::vector<double> face_bins_;
+  std::vector<Face> faces_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;

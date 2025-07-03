@@ -32,7 +32,10 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms) {
+        contact_geoms,
+    std::vector<Face> faces,
+    std::vector<double> face_bins
+      ) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -49,6 +52,10 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   for (int i = 0; i < num_samples; i++) {
     candidate_states[i] = x_lcs;
   }
+  const auto& query_port = plant.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
+  const auto& inspector = query_object.inspector();
 
   // Split function calls based on sampling strategy.
   SamplingStrategy strategy = sampling_params.sampling_strategy;
@@ -117,7 +124,18 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
-  } else {
+  } else if (strategy == SamplingStrategy::kMeshNormal) {
+    for (int i = 0; i < num_samples; i++){
+      do{
+        candidate_states[i] = MeshNormalSampling(
+          n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad, contact_geoms,
+          sampling_params, query_object, sampling_c3_options, faces, face_bins);
+      } while(sampling_params.filter_samples_for_safety &&
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+    }
+  }  
+  
+  else {
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
   }
   return candidate_states;
@@ -360,6 +378,170 @@ Eigen::Vector3d ShellSampling(
     return sample;
   }
 }
+
+Eigen::VectorXd MeshNormalSampling(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    C3Options c3_options,
+    std::vector<Face> faces,
+    std::vector<double> face_bins
+) {
+    const double buffer_distance = sampling_params.buffer_distance;
+    const double z_height = sampling_params.z_height;
+    const int max_attempts = 100;
+    int attempts = 0;
+    double distance = 0;
+    
+    Eigen::VectorXd q_vec = x_lcs.head(n_q);
+    Eigen::Vector3d object_xyz = q_vec.tail(3);
+    double trans_x = object_xyz[0];
+    double trans_y = object_xyz[1];
+    double trans_z = object_xyz[2];
+    Eigen::Quaterniond quat_object(q_vec[n_q - 7], q_vec[n_q - 6],
+                                    q_vec[n_q - 5], q_vec[n_q - 4]);
+    Eigen::Matrix3d R = quat_object.toRotationMatrix();
+    Eigen::Vector3d t(trans_x, trans_y, trans_z);
+    
+    double total_area = 0;
+    std::vector<Face> faces_world; // face vector in world frame
+    faces_world.reserve(faces.size());
+
+    for (int i = 0; i < faces.size(); i++) {
+        Face transformed_face;
+        transformed_face.v[0] = R * faces[i].v[0] + t;
+        transformed_face.v[1] = R * faces[i].v[1] + t;
+        transformed_face.v[2] = R * faces[i].v[2] + t;
+        transformed_face.normal = R * faces[i].normal;
+        transformed_face.area = faces[i].area;
+
+        total_area += transformed_face.area;
+        faces_world.emplace_back(transformed_face);
+    }
+
+    do {
+      // auto sample_start0 = std::chrono::high_resolution_clock::now();
+
+      std::mt19937 gen(std::random_device{}());
+      std::uniform_real_distribution<double> dis(0.0, total_area);
+      double target = dis(gen);
+      const Face* selected_face = nullptr;
+
+      // auto sample_end0 = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> sample_elapsed0 = sample_end0 - sample_start0;
+      //std::cout << "Sample from uniform: " << sample_elapsed0.count() << " seconds" << std::endl;
+      
+      // auto sample_start2 = std::chrono::high_resolution_clock::now();
+      
+      // Binary search to find index of selected face (weighted by area)
+      int face_idx = FindBin(face_bins.data(), face_bins.size(), target); 
+      selected_face = &faces_world[face_idx];
+
+      // auto sample_end2 = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> sample_elapsed2 = sample_end2 - sample_start2;
+      //std::cout << "Select face binary search: " << sample_elapsed2.count() << " seconds" << std::endl;
+
+      auto on_face_start = std::chrono::high_resolution_clock::now();
+      std::uniform_real_distribution<double> dis_u(0.0, 1.0);
+      double a = std::pow(dis_u(gen), 0.6);
+      double b = std::pow(dis_u(gen), 0.6);
+      // double a = dis_u(gen), b = dis_u(gen);
+      if (a + b > 1.0) {
+          a = 1.0 - a;
+          b = 1.0 - b;
+      }
+      const auto& point_vector = selected_face->v;
+      Eigen::Vector3d sample_point = (1.0 - a - b) * point_vector[0] + a * point_vector[1] + b * point_vector[2];
+      Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * selected_face->normal;
+      projected_sample_point[2] = z_height;
+
+      Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+      candidate_state.segment(0, 3) = projected_sample_point; // ee position
+      candidate_state.segment(3, 7) = x_lcs.segment(3, 7);    // object orientation/position
+
+      // auto on_face_end = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> on_face_elapsed = on_face_end - on_face_start;
+      //std::cout << "Sample on face: " << on_face_elapsed.count() << " seconds" << std::endl;
+
+
+
+      auto collision_start = std::chrono::high_resolution_clock::now();
+
+      UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+      
+      auto& inspector = query_object.inspector();
+
+      const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
+
+      distance = 10000;
+      for (int i = 1; i < 11; i++) { // indices of convex objects
+          if (results[i].distance < distance) {
+             distance = results[i].distance;
+          } 
+      }
+      
+  
+      std::cout << "Distance to mesh: " << distance << std::endl;
+
+      bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+      
+      
+      // int min_distance_index = 1;
+      // in_collision = check_collision(
+      //     n_q, n_v, n_u, 
+      //     candidate_state, 
+      //     plant, context, 
+      //     plant_ad, context_ad, 
+      //     contact_geoms,
+      //     sampling_params, 
+      //     c3_options, 
+      //     min_distance_index
+      // );
+
+
+
+      // auto collision_end = std::chrono::high_resolution_clock::now();
+      // std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
+      //std::cout << "Do collision: " << collision_elapsed.count() << " seconds" << std::endl;
+
+      if (!in_collision) {
+        UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+        //std::cout << "Sample point is not in collision with the object." << std::endl;
+        //std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
+        return candidate_state;
+      }
+      //std::cout << "Attempt #: " << attempts + 1 << " - Sample point is in collision with the object." << std::endl;
+      //std::cout << "Sampled point: " << projected_sample_point.transpose() << std::endl;
+      ++attempts;
+    }
+    while (attempts < max_attempts);
+    throw std::runtime_error("Failed to generate a valid sample after " + std::to_string(max_attempts) + " attempts.");
+}
+
+// Helper function to binary search over bin edges 
+int FindBin(const double* bins, int n, double x) {
+    int low = 0;
+    int high = n - 1;  
+
+    while (low < high - 1) {  
+        int mid = (high + low) / 2;
+        if (bins[mid] <= x) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
 
 bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {

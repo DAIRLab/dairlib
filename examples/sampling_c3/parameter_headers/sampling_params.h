@@ -20,7 +20,8 @@ enum SamplingStrategy {
   kRandomOnSphere,
   kFixed,
   kRandomOnPerimeter,
-  kRandomOnShell
+  kRandomOnShell,
+  kMeshNormal
 };
 
 struct SamplingParams {
@@ -46,7 +47,7 @@ struct SamplingParams {
                                         // kRandomOnSphere
   double sampling_height;               // kRadiallySymmetric, kRandomOnCircle
                                         // kRandomOnPerimeter
-  double sample_projection_clearance;   // kRandomOnPerimeter, kRandomOnShell
+  double sample_projection_clearance;   // kRandomOnPerimeter, kRandomOnShell, kMeshNormal
   double min_angle_from_vertical;       // kRandomOnSphere, kRandomOnShell
   double max_angle_from_vertical;       // kRandomOnSphere, kRandomOnShell
 
@@ -60,6 +61,11 @@ struct SamplingParams {
   /// kRandomOnShell parameters.
   double min_sampling_radius;
   double max_sampling_radius;
+
+  double z_height;
+  double buffer_distance;
+  std::string base_name;
+
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -81,5 +87,10 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
+    a->Visit(DRAKE_NVP(sample_projection_clearance));
+    a->Visit(DRAKE_NVP(z_height));
+    a->Visit(DRAKE_NVP(buffer_distance));
+    a->Visit(DRAKE_NVP(base_name));
+
   }
 };

@@ -11,13 +11,15 @@
 #include "multibody/geom_geom_collider.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_options.h"
+#include <drake/geometry/query_object.h>
+#include "systems/controllers/face.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using dairlib::systems::Face;
 
 namespace dairlib {
 namespace systems {
-
 
 /// Public function
 std::vector<Eigen::VectorXd> GenerateSampleStates(
@@ -34,7 +36,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms
+        contact_geoms,
+    std::vector<Face> faces,
+    std::vector<double> face_bins
 );
 
 /// Individual sampling strategies returning 3D EE position
@@ -101,8 +105,25 @@ Eigen::Vector3d ShellSampling(
     const SamplingC3Options sampling_c3_options
 );
 
+Eigen::VectorXd MeshNormalSampling(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    C3Options c3_options,
+    std::vector<Face> faces,
+    std::vector<double> face_bins);
+
 
 /// Helper functions
+int FindBin(const double* bins, int n, double x);
 
 /// Whether the candidate state's EE location is within the robot workspace.
 bool IsSampleInWorkspace(

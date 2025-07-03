@@ -251,6 +251,7 @@ cc_library(
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:sampling_params",
         "//multibody:utils",
+        "//systems/controllers:face",
         "//multibody:geom_geom_collider",
         "//common:math_utils",
         "//common:update_context",

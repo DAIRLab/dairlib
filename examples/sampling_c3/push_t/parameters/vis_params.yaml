@@ -26,7 +26,7 @@ visualize_execution_plan: false
 
 visualize_c3_plan_curr: false
 c3_curr_object_color: []
-c3_curr_ee_color: [1.0, 1.0, 1.0]
+c3_curr_ee_color: [0.8, 0.8, 0.8]
 df_curr_object_color: []
 df_curr_ee_color: [0.5, 1.0, 0.5]
 

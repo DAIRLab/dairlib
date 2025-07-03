@@ -35,7 +35,7 @@ u_vertical_limits: [-50, 50]
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true
 use_predicted_x0_repos: true
-use_predicted_x0_reset_mechanism: true  # Resets if prediction is too far.
+use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
 ### Push-T demo specific parameters:
 # Contact pairs include a number of (ee-ground, ee-T, T-ground).
@@ -76,7 +76,7 @@ q_vector: [0.01, 0.01, 0.01,    # EE position
 r_vector: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
-g_x: [900, 900, 900, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x: [950, 950, 950, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma_list: [[1, 1, 1, 1],
                [1, 1, 1, 1, 1]]
 g_lambda_n_list: [[1, 1, 1, 1],

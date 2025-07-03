@@ -2,10 +2,9 @@
 Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
 ## Current Continuous Integration Status
-* `master` branch build and unit tests (Ubuntu 18.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* `master` branch build and unit tests (Ubuntu 20.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_focal&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* `master` branch build and unit tests (Ubuntu 20.04 with ROS): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_with_ros&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `master` branch build and unit tests (Ubuntu Jammy 22.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_jammy&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `master` branch build and unit tests (Ubuntu Focal 24.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_focal&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* Experimental build against Drake's `master` branch (Jammy): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 ## Complete Build Instructions
 
 ### Download dairlib
@@ -29,21 +28,13 @@ There is no need to extract the tar.
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
 
 #### Option 1: use pegged revision (Note - These steps may need repeated if switching to a branch with a different pegged revision of drake).
-The only specific action needed here is to install all of Drake's prerequisites. There are two choices for completing this step:
 
-a) In `dairlib/install`, run the appropriate `install_prereqs_xxx.sh`. This is untested on mac, and has not been tested to get every dependency for a fresh install.
-
-b) Download a source copy of drake, and install pre-requisites as described here: http://drake.mit.edu/from_source.html. Drake dependencies can change without notice. For full compatiability, you may need to checkout the drake commit which is pegged in WORKSPACE to install the correct dependencies. There is no need to build Drake itself. Proceed only until you have run the Drake setup script. 
-
-bazel will automatically download the pegged revision, specified in the WORKSPACE file. dairlib developers hope to keep this pegged revision current, and ensure that the pegged version will always work with a specific version of dairlib.
+In `dairlib/install`, run the `install_prereqs_ubuntu.sh`. Our build process does not currently support MacOS, though it has in the past and likely will in the future.
 
 This option is recommended for users who are not currently editing any source code in Drake itself.
 
 #### Option 2: source install of Drake
-Complete both steps (a) and (b) above. By running the drake install script after the dairlib install script, you are capturing any dependency changes between the pegged revision and the current Drake master, while still getting any aditional dairlib dependencies we may add. There is no need to build Drake. Next, to tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
-```
-export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
-```
+If you would like to use your own local install of Drake, likely because you are modifying it, when you build with Bazel you will need to use `bazel build --override_module=drake=/home/user/my-workspace/drake <package you are building>` (using the appropriate directory for your own install). There is no need to build Drake.
 
 ### IDE setup
 JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section. 

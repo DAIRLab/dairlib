@@ -9,22 +9,38 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 
+#include "drake/bindings/pydrake/pydrake_pybind.h"
+
 namespace py = pybind11;
 
 namespace dairlib {
 namespace pydairlib {
 
+using drake::pydrake::make_unowned_shared_ptr_from_raw;
 using LcmOutputDrivenLoop = systems::LcmDrivenLoop<dairlib::lcmt_robot_output>;
 
 PYBIND11_MODULE(framework, m) {
 
 py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
-    .def(py::init<drake::lcm::DrakeLcm*,
-                  std::unique_ptr<drake::systems::Diagram<double>>,
-                  const drake::systems::LeafSystem<double>*,
-                  const std::string&, bool>(), py::arg("drake_lcm"),
-                  py::arg("diagram"), py::arg("lcm_parser"),
-                  py::arg("input_channel"),  py::arg("is_forced_publish"))
+    .def(py::init(
+            [](drake::lcm::DrakeLcm* drake_lcm,
+                drake::systems::Diagram<double>& diagram,
+                const drake::systems::LeafSystem<double>* lcm_parser,
+                const std::string& input_channel, bool is_forced_publish) {
+              // The C++ constructor doesn't offer a bare-pointer overload,
+              // only shared_ptr. Because object lifetime is already
+              // handled by the ref_cycle annotation below (as required for
+              // all subclasses of Diagram), we can pass the `plant` as an
+              // unowned shared_ptr.
+              // (comment taken from Drakes controllers_py.cc)
+              return std::make_unique<LcmOutputDrivenLoop>(
+                  drake_lcm, make_unowned_shared_ptr_from_raw(&diagram),
+                  lcm_parser, input_channel, is_forced_publish);
+
+            }),
+        py::arg("drake_lcm"),
+        py::arg("diagram"), py::arg("lcm_parser"),
+        py::arg("input_channel"),  py::arg("is_forced_publish"))
     .def("Simulate", &LcmOutputDrivenLoop::Simulate,
          py::arg("end_time") = std::numeric_limits<double>::infinity());
 

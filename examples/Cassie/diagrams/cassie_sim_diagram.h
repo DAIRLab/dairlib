@@ -21,7 +21,7 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieSimDiagram)
 
   /// @param[in] urdf filepath containing the osc_running_gains.
-  CassieSimDiagram(std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
+  CassieSimDiagram(std::shared_ptr<drake::multibody::MultibodyPlant<double>> plant,
       const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf", bool visualize = false,
       double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
 

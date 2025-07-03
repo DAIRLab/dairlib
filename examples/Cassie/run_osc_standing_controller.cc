@@ -40,6 +40,7 @@ using Eigen::VectorXd;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -285,11 +286,12 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_standing_controller"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("osc_standing_controller"));
 
   // Build lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
+      &lcm_local, shared_diagram, state_receiver, FLAGS_channel_x,
       true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 

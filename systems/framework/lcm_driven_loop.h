@@ -134,11 +134,11 @@ class LcmDrivenLoop {
   ///     @param input_channel The name of the input channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                std::shared_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 const std::string& input_channel, bool is_forced_publish,
                 int queue_capacity = 1)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
+      : LcmDrivenLoop(drake_lcm, diagram, lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish, queue_capacity){};
 
@@ -152,7 +152,7 @@ class LcmDrivenLoop {
   ///     @param switch_channel The name of the switch channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                std::shared_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
@@ -168,7 +168,7 @@ class LcmDrivenLoop {
     }
     diagram_ptr_ = diagram.get();
     simulator_ =
-        std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+        std::make_unique<drake::systems::Simulator<double>>(*diagram);
     simulator_->set_publish_at_initialization(false);
 
     // Create subscriber for the switch (in the case of multi-input)
@@ -214,9 +214,9 @@ class LcmDrivenLoop {
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   /// The use case is that the user only need the time from lcm message.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                std::shared_ptr<drake::systems::Diagram<double>> diagram,
                 const std::string& input_channel, bool is_forced_publish)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
+      : LcmDrivenLoop(drake_lcm, diagram, nullptr,
                       std::vector<std::string>(1, input_channel), input_channel,
                       "", is_forced_publish){};
 
@@ -393,7 +393,7 @@ class LcmDrivenLoop {
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;
   const drake::systems::LeafSystem<double>* lcm_parser_;
-  std::unique_ptr<drake::systems::Simulator<double>> simulator_;
+  std::shared_ptr<drake::systems::Simulator<double>> simulator_;
 
   std::string diagram_name_ = "diagram";
   std::string active_channel_;

@@ -49,9 +49,8 @@ int DoMain() {
   scene_graph.set_name("scene_graph");
   MultibodyPlant<double> plant(1e-3);
   Parser parser(&plant, &scene_graph);
-  const std::string& fixed_spring_urdf =
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  parser.AddModels(fixed_spring_urdf);
+  parser.AddModels(
+      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.Finalize();
 
   MultibodyPlant<double> plant_w_spr(1e-3);
@@ -166,10 +165,11 @@ int DoMain() {
     auto box = drake::geometry::Box(0.5, 1.0, 0.5);
     visualizer.GetMeshcat()->SetObject("box", box);
     visualizer.GetMeshcat()->SetTransform("box", origin);
-//    visualizer.GetMeshcat()->SetCamera(perspective_camera);
+    //    visualizer.GetMeshcat()->SetCamera(perspective_camera);
     visualizer.GetMeshcat()->SetCamera(ortho_camera);
     visualizer.DrawPoses(poses);
-    while (true){}
+    while (true) {
+    }
   }
 
   return 0;

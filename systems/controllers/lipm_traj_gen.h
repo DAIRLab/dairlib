@@ -39,7 +39,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-          contact_points_in_each_state,
+      contact_points_in_each_state,
       bool use_CoM = true);
 
   // Input port getters
@@ -50,12 +50,12 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_touchdown_time()
-      const {
+  const {
     return this->get_input_port(touchdown_time_port_);
   }
   // Output port getters
   const drake::systems::OutputPort<double>& get_output_port_lipm_from_current()
-      const {
+  const {
     return this->get_output_port(output_port_lipm_from_current_);
   }
   const drake::systems::OutputPort<double>&

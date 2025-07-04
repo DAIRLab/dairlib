@@ -27,6 +27,7 @@
 namespace dairlib {
 using drake::lcm::Subscriber;
 using drake::systems::Context;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::TriggerType;
@@ -188,7 +189,8 @@ int do_main(int argc, char* argv[]) {
 
   // Finish building the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name("dispatcher_robot_in");
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name("dispatcher_robot_in");
 
   // Channel names of the controllers
   std::vector<std::string> input_channels = {FLAGS_control_channel_name_initial,
@@ -204,7 +206,7 @@ int do_main(int argc, char* argv[]) {
   // Run lcm-driven simulation
   CassieLcmDrivenLoop<dairlib::lcmt_robot_input,
                       dairlib::lcmt_controller_switch>
-      loop(&lcm_local, std::move(owned_diagram), command_receiver,
+      loop(&lcm_local, shared_diagram, command_receiver,
            input_channels, FLAGS_control_channel_name_initial, switch_channel,
            true, FLAGS_state_channel_name);
 

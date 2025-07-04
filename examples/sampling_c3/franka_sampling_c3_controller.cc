@@ -11,10 +11,10 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "goal_generator.h"
-#include "examples/sampling_c3/sampling_c3_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "goal_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -35,6 +35,7 @@ using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -48,7 +49,6 @@ using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using std::vector;
 
-
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
@@ -60,14 +60,15 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // Load parameters.
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/sampling_c3/" + FLAGS_demo_name +
+      "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      controller_params.lcm_channels_simulation_file :
-      controller_params.lcm_channels_hardware_file;
+  std::string lcm_channels_file =
+      FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
+                          : controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
@@ -86,7 +87,7 @@ int DoMain(int argc, char* argv[]) {
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
-    AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+      AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model,
                       controller_params.include_end_effector_orientation);
   plant_lcs.Finalize();
@@ -103,6 +104,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+  std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
   // All demos include the end effector and ground.
@@ -116,7 +119,6 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["GROUND"] = ground_geoms;
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-  contact_pairs.push_back(ee_ground_contact);
 
   if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId capsule1_geoms =
@@ -158,18 +160,13 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
     contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
 
-    // EE-object contact pairs second.
-    std::vector<SortedPair<GeometryId>> ee_contact_pairs;
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
-    contact_pairs.push_back(ee_contact_pairs);
 
-    // Object-ground contact pairs third.
-    std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
@@ -182,11 +179,48 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
-    contact_pairs.push_back(ground_object_contact_pairs);
-  }
-  else {
+  } else if (FLAGS_demo_name == "push_t") {
+    drake::geometry::GeometryId vertical_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[0];
+    drake::geometry::GeometryId horizontal_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("horizontal_link"))[0];
+
+    drake::geometry::GeometryId top_left_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[1];
+    drake::geometry::GeometryId top_right_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[2];
+    drake::geometry::GeometryId bottom_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("vertical_link"))[3];
+
+    contact_geoms["VERTICAL_LINK"] = vertical_geoms;
+    contact_geoms["HORIZONTAL_LINK"] = horizontal_geoms;
+    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
+    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
+    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["HORIZONTAL_LINK"]));
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["VERTICAL_LINK"]));
+
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
+  } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
+  // Order:  EE-ground, EE-object, object-ground.
+  contact_pairs.push_back(ee_ground_contact);
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_object_contact_pairs);
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
@@ -214,6 +248,9 @@ int DoMain(int argc, char* argv[]) {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
             plant_object, controller_params.goal_params);
+  } else if (FLAGS_demo_name == "push_t") {
+    target_generator = std::make_unique<systems::SamplingC3GoalGeneratorPushT>(
+        plant_object, controller_params.goal_params);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
@@ -364,17 +401,15 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y",  "end_effector_z", 
-      "object_qw",       "object_qx",       "object_qy",       "object_qz",
-      "object_x",        "object_y",        "object_z",
-      "end_effector_vx", "end_effector_vy", "end_effector_vz",
-      "object_wx" ,      "object_wy",       "object_wz",
-      "object_vz",       "object_vz",       "object_vz",
+      "end_effector_x",  "end_effector_y", "end_effector_z",  "object_qw",
+      "object_qx",       "object_qy",      "object_qz",       "object_x",
+      "object_y",        "object_z",       "end_effector_vx", "end_effector_vy",
+      "end_effector_vz", "object_wx",      "object_wy",       "object_wz",
+      "object_vz",       "object_vz",      "object_vz",
   };
   // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
-      plant_lcs.num_positions() + plant_lcs.num_velocities(),
-      state_names);
+      plant_lcs.num_positions() + plant_lcs.num_velocities(), state_names);
   auto c3_target_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, &lcm,
@@ -416,32 +451,40 @@ int DoMain(int argc, char* argv[]) {
                   object_trajectory_sender_best_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_curr_plan(),
                   c3_output_sender_curr_plan->get_input_port_c3_solution());
-  builder.Connect(controller->get_output_port_c3_intermediates_curr_plan(),
-                  c3_output_sender_curr_plan->get_input_port_c3_intermediates());
-  builder.Connect(controller->get_output_port_lcs_contact_jacobian_curr_plan(),
-                  c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
+  builder.Connect(
+      controller->get_output_port_c3_intermediates_curr_plan(),
+      c3_output_sender_curr_plan->get_input_port_c3_intermediates());
+  builder.Connect(
+      controller->get_output_port_lcs_contact_jacobian_curr_plan(),
+      c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_debug(),
                   c3_output_publisher_curr_plan->get_input_port());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_force(),
                   c3_forces_publisher_curr_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_best_plan(),
                   c3_output_sender_best_plan->get_input_port_c3_solution());
-  builder.Connect(controller->get_output_port_c3_intermediates_best_plan(),
-                  c3_output_sender_best_plan->get_input_port_c3_intermediates());
-  builder.Connect(controller->get_output_port_lcs_contact_jacobian_best_plan(),
-                  c3_output_sender_best_plan->get_input_port_lcs_contact_info());
+  builder.Connect(
+      controller->get_output_port_c3_intermediates_best_plan(),
+      c3_output_sender_best_plan->get_input_port_c3_intermediates());
+  builder.Connect(
+      controller->get_output_port_lcs_contact_jacobian_best_plan(),
+      c3_output_sender_best_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_debug(),
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
                   c3_forces_publisher_best_plan->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_actor(),
-                  dynamically_feasible_curr_plan_actor_publisher->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_best_plan_actor(),
-                  dynamically_feasible_best_plan_actor_publisher->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
-                  dynamically_feasible_curr_plan_object_publisher->get_input_port());
-  builder.Connect(controller->get_output_port_dynamically_feasible_curr_plan_object(),
-                  dynamically_feasible_best_plan_object_publisher->get_input_port());
+  builder.Connect(
+      controller->get_output_port_dynamically_feasible_curr_plan_actor(),
+      dynamically_feasible_curr_plan_actor_publisher->get_input_port());
+  builder.Connect(
+      controller->get_output_port_dynamically_feasible_best_plan_actor(),
+      dynamically_feasible_best_plan_actor_publisher->get_input_port());
+  builder.Connect(
+      controller->get_output_port_dynamically_feasible_curr_plan_object(),
+      dynamically_feasible_curr_plan_object_publisher->get_input_port());
+  builder.Connect(
+      controller->get_output_port_dynamically_feasible_curr_plan_object(),
+      dynamically_feasible_best_plan_object_publisher->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(final_target_state_mux->get_output_port(),
@@ -485,8 +528,9 @@ int DoMain(int argc, char* argv[]) {
   // the latest messages are used in the control loop.  See
   // https://github.com/DAIRLab/dairlib/pull/366 for more details.
   int lcm_buffer_size = 200;
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), franka_state_receiver,
+      &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });

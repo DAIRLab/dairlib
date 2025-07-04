@@ -2,12 +2,10 @@
 Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
 ## Current Continuous Integration Status
-* `main` branch build and unit tests (Ubuntu 22.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_jammy&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-## Basic Build Instructions
-
-Below are the basic build instructions for the main branch of dairlib without any modifications.
-Build variations to include SNOPT/GUROBI/ROS or a specific version of Drake are details in [`install/README.md`](install/README.md)
+* `main` branch build and unit tests (Ubuntu Jammy 22.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_jammy&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `main` branch build and unit tests (Ubuntu Focal 24.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_focal&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* Experimental build against Drake's `master` branch (Jammy): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+## Complete Build Instructions
 
 ### 1. Download dairlib
 Clone `dairlib` into the your workspace, e.g. "my-workspace/dairlib".
@@ -15,27 +13,28 @@ Clone `dairlib` into the your workspace, e.g. "my-workspace/dairlib".
 git clone https://github.com/DAIRLab/dairlib.git
 ```
 
-### 2. Install prerequisites (with sudo)
-This script just calls the corresponding install_prereqs script from Drake (currently only for ubuntu 22.04)
+2. Download and setup SNOPT
+
+dairlib, by default, assumes that users have access to SNOPT(https://web.stanford.edu/group/SOL/snopt.htm), though it is not required. **If you do not have SNOPT**, you will need to edit `.bazelrc` and change `build --define=WITH_SNOPT=ON` to `build --define=WITH_SNOPT=OFF`
+
+For users at Penn, download SNOPT (https://www.seas.upenn.edu/~posa/snopt/snopt7.6.tar.gz) and add the following line to your `~/.bashrc`
 ```
-sudo ./install/install_prereqs_jammy.sh
+export SNOPT_PATH=<the directory you downloaded to>/snopt7.6.tar.gz
 ```
 
-### 3. Build with bazel
+There is no need to extract the tar.
 
-```
-bazel build ...
-```
-We use bazel as our build system. `bazel build ...` builds everything in dairlib. To build specific binaries, use `bazel build <path>/<to>/<target>`
+### Build Drake
+The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
 
+#### Option 1: use pegged revision (Note - These steps may need repeated if switching to a branch with a different pegged revision of drake).
 
-### 4. LCM and libbot
-```
-sudo apt install lcm libbot2
-```
-Installs a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation should add the proper apt repo for these. If not, add `https://drake-apt.csail.mit.edu/jammy jammy main` to your apt sources
+In `dairlib/install`, run the `install_prereqs_ubuntu.sh`. Our build process does not currently support MacOS, though it has in the past and likely will in the future.
 
-## Other Setup Instructions
+This option is recommended for users who are not currently editing any source code in Drake itself.
+
+#### Option 2: source install of Drake
+If you would like to use your own local install of Drake, likely because you are modifying it, when you build with Bazel you will need to use `bazel build --override_module=drake=/home/user/my-workspace/drake <package you are building>` (using the appropriate directory for your own install). There is no need to build Drake.
 
 ### IDE setup
 JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section. 

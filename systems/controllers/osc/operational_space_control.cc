@@ -567,6 +567,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *u_sol_ = result.GetSolution(id_qp_.u());
     *lambda_c_sol_ = result.GetSolution(id_qp_.lambda_c());
     *lambda_h_sol_ = result.GetSolution(id_qp_.lambda_h());
+    *lambda_e_sol_ = result.GetSolution(id_qp_.lambda_e());
     *epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
@@ -728,20 +729,13 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.u_dim = n_u_;
   qp_output.lambda_c_dim = id_qp_.nc();
   qp_output.lambda_h_dim = id_qp_.nh();
+  qp_output.lambda_e_dim = id_qp_.ne();
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = id_qp_.nc_active();
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-
-  // Only copy lambda solutions if a force tracking vector is provided.  E.g.,
-  // one is not provided in the Franka joint OSC.
-  if (!force_tracking_data_vec_->empty()) {
-    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_e_sol_);
-    qp_output.lambda_h_sol = CopyVectorXdToStdVector(
-        force_tracking_data_vec_->at(0)->GetLambdaDes());
-  } else {
-    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
-    qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
-  }
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+  qp_output.lambda_e_sol = CopyVectorXdToStdVector(*lambda_e_sol_);
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;

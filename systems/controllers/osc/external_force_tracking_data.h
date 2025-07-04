@@ -24,6 +24,10 @@ class ExternalForceTrackingData {
   const Eigen::VectorXd& GetLambdaDes() const { return lambda_des_; }
   const std::string& GetName() const { return name_; };
   int GetLambdaDim() const { return n_lambda_; };
+  const Eigen::Vector3d& GetPointOnBody() const { return pt_on_body_; };
+  const drake::multibody::Frame<double>& GetBodyFrame() const {
+    return *body_frame_wo_spr_;
+  };
 
   const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
     return plant_w_spr_;
@@ -35,8 +39,7 @@ class ExternalForceTrackingData {
               const drake::systems::Context<double>& context_w_spr,
               const Eigen::VectorXd& x_wo_spr,
               const drake::systems::Context<double>& context_wo_spr,
-              const drake::trajectories::Trajectory<double>& traj,
-              double t);
+              const drake::trajectories::Trajectory<double>& traj, double t);
 
  protected:
  private:

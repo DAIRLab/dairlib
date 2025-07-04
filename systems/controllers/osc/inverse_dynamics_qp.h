@@ -5,21 +5,20 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
 
-
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
-using CostMap = std::unordered_map<
-    std::string, std::shared_ptr<drake::solvers::QuadraticCost>>;
+using CostMap =
+    std::unordered_map<std::string,
+                       std::shared_ptr<drake::solvers::QuadraticCost>>;
 
-using FrictionConeMap = std::unordered_map<
-    std::string, std::shared_ptr<drake::solvers::LinearConstraint>>;
+using FrictionConeMap =
+    std::unordered_map<std::string,
+                       std::shared_ptr<drake::solvers::LinearConstraint>>;
 
 using ContactMap = std::unordered_map<
-    std::string,
-    std::unique_ptr<const multibody::WorldPointEvaluator<double>>>;
-
+    std::string, std::unique_ptr<const multibody::WorldPointEvaluator<double>>>;
 
 /*!
  * Wrapper class for handling kinematics and dynamics for a quadratic program
@@ -50,11 +49,9 @@ using ContactMap = std::unordered_map<
  *
  */
 class InverseDynamicsQp {
-
  public:
-  InverseDynamicsQp(
-      const drake::multibody::MultibodyPlant<double> &plant,
-      drake::systems::Context<double> *context);
+  InverseDynamicsQp(const drake::multibody::MultibodyPlant<double>& plant,
+                    drake::systems::Context<double>* context);
 
   /*!
    * @brief Adds the set of holonomic constraints given by eval to the QP.
@@ -70,7 +67,7 @@ class InverseDynamicsQp {
    * the associated contact force
    */
   void AddContactConstraint(
-      const std::string &name,
+      const std::string& name,
       std::unique_ptr<const multibody::WorldPointEvaluator<double>> eval,
       double friction_coefficient);
 
@@ -83,12 +80,11 @@ class InverseDynamicsQp {
    * (i.e. Unconstrained forces effectively act as input variables.)
    *
    * @param name name of the external force
-   * @param eval kinematic evaluator for the associated jacobian
+   * @param eval WorldPointEvaluator for the associated jacobian
    */
-  // TODO (@Brian-Acosta) should this be explicitly point force for now?
   void AddExternalForce(
-      const std::string &name,
-      std::unique_ptr<const multibody::KinematicEvaluator<double>> eval);
+      const std::string& name,
+      std::unique_ptr<const multibody::WorldPointEvaluator<double>> eval);
 
   /*!
    * Adds the quadratic cost 1/2 xᵀQx + bᵀx to the underlying QP
@@ -100,17 +96,16 @@ class InverseDynamicsQp {
    * @param b linear term
    * @param vars decision variables representing x
    */
-  void AddQuadraticCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b,
-      const drake::solvers::VectorXDecisionVariable& vars);
+  void AddQuadraticCost(const std::string& name, const Eigen::MatrixXd& Q,
+                        const Eigen::VectorXd& b,
+                        const drake::solvers::VectorXDecisionVariable& vars);
 
   /*!
    * See above
    */
-  void AddQuadraticCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
+  void AddQuadraticCost(const std::string& name, const Eigen::MatrixXd& Q,
+                        const Eigen::VectorXd& b,
+                        const drake::solvers::VariableRefList& vars);
 
   /*!
    * Builds the underlying QP
@@ -122,59 +117,64 @@ class InverseDynamicsQp {
    * This is greater than or equal to the number of active rows in the
    * contact constraint (see kinematic_evaluator.h).
    */
-  [[nodiscard]] int nc() const {return nc_;}
+  [[nodiscard]] int nc() const { return nc_; }
 
   /*!
    * @return the total dimension of the holonomic constraint forces.
    * Equal to the number of rows in the holonomic constraint.
    */
-  [[nodiscard]] int nh() const {return nh_;}
+  [[nodiscard]] int nh() const { return nh_; }
 
+  /*!
+   * @return the total dimension of the external forces.
+   * This is equal to the number of rows in the external force constraint.
+   */
+  [[nodiscard]] int ne() const { return ne_; }
 
   /*!
    * @return the total number of active rows in the contact constraint for all
    * contacts. Potentially less than nc() to avoid redundant constraints.
    */
-  [[nodiscard]] int nc_active() const {return nc_active_;}
+  [[nodiscard]] int nc_active() const { return nc_active_; }
 
   /*
    * N.B. To avoid overhead in the OSC loop, we don't check the if the QP is
    * built before these are called, but the decision variables are empty
    * until then!
    */
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &dv() const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& dv() const {
     return dv_;
   }
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &u() const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& u() const {
     return u_;
   }
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_h()
-  const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& lambda_h()
+      const {
     return lambda_h_;
   }
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_c()
-  const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& lambda_c()
+      const {
     return lambda_c_;
   }
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_e()
-  const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& lambda_e()
+      const {
     return lambda_e_;
   }
-  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &epsilon() const {
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable& epsilon() const {
     return epsilon_;
   }
 
   /*!
    * @return a const-reference to the underlying MathematicalProgram
    */
-  [[nodiscard]] const drake::solvers::MathematicalProgram &get_prog() const {
+  [[nodiscard]] const drake::solvers::MathematicalProgram& get_prog() const {
     return prog_;
   }
 
   /*!
    * @return a mutable reference to the underlying MathematicalProgram
    */
-  [[nodiscard]] drake::solvers::MathematicalProgram &get_mutable_prog() {
+  [[nodiscard]] drake::solvers::MathematicalProgram& get_mutable_prog() {
     return prog_;
   }
 
@@ -200,9 +200,8 @@ class InverseDynamicsQp {
    * @brief updates the coefficients of the cost with the given name to
    * 1/2 xᵀQx + bᵀx + c
    */
-  void UpdateCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, double c=0) {
+  void UpdateCost(const std::string& name, const Eigen::MatrixXd& Q,
+                  const Eigen::VectorXd& b, double c = 0) {
     all_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
   };
 
@@ -216,15 +215,15 @@ class InverseDynamicsQp {
    * currently being applied
    */
   void UpdateDynamics(
-      const Eigen::VectorXd &x,
-      const std::vector<std::string> &active_contact_constraints,
-      const std::vector<std::string> &active_external_forces);
+      const Eigen::VectorXd& x,
+      const std::vector<std::string>& active_contact_constraints,
+      const std::vector<std::string>& active_external_forces);
 
   /*!
    * @brief gets the drake QuadraticCost evaluator associated with a given cost
    */
-  [[nodiscard]] const drake::solvers::QuadraticCost&
-  get_cost_evaluator(const std::string& name) const {
+  [[nodiscard]] const drake::solvers::QuadraticCost& get_cost_evaluator(
+      const std::string& name) const {
     return *all_costs_.at(name);
   }
 
@@ -235,15 +234,39 @@ class InverseDynamicsQp {
     return all_costs_.count(name) > 0;
   }
 
- private:
+  /*!
+   * @brief utility functions to enable/disable gravity compensation
+   */
+  void DisableGravityCompensation() { with_gravity_compensation_ = false; }
+  void EnableGravityCompensation() { with_gravity_compensation_ = true; }
+  bool HasGravityCompensation() { return with_gravity_compensation_; }
 
+  /*!
+   * @brief utility functions to enable/disable input constraints
+   */
+  void DisableInputConstraints() { with_input_constraints_ = false; }
+  void EnableInputConstraints() { with_input_constraints_ = true; }
+  bool HasInputConstraints() { return with_input_constraints_; }
+
+  /*!
+   * @brief utility functions to enable/disable acceleration constraints
+   */
+  void DisableAccelerationConstraints() {
+    with_acceleration_constraints_ = false;
+  }
+  void EnableAccelerationConstraints() {
+    with_acceleration_constraints_ = true;
+  }
+  bool HasAccelerationConstraints() { return with_acceleration_constraints_; }
+
+ private:
   // Multibody Dynamics
-  const drake::multibody::MultibodyPlant<double> &plant_;
-  drake::systems::Context<double> *context_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
 
   // Holonomic constraints are bilateral constraints that are always active
   std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
-  holonomic_constraints_ = nullptr;
+      holonomic_constraints_ = nullptr;
 
   // Contact constraints are unilateral constraints with an associated
   // contact force which obeys the friction cone
@@ -260,7 +283,8 @@ class InverseDynamicsQp {
 
   std::unordered_map<std::string, std::pair<int, int>> lambda_e_start_and_size_;
 
-  // Size of velocity and input of the plant
+  // Size of position, velocity, and input of the plant
+  int nq_;
   int nv_;
   int nu_;
 
@@ -296,10 +320,22 @@ class InverseDynamicsQp {
   // input limits
   std::shared_ptr<drake::solvers::BoundingBoxConstraint> input_limit_c_;
 
+  // acceleration limits
+  std::shared_ptr<drake::solvers::BoundingBoxConstraint> acceleration_limit_c_;
+
   // Bookkeeping
   bool built_ = false;
+
+  // Flag to indicate if gravity compensation is enabled. Default is true.
+  bool with_gravity_compensation_ = true;
+
+  // Flag to indicate if input constraints are enabled. Default is true.
+  bool with_input_constraints_ = true;
+
+  // Flag to indicate if acceleration constraints are enabled. Default is false.
+  bool with_acceleration_constraints_ = false;
 };
 
-}
-}
-}
+}  // namespace controllers
+}  // namespace systems
+}  // namespace dairlib

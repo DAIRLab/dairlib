@@ -6,12 +6,12 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
-#include "systems/controllers/osc/end_effector_force.h"
-#include "systems/controllers/osc/end_effector_orientation.h"
-#include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -138,8 +138,8 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(plant, 
-          plant_context.get(), controller_params.neutral_position, false,
+      builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
+          plant, plant_context.get(), controller_params.neutral_position, false,
           controller_params.end_effector_name);
   end_effector_trajectory->SetRemoteControlParameters(
       controller_params.neutral_position, controller_params.x_scale,
@@ -154,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), false);
+      plant, plant_context.get(), false);
   if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -206,8 +206,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(
-      controller_params.enforce_acceleration_constraints);
+  if (controller_params.enforce_acceleration_constraints) {
+    osc->EnableAccelerationConstraints();
+  } else {
+    osc->DisableAccelerationConstraints();
+  }
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);

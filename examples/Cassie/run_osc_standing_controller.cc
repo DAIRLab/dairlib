@@ -16,12 +16,10 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/options_tracking_data.h"
 #include "systems/controllers/osc/osc_gains.h"
-#include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -46,16 +44,13 @@ using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using multibody::FixedJointEvaluator;
-using multibody::WorldYawViewFrame;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
+DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
@@ -68,24 +63,17 @@ DEFINE_double(cost_weight_multiplier, 1.0,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
-              "Filepath containing osc_gains");
-DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
-              "Filepath containing qp settings");
+              "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
-
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
-// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
-// Maybe we need to update the lcm driven loop to clear the queue of lcm message
-// if it's more than one message?
+DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant(0.0);
-  AddCassieMultibody(&plant, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2_conservative.urdf",
+  drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
+  AddCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+                     "examples/Cassie/urdf/cassie_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant_w_springs.Finalize();
 
@@ -116,7 +104,8 @@ int DoMain(int argc, char* argv[]) {
           "TARGET_HEIGHT", &lcm_local));
 
   // Create state receiver.
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
 
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
@@ -128,7 +117,8 @@ int DoMain(int argc, char* argv[]) {
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -143,15 +133,12 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant, context_w_spr.get(), feet_contact_points, FLAGS_height,
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height,
       FLAGS_use_radio);
-  com_traj_generator->SetCommandFilter(
-      osc_gains.center_of_mass_command_filter_alpha);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
-          plant, context_w_spr.get(), feet_contact_points, "pelvis_rot_traj");
-  pelvis_rot_traj_generator->SetCommandFilter(
-      osc_gains.orientation_command_filter_alpha);
+          plant_w_springs, context_w_spr.get(), feet_contact_points,
+          "pelvis_rot_traj");
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
@@ -201,7 +188,8 @@ int DoMain(int argc, char* argv[]) {
   double w_contact_relax = gains.w_soft_constraint;
   osc->SetContactSoftConstraintWeight(w_contact_relax);
   // Friction coefficient
-  osc->SetContactFriction(gains.mu);
+  double mu = 0.8;
+  osc->SetContactFriction(mu);
   // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -251,13 +239,15 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_pelvis_rot * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_w_springs);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
-  //  if (osc_gains.rot_filter_tau > 0) {
-  //    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-  //                                               {0, 1, 2});
-  //  }
-  osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
+  // Hip yaw joint tracking
+  // We use hip yaw joint tracking instead of pelvis yaw tracking because the
+  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to
+  // 0.
+  double w_hip_yaw = 0.5;
+  double hip_yaw_kp = 40;
+  double hip_yaw_kd = 0.5;
   auto left_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "left_hip_yaw_traj", hip_yaw_kp * MatrixXd::Ones(1, 1),
       hip_yaw_kd * MatrixXd::Ones(1, 1), w_hip_yaw * MatrixXd::Ones(1, 1),
@@ -268,9 +258,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_springs, plant_w_springs);
   left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
-  //  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  //  osc->AddConstTrackingData(std::move(right_hip_yaw_traj),
-  //  VectorXd::Zero(1));
+  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();
@@ -282,19 +271,18 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(osc->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_input_port_tracking_data("pelvis_trans_traj"));
+                  osc->get_input_port_tracking_data("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_rot_traj"));
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_standing_controller"));
+  owned_diagram->set_name(("osc standing controller"));
 
   // Build lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
 
   loop.Simulate();
 

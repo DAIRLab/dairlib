@@ -221,22 +221,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    */
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
-  void DisableGravityCompensation() { with_gravity_compensation_ = false; }
-
-  bool HasGravityCompensation() { return with_gravity_compensation_; }
-
   // Constraint methods
-  void SetActuationConstraints(bool constraint_status) {
-    with_input_constraints_ = constraint_status;
-  }
-  void SetAccelerationConstraints(bool constraint_status) {
-    if (ddq_max_.isZero() and constraint_status) {
-      throw std::runtime_error(
-          "Attempting to set acceleration limits when acceleration limits have "
-          "not been defined for the plant.");
-    }
-    with_acceleration_constraints_ = constraint_status;
-  }
   void SetContactFriction(double mu) { mu_ = mu; }
 
   void AddContactPoint(
@@ -283,6 +268,36 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   };
   // OSC LeafSystem builder
   void Build();
+
+  /*!
+   * @brief utility functions to enable/disable gravity compensation that will
+   * be executed by OSC backend.
+   */
+  void EnableGravityCompensation() { id_qp_.EnableGravityCompensation(); }
+  void DisableGravityCompensation() { id_qp_.DisableGravityCompensation(); }
+  bool HasGravityCompensation() { return id_qp_.HasGravityCompensation(); }
+
+  /*!
+   * @brief utility functions to enable/disable input constraints that will be
+   * executed by OSC backend.
+   */
+  void EnableInputConstraints() { id_qp_.EnableInputConstraints(); }
+  void DisableInputConstraints() { id_qp_.DisableInputConstraints(); }
+  bool HasInputConstraints() { return id_qp_.HasInputConstraints(); }
+
+  /*!
+   * @brief utility functions to enable/disable acceleration constraints that
+   * will be executed by OSC backend.
+   */
+  void EnableAccelerationConstraints() {
+    id_qp_.EnableAccelerationConstraints();
+  }
+  void DisableAccelerationConstraints() {
+    id_qp_.DisableAccelerationConstraints();
+  }
+  bool HasAccelerationConstraints() {
+    return id_qp_.HasAccelerationConstraints();
+  }
 
  private:
   // Osc checkers and constructor-related methods
@@ -368,13 +383,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd q_min_;
   Eigen::VectorXd q_max_;
 
-  // robot joint limits gains
+  // robot joint limits
   Eigen::MatrixXd K_joint_pos_;
   Eigen::MatrixXd K_joint_vel_;
 
   // robot joint acceleration limits
   Eigen::VectorXd ddq_min_;
   Eigen::VectorXd ddq_max_;
+
+  // robot input limits
+  Eigen::VectorXd u_min_;
+  Eigen::VectorXd u_max_;
 
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
@@ -394,7 +413,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> u_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_ext_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_e_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_{};
@@ -419,7 +438,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
-  bool with_acceleration_constraints_ = false;
 
   // Map finite state machine state to its active contact indices
   std::map<int, std::vector<std::string>> contact_names_map_ = {};

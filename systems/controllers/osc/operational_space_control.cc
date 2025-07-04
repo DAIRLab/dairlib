@@ -77,7 +77,7 @@ OperationalSpaceControl::OperationalSpaceControl(
             .get_index();
 
     // Discrete update to record the last state event time
-    DeclareForcedDiscreteUpdateEvent(
+    DeclarePerStepDiscreteUpdateEvent(
         &OperationalSpaceControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -204,6 +204,14 @@ void OperationalSpaceControl::AddForceTrackingData(
     std::unique_ptr<ExternalForceTrackingData> tracking_data) {
   force_tracking_data_vec_->push_back(std::move(tracking_data));
 
+  // Declare point where external force is applied in the world frame to the OSC
+  // backend
+  auto evaluator = std::make_unique<WorldPointEvaluator<double>>(
+      plant_, force_tracking_data_vec_->back()->GetPointOnBody(),
+      force_tracking_data_vec_->back()->GetBodyFrame());
+  id_qp_.AddExternalForce(force_tracking_data_vec_->back()->GetName(),
+                          std::move(evaluator));
+
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
   string traj_name = force_tracking_data_vec_->back()->GetName();
@@ -263,13 +271,14 @@ void OperationalSpaceControl::Build() {
   u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.nc());
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.nh());
+  lambda_e_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.ne());
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.nc_active());
   u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
-  lambda_ext_sol_->setZero();
+  lambda_e_sol_->setZero();
   u_prev_->setZero();
 
   // Add costs
@@ -316,7 +325,14 @@ void OperationalSpaceControl::Build() {
                             VectorXd::Zero(n_v_), id_qp_.dv());
   }
 
-  // 5. Joint Limit cost
+  // 5. Track external force cost
+  int ne = id_qp_.lambda_e().rows();
+  for (const auto& data : *force_tracking_data_vec_) {
+    id_qp_.AddQuadraticCost(data->GetName(), MatrixXd::Zero(ne, ne),
+                            VectorXd::Zero(ne), id_qp_.lambda_e());
+  }
+
+  // 6. Joint Limit cost
   // TODO(yangwill) discuss best way to implement joint limit cost
   if (w_joint_limit_ > 0) {
     K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
@@ -328,7 +344,7 @@ void OperationalSpaceControl::Build() {
         id_qp_.dv().tail(n_revolute_joints_));
   }
 
-  // (Testing) 6. contact force blending
+  // (Testing) 7. contact force blending
   if (ds_duration_ > 0) {
     int nc = id_qp_.nc();
     const auto& lambda = id_qp_.lambda_c();
@@ -447,6 +463,25 @@ VectorXd OperationalSpaceControl::SolveQp(
                         VectorXd::Zero(n_v_));
     }
   }
+
+  // Update tracking cost for external forces
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    int port_index =
+        traj_name_to_port_index_map_.at(force_tracking_data->GetName());
+    const drake::AbstractValue* input_traj =
+        this->EvalAbstractInput(context, port_index);
+    DRAKE_DEMAND(input_traj != nullptr);
+    const auto& traj =
+        input_traj->get_value<drake::trajectories::Trajectory<double>>();
+    force_tracking_data->Update(x_w_spr, *context_, x_wo_spr, *context_, traj,
+                                t);
+    const MatrixXd W = force_tracking_data->GetWeight();
+    const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
+    id_qp_.UpdateCost(force_tracking_data->GetName(), 2 * W,
+                      -2 * W * lambda_des,
+                      lambda_des.transpose() * W * lambda_des);
+  }
+
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
@@ -696,12 +731,16 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = id_qp_.nc_active();
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
+
   // Only copy lambda solutions if a force tracking vector is provided.  E.g.,
   // one is not provided in the Franka joint OSC.
   if (!force_tracking_data_vec_->empty()) {
-    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
+    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_e_sol_);
     qp_output.lambda_h_sol = CopyVectorXdToStdVector(
         force_tracking_data_vec_->at(0)->GetLambdaDes());
+  } else {
+    qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+    qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
   }
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);

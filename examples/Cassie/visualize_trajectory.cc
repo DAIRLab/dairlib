@@ -166,10 +166,11 @@ int DoMain() {
     auto box = drake::geometry::Box(0.5, 1.0, 0.5);
     visualizer.GetMeshcat()->SetObject("box", box);
     visualizer.GetMeshcat()->SetTransform("box", origin);
-//    visualizer.GetMeshcat()->SetCamera(perspective_camera);
+    //    visualizer.GetMeshcat()->SetCamera(perspective_camera);
     visualizer.GetMeshcat()->SetCamera(ortho_camera);
     visualizer.DrawPoses(poses);
-    while (true){}
+    while (true) {
+    }
   }
 
   return 0;

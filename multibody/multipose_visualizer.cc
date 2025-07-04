@@ -80,8 +80,7 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
           new_alpha = std::min(new_alpha, 1.0);
           if (rgb.size() == 3) {
             phong.set(rgb(0), rgb(1), rgb(2), new_alpha);
-          }
-          else {
+          } else {
             phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
           }
 
@@ -107,7 +106,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   diagram_context_ = diagram_->CreateDefaultContext();
 }
 
-void MultiposeVisualizer::DrawPoses(MatrixXd poses, std::optional<double> time_in_recording) {
+void MultiposeVisualizer::DrawPoses(MatrixXd poses,
+                                    std::optional<double> time_in_recording) {
   // Set positions for individual instances
   auto& plant_context =
       diagram_->GetMutableSubsystemContext(*plant_, diagram_context_.get());
@@ -117,7 +117,7 @@ void MultiposeVisualizer::DrawPoses(MatrixXd poses, std::optional<double> time_i
         &plant_context, model_indices_.at(i),
         poses.block(0, i, plant_->num_positions(model_indices_.at(i)), 1));
   }
-  if (time_in_recording){
+  if (time_in_recording) {
     diagram_context_->SetTime(time_in_recording.value());
   }
 

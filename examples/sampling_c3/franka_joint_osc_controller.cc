@@ -1,4 +1,3 @@
-
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>

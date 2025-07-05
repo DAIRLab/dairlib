@@ -15,6 +15,8 @@ file_names:
 c3_controller_options_directory: examples/plate-balancing/config/C3/controller-options/
 c3_scene_config_directory: examples/plate-balancing/config/C3/scene-config/
 c3_osqp_settings_file: examples/plate-balancing/config/C3/solver_settings.yaml
+c3_actor_trajectory_generator_config: examples/plate-balancing/config/C3/trajectory-generator-config/actor_trajectory_generator.yaml
+c3_object_trajectory_generator_config: examples/plate-balancing/config/C3/trajectory-generator-config/object_trajectory_generator.yaml
 simulation_scene_config_directory: examples/plate-balancing/config/Simulation/scene-config/
 simulation_config_file: examples/plate-balancing/config/Simulation/simulation_config.yaml
 osc_contoller_config_file: examples/plate-balancing/config/OSC/controller_config.yaml

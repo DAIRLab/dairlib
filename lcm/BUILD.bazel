@@ -24,8 +24,13 @@ cc_library(
     name = "lcm_trajectory_saver",
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],
+    copts = [
+        "-Iexternal",
+        "-Wno-sign-compare",
+    ],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "@c3//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

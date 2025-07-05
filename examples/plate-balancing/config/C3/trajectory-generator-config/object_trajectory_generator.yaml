@@ -1,0 +1,13 @@
+trajectories:
+  - trajectory_name: "object_position_target"
+    variable_type: "state"
+    indices:
+      - start: 7
+        end:  9
+      # - start: 16
+      #   end: 18
+  - trajectory_name: "object_orientation_target"
+    variable_type: "state"
+    indices:
+      - start : 3
+        end: 6

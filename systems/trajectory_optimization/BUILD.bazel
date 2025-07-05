@@ -53,11 +53,16 @@ cc_library(
     hdrs = [
         "lcm_trajectory_systems.h",
     ],
+    copts = [
+        "-Iexternal",
+        "-Wno-sign-compare",
+    ],
     deps = [
         "//common:eigen_utils",
         "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
+        "@c3//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )

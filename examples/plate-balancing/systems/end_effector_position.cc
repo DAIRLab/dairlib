@@ -25,12 +25,10 @@ namespace systems {
 EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
     const Eigen::Vector3d& neutral_pose) {
   // Input/Output Setup
-  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   trajectory_port_ =
       this->DeclareAbstractInputPort(
-              "trajectory",
-              drake::Value<drake::trajectories::Trajectory<double>>(pp))
+              "trajectory", drake::Value<PiecewisePolynomial<double>>())
           .get_index();
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
@@ -54,10 +52,10 @@ void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
 void EndEffectorTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  const auto& trajectory_input =
-      this->EvalAbstractInput(context, trajectory_port_)
-          ->get_value<drake::trajectories::Trajectory<double>>();
+  auto trajectory_input = this->EvalInputValue<PiecewisePolynomial<double>>(
+      context, trajectory_port_);
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
+
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
@@ -71,12 +69,11 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     }
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
-  } else {
-    if (trajectory_input.value(0).isZero()) {
-    } else {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
-    }
+  } else if (!trajectory_input->empty()) {
+    // std::cout << "Using trajectory input." << std::endl;
+    // std::cout << trajectory_input->get_segment_times().size() << std::endl;
+    // exit(0);
+    *casted_traj = *trajectory_input;
   }
 }
 }  // namespace systems

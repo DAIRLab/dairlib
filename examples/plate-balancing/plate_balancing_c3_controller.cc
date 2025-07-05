@@ -1,9 +1,10 @@
 #include <c3/core/c3.h>
 #include <c3/core/solver_options_io.h>
 #include <c3/systems/c3_controller.h>
+#include <c3/systems/lcmt_generators/c3_output_generator.h>
+#include <c3/systems/lcmt_generators/c3_trajectory_generator.h>
+#include <c3/systems/lcmt_generators/contact_force_generator.h>
 #include <c3/systems/lcs_factory_system.h>
-#include <c3/systems/publishers/force_publisher.h>
-#include <c3/systems/publishers/output_publisher.h>
 #include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/text_logging.h>
@@ -21,7 +22,6 @@
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_target_config.h"
 #include "examples/plate-balancing/systems/c3_state_sender.h"
-#include "examples/plate-balancing/systems/c3_trajectory_generator.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
@@ -41,8 +41,10 @@ using c3::ConstraintVariable;
 using c3::SolverOptionsFromYaml;
 using c3::systems::C3Controller;
 using c3::systems::LCSFactorySystem;
-using c3::systems::publishers::C3OutputPublisher;
-using c3::systems::publishers::ContactForcePublisher;
+using c3::systems::lcmt_generators::C3OutputGenerator;
+using c3::systems::lcmt_generators::C3TrajectoryGenerator;
+using c3::systems::lcmt_generators::C3TrajectoryGeneratorConfig;
+using c3::systems::lcmt_generators::ContactForceGenerator;
 
 using drake::SortedPair;
 using drake::geometry::GeometryId;
@@ -274,16 +276,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
           scene_params.end_effector_name, "tray",
           main_config.include_end_effector_orientation);
-  // Add LCM publishers for trajectories and C3 state
-  auto actor_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
-  auto object_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   auto c3_target_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
@@ -331,10 +323,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   auto controller = AddC3ControllerToBuilder(
       builder, plant_for_lcs, controller_options, solver_options);
 
-  // Add C3 trajectory generator and state sender
-  auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(
-          plant_for_lcs, controller_options.lcs_factory_options);
+  // Add C3 state sender
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -344,8 +333,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   };
   auto c3_state_sender =
       builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
-  c3_trajectory_generator->SetPublishEndEffectorOrientation(
-      main_config.include_end_effector_orientation);
 
   // Connect systems
   builder.Connect(*radio_sub, *radio_to_vector);
@@ -369,12 +356,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
                   lcs_factory->get_input_port_lcs_input());
   builder.Connect(radio_to_vector->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
-  builder.Connect(controller->get_output_port_c3_solution(),
-                  c3_trajectory_generator->get_input_port_c3_solution());
-  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
-                  actor_trajectory_sender->get_input_port());
-  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
-                  object_trajectory_sender->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
@@ -385,15 +366,29 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
                   c3_actual_state_publisher->get_input_port());
 
   // Add C3 output and contact force publishers
-  C3OutputPublisher::AddLcmPublisherToBuilder(
+  C3OutputGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution(),
       controller->get_output_port_c3_intermediates(),
       lcm_channel_params.c3_debug_output_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
-  ContactForcePublisher::AddLcmPublisherToBuilder(
+  ContactForceGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution(),
       lcs_factory->get_output_port_lcs_contact_description(),
       lcm_channel_params.c3_force_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  C3TrajectoryGeneratorConfig actor_config =
+      drake::yaml::LoadYamlFile<C3TrajectoryGeneratorConfig>(
+          main_config.c3_actor_trajectory_generator_config);
+  C3TrajectoryGenerator::AddLcmPublisherToBuilder(
+      builder, actor_config, controller->get_output_port_c3_solution(),
+      lcm_channel_params.c3_actor_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  C3TrajectoryGeneratorConfig object_config =
+      drake::yaml::LoadYamlFile<C3TrajectoryGeneratorConfig>(
+          main_config.c3_object_trajectory_generator_config);
+  C3TrajectoryGenerator::AddLcmPublisherToBuilder(
+      builder, object_config, controller->get_output_port_c3_solution(),
+      lcm_channel_params.c3_object_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
 
   auto owned_diagram = builder.Build();

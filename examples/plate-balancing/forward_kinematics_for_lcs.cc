@@ -16,7 +16,6 @@
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_target_config.h"
 #include "examples/plate-balancing/systems/c3_state_sender.h"
-#include "examples/plate-balancing/systems/c3_trajectory_generator.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"

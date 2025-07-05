@@ -52,6 +52,9 @@ DEFINE_string(plate_balancing_config,
               "Path to the plate balancing configuration YAML file.");
 
 namespace dairlib {
+
+using systems::LcmC3TrajectoryReceiver;
+
 namespace examples {
 namespace plate_balancing {
 
@@ -169,11 +172,11 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
   // Create LCM subscribers for trajectories and forces.
-  auto trajectory_sub_actor = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+  auto trajectory_sub_actor =
+      builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_actor_channel, lcm));
-  auto trajectory_sub_tray = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+  auto trajectory_sub_tray =
+      builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_object_channel, lcm));
   auto trajectory_sub_force =
       builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_contact_forces>(
@@ -219,37 +222,76 @@ int do_main(int argc, char* argv[]) {
                           RigidTransformd(workspace_center));
   }
 
+  auto object_position_receiver =
+      builder.AddSystem<LcmC3TrajectoryReceiver>("object_position_target");
+  builder.Connect(trajectory_sub_tray->get_output_port(),
+                  object_position_receiver->get_input_port_lcm_trajectory());
+  auto object_orientation_receiver = builder.AddSystem<LcmC3TrajectoryReceiver>(
+      "object_orientation_target", true);
+  builder.Connect(trajectory_sub_tray->get_output_port(),
+                  object_orientation_receiver->get_input_port_lcm_trajectory());
+  auto end_effector_position_receiver =
+      builder.AddSystem<LcmC3TrajectoryReceiver>(
+          "end_effector_position_target");
+  builder.Connect(
+      trajectory_sub_actor->get_output_port(),
+      end_effector_position_receiver->get_input_port_lcm_trajectory());
+  auto end_effector_force_receiver =
+      builder.AddSystem<LcmC3TrajectoryReceiver>("end_effector_force_target");
+  builder.Connect(trajectory_sub_actor->get_output_port(),
+                  end_effector_force_receiver->get_input_port_lcm_trajectory());
+
   // Visualize center of mass plan trajectories.
   if (sim_params.visualize_center_of_mass_plan) {
     auto trajectory_drawer_actor =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "end_effector_position_target");
+        builder.AddSystem<systems::PositionTrajectoryDrawer>(
+            meshcat, "end_effector_position_trajectory");
     auto trajectory_drawer_object =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "object_position_target");
+        builder.AddSystem<systems::PositionTrajectoryDrawer>(
+            meshcat, "object_position_trajectory");
     trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
     trajectory_drawer_actor->SetNumSamples(40);
     trajectory_drawer_object->SetNumSamples(40);
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    trajectory_drawer_actor->get_input_port_trajectory());
-    builder.Connect(trajectory_sub_tray->get_output_port(),
+    builder.Connect(
+        end_effector_position_receiver->get_output_port_trajectory(),
+        trajectory_drawer_actor->get_input_port_trajectory());
+    builder.Connect(object_position_receiver->get_output_port_trajectory(),
                     trajectory_drawer_object->get_input_port_trajectory());
   }
 
   // Visualize pose traces.
   if (sim_params.visualize_pose_trace) {
-    auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+    auto object_pose_drawer = builder.AddSystem<systems::PoseTrajectoryDrawer>(
         meshcat, FindResourceOrThrow("examples/plate-balancing/urdf/tray.sdf"),
-        "object_position_target", "object_orientation_target");
-    auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.end_effector_model),
-        "end_effector_position_target", "end_effector_orientation_target");
+        "object_target_trajectory", true);
+    auto end_effector_pose_drawer =
+        builder.AddSystem<systems::PoseTrajectoryDrawer>(
+            meshcat, FindResourceOrThrow(sim_params.end_effector_model),
+            "end_effector_target_trajectory",
+            main_config.include_end_effector_orientation);
 
-    builder.Connect(trajectory_sub_tray->get_output_port(),
-                    object_pose_drawer->get_input_port_trajectory());
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    end_effector_pose_drawer->get_input_port_trajectory());
+    builder.Connect(
+        object_position_receiver->get_output_port_trajectory(),
+        object_pose_drawer->get_input_port_translation_trajectory());
+    builder.Connect(
+        object_orientation_receiver->get_output_port_trajectory(),
+        object_pose_drawer->get_input_port_orientation_trajectory());
+    builder.Connect(
+        end_effector_position_receiver->get_output_port_trajectory(),
+        end_effector_pose_drawer->get_input_port_translation_trajectory());
+
+    if (main_config.include_end_effector_orientation) {
+      auto end_effector_orientation_receiver =
+          builder.AddSystem<LcmC3TrajectoryReceiver>(
+              "end_effector_orientation_target", true);
+      builder.Connect(
+          trajectory_sub_tray->get_output_port(),
+          end_effector_orientation_receiver->get_input_port_lcm_trajectory());
+      builder.Connect(
+          end_effector_orientation_receiver->get_output_port_trajectory(),
+          end_effector_pose_drawer->get_input_port_orientation_trajectory());
+    }
   }
 
   // Visualize C3 states.
@@ -267,11 +309,13 @@ int do_main(int argc, char* argv[]) {
   // Visualize C3 forces.
   if (sim_params.visualize_c3_forces) {
     auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "end_effector_position_target", "end_effector_force_target",
-        "lcs_force_trajectory");
+        meshcat, "end_effector_input_trajectory");
     builder.Connect(
-        trajectory_sub_actor->get_output_port(),
-        end_effector_force_drawer->get_input_port_actor_trajectory());
+        end_effector_position_receiver->get_output_port_trajectory(),
+        end_effector_force_drawer->get_input_port_position_trajectory());
+    builder.Connect(
+        end_effector_force_receiver->get_output_port_trajectory(),
+        end_effector_force_drawer->get_input_port_input_trajectory());
     builder.Connect(
         trajectory_sub_force->get_output_port(),
         end_effector_force_drawer->get_input_port_force_trajectory());

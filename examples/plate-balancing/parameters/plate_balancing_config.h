@@ -9,6 +9,8 @@ struct PlateBalancingConfig {
   std::string c3_controller_options_directory;
   std::string c3_scene_config_directory;
   std::string c3_osqp_settings_file;
+  std::string c3_actor_trajectory_generator_config;
+  std::string c3_object_trajectory_generator_config;
   std::string simulation_scene_config_directory;
   std::string simulation_config_file;
   std::string osc_contoller_config_file;
@@ -27,6 +29,8 @@ struct PlateBalancingConfig {
     a->Visit(DRAKE_NVP(c3_controller_options_directory));
     a->Visit(DRAKE_NVP(c3_scene_config_directory));
     a->Visit(DRAKE_NVP(c3_osqp_settings_file));
+    a->Visit(DRAKE_NVP(c3_actor_trajectory_generator_config));
+    a->Visit(DRAKE_NVP(c3_object_trajectory_generator_config));
     a->Visit(DRAKE_NVP(simulation_scene_config_directory));
     a->Visit(DRAKE_NVP(simulation_config_file));
     a->Visit(DRAKE_NVP(osc_contoller_config_file));

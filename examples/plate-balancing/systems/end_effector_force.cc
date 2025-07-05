@@ -2,6 +2,7 @@
 
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
+#include <iostream>
 
 using Eigen::Map;
 using Eigen::Vector2d;
@@ -25,12 +26,10 @@ namespace examples {
 namespace plate_balancing {
 namespace systems {
 EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
-  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
-
   trajectory_port_ =
       this->DeclareAbstractInputPort(
               "trajectory",
-              drake::Value<drake::trajectories::Trajectory<double>>(pp))
+              drake::Value<PiecewisePolynomial<double>>())
           .get_index();
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
@@ -49,13 +48,12 @@ EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
-  const auto& trajectory_input =
-      this->EvalAbstractInput(context, trajectory_port_)
-          ->get_value<drake::trajectories::Trajectory<double>>();
+  auto trajectory_input =this->EvalInputValue<PiecewisePolynomial<double>>(
+      context, trajectory_port_);
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
   if (!using_c3 && radio_out->value()[14] == 0) {
-    if (!trajectory_input.value(0).isZero() &&
-        (context.get_time() - trajectory_input.start_time()) < 0.04) {
+    if (!trajectory_input->empty() &&
+        (context.get_time() - trajectory_input->start_time()) < 0.04) {
       discrete_state->get_mutable_value(controller_switch_index_)[0] = 1;
     }
   }
@@ -66,21 +64,19 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   //  // Read in finite state machine
-  const auto& trajectory_input =
-      this->EvalAbstractInput(context, trajectory_port_)
-          ->get_value<drake::trajectories::Trajectory<double>>();
+  auto trajectory_input = this->EvalInputValue<PiecewisePolynomial<double>>(
+      context, trajectory_port_);
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->value()[11] || radio_out->value()[14] ||
-      trajectory_input.value(0).isZero()) {
+      trajectory_input->empty()) {
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]) {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      *casted_traj = *trajectory_input;
     }
   }
 }

@@ -17,12 +17,9 @@ namespace plate_balancing {
 namespace systems {
 EndEffectorOrientationTrajectoryGenerator::
     EndEffectorOrientationTrajectoryGenerator() {
-  auto pp = drake::trajectories::PiecewiseQuaternionSlerp<double>();
-
   trajectory_port_ =
       this->DeclareAbstractInputPort(
-              "trajectory",
-              drake::Value<drake::trajectories::Trajectory<double>>(pp))
+              "trajectory", drake::Value<PiecewiseQuaternionSlerp<double>>())
           .get_index();
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
@@ -42,11 +39,10 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
       PiecewiseQuaternionSlerp<double>*>(traj);
   if (radio_out->value()[14] and track_orientation_) {
-    const auto& trajectory_input =
-        this->EvalAbstractInput(context, trajectory_port_)
-            ->get_value<drake::trajectories::Trajectory<double>>();
-    *casted_traj = *(PiecewiseQuaternionSlerp<double>*)dynamic_cast<
-        const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
+    auto trajectory_input =
+        this->EvalInputValue<PiecewiseQuaternionSlerp<double>>(
+            context, trajectory_port_);
+    *casted_traj = *trajectory_input;
   } else {
     PiecewiseQuaternionSlerp<double> result;
     Eigen::VectorXd neutral_quaternion = VectorXd::Zero(4);

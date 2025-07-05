@@ -55,9 +55,8 @@ namespace dairlib {
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using systems::GravityCompensationRemover;
+using systems::LcmC3TrajectoryReceiver;
 using systems::LcmDrivenLoop;
-using systems::LcmOrientationTrajectoryReceiver;
-using systems::LcmTrajectoryReceiver;
 using systems::RadioToVector;
 using systems::RobotCommandSender;
 using systems::RobotOutputReceiver;
@@ -133,15 +132,16 @@ int DoMain(int argc, char* argv[]) {
   // Add LCM systems for communication
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+      LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_actor_channel, &lcm));
   auto end_effector_position_receiver =
-      builder.AddSystem<LcmTrajectoryReceiver>("end_effector_position_target");
+      builder.AddSystem<LcmC3TrajectoryReceiver>(
+          "end_effector_position_target");
   auto end_effector_force_receiver =
-      builder.AddSystem<LcmTrajectoryReceiver>("end_effector_force_target");
+      builder.AddSystem<LcmC3TrajectoryReceiver>("end_effector_force_target");
   auto end_effector_orientation_receiver =
-      builder.AddSystem<LcmOrientationTrajectoryReceiver>(
-          "end_effector_orientation_target");
+      builder.AddSystem<LcmC3TrajectoryReceiver>(
+          "end_effector_orientation_target", true);
   auto franka_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.franka_input_channel, &lcm,
@@ -268,12 +268,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_position_receiver->get_input_port_trajectory());
+                  end_effector_position_receiver->get_input_port_lcm_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_force_receiver->get_input_port_trajectory());
+                  end_effector_force_receiver->get_input_port_lcm_trajectory());
   builder.Connect(
       end_effector_trajectory_sub->get_output_port(),
-      end_effector_orientation_receiver->get_input_port_trajectory());
+      end_effector_orientation_receiver->get_input_port_lcm_trajectory());
   builder.Connect(end_effector_position_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
   builder.Connect(

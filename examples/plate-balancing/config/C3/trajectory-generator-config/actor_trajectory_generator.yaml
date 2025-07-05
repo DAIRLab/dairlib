@@ -1,0 +1,17 @@
+trajectories:
+  - trajectory_name: "end_effector_position_target"
+    variable_type: "state"
+    indices:
+      - start : 0
+        end: 2
+      # - start : 10
+      #   end: 12
+  - trajectory_name: "end_effector_force_target"
+    variable_type: "input"
+    indices: []
+  # To be uncommented if end effector orientation is included in the LCS state
+  # - trajectory_name: "end_effector_orientation_target"
+  #   variable_type: "state"
+  #   indices:
+  #     - [3, 5]
+  #     - [13, 15]

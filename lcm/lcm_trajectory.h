@@ -8,6 +8,8 @@
 #include <Eigen/Dense>
 
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "c3/lcmt_trajectory.hpp"
+#include "c3/lcmt_c3_trajectory.hpp"
 
 #include "drake/systems/lcm/serializer.h"
 
@@ -29,6 +31,7 @@ class LcmTrajectory {
     Trajectory() = default;
     Trajectory(const std::string& traj_name,
                const lcmt_trajectory_block& traj_block);
+    Trajectory(const c3::lcmt_trajectory& traj_block);
 
     std::string traj_name;
     Eigen::VectorXd time_vector;
@@ -45,6 +48,7 @@ class LcmTrajectory {
                 bool get_metadata = false);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
+  explicit LcmTrajectory(const c3::lcmt_c3_trajectory& traj);
 
   explicit LcmTrajectory(const std::string& filepath) {
     LoadFromFile(filepath);

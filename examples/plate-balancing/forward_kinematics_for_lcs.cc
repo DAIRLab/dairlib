@@ -15,11 +15,11 @@
 #include "examples/plate-balancing/parameters/lcm_channel_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_target_config.h"
-#include "examples/plate-balancing/systems/c3_state_sender.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/lcmt_generators/robot_state_generator.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -50,6 +50,7 @@ using dairlib::systems::LcmDrivenLoop;
 using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::RadioToVector;
 using dairlib::systems::RobotOutputReceiver;
+using dairlib::systems::lcmt_generators::RobotStateGenerator;
 
 namespace dairlib {
 namespace examples {
@@ -131,17 +132,6 @@ int DoMain(int argc, char* argv[]) {
   // Add systems for radio parsing and C3 state handling
   auto radio_to_vector = builder.AddSystem<RadioToVector>();
 
-  // Define state names for C3 state sender
-  std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
-      "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
-      "tray_y",          "tray_z",         "end_effector_vx", "end_effector_vy",
-      "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
-      "tray_vz",         "tray_vz",        "tray_vz",
-  };
-  auto c3_state_sender =
-      builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
-
   // Add plate balancing target generator
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(
@@ -166,16 +156,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
 
-  // Add LCM publishers for C3 state
-  auto c3_actual_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_actual_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto c3_target_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_target_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
   // Connect the systems
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(tray_state_receiver->get_output_port(),
@@ -192,18 +172,28 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(tray_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
-  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
-                  c3_state_sender->get_input_port_actual_state());
-  builder.Connect(target_state_mux->get_output_port(),
-                  c3_state_sender->get_input_port_target_state());
-  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
-                  c3_actual_state_publisher->get_input_port());
-  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
-                  c3_target_state_publisher->get_input_port());
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
   builder.Connect(tray_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
+
+  // Define state names for C3 state sender
+  std::vector<std::string> state_names = {
+      "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
+      "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
+      "tray_y",          "tray_z",         "end_effector_vx", "end_effector_vy",
+      "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
+      "tray_vz",         "tray_vz",        "tray_vz",
+  };
+  RobotStateGenerator::AddLcmPublisherToBuilder(
+      builder, state_names, false, target_state_mux->get_output_port(),
+      lcm_channel_params.c3_target_state_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  RobotStateGenerator::AddLcmPublisherToBuilder(
+      builder, state_names, true,
+      reduced_order_model_receiver->get_output_port_lcs_state(),
+      lcm_channel_params.c3_actual_state_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_forward_kinematics"));

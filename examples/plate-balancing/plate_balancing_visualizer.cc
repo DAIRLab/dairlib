@@ -2,13 +2,13 @@
 #include <iostream>
 
 #include <c3/lcmt_contact_forces.hpp>
-#include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
 #include <drake/geometry/meshcat_visualizer_params.h>
+#include <drake/lcmt_robot_state.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
@@ -25,6 +25,7 @@
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/simulation_config.h"
 #include "examples/plate-balancing/parameters/simulation_scene_config.h"
+#include "examples/plate-balancing/systems/visualization/lcm_visualization_systems.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -32,7 +33,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
-#include "systems/visualization/lcm_visualization_systems.h"
 
 using drake::geometry::MeshcatVisualizer;
 using drake::math::RigidTransform;
@@ -184,10 +184,10 @@ int do_main(int argc, char* argv[]) {
 
   // Create LCM subscribers for C3 states.
   auto c3_state_actual_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_robot_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
   auto c3_state_target_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_robot_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
 
   // Create a system to convert MultibodyPlant positions to geometry poses.

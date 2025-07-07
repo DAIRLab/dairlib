@@ -21,11 +21,11 @@
 #include "examples/plate-balancing/parameters/plate_balancing_c3_controller_options.h"
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_target_config.h"
-#include "examples/plate-balancing/systems/c3_state_sender.h"
 #include "examples/plate-balancing/systems/franka_kinematics.h"
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/lcmt_generators/robot_state_generator.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -71,6 +71,7 @@ using systems::LcmDrivenLoop;
 using systems::ObjectStateReceiver;
 using systems::RadioToVector;
 using systems::RobotOutputReceiver;
+using systems::lcmt_generators::RobotStateGenerator;
 
 namespace examples {
 namespace plate_balancing {
@@ -277,14 +278,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
           scene_params.end_effector_name, "tray",
           main_config.include_end_effector_orientation);
 
-  auto c3_target_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_target_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto c3_actual_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_actual_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -323,17 +316,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   auto controller = AddC3ControllerToBuilder(
       builder, plant_for_lcs, controller_options, solver_options);
 
-  // Add C3 state sender
-  std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
-      "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
-      "tray_y",          "tray_z",         "end_effector_vx", "end_effector_vy",
-      "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
-      "tray_vz",         "tray_vz",        "tray_vz",
-  };
-  auto c3_state_sender =
-      builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
-
   // Connect systems
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(franka_state_receiver->get_output_port(),
@@ -356,14 +338,6 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
                   lcs_factory->get_input_port_lcs_input());
   builder.Connect(radio_to_vector->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
-  builder.Connect(target_state_mux->get_output_port(),
-                  c3_state_sender->get_input_port_target_state());
-  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
-                  c3_state_sender->get_input_port_actual_state());
-  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
-                  c3_target_state_publisher->get_input_port());
-  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
-                  c3_actual_state_publisher->get_input_port());
 
   // Add C3 output and contact force publishers
   C3OutputGenerator::AddLcmPublisherToBuilder(
@@ -389,6 +363,16 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   C3TrajectoryGenerator::AddLcmPublisherToBuilder(
       builder, object_config, controller->get_output_port_c3_solution(),
       lcm_channel_params.c3_object_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  RobotStateGenerator::AddLcmPublisherToBuilder(
+      builder, plant_for_lcs.GetStateNames(), false,
+      target_state_mux->get_output_port(),
+      lcm_channel_params.c3_target_state_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  RobotStateGenerator::AddLcmPublisherToBuilder(
+      builder, plant_for_lcs.GetStateNames(), true,
+      reduced_order_model_receiver->get_output_port_lcs_state(),
+      lcm_channel_params.c3_actual_state_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
 
   auto owned_diagram = builder.Build();

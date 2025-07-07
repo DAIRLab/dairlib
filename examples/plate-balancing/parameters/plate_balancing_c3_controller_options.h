@@ -2,27 +2,35 @@
 
 #include <c3/systems/c3_controller_options.h>
 
-using namespace c3::systems;
-
 namespace dairlib {
 namespace examples {
 namespace plate_balancing {
-// Options for the C3 controller used in the plate balancing example.
-struct PlateBalancingC3ControllerOptions : public C3ControllerOptions {
-  std::vector<double> u_horizontal_limits;
-  std::vector<double> u_vertical_limits;
-  std::vector<Eigen::VectorXd> workspace_limits;
-  double workspace_margins;
+
+/**
+ * @brief C3 controller options for the plate balancing example.
+ *
+ * Extends C3ControllerOptions with additional actuator and workspace limits.
+ */
+struct PlateBalancingC3ControllerOptions
+    : public c3::systems::C3ControllerOptions {
+  std::vector<double>
+      u_horizontal_limits;  ///< Limits for horizontal actuator inputs.
+  std::vector<double>
+      u_vertical_limits;  ///< Limits for vertical actuator inputs.
+  std::vector<Eigen::VectorXd>
+      workspace_limits;      ///< Workspace boundaries as vectors.
+  double workspace_margins;  ///< Margins to be maintained within the workspace.
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    C3ControllerOptions::Serialize(a);
-    a->Visit(DRAKE_NVP(workspace_limits));
+    c3::systems::C3ControllerOptions::Serialize(a);
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_limits));
     a->Visit(DRAKE_NVP(workspace_margins));
   }
 };
+
 }  // namespace plate_balancing
 }  // namespace examples
 }  // namespace dairlib

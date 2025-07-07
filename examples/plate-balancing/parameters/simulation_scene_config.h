@@ -2,14 +2,28 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-// Currently this scene only defines static environment obstacles
-struct SimulationSceneConfig {
-  std::vector<std::string> environment_models;
-  std::vector<Eigen::VectorXd> environment_orientations;
-  std::vector<Eigen::VectorXd> environment_positions;
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
 
-  Eigen::VectorXd camera_pose;
-  Eigen::VectorXd camera_target;
+/**
+ * @brief Scene configuration for the simulation in plate balancing.
+ *
+ * Contains environment model paths, their poses, and camera configuration for
+ * simulation visualization.
+ */
+struct SimulationSceneConfig {
+  std::vector<std::string>
+      environment_models;  ///< List of environment model file paths.
+  std::vector<Eigen::VectorXd>
+      environment_orientations;  ///< List of orientation vectors for each
+                                 ///< environment model.
+  std::vector<Eigen::VectorXd>
+      environment_positions;  ///< List of position vectors for each environment
+                              ///< model.
+
+  Eigen::VectorXd camera_pose;    ///< Camera pose in the world frame.
+  Eigen::VectorXd camera_target;  ///< Camera target point in the world frame.
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -23,3 +37,7 @@ struct SimulationSceneConfig {
     a->Visit(DRAKE_NVP(camera_target));
   }
 };
+
+}  // namespace plate_balancing
+}  // namespace examples
+}  // namespace dairlib

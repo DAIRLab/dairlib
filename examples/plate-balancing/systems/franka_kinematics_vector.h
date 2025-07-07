@@ -6,15 +6,16 @@
 #include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
-  
 using systems::TimestampedVector;
-
 namespace examples {
 namespace plate_balancing {
 namespace systems {
-/// FrankaKinematicsVector stores the robot output as a TimestampedVector
-///    * positions
-///    * velocities
+
+/**
+ * @brief Stores the robot and object kinematics as a timestamped vector.
+ *
+ * Contains positions and velocities for both the end effector and the object.
+ */
 template <typename T>
 class FrankaKinematicsVector : public TimestampedVector<T> {
  public:
@@ -22,146 +23,46 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
 
   FrankaKinematicsVector() = default;
 
+  /**
+   * @brief Constructs a vector with specified sizes for each component.
+   */
   explicit FrankaKinematicsVector(int num_end_effector_positions,
                                   int num_object_positions,
                                   int num_end_effector_velocities,
-                                  int num_object_velocities)
-      : TimestampedVector<T>(num_end_effector_positions + num_object_positions +
-                             num_end_effector_velocities +
-                             num_object_velocities),
-        num_end_effector_positions_(num_end_effector_positions),
-        num_object_positions_(num_object_positions),
-        num_end_effector_velocities_(num_end_effector_velocities),
-        num_object_velocities_(num_object_velocities),
-        end_effector_positions_start_(0),
-        object_positions_start_(num_end_effector_positions_),
-        end_effector_velocities_start_(num_end_effector_positions_ +
-                                       num_object_positions_),
-        object_velocities_start_(num_end_effector_positions_ +
-                                 num_object_positions_ +
-                                 num_end_effector_velocities_),
-        num_positions_(num_end_effector_positions_ + num_object_positions_),
-        num_velocities_(num_end_effector_velocities_ + num_object_velocities_) {
-  }
+                                  int num_object_velocities);
 
-  /// Constructs a OutputVector with the specified positions and velocities.
+  /**
+   * @brief Constructs a vector from given position and velocity vectors.
+   */
   explicit FrankaKinematicsVector(
       const drake::VectorX<T>& end_effector_positions,
       const drake::VectorX<T>& object_positions,
       const drake::VectorX<T>& end_effector_velocities,
-      const drake::VectorX<T>& object_velocities)
-      : FrankaKinematicsVector(
-            end_effector_positions.size(), object_positions.size(),
-            end_effector_velocities.size(), object_velocities.size()) {
-    this->SetEndEffectorPositions(end_effector_positions);
-    this->SetObjectPositions(object_positions);
-    this->SetEndEffectorVelocities(end_effector_velocities);
-    this->SetObjectVelocities(object_velocities);
-  }
+      const drake::VectorX<T>& object_velocities);
 
-  void SetEndEffectorPositions(drake::VectorX<T> positions) {
-    DRAKE_DEMAND(positions.size() == num_end_effector_positions_);
-    this->get_mutable_data().segment(end_effector_positions_start_,
-                                     num_end_effector_positions_) = positions;
-  }
+  /// Setters for each component
+  void SetEndEffectorPositions(drake::VectorX<T> positions);
+  void SetObjectPositions(drake::VectorX<T> positions);
+  void SetEndEffectorVelocities(drake::VectorX<T> velocities);
+  void SetObjectVelocities(drake::VectorX<T> velocities);
+  void SetState(drake::VectorX<T> state);
 
-  void SetObjectPositions(drake::VectorX<T> positions) {
-    DRAKE_DEMAND(positions.size() == num_object_positions_);
-    this->get_mutable_data().segment(object_positions_start_,
-                                     num_object_positions_) = positions;
-  }
+  /// Getters for each component
+  const drake::VectorX<T> GetState() const;
+  const drake::VectorX<T> GetEndEffectorPositions() const;
+  const drake::VectorX<T> GetObjectPositions() const;
+  const drake::VectorX<T> GetEndEffectorVelocities() const;
+  const drake::VectorX<T> GetObjectVelocities() const;
+  const drake::VectorX<T> GetVelocities() const;
+  const drake::VectorX<T> GetPositions() const;
 
-  void SetEndEffectorVelocities(drake::VectorX<T> velocities) {
-    DRAKE_DEMAND(velocities.size() == num_end_effector_velocities_);
-    this->get_mutable_data().segment(end_effector_velocities_start_,
-                                     num_end_effector_velocities_) = velocities;
-  }
-
-  void SetObjectVelocities(drake::VectorX<T> velocities) {
-    DRAKE_DEMAND(velocities.size() == num_object_velocities_);
-    this->get_mutable_data().segment(object_velocities_start_,
-                                     num_object_velocities_) = velocities;
-  }
-
-  void SetState(drake::VectorX<T> state) {
-    DRAKE_DEMAND(state.size() == this->data_size());
-    this->get_mutable_data().segment(end_effector_positions_start_,
-                                     this->data_size()) = state;
-  }
-
-  /// Returns a const state vector
-  const drake::VectorX<T> GetState() const {
-    return this->get_data().segment(end_effector_positions_start_,
-                                    this->data_size());
-  }
-
-  /// Returns a const positions vector for the end effector
-  const drake::VectorX<T> GetEndEffectorPositions() const {
-    return this->get_data().segment(end_effector_positions_start_,
-                                    num_end_effector_positions_);
-  }
-
-  /// Returns a const positions vector for the object
-  const drake::VectorX<T> GetObjectPositions() const {
-    return this->get_data().segment(object_positions_start_,
-                                    num_object_positions_);
-  }
-
-  /// Returns a const positions vector for the end effector
-  const drake::VectorX<T> GetEndEffectorVelocities() const {
-    return this->get_data().segment(end_effector_velocities_start_,
-                                    num_end_effector_velocities_);
-  }
-
-  /// Returns a const positions vector for the object
-  const drake::VectorX<T> GetObjectVelocities() const {
-    return this->get_data().segment(object_velocities_start_,
-                                    num_object_velocities_);
-  }
-
-  /// Returns a const velocities vector
-  const drake::VectorX<T> GetVelocities() const {
-    return this->get_data().segment(
-        end_effector_velocities_start_,
-        num_end_effector_velocities_ + num_object_velocities_);
-  }
-
-  /// Returns a const positions vector
-  const drake::VectorX<T> GetPositions() const {
-    return this->get_data().segment(
-        end_effector_positions_start_,
-        num_end_effector_positions_ + num_object_positions_);
-  }
-
-  /// Returns a mutable positions vector
-  Eigen::Map<drake::VectorX<T>> GetMutablePositions() {
-    auto data = this->get_mutable_data().segment(
-        end_effector_positions_start_,
-        num_end_effector_positions_ + num_object_positions_);
-    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
-  }
-
-  /// Returns a mutable velocities vector
-  Eigen::Map<drake::VectorX<T>> GetMutableVelocities() {
-    auto data = this->get_mutable_data().segment(
-        end_effector_velocities_start_,
-        num_end_effector_velocities_ + num_object_velocities_);
-    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
-  }
-
-  /// Returns a mutable state vector
-  Eigen::Map<drake::VectorX<T>> GetMutableState() {
-    auto data = this->get_mutable_data().segment(end_effector_positions_start_,
-                                                 this->data_size());
-    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
-  }
+  /// Mutable accessors
+  Eigen::Map<drake::VectorX<T>> GetMutablePositions();
+  Eigen::Map<drake::VectorX<T>> GetMutableVelocities();
+  Eigen::Map<drake::VectorX<T>> GetMutableState();
 
  protected:
-  virtual FrankaKinematicsVector<T>* DoClone() const {
-    return new FrankaKinematicsVector<T>(
-        num_end_effector_positions_, num_object_positions_,
-        num_end_effector_velocities_, num_object_velocities_);
-  }
+  virtual FrankaKinematicsVector<T>* DoClone() const;
 
  private:
   const int num_end_effector_positions_;
@@ -172,10 +73,10 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
   const int object_positions_start_;
   const int end_effector_velocities_start_;
   const int object_velocities_start_;
-
   const int num_positions_;
   const int num_velocities_;
 };
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

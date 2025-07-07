@@ -1,5 +1,4 @@
 #include "examples/plate-balancing/systems/franka_kinematics.h"
-
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
 
@@ -11,11 +10,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 namespace dairlib {
-
 using systems::OutputVector;
 using systems::StateVector;
 using systems::TimestampedVector;
-
 namespace examples {
 namespace plate_balancing {
 namespace systems {
@@ -48,9 +45,9 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
               "x_object", StateVector<double>(object_plant.num_positions(),
                                               object_plant.num_velocities()))
           .get_index();
-  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
+  num_end_effector_positions_ = 3 + include_end_effector_orientation * 3;
   num_object_positions_ = 7;
-  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
+  num_end_effector_velocities_ = 3 + include_end_effector_orientation * 3;
   num_object_velocities_ = 6;
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
@@ -69,6 +66,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
 void FrankaKinematics::ComputeLCSState(
     const drake::systems::Context<double>& context,
     FrankaKinematicsVector<double>* lcs_state) const {
+  // Computes the combined state vector for learning/control.
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
   const StateVector<double>* object_output =
@@ -126,6 +124,7 @@ void FrankaKinematics::ComputeLCSState(
 void FrankaKinematics::ComputeLCSInput(
     const drake::systems::Context<double>& context,
     BasicVector<double>* lcs_input) const {
+  // Computes the input vector for learning/control.
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
 
@@ -144,6 +143,7 @@ void FrankaKinematics::ComputeLCSInput(
 
   lcs_input->SetFromVector(J_ee * franka_output->GetEfforts());
 }
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

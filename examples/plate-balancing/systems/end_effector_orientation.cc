@@ -15,6 +15,10 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 namespace systems {
+
+// Implements a trajectory generator for end effector orientation.
+// Selects between a neutral orientation and a provided trajectory
+// based on radio input and tracking flag.
 EndEffectorOrientationTrajectoryGenerator::
     EndEffectorOrientationTrajectoryGenerator() {
   trajectory_port_ =
@@ -32,6 +36,9 @@ EndEffectorOrientationTrajectoryGenerator::
       .get_index();
 }
 
+// Calculates the output orientation trajectory based on radio input.
+// If tracking is enabled and the radio flag is set, outputs the input
+// trajectory. Otherwise, outputs a neutral orientation.
 void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
@@ -53,6 +60,7 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     *casted_traj = result;
   }
 }
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

@@ -11,10 +11,11 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 namespace systems {
+
 ExternalForceGenerator::ExternalForceGenerator(
     drake::multibody::BodyIndex body_index)
     : body_index_(body_index) {
-  // Input/Output Setup
+  // Declare input port for radio and output port for spatial force.
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
@@ -40,6 +41,7 @@ void ExternalForceGenerator::CalcSpatialForce(
     const drake::systems::Context<double>& context,
     std::vector<drake::multibody::ExternallyAppliedSpatialForce<double>>*
         spatial_forces) const {
+  // Computes the spatial force to apply based on radio input.
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
   Vector3d force = VectorXd::Zero(3);
   if (radio_out->value()[12]) {
@@ -60,6 +62,7 @@ void ExternalForceGenerator::CalcSpatialForce(
     spatial_forces->at(0).body_index = body_index_;
   }
 }
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

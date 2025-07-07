@@ -2,6 +2,16 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
+
+/**
+ * @brief Configuration parameters for the plate balancing example.
+ *
+ * Holds all relevant configuration options for setting up and running the plate
+ * balancing scenario.
+ */
 struct PlateBalancingConfig {
   int scene_index;
   bool include_end_effector_orientation;
@@ -18,8 +28,6 @@ struct PlateBalancingConfig {
   std::string lcm_hardware_settings_file;
   std::string lcm_simulation_settings_file;
   std::string plate_balancing_target_config_file;
-
-  
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -53,3 +61,6 @@ struct PlateBalancingConfig {
     return simulation_scene_config_directory + file_names[scene_index];
   }
 };
+}  // namespace plate_balancing
+}  // namespace examples
+}  // namespace dairlib

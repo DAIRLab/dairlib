@@ -1,7 +1,7 @@
 #include <dairlib/lcmt_radio_out.hpp>
-#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
+// Core includes for configuration, system building, and OSC
 #include "common/eigen_utils.h"
 #include "examples/plate-balancing/parameters/lcm_channel_config.h"
 #include "examples/plate-balancing/parameters/osc_controller_config.h"
@@ -44,11 +44,11 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+// Command-line flags for configuration
 DEFINE_string(plate_balancing_config,
               "examples/plate-balancing/config/plate_balancing_config.yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
-DEFINE_bool(simulation, true, "Running in simulation or hardware");
+              "YAML file specifying controller and channel settings.");
+DEFINE_bool(simulation, true, "Run in simulation (true) or hardware (false)");
 
 namespace dairlib {
 
@@ -70,10 +70,11 @@ using systems::controllers::TransTaskSpaceTrackingData;
 namespace examples {
 namespace plate_balancing {
 
+// Entry point for the OSC controller application
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Load parameters from YAML files
+  // Load all configuration parameters from YAML files
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   PlateBalancingConfig main_config =
@@ -94,20 +95,20 @@ int DoMain(int argc, char* argv[]) {
           FindResourceOrThrow(main_config.osc_osqp_setting_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  // Build the Drake diagram
+  // Build the system diagram for the OSC controller
   DiagramBuilder<double> builder;
 
-  // Create and configure the MultibodyPlant
+  // Construct the MultibodyPlant for the robot and parse models
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
   parser.AddModelsFromUrl(controller_config.franka_model);
 
-  // Weld the robot to the world frame
+  // Weld the robot base to the world frame
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
 
-  // Add the end effector if specified in the config
+  // Optionally add and weld the end effector, if specified in config
   if (!controller_config.end_effector_name.empty()) {
     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
         FindResourceOrThrow(controller_config.end_effector_model))[0];
@@ -126,13 +127,13 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  // Create LCM interface
+  // Create LCM interface for communication
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-  // Add LCM systems for communication
+  // Add LCM systems for state, command, and trajectory communication
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
-  auto end_effector_trajectory_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
+  auto end_effector_trajectory_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_actor_channel, &lcm));
   auto end_effector_position_receiver =
       builder.AddSystem<LcmC3TrajectoryReceiver>(
@@ -152,6 +153,8 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
   auto franka_command_sender = builder.AddSystem<RobotCommandSender>(plant);
   auto osc_command_sender = builder.AddSystem<RobotCommandSender>(plant);
+
+  // Trajectory generators for end effector position, orientation, and force
   auto end_effector_trajectory =
       builder.AddSystem<systems::EndEffectorTrajectoryGenerator>(
           controller_config.neutral_position);
@@ -164,6 +167,8 @@ int DoMain(int argc, char* argv[]) {
       controller_config.track_end_effector_orientation);
   auto end_effector_force_trajectory =
       builder.AddSystem<systems::EndEffectorForceTrajectoryGenerator>();
+
+  // Radio input for remote control
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -173,7 +178,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc = builder.AddSystem<OperationalSpaceControl>(
       plant, plant_context.get(), false);
 
-  // Add debug publisher if specified
+  // Optionally add debug publisher for OSC internal state
   if (controller_config.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -183,7 +188,7 @@ int DoMain(int argc, char* argv[]) {
                     osc_debug_pub->get_input_port());
   }
 
-  // Configure tracking data for OSC
+  // Configure tracking data for OSC: position, orientation, force, and joint
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", controller_config.K_p_end_effector,
@@ -195,6 +200,7 @@ int DoMain(int argc, char* argv[]) {
       controller_config.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);
+
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<JointSpaceTrackingData>(
           "panda_joint2_target", controller_config.K_p_mid_link,
@@ -216,8 +222,11 @@ int DoMain(int argc, char* argv[]) {
           controller_config.W_end_effector_rot, plant, plant);
   end_effector_orientation_tracking_data->AddFrameToTrack(
       controller_config.end_effector_name);
+
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
+
+  // Register all tracking data with the OSC
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.6 * VectorXd::Ones(1));
@@ -232,7 +241,10 @@ int DoMain(int argc, char* argv[]) {
 
   osc->Build();
 
-  // Connect systems in the diagram
+  // Connect all systems in the diagram
+
+  // If enabled, remove gravity compensation from OSC output before sending to
+  // robot
   if (controller_config.cancel_gravity_compensation) {
     auto gravity_compensator =
         builder.AddSystem<GravityCompensationRemover>(plant, *plant_context);
@@ -251,6 +263,7 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port(0));
   }
 
+  // Connect radio input to trajectory generators
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(radio_to_vector->get_output_port(),
                   end_effector_trajectory->get_input_port_radio());
@@ -258,6 +271,8 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_orientation_trajectory->get_input_port_radio());
   builder.Connect(radio_to_vector->get_output_port(),
                   end_effector_force_trajectory->get_input_port_radio());
+
+  // Connect command senders to LCM publishers
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
@@ -265,10 +280,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(osc->get_output_port_osc_command(),
                   osc_command_sender->get_input_port(0));
 
+  // Connect state and trajectory receivers to OSC and trajectory generators
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_position_receiver->get_input_port_lcm_trajectory());
+  builder.Connect(
+      end_effector_trajectory_sub->get_output_port(),
+      end_effector_position_receiver->get_input_port_lcm_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
                   end_effector_force_receiver->get_input_port_lcm_trajectory());
   builder.Connect(
@@ -289,11 +306,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(end_effector_force_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_force"));
 
-  // Build the complete diagram
+  // Build the complete system diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("plate_balancing/osc_controller"));
 
-  // Run lcm-driven simulation
+  // Run the LCM-driven control loop (real-time or simulation)
   LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
       lcm_channel_params.franka_state_channel, true);
@@ -305,6 +322,7 @@ int DoMain(int argc, char* argv[]) {
 }  // namespace examples
 }  // namespace dairlib
 
+// Main entry point
 int main(int argc, char* argv[]) {
   return dairlib::examples::plate_balancing::DoMain(argc, argv);
 }

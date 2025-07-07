@@ -13,9 +13,7 @@ using drake::systems::EventStatus;
 using Eigen::VectorXd;
 
 namespace dairlib {
-
 using systems::StateVector;
-
 namespace examples {
 namespace plate_balancing {
 namespace systems {
@@ -25,7 +23,7 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
     double target_threshold)
     : end_effector_thickness_(end_effector_thickness),
       target_threshold_(target_threshold) {
-  // Input/Output Setup
+  // Declare input/output ports and initialize discrete state for FSM.
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
@@ -58,11 +56,11 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
 EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
+  // Updates the FSM state based on tray position and radio input.
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
-  // Ugly FSM
   int current_sequence = context.get_discrete_state(sequence_index_)[0];
   int within_target = context.get_discrete_state(within_target_index_)[0];
   int time_entered_target =
@@ -124,38 +122,33 @@ void PlateBalancingTargetGenerator::SetRemoteControlParameters(
 void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
+  // Computes the end effector target position based on FSM state and radio
+  // input.
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
   VectorXd end_effector_position = first_target_;
-  // Update target if remote trigger is active
   if (context.get_discrete_state(sequence_index_)[0] == 1) {
-    end_effector_position = second_target_;  // raise the tray once it is close
+    end_effector_position = second_target_;
   } else if (context.get_discrete_state(sequence_index_)[0] == 2 ||
              context.get_discrete_state(sequence_index_)[0] == 3) {
-    end_effector_position = third_target_;  // put the tray back
+    end_effector_position = third_target_;
   }
-  end_effector_position[2] -=
-      end_effector_thickness_;  // place end effector below tray
+  end_effector_position[2] -= end_effector_thickness_;
   if (radio_out->value()[13] > 0) {
     end_effector_position(0) += radio_out->value()[0] * x_scale_;
     end_effector_position(1) += radio_out->value()[1] * y_scale_;
     end_effector_position(2) += radio_out->value()[2] * z_scale_;
   }
   if (end_effector_position[0] > 0.6) {
-    end_effector_position[0] = 0.6;  // keep it within the workspace
+    end_effector_position[0] = 0.6;
   }
-  //  end_effector_position(0) = 0.55;
-  //  end_effector_position(1) = 0.1 * sin(4 * context.get_time());
-  //  end_effector_position(2) = 0.45 + 0.1 * cos(2 *context.get_time()) -
-  //  end_effector_thickness_; end_effector_position(1) = 0.1 * (int) (2 *
-  //  sin(0.5 * context.get_time())); end_effector_position(2) = 0.45 -
-  //  end_effector_thickness_;
   target->SetFromVector(end_effector_position);
 }
 
 void PlateBalancingTargetGenerator::CalcTrayTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
+  // Computes the tray target pose based on FSM state and radio input.
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = first_target_;
@@ -171,18 +164,14 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
     tray_position(1) += radio_out->value()[1] * y_scale_;
     tray_position(2) += radio_out->value()[2] * z_scale_;
   }
-  //  tray_position(0) = 0.55;
-  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
-  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
-  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
-  //  tray_position(2) = 0.45;
-  target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
+  target_tray_state << 1, 0, 0, 0, tray_position;
   target->SetFromVector(target_tray_state);
 }
 
 void PlateBalancingTargetGenerator::CalcTrayVelocityTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
+  // Computes the tray velocity target (orientation error).
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
   Eigen::Quaterniond y_quat_des(1, 0, 0, 0);
@@ -192,16 +181,10 @@ void PlateBalancingTargetGenerator::CalcTrayVelocityTarget(
   VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
 
   VectorXd target_tray_state = VectorXd::Zero(6);
-
-  //  tray_position(0) = 0.55;
-  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
-  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
-  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
-  //  tray_position(2) = 0.45;
-  target_tray_state << angle_error,
-      VectorXd::Zero(3);  // tray orientation is flat
+  target_tray_state << angle_error, VectorXd::Zero(3);
   target->SetFromVector(target_tray_state);
 }
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

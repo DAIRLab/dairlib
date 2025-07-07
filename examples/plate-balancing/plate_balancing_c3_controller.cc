@@ -30,6 +30,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
+// Command-line flags for configuration
 DEFINE_string(plate_balancing_config,
               "examples/plate-balancing/config/plate_balancing_config.yaml",
               "Controller settings such as channels. Attempting to minimize "
@@ -76,7 +77,8 @@ using systems::lcmt_generators::RobotStateGenerator;
 namespace examples {
 namespace plate_balancing {
 
-// Function to add the C3 controller to the diagram builder
+// Adds the C3 controller to the diagram builder, including workspace and input
+// constraints.
 C3Controller* AddC3ControllerToBuilder(
     DiagramBuilder<double>& builder, MultibodyPlant<double>& plant_for_lcs,
     PlateBalancingC3ControllerOptions& controller_options,
@@ -93,9 +95,8 @@ C3Controller* AddC3ControllerToBuilder(
   auto controller =
       builder.AddSystem<C3Controller>(plant_for_lcs, cost, controller_options);
 
-  // Add workspace limits as linear constraints.
+  // Add workspace limits as linear constraints if specified.
   if (controller_options.workspace_limits.size() > 0) {
-    // Number of constraints to be added
     int n_c = controller_options.workspace_limits.size();
     drake::log()->info("Adding {} Workspace constraints", n_c);
     Eigen::MatrixXd A = MatrixXd::Zero(n_c, n_x);
@@ -109,7 +110,8 @@ C3Controller* AddC3ControllerToBuilder(
     }
     controller->AddLinearConstraint(A, lb, ub, c3::ConstraintVariable::STATE);
   }
-  // Add horizontal and vertical input limits as linear constraints
+  // Add horizontal and vertical input limits as linear constraints if
+  // specified.
   if (controller_options.u_horizontal_limits.size() == 2 &&
       controller_options.u_vertical_limits.size() == 2) {
     drake::log()->info(
@@ -132,7 +134,9 @@ C3Controller* AddC3ControllerToBuilder(
   return controller;
 }
 
-// Main function for the plate balancing example
+// Entry point for the plate balancing example.
+// Builds the system diagram, loads configuration, and runs the simulation or
+// hardware loop.
 int DoMain(std::string plate_balancing_config, bool is_simulation) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
@@ -158,7 +162,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
           FindResourceOrThrow(main_config.c3_osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  // Create MultibodyPlant for Franka robot
+  // Create MultibodyPlant for Franka robot and end effector
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModelsFromUrl(scene_params.franka_model);
@@ -182,14 +186,14 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  /// Create MultibodyPlant for the tray
+  // Create MultibodyPlant for the tray
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
   parser_tray.AddModels(scene_params.object_models[0]);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
-  /// Create DiagramBuilder for the plant
+  // Create DiagramBuilder for the plant and add scene graph
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
@@ -197,7 +201,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   lcs_parser.SetAutoRenaming(true);
   lcs_parser.AddModels(scene_params.end_effector_lcs_model);
 
-  // Add environment models to the plant
+  // Add environment models to the plant and weld them to the world
   std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
   environment_model_indices.resize(scene_params.environment_models.size());
   for (int i = 0; i < scene_params.environment_models.size(); ++i) {
@@ -233,7 +237,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
       plant_for_lcs, diagram_context.get());
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-  /// Define contact geometries
+  // Collect contact geometries for the end effector and environment
   std::vector<drake::geometry::GeometryId> end_effector_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"));
@@ -262,7 +266,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
 
-  // Build the main diagram
+  // Build the main system diagram
   DiagramBuilder<double> builder;
 
   // Add LCM subscribers for tray and radio state
@@ -283,7 +287,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
           lcm_channel_params.radio_channel, &lcm));
   auto radio_to_vector = builder.AddSystem<RadioToVector>();
 
-  // Add plate balancing target generator
+  // Add plate balancing target generator and connect its outputs
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(
           plant_tray, scene_params.end_effector_thickness,
@@ -308,6 +312,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   builder.Connect(
       plate_balancing_target->get_output_port_tray_velocity_target(),
       target_state_mux->get_input_port(3));
+
   // Add LCS factory and C3 controller
   auto lcs_factory = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
@@ -316,7 +321,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   auto controller = AddC3ControllerToBuilder(
       builder, plant_for_lcs, controller_options, solver_options);
 
-  // Connect systems
+  // Connect all system components
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -339,7 +344,8 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   builder.Connect(radio_to_vector->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
 
-  // Add C3 output and contact force publishers
+  // Add publishers for C3 debug output, contact forces, and trajectory
+  // generators
   C3OutputGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution(),
       controller->get_output_port_c3_intermediates(),
@@ -379,12 +385,13 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
   owned_diagram->set_name(("run_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
 
-  // Run lcm-driven simulation
+  // Run LCM-driven simulation or hardware loop
   LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
+  // Wait for tray state messages before starting simulation
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
@@ -395,6 +402,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
 }  // namespace examples
 }  // namespace dairlib
 
+// Main entry point: parses command-line flags and runs the example.
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return dairlib::examples::plate_balancing::DoMain(

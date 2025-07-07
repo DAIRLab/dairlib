@@ -22,10 +22,10 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 namespace systems {
+
 EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
     const Eigen::Vector3d& neutral_pose) {
-  // Input/Output Setup
-
+  // Declare input ports for trajectory and radio control.
   trajectory_port_ =
       this->DeclareAbstractInputPort(
               "trajectory", drake::Value<PiecewisePolynomial<double>>())
@@ -34,6 +34,7 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
 
+  // Declare output port for the end effector trajectory.
   PiecewisePolynomial<double> empty_pp_traj(neutral_pose);
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
@@ -60,6 +61,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->value()[14]) {
+    // Remote control active: use neutral pose or offset by radio input.
     PiecewisePolynomial<double> result;
     VectorXd y_0 = neutral_pose_;
     if (radio_out->value()[10]) {
@@ -70,12 +72,11 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
   } else if (!trajectory_input->empty()) {
-    // std::cout << "Using trajectory input." << std::endl;
-    // std::cout << trajectory_input->get_segment_times().size() << std::endl;
-    // exit(0);
+    // Use provided trajectory input.
     *casted_traj = *trajectory_input;
   }
 }
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

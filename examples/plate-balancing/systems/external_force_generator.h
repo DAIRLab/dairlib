@@ -10,10 +10,22 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 namespace systems {
+
+/**
+ * @brief Generates external spatial forces for a specified body.
+ *
+ * This system outputs a spatial force vector for a body, with force values
+ * determined by radio input and scaling parameters.
+ */
 class ExternalForceGenerator : public drake::systems::LeafSystem<double> {
  public:
+  /**
+   * @brief Constructor. Declares input/output ports for force generation.
+   * @param body_index The index of the body to apply the force to.
+   */
   ExternalForceGenerator(drake::multibody::BodyIndex body_index);
 
+  /// Input/output port accessors
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
@@ -22,22 +34,33 @@ class ExternalForceGenerator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(spatial_force_port_);
   }
 
+  /**
+   * @brief Sets scaling for remote control force input.
+   * @param x_scale Scaling for x force.
+   * @param y_scale Scaling for y force.
+   * @param z_scale Scaling for z force.
+   */
   void SetRemoteControlParameters(double x_scale, double y_scale,
                                   double z_scale);
 
  private:
+  /**
+   * @brief Calculates the spatial force output based on radio input.
+   */
   void CalcSpatialForce(
       const drake::systems::Context<double>& context,
       std::vector<drake::multibody::ExternallyAppliedSpatialForce<double>>*
           spatial_forces) const;
 
-  drake::systems::InputPortIndex radio_port_;
-  drake::systems::OutputPortIndex spatial_force_port_;
-  drake::multibody::BodyIndex body_index_;
-  double x_scale_ = 0;
-  double y_scale_ = 0;
-  double z_scale_ = 0;
+  drake::systems::InputPortIndex radio_port_;  ///< Input port for radio.
+  drake::systems::OutputPortIndex
+      spatial_force_port_;                  ///< Output port for spatial force.
+  drake::multibody::BodyIndex body_index_;  ///< Body index to apply force.
+  double x_scale_ = 0;                      ///< Scaling for x force.
+  double y_scale_ = 0;                      ///< Scaling for y force.
+  double z_scale_ = 0;                      ///< Scaling for z force.
 };
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

@@ -17,7 +17,6 @@ namespace dairlib {
 namespace systems {
 namespace lcmt_generators {
 
-/// Outputs a lcmt_timestamped_saved_traj
 class RobotStateGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotStateGenerator(std::vector<std::string> state_names,

@@ -59,6 +59,7 @@ using systems::SubvectorPassThrough;
 namespace examples {
 namespace plate_balancing {
 
+// Loads the main configuration file for the plate balancing simulation.
 DEFINE_string(plate_balancing_config,
               "examples/plate-balancing/config/plate_balancing_config.yaml",
               "Controller settings such as channels.");
@@ -66,7 +67,7 @@ DEFINE_string(plate_balancing_config,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Load parameters from YAML files.
+  // Load simulation and controller parameters from YAML files.
   PlateBalancingConfig main_config =
       drake::yaml::LoadYamlFile<PlateBalancingConfig>(
           FLAGS_plate_balancing_config);
@@ -79,14 +80,14 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SimulationSceneConfig>(
           main_config.get_simulation_scene_config_file());
 
-  // Build the Drake diagram.
+  // Construct the system diagram.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
 
-  // Add MultibodyPlant and SceneGraph.
+  // Add MultibodyPlant and SceneGraph to the diagram.
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
-  // Parse models and add them to the plant.
+  // Parse and add all models to the plant.
   Parser parser(&plant);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
@@ -99,7 +100,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  // Weld frames to position the robot and objects in the world.
+  // Weld robot and objects into their initial positions in the world.
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
@@ -111,7 +112,7 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  // Define collision geometries and filter groups.
+  // Set up collision filtering between robot and environment.
   const drake::geometry::GeometrySet& franka_geom_set =
       plant.CollectRegisteredGeometries({&plant.GetBodyByName("panda_link0"),
                                          &plant.GetBodyByName("panda_link1"),
@@ -138,6 +139,7 @@ int DoMain(int argc, char* argv[]) {
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
       {"supports", support_geom_set}, {"franka", franka_geom_set});
 
+  // Further collision filtering between robot and tray.
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({
           &plant.GetBodyByName("panda_link2"),
@@ -155,18 +157,18 @@ int DoMain(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  // Add LCM interface system.
+  // Add LCM interface system for communication.
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
 
-  // Add systems for sending and receiving robot actuation commands and state.
+  // Add robot actuation and state LCM systems.
   AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
 
-  // Add systems for sending tray state.
+  // Add tray state sender and publisher.
   auto tray_state_sender = builder.AddSystem<ObjectStateSender>(
       plant, sim_params.publish_object_velocities, tray_index);
   auto tray_state_pub =
@@ -174,7 +176,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
 
-  // Add systems for sending object state.
+  // Add object state sender and publisher.
   auto object_state_sender = builder.AddSystem<ObjectStateSender>(
       plant, sim_params.publish_object_velocities, object_index);
   auto object_state_pub =
@@ -182,19 +184,19 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.object_state_channel, lcm,
           1.0 / sim_params.object_publish_rate));
 
-  // Connect tray state sender and publisher.
+  // Connect tray state sender to publisher.
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
 
-  // Connect object state sender and publisher.
+  // Connect object state sender to publisher.
   builder.Connect(plant.get_state_output_port(object_index),
                   object_state_sender->get_input_port_state());
   builder.Connect(object_state_sender->get_output_port(),
                   object_state_pub->get_input_port());
 
-  // Add external force generator and connect it to the radio subscriber.
+  // Add external force generator, driven by radio input.
   auto external_force_generator =
       builder.AddSystem<systems::ExternalForceGenerator>(
           plant.GetBodyByName("tray").index());
@@ -212,22 +214,22 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(external_force_generator->get_output_port_spatial_force(),
                   plant.get_applied_spatial_force_input_port());
 
-  // Add visualizer if enabled.
+  // Optionally add Drake visualizer.
   if (sim_params.visualize_drake_sim) {
     drake::visualization::AddDefaultVisualization(&builder);
   }
 
-  // Build the diagram.
+  // Build the complete system diagram.
   auto diagram = builder.Build();
 
-  // Create a simulator.
+  // Create and configure the simulator.
   drake::systems::Simulator<double> simulator(*diagram);
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(sim_params.realtime_rate);
 
-  // Set initial state.
+  // Set initial state for all model instances.
   auto& plant_context = diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context());
 
@@ -235,6 +237,7 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant.num_velocities();
   VectorXd q = VectorXd::Zero(nq);
 
+  // Set initial positions for robot, tray, and object.
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
   q.segment(plant.num_positions(franka_index),
@@ -245,10 +248,11 @@ int DoMain(int argc, char* argv[]) {
 
   plant.SetPositions(&plant_context, q);
 
+  // Set all velocities to zero.
   VectorXd v = VectorXd::Zero(nv);
   plant.SetVelocities(&plant_context, v);
 
-  // Initialize and run the simulation.
+  // Start the simulation and run indefinitely.
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
@@ -258,6 +262,7 @@ int DoMain(int argc, char* argv[]) {
 }  // namespace examples
 }  // namespace dairlib
 
+// Entry point for the simulation.
 int main(int argc, char* argv[]) {
   dairlib::examples::plate_balancing::DoMain(argc, argv);
 }

@@ -2,15 +2,27 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
+namespace dairlib {
+namespace examples {
+namespace plate_balancing {
+
+/**
+ * @brief Target configuration for the plate balancing example.
+ *
+ * Contains target positions and scaling factors for the plate balancing task.
+ */
 struct PlateBalancingTargetConfig {
-  
-  double near_target_threshold;
-  std::vector<Eigen::Vector3d> first_target;
-  std::vector<Eigen::Vector3d> second_target;
-  std::vector<Eigen::Vector3d> third_target;
-  double x_scale;
-  double y_scale;
-  double z_scale;
+  double near_target_threshold;  ///< Threshold for considering the target as
+                                 ///< reached.
+  std::vector<Eigen::Vector3d>
+      first_target;  ///< List of 3D vectors for the first target positions.
+  std::vector<Eigen::Vector3d>
+      second_target;  ///< List of 3D vectors for the second target positions.
+  std::vector<Eigen::Vector3d>
+      third_target;  ///< List of 3D vectors for the third target positions.
+  double x_scale;    ///< Scaling factor for x direction.
+  double y_scale;    ///< Scaling factor for y direction.
+  double z_scale;    ///< Scaling factor for z direction.
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -23,3 +35,7 @@ struct PlateBalancingTargetConfig {
     a->Visit(DRAKE_NVP(near_target_threshold));
   }
 };
+
+}  // namespace plate_balancing
+}  // namespace examples
+}  // namespace dairlib

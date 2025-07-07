@@ -24,6 +24,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
+// Command line flags for config file and simulation mode
 DEFINE_string(plate_balancing_config,
               "examples/plate-balancing/config/plate_balancing_config.yaml",
               "Controller settings such as channels. Attempting to minimize "
@@ -56,11 +57,12 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 
+// Main function to build and run the plate balancing forward kinematics system
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-  // Load parameters from YAML files
+  // Load configuration and parameters from YAML files
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
@@ -77,7 +79,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_simulation ? main_config.lcm_simulation_settings_file
                            : main_config.lcm_hardware_settings_file);
 
-  // Build the MultibodyPlant for Franka
+  // Build MultibodyPlant for Franka robot
   DiagramBuilder<double> plant_builder;
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
@@ -86,7 +88,7 @@ int DoMain(int argc, char* argv[]) {
       parser_franka.AddModels(
           FindResourceOrThrow(scene_params.end_effector_model))[0];
 
-  // Weld frames for Franka
+  // Weld Franka base and end effector frames
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
@@ -101,14 +103,14 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  // Build the MultibodyPlant for the tray
+  // Build MultibodyPlant for tray object
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
   parser_tray.AddModels(scene_params.object_models[0]);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
-  // Build the overall diagram
+  // Build the overall system diagram
   DiagramBuilder<double> builder;
 
   // Add LCM subscribers for tray and radio state
@@ -129,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
           scene_params.end_effector_name, "tray",
           main_config.include_end_effector_orientation);
 
-  // Add systems for radio parsing and C3 state handling
+  // Add system to parse radio input
   auto radio_to_vector = builder.AddSystem<RadioToVector>();
 
   // Add plate balancing target generator
@@ -143,7 +145,7 @@ int DoMain(int argc, char* argv[]) {
       target_config.third_target[main_config.scene_index],
       target_config.x_scale, target_config.y_scale, target_config.z_scale);
 
-  // Add multiplexer for target state
+  // Add multiplexer for target state (combines multiple input vectors)
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -156,7 +158,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
 
-  // Connect the systems
+  // Connect all systems in the diagram
   builder.Connect(*radio_sub, *radio_to_vector);
   builder.Connect(tray_state_receiver->get_output_port(),
                   plate_balancing_target->get_input_port_tray_state());
@@ -177,7 +179,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(tray_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
 
-  // Define state names for C3 state sender
+  // Define state names for C3 state LCM publishers
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -185,6 +187,7 @@ int DoMain(int argc, char* argv[]) {
       "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
       "tray_vz",         "tray_vz",        "tray_vz",
   };
+  // Add LCM publishers for target and actual C3 state
   RobotStateGenerator::AddLcmPublisherToBuilder(
       builder, state_names, false, target_state_mux->get_output_port(),
       lcm_channel_params.c3_target_state_channel, &lcm,
@@ -198,12 +201,13 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_forward_kinematics"));
 
-  // Run lcm-driven simulation
+  // Run LCM-driven simulation loop
   LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
+  // Wait for tray state message before starting simulation
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
@@ -214,6 +218,7 @@ int DoMain(int argc, char* argv[]) {
 }  // namespace examples
 }  // namespace dairlib
 
+// Entry point
 int main(int argc, char* argv[]) {
   return dairlib::examples::plate_balancing::DoMain(argc, argv);
 }

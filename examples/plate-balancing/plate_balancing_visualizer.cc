@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include <c3/lcmt_contact_forces.hpp>
-#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
@@ -58,11 +57,11 @@ using systems::LcmC3TrajectoryReceiver;
 namespace examples {
 namespace plate_balancing {
 
-// Main function for the plate balancing visualizer.
+// Entry point for the plate balancing visualizer.
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Load configuration files.
+  // Load all configuration files.
   PlateBalancingConfig main_config =
       drake::yaml::LoadYamlFile<PlateBalancingConfig>(
           FLAGS_plate_balancing_config);
@@ -75,21 +74,21 @@ int do_main(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SimulationSceneConfig>(
           main_config.get_simulation_scene_config_file());
 
-  // Create a Drake diagram builder.
+  // Build the system diagram.
   DiagramBuilder<double> builder;
 
-  // Add scene graph.
+  // Add scene graph for geometry visualization.
   auto& scene_graph = *builder.AddSystem<drake::geometry::SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  // Add MultibodyPlant.
+  // Add and configure the MultibodyPlant.
   MultibodyPlant<double> plant(0.0);
 
-  // Create a parser for loading models.
+  // Parse and add all models to the plant.
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
 
-  // Load models from URDF files.
+  // Load robot, end effector, tray, and object models.
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModelsFromUrl(sim_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
@@ -100,7 +99,7 @@ int do_main(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  // Weld frames to position the robot and end effector.
+  // Weld robot base and end effector to the world and each other.
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    RigidTransform<double>(drake::math::RotationMatrix<double>(),
                                           Eigen::VectorXd::Zero(3)));
@@ -124,13 +123,13 @@ int do_main(int argc, char* argv[]) {
                      T_E_W);
   }
 
-  // Finalize the MultibodyPlant.
+  // Finalize the plant to complete model loading.
   plant.Finalize();
 
-  // Add LCM interface system.
+  // Add LCM interface for communication.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
-  // Create LCM subscribers for robot and object states.
+  // LCM subscribers for robot and object states.
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, lcm));
@@ -141,7 +140,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm));
 
-  // Create state receivers to convert LCM messages to MultibodyPlant states.
+  // Convert LCM messages to MultibodyPlant state vectors.
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
@@ -149,7 +148,7 @@ int do_main(int argc, char* argv[]) {
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant, object_index);
 
-  // Create passthrough systems to extract relevant state vectors.
+  // Extract relevant state vectors for visualization.
   auto franka_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
@@ -164,14 +163,14 @@ int do_main(int argc, char* argv[]) {
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(object_index));
 
-  // Create a multiplexer to combine the robot and object states.
+  // Multiplexer to combine all position vectors for visualization.
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
                                   plant.num_positions(tray_index),
                                   plant.num_positions(object_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
-  // Create LCM subscribers for trajectories and forces.
+  // LCM subscribers for trajectories and force signals.
   auto trajectory_sub_actor =
       builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_actor_channel, lcm));
@@ -182,7 +181,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_contact_forces>(
           lcm_channel_params.c3_force_channel, lcm));
 
-  // Create LCM subscribers for C3 states.
+  // LCM subscribers for C3 state messages.
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_robot_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
@@ -190,17 +189,17 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_robot_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
 
-  // Create a system to convert MultibodyPlant positions to geometry poses.
+  // Convert MultibodyPlant positions to geometry poses for visualization.
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
-  // Configure Meshcat visualizer.
+  // Configure Meshcat visualizer and camera.
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   meshcat->SetCameraPose(scene_params.camera_pose, scene_params.camera_target);
 
-  // Visualize workspace limits.
+  // Optionally visualize workspace boundaries.
   if (sim_params.visualize_workspace) {
     double width = sim_params.world_x_limits[main_config.scene_index][1] -
                    sim_params.world_x_limits[main_config.scene_index][0];
@@ -222,6 +221,7 @@ int do_main(int argc, char* argv[]) {
                           RigidTransformd(workspace_center));
   }
 
+  // Trajectory receivers for object and end effector targets.
   auto object_position_receiver =
       builder.AddSystem<LcmC3TrajectoryReceiver>("object_position_target");
   builder.Connect(trajectory_sub_tray->get_output_port(),
@@ -241,7 +241,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   end_effector_force_receiver->get_input_port_lcm_trajectory());
 
-  // Visualize center of mass plan trajectories.
+  // Visualize planned center of mass trajectories.
   if (sim_params.visualize_center_of_mass_plan) {
     auto trajectory_drawer_actor =
         builder.AddSystem<systems::PositionTrajectoryDrawer>(
@@ -260,7 +260,7 @@ int do_main(int argc, char* argv[]) {
                     trajectory_drawer_object->get_input_port_trajectory());
   }
 
-  // Visualize pose traces.
+  // Visualize pose traces for object and end effector.
   if (sim_params.visualize_pose_trace) {
     auto object_pose_drawer = builder.AddSystem<systems::PoseTrajectoryDrawer>(
         meshcat, FindResourceOrThrow("examples/plate-balancing/urdf/tray.sdf"),
@@ -294,7 +294,7 @@ int do_main(int argc, char* argv[]) {
     }
   }
 
-  // Visualize C3 states.
+  // Visualize C3 actual and target states.
   if (sim_params.visualize_c3_object_state ||
       sim_params.visualize_c3_end_effector_state) {
     auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
@@ -306,7 +306,7 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_target());
   }
 
-  // Visualize C3 forces.
+  // Visualize C3 force signals.
   if (sim_params.visualize_c3_forces) {
     auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
         meshcat, "end_effector_input_trajectory");
@@ -323,7 +323,7 @@ int do_main(int argc, char* argv[]) {
                     end_effector_force_drawer->get_input_port_robot_time());
   }
 
-  // Connect systems.
+  // Connect all state and geometry systems for visualization.
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
@@ -341,15 +341,15 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
   builder.Connect(*object_state_sub, *object_state_receiver);
 
-  // Add Meshcat visualizer.
+  // Add Meshcat visualizer to the diagram.
   auto visualizer = &MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
 
-  // Build the diagram.
+  // Build the diagram and create the context.
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
-  // Initialize state receivers with subscriber positions.
+  // Initialize state receivers with the latest subscriber positions.
   auto& franka_state_sub_context =
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   auto& tray_state_sub_context =
@@ -371,7 +371,7 @@ int do_main(int argc, char* argv[]) {
   simulator->set_target_realtime_rate(1.0);
   simulator->Initialize();
 
-  // Run the simulation.
+  // Run the visualizer indefinitely.
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
@@ -381,7 +381,7 @@ int do_main(int argc, char* argv[]) {
 }  // namespace examples
 }  // namespace dairlib
 
-// Main entrypoint.
+// Main entry point.
 int main(int argc, char* argv[]) {
   return dairlib::examples::plate_balancing::do_main(argc, argv);
 }

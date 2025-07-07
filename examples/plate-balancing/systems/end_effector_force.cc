@@ -1,8 +1,10 @@
 #include "end_effector_force.h"
 
+#include <iostream>
+
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
-#include <iostream>
+#include "systems/framework/output_vector.h"
 
 using Eigen::Map;
 using Eigen::Vector2d;
@@ -25,11 +27,12 @@ namespace dairlib {
 namespace examples {
 namespace plate_balancing {
 namespace systems {
+
+// Constructor: Declares input/output ports and discrete state.
 EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   trajectory_port_ =
       this->DeclareAbstractInputPort(
-              "trajectory",
-              drake::Value<PiecewisePolynomial<double>>())
+              "trajectory", drake::Value<PiecewisePolynomial<double>>())
           .get_index();
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
@@ -44,11 +47,12 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
       &EndEffectorForceTrajectoryGenerator::CalcTraj);
 }
 
+// Updates the controller switch state based on radio and trajectory input.
 EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
-  auto trajectory_input =this->EvalInputValue<PiecewisePolynomial<double>>(
+  auto trajectory_input = this->EvalInputValue<PiecewisePolynomial<double>>(
       context, trajectory_port_);
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
   if (!using_c3 && radio_out->value()[14] == 0) {
@@ -60,10 +64,10 @@ EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
+// Calculates the output force trajectory based on the current state and inputs.
 void EndEffectorForceTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  //  // Read in finite state machine
   auto trajectory_input = this->EvalInputValue<PiecewisePolynomial<double>>(
       context, trajectory_port_);
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
@@ -80,6 +84,10 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
     }
   }
 }
+
+// NOTE: The cast to PiecewisePolynomial<double>* could be avoided by using a
+// strongly-typed output port.
+
 }  // namespace systems
 }  // namespace plate_balancing
 }  // namespace examples

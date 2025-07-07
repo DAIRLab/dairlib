@@ -117,7 +117,6 @@ Eigen::VectorXd MeshNormalSampling(
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
     const drake::geometry::QueryObject<double>& query_object,
-    C3Options c3_options,
     std::vector<Face> faces,
     std::vector<double> face_bins);
 

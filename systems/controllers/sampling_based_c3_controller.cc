@@ -601,7 +601,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate states, differing from the current state only by EE sample
   // locations.
-  std::cout << "0" << std::endl;
   std::vector<Eigen::VectorXd> candidate_states =
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,

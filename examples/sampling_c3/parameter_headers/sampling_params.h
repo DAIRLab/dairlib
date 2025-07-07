@@ -62,9 +62,12 @@ struct SamplingParams {
   double min_sampling_radius;
   double max_sampling_radius;
 
-  double z_height;
+  // kMeshNormal parameters
   double buffer_distance;
-  std::string base_name;
+  int max_attempts; 
+
+  double z_height;
+
 
 
   template <typename Archive>
@@ -88,9 +91,8 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
-    a->Visit(DRAKE_NVP(z_height));
+    a->Visit(DRAKE_NVP(max_attempts));
     a->Visit(DRAKE_NVP(buffer_distance));
-    a->Visit(DRAKE_NVP(base_name));
-
+    a->Visit(DRAKE_NVP(z_height));
   }
 };

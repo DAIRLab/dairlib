@@ -15,6 +15,7 @@ lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channel
 
 object_model: examples/sampling_c3/urdf/letter_a_controller.sdf #TODO @bibit what do we want here?
 object_body_name: body
+base_name: letter_a
 
 include_end_effector_orientation: false
 

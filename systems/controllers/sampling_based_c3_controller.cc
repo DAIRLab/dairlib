@@ -601,11 +601,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate states, differing from the current state only by EE sample
   // locations.
+  std::cout << "0" << std::endl;
   std::vector<Eigen::VectorXd> candidate_states =
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_);
+
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -1133,11 +1135,13 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
   std::vector<solvers::LCS> lcs_candidates;
   std::vector<solvers::LCS> lcs_candidates_for_cost;
 
+
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states[i]);
+
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
@@ -1157,6 +1161,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to_for_cost,
       sampling_c3_options_.num_friction_directions, verbose_);
+
+
     solvers::LCS lcs_object_sample_for_cost_simulation =
       solvers::LCSFactory::LinearizePlantToLCS(
         plant_, *context_, plant_ad_, *context_ad_,

@@ -477,22 +477,23 @@ Eigen::VectorXd MeshNormalSampling(
 
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
-      auto& inspector = query_object.inspector();
-
       const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
 
-      distance = 10000;
-      for (int i = 1; i < 11; i++) { // indices of convex objects
-          if (results[i].distance < distance) {
-             distance = results[i].distance;
-          } 
-      }
-      
+      distance = results[2].distance;
   
-      std::cout << "Distance to mesh: " << distance << std::endl;
+      //std::cout << "Distance to mesh: " << distance << std::endl;
 
       bool in_collision = (distance <= sampling_params.sample_projection_clearance);
       
+      // // Print out name of each geometry
+      // auto& inspector = query_object.inspector();
+      // for (int i = 0; i < results.size(); i++) {
+      //     GeometryId id = results[i].id_G;
+      //     std::string name = inspector.GetName(id);
+      //     std::cout << "Geometry name " << i << ": " << name
+      //               << ", Distance: " << results[i].distance << std::endl;
+      // }
+
       
       // int min_distance_index = 1;
       // in_collision = check_collision(
@@ -506,16 +507,14 @@ Eigen::VectorXd MeshNormalSampling(
       //     min_distance_index
       // );
 
-
-
       // auto collision_end = std::chrono::high_resolution_clock::now();
       // std::chrono::duration<double> collision_elapsed = collision_end - collision_start;
       //std::cout << "Do collision: " << collision_elapsed.count() << " seconds" << std::endl;
 
       if (!in_collision) {
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
-        //std::cout << "Sample point is not in collision with the object." << std::endl;
-        //std::cout << "Candidate state:" << candidate_state.transpose() << std::endl;
+        // std::cout << "Sample point is not in collision with the object." << std::endl;
+        // std::cout << "Candidate state:" << candidate_state.transpose() << std::endl << std::endl;
         return candidate_state;
       }
       //std::cout << "Attempt #: " << attempts + 1 << " - Sample point is in collision with the object." << std::endl;

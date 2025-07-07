@@ -236,14 +236,8 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
     contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
 
-    //  Contacts between ground and all convex parts
-    const Body<double>& body = plant_lcs.GetBodyByName("body");
-    std::vector<GeometryId> all_geoms = plant_lcs.GetCollisionGeometriesForBody(body);
-    std::vector<GeometryId> geom_ids(all_geoms.begin(), all_geoms.begin() + 10); 
-    for (int i = 0; i < geom_ids.size(); i++) {
-        ee_contact_pairs.push_back(
-            SortedPair(contact_geoms["EE"], geom_ids[i]));
-    }
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH"]));
 
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));

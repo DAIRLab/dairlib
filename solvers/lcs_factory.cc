@@ -475,7 +475,6 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
 
     std::vector<double> distances;
     distances.reserve(candidates.size());
-    
     for (const auto& pair : candidates) {
       multibody::GeomGeomCollider collider(plant, pair);
       auto [phi_i, J_i] = collider.EvalPolytope(context,

@@ -150,60 +150,60 @@ SamplingC3Controller::SamplingC3Controller(
   c3_best_plan_->SetSolverOptions(solver_options_);
   c3_buffer_plan_->SetSolverOptions(solver_options_);
 
-  // Set actor bounds.
-  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
-    // TODO @bibit: For the T example, the z constraint is an equality
-    // constraint. This will be reflected in the params but need to make sure to
-    // put a comment here when the T example is added.
-    // The fourth parameter decides which optimization variable the constraint
-    // is applied to. 1 = x, 2 = u, 3 = lambda.
-    c3_curr_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.workspace_limits[i][3],
-        sampling_c3_options_.workspace_limits[i][4],
-        c3::ConstraintVariable::STATE);
-    c3_best_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.workspace_limits[i][3],
-        sampling_c3_options_.workspace_limits[i][4],
-        c3::ConstraintVariable::STATE);
-    c3_buffer_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.workspace_limits[i][3],
-        sampling_c3_options_.workspace_limits[i][4],
-        c3::ConstraintVariable::STATE);
-  }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_horizontal_limits[0],
-        sampling_c3_options_.u_horizontal_limits[1],
-        c3::ConstraintVariable::INPUT);
-    c3_best_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_horizontal_limits[0],
-        sampling_c3_options_.u_horizontal_limits[1],
-        c3::ConstraintVariable::INPUT);
-    c3_buffer_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_horizontal_limits[0],
-        sampling_c3_options_.u_horizontal_limits[1],
-        c3::ConstraintVariable::INPUT);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_vertical_limits[0],
-        sampling_c3_options_.u_vertical_limits[1],
-        c3::ConstraintVariable::INPUT);
-    c3_best_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_vertical_limits[0],
-        sampling_c3_options_.u_vertical_limits[1],
-        c3::ConstraintVariable::INPUT);
-    c3_buffer_plan_->AddLinearConstraint(
-        A, sampling_c3_options_.u_vertical_limits[0],
-        sampling_c3_options_.u_vertical_limits[1],
-        c3::ConstraintVariable::INPUT);
-  }
+  // // Set actor bounds.
+  // for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+  //   Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+  //   A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+  //   // TODO @bibit: For the T example, the z constraint is an equality
+  //   // constraint. This will be reflected in the params but need to make sure to
+  //   // put a comment here when the T example is added.
+  //   // The fourth parameter decides which optimization variable the constraint
+  //   // is applied to. 1 = x, 2 = u, 3 = lambda.
+  //   c3_curr_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.workspace_limits[i][3],
+  //       sampling_c3_options_.workspace_limits[i][4],
+  //       c3::ConstraintVariable::STATE);
+  //   c3_best_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.workspace_limits[i][3],
+  //       sampling_c3_options_.workspace_limits[i][4],
+  //       c3::ConstraintVariable::STATE);
+  //   c3_buffer_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.workspace_limits[i][3],
+  //       sampling_c3_options_.workspace_limits[i][4],
+  //       c3::ConstraintVariable::STATE);
+  // }
+  // for (int i : vector<int>({0, 1})) {
+  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+  //   A(i) = 1.0;
+  //   c3_curr_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_horizontal_limits[0],
+  //       sampling_c3_options_.u_horizontal_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  //   c3_best_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_horizontal_limits[0],
+  //       sampling_c3_options_.u_horizontal_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  //   c3_buffer_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_horizontal_limits[0],
+  //       sampling_c3_options_.u_horizontal_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  // }
+  // for (int i : vector<int>({2})) {
+  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+  //   A(i) = 1.0;
+  //   c3_curr_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_vertical_limits[0],
+  //       sampling_c3_options_.u_vertical_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  //   c3_best_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_vertical_limits[0],
+  //       sampling_c3_options_.u_vertical_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  //   c3_buffer_plan_->AddLinearConstraint(
+  //       A, sampling_c3_options_.u_vertical_limits[0],
+  //       sampling_c3_options_.u_vertical_limits[1],
+  //       c3::ConstraintVariable::INPUT);
+  // }
 
   // Input ports.
   radio_port_ =

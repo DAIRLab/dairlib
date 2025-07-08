@@ -3,6 +3,7 @@
 
 // Core includes for configuration, system building, and OSC
 #include "common/eigen_utils.h"
+<<<<<<< HEAD:examples/plate-balancing/franka_osc_controller.cc
 #include "examples/plate-balancing/parameters/lcm_channel_config.h"
 #include "examples/plate-balancing/parameters/osc_controller_config.h"
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
@@ -12,9 +13,16 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+=======
+#include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/parameters/franka_osc_controller_params.h"
+>>>>>>> 630caab41 (Revert code formatting):examples/franka/franka_osc_controller.cc
 #include "systems/controllers/osc/end_effector_force.h"
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
+#include "lcm/lcm_trajectory.h"
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -248,7 +256,11 @@ int DoMain(int argc, char* argv[]) {
   } else {
     osc->DisableAccelerationConstraints();
   }
+<<<<<<< HEAD:examples/plate-balancing/franka_osc_controller.cc
   osc->SetContactFriction(controller_config.mu);
+=======
+  osc->SetContactFriction(controller_params.mu);
+>>>>>>> 630caab41 (Revert code formatting):examples/franka/franka_osc_controller.cc
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();

@@ -464,7 +464,7 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
   resolved_contacts.reserve(n_contacts);
 
   for (int i = 0; i < contact_geoms.size(); i++) {
-    DRAKE_ASSERT(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+    DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
     const auto& candidates = contact_geoms[i];
     const int num_to_select = resolve_contacts_to_list[i];

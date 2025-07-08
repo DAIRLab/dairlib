@@ -141,53 +141,6 @@ SamplingC3Controller::SamplingC3Controller(
     DRAKE_THROW_UNLESS(false);
   }
 
-  c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_best_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
-
-  // Set actor bounds.
-  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
-    // TODO @bibit: For the T example, the z constraint is an equality
-    // constraint. This will be reflected in the params but need to make sure to
-    // put a comment here when the T example is added.
-    // The fourth parameter decides which optimization variable the constraint
-    // is applied to. 1 = x, 2 = u, 3 = lambda.
-    c3_curr_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
-    c3_best_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
-    c3_buffer_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
-  }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(
-      A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
-      2);
-    c3_best_plan_->AddLinearConstraint(
-      A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
-      2);
-    c3_buffer_plan_->AddLinearConstraint(
-      A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
-      2);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(
-      A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(
-      A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(
-      A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
-  }
-
   // Input ports.
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -598,6 +551,33 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
+
+    // Workspace limits.
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+      // TODO @bibit: For planar examples, we may want the z constraint to be an
+      // equality constraint. This would require two different sets of workspace
+      // limits:  one for the C3 solve, and one for the controller for safety
+      // checks.
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
+        1);
+    }
+    // Input limits.
+    for (int i : vector<int>({0, 1})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
+        2);
+    }
+    for (int i : vector<int>({2})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
+    }
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);

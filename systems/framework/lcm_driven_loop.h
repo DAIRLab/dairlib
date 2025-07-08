@@ -1,9 +1,9 @@
 #pragma once
 
-#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -140,7 +140,7 @@ class LcmDrivenLoop {
                 int queue_capacity = 1)
       : LcmDrivenLoop(drake_lcm, diagram, lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      "", is_forced_publish, queue_capacity) {};
+                      "", is_forced_publish, queue_capacity){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -167,7 +167,8 @@ class LcmDrivenLoop {
       diagram_name_ = diagram->get_name();
     }
     diagram_ptr_ = diagram.get();
-    simulator_ = std::make_unique<drake::systems::Simulator<double>>(*diagram);
+    simulator_ =
+        std::make_unique<drake::systems::Simulator<double>>(*diagram);
     simulator_->set_publish_at_initialization(false);
 
     // Create subscriber for the switch (in the case of multi-input)
@@ -181,10 +182,10 @@ class LcmDrivenLoop {
     // Create subscribers for inputs
     for (const auto& name : input_channels) {
       std::cout << "Constructing subscriber for " << name << std::endl;
-      name_to_input_sub_map_.insert(
-          std::make_pair(name, Subscriber<InputMessageType>(drake_lcm_, name)));
+      name_to_input_sub_map_.insert(std::make_pair(
+          name, Subscriber<InputMessageType>(drake_lcm_, name)));
       name_to_input_sub_map_.at(name).subscription_->set_queue_capacity(
-          queue_capacity);
+        queue_capacity);
     }
 
     // Make sure input_channels contains active_channel, and then set initial
@@ -217,7 +218,7 @@ class LcmDrivenLoop {
                 const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, diagram, nullptr,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      "", is_forced_publish) {};
+                      "", is_forced_publish){};
 
   // Getters for diagram and its context
   drake::systems::Diagram<double>* get_diagram() { return diagram_ptr_; }
@@ -291,7 +292,7 @@ class LcmDrivenLoop {
         }
 
         return is_new_input_message || is_new_switch_message ||
-               is_new_state_message;
+            is_new_state_message;
       });
 
       // Pump drake's LCM subscribers to empty their internal queues until all
@@ -337,7 +338,7 @@ class LcmDrivenLoop {
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(
-            diagram_context, &diagram_context.get_mutable_discrete_state());
+          diagram_context, &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
@@ -368,8 +369,8 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
-        diagram_ptr_->CalcForcedDiscreteVariableUpdate(
-            diagram_context, &diagram_context.get_mutable_discrete_state());
+        diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
+                                                       &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);

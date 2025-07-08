@@ -23,8 +23,7 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, std::string>())
       .def(py::init<std::string, int, double, std::string>())
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
-      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"),
-           py::arg("poses"))
+      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"), py::arg("poses"))
       .def("GetMeshcat", &MultiposeVisualizer::GetMeshcat);
 
   m.def("ConnectTrajectoryVisualizer",
@@ -32,12 +31,10 @@ PYBIND11_MODULE(multibody, m) {
         py::arg("builder"), py::arg("scene_graph"), py::arg("trajectory"));
 
   m.def("MakeNameToPositionsMap",
-        py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(
-            &dairlib::multibody::MakeNameToPositionsMap<double>),
+        py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),
         py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
-           py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(
-               &dairlib::multibody::MakeNameToVelocitiesMap<double>),
+           py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToVelocitiesMap<double>),
            py::arg("plant"))
       .def("MakeNameToActuatorsMap",
            &dairlib::multibody::MakeNameToActuatorsMap<double>,

@@ -990,6 +990,33 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                                 x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
 
+    // Workspace limits.
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+      // TODO @bibit: For planar examples, we may want the z constraint to be an
+      // equality constraint. This would require two different sets of workspace
+      // limits:  one for the C3 solve, and one for the controller for safety
+      // checks.
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
+        1);
+    }
+    // Input limits.
+    for (int i : vector<int>({0, 1})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
+        2);
+    }
+    for (int i : vector<int>({2})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
+    }
+
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
     test_c3_object->Solve(test_state);

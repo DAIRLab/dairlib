@@ -68,7 +68,7 @@ void AddLCSModelsToPlant(
     const bool& include_end_effector_orientation) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
-  DRAKE_ASSERT(!include_end_effector_orientation);
+  DRAKE_DEMAND(!include_end_effector_orientation);
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);

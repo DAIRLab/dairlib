@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include "systems/framework/timestamped_vector.h"
-
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
+
+#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -24,7 +24,7 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
   /// @param vector_length is the length of the input TimestampedVector
   VectorAggregator(int vector_length) {
     DeclareVectorInputPort(kUseDefaultName,
-                           TimestampedVector<double>(vector_length));
+      TimestampedVector<double>(vector_length));
     DeclarePerStepEvent<drake::systems::PublishEvent<double>>(
         drake::systems::PublishEvent<double>(
             drake::systems::Event<double>::TriggerType::kPerStep));
@@ -66,7 +66,8 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
   void DoPublish(const drake::systems::Context<double>& context,
                  const std::vector<const drake::systems::PublishEvent<double>*>&
                      events) const {
-    auto input = dynamic_cast<const TimestampedVector<double>*>(
+    const TimestampedVector<double>* input =
+      dynamic_cast<const TimestampedVector<double>*>(
         EvalVectorInput(context, 0));
 
     bool is_new_input = false;

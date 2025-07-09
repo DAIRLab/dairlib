@@ -1,0 +1,33 @@
+services:
+  trifinger-driver:
+    init: true
+    image: xuanhien070594/trifinger_dev:1.1
+    container_name: trifinger_driver
+    stop_signal: SIGINT
+    command: ["sleep", "infinity"]
+    privileged: true
+    network_mode: host
+    ipc: host
+    pid: host
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ~/git:/home/trifinger/git
+      - ~/Trifinger/workspace:/home/trifinger/workspace
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_LOCALHOST_ONLY=0
+      - ROS_DOMAIN_ID=0
+    cap_add:
+      - SYS_NICE
+      - SYS_PTRACE
+    ulimits:
+      rtprio: 99
+      rttime: -1 # corresponds to 'unlimited'
+      memlock: 8428281856
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

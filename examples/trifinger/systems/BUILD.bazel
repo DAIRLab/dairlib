@@ -1,0 +1,67 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "fingertips_target_position_receiver",
+    srcs = ["fingertips_target_kinematics_receiver.cc"],
+    hdrs = ["fingertips_target_kinematics_receiver.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "fingertips_target_traj_demultiplexer",
+    srcs = ["fingertips_target_traj_demultiplexer.cc"],
+    hdrs = ["fingertips_target_traj_demultiplexer.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "trifinger_joint_friction_compensation",
+    srcs = ["trifinger_joint_friction_compensation.cc"],
+    hdrs = ["trifinger_joint_friction_compensation.h"],
+    deps = [
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "trifinger_impedance_control",
+    srcs = ["trifinger_impedance_controller.cc"],
+    hdrs = ["trifinger_impedance_controller.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lcm_visualization_systems",
+    srcs = ["lcm_visualization_systems.cc"],
+    hdrs = ["lcm_visualization_systems.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

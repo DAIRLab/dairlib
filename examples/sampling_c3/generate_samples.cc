@@ -427,6 +427,7 @@ Eigen::VectorXd MeshNormalSampling(
     }
 
     do {
+
       // Sample value from total selected area
       std::mt19937 gen(std::random_device{}());
       std::uniform_real_distribution<double> dis(0.0, total_area);
@@ -437,10 +438,11 @@ Eigen::VectorXd MeshNormalSampling(
       int face_idx = FindBin(face_bins.data(), face_bins.size(), target); 
       selected_face = &faces_world[face_idx];
 
+
       // Sample point on selected face
       std::uniform_real_distribution<double> dis_u(0.0, 1.0);
-      double a = std::pow(dis_u(gen), 0.6);
-      double b = std::pow(dis_u(gen), 0.6);
+      double a = dis_u(gen);
+      double b = dis_u(gen);
       if (a + b > 1.0) {
           a = 1.0 - a;
           b = 1.0 - b;
@@ -458,11 +460,29 @@ Eigen::VectorXd MeshNormalSampling(
       
       UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
       
+      auto start = std::chrono::high_resolution_clock::now();
+
       // Check distance from mesh
       const auto& results = query_object.ComputeSignedDistanceToPoint(candidate_state.segment(0, 3));
       distance = results[2].distance; // index 2 = body_volume
 
       bool in_collision = (distance <= sampling_params.sample_projection_clearance);
+
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+      std::cout << "Elapsed time: " << duration.count() << " µs" << std::endl;
+
+      // int min_distance_index = 0;
+      // in_collision = IsSampleWithinDistanceOfSurface(
+      //     n_q, n_v, n_u, 
+      //     sampling_params.sample_projection_clearance, 
+      //     candidate_state, 
+      //     plant, context, 
+      //     plant_ad, context_ad, 
+      //     contact_geoms,
+      //     sampling_c3_options, 
+      //     min_distance_index
+      // );
 
       if (!in_collision) {
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);

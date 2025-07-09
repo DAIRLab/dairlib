@@ -707,6 +707,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   } else {
     *delta = SolveProjection(U_, ZW, admm_iteration);
   }
+
   if (verbose) {
     std::cout << "ADMM Iteration: " << admm_iteration << std::endl;
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
@@ -742,6 +743,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   for (auto& cost : costs_) {
     prog_.RemoveCost(cost);
   }
+
   costs_.clear();
 
   for (int i = 0; i < N_ + 1; i++) {
@@ -781,7 +783,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 
+
   MathematicalProgramResult result = osqp_.Solve(prog_);
+
 
   if (result.is_success()) {
     for (int i = 0; i < N_; i++) {

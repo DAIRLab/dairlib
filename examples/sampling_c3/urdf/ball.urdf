@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<!-- Frames all align with the Franka's origin at configuration = 0. -->
+  
+<robot name="ball">
+  <material name="finger_0_material">
+    <color rgba="0.6 0.0 0.0 1.0"/>
+  </material>
+
+  <link name="ball">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.001"/>
+      <inertia
+        ixx="0.000001"
+        iyy="0.000001"
+        izz="0.000001"
+        ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    
+    <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="letter_a.obj"/>
+        </geometry>
+        <material name="black">
+            <color rgba="0 0 0 1"/>
+        </material>
+    </visual>
+
+    <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="letter_a.obj"/>
+        </geometry>
+    </collision>
+  </link>
+</robot>
+

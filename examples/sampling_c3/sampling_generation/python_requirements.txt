@@ -1,0 +1,5 @@
+trimesh
+ruamel.yaml
+lxml
+fast_simplification
+pyglet

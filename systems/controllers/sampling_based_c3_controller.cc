@@ -439,6 +439,7 @@ SamplingC3Controller::SamplingC3Controller(
     num_tri += mesh->num_triangles();
   }
 
+  // Get faces with relatively horizontal normals
   int j = 0;
   faces_.reserve(num_tri);
   face_bins_.reserve(num_tri+1);
@@ -466,18 +467,6 @@ SamplingC3Controller::SamplingC3Controller(
   if (faces_.empty()) {
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 
@@ -607,7 +596,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_);
 
-
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_) {
@@ -676,6 +664,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
+
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
@@ -685,7 +674,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
-#pragma omp critical
+    #pragma omp critical
     {
       c3_objects.at(i) = test_c3_object;
     }

@@ -231,10 +231,34 @@ int DoMain(int argc, char* argv[]) {
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("body"))[3];
 
+
+    drake::geometry::GeometryId corner_0_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[4];
+    drake::geometry::GeometryId corner_1_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[5];
+    drake::geometry::GeometryId corner_2_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[6];
+    drake::geometry::GeometryId corner_3_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[7];
+
+
+
+
     contact_geoms["OBJECT_MESH"] = mesh_geoms;
     contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
     contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
     contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+
+    contact_geoms["CORNER_0"] = corner_0_geoms;
+    contact_geoms["CORNER_1"] = corner_1_geoms;
+    contact_geoms["CORNER_2"] = corner_2_geoms;
+    contact_geoms["CORNER_3"] = corner_3_geoms;
+
+
 
     ee_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH"]));
@@ -245,6 +269,16 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
+
+    // ground_object_contact_pairs.push_back(SortedPair(
+    //         contact_geoms["CORNER_0"], contact_geoms["GROUND"]));
+    // ground_object_contact_pairs.push_back(SortedPair(
+    //         contact_geoms["CORNER_1"], contact_geoms["GROUND"]));
+    // ground_object_contact_pairs.push_back(SortedPair(
+    //         contact_geoms["CORNER_2"], contact_geoms["GROUND"]));
+    // ground_object_contact_pairs.push_back(SortedPair(
+    //         contact_geoms["CORNER_3"], contact_geoms["GROUND"]));
+    
   }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);

@@ -20,7 +20,6 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
             <iyz>0.0</iyz>
         </inertia>
       </inertial>
-
       <visual name="body">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
@@ -80,6 +79,7 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
         </drake:proximity_properties>
         <pose> {CORNER_XYNZ} 0 0 0</pose>
       </collision>
+ 
     </link>
   </model>
 </sdf>
@@ -111,16 +111,33 @@ def get_obj_corners(obj_file):
     c_nxnynz = f"{min_x:.8f} {min_y:.8f} {min_z:.8f}"
     # corner_xynz: max x, mid y, min z
     c_xynz = f"{max_x:.8f} {mid_y:.8f} {min_z:.8f}"
-    return c_nxynz, c_nxnynz, c_xynz
+
+    mid_x = (min_x + max_x) / 2.0
+    c_0 = f"{max_x:.8f} {min_y:.8f} {min_z:.8f}"
+    c_1 = f"{max_x:.8f} {max_y:.8f} {min_z:.8f}"
+    c_2 = f"{min_x:.8f} {mid_y:.8f} {min_z:.8f}"
+    c_3 = f"{mid_x:.8f} {min_y:.8f} {min_z:.8f}"
+    c_4 = f"{mid_x:.8f} {max_y:.8f} {min_z:.8f}"
+    c_5 = f"{mid_x:.8f} {mid_y:.8f} {min_z:.8f}"
+
+    return c_nxynz, c_nxnynz, c_xynz, c_0, c_1, c_2, c_3, c_4, c_5
 
 def make_sdf(obj_filename, output_path=None):
-    c_nxynz, c_nxnynz, c_xynz = get_obj_corners(obj_filename)
+    c_nxynz, c_nxnynz, c_xynz, c_0, c_1, c_2, c_3, c_4, c_5 = get_obj_corners(obj_filename)
+    #c_nxynz, c_nxnynz, c_xynz = get_obj_corners(obj_filename)
+
     obj_basename = os.path.basename(obj_filename)
     sdf_xml = SDF_TEMPLATE.format(
         OBJ=obj_basename,
         CORNER_NXYNZ=c_nxynz,
         CORNER_NXNYNZ=c_nxnynz,
         CORNER_XYNZ=c_xynz,
+        # CORNER_0 = c_0,
+        # CORNER_1 = c_1,
+        # CORNER_2 = c_2,
+        # CORNER_3 = c_3,
+        # CORNER_4 = c_4,
+        #CORNER_5 = c_5,
     )
     if output_path:
         with open(output_path, 'w') as f:
@@ -136,3 +153,121 @@ if __name__ == "__main__":
     obj_file = sys.argv[1]
     out_path = sys.argv[2] if len(sys.argv) > 2 else None
     make_sdf(obj_file, out_path)
+
+
+"""
+  <collision name="corner_0">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_0} 0 0 0</pose>
+      </collision>
+      <collision name="corner_1">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_1} 0 0 0</pose>
+      </collision>
+      <collision name="corner_2">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_2} 0 0 0</pose>
+      </collision>
+      <collision name="corner_3">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_3} 0 0 0</pose>
+      </collision>
+      <collision name="corner_4">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_4} 0 0 0</pose>
+      </collision>
+            <collision name="corner_5">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_5} 0 0 0</pose>
+      </collision>
+      """
+
+
+"""
+     <collision name="corner_0">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_0} 0 0 0</pose>
+      </collision>
+      <collision name="corner_1">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_1} 0 0 0</pose>
+      </collision>
+      <collision name="corner_2">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_2} 0 0 0</pose>
+      </collision>
+      <collision name="corner_3">
+        <geometry>
+          <sphere>
+            <radius>0.001</radius>
+          </sphere>
+        </geometry>
+        <drake:proximity_properties>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+        <pose> {CORNER_3} 0 0 0</pose>
+      </collision>
+      """

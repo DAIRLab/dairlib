@@ -1,20 +1,79 @@
 # -*- mode: python -*-
 # vi: set ft=python :
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "trifinger_urdf",
     data = glob([
         "robot_properties_fingers/urdf/**",
-        "robot_properties_fingers/urdf/pro/**",
-        "robot_properties_fingers/urdf/edu/**",
-        "robot_properties_fingers/meshes/**",
-        "robot_properties_fingers/meshes/pro/**",
-        "robot_properties_fingers/meshes/pro/detailed/**",
-        "robot_properties_fingers/meshes/edu/**",
+        "robot_properties_fingers/urdf/meshes/**",
         "robot_properties_fingers/cube/**",
     ]),
+)
+
+cc_binary(
+    name = "trifinger_simulation",
+    srcs = ["trifinger_simulation.cc"],
+    deps = [
+        "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/parameters:trifinger_sim_params",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_visualizer",
+    srcs = ["trifinger_visualizer.cc"],
+    data = [
+        ":trifinger_urdf",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/parameters:trifinger_sim_params",
+        "//examples/trifinger/systems:lcm_visualization_systems",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_osc_controller",
+    srcs = ["trifinger_osc_controller.cc"],
+    data = [
+        ":trifinger_urdf",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/parameters:trifinger_osc_controller_params",
+        "//examples/trifinger/systems:fingertips_target_position_receiver",
+        "//examples/trifinger/systems:fingertips_target_traj_demultiplexer",
+        "//examples/trifinger/systems:trifinger_joint_friction_compensation",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 py_binary(
@@ -46,3 +105,31 @@ py_binary(
         "@drake//bindings/pydrake",
     ],
 )
+
+py_binary(
+    name = "start_logging",
+    srcs = ["start_logging.py"],
+)
+
+#cc_binary(
+#    name = "run_impedance_controller",
+#    srcs = ["run_impedance_controller.cc"],
+#    data = [
+#        ":trifinger_urdf",
+#    ],
+#    deps = [
+#        "//common:eigen_utils",
+#        "//common:find_resource",
+#        "//examples/trifinger/parameters:trifinger_impedance_controller_params",
+#        "//examples/trifinger/parameters:trifinger_lcm_channels",
+#        "//examples/trifinger/systems:fingertips_target_position_receiver",
+#        "//examples/trifinger/systems:trifinger_impedance_control",
+#        "//multibody:utils",
+#        "//systems:robot_lcm_systems",
+#        "//systems:system_utils",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/primitives",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)

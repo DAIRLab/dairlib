@@ -146,6 +146,12 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "process_lcm_log",
+    srcs = ["process_lcm_log.py"],
+    deps = ["@lcm//:lcm-python"],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -168,6 +174,7 @@ PY_LIBRARIES = [
     ":spring_compensation",
     ":osc_debug_py",
     ":cassie_plot_config",
+    ":process_lcm_log"
 ]
 
 # Package roll-up (for Bazel dependencies).

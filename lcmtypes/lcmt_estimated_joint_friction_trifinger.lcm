@@ -1,0 +1,8 @@
+package dairlib;
+
+struct lcmt_estimated_joint_friction_trifinger
+{
+  int64_t utime;
+  int32_t num_efforts;
+  double estimatedFrictionTorque[num_efforts];
+}

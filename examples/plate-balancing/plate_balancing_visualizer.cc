@@ -28,8 +28,9 @@
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "systems/lcmt_systems/object_state_systems.h"
+#include "systems/lcmt_systems/robot_output_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
@@ -142,11 +143,14 @@ int do_main(int argc, char* argv[]) {
 
   // Convert LCM messages to MultibodyPlant state vectors.
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant, franka_index);
+      builder.AddSystem<systems::lcmt_systems::RobotOutputConsumer>(
+          plant, franka_index);
   auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant, tray_index);
+      builder.AddSystem<systems::lcmt_systems::ObjectStateConsumer>(plant,
+                                                                    tray_index);
   auto object_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant, object_index);
+      builder.AddSystem<systems::lcmt_systems::ObjectStateConsumer>(
+          plant, object_index);
 
   // Extract relevant state vectors for visualization.
   auto franka_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(

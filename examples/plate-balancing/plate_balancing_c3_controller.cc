@@ -25,9 +25,10 @@
 #include "examples/plate-balancing/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/lcmt_generators/robot_state_generator.h"
+#include "systems/lcmt_systems/object_state_systems.h"
+#include "systems/lcmt_systems/robot_output_systems.h"
+#include "systems/lcmt_systems/robot_state_generator.h"
 #include "systems/primitives/radio_parser.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
 // Command-line flags for configuration
@@ -69,10 +70,10 @@ namespace dairlib {
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using systems::LcmDrivenLoop;
-using systems::ObjectStateReceiver;
 using systems::RadioToVector;
-using systems::RobotOutputReceiver;
-using systems::lcmt_generators::RobotStateGenerator;
+using systems::lcmt_systems::ObjectStateConsumer;
+using systems::lcmt_systems::RobotOutputConsumer;
+using systems::lcmt_systems::RobotStateGenerator;
 
 namespace examples {
 namespace plate_balancing {
@@ -274,8 +275,8 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm));
   auto franka_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant_franka);
-  auto tray_state_receiver = builder.AddSystem<ObjectStateReceiver>(plant_tray);
+      builder.AddSystem<RobotOutputConsumer>(plant_franka);
+  auto tray_state_receiver = builder.AddSystem<ObjectStateConsumer>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),

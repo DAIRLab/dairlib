@@ -1,4 +1,4 @@
-#include "systems/lcmt_generators/robot_state_generator.h"
+#include "systems/lcmt_systems/robot_state_generator.h"
 
 #include "systems/framework/timestamped_vector.h"
 
@@ -10,12 +10,15 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 namespace dairlib {
 namespace systems {
-namespace lcmt_generators {
+namespace lcmt_systems {
 
+// RobotStateGenerator constructor.
+// Initializes input/output ports and sets up the lcmt_robot_state message.
 RobotStateGenerator::RobotStateGenerator(std::vector<std::string> state_names,
                                          bool is_timestamped_robot_state)
     : n_x_(state_names.size()),
       is_timestamped_robot_state_(is_timestamped_robot_state) {
+  // Declare input port for robot state (timestamped or not).
   if (is_timestamped_robot_state_)
     robot_state_input_ = this->DeclareVectorInputPort(
                                  "robot_state", TimestampedVector<double>(n_x_))
@@ -25,28 +28,34 @@ RobotStateGenerator::RobotStateGenerator(std::vector<std::string> state_names,
         this->DeclareVectorInputPort("robot_state", BasicVector<double>(n_x_))
             .get_index();
 
+  // Initialize lcmt_robot_state message.
   drake::lcmt_robot_state robot_state = drake::lcmt_robot_state();
   robot_state.num_joints = n_x_;
   robot_state.utime = 0;
   robot_state.joint_position = std::vector<float>(n_x_);
   robot_state.joint_name = state_names;
 
+  // Declare output port for lcmt_robot_state message.
   lcmt_robot_state_output_ =
       this->DeclareAbstractOutputPort("lcmt_robot_state", robot_state,
                                       &RobotStateGenerator::GenerateRobotState)
           .get_index();
 }
 
+// Populates the lcmt_robot_state message from the input port.
 void RobotStateGenerator::GenerateRobotState(
     const drake::systems::Context<double>& context,
     drake::lcmt_robot_state* output) const {
   const auto target_state = this->EvalVectorInput(context, robot_state_input_);
+  // Check input size depending on whether timestamped or not.
   if (dynamic_cast<const TimestampedVector<double>*>(target_state) != nullptr) {
     DRAKE_DEMAND(target_state->size() == n_x_ + 1);
   } else {
     DRAKE_DEMAND(target_state->size() == n_x_);
   }
+  // Set timestamp (in microseconds).
   output->utime = context.get_time() * 1e6;
+  // Copy joint positions.
   for (int i = 0; i < n_x_; ++i) {
     output->joint_position[i] = static_cast<float>(target_state->GetAtIndex(i));
   }
@@ -75,6 +84,6 @@ LcmPublisherSystem* RobotStateGenerator::AddLcmPublisherToBuilder(
   return lcm_state_publisher;
 }
 
-}  // namespace lcmt_generators
+}  // namespace lcmt_systems
 }  // namespace systems
 }  // namespace dairlib

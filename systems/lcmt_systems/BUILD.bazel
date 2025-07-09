@@ -1,0 +1,90 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "lcmt_systems",
+    srcs = [],
+    deps = [
+        ":common",
+        ":robot_state_generator",
+        ":robot_output_systems",
+        ":object_state_systems",
+        ":robot_input_systems",
+    ],
+)
+
+cc_library(
+    name = "common",
+    srcs = [
+        "common.cc",
+    ],
+    hdrs = [
+        "common.h",
+    ],
+    deps = [
+        "//systems/primitives",
+        ":robot_input_systems",
+        ":robot_output_systems",
+    ]
+)
+
+cc_library(
+    name = "robot_state_generator",
+    srcs = [
+        "robot_state_generator.cc",
+    ],
+    hdrs = [
+        "robot_state_generator.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "robot_output_systems",
+    srcs = [
+        "robot_output_systems.cc",
+    ],
+    hdrs = [
+        "robot_output_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "object_state_systems",
+    srcs = [
+        "object_state_systems.cc",
+    ],
+    hdrs = [
+        "object_state_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "robot_input_systems",
+    srcs = [
+        "robot_input_systems.cc",
+    ],
+    hdrs = [
+        "robot_input_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

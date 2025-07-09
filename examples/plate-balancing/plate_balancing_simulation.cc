@@ -27,8 +27,9 @@
 #include "examples/plate-balancing/parameters/simulation_scene_config.h"
 #include "examples/plate-balancing/systems/external_force_generator.h"
 #include "multibody/multibody_utils.h"
+#include "systems/lcmt_systems/common.h"
+#include "systems/lcmt_systems/object_state_systems.h"
 #include "systems/primitives/radio_parser.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
 using drake::geometry::GeometrySet;
@@ -51,10 +52,10 @@ namespace dairlib {
 
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
-using systems::AddActuationRecieverAndStateSenderLcm;
-using systems::ObjectStateSender;
 using systems::RadioToVector;
 using systems::SubvectorPassThrough;
+using systems::lcmt_systems::AddActuationRecieverAndStateSenderLcm;
+using systems::lcmt_systems::ObjectStateGenerator;
 
 namespace examples {
 namespace plate_balancing {
@@ -169,7 +170,7 @@ int DoMain(int argc, char* argv[]) {
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
 
   // Add tray state sender and publisher.
-  auto tray_state_sender = builder.AddSystem<ObjectStateSender>(
+  auto tray_state_sender = builder.AddSystem<ObjectStateGenerator>(
       plant, sim_params.publish_object_velocities, tray_index);
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
@@ -177,7 +178,7 @@ int DoMain(int argc, char* argv[]) {
           1.0 / sim_params.tray_publish_rate));
 
   // Add object state sender and publisher.
-  auto object_state_sender = builder.AddSystem<ObjectStateSender>(
+  auto object_state_sender = builder.AddSystem<ObjectStateGenerator>(
       plant, sim_params.publish_object_velocities, object_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(

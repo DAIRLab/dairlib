@@ -19,8 +19,9 @@
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/lcmt_systems/robot_input_systems.h"
+#include "systems/lcmt_systems/robot_output_systems.h"
 #include "systems/primitives/radio_parser.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
@@ -58,14 +59,14 @@ using systems::GravityCompensationRemover;
 using systems::LcmC3TrajectoryReceiver;
 using systems::LcmDrivenLoop;
 using systems::RadioToVector;
-using systems::RobotCommandSender;
-using systems::RobotOutputReceiver;
 using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::OperationalSpaceControl;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::lcmt_systems::RobotInputGenerator;
+using systems::lcmt_systems::RobotOutputConsumer;
 
 namespace examples {
 namespace plate_balancing {
@@ -131,7 +132,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   // Add LCM systems for state, command, and trajectory communication
-  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
+  auto state_receiver = builder.AddSystem<RobotOutputConsumer>(plant);
   auto end_effector_trajectory_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_c3_trajectory>(
           lcm_channel_params.c3_actor_channel, &lcm));
@@ -151,8 +152,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.osc_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto franka_command_sender = builder.AddSystem<RobotCommandSender>(plant);
-  auto osc_command_sender = builder.AddSystem<RobotCommandSender>(plant);
+  auto franka_command_sender = builder.AddSystem<RobotInputGenerator>(plant);
+  auto osc_command_sender = builder.AddSystem<RobotInputGenerator>(plant);
 
   // Trajectory generators for end effector position, orientation, and force
   auto end_effector_trajectory =

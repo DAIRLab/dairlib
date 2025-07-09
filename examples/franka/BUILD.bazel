@@ -278,6 +278,7 @@ cc_library(
     ],
     data = glob([
         "parameters/*.yaml",
+        "parameters/**/*.yaml",
     ]),
     deps = [
         "@drake//:drake_shared_library",

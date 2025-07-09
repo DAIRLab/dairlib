@@ -170,3 +170,8 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+filegroup(
+    name = "solver_params",
+    srcs = glob(["*.yaml"]),
+)

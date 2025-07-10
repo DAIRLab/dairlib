@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import re
+import trimesh
 from ruamel.yaml import YAML
 
 yaml_io = YAML()
@@ -19,6 +20,20 @@ def run_command(cmd, description):
         print(f"Failed: {description}")
         print(e.stderr)
         sys.exit(1)
+
+def coarsify_obj(path): # Returns path of object, if it coarsified it
+    mesh = trimesh.load(path)  
+    num_faces = len(mesh.faces)
+    if (num_faces > 5000):
+        ratio = 1 - (5000 / num_faces)
+        simplified = mesh.simplify_quadric_decimation(ratio)
+        base, ext = os.path.splitext(path)
+        new_path = base + "_coarse" + ext
+        simplified.export(new_path)
+        return new_path, True
+        #return path, False
+    else:
+        return path, False
 
 def load_yaml(path):
     with open(path, 'r') as f:
@@ -42,6 +57,7 @@ def parse_max_z(stdout):
     else:
         raise ValueError("Could not find 'z =' line in obj_max_z_plane output.")
 
+
 if __name__ == "__main__":
     config_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
     config = load_yaml(config_path)
@@ -52,25 +68,29 @@ if __name__ == "__main__":
 
     obj_dir = "examples/sampling_c3/urdf"
     obj_file = os.path.join(obj_dir, f"{base_name}.obj")
+    coarse_path, is_coarse = coarsify_obj(obj_file)
+
+    coarse = "_coarse" if is_coarse else ""
+
     convex_name = f"{base_name}_convex"
-    controller_sdf_path = os.path.join(output_dir, f"{base_name}_controller.sdf")
-    combined_sdf_path = os.path.join(output_dir, f"{base_name}.sdf")
+    controller_sdf_path = os.path.join(output_dir, f"{base_name}{coarse}_controller.sdf")
+    combined_sdf_path = os.path.join(output_dir, f"{base_name}{coarse}.sdf")
 
     # Create sim/visualizer sdf
     run_command(
-        ["python", "examples/sampling_c3/sampling_generation/obj_to_drake_sdf.py", obj_file, output_dir],
+        ["python", "examples/sampling_c3/sampling_generation/obj_to_drake_sdf.py", coarse_path, output_dir],
         "OBJ to Drake SDF"
     )
 
     # Create controller sdf
     run_command(
-        ["python", "examples/sampling_c3/sampling_generation/controller_sdf_generation.py", obj_file, controller_sdf_path],
+        ["python", "examples/sampling_c3/sampling_generation/controller_sdf_generation.py", coarse_path, controller_sdf_path],
         "Controller SDF generation"
     )
 
     # Get min z-height of object
     min_z_output = run_command(
-        ["python", "examples/sampling_c3/sampling_generation/obj_min_z_plane.py", obj_file],
+        ["python", "examples/sampling_c3/sampling_generation/obj_min_z_plane.py", coarse_path],
         "Extracting min z-height"
     )
     min_z_height = parse_min_z(min_z_output)
@@ -78,7 +98,7 @@ if __name__ == "__main__":
 
     # Get max z-height of object
     max_z_output = run_command(
-        ["python", "examples/sampling_c3/sampling_generation/obj_max_z_plane.py", obj_file],
+        ["python", "examples/sampling_c3/sampling_generation/obj_max_z_plane.py", coarse_path],
         "Extracting max z-height"
     )
     max_z_height = parse_max_z(max_z_output)
@@ -118,7 +138,7 @@ if __name__ == "__main__":
     # Set sample z-height to middle of object z range
     sampling_yaml_path = "examples/sampling_c3/anything/parameters/sampling_params.yaml"
     sampling_yaml = load_yaml(sampling_yaml_path)
-    sampling_yaml["z_height"] = float(-0.029 + (max_z_height-min_z_height)/2)
+    sampling_yaml["z_height"] = float(-0.029 + (max_z_height-min_z_height)/2 +0.01)
     if "z_height" in sampling_yaml and isinstance(sampling_yaml["z_height"], list):
         sampling_yaml["z_height"][-1] = float(-0.029-min_z_height)
     save_yaml(sampling_yaml_path, sampling_yaml)

@@ -64,14 +64,15 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
 std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
-    vector<const std::string> object_models) {
+    std::vector<std::string> object_models) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 
   std::vector<drake::multibody::ModelInstanceIndex> models;
-  for (int i = 0; i < object_model.size(); i++) {
-      object_index = parser.AddModels(FindResourceOrThrow(object_models[i]))[0]
-      models.push_back(object_index);
+  for (const auto& model : object_models) {
+      models.push_back(
+        parser.AddModels(FindResourceOrThrow(model))[0]
+      );
   } 
   return models;
 }

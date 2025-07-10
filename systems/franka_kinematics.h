@@ -9,30 +9,61 @@
 #include "systems/framework/timestamped_vector.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/state_vector.h"
+#include "multibody/multibody_utils.h"
+
+using drake::multibody::MultibodyPlant;
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using Eigen::VectorXd;
+using drake::multibody::ModelInstanceIndex;
+using drake::systems::InputPort;
+using drake::systems::OutputPort; 
+using drake::systems::InputPortIndex;
+using drake::systems::OutputPortIndex; 
 
 namespace dairlib {
+
+using systems::OutputVector;
+using systems::StateVector;
+using systems::TimestampedVector;
+
 namespace systems {
 
 /// Outputs a lcmt_timestamped_saved_traj
 class FrankaKinematics : public drake::systems::LeafSystem<double> {
  public:
-  explicit FrankaKinematics(const drake::multibody::MultibodyPlant<double>& franka_plant,
-                            drake::systems::Context<double>* franka_context,
-                            const drake::multibody::MultibodyPlant<double>& object_plant,
-                            drake::systems::Context<double>* object_context,
+  explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
+                                Context<double>* franka_context,
+                                const MultibodyPlant<double>& object_plant,
+                                Context<double>* object_context,
+                                const std::string& end_effector_name,
+                                const std::string& object_name,
+                                bool include_end_effector_orientation);
+
+  explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
+                            Context<double>* franka_context,
+                            const MultibodyPlant<double>& object_plant,
+                            Context<double>* object_context,
                             const std::string& end_effector_name,
                             const std::string& object_name,
-                            bool include_end_effector_orientation);
+                            bool include_end_effector_orientation,
+                            std::vector<ModelInstanceIndex> object_indices);
 
-  const drake::systems::InputPort<double>& get_input_port_object_state() const {
-    return this->get_input_port(object_state_port_);
+ 
+  std::vector<const drake::systems::InputPort<double>*> get_input_port_object_state() const {
+      std::vector<const InputPort<double>*> output;
+      for (InputPortIndex port : object_state_ports_) {
+        output.push_back(
+          &this->get_input_port(port)
+        );
+      } 
+      return output;
   }
-
-  const drake::systems::InputPort<double>& get_input_port_franka_state() const {
+  const InputPort<double>& get_input_port_franka_state() const {
     return this->get_input_port(franka_state_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_lcs_state() const {
+  const OutputPort<double>& get_output_port_lcs_state() const {
     return this->get_output_port(lcs_state_port_);
   }
 
@@ -41,19 +72,22 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       FrankaKinematicsVector<double>* output_traj) const;
 
-  drake::systems::InputPortIndex franka_state_port_;
-  drake::systems::InputPortIndex object_state_port_;
-  drake::systems::OutputPortIndex lcs_state_port_;
+  InputPortIndex franka_state_port_;
+  InputPortIndex object_state_port_;
+  std::vector<InputPortIndex> object_state_ports_;
+  OutputPortIndex lcs_state_port_;
 
   int num_end_effector_positions_;
   int num_object_positions_;
   int num_end_effector_velocities_;
   int num_object_velocities_;
+  std::vector<ModelInstanceIndex> object_indices_;
+  int num_objects_;
 
-  const drake::multibody::MultibodyPlant<double>& franka_plant_;
-  drake::systems::Context<double>* franka_context_;
-  const drake::multibody::MultibodyPlant<double>& object_plant_;
-  drake::systems::Context<double>* object_context_;
+  const MultibodyPlant<double>& franka_plant_;
+  Context<double>* franka_context_;
+  const MultibodyPlant<double>& object_plant_;
+  Context<double>* object_context_;
   const drake::multibody::Frame<double>& world_;
   std::string end_effector_name_;
   std::string object_name_;

@@ -113,28 +113,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto context = plant_lcs.CreateDefaultContext();
   Eigen::VectorXd x_pos = plant_lcs.GetPositionsAndVelocities(*context);
-  std::vector<std::string> state_names;
-    int nq = plant.num_positions();
-    int nv = plant.num_velocities();  
-    state_names.reserve(nq + nv);
-    for (auto model_instance : plant_lcs.GetModelInstanceIndices()) {
-        // For each joint in the model
-        for (const auto& joint : plant_lcs.GetJoints()) {
-            if (plant_lcs.model_instance() != model_instance) continue;
-
-            // Position variables
-            for (int j = 0; j < joint.num_positions(); ++j) {
-                std::string name = joint.name() + "_q" + std::to_string(j);
-                state_names.push_back(name);
-            }
-
-            // Velocity variables
-            for (int j = 0; j < joint.num_velocities(); ++j) {
-                std::string name = joint.name() + "_v" + std::to_string(j);
-                state_names.push_back(name);
-            }
-        }
-    }
+    
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;

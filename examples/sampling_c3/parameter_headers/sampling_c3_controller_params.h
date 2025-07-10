@@ -27,12 +27,16 @@ struct SamplingC3ControllerParams {
   std::string lcm_channels_simulation_file;
 
   std::string object_model;
+  std::vector<std::string> object_models;
   std::string object_body_name;
   std::string base_name;
+  std::vector<std::string> base_names;
 
   double workspace_margin;
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
+
+  int num_objects;
 
   /// Store sub-parameter classes internally.
   SamplingC3Options sampling_c3_options;
@@ -73,5 +77,7 @@ struct SamplingC3ControllerParams {
       sampling_params_file);
     goal_params = drake::yaml::LoadYamlFile<SamplingC3GoalParams>(
       goal_params_file);
+
+    num_objects = object_models.size();
   }
 };

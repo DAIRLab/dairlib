@@ -1,0 +1,224 @@
+<?xml version="1.0" ?>
+<robot name="trifingeredu_simplified">
+<material name="fingeredu_0_material">
+    <color rgba="0.6 0.0 0.0 1.0"/>
+</material>
+<material name="fingeredu_120_material">
+   <color rgba="0.0 0.6 0.0 1.0"/>
+</material>
+<material name="fingeredu_240_material">
+   <color rgba="0.0 0.0 0.6 1.0"/>
+</material>
+<link name="base_link" />
+<link name="finger_tip_link_0">
+    <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.0095"/>
+        </geometry>
+        <material name="fingeredu_0_material"/>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
+    </inertial>
+    <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.0095"/>
+        </geometry>
+        <drake:proximity_properties>
+            <drake:mu_static value="0.5"/>
+            <drake:mu_dynamic value="0.5"/>
+        </drake:proximity_properties>
+    </collision>
+</link>
+
+<link name="finger_tip_link_120">
+    <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.01"/>
+        </geometry>
+        <material name="fingeredu_120_material"/>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
+    </inertial>
+    <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.0095"/>
+        </geometry>
+        <drake:proximity_properties>
+            <drake:mu_static value="0.5"/>
+            <drake:mu_dynamic value="0.5"/>
+        </drake:proximity_properties>
+    </collision>
+</link>
+
+<link name="finger_tip_link_240">
+    <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.0095"/>
+        </geometry>
+        <material name="fingeredu_240_material"/>
+    </visual>
+    <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
+    </inertial>
+    <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.0095"/>
+        </geometry>
+        <drake:proximity_properties>
+            <drake:mu_static value="0.5"/>
+            <drake:mu_dynamic value="0.5"/>
+        </drake:proximity_properties>
+    </collision>
+</link>
+
+<link name="finger_tip_0_fake_x">
+</link>
+<link name="finger_tip_0_fake_y">
+</link>
+
+<link name="finger_tip_120_fake_x">
+</link>
+<link name="finger_tip_120_fake_y">
+</link>
+<link name="finger_tip_240_fake_x">
+</link>
+<link name="finger_tip_240_fake_y">
+</link>
+
+<joint name="finger_tip_0_to_base_x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="finger_tip_0_fake_x"/>
+    <axis xyz="1 0 0"/>
+   <limit lower="-0.06" upper="0.02"/>
+</joint>
+<joint name="finger_tip_0_to_base_y" type="prismatic">
+    <parent link="finger_tip_0_fake_x"/>
+    <child link="finger_tip_0_fake_y"/>
+    <axis xyz="0 1 0"/>
+   <limit lower="0.01" upper="0.09"/>
+</joint>
+<joint name="finger_tip_0_to_base_z" type="prismatic">
+    <parent link="finger_tip_0_fake_y"/>
+    <child link="finger_tip_link_0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.028" upper="0.033"/>
+</joint>
+<joint name="finger_tip_120_to_base_x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="finger_tip_120_fake_x"/>
+    <axis xyz="1 0 0"/>
+   <limit lower="-0.06" upper="0.02"/>
+</joint>
+<joint name="finger_tip_120_to_base_y" type="prismatic">
+    <parent link="finger_tip_120_fake_x"/>
+    <child link="finger_tip_120_fake_y"/>
+    <axis xyz="0 1 0"/>
+   <limit lower="-0.09" upper="0.01"/>
+</joint>
+<joint name="finger_tip_120_to_base_z" type="prismatic">
+    <parent link="finger_tip_120_fake_y"/>
+    <child link="finger_tip_link_120"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.028" upper="0.033"/>
+</joint>
+
+<joint name="finger_tip_240_to_base_x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="finger_tip_240_fake_x"/>
+    <axis xyz="1 0 0"/>
+   <limit lower="0.01" upper="0.09"/>
+</joint>
+<joint name="finger_tip_240_to_base_y" type="prismatic">
+    <parent link="finger_tip_240_fake_x"/>
+    <child link="finger_tip_240_fake_y"/>
+    <axis xyz="0 1 0"/>
+   <limit lower="-0.04" upper="0.04"/>
+</joint>
+<joint name="finger_tip_240_to_base_z" type="prismatic">
+    <parent link="finger_tip_240_fake_y"/>
+    <child link="finger_tip_link_240"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.028" upper="0.033"/>
+</joint>
+
+<transmission name="finger_tip_0_to_base_trans_x" type="SimpleTransmission">
+    <actuator name="finger_tip_0_to_base_act_x"/>
+    <joint name="finger_tip_0_to_base_x"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_0_to_base_trans_y" type="SimpleTransmission">
+    <actuator name="finger_tip_0_to_base_act_y"/>
+    <joint name="finger_tip_0_to_base_y"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_0_to_base_trans_z" type="SimpleTransmission">
+    <actuator name="finger_tip_0_to_base_act_z"/>
+    <joint name="finger_tip_0_to_base_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_120_to_base_trans_x" type="SimpleTransmission">
+    <actuator name="finger_tip_120_to_base_act_x"/>
+    <joint name="finger_tip_120_to_base_x"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_120_to_base_trans_y" type="SimpleTransmission">
+    <actuator name="finger_tip_120_to_base_act_y"/>
+    <joint name="finger_tip_120_to_base_y"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_120_to_base_trans_z" type="SimpleTransmission">
+    <actuator name="finger_tip_120_to_base_act_z"/>
+    <joint name="finger_tip_120_to_base_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_240_to_base_trans_x" type="SimpleTransmission">
+    <actuator name="finger_tip_240_to_base_act_x"/>
+    <joint name="finger_tip_240_to_base_x"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_240_to_base_trans_y" type="SimpleTransmission">
+    <actuator name="finger_tip_240_to_base_act_y"/>
+    <joint name="finger_tip_240_to_base_y"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<transmission name="finger_tip_240_to_base_trans_z" type="SimpleTransmission">
+    <actuator name="finger_tip_240_to_base_act_z"/>
+    <joint name="finger_tip_240_to_base_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+</transmission>
+
+<drake:collision_filter_group name="finger_tip_0_group">
+    <drake:member link="finger_tip_link_0"/>
+    <drake:ignored_collision_filter_group name="finger_tip_0_group"/>
+</drake:collision_filter_group>
+<drake:collision_filter_group name="finger_tip_120_group">
+        <drake:member link="finger_tip_link_120"/>
+        <drake:ignored_collision_filter_group name="finger_tip_120_group"/>
+</drake:collision_filter_group>
+<drake:collision_filter_group name="finger_tip_240_group">
+    <drake:member link="finger_tip_link_240"/>
+    <drake:ignored_collision_filter_group name="finger_tip_240_group"/>
+</drake:collision_filter_group>
+</robot>

@@ -65,3 +65,27 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "trifinger_kinematics_vector",
+    srcs = ["trifinger_kinematics_vector.cc"],
+    hdrs = ["trifinger_kinematics_vector.h"],
+    deps = [
+        "//systems:franka_kinematics_vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "trifinger_kinematics",
+    srcs = ["trifinger_kinematics.cc"],
+    hdrs = ["trifinger_kinematics.h"],
+    deps = [
+        ":trifinger_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

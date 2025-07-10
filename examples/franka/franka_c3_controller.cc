@@ -35,6 +35,7 @@ using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -311,13 +312,14 @@ int DoMain(int argc, char* argv[]) {
   //                  lcs_factory->get_input_port_lcs_input());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_c3_controller"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
   //  DrawAndSaveDiagramGraph(*plant_diagram);
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), franka_state_receiver,
+      &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(

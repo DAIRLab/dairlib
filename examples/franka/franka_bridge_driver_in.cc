@@ -24,6 +24,7 @@
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -86,10 +87,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*franka_command_translator, *franka_command_pub);
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_bridge_driver_in"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("franka_bridge_driver_in"));
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
-      &lcm, std::move(owned_diagram), franka_command_translator,
+      &lcm, shared_diagram, franka_command_translator,
       lcm_channel_params.franka_input_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();

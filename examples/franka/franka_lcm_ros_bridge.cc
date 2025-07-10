@@ -33,6 +33,7 @@
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -103,8 +104,8 @@ int DoMain(int argc, char* argv[]) {
                   robot_input_ros_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_lcm_ros_bridge"));
-  const auto& diagram = *owned_diagram;
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("franka_lcm_ros_bridge"));
 
   // figure out what the arguments to this mean
   ros::AsyncSpinner spinner(1);
@@ -112,7 +113,7 @@ int DoMain(int argc, char* argv[]) {
   signal(SIGINT, SigintHandler);
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
-      &drake_lcm, std::move(owned_diagram), robot_input_receiver,
+      &drake_lcm, shared_diagram, robot_input_receiver,
       lcm_channel_params.franka_input_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();

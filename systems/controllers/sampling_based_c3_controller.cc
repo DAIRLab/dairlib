@@ -1090,10 +1090,13 @@ void SamplingC3Controller::UpdateCostMatrices(
 
     Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
       quat_desired * quat_desired.transpose();
-    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows() ==
-                 Q_quaternion_dependent_cost.cols() ==
-                 Q_quaternion_dependent_regularizer_part_2.rows() ==
-                 Q_quaternion_dependent_regularizer_part_2.cols() == 4);
+    DRAKE_DEMAND((Q_quaternion_dependent_cost.rows() ==
+                  Q_quaternion_dependent_cost.cols()) &&
+                 (Q_quaternion_dependent_cost.rows() ==
+                  Q_quaternion_dependent_regularizer_part_2.rows()) &&
+                 (Q_quaternion_dependent_cost.rows() ==
+                  Q_quaternion_dependent_regularizer_part_2.cols()) &&
+                 (Q_quaternion_dependent_cost.rows() == 4));
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; ++i) {
       Q_[i].block(3, 3, 4, 4) =
@@ -1370,7 +1373,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   int buffer_count = retained_count;
   for (int i = retained_count;
        i < retained_count + all_sample_locations_.size(); i++) {
-    DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
+    DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);
     if ((i == retained_count) || (!is_doing_c3_ && i == retained_count + 1)) {
       // Skip the current location.
       // Skip the repositioning target if in repositioning mode.
@@ -1399,9 +1402,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   sample_buffer_.row(num_in_buffer_ - 1) = lowest_cost_sample;
   sample_costs_buffer_[num_in_buffer_ - 1] = lowest_buffer_cost;
 
-  DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
-  DRAKE_ASSERT(sample_buffer_.rows() == n_q_);
-  DRAKE_ASSERT(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_buffer_.rows() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_buffer_.cols() == n_q_);
+  DRAKE_DEMAND(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
 }
 
 // If eligible, augment the current control loop's considered samples with the

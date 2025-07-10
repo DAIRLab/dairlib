@@ -13,7 +13,7 @@ franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.
 lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
-object_model: examples/sampling_c3/urdf/letter_a_controller.sdf #TODO @bibit what do we want here?
+object_model: examples/sampling_c3/urdf/letter_a_controller.sdf
 object_body_name: body
 base_name: letter_a
 

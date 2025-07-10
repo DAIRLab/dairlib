@@ -60,7 +60,23 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
   parser.SetAutoRenaming(true);
   return parser.AddModels(FindResourceOrThrow(object_model))[0];
 }
-void AddLCSModelsToPlant(
+
+std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    vector<const std::string> object_models) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+
+  std::vector<drake::multibody::ModelInstanceIndex> models;
+  for (int i = 0; i < object_model.size(); i++) {
+      object_index = parser.AddModels(FindResourceOrThrow(object_models[i]))[0]
+      models.push_back(object_index);
+  } 
+  return models;
+}
+
+void AddLCSModelToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
     const std::string& object_model,

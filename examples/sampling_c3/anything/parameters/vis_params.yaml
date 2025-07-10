@@ -1,5 +1,8 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/lollipop.sdf
+object_vis_models: [examples/sampling_c3/urdf/lollipop.sdf,
+                    examples/sampling_c3/urdf/nut.sdf]
+
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]

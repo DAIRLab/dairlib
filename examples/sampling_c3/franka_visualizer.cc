@@ -100,7 +100,7 @@ int do_main(int argc, char* argv[]) {
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
-  ModelInstanceIndex object_index = AddObjectToPlant(
+  std::vector<ModelInstanceIndex> object_indices = AddObjectToPlant(
     &plant, &scene_graph, vis_params.object_vis_model);
   plant.Finalize();
 
@@ -120,20 +120,36 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
-  auto object_state_receiver =
-      builder.AddSystem<ObjectStateReceiver>(plant, object_index);
+	
+  std::vector<ObjectStateReceiver*> object_state_receivers;
+  for (int obj_index : object_indices) {  // vector<int> of object indices
+      object_state_receivers.push_back(builder.AddSystem<ObjectStateReceiver>(plant, obj_index));
+  }
+
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(),
       franka_state_receiver->get_output_port(0).size() - 1, 1);
-  auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      object_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(object_index));
 
-  std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(object_index)};
+	std::vector<SubvectorPassThrough*> tray_passthroughs;
+  for (int i = 0; i < object_state_recievers.size(); i++) {  
+      tray_passthroughs.push_back(
+				builder.AddSystem<SubvectorPassThrough>(
+						object_state_receivers[i]->get_output_port(0).size(), 0,
+						plant.num_positions(object_indices[i]))
+				);
+  }
+
+  std::vector<int> input_sizes = {plant.num_positions(franka_index)};
+
+ for (int obj_index : object_indices) {
+		input_sizes.push_back(
+			plant.num_positions(obj_index)
+		);
+ }
+	
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =

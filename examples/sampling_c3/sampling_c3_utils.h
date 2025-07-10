@@ -53,7 +53,12 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const std::string& object_model = "");
 
-void AddLCSModelsToPlant(
+std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    vector<const std::string> object_models = {});
+
+void AddLCSModelToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const std::string& object_model = "",

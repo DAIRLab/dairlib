@@ -408,7 +408,7 @@ SamplingC3Controller::SamplingC3Controller(
               << std::endl;
   }
 
-  // Get paths of convex parts
+  // Get paths of convex meshes in SceneGraph.
   std::vector<std::string> mesh_paths;
   const auto& query_port = plant_.get_geometry_query_input_port();
   const auto& query_object =
@@ -430,6 +430,7 @@ SamplingC3Controller::SamplingC3Controller(
     throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
   }
 
+  // Load triangle meshes and count total triangles.
   int num_tri = 0;
   std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
   for (const std::string& mesh_path : mesh_paths) {
@@ -439,10 +440,13 @@ SamplingC3Controller::SamplingC3Controller(
     num_tri += mesh->num_triangles();
   }
 
+  //Initialize face storage and reserve estimated size.
   int j = 0;
   faces_.reserve(num_tri);
   face_bins_.reserve(num_tri+1);
   face_bins_.push_back(0.0);
+
+  // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
   for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
     const auto& vertices = mesh->vertices();
     int num_tri = mesh->num_triangles();
@@ -466,18 +470,6 @@ SamplingC3Controller::SamplingC3Controller(
   if (faces_.empty()) {
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 
@@ -1134,13 +1126,11 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
   std::vector<solvers::LCS> lcs_candidates;
   std::vector<solvers::LCS> lcs_candidates_for_cost;
 
-
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states[i]);
-
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
@@ -1160,7 +1150,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to_for_cost,
       sampling_c3_options_.num_friction_directions, verbose_);
-
 
     solvers::LCS lcs_object_sample_for_cost_simulation =
       solvers::LCSFactory::LinearizePlantToLCS(

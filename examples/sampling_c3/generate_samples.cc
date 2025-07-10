@@ -55,7 +55,6 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
     query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
-  const auto& inspector = query_object.inspector();
 
   // Split function calls based on sampling strategy.
   SamplingStrategy strategy = sampling_params.sampling_strategy;

@@ -63,10 +63,10 @@ if __name__ == "__main__":
     config = load_yaml(config_path)
 
     base_name = config["base_name"]
-    output_dir = "examples/sampling_c3/urdf"
+    output_dir = "examples/sampling_c3/urdf/anything"
     os.makedirs(output_dir, exist_ok=True)
 
-    obj_dir = "examples/sampling_c3/urdf"
+    obj_dir = "examples/sampling_c3/urdf/anything"
     obj_file = os.path.join(obj_dir, f"{base_name}.obj")
     coarse_path, is_coarse = coarsify_obj(obj_file)
 

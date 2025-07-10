@@ -1,0 +1,7 @@
+Python requirements to run sampling generation and associated scripts:
+
+pip install trimesh
+pip install ruamel.yaml
+pip install pyglet
+pip install fast_simplification
+pip install pyvhacd

@@ -1,4 +1,4 @@
-object_model: examples/sampling_c3/urdf/letter_a.sdf  # TODO @bibit what do we want here?
+object_model: examples/sampling_c3/urdf/anything/letter_a.sdf
 
 franka_publish_rate: 1000
 object_publish_rate: 10

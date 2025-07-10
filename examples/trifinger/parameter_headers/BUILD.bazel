@@ -6,7 +6,6 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "trifinger_sim_params",
     hdrs = ["trifinger_sim_params.h"],
-    data = ["trifinger_sim_params.yaml"],
     deps = [
         "@drake//:drake_shared_library",
     ],
@@ -15,7 +14,6 @@ cc_library(
 cc_library(
     name = "trifinger_osc_controller_params",
     hdrs = ["trifinger_osc_controller_params.h"],
-    data = ["trifinger_osc_controller_params.yaml"],
     deps = [
         "@drake//:drake_shared_library",
     ],
@@ -24,11 +22,6 @@ cc_library(
 cc_library(
     name = "trifinger_lcm_channels",
     hdrs = ["trifinger_lcm_channels.h"],
-    data = [
-        "lcm_channels_hardware.yaml",
-        "lcm_channels_simulation.yaml",
-        "trifinger_osc_qp_settings.yaml",
-    ],
     deps = [
         "@drake//:drake_shared_library",
     ],
@@ -37,6 +30,5 @@ cc_library(
 cc_library(
     name = "trifinger_impedance_controller_params",
     hdrs = ["trifinger_impedance_controller_params.h"],
-    data = ["trifinger_impedance_controller_params.yaml"],
     deps = ["@drake//:drake_shared_library"],
 )

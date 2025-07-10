@@ -2,14 +2,14 @@
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_estimated_joint_friction_trifinger.hpp"
-#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "dairlib/lcmt_fingertips_position.hpp"
+#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "examples/trifinger/systems/fingertips_target_kinematics_receiver.h"
 #include "examples/trifinger/systems/fingertips_target_traj_demultiplexer.h"
 #include "examples/trifinger/systems/trifinger_joint_friction_compensation.h"
 #include "multibody/multibody_utils.h"
-#include "parameters/trifinger_lcm_channels.h"
-#include "parameters/trifinger_osc_controller_params.h"
+#include "parameter_headers/trifinger_lcm_channels.h"
+#include "parameter_headers/trifinger_osc_controller_params.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
@@ -98,12 +98,11 @@ int DoMain(int argc, char* argv[]) {
 
   auto fingertips_target_kinematics_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_fingertips_target_kinematics>(
-              lcm_channel_params.fingertips_target_kinematics_channel, &lcm));
+          lcm_channel_params.fingertips_target_kinematics_channel, &lcm));
 
   auto fingertips_target_kinematics_receiver =
       builder.AddSystem<systems::FingertipTargetKinematicsReceiver>(
-          plant, plant_context.get(),
-          controller_params.fingertip_0_name,
+          plant, plant_context.get(), controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
           controller_params.fingertip_240_name,
           controller_params.target_kinematics_update_frequency);
@@ -184,9 +183,10 @@ int DoMain(int argc, char* argv[]) {
           plant_context.get());
   builder.Connect(fingertips_target_kinematics_sub->get_output_port(),
                   fingertips_target_kinematics_receiver
-                          ->get_input_port_fingertips_target_kinematics());
-  builder.Connect(state_receiver->get_output_port(0),
-                  fingertips_target_kinematics_receiver->get_input_port_state());
+                      ->get_input_port_fingertips_target_kinematics());
+  builder.Connect(
+      state_receiver->get_output_port(0),
+      fingertips_target_kinematics_receiver->get_input_port_state());
 
   builder.Connect(fingertips_target_kinematics_receiver
                       ->get_output_port_fingertips_target_traj(),
@@ -234,7 +234,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
 
   auto owned_diagram = builder.Build();
-  std::shared_ptr<drake::systems::Diagram<double>> shared_diagram = std::move(owned_diagram);
+  std::shared_ptr<drake::systems::Diagram<double>> shared_diagram =
+      std::move(owned_diagram);
   shared_diagram->set_name(("trifinger_osc_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

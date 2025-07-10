@@ -5,8 +5,8 @@
 
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
-#include "parameters/trifinger_lcm_channels.h"
-#include "parameters/trifinger_sim_params.h"
+#include "parameter_headers/trifinger_lcm_channels.h"
+#include "parameter_headers/trifinger_sim_params.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"

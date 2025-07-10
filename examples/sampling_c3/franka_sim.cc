@@ -80,12 +80,12 @@ int DoMain(int argc, char* argv[]) {
                                                      sim_params.object_model);
 
   std::vector<ModelInstanceIndex> balls;
-  int num_balls = 1;
-  for (int i = 0; i < num_balls; i++) {
-    ModelInstanceIndex object_index1 = AddObjectToPlant(&plant, &scene_graph,
-                                                     "examples/sampling_c3/urdf/ball.urdf");
-    balls.push_back(object_index1);
-  }                                                                          
+//   int num_balls = 1;
+//   for (int i = 0; i < num_balls; i++) {
+//     ModelInstanceIndex object_index1 = AddObjectToPlant(&plant, &scene_graph,
+//                                                      "examples/sampling_c3/urdf/ball.urdf");
+//     balls.push_back(object_index1);
+//   }                                                                          
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
 
@@ -129,9 +129,9 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
-  for (int i = 0; i < num_balls; i++) {
-      q.segment(7 * (i+1), 7) = sim_params.q_init_object;
-  }
+//   for (int i = 0; i < num_balls; i++) {
+//       q.segment(7 * (i+1), 7) = sim_params.q_init_object;
+//   }
   q.tail(7) = sim_params.q_init_object;
 
   plant.SetPositions(&plant_context, q);

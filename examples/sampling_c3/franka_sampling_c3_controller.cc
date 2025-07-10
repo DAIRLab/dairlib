@@ -81,16 +81,25 @@ int DoMain(int argc, char* argv[]) {
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
   AddObjectToPlant(&plant_object, nullptr, controller_params.object_model);
+  AddObjectToPlant(&plant_object, nullptr, "examples/sampling_c3/urdf/nut_controller.sdf");
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
   // Create the LCS plant containing a floating EE, object, and ground.
+  std::vector<std::string> filenames;
+
+  filenames.push_back(controller_params.object_model);
+  filenames.push_back("examples/sampling_c3/urdf/nut_controller.sdf");
+
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model,
+  AddLCSModelsToPlant(&plant_lcs, &scene_graph, filenames,
                       controller_params.include_end_effector_orientation);
+
   plant_lcs.Finalize();
+
+
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
@@ -102,6 +111,30 @@ int DoMain(int argc, char* argv[]) {
       plant_lcs, diagram_context.get());
   auto plant_lcs_context_ad = plant_lcs_autodiff->CreateDefaultContext();
 
+  auto context = plant_lcs.CreateDefaultContext();
+  Eigen::VectorXd x_pos = plant_lcs.GetPositionsAndVelocities(*context);
+  std::vector<std::string> state_names;
+    int nq = plant.num_positions();
+    int nv = plant.num_velocities();  
+    state_names.reserve(nq + nv);
+    for (auto model_instance : plant_lcs.GetModelInstanceIndices()) {
+        // For each joint in the model
+        for (const auto& joint : plant_lcs.GetJoints()) {
+            if (plant_lcs.model_instance() != model_instance) continue;
+
+            // Position variables
+            for (int j = 0; j < joint.num_positions(); ++j) {
+                std::string name = joint.name() + "_q" + std::to_string(j);
+                state_names.push_back(name);
+            }
+
+            // Velocity variables
+            for (int j = 0; j < joint.num_velocities(); ++j) {
+                std::string name = joint.name() + "_v" + std::to_string(j);
+                state_names.push_back(name);
+            }
+        }
+    }
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
@@ -119,6 +152,8 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["GROUND"] = ground_geoms;
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
+
+  std::vector<SortedPair<GeometryId>> object_object_contact_pairs;
 
   if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId capsule1_geoms =
@@ -231,21 +266,24 @@ int DoMain(int argc, char* argv[]) {
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("body"))[3];
 
+    drake::geometry::GeometryId mesh_geoms2 =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("body"))[0];
+    drake::geometry::GeometryId top_left_sphere_geoms2 =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("nut_body"))[1];
+    drake::geometry::GeometryId top_right_sphere_geoms2 =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("nut_body"))[2];
+    drake::geometry::GeometryId bottom_sphere_geoms2 =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("nut_body"))[3];
 
-    drake::geometry::GeometryId corner_0_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[4];
-    drake::geometry::GeometryId corner_1_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[5];
-    drake::geometry::GeometryId corner_2_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[6];
-    drake::geometry::GeometryId corner_3_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[7];
 
-
+    for (int i = 0; i < plant_lcs.num_bodies(); ++i) {
+        const auto& body = plant_lcs.get_body(drake::multibody::BodyIndex(i));
+        std::cout << "Body " << i << ": " << body.name() << std::endl;
+    }
 
 
     contact_geoms["OBJECT_MESH"] = mesh_geoms;
@@ -253,11 +291,10 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
     contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
 
-    contact_geoms["CORNER_0"] = corner_0_geoms;
-    contact_geoms["CORNER_1"] = corner_1_geoms;
-    contact_geoms["CORNER_2"] = corner_2_geoms;
-    contact_geoms["CORNER_3"] = corner_3_geoms;
-
+    contact_geoms["OBJECT_MESH2"] = mesh_geoms2;
+    contact_geoms["TOP_LEFT_SPHERE2"] = top_left_sphere_geoms2;
+    contact_geoms["TOP_RIGHT_SPHERE2"] = top_right_sphere_geoms2;
+    contact_geoms["BOTTOM_SPHERE2"] = bottom_sphere_geoms2;
 
 
     ee_contact_pairs.push_back(
@@ -270,14 +307,19 @@ int DoMain(int argc, char* argv[]) {
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
 
-    // ground_object_contact_pairs.push_back(SortedPair(
-    //         contact_geoms["CORNER_0"], contact_geoms["GROUND"]));
-    // ground_object_contact_pairs.push_back(SortedPair(
-    //         contact_geoms["CORNER_1"], contact_geoms["GROUND"]));
-    // ground_object_contact_pairs.push_back(SortedPair(
-    //         contact_geoms["CORNER_2"], contact_geoms["GROUND"]));
-    // ground_object_contact_pairs.push_back(SortedPair(
-    //         contact_geoms["CORNER_3"], contact_geoms["GROUND"]));
+
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_LEFT_SPHERE2"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["TOP_RIGHT_SPHERE2"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["BOTTOM_SPHERE2"], contact_geoms["GROUND"]));
+
+
+    object_object_contact_pairs.push_back(SortedPair(
+        contact_geoms["OBJECT_MESH"], contact_geoms["OBJECT_MESH2"]));    
+  std::cout << "before jacktoy" << std::endl;
+
     
   }
   else {
@@ -287,6 +329,9 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ee_ground_contact);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
+  if (!object_object_contact_pairs.empty()) {
+    contact_pairs.push_back(object_object_contact_pairs);
+  }
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
@@ -307,6 +352,8 @@ int DoMain(int argc, char* argv[]) {
           object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
+
+  std::cout << "Before target_gen" << std::endl;
 
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
@@ -421,6 +468,7 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+ 
 
   // Sample-related senders/publishers.
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
@@ -475,6 +523,8 @@ int DoMain(int argc, char* argv[]) {
       "object_wx" ,      "object_wy",       "object_wz",
       "object_vz",       "object_vz",       "object_vz",
   };
+
+  std::cout << "Before state_sender" << std::endl;
   // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
       plant_lcs.num_positions() + plant_lcs.num_velocities(),
@@ -579,11 +629,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(controller->get_output_port_sample_buffer_costs(),
                   sample_buffer_sender->get_input_port_sample_costs());
 
+  std::cout << "Before drawandsave" << std::endl;
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("sampling_c3_controller_" + FLAGS_demo_name));
   plant_lcs_diagram->set_name(("sampling_c3_lcs_plant" + FLAGS_demo_name));
   DrawAndSaveDiagramGraph(*owned_diagram);
   DrawAndSaveDiagramGraph(*plant_lcs_diagram);
+
+  std::cout << "Before controller loop" << std::endl;
 
   // Run lcm-driven simulation.  The buffer size argument is needed to ensure
   // the latest messages are used in the control loop.  See

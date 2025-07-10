@@ -60,7 +60,6 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
   parser.SetAutoRenaming(true);
   return parser.AddModels(FindResourceOrThrow(object_model))[0];
 }
-
 void AddLCSModelsToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
@@ -75,6 +74,34 @@ void AddLCSModelsToPlant(
   parser_lcs.AddModels(kEndEffectorSimpleModel);
   parser_lcs.AddModels(kGroundModel);
   parser_lcs.AddModels(object_model);
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+
+  RigidTransform<double> X_W_G = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("base_link"), X_WI);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("ground"), X_W_G);
+}
+
+
+void AddLCSModelsToPlant(
+    MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph,
+    std::vector<std::string> object_models,
+    const bool& include_end_effector_orientation) {
+  // Cannot currently handle end effector orientation (would just require new
+  // EE simple model with orientation DOFs).
+  DRAKE_ASSERT(!include_end_effector_orientation);
+
+  Parser parser_lcs(plant);
+  parser_lcs.SetAutoRenaming(true);
+  parser_lcs.AddModels(kEndEffectorSimpleModel);
+  parser_lcs.AddModels(kGroundModel);
+  for (std::string& model : object_models) {
+    parser_lcs.AddModels(model);
+  }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
 

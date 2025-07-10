@@ -18,20 +18,23 @@
     </inertial>
     
     <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-            <mesh filename="letter_a.obj"/>
-        </geometry>
-        <material name="black">
-            <color rgba="0 0 0 1"/>
-        </material>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+      <material name="finger_0_material"/>
     </visual>
-
+    
     <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-            <mesh filename="letter_a.obj"/>
-        </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="0.3"/>
+        <drake:mu_dynamic value="0.3"/>
+        <drake:restitution value="0.7"/>
+      </drake:proximity_properties>
     </collision>
   </link>
 </robot>

@@ -242,6 +242,8 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(plate_balancing_target->get_output_port_tray_velocity_target(),
                   target_state_mux->get_input_port(3));
+
+    
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
       *plate_context_ad, contact_pairs, c3_options);

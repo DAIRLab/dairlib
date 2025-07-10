@@ -64,6 +64,10 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
       prog_(MathematicalProgram()) {
+  std::cout << "n: " << n_ << std::endl;
+  std::cout << "m: " << m_ << std::endl;
+  std::cout << "k: " << k_ << std::endl;
+
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -94,6 +98,8 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     }
   }
 
+  std::cout << "Set options" << std::endl;
+  
   auto Dn = lcs.D_.at(0).norm();
   auto An = lcs.A_.at(0).norm();
   AnDn_ = An / Dn;

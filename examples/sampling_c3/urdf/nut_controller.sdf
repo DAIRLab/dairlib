@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <sdf version="1.7">
   <model name="t_shape">    
-    <link name="body">
+    <link name="nut_body">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
         <mass>1</mass>

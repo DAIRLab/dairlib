@@ -85,6 +85,7 @@ SamplingC3Controller::SamplingC3Controller(
     discount_factor *= c3_options.gamma;
   }
   Q_.push_back(discount_factor * c3_options.Q);
+
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -92,6 +93,19 @@ SamplingC3Controller::SamplingC3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;
+
+  std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
+  std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
+  std::cout << "R Rows: " << R_[0].rows() << std::endl;
+  std::cout << "R Cols: " << R_[0].cols() << std::endl;
+  std::cout << "G Rows: " << G_[0].rows() << std::endl;
+  std::cout << "G Cols: " << G_[0].cols() << std::endl;
+  std::cout << "U Rows: " << U_[0].rows() << std::endl;
+  std::cout << "U Cols: " << U_[0].cols() << std::endl;
 
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
@@ -120,12 +134,15 @@ SamplingC3Controller::SamplingC3Controller(
     c3_curr_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
+
     c3_best_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
+
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
+
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(
         lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
@@ -144,6 +161,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
+
 
   // Set actor bounds.
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -389,6 +407,7 @@ SamplingC3Controller::SamplingC3Controller(
   x_final_target_ = VectorXd::Zero(n_x_);
 
   ResetProgressMetrics();
+
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 

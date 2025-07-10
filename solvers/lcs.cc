@@ -35,7 +35,8 @@ LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
     : LCS(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B),
           vector<MatrixXd>(N, D), vector<VectorXd>(N, d),
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {}
+          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {
+          }
 
 LCS::LCS(const LCS& lcs)
     : N_(lcs.N_), dt_(lcs.dt_), n_(lcs.n_), m_(lcs.m_), k_(lcs.k_) {

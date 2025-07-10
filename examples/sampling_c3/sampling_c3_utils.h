@@ -53,6 +53,12 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const std::string& object_model = "");
 
+void AddLCSModelsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const std::string& object_model = "",
+    const bool& include_end_effector_orientation = false);
+
 /// Add LCS models to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
@@ -62,7 +68,7 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
 void AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const std::string& object_model = "",
+    std::vector<std::string> object_models = {},
     const bool& include_end_effector_orientation = false);
 
 }   // namespace dairlib

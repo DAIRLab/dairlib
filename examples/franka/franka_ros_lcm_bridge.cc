@@ -133,10 +133,11 @@ int DoMain(int argc, char* argv[]) {
   /* -------------------------------------------------------------------------------------------*/
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_ros_lcm_bridge"));
-  const auto& diagram = *owned_diagram;
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("franka_ros_lcm_bridge"));
+  const auto& diagram = *shared_diagram;
   DrawAndSaveDiagramGraph(diagram);
-  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
+  drake::systems::Simulator<double> simulator(shared_diagram);
   auto& diagram_context = simulator.get_mutable_context();
 
   // figure out what the arguments to this mean

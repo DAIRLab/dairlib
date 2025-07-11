@@ -41,6 +41,10 @@ using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::InputPort;
+using drake::systems::OutputPort;
+using drake::systems::InputPortIndex;
+using drake::systems::OutputPortIndex;
 using Eigen::MatrixXd;
 using drake::multibody::ModelInstanceIndex;
 
@@ -82,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
-    &plant_object, &nullptr, controller_params.object_models);
+    &plant_object, nullptr, controller_params.object_models);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
@@ -227,74 +231,49 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
-    drake::geometry::GeometryId mesh_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[0];
+		for (int i = 0; i < controller_params.num_objects; i++) {
+			ModelInstanceIndex object_index = object_indices.at(i);
 
-    drake::geometry::GeometryId top_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[2];
-    drake::geometry::GeometryId bottom_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[3];
+			drake::geometry::GeometryId mesh_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[0];
 
-    drake::geometry::GeometryId mesh_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[0];
-    drake::geometry::GeometryId top_left_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[2];
-    drake::geometry::GeometryId bottom_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[3];
+			drake::geometry::GeometryId top_left_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[1];
+			drake::geometry::GeometryId top_right_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[2];
+			drake::geometry::GeometryId bottom_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[3];
 
+			contact_geoms["OBJECT_MESH_" + std::to_string(i)] = mesh_geoms;
+			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
+			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
+			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
 
-    for (int i = 0; i < plant_lcs.num_bodies(); ++i) {
-        const auto& body = plant_lcs.get_body(drake::multibody::BodyIndex(i));
-        std::cout << "Body " << i << ": " << body.name() << std::endl;
-    }
+			ee_contact_pairs.push_back(
+					SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));
 
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+		} 
+		// Object-object contact pairs
+		for (int i = 0; i < controller_params.num_objects; i++) {
+			for (int j = 0; j < controller_params.num_objects; j++) {
+					if (j == i) continue;
 
-    contact_geoms["OBJECT_MESH"] = mesh_geoms;
-    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
-    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
-    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+					std::string key1 = "OBJECT_MESH_" + std::to_string(i);
+					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
-    contact_geoms["OBJECT_MESH2"] = mesh_geoms2;
-    contact_geoms["TOP_LEFT_SPHERE2"] = top_left_sphere_geoms2;
-    contact_geoms["TOP_RIGHT_SPHERE2"] = top_right_sphere_geoms2;
-    contact_geoms["BOTTOM_SPHERE2"] = bottom_sphere_geoms2;
-
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH"]));
-
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
-
-
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_LEFT_SPHERE2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_RIGHT_SPHERE2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["BOTTOM_SPHERE2"], contact_geoms["GROUND"]));
-
-
-    object_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["OBJECT_MESH"], contact_geoms["OBJECT_MESH2"]));    
-  std::cout << "before jacktoy" << std::endl;
-
+					object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
+			}
+		}
     
   }
   else {
@@ -311,11 +290,11 @@ int DoMain(int argc, char* argv[]) {
   // Piece together the diagram.
   DiagramBuilder<double> builder;
 
-  std::vector<drake::systems::LcmSubscriberSystem*> object_state_subs;
+  std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < controller_params.num_objects; i++) {
     object_state_subs.push_back(
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-                lcm_channel_params.object_state_channels[i], &lcm))
+                lcm_channel_params.object_state_channels.at(i), &lcm))
     );
   } 
      
@@ -342,34 +321,25 @@ int DoMain(int argc, char* argv[]) {
 				);
 
   // Select the target generator based on the demo.
-  std::vector<std::unique_ptr<systems::SamplingC3GoalGenerator>> target_generators;
+  std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
-    target_generators.push_back(
-        std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
-            plant_object, controller_params.goal_params, object_indices[0])
-		);
+    target_generator = 
+			std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
+					plant_object, controller_params.goal_params, object_indices);
   } else if ((FLAGS_demo_name == "push_t") || (FLAGS_demo_name == "anything")) {
-    target_generators.push_back(
-        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-            plant_object, controller_params.goal_params, object_indices[0])
-				);
+    target_generator =
+			std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+					plant_object, controller_params.goal_params, object_indices);
   } else if (FLAGS_demo_name == "anything") {
-		for (ModelInstanceIndex obj_idx : object_indices) {
-			target_generators.push_back(
-        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-            plant_object, controller_params.goal_params, obj_idx)
-				);
-		} 
+		target_generator =
+			std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+					plant_object, controller_params.goal_params, object_indices);
+			
 	} else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
 
-  if (FLAGS_demo_name == "jacktoy") {
-	} else if (FLAGS_demo_name == "push_t") {
-
-	} else if (FLAGS_demo_name == "anything") {
-	}
-	  auto* control_target = builder.AddSystem(std::move(target_generator));
+	auto* control_target = builder.AddSystem(std::move(target_generator));
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
   // velocities (6).
@@ -397,24 +367,52 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.target_generator_info_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(control_target->get_output_port_end_effector_target(),
+  // Port 0 ee target
+  builder.Connect(control_target->get_output_port_end_effector_target(), 
                   target_state_mux->get_input_port(0));
-  builder.Connect(control_target->get_output_port_object_target(),
-                  target_state_mux->get_input_port(1));
-  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
-                  target_state_mux->get_input_port(2));
-  builder.Connect(control_target->get_output_port_object_velocity_target(),
-                  target_state_mux->get_input_port(3));
+
+	// Ports 1 to n object targets
+	std::vector<const OutputPort<double>*> output_ports_object_target = 						 
+		control_target->get_output_ports_object_target();
+	for (int i = 0; i < controller_params.num_objects; i++) {
+  	builder.Connect(*(output_ports_object_target.at(i)),
+                  target_state_mux->get_input_port(i + 1));
+	} 
+
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),	  // Port n+1 ee velo target
+                  target_state_mux->get_input_port(controller_params.num_objects + 1));
+						
+	// Ports (n+2) to (2n+1) object velo targets
+	std::vector<const OutputPort<double>*> output_ports_object_velocity_target = 			
+		control_target->get_output_ports_object_velocity_target();
+	for (int i = 0; i < controller_params.num_objects; i++) {
+  	builder.Connect(*(output_ports_object_velocity_target.at(i)),
+                  target_state_mux->get_input_port(i + controller_params.num_objects + 2));
+	} 
   builder.Connect(control_target->get_output_port_target_gen_info(),
                   target_gen_info_publisher->get_input_port());
-  builder.Connect(control_target->get_output_port_end_effector_target(),
-                  final_target_state_mux->get_input_port(0));
-  builder.Connect(control_target->get_output_port_object_final_target(),
-                  final_target_state_mux->get_input_port(1));
-  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
-                  final_target_state_mux->get_input_port(2));
-  builder.Connect(object_zero_velocity_source->get_output_port(),
-                  final_target_state_mux->get_input_port(3));
+
+	// Port 0 ee target
+	builder.Connect(control_target->get_output_port_end_effector_target(),	
+									final_target_state_mux->get_input_port(0));
+
+	// Ports 1 to n object targets
+	std::vector<const OutputPort<double>*> output_ports_object_final_target = 			  
+		control_target->get_output_ports_object_final_target();
+	for (int i = 0; i < controller_params.num_objects; i++) {
+  	builder.Connect(*(output_ports_object_final_target.at(i)),
+                  final_target_state_mux->get_input_port(i + 1));
+	} 
+
+	// Port n+1 ee velo target
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),		
+                  final_target_state_mux->get_input_port(controller_params.num_objects + 1));
+
+	// Ports (n+2) to (2n+1) constant vector
+	for (int i = 0; i < controller_params.num_objects; i++) {								
+		builder.Connect(object_zero_velocity_source->get_output_port(),
+										final_target_state_mux->get_input_port(i + controller_params.num_objects + 2));
+	} 
 
   // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
@@ -553,14 +551,28 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
-  builder.Connect(object_state_sub->get_output_port(),
-                  object_state_receiver->get_input_port());
-  builder.Connect(object_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
+	for (int i = 0; i < controller_params.num_objects; i++) {
+		builder.Connect(object_state_subs.at(i)->get_output_port(),
+										object_state_receivers.at(i)->get_input_port());
+	}
+
+	std::vector<const drake::systems::InputPort<double>*> reduced_order_model_receivers = 
+		reduced_order_model_receiver->get_input_ports_object_state();
+	for (int i = 0; i < controller_params.num_objects; i++) {
+		builder.Connect(object_state_receivers.at(i)->get_output_port(),
+										*(reduced_order_model_receivers.at(i)));
+	} 
+
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
-  builder.Connect(object_state_receiver->get_output_port(),
-                  control_target->get_input_port_object_state());
+
+	std::vector<const drake::systems::InputPort<double>*> input_ports_object_state = 
+		control_target->get_input_ports_object_state();
+	for (int i = 0; i < controller_params.num_objects; i++) {
+	  builder.Connect(object_state_receivers.at(i)->get_output_port(),
+                   *(input_ports_object_state.at(i)));
+	} 
+
   builder.Connect(target_state_mux->get_output_port(),
                   controller->get_input_port_target());
   builder.Connect(final_target_state_mux->get_output_port(),
@@ -656,7 +668,7 @@ int DoMain(int argc, char* argv[]) {
       &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
+      &lcm, [&]() { return object_state_subs.at(0)->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

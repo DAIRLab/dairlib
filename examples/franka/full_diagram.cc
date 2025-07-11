@@ -191,7 +191,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(franka_state_sender->get_output_port(),
                   c3_controller->get_input_port_robot_state());
   builder.Connect(tray_state_sender->get_output_port(),
-                  c3_controller->get_input_ports_object_state()[0]);
+                  c3_controller->get_input_port_object_state());
   builder.Connect(radio_to_vector->get_output_port(),
                   c3_controller->get_input_port_radio());
   builder.Connect(radio_to_vector->get_output_port(),

@@ -254,7 +254,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   builder.Connect(lcs_factory->get_output_port_lcs(),
                   controller->get_input_port_lcs());
   builder.Connect(tray_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_ports_object_state()[0]);
+                  *(reduced_order_model_receiver->get_input_ports_object_state()[0]));
   builder.Connect(tray_state_receiver->get_output_port(),
                   plate_balancing_target->get_input_port_tray_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),

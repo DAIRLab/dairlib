@@ -110,7 +110,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   void SetRandomizedTargetFinalObjectOrientation(
       const bool& first_goal = false) const;
   void CycleThroughOrientationSequence() const;
-  void OnGoalReached() const;
+  void OnGoalReached(const bool& successful_goal) const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
     GenerateLineTrajectoryWithLookahead(
       const Eigen::Quaterniond& quat_curr_orientation,
@@ -130,8 +130,11 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d target_final_object_position_;
   mutable Eigen::Vector4d target_final_object_orientation_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
-  mutable int goal_counter_ = 1;
+  mutable int goal_counter_ = 0;
+  mutable int goal_successes_ = 0;
+  mutable int goal_fails_ = 0;
   mutable int orientation_index_ = -1;
+  mutable std::chrono::_V2::system_clock::time_point time_last_goal_set_;
 };
 
 class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {

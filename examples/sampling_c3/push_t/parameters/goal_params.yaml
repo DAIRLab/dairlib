@@ -11,6 +11,8 @@ start_with_random_goal: false
 position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 
+max_time_allowed: 400.0  # seconds
+
 resting_object_height: -0.009      # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 

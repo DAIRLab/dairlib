@@ -56,6 +56,7 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
     .get_index();
 
   // Initialize the first goal:  either random or fixed.
+  time_last_goal_set_ = std::chrono::high_resolution_clock::now();
   if (goal_params_.start_with_random_goal) {
     SetRandomizedTargetFinalObjectPosition();
     SetRandomizedTargetFinalObjectOrientation(true);
@@ -104,7 +105,17 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
   if ((object_position_error < goal_params_.position_success_threshold) &&
       (object_angular_error < goal_params_.orientation_success_threshold)) {
     std::cout << "\nMet pose goal!\n" << std::endl;
-    OnGoalReached();
+    OnGoalReached(true);
+  }
+
+  // Check if failed to meet goal in time.
+  auto time_now = std::chrono::high_resolution_clock::now();
+  auto elapsed = time_now - time_last_goal_set_;
+  double duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count()/1e6;
+  if (duration > goal_params_.max_time_allowed) {
+    std::cout << "\nFailed to meet pose goal in time.\n" << std::endl;
+    OnGoalReached(false);
   }
 
   // Apply lookahead.
@@ -224,25 +235,43 @@ void SamplingC3GoalGenerator::CycleThroughOrientationSequence() const {
 void SamplingC3GoalGenerator::OutputGoalGeneratorInfo(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* target) const {
-  Eigen::MatrixXd orientation_index_data =
-    orientation_index_ * Eigen::MatrixXd::Ones(1, 1);
   Eigen::VectorXd timestamp = context.get_time() * Eigen::VectorXd::Ones(1);
 
+  // Include the orientation index.
   LcmTrajectory::Trajectory orientation_index_traj;
   orientation_index_traj.traj_name = "orientation_index";
   orientation_index_traj.datatypes = std::vector<std::string>(1, "int");
-  orientation_index_traj.datapoints = orientation_index_data;
+  orientation_index_traj.datapoints = orientation_index_ *
+    Eigen::MatrixXd::Ones(1, 1);
   orientation_index_traj.time_vector = timestamp.cast<double>();
 
-  LcmTrajectory orientation_index_lcm_traj(
-    {orientation_index_traj}, {"orientation_index"}, "orientation_index",
-    "orientation_index", false);
+  LcmTrajectory goal_lcm_traj({orientation_index_traj}, {"orientation_index"},
+                              "orientation_index", "orientation_index", false);
 
-  target->saved_traj = orientation_index_lcm_traj.GenerateLcmObject();
+  // Include the number of successful goals achieved.
+  LcmTrajectory::Trajectory goal_success_traj;
+  goal_success_traj.traj_name = "n_goal_successes";
+  goal_success_traj.datatypes = std::vector<std::string>(1, "int");
+  goal_success_traj.datapoints = goal_successes_ * Eigen::MatrixXd::Ones(1, 1);
+  goal_success_traj.time_vector = timestamp.cast<double>();
+  goal_lcm_traj.AddTrajectory(goal_success_traj.traj_name, goal_success_traj);
+
+  // Include the number of failed goals.
+  LcmTrajectory::Trajectory goal_fail_traj;
+  goal_fail_traj.traj_name = "n_goal_fails";
+  goal_fail_traj.datatypes = std::vector<std::string>(1, "int");
+  goal_fail_traj.datapoints = goal_fails_ * Eigen::MatrixXd::Ones(1, 1);
+  goal_fail_traj.time_vector = timestamp.cast<double>();
+  goal_lcm_traj.AddTrajectory(goal_fail_traj.traj_name, goal_fail_traj);
+
+  target->saved_traj = goal_lcm_traj.GenerateLcmObject();
   target->utime = context.get_time() * 1e6;
 }
 
-void SamplingC3GoalGenerator::OnGoalReached() const {
+void SamplingC3GoalGenerator::OnGoalReached(const bool& successful_goal) const {
+  goal_counter_++;
+  if (successful_goal) {goal_successes_++;} else {goal_fails_++;}
+
   // Reset the target object orientation and position.
   if (goal_params_.goal_mode == GoalMode::kRandom) {
     SetRandomizedTargetFinalObjectPosition();
@@ -253,7 +282,8 @@ void SamplingC3GoalGenerator::OnGoalReached() const {
   } else {
     std::cout << "You have only specified a single goal." << std::endl;
   }
-  goal_counter_++;
+
+  time_last_goal_set_ = std::chrono::high_resolution_clock::now();
 }
 
 std::pair<Eigen::Quaterniond, Eigen::Vector3d>

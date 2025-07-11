@@ -25,6 +25,9 @@ struct SamplingC3GoalParams {
   double position_success_threshold;
   double orientation_success_threshold;
 
+  /// Maximum time allowed to reach a goal before switching to a new goal.
+  double max_time_allowed;
+
   double resting_object_height;             // in world frame
   double ee_target_z_offset_above_object;   // defines EE goal wrt object height
 
@@ -58,6 +61,7 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(start_with_random_goal));
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));
+    a->Visit(DRAKE_NVP(max_time_allowed));
     a->Visit(DRAKE_NVP(resting_object_height));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
     a->Visit(DRAKE_NVP(lookahead_step_size));

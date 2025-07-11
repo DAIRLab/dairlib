@@ -184,6 +184,7 @@ class C3 {
   const int n_; // n_x
   const int m_; // n_lambda
   const int k_; // n_u
+  const int z_size_;
   const C3Options options_;
 
  private:
@@ -220,8 +221,14 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+  std::vector<drake::solvers::VectorXDecisionVariable> eta_;
+
   /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
+
+  // Signed distance constraint eta = Ex + Hu + F lambda + c
+  std::vector<drake::solvers::LinearEqualityConstraint *> eta_constraints_;
+
   // initial state constraint
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
@@ -238,6 +245,7 @@ class C3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> eta_sol_;
 
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;

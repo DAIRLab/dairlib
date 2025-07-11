@@ -380,6 +380,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_u_;
   int max_num_samples_;
   int N_;
+  int n_z_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;

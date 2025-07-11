@@ -63,7 +63,8 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       options_(options),
       h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
-      prog_(MathematicalProgram()) {
+      prog_(MathematicalProgram()),
+      z_size_(n_ + m_ + k_ + (options.projection_type == "NEXTGEN" ? m_ : 0)) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -73,7 +74,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     for (size_t iter = 0; iter < options_.admm_iter + 1; ++iter) {
       warm_start_delta_[iter].resize(N_);
       for (size_t i = 0; i < N_; i++) {
-        warm_start_delta_[iter][i] = VectorXd::Zero(n_ + m_ + k_);
+        warm_start_delta_[iter][i] = VectorXd::Zero(z_size_);
       }
       warm_start_binary_[iter].resize(N_);
       for (size_t i = 0; i < N_; i++) {
@@ -112,16 +113,25 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   z_sol_ = std::make_unique<std::vector<VectorXd>>();
   x_sol_ = std::make_unique<std::vector<VectorXd>>();
   lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
+
+  if (options_.projection_type == "NEXTGEN") {
+    eta_ = vector<drake::solvers::VectorXDecisionVariable>();
+    eta_sol_ = std::make_unique<std::vector<VectorXd>>();
+  }
+
   u_sol_ = std::make_unique<std::vector<VectorXd>>();
   w_sol_ = std::make_unique<std::vector<VectorXd>>();
   delta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
-    z_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
+    z_sol_->push_back(Eigen::VectorXd::Zero(z_size_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(m_));
     u_sol_->push_back(Eigen::VectorXd::Zero(k_));
-    w_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
-    delta_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
+    w_sol_->push_back(Eigen::VectorXd::Zero(z_size_));
+    delta_sol_->push_back(Eigen::VectorXd::Zero(z_size_));
+    if (options_.projection_type == "NEXTGEN") {
+      eta_sol_->push_back(Eigen::VectorXd::Zero(m_));
+    }
   }
 
   for (int i = 0; i < N_ + 1; i++) {
@@ -130,13 +140,14 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       u_.push_back(prog_.NewContinuousVariables(k_, "k" + std::to_string(i)));
       lambda_.push_back(
           prog_.NewContinuousVariables(m_, "lambda" + std::to_string(i)));
+      if (options_.projection_type == "NEXTGEN") {
+        eta_.push_back(prog_.NewContinuousVariables(m_, "eta" + std::to_string(i)));
+      }
     }
   }
-
-  MatrixXd LinEq(n_, 2 * n_ + m_ + k_);
+  MatrixXd LinEq(n_, 2 *n_ + m_ + k_);
   LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
   dynamics_constraints_.resize(N_);
-  target_cost_.resize(N_ + 1);
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
     LinEq.block(0, n_, n_, m_) = D_.at(i);
@@ -150,6 +161,28 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .evaluator()
             .get();
   }
+  
+  if (options_.projection_type == "NEXTGEN") {
+    MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
+    EtaLinEq.block(0, n_ + m_ + k_, m_, m_) =
+        -1 * MatrixXd::Identity(m_, m_);
+    eta_constraints_.resize(N_);
+    for (int i = 0; i < N_; ++i) {
+      EtaLinEq.block(0, 0, m_, n_) = E_.at(i);
+      EtaLinEq.block(0, n_, m_, m_) = F_.at(i);
+      EtaLinEq.block(0, n_ + m_, m_, k_) = H_.at(i);
+
+      eta_constraints_[i] =
+          prog_
+              .AddLinearEqualityConstraint(
+                  EtaLinEq, -c_.at(i),
+                  {x_.at(i), lambda_.at(i), u_.at(i), eta_.at(i)})
+              .evaluator()
+              .get();
+    }
+  }
+
+  target_cost_.resize(N_ + 1);
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
@@ -175,10 +208,10 @@ void C3::UpdateCostMatrices(const C3::CostMatrices& costs) {
   DRAKE_DEMAND(costs.Q[0].cols() == n_);
   DRAKE_DEMAND(costs.R[0].rows() == k_);
   DRAKE_DEMAND(costs.R[0].cols() == k_);
-  DRAKE_DEMAND(costs.U[0].rows() == n_ + m_ + k_);
-  DRAKE_DEMAND(costs.U[0].cols() == n_ + m_ + k_);
-  DRAKE_DEMAND(costs.G[0].rows() == n_ + m_ + k_);
-  DRAKE_DEMAND(costs.G[0].cols() == n_ + m_ + k_);
+  DRAKE_DEMAND(costs.U[0].rows() == z_size_);
+  DRAKE_DEMAND(costs.U[0].cols() == z_size_);
+  DRAKE_DEMAND(costs.G[0].rows() == z_size_);
+  DRAKE_DEMAND(costs.G[0].cols() == z_size_);
   Q_ = costs.Q;
   R_ = costs.R;
   U_ = costs.U;
@@ -208,8 +241,8 @@ void C3::UpdateLCS(const LCS& lcs) {
   w_ = lcs.w_;
   h_is_zero_ = H_[0].isZero(0);
 
-  MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
-  LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
+  MatrixXd LinEq = MatrixXd::Zero(n_, n_ + n_ + m_ + k_);
+  LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
 
   auto Dn = D_.at(0).norm();
   auto An = A_.at(0).norm();
@@ -228,6 +261,19 @@ void C3::UpdateLCS(const LCS& lcs) {
     LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
 
     dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d_.at(i));
+  }
+
+  if (options_.projection_type == "NEXTGEN") {
+    MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
+    EtaLinEq.block(0, n_ + m_ + k_, m_, m_) =
+        -1 * MatrixXd::Identity(m_, m_);
+    for (int i = 0; i < N_; ++i) {
+      EtaLinEq.block(0, 0, m_, n_) = E_.at(i);
+      EtaLinEq.block(0, n_, m_, m_) = F_.at(i);
+      EtaLinEq.block(0, n_ + m_, m_, k_) = H_.at(i);
+
+      eta_constraints_[i]->UpdateCoefficients(EtaLinEq, -c_.at(i));
+    }
   }
 }
 
@@ -255,12 +301,12 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 void C3::Solve(const VectorXd& x0, bool verbose) {
   auto start = std::chrono::high_resolution_clock::now();
 
-  VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
+  VectorXd delta_init = VectorXd::Zero(z_size_);
   if (options_.delta_option == 1) {
     delta_init.head(n_) = x0;
   }
   std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
+  std::vector<VectorXd> w(N_, VectorXd::Zero(z_size_));
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
@@ -281,7 +327,7 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
   }
 
-  vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
+  vector<VectorXd> WD(N_, VectorXd::Zero(z_size_));
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
@@ -292,10 +338,10 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     std::cout << "x0: " << x0.transpose() << std::endl;
     std::cout << "Final ADMM Iteration: " << options_.admm_iter << std::endl;
     // Make matrix versions of variables for more compact printing.
-    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
-    Eigen::MatrixXd verbose_zsol = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(z_size_, N_);
+    Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(z_size_, N_);
+    Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(z_size_, N_);
+    Eigen::MatrixXd verbose_zsol = Eigen::MatrixXd::Zero(z_size_, N_);
     for(int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta[i];
       verbose_w.col(i) = w[i];
@@ -680,7 +726,7 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
                   vector<VectorXd>* w, vector<MatrixXd>* Gv,
                   int admm_iteration, bool verbose) {
-  vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
+  vector<VectorXd> WD(N_, VectorXd::Zero(z_size_));
 
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta->at(i) - w->at(i);
@@ -689,14 +735,14 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
   if (verbose) {
     std::cout << "SolveQP Iteration: " << admm_iteration << std::endl;
-    Eigen::MatrixXd verbose_z = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_z = Eigen::MatrixXd::Zero(z_size_, N_);
     for(int i = 0; i < N_; i++) {
       verbose_z.col(i) = z[i];
     }
     std::cout<<"z: \n"<<verbose_z<<std::endl;
   }
 
-  vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
+  vector<VectorXd> ZW(N_, VectorXd::Zero(z_size_));
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
@@ -709,7 +755,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
   if (verbose) {
     std::cout << "ADMM Iteration: " << admm_iteration << std::endl;
-    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(n_ + m_ + k_, N_);
+    Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(z_size_, N_);
     for(int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta->at(i);
     }
@@ -747,18 +793,28 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   for (int i = 0; i < N_ + 1; i++) {
     if (i < N_) {
       costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(0, 0, n_, n_),
-          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
-          1));
-      costs_.push_back(prog_.AddQuadraticCost(
           2 * G.at(i).block(n_, n_, m_, m_),
           -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
           lambda_.at(i), 1));
-      costs_.push_back(
-          prog_.AddQuadraticCost(2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_),
-                                 -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
-                                     WD.at(i).segment(n_ + m_, k_),
-                                 u_.at(i), 1));
+      if (options_.projection_type == "NEXTGEN") {
+        costs_.push_back(prog_.AddQuadraticCost(
+          2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
+          -2 *
+              G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
+              WD.at(i).segment(n_ + m_ + k_, m_),
+          eta_.at(i), 1));
+      }
+      else{
+        costs_.push_back(prog_.AddQuadraticCost(
+            2 * G.at(i).block(0, 0, n_, n_),
+            -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
+            1));
+        costs_.push_back(
+            prog_.AddQuadraticCost(2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_),
+                                   -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
+                                       WD.at(i).segment(n_ + m_, k_),
+                                   u_.at(i), 1));
+      }
     }
   }
 
@@ -789,10 +845,16 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
         x_sol_->at(i) = result.GetSolution(x_[i]);
         lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
         u_sol_->at(i) = result.GetSolution(u_[i]);
+        if (options_.projection_type == "NEXTGEN") {
+          eta_sol_->at(i) = result.GetSolution(eta_[i]);
+        }
       }
       z_sol_->at(i).segment(0, n_) = result.GetSolution(x_[i]);
       z_sol_->at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
       z_sol_->at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
+      if (options_.projection_type == "NEXTGEN") {
+        z_sol_->at(i).segment(n_ + m_ + k_, m_) = result.GetSolution(eta_[i]);
+      }
 
       if (warm_start_) {
         // update warm start parameters
@@ -826,7 +888,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                         // sampling_c3_controller)
   }
 
-#pragma omp parallel for num_threads(options_.num_threads)
+#pragma omp parallel for num_threads(options_.num_threads) if (options_.projection_type != "NEXTGEN")
   for (i = 0; i < N_; i++) {
     if (options_.use_robust_formulation &&
         admm_iteration ==

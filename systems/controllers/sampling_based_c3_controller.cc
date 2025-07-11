@@ -408,7 +408,7 @@ SamplingC3Controller::SamplingC3Controller(
               << std::endl;
   }
 
-  // Get paths of convex meshes in SceneGraph.
+  // Below code loads in the mesh and enumerates triangular faces.
   std::vector<std::string> mesh_paths;
   const auto& query_port = plant_.get_geometry_query_input_port();
   const auto& query_object =

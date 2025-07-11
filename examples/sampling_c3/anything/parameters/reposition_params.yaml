@@ -30,3 +30,4 @@ circle_height: 0.00
 
 # Piecewise-linear-specific parameters.
 pwl_waypoint_height: 0.096
+# This ^ will be overwritten by generating new files.

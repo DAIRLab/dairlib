@@ -2,6 +2,9 @@ import os
 import trimesh
 from lxml import etree as ET
 
+# Function to do convex decomposition for sim since Drake cannot handle collisions with non-convex meshes
+# without using the convex hull, so we don't have mismatched geometry.
+
 def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=100000, max_hulls=10):
     # Normalize input paths
     obj_file = os.path.abspath(obj_file)

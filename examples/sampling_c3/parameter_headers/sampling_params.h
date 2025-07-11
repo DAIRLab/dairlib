@@ -65,6 +65,7 @@ struct SamplingParams {
   // kMeshNormal parameters
   double buffer_distance;
   int max_attempts; 
+  double barycentric_bias;
 
   double z_height;
 
@@ -91,8 +92,9 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
-    a->Visit(DRAKE_NVP(max_attempts));
     a->Visit(DRAKE_NVP(buffer_distance));
+    a->Visit(DRAKE_NVP(max_attempts));
+    a->Visit(DRAKE_NVP(barycentric_bias));
     a->Visit(DRAKE_NVP(z_height));
   }
 };

@@ -11,6 +11,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems:system_utils",
+        "//common:math_utils",
         "//solvers:c3",
         "//solvers:lcs",
         "//solvers:c3_output",

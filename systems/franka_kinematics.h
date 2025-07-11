@@ -50,7 +50,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             std::vector<ModelInstanceIndex> object_indices);
 
  
-  std::vector<const drake::systems::InputPort<double>*> get_input_port_object_state() const {
+  std::vector<const drake::systems::InputPort<double>*> get_input_ports_object_state() const {
       std::vector<const InputPort<double>*> output;
       for (InputPortIndex port : object_state_ports_) {
         output.push_back(

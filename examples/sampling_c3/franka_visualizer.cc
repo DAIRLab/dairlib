@@ -136,13 +136,13 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size(),
       franka_state_receiver->get_output_port(0).size() - 1, 1);
 
-	// Duplicating passthrough for each object
-	std::vector<SubvectorPassThrough*> tray_passthroughs;
+  // Duplicating passthrough for each object
+  std::vector<SubvectorPassThrough*> tray_passthroughs;
   for (int i = 0; i < object_state_receivers.size(); i++) {  
       tray_passthroughs.push_back(
 				builder.AddSystem<SubvectorPassThrough>(
-						object_state_receivers[i]->get_output_port(0).size(), 0,
-						plant.num_positions(object_indices[i]))
+						object_state_receivers.at(i)->get_output_port(0).size(), 0,
+						plant.num_positions(object_indices.at(i)))
 				);
   }
 
@@ -164,9 +164,13 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
 
+  std::vector<const drake::systems::InputPort<double>*> ro_model_object_inputs = 
+      reduced_order_model_receiver->get_input_ports_object_state();
+  for (int i = 0; i < object_state_receivers.size(); i++) {
+    builder.Connect(object_state_receivers.at(i)->get_output_port(),
+                    ro_model_object_inputs.at(i));
 
-  builder.Connect(object_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
+  } 
 
   // LCM subscribers.
   auto franka_state_sub =
@@ -178,7 +182,7 @@ int do_main(int argc, char* argv[]) {
 	for (int i = 0; i < object_state_receivers.size(); i++) {
       object_state_subs.push_back(
 				builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.object_state_channels[i], lcm))
+          lcm_channel_params.object_state_channels.at(i), lcm))
 				);
 	} 
 
@@ -523,7 +527,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
 	for (int i = 1; i <= tray_passthroughs.size(); i++) {
-		builder.Connect(tray_passthroughs[i]->get_output_port(), mux->get_input_port(i));
+		builder.Connect(tray_passthroughs.at(i)->get_output_port(), mux->get_input_port(i));
 	} 
   builder.Connect(*mux, *to_pose);
   builder.Connect(
@@ -532,12 +536,12 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
 	for (int i = 0; i < object_state_receivers.size(); i++) {
-		builder.Connect(*(object_state_receivers[i]), *(tray_passthroughs[i]));
+		builder.Connect(*(object_state_receivers.at(i)), *(tray_passthroughs.at(i)));
 	} 
   builder.Connect(*franka_state_sub, *franka_state_receiver);
 
 	for (int i = 0; i < object_state_subs.size(); i++) {
-		builder.Connect(*(object_state_subs[i]), *(object_state_receivers[i]));
+		builder.Connect(*(object_state_subs.at(i)), *(object_state_receivers.at(i)));
 	} 
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
@@ -554,15 +558,15 @@ int do_main(int argc, char* argv[]) {
 	std::vector<drake::systems::Context<double>*> object_state_sub_contexts;
 	for (int i = 0; i < object_state_receivers.size(); i++) {
 			object_state_sub_contexts.push_back(
-				&diagram->GetMutableSubsystemContext(*(object_state_subs[i]), context.get())
+				&diagram->GetMutableSubsystemContext(*(object_state_subs.at(i)), context.get())
 			);
 	}
 
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
 	for (int i = 0; i < object_state_receivers.size(); i++) {
-		object_state_receivers[i]->InitializeSubscriberPositions(
-				plant, *object_state_sub_contexts[i]);
+		object_state_receivers.at(i)->InitializeSubscriberPositions(
+				plant, *object_state_sub_contexts.at(i));
 	}
 
 

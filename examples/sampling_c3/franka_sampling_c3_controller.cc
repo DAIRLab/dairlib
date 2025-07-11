@@ -42,6 +42,7 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
+using drake::multibody::ModelInstanceIndex;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -80,21 +81,16 @@ int DoMain(int argc, char* argv[]) {
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  AddObjectToPlant(&plant_object, nullptr, controller_params.object_model);
-  AddObjectToPlant(&plant_object, nullptr, "examples/sampling_c3/urdf/nut_controller.sdf");
+  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
+    &plant_object, &nullptr, controller_params.object_models);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
   // Create the LCS plant containing a floating EE, object, and ground.
-  std::vector<std::string> filenames;
-
-  filenames.push_back(controller_params.object_model);
-  filenames.push_back("examples/sampling_c3/urdf/nut_controller.sdf");
-
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &scene_graph, filenames,
+  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
                       controller_params.include_end_effector_orientation);
 
   plant_lcs.Finalize();
@@ -315,43 +311,77 @@ int DoMain(int argc, char* argv[]) {
   // Piece together the diagram.
   DiagramBuilder<double> builder;
 
-  auto object_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.object_state_channel, &lcm));
+  std::vector<drake::systems::LcmSubscriberSystem*> object_state_subs;
+  for (int i = 0; i < controller_params.num_objects; i++) {
+    object_state_subs.push_back(
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+                lcm_channel_params.object_state_channels[i], &lcm))
+    );
+  } 
+     
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto object_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
+
+  std::vector<systems::ObjectStateReceiver*> object_state_receivers;
+	for (int i = 0; i < controller_params.num_objects; i++) {
+		object_state_receivers.push_back(
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_object)
+		);
+	}
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
+
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
-          controller_params.include_end_effector_orientation);
-
-  std::cout << "Before target_gen" << std::endl;
+          controller_params.include_end_effector_orientation,
+					object_indices
+				);
 
   // Select the target generator based on the demo.
-  std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
+  std::vector<std::unique_ptr<systems::SamplingC3GoalGenerator>> target_generators;
   if (FLAGS_demo_name == "jacktoy") {
-    target_generator =
+    target_generators.push_back(
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
-            plant_object, controller_params.goal_params);
+            plant_object, controller_params.goal_params, object_indices[0])
+		);
   } else if ((FLAGS_demo_name == "push_t") || (FLAGS_demo_name == "anything")) {
-    target_generator =
+    target_generators.push_back(
         std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-            plant_object, controller_params.goal_params);
-  } else {
+            plant_object, controller_params.goal_params, object_indices[0])
+				);
+  } else if (FLAGS_demo_name == "anything") {
+		for (ModelInstanceIndex obj_idx : object_indices) {
+			target_generators.push_back(
+        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+            plant_object, controller_params.goal_params, obj_idx)
+				);
+		} 
+	} else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
-  auto* control_target = builder.AddSystem(std::move(target_generator));
+
+  if (FLAGS_demo_name == "jacktoy") {
+	} else if (FLAGS_demo_name == "push_t") {
+
+	} else if (FLAGS_demo_name == "anything") {
+	}
+	  auto* control_target = builder.AddSystem(std::move(target_generator));
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
   // velocities (6).
-  std::vector<int> input_sizes = {3, 7, 3, 6};
+  std::vector<int> input_sizes = {3}; 											// ee position
+	for (int i = 0; i < controller_params.num_objects; i++) { // object pose
+		input_sizes.push_back(7);
+	} 
+	input_sizes.push_back(3); 																// ee velocity
+	for (int i = 0; i < controller_params.num_objects; i++) { // object velocities
+		input_sizes.push_back(6);
+	} 
+
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto final_target_state_mux =

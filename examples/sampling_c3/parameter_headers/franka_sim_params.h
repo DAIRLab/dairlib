@@ -14,6 +14,7 @@ struct FrankaSimParams {
   bool publish_efforts;
   Eigen::VectorXd q_init_franka;
   Eigen::VectorXd q_init_object;
+  std::vector<Eigen::VectorXd> q_init_objects;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -27,5 +28,6 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_object));
+    a->Visit(DRAKE_NVP(q_init_objects));
   }
 };

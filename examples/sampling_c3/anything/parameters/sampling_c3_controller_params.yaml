@@ -13,13 +13,11 @@ franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.
 lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
-object_model: examples/sampling_c3/urdf/lollipop_controller.sdf
-object_models: [examples/sampling_c3/urdf/lollipop_controller.sdf,
-                examples/sampling_c3/urdf/nut_controller.sdf]
-
+object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
+object_models: ['examples/sampling_c3/urdf/nut/nut_controller.sdf', 'examples/sampling_c3/urdf/letter_a/letter_a_controller.sdf', 'examples/sampling_c3/urdf/lollipop/lollipop_controller.sdf']
 object_body_name: body
 base_name: lollipop
-base_names: [lollipop, nut]
+base_names: [nut, letter_a, lollipop]
 
 include_end_effector_orientation: false
 

@@ -78,6 +78,6 @@ struct SamplingC3ControllerParams {
     goal_params = drake::yaml::LoadYamlFile<SamplingC3GoalParams>(
       goal_params_file);
 
-    num_objects = object_models.size();
+    num_objects = base_names.size();
   }
 };

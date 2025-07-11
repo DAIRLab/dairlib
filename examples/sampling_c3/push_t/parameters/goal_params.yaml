@@ -3,7 +3,8 @@
 #   1. kOrientationSequence:  keep position goal the same, and cycle through a
 #                             sequence of orientations.
 #   2. kFixedGoal:            keep the same goal.
-goal_mode: 0  
+goal_mode: 0
+start_with_random_goal: false
 
 ### Parameters used for multiple goal modes.
 # Success thresholds for position and orientation.

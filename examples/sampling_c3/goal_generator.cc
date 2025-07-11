@@ -55,9 +55,15 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
       &SamplingC3GoalGenerator::OutputGoalGeneratorInfo)
     .get_index();
 
-  // Start with the fixed goal from the goal params.
-  target_final_object_position_ = goal_params_.fixed_target_position;
-  target_final_object_orientation_ = goal_params_.fixed_target_orientation;
+  // Initialize the first goal:  either random or fixed.
+  if (goal_params_.start_with_random_goal) {
+    SetRandomizedTargetFinalObjectPosition();
+    SetRandomizedTargetFinalObjectOrientation(true);
+  } else {
+    // Start with the fixed goal from the goal params.
+    target_final_object_position_ = goal_params_.fixed_target_position;
+    target_final_object_orientation_ = goal_params_.fixed_target_orientation;
+  }
 }
 
 // Fixes the EE target to be a fixed offset above the object.
@@ -176,7 +182,8 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition() const {
 // Randomly generates final orientation from the set of valid orientations plus
 // an imposed random yaw.  If no topples are required, the yaw is at least 90
 // degrees away from the current orientation.
-void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectOrientation() const {
+void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectOrientation(
+    const bool& first_goal) const {
   const auto& valid_orientations = GetNominalOrientations();
   std::uniform_int_distribution<int> dis(0, valid_orientations.size() - 1);
   std::mt19937 rng{std::random_device{}()};
@@ -187,7 +194,7 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectOrientation() const 
   // topple is required.
   double min_yaw = 0;
   double max_yaw = 2 * M_PI;
-  if (random_index == orientation_index_) {
+  if (!first_goal && (random_index == orientation_index_)) {
     min_yaw = M_PI / 2;
     max_yaw = 3 * M_PI / 2;
     quat_nominal = Eigen::Quaterniond(

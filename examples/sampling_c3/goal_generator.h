@@ -107,7 +107,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* target) const;
   void SetRandomizedTargetFinalObjectPosition() const;
-  void SetRandomizedTargetFinalObjectOrientation() const;
+  void SetRandomizedTargetFinalObjectOrientation(
+      const bool& first_goal = false) const;
   void CycleThroughOrientationSequence() const;
   void OnGoalReached() const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
@@ -126,8 +127,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
 
   const SamplingC3GoalParams goal_params_;
   const std::vector<Eigen::Quaterniond> nominal_orientations_;
-  mutable Eigen::VectorXd target_final_object_position_;
-  mutable Eigen::VectorXd target_final_object_orientation_;
+  mutable Eigen::Vector3d target_final_object_position_;
+  mutable Eigen::Vector4d target_final_object_orientation_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;

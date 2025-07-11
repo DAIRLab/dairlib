@@ -18,6 +18,7 @@ enum GoalMode {
 
 struct SamplingC3GoalParams {
   GoalMode goal_mode;
+  bool start_with_random_goal;
 
   /// Parameters used for multiple goal modes.
   /// Success thresholds for position and orientation.
@@ -54,6 +55,7 @@ struct SamplingC3GoalParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, goal_mode);
+    a->Visit(DRAKE_NVP(start_with_random_goal));
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_height));

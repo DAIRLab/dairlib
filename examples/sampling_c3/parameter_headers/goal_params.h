@@ -46,6 +46,9 @@ struct SamplingC3GoalParams {
   Eigen::VectorXd fixed_target_position;
   Eigen::VectorXd fixed_target_orientation;
 
+  std::vector<Eigen::VectorXd> fixed_target_positions;
+  std::vector<Eigen::VectorXd> fixed_target_orientations;
+
   /// Random-specific parameters.
   Eigen::VectorXd random_goal_x_limits;
   Eigen::VectorXd random_goal_y_limits;

@@ -137,7 +137,7 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size() - 1, 1);
 
   // Duplicating passthrough for each object
-  std::vector<SubvectorPassThrough*> tray_passthroughs;
+  std::vector<SubvectorPassThrough<double>*> tray_passthroughs;
   for (int i = 0; i < object_state_receivers.size(); i++) {  
       tray_passthroughs.push_back(
 				builder.AddSystem<SubvectorPassThrough>(
@@ -168,7 +168,7 @@ int do_main(int argc, char* argv[]) {
       reduced_order_model_receiver->get_input_ports_object_state();
   for (int i = 0; i < object_state_receivers.size(); i++) {
     builder.Connect(object_state_receivers.at(i)->get_output_port(),
-                    ro_model_object_inputs.at(i));
+                    *(ro_model_object_inputs.at(i)));
 
   } 
 

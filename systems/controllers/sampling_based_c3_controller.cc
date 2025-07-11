@@ -482,10 +482,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Generate states, differing from the current state only by EE sample
   // locations.
-  std::vector<Eigen::VectorXd> candidate_states =
-    GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
-                         sampling_params_, sampling_c3_options_, plant_,
-                         context_, plant_ad_, context_ad_, contact_pairs_);
+  std::vector<Eigen::VectorXd> candidate_states = GenerateSampleStates(
+    n_q_, n_v_, n_u_, x_lcs_curr, x_lcs_des.get_value(), is_doing_c3_,
+    sampling_params_, sampling_c3_options_, plant_, context_, plant_ad_,
+    context_ad_, contact_pairs_
+  );
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -582,11 +583,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
+    double fixed_cost = progress_params_.finished_reposition_cost * (
+      1 - progress_params_.hyst_c3_to_repos_frac) - 1;
+    if (i == SampleIndex::kCurrentLocation) {
+      fixed_cost = fixed_cost - 1;
+    }
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
-        sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-        print_cost_breakdown, verbose_);
+        sampling_c3_options_.Kd_for_ee_pd_rollout, fixed_cost,
+        force_tracking_disabled, print_cost_breakdown, verbose_);
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;

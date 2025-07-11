@@ -1,12 +1,14 @@
 # Sampling strategies (defined as SamplingStrategy enum in sampling_params.h):
-#   0. kRadiallySymmetric:  radially distributed samples on a planar circle.
-#   1. kRandomOnCircle:     random samples on a planar circle.
-#   2. kRandomOnSphere:     random samples on a spherical surface.
-#   3. kFixed:              fixed set of samples.
-#   4. kRandomOnPerimeter:  random samples on a perimeter offset past the object
-#                           surface (roughly planar).
-#   5. kRandomOnShell:      random samples on a shell offset past the object
-#                           surface.
+#   0. kRadiallySymmetric:     radially distributed samples on a planar circle.
+#   1. kRandomOnCircle:        random samples on a planar circle.
+#   2. kRandomOnSphere:        random samples on a spherical surface.
+#   3. kFixed:                 fixed set of samples.
+#   4. kRandomOnPerimeter:     random samples on a perimeter offset past the
+#                              object surface (roughly planar).
+#   5. kRandomOnShell:         random samples on a shell offset past the object
+#                              surface.
+#   6. kBehindObjectFromGoal:  a sample a fixed distance behind the object from
+#                              the goal location.
 sampling_strategy: 4
 
 ### Parameters relevant for all sampling strategies.
@@ -42,3 +44,6 @@ grid_y_limits: [-0.08, 0.08]
 # kRandomOnShell parameters.
 min_sampling_radius: 0.07
 max_sampling_radius: 0.10
+
+# kBehindObjectFromGoal parameters.
+distance_behind_object: 0.16

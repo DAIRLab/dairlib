@@ -20,6 +20,8 @@
                                     the end.
   5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
                                     object terms contribute to the final cost.
+  6. kFixedCost:                    A naive baseline that weights all plans
+                                    equally.
 */
 enum C3CostComputationType {
   kSimLCS,
@@ -28,6 +30,7 @@ enum C3CostComputationType {
   kSimImpedance,
   kSimImpedanceReplaceC3EEPlan,
   kSimImpedanceObjectCostOnly,
+  kFixedCost,
 };
 
 struct C3Options {

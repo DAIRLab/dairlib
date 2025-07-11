@@ -5,14 +5,16 @@
 
 
 /* Sample generation options:
-  0. kRadiallySymmetric:  radially distributed samples on a planar circle.
-  1. kRandomOnCircle:     random samples on a planar circle.
-  2. kRandomOnSphere:     random samples on a spherical surface.
-  3. kFixed:              fixed set of samples.
-  4. kRandomOnPerimeter:  random samples on a perimeter offset past the object
-                          surface (roughly planar).
-  5. kRandomOnShell:      random samples on a shell offset past the object
-                          surface.
+  0. kRadiallySymmetric:     radially distributed samples on a planar circle.
+  1. kRandomOnCircle:        random samples on a planar circle.
+  2. kRandomOnSphere:        random samples on a spherical surface.
+  3. kFixed:                 fixed set of samples.
+  4. kRandomOnPerimeter:     random samples on a perimeter offset past the
+                             object surface (roughly planar).
+  5. kRandomOnShell:         random samples on a shell offset past the object
+                             surface.
+  6. kBehindObjectFromGoal:  a sample a fixed distance behind the object from
+                             the goal location.
 */
 enum SamplingStrategy {
   kRadiallySymmetric,
@@ -20,7 +22,8 @@ enum SamplingStrategy {
   kRandomOnSphere,
   kFixed,
   kRandomOnPerimeter,
-  kRandomOnShell
+  kRandomOnShell,
+  kBehindObjectFromGoal,
 };
 
 struct SamplingParams {
@@ -61,6 +64,9 @@ struct SamplingParams {
   double min_sampling_radius;
   double max_sampling_radius;
 
+  /// kBehindObjectFromGoal parameters.
+  double distance_behind_object;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, sampling_strategy);
@@ -81,5 +87,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(N_sample_buffer));
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
+    a->Visit(DRAKE_NVP(distance_behind_object));
   }
 };

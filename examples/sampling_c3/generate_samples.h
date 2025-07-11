@@ -25,6 +25,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     const int& n_v,
     const int& n_u,
     const Eigen::VectorXd& x_lcs,
+    const Eigen::VectorXd& x_lcs_des,
     const bool& is_doing_c3,
     const SamplingParams& sampling_params,
     const SamplingC3Options& sampling_c3_options,
@@ -99,6 +100,13 @@ Eigen::Vector3d ShellSampling(
         contact_geoms,
     const SamplingParams& sampling_params,
     const SamplingC3Options sampling_c3_options
+);
+
+Eigen::Vector3d BehindObjectFromGoalSampling(
+    const int& n_q,
+    const Eigen::VectorXd& x_lcs,
+    const Eigen::VectorXd& x_lcs_des,
+    const double& distance_behind_object
 );
 
 

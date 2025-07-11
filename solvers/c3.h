@@ -49,6 +49,8 @@ class C3 {
   /// used for some of the cost types
   /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
   /// used for some of the cost types
+  /// @param fixed_cost A fixed cost to use for C3 cost for the naive baseline
+  /// that the plan does not affect the sample cost.
   /// @param force_tracking_disabled Whether to simulate EE PD control with
   /// feedforward u from the MPC solution
   /// @param print_cost_breakdown Whether to print the cost breakdown
@@ -57,8 +59,8 @@ class C3 {
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type = kSimLCSReplaceC3EEPlan,
       double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-      bool force_tracking_disabled = false, bool print_cost_breakdown = false,
-      bool verbose = false) const;
+      double fixed_cost = 0.0, bool force_tracking_disabled = false,
+      bool print_cost_breakdown = false, bool verbose = false) const;
 
   /// Helper function to simulate the dynamics with PD control on the EE
   /// location and velocity plans, and the control input plans.  Used for cost

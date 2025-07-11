@@ -340,6 +340,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     C3CostComputationType cost_type,
     double Kp_for_ee_pd_rollout,
     double Kd_for_ee_pd_rollout,
+    double fixed_cost,
     bool force_tracking_disabled,
     bool print_cost_breakdown,
     bool verbose) const {
@@ -360,8 +361,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     }
   }
 
-  // Use the C3 plan.
-  else if (cost_type == C3CostComputationType::kUseC3Plan) {
+  // Use the C3 plan (including if we do a fixed cost, since the cost gets
+  // overwritten later -- this just sets the plan).
+  else if ((cost_type == C3CostComputationType::kUseC3Plan) ||
+           (cost_type == C3CostComputationType::kFixedCost)) {
     for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
@@ -573,6 +576,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
   if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
     cost = cost_contrib_obj_pos + cost_contrib_obj_orientation +
       cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
+  }
+  else if (cost_type == C3CostComputationType::kFixedCost) {
+    cost = fixed_cost;
   }
 
   if (verbose || print_cost_breakdown) {

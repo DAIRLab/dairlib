@@ -15,8 +15,10 @@
 #                                    at the end.
 #  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
 #                                    object terms contribute to the final cost.
-cost_type: 3
-cost_type_position: 2
+#  6. kFixedCost:                    A naive baseline that weights all plans
+#                                    equally.
+cost_type: 6
+cost_type_position: 6
 
 # Progress metric to use to determine if C3 is making progress, all phrased as
 # improvement requirements over a number of control loops (defined as
@@ -60,5 +62,5 @@ hyst_c3_to_repos_frac: 0.85
 hyst_c3_to_repos_frac_position: 0.6
 hyst_repos_to_c3_frac: 0.3
 hyst_repos_to_c3_frac_position: 0.5
-hyst_repos_to_repos_frac: 0.1
-hyst_repos_to_repos_frac_position: 0.1
+hyst_repos_to_repos_frac: 1.0
+hyst_repos_to_repos_frac_position: 1.0

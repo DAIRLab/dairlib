@@ -23,7 +23,9 @@ namespace systems {
 // Public call for generating samples.
 std::vector<Eigen::VectorXd> GenerateSampleStates(
     const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs, const bool& is_doing_c3,
+    const Eigen::VectorXd& x_lcs,
+    const Eigen::VectorXd& x_lcs_des,
+    const bool& is_doing_c3,
     const SamplingParams& sampling_params,
     const SamplingC3Options& sampling_c3_options,
     drake::multibody::MultibodyPlant<double>& plant,
@@ -116,6 +118,16 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
           contact_geoms, sampling_params, sampling_c3_options);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+    }
+  } else if (strategy == SamplingStrategy::kBehindObjectFromGoal) {
+    for (int i = 0; i < num_samples; i++) {
+      candidate_states[i].head(3) = BehindObjectFromGoalSampling(
+        n_q, x_lcs, x_lcs_des, sampling_params.distance_behind_object);
+      if (sampling_params.filter_samples_for_safety &&
+          !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
+        throw std::runtime_error(
+          "Error:  Sample behind object is outside workspace.");
+      }
     }
   } else {
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
@@ -360,6 +372,19 @@ Eigen::Vector3d ShellSampling(
     return sample;
   }
 }
+
+
+// kBehindObjectFromGoal:  Sample a fixed distance behind the object from the
+// goal location.
+Eigen::Vector3d BehindObjectFromGoalSampling(
+    const int& n_q, const Eigen::VectorXd& x_lcs,
+    const Eigen::VectorXd& x_lcs_des, const double& distance_behind_object) {
+  Eigen::Vector3d curr_position = x_lcs.segment(n_q - 3, 3);
+  Eigen::Vector3d goal_position = x_lcs_des.segment(n_q - 3, 3);
+  Eigen::Vector3d behind_dir = (curr_position - goal_position).normalized();
+  return curr_position + distance_behind_object * behind_dir;
+}
+
 
 bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {

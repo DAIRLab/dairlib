@@ -13,6 +13,8 @@
                           surface (roughly planar).
   5. kRandomOnShell:      random samples on a shell offset past the object
                           surface.
+  6. kMeshNormal:         random samples on a mesh surface using the mesh
+                          face normal projection offset from the mesh.
 */
 enum SamplingStrategy {
   kRadiallySymmetric,

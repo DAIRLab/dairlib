@@ -429,7 +429,7 @@ Eigen::VectorXd MeshNormalSampling(
     const Face* selected_face = nullptr;
 
     // Binary search to find index of selected face (weighted by area)
-    int face_idx = dairlib::FindBin(face_bins.data(), face_bins.size(), target);
+    int face_idx = FindBin(face_bins.data(), face_bins.size(), target);
     selected_face = &faces_world[face_idx];
 
     // Sample point on selected face

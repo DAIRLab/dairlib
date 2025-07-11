@@ -15,8 +15,6 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
       <inertial>
         <pose>0 0 0 0 0 0</pose>
         <mass>1</mass>
-        <!-- Inertia values were calculated to be consistent with the mass and
-             geometry size, assuming a uniform density. -->
         <inertia>
             <ixx>0.003</ixx>
             <iyy>0.003 </iyy>
@@ -53,7 +51,7 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
           <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
-      <collision name="corner_nxynz_">
+      <collision name="corner_nxynz">
         <geometry>
           <sphere>
             <radius>0.001</radius>

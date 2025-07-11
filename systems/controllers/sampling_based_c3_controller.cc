@@ -409,68 +409,69 @@ SamplingC3Controller::SamplingC3Controller(
   }
 
   // Below code loads in the mesh and enumerates triangular faces.
-  std::vector<std::string> mesh_paths;
-  const auto& query_port = plant_.get_geometry_query_input_port();
-  const auto& query_object =
-    query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-  const auto& inspector = query_object.inspector();
-  for (auto id : inspector.GetAllGeometryIds()) {
-    const auto& shape = inspector.GetShape(id);
-    std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
+  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal) {
+    std::vector<std::string> mesh_paths;
+    const auto& query_port = plant_.get_geometry_query_input_port();
+    const auto& query_object =
+      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+    const auto& inspector = query_object.inspector();
+    for (auto id : inspector.GetAllGeometryIds()) {
+      const auto& shape = inspector.GetShape(id);
+      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
 
-    auto p = s.find("filename='");
-    if (p != std::string::npos) {
-      p += strlen("filename='");
-      auto q = s.find("'", p);
-      std::string path = s.substr(p, q - p);
-      mesh_paths.push_back(path);
+      auto p = s.find("filename='");
+      if (p != std::string::npos) {
+        p += strlen("filename='");
+        auto q = s.find("'", p);
+        std::string path = s.substr(p, q - p);
+        mesh_paths.push_back(path);
+      }
+    }  
+    if (mesh_paths.empty()) {
+      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
     }
-  }  
-  if (mesh_paths.empty()) {
-    throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
-  }
 
-  // Load triangle meshes and count total triangles.
-  int num_tri = 0;
-  std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
-  for (const std::string& mesh_path : mesh_paths) {
-    drake::geometry::TriangleSurfaceMesh<double>* mesh = 
-      new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
-    meshes.push_back(mesh);
-    num_tri += mesh->num_triangles();
-  }
+    // Load triangle meshes and count total triangles.
+    int num_tri = 0;
+    std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
+    for (const std::string& mesh_path : mesh_paths) {
+      drake::geometry::TriangleSurfaceMesh<double>* mesh = 
+        new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+      meshes.push_back(mesh);
+      num_tri += mesh->num_triangles();
+    }
 
-  //Initialize face storage and reserve estimated size.
-  int j = 0;
-  faces_.reserve(num_tri);
-  face_bins_.reserve(num_tri+1);
-  face_bins_.push_back(0.0);
+    //Initialize face storage and reserve estimated size.
+    int j = 0;
+    faces_.reserve(num_tri);
+    face_bins_.reserve(num_tri+1);
+    face_bins_.push_back(0.0);
 
-  // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
-  for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
-    const auto& vertices = mesh->vertices();
-    int num_tri = mesh->num_triangles();
+    // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
+    for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
+      const auto& vertices = mesh->vertices();
+      int num_tri = mesh->num_triangles();
 
-    for (int i = 0; i < num_tri; ++i) {
-      auto tri = mesh->triangles()[i];
-      Eigen::Vector3d v0 = vertices[tri.vertex(0)];
-      Eigen::Vector3d v1 = vertices[tri.vertex(1)];
-      Eigen::Vector3d v2 = vertices[tri.vertex(2)];
-      Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+      for (int i = 0; i < num_tri; ++i) {
+        auto tri = mesh->triangles()[i];
+        Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+        Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+        Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+        Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
 
-      if (std::abs(normal[2]) < 0.8) {
-        double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-        faces_.push_back({area, normal, {v0, v1, v2}});
-        face_bins_.push_back(face_bins_[j] + area);
-        j++;
+        if (std::abs(normal[2]) < 0.8) {
+          double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+          faces_.push_back({area, normal, {v0, v1, v2}});
+          face_bins_.push_back(face_bins_[j] + area);
+          j++;
+        }
       }
     }
-  }
 
-  if (faces_.empty()) {
-    throw std::runtime_error("No valid faces found in any of the meshes.");
+    if (faces_.empty()) {
+      throw std::runtime_error("No valid faces found in any of the meshes.");
+    }
   }
-
 }
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
@@ -598,7 +599,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_);
-
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -1153,7 +1153,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to_for_cost,
       sampling_c3_options_.num_friction_directions, verbose_);
-
     solvers::LCS lcs_object_sample_for_cost_simulation =
       solvers::LCSFactory::LinearizePlantToLCS(
         plant_, *context_, plant_ad_, *context_ad_,

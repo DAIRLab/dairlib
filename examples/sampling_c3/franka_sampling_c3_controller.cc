@@ -231,74 +231,49 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
-    drake::geometry::GeometryId mesh_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[0];
+		for (int i = 0; i < controller_params.num_objects; i++) {
+			ModelInstanceIndex object_index = object_indices.at(i);
 
-    drake::geometry::GeometryId top_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[2];
-    drake::geometry::GeometryId bottom_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[3];
+			drake::geometry::GeometryId mesh_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[0];
 
-    drake::geometry::GeometryId mesh_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("body"))[0];
-    drake::geometry::GeometryId top_left_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[2];
-    drake::geometry::GeometryId bottom_sphere_geoms2 =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("nut_body"))[3];
+			drake::geometry::GeometryId top_left_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[1];
+			drake::geometry::GeometryId top_right_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[2];
+			drake::geometry::GeometryId bottom_sphere_geoms =
+					plant_lcs.GetCollisionGeometriesForBody(
+							plant_lcs.GetBodyByName("body", object_index))[3];
 
+			contact_geoms["OBJECT_MESH_" + std::to_string(i)] = mesh_geoms;
+			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
+			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
+			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
 
-    for (int i = 0; i < plant_lcs.num_bodies(); ++i) {
-        const auto& body = plant_lcs.get_body(drake::multibody::BodyIndex(i));
-        std::cout << "Body " << i << ": " << body.name() << std::endl;
-    }
+			ee_contact_pairs.push_back(
+					SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));
 
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+			ground_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+		} 
+		// Object-object contact pairs
+		for (int i = 0; i < controller_params.num_objects; i++) {
+			for (int j = 0; j < controller_params.num_objects; j++) {
+					if (j == i) continue;
 
-    contact_geoms["OBJECT_MESH"] = mesh_geoms;
-    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
-    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
-    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
+					std::string key1 = "OBJECT_MESH_" + std::to_string(i);
+					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
-    contact_geoms["OBJECT_MESH2"] = mesh_geoms2;
-    contact_geoms["TOP_LEFT_SPHERE2"] = top_left_sphere_geoms2;
-    contact_geoms["TOP_RIGHT_SPHERE2"] = top_right_sphere_geoms2;
-    contact_geoms["BOTTOM_SPHERE2"] = bottom_sphere_geoms2;
-
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH"]));
-
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
-
-
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_LEFT_SPHERE2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["TOP_RIGHT_SPHERE2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["BOTTOM_SPHERE2"], contact_geoms["GROUND"]));
-
-
-    object_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["OBJECT_MESH"], contact_geoms["OBJECT_MESH2"]));    
-  std::cout << "before jacktoy" << std::endl;
-
+					object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
+			}
+		}
     
   }
   else {

@@ -325,7 +325,6 @@ int DoMain(int argc, char* argv[]) {
                   final_target_state_mux->get_input_port(2));
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   final_target_state_mux->get_input_port(3));
-
   // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,

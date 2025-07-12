@@ -30,7 +30,7 @@ cc_library(
     ],
     deps = [
         "//lcmtypes:lcmt_robot",
-        "@c3//:c3_shared_library",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

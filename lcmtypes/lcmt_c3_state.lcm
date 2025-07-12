@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_c3_state
+{
+  int64_t utime;
+  int32_t num_states;
+
+  float state [num_states];
+  string state_names [num_states];
+}

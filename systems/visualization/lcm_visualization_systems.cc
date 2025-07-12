@@ -1,6 +1,6 @@
 #include "lcm_visualization_systems.h"
 
-#include <c3/lcmt_contact_forces.hpp>
+#include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
@@ -193,7 +193,7 @@ LcmForceDrawer::LcmForceDrawer(
 
   force_trajectory_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_forces",
-                                     drake::Value<c3::lcmt_contact_forces>{})
+                                     drake::Value<dairlib::lcmt_c3_forces>{})
           .get_index();
 
   meshcat_->SetProperty(force_path_, "visible", true, 0);
@@ -288,12 +288,12 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
 drake::systems::EventStatus LcmForceDrawer::DrawForces(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  if (this->EvalInputValue<c3::lcmt_contact_forces>(
+  if (this->EvalInputValue<dairlib::lcmt_c3_forces>(
               context, force_trajectory_input_port_)
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
-  const auto& c3_forces = this->EvalInputValue<c3::lcmt_contact_forces>(
+  const auto& c3_forces = this->EvalInputValue<dairlib::lcmt_c3_forces>(
       context, force_trajectory_input_port_);
 
   // Don't needlessly update

@@ -53,16 +53,28 @@ cc_library(
     hdrs = [
         "lcm_trajectory_systems.h",
     ],
-    copts = [
-        "-Iexternal",
-        "-Wno-sign-compare",
-    ],
     deps = [
         "//common:eigen_utils",
         "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
-        "@c3//:c3_shared_library",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_output_systems",
+    srcs = [
+        "c3_output_systems.cc",
+    ],
+    hdrs = [
+        "c3_output_systems.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:c3_output",
         "@drake//:drake_shared_library",
     ],
 )

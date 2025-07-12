@@ -24,7 +24,7 @@
 #include "examples/plate-balancing/parameters/plate_balancing_config.h"
 #include "examples/plate-balancing/parameters/simulation_config.h"
 #include "examples/plate-balancing/parameters/simulation_scene_config.h"
-#include "examples/plate-balancing/systems/visualization/lcm_visualization_systems.h"
+#include "examples/plate-balancing/systems/visualization/visualization_systems.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -54,6 +54,9 @@ DEFINE_string(plate_balancing_config,
 namespace dairlib {
 
 using systems::LcmC3TrajectoryReceiver;
+using systems::SubvectorPassThrough;
+using systems::lcmt_systems::ObjectStateConsumer;
+using systems::lcmt_systems::RobotOutputConsumer;
 
 namespace examples {
 namespace plate_balancing {
@@ -143,27 +146,24 @@ int do_main(int argc, char* argv[]) {
 
   // Convert LCM messages to MultibodyPlant state vectors.
   auto franka_state_receiver =
-      builder.AddSystem<systems::lcmt_systems::RobotOutputConsumer>(
-          plant, franka_index);
+      builder.AddSystem<RobotOutputConsumer>(plant, franka_index);
   auto tray_state_receiver =
-      builder.AddSystem<systems::lcmt_systems::ObjectStateConsumer>(plant,
-                                                                    tray_index);
+      builder.AddSystem<ObjectStateConsumer>(plant, tray_index);
   auto object_state_receiver =
-      builder.AddSystem<systems::lcmt_systems::ObjectStateConsumer>(
-          plant, object_index);
+      builder.AddSystem<ObjectStateConsumer>(plant, object_index);
 
   // Extract relevant state vectors for visualization.
-  auto franka_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+  auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
   auto robot_time_passthrough =
-      builder.AddSystem<systems::SubvectorPassThrough>(
+      builder.AddSystem<SubvectorPassThrough>(
           franka_state_receiver->get_output_port(0).size(),
           franka_state_receiver->get_output_port(0).size() - 1, 1);
-  auto tray_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+  auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
-  auto object_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+  auto object_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(object_index));
 
@@ -248,10 +248,10 @@ int do_main(int argc, char* argv[]) {
   // Visualize planned center of mass trajectories.
   if (sim_params.visualize_center_of_mass_plan) {
     auto trajectory_drawer_actor =
-        builder.AddSystem<systems::PositionTrajectoryDrawer>(
+        builder.AddSystem<systems::visualization::PositionTrajectoryDrawer>(
             meshcat, "end_effector_position_trajectory");
     auto trajectory_drawer_object =
-        builder.AddSystem<systems::PositionTrajectoryDrawer>(
+        builder.AddSystem<systems::visualization::PositionTrajectoryDrawer>(
             meshcat, "object_position_trajectory");
     trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
@@ -266,11 +266,13 @@ int do_main(int argc, char* argv[]) {
 
   // Visualize pose traces for object and end effector.
   if (sim_params.visualize_pose_trace) {
-    auto object_pose_drawer = builder.AddSystem<systems::PoseTrajectoryDrawer>(
-        meshcat, FindResourceOrThrow("examples/plate-balancing/urdf/tray.sdf"),
-        "object_target_trajectory", true);
+    auto object_pose_drawer =
+        builder.AddSystem<systems::visualization::PoseTrajectoryDrawer>(
+            meshcat,
+            FindResourceOrThrow("examples/plate-balancing/urdf/tray.sdf"),
+            "object_target_trajectory", true);
     auto end_effector_pose_drawer =
-        builder.AddSystem<systems::PoseTrajectoryDrawer>(
+        builder.AddSystem<systems::visualization::PoseTrajectoryDrawer>(
             meshcat, FindResourceOrThrow(sim_params.end_effector_model),
             "end_effector_target_trajectory",
             main_config.include_end_effector_orientation);
@@ -301,9 +303,10 @@ int do_main(int argc, char* argv[]) {
   // Visualize C3 actual and target states.
   if (sim_params.visualize_c3_object_state ||
       sim_params.visualize_c3_end_effector_state) {
-    auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
-        meshcat, sim_params.visualize_c3_object_state,
-        sim_params.visualize_c3_end_effector_state);
+    auto c3_target_drawer =
+        builder.AddSystem<systems::visualization::LcmC3TargetDrawer>(
+            meshcat, sim_params.visualize_c3_object_state,
+            sim_params.visualize_c3_end_effector_state);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),
@@ -312,8 +315,9 @@ int do_main(int argc, char* argv[]) {
 
   // Visualize C3 force signals.
   if (sim_params.visualize_c3_forces) {
-    auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "end_effector_input_trajectory");
+    auto end_effector_force_drawer =
+        builder.AddSystem<systems::visualization::LcmForceDrawer>(
+            meshcat, "end_effector_input_trajectory");
     builder.Connect(
         end_effector_position_receiver->get_output_port_trajectory(),
         end_effector_force_drawer->get_input_port_position_trajectory());

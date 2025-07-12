@@ -36,6 +36,7 @@
 
 using drake::math::RigidTransform;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -212,7 +213,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", controller_config.W_ee_lambda, plant,
+          "end_effector_force", controller_config.W_ee_lambda, plant, plant,
           controller_config.end_effector_name, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
@@ -309,13 +310,14 @@ int DoMain(int argc, char* argv[]) {
 
   // Build the complete system diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("plate_balancing/osc_controller"));
-
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("plate_balancing/osc_controller"));
+  DrawAndSaveDiagramGraph(*shared_diagram);
   // Run the LCM-driven control loop (real-time or simulation)
   LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver,
+      &lcm, shared_diagram, state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
+
   loop.Simulate();
   return 0;
 }

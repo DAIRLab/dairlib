@@ -55,6 +55,7 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::ConstantVectorSource;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Multiplexer;
 using drake::systems::TriggerType;
@@ -383,14 +384,15 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
       TriggerTypeSet({TriggerType::kForced}));
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("run_c3_controller"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("run_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
 
   // Run LCM-driven simulation or hardware loop
   LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), franka_state_receiver,
+      &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
+  DrawAndSaveDiagramGraph(*shared_diagram);
 
   // Wait for tray state messages before starting simulation
   LcmHandleSubscriptionsUntil(

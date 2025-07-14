@@ -49,7 +49,7 @@ script "c3_mpc" {
 }
 
 script "mjmpc_with_drake_sim" {
-    start cmd "run_simuplate_balancing_simulationlation";
+    start cmd "plate_balancing_simulation";
     start cmd "dairlab_osc";
     start cmd "mujoco_mpc";
     start cmd "forward_kinematics";

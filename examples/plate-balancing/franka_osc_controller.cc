@@ -238,6 +238,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
 
+  if (controller_config.enforce_acceleration_constraints) {
+    osc->EnableAccelerationConstraints();
+  } else {
+    osc->DisableAccelerationConstraints();
+  }
   osc->SetContactFriction(controller_config.mu);
   osc->SetOsqpSolverOptions(solver_options);
 

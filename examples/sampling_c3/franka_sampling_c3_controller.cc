@@ -100,10 +100,12 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   std::vector<ModelInstanceIndex> object_indices_lcs = 
-		AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
-                      controller_params.include_end_effector_orientation);
+	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
+                  controller_params.include_end_effector_orientation);
 
   plant_lcs.Finalize();
+
+
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
@@ -310,7 +312,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<systems::ObjectStateReceiver*> object_state_receivers;
 	for (int i = 0; i < controller_params.num_objects; i++) {
 		object_state_receivers.push_back(
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_object)
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_object, object_indices.at(i))
 		);
 	}
   auto radio_sub =
@@ -414,11 +416,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),		
                   final_target_state_mux->get_input_port(controller_params.num_objects + 1));
 
-	// Ports (n+2) to (2n+1) constant vector
-	for (int i = 0; i < controller_params.num_objects; i++) {								
-		builder.Connect(object_zero_velocity_source->get_output_port(),
-										final_target_state_mux->get_input_port(i + controller_params.num_objects + 2));
-	} 
+// Ports (n+2) to (2n+1) constant vector
+for (int i = 0; i < controller_params.num_objects; i++) {								
+    builder.Connect(object_zero_velocity_source->get_output_port(),
+                                    final_target_state_mux->get_input_port(i + controller_params.num_objects + 2));
+} 
 
   // Sampling C3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
@@ -558,15 +560,15 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
 	for (int i = 0; i < controller_params.num_objects; i++) {
-		builder.Connect(object_state_subs.at(i)->get_output_port(),
-										object_state_receivers.at(i)->get_input_port());
+			builder.Connect(object_state_subs.at(i)->get_output_port(),
+																			object_state_receivers.at(i)->get_input_port());
 	}
 
 	std::vector<const drake::systems::InputPort<double>*> reduced_order_model_receivers = 
-		reduced_order_model_receiver->get_input_ports_object_state();
+			reduced_order_model_receiver->get_input_ports_object_state();
 	for (int i = 0; i < controller_params.num_objects; i++) {
-		builder.Connect(object_state_receivers.at(i)->get_output_port(),
-										*(reduced_order_model_receivers.at(i)));
+			builder.Connect(object_state_receivers.at(i)->get_output_port(),
+																			*(reduced_order_model_receivers.at(i)));
 	} 
 
   builder.Connect(reduced_order_model_receiver->get_output_port(),
@@ -673,12 +675,20 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
-  LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return object_state_subs.at(0)->GetInternalMessageCount() > 1; });
+	std::cout << "constructed loop" << std::endl;
+
+	LcmHandleSubscriptionsUntil(
+			&lcm,
+			[&]() {
+				return true;
+				});
+	std::cout << "before loop.sim" << std::endl;
   loop.Simulate();
   return 0;
 }
 
 }  // namespace dairlib
+
+
 
 int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

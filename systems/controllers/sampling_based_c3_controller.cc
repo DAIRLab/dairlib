@@ -88,15 +88,16 @@ SamplingC3Controller::SamplingC3Controller(
 
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
+  n_q_ = plant_.num_positions();
+  n_v_ = plant_.num_velocities();
+  n_u_ = plant_.num_actuators();
+  n_x_ = n_q_ + n_v_;
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;
+
   if (verbose_) {
-    n_q_ = plant_.num_positions();
-    n_v_ = plant_.num_velocities();
-    n_u_ = plant_.num_actuators();
-    n_x_ = n_q_ + n_v_;
-    std::cout << "n_q_" << n_q_ << std::endl;
-    std::cout << "n_v_" << n_v_ << std::endl;
-    std::cout << "n_u_" << n_u_ << std::endl;
-    std::cout << "n_x_" << n_x_ << std::endl;
 
     std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
     std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
@@ -130,6 +131,7 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  std::cout << "Created placeholder LCS" << std::endl;
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
@@ -161,7 +163,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
-
+  std::cout << "Set solver options" << std::endl;
 
   // Set actor bounds.
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -413,7 +415,7 @@ SamplingC3Controller::SamplingC3Controller(
 
   ResetProgressMetrics();
 
-
+  std::cout << "Before computeplan discreteupdateevent" << std::endl;
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
   // Set parallelization settings.
@@ -535,6 +537,7 @@ SamplingC3Controller::SamplingC3Controller(
   if (faces_.empty()) {
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
+  std::cout << "end of constructor" << std::endl;
 
 }
 
@@ -556,6 +559,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
+  std::cout << "entered computeplan" << std::endl;
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);

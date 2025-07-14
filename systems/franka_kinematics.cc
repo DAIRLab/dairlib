@@ -67,7 +67,6 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       object_indices_(object_indices) {
 
   num_objects_ = object_indices_.size();
-  std::cout << "num_objects: " << num_objects_ << std::endl;
   this->set_name("franka_kinematics");
   franka_state_port_ =
       this->DeclareVectorInputPort(
@@ -78,9 +77,6 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
 
   for (int i = 0; i < num_objects_; i++) {
     std::string port_name = "x_object_" + std::to_string(i);
-    std::cout << "num_pos: " << object_plant.num_positions() << std::endl;
-    std::cout << "num_velo: " << object_plant.num_velocities() << std::endl;
-
     object_state_ports_.push_back(
         this->DeclareVectorInputPort(
               port_name, StateVector<double>(7, 6))
@@ -111,21 +107,28 @@ void FrankaKinematics::ComputeLCSState(
   std::vector<const StateVector<double>*> object_outputs;
   for (int i = 0; i < num_objects_; i++) {
     object_outputs.push_back(
-        (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_[i])
+        (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_.at(i))
     );
   } 
 
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
 
-  VectorXd q_objects;
+  int nq = object_outputs[0]->GetPositions().size();
+  int nv = object_outputs[0]->GetVelocities().size();
+
+  // Preallocate total vectors
+  VectorXd q_objects(num_objects_ * nq);
+  VectorXd v_objects(num_objects_ * nv);
+
   for (int i = 0; i < num_objects_; i++) {
-    q_objects << object_outputs[i]->GetPositions();
+    q_objects.segment(i * nq, nq) = object_outputs.at(i)->GetPositions();
+    v_objects.segment(i * nv, nv) = object_outputs.at(i)->GetVelocities();
   }
-  VectorXd v_objects;
-  for (int i = 0; i < num_objects_; i++) {
-    v_objects << object_outputs[i]->GetVelocities();
-  }
+
+  std::cout << q_objects.transpose() << std::endl;
+
+
 
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);
@@ -140,12 +143,15 @@ void FrankaKinematics::ComputeLCSState(
   auto end_effector_pose = franka_plant_.EvalBodyPoseInWorld(
       *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
 
+  const Eigen::VectorXd& q = object_plant_.GetPositions(*object_context_);
+  std::cout << q.transpose() << std::endl;
+
   std::vector<drake::math::RigidTransform<double>> object_poses;
   for (ModelInstanceIndex idx : object_indices_) {
     object_poses.push_back(
-        object_plant_.EvalBodyPoseInWorld(
-            *object_context_, object_plant_.GetBodyByName(object_name_, idx))
-    );
+          object_plant_.EvalBodyPoseInWorld(
+              *object_context_, object_plant_.GetBodyByName("body", idx))
+      );
   } 
   auto end_effector_spatial_velocity =
       franka_plant_.EvalBodySpatialVelocityInWorld(

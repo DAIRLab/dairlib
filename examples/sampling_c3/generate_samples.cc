@@ -585,6 +585,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         std::vector<Face> faces_world;
         Eigen::Matrix3d R = object_quats[selected_obj_idx].toRotationMatrix();
         Eigen::Vector3d t = object_positions[selected_obj_idx];
+        
+        std::cout << "after toRotationMatrix" << std::endl;
 
         for (const auto& face : faces) {
             Face transformed_face;

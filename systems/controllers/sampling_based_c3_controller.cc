@@ -225,7 +225,7 @@ SamplingC3Controller::SamplingC3Controller(
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
   final_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
-
+  
   // Output ports.
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -415,7 +415,6 @@ SamplingC3Controller::SamplingC3Controller(
 
   ResetProgressMetrics();
 
-  std::cout << "Before computeplan discreteupdateevent" << std::endl;
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
   // Set parallelization settings.
@@ -568,15 +567,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& x_lcs_final_des =
-      *this->template EvalVectorInput<BasicVector>(context,
-                                                   final_target_input_port_);
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);                                                  
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
-
+      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
-
   if (verbose_) {
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
     std::cout << "x_lcs_des: " << x_lcs_des.get_value().transpose()
@@ -598,17 +593,24 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   CheckForWorkspaceLimitViolations(lcs_x_curr);
 
   // Compute the current position and orientation errors.
-  current_position_error_ =
-    (x_lcs_curr.segment(n_q_-3, 3) -
-     x_lcs_final_des.get_value().segment(n_q_-3, 3)).norm();
-  Eigen::Quaterniond curr_quat(
-    x_lcs_curr[n_q_-7], x_lcs_curr[n_q_-6],
-    x_lcs_curr[n_q_-5], x_lcs_curr[n_q_-4]);
-  Eigen::Quaterniond des_quat(
-    x_lcs_final_des.get_value()[n_q_-7], x_lcs_final_des.get_value()[n_q_-6],
-    x_lcs_final_des.get_value()[n_q_-5], x_lcs_final_des.get_value()[n_q_-4]);
-  Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
-  current_orientation_error_ = angle_axis_diff.angle();
+  current_position_error_ = 0;
+  current_orientation_error_ = 0;
+
+  std::cout << x_lcs_curr.transpose() << std::endl;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    double error = (x_lcs_curr.segment(7 + 7*i, 3) -
+      x_lcs_final_des.get_value().segment(7 + 7*i, 3)).norm();
+    current_position_error_ += error;
+
+    Eigen::Quaterniond curr_quat(
+      x_lcs_curr[3 + 7*i], x_lcs_curr[4 + 7*i],
+      x_lcs_curr[5 + 7*i], x_lcs_curr[6 + 7*i]);
+    Eigen::Quaterniond des_quat(
+      x_lcs_final_des.get_value()[3 + 7*i], x_lcs_final_des.get_value()[4 + 7*i],
+      x_lcs_final_des.get_value()[5 + 7*i], x_lcs_final_des.get_value()[6 + 7*i]);
+    Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+    current_orientation_error_ += angle_axis_diff.angle();
+  }
 
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
@@ -633,8 +635,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Reset the sample buffer now that the costs have changed.
     sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ =
-      -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+    sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
   }
 
   // If the object is close to desired XY location, track its full pose.
@@ -660,6 +661,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
 
+  std::cout << "Before generate samples" << std::endl;
+
   // Generate states, differing from the current state only by EE sample
   // locations.
   std::vector<Eigen::VectorXd> candidate_states =
@@ -668,6 +671,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
 
+  std::cout << "After generate samples" << std::endl;
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_) {

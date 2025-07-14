@@ -107,7 +107,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices[i]);
     auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.object_state_channel, lcm,
+          lcm_channel_params.object_state_channels.at(i), lcm,
           1.0 / sim_params.object_publish_rate));
 
     builder.Connect(plant.get_state_output_port(object_indices[i]),

@@ -20,6 +20,7 @@ struct FrankaSimParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(object_model));
+    a->Visit(DRAKE_NVP(object_models));
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(actuator_delay));

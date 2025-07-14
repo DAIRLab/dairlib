@@ -85,14 +85,15 @@ SamplingC3Controller::SamplingC3Controller(
     discount_factor *= c3_options.gamma;
   }
   Q_.push_back(discount_factor * c3_options.Q);
-
+  n_q_ = plant_.num_positions();
+  n_v_ = plant_.num_velocities();
+  n_u_ = plant_.num_actuators();
+  n_x_ = n_q_ + n_v_;
+  
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
   if (verbose_) {
-    n_q_ = plant_.num_positions();
-    n_v_ = plant_.num_velocities();
-    n_u_ = plant_.num_actuators();
-    n_x_ = n_q_ + n_v_;
+    
     std::cout << "n_q_" << n_q_ << std::endl;
     std::cout << "n_v_" << n_v_ << std::endl;
     std::cout << "n_u_" << n_u_ << std::endl;

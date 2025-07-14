@@ -22,6 +22,8 @@ namespace systems {
 
 constexpr int DEFAULT_MODEL_INSTANCE_INDEX = 88888888;
 
+// TODO(@meow404): consider moving systems dependent on this file to //systems/lcmt_systems/
+
 /// @file This file contains classes dealing with sending/receiving
 /// LCM messages related to a robot.
 

@@ -7,8 +7,6 @@
 #include "lcm/lcm_trajectory.h"
 
 using Eigen::VectorXd;
-using std::placeholders::_1;
-using std::placeholders::_2;
 
 namespace dairlib {
 namespace systems {
@@ -44,40 +42,17 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
       &SamplingC3GoalGenerator::CalcEndEffectorTarget)
     .get_index();
   
-  calc_object_target_vector_ = {
-      std::bind(&SamplingC3GoalGenerator::CalcObjectTarget0, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectTarget1, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectTarget2, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectTarget3, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectTarget4, this, _1, _2)
-  };
-
-  calc_object_velocity_target_vector_ = {
-      std::bind(&SamplingC3GoalGenerator::CalcObjectVelocityTarget0, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectVelocityTarget1, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectVelocityTarget2, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectVelocityTarget3, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::CalcObjectVelocityTarget4, this, _1, _2)
-  };
-
-  output_object_final_target_vector_ = {
-      std::bind(&SamplingC3GoalGenerator::OutputObjectFinalTarget0, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::OutputObjectFinalTarget1, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::OutputObjectFinalTarget2, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::OutputObjectFinalTarget3, this, _1, _2),
-      std::bind(&SamplingC3GoalGenerator::OutputObjectFinalTarget4, this, _1, _2)
-  };
-
-  if (object_indices_.size() > 5) {
-    throw new std::runtime_error(">5 objects not supported");
-  } 
+  
   for (int i = 0; i < object_indices_.size(); i++) {
     std::string port_name = "object_target_" + std::to_string(i);
     object_target_ports_.push_back(
       this->DeclareVectorOutputPort(
         port_name,
         BasicVector<double>(7),
-        calc_object_target_vector_.at(i)
+        [this, i](const drake::systems::Context<double>& context,
+                  BasicVector<double>* vector) {
+                    this->CalcObjectTarget(context, vector, i);
+                  }
       ).get_index()
     );
   }
@@ -88,7 +63,10 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
       this->DeclareVectorOutputPort(
         port_name,
         BasicVector<double>(6),
-        calc_object_velocity_target_vector_.at(i)
+        [this, i](const drake::systems::Context<double>& context,
+          BasicVector<double>* vector) {
+            this->CalcObjectVelocityTarget(context, vector, i);
+          }
       ).get_index()
     );
   }
@@ -99,7 +77,10 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
       this->DeclareVectorOutputPort(
         port_name,
         BasicVector<double>(7),
-        output_object_final_target_vector_.at(i)
+        [this, i](const drake::systems::Context<double>& context,
+          BasicVector<double>* vector) {
+            this->OutputObjectFinalTarget(context, vector, i);
+          }
       ).get_index()
     );
   }
@@ -120,7 +101,7 @@ void SamplingC3GoalGenerator::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
   const StateVector<double>* object_state =
-    (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_[0]);
+    (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_.at(0));
 
   VectorXd end_effector_position = object_state->GetPositions().tail(3);
   end_effector_position[2] += goal_params_.ee_target_z_offset_above_object;
@@ -132,7 +113,7 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
     BasicVector<double>* target,
     int index) const {
   const StateVector<double>* object_state =
-    (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_[index]);
+    (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_.at(index));
   Eigen::Vector3d obj_curr_position = object_state->GetPositions().tail(3);
   VectorXd obj_curr_quat = object_state->GetPositions().head(4);
   Eigen::Quaterniond curr_quat(obj_curr_quat(0), obj_curr_quat(1),

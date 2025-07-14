@@ -98,7 +98,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     }
   }
 
-  std::cout << "Set options" << std::endl;
   
   auto Dn = lcs.D_.at(0).norm();
   auto An = lcs.A_.at(0).norm();

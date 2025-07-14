@@ -52,7 +52,8 @@ def process_base(
     sim_yaml_path: str,
     goal_yaml_path: str,
     sampling_yaml_path: str,
-    repos_yaml_path: str
+    repos_yaml_path: str,
+    samp_c3_options_yaml_path: str
 ):
     print(f"\n🚀 Processing object: {base_name}")
     output_dir = os.path.join(urdf_dir, base_name)
@@ -119,8 +120,6 @@ def process_base(
 
     # 8. Update sampling C3 options
 
-    samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
-    samp_c3_options_yaml["resolve_contacts_to_lists"][0][2] = num_objects * 3
 
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
@@ -150,7 +149,8 @@ def process_base(
             q_vector.extend(OBJECT_LINEAR_VELOCITY)
 
         return q_vector
-
+    
+    samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
     
     save_yaml(samp_c3_options_yaml_path, samp_c3_options_yaml)
@@ -168,12 +168,14 @@ if __name__ == "__main__":
     repos_yaml_path = config["reposition_params_file"]
     lcm_sim_yaml_path = config["lcm_channels_simulation_file"]
     samp_c3_options_yaml_path = config["sampling_c3_options_file"]
+    goal_yaml_path = config["goal_params_file"]
 
     urdf_dir = "examples/sampling_c3/urdf"
 
     # Load config and get base_names
     config = load_yaml(controller_yaml_path)
     base_names = config.get("base_names", [])
+    print(base_names)
     if not base_names:
         print("❌ No base_names found in config.")
         sys.exit(1)
@@ -183,6 +185,7 @@ if __name__ == "__main__":
     vis_yaml = load_yaml(vis_yaml_path)
     sim_yaml = load_yaml(sim_yaml_path)
     lcm_sim_yaml = load_yaml(lcm_sim_yaml_path)
+    goal_yaml = load_yaml(goal_yaml_path)
 
     # Zero vectors only once
     controller_yaml["object_models"] = [""] * num_objects
@@ -190,18 +193,22 @@ if __name__ == "__main__":
     sim_yaml["object_models"] = [""] * num_objects
     sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, 0.0, 0.0] for _ in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
+    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379, -0.004] for _ in range(num_objects)]
+    goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
     # Save pre-sized YAMLs
     save_yaml(controller_yaml_path, controller_yaml)
     save_yaml(vis_yaml_path, vis_yaml)
     save_yaml(sim_yaml_path, sim_yaml)
+    save_yaml(lcm_sim_yaml_path, lcm_sim_yaml)
 
     # Process all objects
     for base_name in base_names:
         process_base(
             base_name, urdf_dir,
             controller_yaml_path, vis_yaml_path, sim_yaml_path,
-            goal_yaml_path, sampling_yaml_path, repos_yaml_path
+            goal_yaml_path, sampling_yaml_path, repos_yaml_path,
+            samp_c3_options_yaml_path
         )
 
     print("🎉 All objects processed successfully.")

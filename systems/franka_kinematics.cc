@@ -1,4 +1,5 @@
 #include "systems/franka_kinematics.h"
+#include <iostream>
 
 #include "common/find_resource.h"
 
@@ -66,6 +67,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       object_indices_(object_indices) {
 
   num_objects_ = object_indices_.size();
+  std::cout << "num_objects: " << num_objects_ << std::endl;
   this->set_name("franka_kinematics");
   franka_state_port_ =
       this->DeclareVectorInputPort(
@@ -75,13 +77,13 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
           .get_index();
 
   for (int i = 0; i < num_objects_; i++) {
-    std::ostringstream oss;
-    oss << "x_object_" << i;
-    std::string port_name = oss.str();
+    std::string port_name = "x_object_" + std::to_string(i);
+    std::cout << "num_pos: " << object_plant.num_positions() << std::endl;
+    std::cout << "num_velo: " << object_plant.num_velocities() << std::endl;
+
     object_state_ports_.push_back(
         this->DeclareVectorInputPort(
-              port_name, StateVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities()))
+              port_name, StateVector<double>(7, 6))
           .get_index()
     );
   } 

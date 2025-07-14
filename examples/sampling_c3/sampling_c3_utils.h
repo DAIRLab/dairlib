@@ -70,7 +70,7 @@ void AddLCSModelToPlant(
 /// @param object_model the model of the object to add to the plant
 /// @param include_end_effector_orientation whether to include the end effector
 /// orientation as DOFs in the plant. True is currently unimplemented.
-void AddLCSModelsToPlant(
+std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     std::vector<std::string> object_models = {},

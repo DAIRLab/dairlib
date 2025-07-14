@@ -88,25 +88,25 @@ SamplingC3Controller::SamplingC3Controller(
 
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
+  if (verbose_) {
+    n_q_ = plant_.num_positions();
+    n_v_ = plant_.num_velocities();
+    n_u_ = plant_.num_actuators();
+    n_x_ = n_q_ + n_v_;
+    std::cout << "n_q_" << n_q_ << std::endl;
+    std::cout << "n_v_" << n_v_ << std::endl;
+    std::cout << "n_u_" << n_u_ << std::endl;
+    std::cout << "n_x_" << n_x_ << std::endl;
 
-  n_q_ = plant_.num_positions();
-  n_v_ = plant_.num_velocities();
-  n_u_ = plant_.num_actuators();
-  n_x_ = n_q_ + n_v_;
-  std::cout << "n_q_" << n_q_ << std::endl;
-  std::cout << "n_v_" << n_v_ << std::endl;
-  std::cout << "n_u_" << n_u_ << std::endl;
-  std::cout << "n_x_" << n_x_ << std::endl;
-
-  std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
-  std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
-  std::cout << "R Rows: " << R_[0].rows() << std::endl;
-  std::cout << "R Cols: " << R_[0].cols() << std::endl;
-  std::cout << "G Rows: " << G_[0].rows() << std::endl;
-  std::cout << "G Cols: " << G_[0].cols() << std::endl;
-  std::cout << "U Rows: " << U_[0].rows() << std::endl;
-  std::cout << "U Cols: " << U_[0].cols() << std::endl;
-
+    std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
+    std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
+    std::cout << "R Rows: " << R_[0].rows() << std::endl;
+    std::cout << "R Cols: " << R_[0].cols() << std::endl;
+    std::cout << "G Rows: " << G_[0].rows() << std::endl;
+    std::cout << "G Cols: " << G_[0].cols() << std::endl;
+    std::cout << "U Rows: " << U_[0].rows() << std::endl;
+    std::cout << "U Cols: " << U_[0].cols() << std::endl;
+  }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
@@ -206,6 +206,11 @@ SamplingC3Controller::SamplingC3Controller(
       A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
   }
 
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;  
+  
   // Input ports.
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -1137,33 +1142,49 @@ void SamplingC3Controller::UpdateCostMatrices(
 
   if (sampling_c3_options_.use_quaternion_dependent_cost &&
       crossed_cost_switching_threshold_) {
-    Eigen::VectorXd quat = x_lcs_curr.segment(3, 4);
-    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3, 4);
-    Eigen::MatrixXd Q_quaternion_dependent_cost =
-      hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
-
+    std::vector<Eigen::VectorXd> quats;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      quats.push_back(x_lcs_curr.segment(3 + 7*i, 4));
+    }
+    std::vector<Eigen::VectorXd> quats_desired;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      quats_desired.push_back(x_lcs_des.get_value().segment(3 + 7*i, 4));
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_costs;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      Q_quaternion_dependent_costs.push_back(hessian_of_squared_quaternion_angle_difference(quats.at(i), quats_desired.at(i)));
+    }
     // Get the eigenvalues of the hessian to regularize so the Q matrix is
     // always PSD.
-    double min_eigval =
-      Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 =
-      std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4, 4);
-
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
-      quat_desired * quat_desired.transpose();
-    DRAKE_ASSERT(Q_quaternion_dependent_cost.rows() ==
-                 Q_quaternion_dependent_cost.cols() ==
-                 Q_quaternion_dependent_regularizer_part_2.rows() ==
-                 Q_quaternion_dependent_regularizer_part_2.cols() == 4);
+    std::vector<double> min_eigvals;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      min_eigvals.push_back(Q_quaternion_dependent_costs.at(i).eigenvalues().real().minCoeff());
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_1;
+    for (int i = 0; i < controller_params_.num_objects; i++) {    
+      Q_quaternion_dependent_regularizers_part_1.push_back(std::max(0.0, -min_eigvals.at(i)) * Eigen::MatrixXd::Identity(4, 4));
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_2;
+    for (int i = 0; i < controller_params_.num_objects; i++) {    
+      Q_quaternion_dependent_regularizers_part_2.push_back(quats_desired.at(i) * quats_desired.at(i).transpose());
+    }
+    for (int i = 0; i < controller_params_.num_objects; i++) {    
+      DRAKE_ASSERT(Q_quaternion_dependent_costs.at(i).rows() ==
+                  Q_quaternion_dependent_costs.at(i).cols() ==
+                  Q_quaternion_dependent_regularizers_part_2.at(i).rows() ==
+                  Q_quaternion_dependent_regularizers_part_2.at(i).cols() == 4);
+    }
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; ++i) {
-      Q_[i].block(3, 3, 4, 4) =
-        discount_factor * sampling_c3_options_.q_quaternion_dependent_weight *
-        (Q_quaternion_dependent_cost +
-         Q_quaternion_dependent_regularizer_part_1 +
-         sampling_c3_options_.q_quaternion_dependent_regularizer_fraction *
-           Q_quaternion_dependent_regularizer_part_2);
-      discount_factor *= sampling_c3_options_.gamma;
+      for (int j = 0; j < controller_params_.num_objects; j++) {
+        Q_[i].block(3 + 7*j, 3 + 7*j, 4, 4) =
+          discount_factor * sampling_c3_options_.q_quaternion_dependent_weight *
+          (Q_quaternion_dependent_costs.at(j) +
+          Q_quaternion_dependent_regularizers_part_1.at(j) +
+          sampling_c3_options_.q_quaternion_dependent_regularizer_fraction *
+            Q_quaternion_dependent_regularizers_part_2.at(j));
+        discount_factor *= sampling_c3_options_.gamma;
+      }
     }
   }
 
@@ -1371,39 +1392,73 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   // Determine if samples are outdated by comparing to the current object
   // position and orientation.
-  Vector3d object_pos = x_lcs.segment(n_q_-3, 3);
-  Eigen::Vector4d object_quat = x_lcs.segment(3, 4).normalized();
-
-  MatrixXd buffer_xyzs =
-    sample_buffer_.block(0, 7, sampling_params_.N_sample_buffer, 3);
-  MatrixXd buffer_quats =
-    sample_buffer_.block(0, 3, sampling_params_.N_sample_buffer, 4);
+  std::vector<Vector3d> object_poss;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    object_poss.push_back(x_lcs.segment(7 + 7*i, 3));
+  } 
+  std::vector<Eigen::Vector4d> object_quats;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    object_quats.push_back(x_lcs.segment(3 + 7*i, 4).normalized());
+  } 
+  std::vector<MatrixXd> buffers_xyzs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    buffers_xyzs.push_back(sample_buffer_.block(0, 7 + 7*i, sampling_params_.N_sample_buffer, 3));
+  }
+  std::vector<MatrixXd> buffers_quats;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    buffers_quats.push_back(sample_buffer_.block(0, 3 + 7*i, sampling_params_.N_sample_buffer, 4));
+  }
 
   // First, remove outdated samples that have moved too much from current object
   // configuration.
-  VectorXd quat_dots = (buffer_quats * object_quat).array().abs();
-  VectorXd angles = (2.0 * quat_dots.array().acos());
-  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_rot =
-    (angles.array() < sampling_params_.ang_error_sample_retention);
+  std::vector<VectorXd> quat_dots;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    quat_dots.push_back((buffers_quats.at(i) * object_quats.at(i)).array().abs());
+  }
+  std::vector<VectorXd> angles;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    angles.push_back(2.0 * quat_dots.at(i).array().acos());
+  }
 
-  MatrixXd pos_deltas = buffer_xyzs.rowwise() - object_pos.transpose();
-  VectorXd distances = pos_deltas.rowwise().norm();
-  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_pos =
-    (distances.array() < sampling_params_.pos_error_sample_retention);
+  std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_rot;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    mask_satisfies_rot.push_back(angles.at(i).array() < sampling_params_.ang_error_sample_retention);
+  }
 
+  std::vector<MatrixXd> pos_deltas;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pos_deltas.push_back(buffers_xyzs.at(i).rowwise() - object_poss.at(i).transpose());
+  }
+  std::vector<VectorXd> distances;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    distances.push_back(pos_deltas.at(i).rowwise().norm());
+  }
+  std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_pos;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.ang_error_sample_retention);
+  }
   MatrixXd retained_samples =
     MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   VectorXd retained_costs =
     -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+
   int retained_count = 0;
   for (int i = 0; i < sampling_params_.N_sample_buffer; i++) {
-    if (mask_satisfies_rot[i] && mask_satisfies_pos[i]) {
+    bool keep = true;
+    for (int j = 0; j < controller_params_.num_objects; j++) {
+      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { // if any object changed reject
+        keep = false;
+        break;
+      } 
+    }
+    if (keep) {
       retained_samples.row(retained_count) = sample_buffer_.row(i);
       retained_costs[retained_count] = sample_costs_buffer_[i];
       retained_count++;
-    } else if (sample_costs_buffer_[i] < 0) {
+    }    
+    if (sample_costs_buffer_[i] < 0) {
       break;
-    }
+    } 
   }
   sample_buffer_ = retained_samples;
   sample_costs_buffer_ = retained_costs;
@@ -1442,7 +1497,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       VectorXd new_config = x_lcs.segment(0, n_q_);
       new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
       // Ensure a normalized quaternion is written to the buffer.
-      new_config.segment(3, 4) = object_quat;
+      for (int i = 0; i < controller_params_.num_objects; i++) {
+        new_config.segment(3 + 7*i, 4) = object_quats.at(i);
+      }
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
         all_sample_costs_[i - retained_count];
@@ -1641,7 +1698,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
   knots.bottomRows(3) =
-    c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+  c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
 
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_position_target";
@@ -1687,10 +1744,13 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
-  knots.bottomRows(3) =
-    c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
+
+  MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(3*i + 3, 3).cast<double>();
+    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 3*i + 3, 3).cast<double>();
+  } 
+
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
@@ -1857,10 +1917,11 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
-  knots.bottomRows(3) =
-    c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
+  MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(3*i + 3, 3).cast<double>();
+    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 3*i + 3, 3).cast<double>();
+  } 
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
@@ -1871,9 +1932,12 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples =
-    c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
+  MatrixXd orientation_samples = MatrixXd::Zero(4 * controller_params_.num_objects, N_);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    orientation_samples.middleRows(4*i, 4) =
+      c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+  } 
+
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
     std::vector<std::string>(orientation_samples.rows(), "double");
@@ -2097,17 +2161,19 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   }
 
   Eigen::MatrixXd knots =
-    Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
+    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, dynamically_feasible_traj.size());
   Eigen::VectorXd timestamps =
     Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
   for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7, 7);
+    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7*controller_params_.num_objects, 7*controller_params_.num_objects);
     timestamps(i) = i;
   }
 
   LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
-  position_samples = knots.bottomRows(3);
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3*controller_params_.num_objects, N_ + 1);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    position_samples.middleRows(3*i, 3) = knots.middleRows(7*i + 4, 3);
+  } 
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes =
     std::vector<std::string>(position_samples.rows(), "double");
@@ -2117,8 +2183,10 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
                          "object_target", "object_target", false);
 
   LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
-  orientation_samples = knots.topRows(4);
+  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4*controller_params_.num_objects, N_ + 1);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    position_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
+  } 
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
     std::vector<std::string>(orientation_samples.rows(), "double");
@@ -2180,17 +2248,19 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
   }
 
   Eigen::MatrixXd knots =
-      Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
+    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, dynamically_feasible_traj.size());
   Eigen::VectorXd timestamps =
-      Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+    Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
   for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7, 7);
+    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7*controller_params_.num_objects, 7*controller_params_.num_objects);
     timestamps(i) = i;
   }
 
   LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
-  position_samples = knots.bottomRows(3);
+  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3*controller_params_.num_objects, N_ + 1);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    position_samples.middleRows(3*i, 3) = knots.middleRows(7*i + 4, 3);
+  } 
   object_traj.traj_name = "object_position_target";
   object_traj.datatypes =
     std::vector<std::string>(position_samples.rows(), "double");
@@ -2200,8 +2270,10 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
                          "object_target", "object_target", false);
 
   LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
-  orientation_samples = knots.topRows(4);
+  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4*controller_params_.num_objects, N_ + 1);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    position_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
+  } 
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
     std::vector<std::string>(orientation_samples.rows(), "double");

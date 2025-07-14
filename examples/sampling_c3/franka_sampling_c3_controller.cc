@@ -87,19 +87,23 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_object(0.0);
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
     &plant_object, nullptr, controller_params.object_models);
+
+	
+	// exclude ee and ground
+	//std::vector<ModelInstanceIndex> object_indices(full_object_indices.begin()+2, full_object_indices.end()); 
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
+
 
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
+  std::vector<ModelInstanceIndex> object_indices_lcs = 
+		AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
                       controller_params.include_end_effector_orientation);
 
   plant_lcs.Finalize();
-
-
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
@@ -231,8 +235,9 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
-		for (int i = 0; i < controller_params.num_objects; i++) {
-			ModelInstanceIndex object_index = object_indices.at(i);
+		for (int i = 0; i < object_indices_lcs.size(); i++) { // exclude ee/ground
+			ModelInstanceIndex object_index = object_indices_lcs.at(i);
+			std::cout << "idx: " << object_index << std::endl;
 
 			drake::geometry::GeometryId mesh_geoms =
 					plant_lcs.GetCollisionGeometriesForBody(
@@ -263,15 +268,16 @@ int DoMain(int argc, char* argv[]) {
 			ground_object_contact_pairs.push_back(SortedPair(
 					contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
-		// Object-object contact pairs
+		// Object-object contact pairs (excluding end effector)
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
-					if (j == i) continue;
+					if (j <= i) continue;
 
 					std::string key1 = "OBJECT_MESH_" + std::to_string(i);
 					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
 					object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
+					std::cout << "(" << i << ", " << j << ")" << std::endl;
 			}
 		}
     
@@ -289,7 +295,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
-
+	std::cout << "lcm channel size: " << lcm_channel_params.object_state_channels.size() << std::endl;
   std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < controller_params.num_objects; i++) {
     object_state_subs.push_back(
@@ -311,6 +317,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
 
+  std::cout << std::endl;
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
@@ -338,7 +345,6 @@ int DoMain(int argc, char* argv[]) {
 	} else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
-
 	auto* control_target = builder.AddSystem(std::move(target_generator));
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object

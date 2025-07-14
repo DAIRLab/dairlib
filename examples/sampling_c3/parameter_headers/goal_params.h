@@ -67,6 +67,8 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
     a->Visit(DRAKE_NVP(fixed_target_position));
     a->Visit(DRAKE_NVP(fixed_target_orientation));
+    a->Visit(DRAKE_NVP(fixed_target_positions));
+    a->Visit(DRAKE_NVP(fixed_target_orientations));
     a->Visit(DRAKE_NVP(random_goal_x_limits));
     a->Visit(DRAKE_NVP(random_goal_y_limits));
     a->Visit(DRAKE_NVP(random_goal_radius_limits));

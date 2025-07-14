@@ -1,5 +1,5 @@
 #include "sampling_c3_utils.h"
-
+#include <iostream>
 #include "common/find_resource.h"
 #include "drake/multibody/parsing/parser.h"
 
@@ -103,7 +103,7 @@ void AddLCSModelToPlant(
 }
 
 
-void AddLCSModelsToPlant(
+ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
     std::vector<std::string> object_models,
@@ -112,12 +112,14 @@ void AddLCSModelsToPlant(
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
 
+  std::vector<drake::multibody::ModelInstanceIndex> obj_models;
+
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(kEndEffectorSimpleModel);
   parser_lcs.AddModels(kGroundModel);
   for (std::string& model : object_models) {
-    parser_lcs.AddModels(model);
+    obj_models.push_back(parser_lcs.AddModels(model)[0]);
   }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -128,6 +130,8 @@ void AddLCSModelsToPlant(
                     plant->GetFrameByName("base_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
+  std::cout << "size: " << obj_models.size() << std::endl;
+  return obj_models;
 }
 
 }   // namespace dairlib

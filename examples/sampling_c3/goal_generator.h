@@ -2,7 +2,6 @@
 #include <numbers>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <functional>
 
 #include "common/math_utils.h"
 #include "dairlib/lcmt_radio_out.hpp"
@@ -141,86 +140,15 @@ private:
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target,
       int index) const;
-  void CalcObjectTarget0(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectTarget(context, target, 0);
-  }
-  void CalcObjectTarget1(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectTarget(context, target, 1);
-  }
-  void CalcObjectTarget2(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectTarget(context, target, 2);
-  }
-  void CalcObjectTarget3(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectTarget(context, target, 3);
-  }
-  void CalcObjectTarget4(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectTarget(context, target, 4);
-  }
-
   void CalcObjectVelocityTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target,
       int index) const;
-  void CalcObjectVelocityTarget0(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectVelocityTarget(context, target, 0);
-  }
-  void CalcObjectVelocityTarget1(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectVelocityTarget(context, target, 1);
-  }
-  void CalcObjectVelocityTarget2(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectVelocityTarget(context, target, 2);
-  }
-  void CalcObjectVelocityTarget3(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectVelocityTarget(context, target, 3);
-  }
-  void CalcObjectVelocityTarget4(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    CalcObjectVelocityTarget(context, target, 4);
-  }
-
   void OutputObjectFinalTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target,
       int index) const;
-  void OutputObjectFinalTarget0(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    OutputObjectFinalTarget(context, target, 0);
-  }
-  void OutputObjectFinalTarget1(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    OutputObjectFinalTarget(context, target, 1);
-  }  
-  void OutputObjectFinalTarget2(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    OutputObjectFinalTarget(context, target, 2);
-  }  
-  void OutputObjectFinalTarget3(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    OutputObjectFinalTarget(context, target, 3);
-  }  
-  void OutputObjectFinalTarget4(const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) {
-    OutputObjectFinalTarget(context, target, 4);
-  }
 
-  std::vector<std::function<void(const drake::systems::Context<double>&, drake::systems::BasicVector<double>*)>> 
-    calc_object_target_vector_;
-
-  std::vector<std::function<void(const drake::systems::Context<double>&, drake::systems::BasicVector<double>*)>> 
-    calc_object_velocity_target_vector_;
-
-  std::vector<std::function<void(const drake::systems::Context<double>&, drake::systems::BasicVector<double>*)>> 
-    output_object_final_target_vector_;
-  
   void OutputGoalGeneratorInfo(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* target) const;

@@ -5,6 +5,7 @@
 
 struct FrankaSimParams {
   std::string object_model;
+  std::vector<std::string> object_models;
   double dt;
   double realtime_rate;
   double actuator_delay;

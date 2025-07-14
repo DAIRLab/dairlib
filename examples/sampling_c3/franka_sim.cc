@@ -76,10 +76,16 @@ int DoMain(int argc, char* argv[]) {
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
-  ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
-                                                     sim_params.object_model);
+  std::vector<ModelInstanceIndex> object_indices;
+  int num_objects = sim_params.object_models.size();
+  object_indices.reserve(num_objects);
+  object_indices = AddObjectsToPlant(
+        &plant, &scene_graph, sim_params.object_models);
 
-  std::vector<ModelInstanceIndex> balls;
+  // ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
+  //                                                    sim_params.object_model);
+
+  // std::vector<ModelInstanceIndex> balls;
 //   int num_balls = 1;
 //   for (int i = 0; i < num_balls; i++) {
 //     ModelInstanceIndex object_index1 = AddObjectToPlant(&plant, &scene_graph,
@@ -96,17 +102,19 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
-  auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_index);
-  auto object_state_pub =
+  for (int i = 0; i < num_objects; i++) {
+    auto object_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices[i]);
+    auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm,
           1.0 / sim_params.object_publish_rate));
 
-  builder.Connect(plant.get_state_output_port(object_index),
-                  object_state_sender->get_input_port_state());
-  builder.Connect(object_state_sender->get_output_port(),
-                  object_state_pub->get_input_port());
+    builder.Connect(plant.get_state_output_port(object_indices[i]),
+                    object_state_sender->get_input_port_state());
+    builder.Connect(object_state_sender->get_output_port(),
+                    object_state_pub->get_input_port());
+  }
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -129,10 +137,10 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
-//   for (int i = 0; i < num_balls; i++) {
-//       q.segment(7 * (i+1), 7) = sim_params.q_init_object;
-//   }
-  q.tail(7) = sim_params.q_init_object;
+  for (int i = 0; i < num_objects; i++) {
+      q.segment(7 * (i+1), 7) = sim_params.q_init_objects[i];
+  }
+  q.tail(7) = sim_params.q_init_objects[num_objects - 1];
 
   plant.SetPositions(&plant_context, q);
 

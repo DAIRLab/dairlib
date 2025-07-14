@@ -57,7 +57,7 @@ class C3 {
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type = kSimLCSReplaceC3EEPlan,
       double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-      bool force_tracking_disabled = false, bool print_cost_breakdown = false,
+      bool force_tracking_disabled = false, int num_objects = 1, bool print_cost_breakdown = false,
       bool verbose = false) const;
 
   /// Helper function to simulate the dynamics with PD control on the EE
@@ -72,6 +72,7 @@ class C3 {
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
     SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
                       double Kd_for_ee_pd_rollout = 0.0,
+                      int num_objects = 1, 
                       bool force_tracking_disabled = false,
                       bool verbose = false) const;
 

@@ -445,10 +445,54 @@ SamplingC3Controller::SamplingC3Controller(
       mesh_paths.push_back(path);
     }
   }  
+
+  // N OBJECTS
+  // Store faces and bins for each object
+
+  for (const std::string& mesh_path : mesh_paths) {
+      drake::geometry::TriangleSurfaceMesh<double>* mesh =
+          new drake::geometry::TriangleSurfaceMesh<double>(
+              drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+
+      const auto& vertices = mesh->vertices();
+      int num_tri = mesh->num_triangles();
+
+      std::vector<Face> object_faces;
+      std::vector<double> object_bins;
+      object_bins.push_back(0.0);
+
+      double cumulative_area = 0.0;
+
+      for (int i = 0; i < num_tri; ++i) {
+          auto tri = mesh->triangles()[i];
+          Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+          Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+          Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+          Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+
+          if (std::abs(normal[2]) < 0.8) {
+              double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+              object_faces.push_back({area, normal, {v0, v1, v2}});
+              cumulative_area += area;
+              object_bins.push_back(cumulative_area);
+          }
+      }
+
+      if (object_faces.empty()) {
+          throw std::runtime_error("No valid faces found in " + mesh_path);
+      }
+
+      faces_per_object_.push_back(std::move(object_faces));
+      face_bins_per_object_.push_back(std::move(object_bins));
+      total_area_per_object_.push_back(cumulative_area);
+  }
+
+
   if (mesh_paths.empty()) {
     throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
   }
 
+  // SINGLE OBJECT (DEPRECATED SOON)
   int num_tri = 0;
   std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
   for (const std::string& mesh_path : mesh_paths) {
@@ -613,7 +657,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
-                         faces_, face_bins_);
+                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -684,11 +728,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
 
+
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-        print_cost_breakdown, verbose_);
+        controller_params_.num_objects, print_cost_breakdown, verbose_);
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;

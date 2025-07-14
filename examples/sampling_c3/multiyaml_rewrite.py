@@ -152,7 +152,28 @@ def process_base(
         return q_vector
 
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
-    
+    samp_c3_options_yaml["q_vector_position"] = build_q_vector(num_objects)
+
+    samp_c3_options_yaml["g_gamma_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["g_lambda_n_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["g_lambda_t_list"] = [[1] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["g_lambda_list"] = [[0.005] * (4 * (num_objects * 3 + 1))]
+
+    samp_c3_options_yaml["u_gamma_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["u_lambda_n_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * (num_objects * 3 + 1))]
+
+    samp_c3_options_yaml["g_gamma_position_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["g_lambda_n_position_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["g_lambda_t_position_list"] = [[1] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * (num_objects * 3 + 1))]
+
+    samp_c3_options_yaml["u_gamma_position_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * (num_objects * 3 + 1)]
+    samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * (num_objects * 3 + 1))]
+
     save_yaml(samp_c3_options_yaml_path, samp_c3_options_yaml)
 
     print(f"✅ Finished processing {base_name}\n")

@@ -318,6 +318,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   std::vector<double> face_bins_;
   std::vector<Face> faces_;
+  std::vector<std::vector<Face>> faces_per_object_;
+  std::vector<std::vector<double>> face_bins_per_object_;
+  std::vector<double> total_area_per_object_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;

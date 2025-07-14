@@ -38,7 +38,10 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     std::vector<Face> faces,
-    std::vector<double> face_bins
+    std::vector<double> face_bins,
+    std::vector<std::vector<Face>> faces_per_object,
+    std::vector<std::vector<double>> face_bins_per_object,
+    std::vector<double> total_area_per_object
 );
 
 /// Individual sampling strategies returning 3D EE position
@@ -119,6 +122,23 @@ Eigen::VectorXd MeshNormalSampling(
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<Face> faces,
     std::vector<double> face_bins);
+
+Eigen::VectorXd MeshNormalSamplingMultiObject(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    std::vector<std::vector<Face>> faces_per_object,
+    std::vector<std::vector<double>> face_bins_per_object,
+    std::vector<double> total_area_per_object
+);
 
 
 /// Helper functions

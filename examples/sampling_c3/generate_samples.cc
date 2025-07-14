@@ -34,7 +34,10 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     std::vector<Face> faces,
-    std::vector<double> face_bins
+    std::vector<double> face_bins,
+    std::vector<std::vector<Face>> faces_per_object,
+    std::vector<std::vector<double>> face_bins_per_object,
+    std::vector<double> total_area_per_object
       ) {
   // Determine number of samples based on mode.
   int num_samples;
@@ -133,7 +136,17 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       } while(sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
-  }  
+  } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
+    for (int i = 0; i < num_samples; i++) {
+      do {
+        candidate_states[i] = MeshNormalSamplingMultiObject(
+          n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
+          contact_geoms, sampling_params, query_object, faces_per_object,
+          face_bins_per_object, total_area_per_object);
+      } while (sampling_params.filter_samples_for_safety &&
+               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+    }
+  }
   
   else {
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
@@ -493,6 +506,145 @@ Eigen::VectorXd MeshNormalSampling(
     while (attempts < max_attempts);
     throw std::runtime_error("Failed to generate a valid sample after " + std::to_string(max_attempts) + " attempts.");
 }
+
+Eigen::VectorXd MeshNormalSamplingMultiObject(
+    const int& n_q,
+    const int& n_v,
+    const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant, 
+    drake::systems::Context<double>* context, 
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+    const SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    std::vector<std::vector<Face>> faces_per_object,
+    std::vector<std::vector<double>> face_bins_per_object,
+    std::vector<double> total_area_per_object
+) {
+    const double buffer_distance = sampling_params.buffer_distance;
+    const double z_height = sampling_params.z_height;
+    const int max_attempts = sampling_params.max_attempts;
+    int attempts = 0;
+    double distance = 0;
+
+    int num_objects = faces_per_object.size();
+
+    // Parse x_lcs into EE position and object poses
+    Eigen::Vector3d ee_position = x_lcs.head(3);
+    std::vector<Eigen::Quaterniond> object_quats;
+    std::vector<Eigen::Vector3d> object_positions;
+
+    for (int obj_idx = 0; obj_idx < num_objects; ++obj_idx) {
+        int base_idx = 3 + obj_idx * 7; 
+        Eigen::Quaterniond quat_object(
+            x_lcs[base_idx],
+            x_lcs[base_idx + 1],
+            x_lcs[base_idx + 2],
+            x_lcs[base_idx + 3]
+        );
+        Eigen::Vector3d pos_object(
+            x_lcs[base_idx + 4],
+            x_lcs[base_idx + 5],
+            x_lcs[base_idx + 6]
+        );
+        object_quats.push_back(quat_object);
+        object_positions.push_back(pos_object);
+    }
+
+    // Compute total area across all objects
+    double total_area_all_objects = 0.0;
+    for (const auto& area : total_area_per_object) {
+        total_area_all_objects += area;
+    }
+
+    // RNG setup
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_real_distribution<double> dis_obj(0.0, total_area_all_objects);
+
+    do {
+        // --- 1️⃣ Select object weighted by total area ---
+        double target_area = dis_obj(gen);
+        int selected_obj_idx = -1;
+        double area_accumulator = 0.0;
+
+        for (int obj_idx = 0; obj_idx < num_objects; ++obj_idx) {
+            area_accumulator += total_area_per_object[obj_idx];
+            if (target_area <= area_accumulator) {
+                selected_obj_idx = obj_idx;
+                break;
+            }
+        }
+        if (selected_obj_idx < 0) selected_obj_idx = num_objects - 1; // fallback
+
+        const auto& faces = faces_per_object[selected_obj_idx];
+        const auto& bins = face_bins_per_object[selected_obj_idx];
+
+        // --- 2️⃣ Transform faces for selected object ---
+        std::vector<Face> faces_world;
+        Eigen::Matrix3d R = object_quats[selected_obj_idx].toRotationMatrix();
+        Eigen::Vector3d t = object_positions[selected_obj_idx];
+
+        for (const auto& face : faces) {
+            Face transformed_face;
+            transformed_face.v[0] = R * face.v[0] + t;
+            transformed_face.v[1] = R * face.v[1] + t;
+            transformed_face.v[2] = R * face.v[2] + t;
+            transformed_face.normal = R * face.normal;
+            transformed_face.area = face.area;
+            faces_world.push_back(std::move(transformed_face));
+        }
+
+        // --- 3️⃣ Select face weighted by area ---
+        std::uniform_real_distribution<double> dis_face(0.0, bins.back());
+        double target_face_area = dis_face(gen);
+        int face_idx = FindBin(bins.data(), bins.size(), target_face_area); 
+        const Face& selected_face = faces_world[face_idx];
+
+        // --- 4️⃣ Sample point on selected face ---
+        std::uniform_real_distribution<double> dis_u(0.0, 1.0);
+        double a = dis_u(gen);
+        double b = dis_u(gen);
+        if (a + b > 1.0) {
+            a = 1.0 - a;
+            b = 1.0 - b;
+        }
+        Eigen::Vector3d sample_point = (1.0 - a - b) * selected_face.v[0] +
+                                       a * selected_face.v[1] +
+                                       b * selected_face.v[2];
+
+        Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * selected_face.normal;
+        projected_sample_point[2] = z_height;
+
+        Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+        candidate_state.segment(0, 3) = projected_sample_point; // EE position
+        candidate_state.segment(3, 7 * num_objects) = x_lcs.segment(3, 7 * num_objects); // Object orientations & positions
+
+        UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
+
+        // --- 5️⃣ Rejection check for ALL objects ---
+        bool in_collision = false;
+        const auto& results = query_object.ComputeSignedDistanceToPoint(projected_sample_point);
+
+        for (const auto& result : results) {
+            if (result.distance <= sampling_params.sample_projection_clearance) {
+                in_collision = true;
+                break;
+            }
+        }
+
+        if (!in_collision) {
+            return candidate_state;
+        }
+
+        ++attempts;
+    }
+    while (attempts < max_attempts);
+
+    throw std::runtime_error("Failed to generate a valid sample after " + std::to_string(max_attempts) + " attempts.");
+}
+
 
 // Helper function to binary search over bin edges 
 int FindBin(const double* bins, int n, double x) {

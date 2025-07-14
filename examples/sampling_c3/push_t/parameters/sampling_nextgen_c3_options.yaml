@@ -62,7 +62,7 @@ Kd_for_ee_pd_rollout: 0.5
 
 ### Pose tracking cost parameters
 # Matrix scaling
-w_Q: 45
+w_Q: 50
 w_R: 1
 w_G: 0.01
 w_U: 0.26

@@ -94,11 +94,6 @@ SamplingC3Controller::SamplingC3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-  n_z_ = n_x_ + n_lambda_ + n_u_;
-
-  if (sampling_c3_options_.projection_type == "NEXTGEN") {
-    n_z_ += n_lambda_;
-  }
 
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
@@ -116,6 +111,11 @@ SamplingC3Controller::SamplingC3Controller(
     std::cerr << ("Unknown or unsupported contact model: " +
       sampling_c3_options_.contact_model) << std::endl;
     DRAKE_THROW_UNLESS(false);
+  }
+  n_z_ = n_x_ + n_lambda_ + n_u_;
+
+  if (sampling_c3_options_.projection_type == "NEXTGEN") {
+    n_z_ += n_lambda_;
   }
 
   // Placeholder LCS will have correct size as it's already determined by the

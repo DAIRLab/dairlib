@@ -138,6 +138,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     }
   } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
     for (int i = 0; i < num_samples; i++) {
+      std::cout << "i " << i << std::endl;
       do {
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
@@ -530,6 +531,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     double distance = 0;
 
     int num_objects = faces_per_object.size();
+    //std::cout << "num_objects: " << num_objects << std::endl;
 
     // Parse x_lcs into EE position and object poses
     Eigen::Vector3d ee_position = x_lcs.head(3);
@@ -564,7 +566,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     std::uniform_real_distribution<double> dis_obj(0.0, total_area_all_objects);
 
     do {
-        // --- 1️⃣ Select object weighted by total area ---
+        // Select object weighted by total area 
         double target_area = dis_obj(gen);
         int selected_obj_idx = -1;
         double area_accumulator = 0.0;
@@ -581,28 +583,24 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         const auto& faces = faces_per_object[selected_obj_idx];
         const auto& bins = face_bins_per_object[selected_obj_idx];
 
-        // --- 2️⃣ Transform faces for selected object ---
+        // Transform faces for selected object
         std::vector<Face> faces_world;
         Eigen::Matrix3d R = object_quats[selected_obj_idx].toRotationMatrix();
         Eigen::Vector3d t = object_positions[selected_obj_idx];
 
-        for (const auto& face : faces) {
-            Face transformed_face;
-            transformed_face.v[0] = R * face.v[0] + t;
-            transformed_face.v[1] = R * face.v[1] + t;
-            transformed_face.v[2] = R * face.v[2] + t;
-            transformed_face.normal = R * face.normal;
-            transformed_face.area = face.area;
-            faces_world.push_back(std::move(transformed_face));
-        }
-
-        // --- 3️⃣ Select face weighted by area ---
+        // Select face weighted by area (area is rotation-invariant)
         std::uniform_real_distribution<double> dis_face(0.0, bins.back());
         double target_face_area = dis_face(gen);
         int face_idx = FindBin(bins.data(), bins.size(), target_face_area); 
-        const Face& selected_face = faces_world[face_idx];
+        const Face& selected_face = faces[face_idx];
 
-        // --- 4️⃣ Sample point on selected face ---
+        Face transformed_face;
+        transformed_face.v[0] = R * selected_face.v[0] + t;
+        transformed_face.v[1] = R * selected_face.v[1] + t;
+        transformed_face.v[2] = R * selected_face.v[2] + t;
+        transformed_face.normal = R * selected_face.normal;
+
+        // Sample point on selected face 
         std::uniform_real_distribution<double> dis_u(0.0, 1.0);
         double a = dis_u(gen);
         double b = dis_u(gen);
@@ -610,9 +608,10 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
             a = 1.0 - a;
             b = 1.0 - b;
         }
-        Eigen::Vector3d sample_point = (1.0 - a - b) * selected_face.v[0] +
-                                       a * selected_face.v[1] +
-                                       b * selected_face.v[2];
+        Eigen::Vector3d sample_point = (1.0 - a - b) * transformed_face.v[0] +
+                                       a * transformed_face.v[1] +
+                                       b * transformed_face.v[2];
+        
 
         Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * selected_face.normal;
         projected_sample_point[2] = z_height;
@@ -623,12 +622,22 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
 
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
 
-        // --- 5️⃣ Rejection check for ALL objects ---
+        
+        // Check collision with all objects
         bool in_collision = false;
         const auto& results = query_object.ComputeSignedDistanceToPoint(projected_sample_point);
 
-        for (const auto& result : results) {
-            if (result.distance <= sampling_params.sample_projection_clearance) {
+        // for (int i = 0; i < results.size(); i++) {
+        //     GeometryId id = results[i].id_G;  // geometry closest to point
+        //     std::string name = query_object.inspector().GetName(id);
+        //     std::cout << "Geom: " << i << ", " << name << std::endl;
+        // }
+
+
+        for (int i = 0; i < num_objects; i++) {
+            //std::cout << results[2 + 4*i].distance << std::endl;
+            // Only compare with body_volume
+            if (results[2 + 4*i].distance <= sampling_params.sample_projection_clearance) {
                 in_collision = true;
                 break;
             }
@@ -637,7 +646,6 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         if (!in_collision) {
             return candidate_state;
         }
-
         ++attempts;
     }
     while (attempts < max_attempts);

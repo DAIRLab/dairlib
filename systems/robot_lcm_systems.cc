@@ -1,4 +1,5 @@
 #include "robot_lcm_systems.h"
+#include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -364,6 +365,7 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
     int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
+
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);

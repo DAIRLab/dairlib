@@ -85,19 +85,19 @@ SamplingC3Controller::SamplingC3Controller(
     discount_factor *= c3_options.gamma;
   }
   Q_.push_back(discount_factor * c3_options.Q);
+
+  DRAKE_DEMAND(Q_.size() == N_ + 1);
+  DRAKE_DEMAND(R_.size() == N_);
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-  
-  DRAKE_DEMAND(Q_.size() == N_ + 1);
-  DRAKE_DEMAND(R_.size() == N_);
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;
+
   if (verbose_) {
-    
-    std::cout << "n_q_" << n_q_ << std::endl;
-    std::cout << "n_v_" << n_v_ << std::endl;
-    std::cout << "n_u_" << n_u_ << std::endl;
-    std::cout << "n_x_" << n_x_ << std::endl;
 
     std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
     std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
@@ -131,6 +131,7 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  std::cout << "Created placeholder LCS" << std::endl;
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
@@ -162,7 +163,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
-
+  std::cout << "Set solver options" << std::endl;
 
   // Set actor bounds.
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -224,7 +225,7 @@ SamplingC3Controller::SamplingC3Controller(
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
   final_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
-
+  
   // Output ports.
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -414,7 +415,6 @@ SamplingC3Controller::SamplingC3Controller(
 
   ResetProgressMetrics();
 
-
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
   // Set parallelization settings.
@@ -451,11 +451,22 @@ SamplingC3Controller::SamplingC3Controller(
       mesh_paths.push_back(path);
     }
   }  
+  std::unordered_map<std::string, int> counts;
+  for (const auto& item : mesh_paths) {
+    counts[item]++;
+  }
+
+  std::vector<std::string> mesh_paths_unique;
+  for (const auto& [key, _] : counts) {
+    mesh_paths_unique.push_back(key);
+    std::cout << key << std::endl;
+  }
+
 
   // N OBJECTS
   // Store faces and bins for each object
 
-  for (const std::string& mesh_path : mesh_paths) {
+  for (const std::string& mesh_path : mesh_paths_unique) {
       drake::geometry::TriangleSurfaceMesh<double>* mesh =
           new drake::geometry::TriangleSurfaceMesh<double>(
               drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
@@ -536,6 +547,7 @@ SamplingC3Controller::SamplingC3Controller(
   if (faces_.empty()) {
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
+  std::cout << "end of constructor" << std::endl;
 
 }
 
@@ -557,6 +569,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
+  std::cout << "entered computeplan" << std::endl;
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
@@ -565,15 +578,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& x_lcs_final_des =
-      *this->template EvalVectorInput<BasicVector>(context,
-                                                   final_target_input_port_);
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);                                                  
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
-
+      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
-
   if (verbose_) {
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
     std::cout << "x_lcs_des: " << x_lcs_des.get_value().transpose()
@@ -595,17 +604,24 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   CheckForWorkspaceLimitViolations(lcs_x_curr);
 
   // Compute the current position and orientation errors.
-  current_position_error_ =
-    (x_lcs_curr.segment(n_q_-3, 3) -
-     x_lcs_final_des.get_value().segment(n_q_-3, 3)).norm();
-  Eigen::Quaterniond curr_quat(
-    x_lcs_curr[n_q_-7], x_lcs_curr[n_q_-6],
-    x_lcs_curr[n_q_-5], x_lcs_curr[n_q_-4]);
-  Eigen::Quaterniond des_quat(
-    x_lcs_final_des.get_value()[n_q_-7], x_lcs_final_des.get_value()[n_q_-6],
-    x_lcs_final_des.get_value()[n_q_-5], x_lcs_final_des.get_value()[n_q_-4]);
-  Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
-  current_orientation_error_ = angle_axis_diff.angle();
+  current_position_error_ = 0;
+  current_orientation_error_ = 0;
+
+  std::cout << x_lcs_curr.transpose() << std::endl;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    double error = (x_lcs_curr.segment(7 + 7*i, 3) -
+      x_lcs_final_des.get_value().segment(7 + 7*i, 3)).norm();
+    current_position_error_ += error;
+
+    Eigen::Quaterniond curr_quat(
+      x_lcs_curr[3 + 7*i], x_lcs_curr[4 + 7*i],
+      x_lcs_curr[5 + 7*i], x_lcs_curr[6 + 7*i]);
+    Eigen::Quaterniond des_quat(
+      x_lcs_final_des.get_value()[3 + 7*i], x_lcs_final_des.get_value()[4 + 7*i],
+      x_lcs_final_des.get_value()[5 + 7*i], x_lcs_final_des.get_value()[6 + 7*i]);
+    Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+    current_orientation_error_ += angle_axis_diff.angle();
+  }
 
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
@@ -630,8 +646,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Reset the sample buffer now that the costs have changed.
     sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ =
-      -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+    sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
   }
 
   // If the object is close to desired XY location, track its full pose.
@@ -657,6 +672,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
 
+  std::cout << "Before generate samples" << std::endl;
+
   // Generate states, differing from the current state only by EE sample
   // locations.
   std::vector<Eigen::VectorXd> candidate_states =
@@ -665,6 +682,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
 
+  std::cout << "After generate samples" << std::endl;
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_) {

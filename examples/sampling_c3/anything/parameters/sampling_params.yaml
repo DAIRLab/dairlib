@@ -9,7 +9,9 @@
 #                           surface.
 #   6. kMeshNormal:         randomly projects normal vectors off of mesh faces
 #                           and keeps samples far enough from object
-sampling_strategy: 6
+#   7. kMeshNormaMultiObject
+
+sampling_strategy: 7
 
 ### Parameters relevant for all sampling strategies.
 filter_samples_for_safety: true

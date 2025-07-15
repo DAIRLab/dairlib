@@ -65,6 +65,7 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(base_name));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
+
     a->Visit(DRAKE_NVP(base_names));
     a->Visit(DRAKE_NVP(object_models));
 

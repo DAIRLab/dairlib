@@ -104,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   for (int i = 0; i < num_objects; i++) {
     auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices[i]);
+      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices.at(i));
     auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channels.at(i), lcm,
@@ -138,9 +138,11 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   for (int i = 0; i < num_objects; i++) {
-      q.segment(7 * (i+1), 7) = sim_params.q_init_objects[i];
+      q.segment(7 * (i+1), 7) = sim_params.q_init_objects.at(i);
   }
-  q.tail(7) = sim_params.q_init_objects[num_objects - 1];
+  q.tail(7) = sim_params.q_init_objects.at(num_objects - 1);
+
+  std::cout << "q: " << q.transpose() << std::endl;
 
   plant.SetPositions(&plant_context, q);
 

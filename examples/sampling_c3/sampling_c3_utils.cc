@@ -130,7 +130,6 @@ void AddLCSModelToPlant(
                     plant->GetFrameByName("base_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
-  std::cout << "size: " << obj_models.size() << std::endl;
   return obj_models;
 }
 

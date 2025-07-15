@@ -1,3 +1,5 @@
+""" Thsis script is used to generate the SDFs and update the YAML files for the sampling C3 controller. The requirements are that the base_name in sampling_c3_controller_params.yaml matches the name of the object in the urdf directory, the object is in .obj format, and the input/output folder contains the obj file in urdf/base_name."""
+
 import subprocess
 import sys
 import os
@@ -58,7 +60,7 @@ if __name__ == "__main__":
     output_dir = f"examples/sampling_c3/urdf/{base_name}"
     os.makedirs(output_dir, exist_ok=True)
 
-    obj_dir = f"examples/sampling_c3/urdf"
+    obj_dir = f"examples/sampling_c3/urdf/{base_name}"
     obj_file = os.path.join(obj_dir, f"{base_name}.obj")
     coarse_path, is_coarse = coarsify_obj(obj_file)
 
@@ -96,8 +98,8 @@ if __name__ == "__main__":
     save_yaml(controller_yaml_path, controller_yaml)
 
     # Update sim/visualizer object 
-    vis_yaml_path = "examples/sampling_c3/anything/parameters/vis_params.yaml"
-    sim_yaml_path = "examples/sampling_c3/anything/parameters/sim_params.yaml"
+    vis_yaml_path = config["vis_params_file"]
+    sim_yaml_path = config["sim_params_file"]
 
     vis_yaml = load_yaml(vis_yaml_path)
     vis_yaml["object_vis_model"] = combined_sdf_path
@@ -112,7 +114,7 @@ if __name__ == "__main__":
     save_yaml(sim_yaml_path, sim_yaml)
 
     # Set goal z-height based on object 
-    goal_yaml_path = "examples/sampling_c3/anything/parameters/goal_params.yaml"
+    goal_yaml_path = config["goal_params_file"]
     goal_yaml = load_yaml(goal_yaml_path)
     goal_yaml["resting_object_height"] = float(-0.029-min_z_output)
     if "fixed_target_position" in goal_yaml and isinstance(goal_yaml["fixed_target_position"], list):
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     save_yaml(goal_yaml_path, goal_yaml)
 
     # Set sample z-height to middle of object z range
-    sampling_yaml_path = "examples/sampling_c3/anything/parameters/sampling_params.yaml"
+    sampling_yaml_path = config["sampling_params_file"]
     sampling_yaml = load_yaml(sampling_yaml_path)
     sampling_yaml["z_height"] = float(-0.029 + (max_z_output-min_z_output)/2 +0.01)
     if "z_height" in sampling_yaml and isinstance(sampling_yaml["z_height"], list):
@@ -128,7 +130,7 @@ if __name__ == "__main__":
     save_yaml(sampling_yaml_path, sampling_yaml)
 
     # Set ee repositioning height based on object height
-    repos_yaml_path = "examples/sampling_c3/anything/parameters/reposition_params.yaml"
+    repos_yaml_path = config["reposition_params_file"]
     repos_yaml = load_yaml(repos_yaml_path)
     repos_yaml["pwl_waypoint_height"] = float(-0.029 + max_z_output + 0.05)
     if "pwl_waypoint_height" in repos_yaml and isinstance(repos_yaml["pwl_waypoint_height"], list):

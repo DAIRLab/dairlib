@@ -371,6 +371,8 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.target_generator_info_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
+
+    std::cout << "Reached random point." << std::endl;
   // Port 0 ee target
   builder.Connect(control_target->get_output_port_end_effector_target(), 
                   target_state_mux->get_input_port(0));
@@ -682,6 +684,7 @@ int DoMain(int argc, char* argv[]) {
 				}
 				return true;
 				});
+    std::cout << "LcmHandleSubscriptionsUntil finished" << std::endl;
   loop.Simulate();
   return 0;
 }

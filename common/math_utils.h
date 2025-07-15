@@ -14,3 +14,5 @@ inline double RandomUniform(double min, double max) {
     std::uniform_real_distribution<double> dist(min, max);
     return dist(rng);
 }
+
+int FindBin(const double* bins, int n, double x);

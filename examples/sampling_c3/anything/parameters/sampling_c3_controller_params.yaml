@@ -14,10 +14,19 @@ lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
+<<<<<<< HEAD
 object_models: ['examples/sampling_c3/urdf/nut/nut_controller.sdf', 'examples/sampling_c3/urdf/letter_a/letter_a_controller.sdf']
 object_body_name: body
 base_name: lollipop
 base_names: [nut, letter_a]
+=======
+object_models: ['examples/sampling_c3/urdf/nut/nut_controller.sdf', 'examples/sampling_c3/urdf/letter_a/letter_a_controller.sdf', 'examples/sampling_c3/urdf/lollipop/lollipop_controller.sdf']
+# This ^ will be overwritten by generating new files.
+object_body_name: body
+base_name: lollipop
+base_names: [nut, letter_a, lollipop]
+# The only parameter that needs to be changed for different objects is the base_name (7/10/25).
+>>>>>>> c139e78a220f20eb8c530a4dfbb98950f8dea89a
 
 include_end_effector_orientation: false
 

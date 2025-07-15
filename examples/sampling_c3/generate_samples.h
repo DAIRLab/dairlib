@@ -117,7 +117,6 @@ Eigen::VectorXd MeshNormalSampling(
     drake::systems::Context<double>* context, 
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<Face> faces,

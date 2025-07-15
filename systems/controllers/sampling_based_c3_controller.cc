@@ -433,24 +433,30 @@ SamplingC3Controller::SamplingC3Controller(
               << std::endl;
   }
 
-  // Get paths of convex parts
-  std::vector<std::string> mesh_paths;
-  const auto& query_port = plant_.get_geometry_query_input_port();
-  const auto& query_object =
-    query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-  const auto& inspector = query_object.inspector();
-  for (auto id : inspector.GetAllGeometryIds()) {
-    const auto& shape = inspector.GetShape(id);
-    std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
+  // Below code loads in the mesh and enumerates triangular faces.
+  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal || 
+      sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
+    std::vector<std::string> mesh_paths;
+    const auto& query_port = plant_.get_geometry_query_input_port();
+    const auto& query_object =
+      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+    const auto& inspector = query_object.inspector();
+    for (auto id : inspector.GetAllGeometryIds()) {
+      const auto& shape = inspector.GetShape(id);
+      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
 
-    auto p = s.find("filename='");
-    if (p != std::string::npos) {
-      p += strlen("filename='");
-      auto q = s.find("'", p);
-      std::string path = s.substr(p, q - p);
-      mesh_paths.push_back(path);
+      auto p = s.find("filename='");
+      if (p != std::string::npos) {
+        p += strlen("filename='");
+        auto q = s.find("'", p);
+        std::string path = s.substr(p, q - p);
+        mesh_paths.push_back(path);
+      }
+    }  
+    if (mesh_paths.empty()) {
+      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
     }
-  }  
+    
   std::unordered_map<std::string, int> counts;
   for (const auto& item : mesh_paths) {
     counts[item]++;
@@ -528,19 +534,29 @@ SamplingC3Controller::SamplingC3Controller(
     const auto& vertices = mesh->vertices();
     int num_tri = mesh->num_triangles();
 
-    for (int i = 0; i < num_tri; ++i) {
-      auto tri = mesh->triangles()[i];
-      Eigen::Vector3d v0 = vertices[tri.vertex(0)];
-      Eigen::Vector3d v1 = vertices[tri.vertex(1)];
-      Eigen::Vector3d v2 = vertices[tri.vertex(2)];
-      Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+    // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
+    for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
+      const auto& vertices = mesh->vertices();
+      int num_tri = mesh->num_triangles();
 
-      if (std::abs(normal[2]) < 0.8) {
-        double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-        faces_.push_back({area, normal, {v0, v1, v2}});
-        face_bins_.push_back(face_bins_[j] + area);
-        j++;
+      for (int i = 0; i < num_tri; ++i) {
+        auto tri = mesh->triangles()[i];
+        Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+        Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+        Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+        Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+
+        if (std::abs(normal[2]) < 0.8) {
+          double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+          faces_.push_back({area, normal, {v0, v1, v2}});
+          face_bins_.push_back(face_bins_[j] + area);
+          j++;
+        }
       }
+    }
+
+    if (faces_.empty()) {
+      throw std::runtime_error("No valid faces found in any of the meshes.");
     }
   }
 
@@ -548,7 +564,7 @@ SamplingC3Controller::SamplingC3Controller(
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
   std::cout << "end of constructor" << std::endl;
-
+}
 }
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
@@ -1253,7 +1269,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
   std::vector<solvers::LCS> lcs_candidates;
   std::vector<solvers::LCS> lcs_candidates_for_cost;
 
-
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
@@ -1279,8 +1294,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to_for_cost,
       sampling_c3_options_.num_friction_directions, verbose_);
-
-
     solvers::LCS lcs_object_sample_for_cost_simulation =
       solvers::LCSFactory::LinearizePlantToLCS(
         plant_, *context_, plant_ad_, *context_ad_,
@@ -1534,7 +1547,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   int buffer_count = retained_count;
   for (int i = retained_count;
        i < retained_count + all_sample_locations_.size(); i++) {
-    DRAKE_ASSERT(i >= sampling_params_.N_sample_buffer);
+    DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);
     if ((i == retained_count) || (!is_doing_c3_ && i == retained_count + 1)) {
       // Skip the current location.
       // Skip the repositioning target if in repositioning mode.
@@ -1565,9 +1578,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   sample_buffer_.row(num_in_buffer_ - 1) = lowest_cost_sample;
   sample_costs_buffer_[num_in_buffer_ - 1] = lowest_buffer_cost;
 
-  DRAKE_ASSERT(sample_buffer_.cols() == sampling_params_.N_sample_buffer);
-  DRAKE_ASSERT(sample_buffer_.rows() == n_q_);
-  DRAKE_ASSERT(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_buffer_.rows() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_buffer_.cols() == n_q_);
+  DRAKE_DEMAND(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
 }
 
 // If eligible, augment the current control loop's considered samples with the

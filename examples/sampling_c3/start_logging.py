@@ -8,14 +8,14 @@ import sys
 import yaml
 
 
-def main(log_type, demo_name):
+def main(log_type, demo_name, folder_path):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"/mnt/data2/bibit/logs/{year}/{curr_date}"
+    logdir = f"{folder_path}/{year}/{curr_date}"
     dair = op.abspath(op.join(op.dirname(__file__), "../../"))
 
     if not op.isdir(logdir):
-        os.mkdir(logdir)
+        os.makedirs(logdir, exist_ok=True)
 
     # Hardcoded sampling_c3_controller_params path.
     sampling_c3_controller_params_path = op.join(
@@ -97,6 +97,10 @@ def main(log_type, demo_name):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print(f"Usage: python {sys.argv[0]} <log_type> <demo_name> <folder_path>")
+        sys.exit(1)
     log_type = sys.argv[1]
     demo_name = sys.argv[2]
-    main(log_type, demo_name)
+    folder_path = sys.argv[3]
+    main(log_type, demo_name, folder_path)

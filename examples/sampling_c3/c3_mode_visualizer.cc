@@ -12,7 +12,8 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-C3ModeVisualizer::C3ModeVisualizer() {
+C3ModeVisualizer::C3ModeVisualizer(const drake::multibody::MultibodyPlant<double>& plant)
+    : plant_(plant) {
   this->set_name("C3ModeVisualizer");
 
   is_c3_mode_input_port_ =
@@ -23,9 +24,13 @@ C3ModeVisualizer::C3ModeVisualizer() {
 
   // 19 is the hardcoded size of the current lcs state vector. Alternatively,
   // pass in the plant and read the size from there.
+  int lcs_state_size = plant_.num_positions() + plant_.num_velocities() + 6;
   curr_lcs_state_ = this->DeclareVectorInputPort(
-    "curr_lcs_state", TimestampedVector<double>(19)).get_index();
+    "curr_lcs_state", TimestampedVector<double>(lcs_state_size)).get_index();
 
+  std::cout << "passed curr_lcs_state_ size: "
+            << plant_.num_positions() + plant_.num_velocities() + 6
+            << std::endl;
   // Output c3_mode indicator for visualization.
   c3_mode_visualization_traj_port_ =
       this->DeclareAbstractOutputPort(
@@ -64,7 +69,6 @@ void C3ModeVisualizer::OutputC3ModeVisualization(
       knots.col(1) = curr_lcs_state->get_data().head(3);
     }
   }
-
   Eigen::VectorXd timestamp = Eigen::VectorXd::Zero(2);
   timestamp(0) = context.get_time();
   timestamp(1) = context.get_time() + 1e-3;

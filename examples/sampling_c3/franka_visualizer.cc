@@ -510,7 +510,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_is_c3_mode) {
-    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
+    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>(plant_object);
     builder.Connect(is_c3_mode_sub->get_output_port(),
                     c3_mode_visualizer->get_input_port_is_c3_mode());
     builder.Connect(reduced_order_model_receiver->get_output_port(),
@@ -524,10 +524,12 @@ int do_main(int argc, char* argv[]) {
         is_c3_mode_drawer->get_input_port_trajectory());
   }
 
+  std::cout << "Passed the step" << std::endl;
+
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
 	for (int i = 1; i <= tray_passthroughs.size(); i++) {
-		builder.Connect(tray_passthroughs.at(i)->get_output_port(), mux->get_input_port(i));
+		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(), mux->get_input_port(i));
 	} 
   builder.Connect(*mux, *to_pose);
   builder.Connect(

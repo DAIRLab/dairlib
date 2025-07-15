@@ -138,7 +138,6 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     }
   } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
     for (int i = 0; i < num_samples; i++) {
-      std::cout << "i " << i << std::endl;
       do {
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
@@ -613,12 +612,13 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
                                        b * transformed_face.v[2];
         
 
-        Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * selected_face.normal;
+        Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * transformed_face.normal;
         projected_sample_point[2] = z_height;
 
         Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+        std::cout << "X_LCS SIZE: " << x_lcs.size() << std::endl;
         candidate_state.segment(0, 3) = projected_sample_point; // EE position
-        candidate_state.segment(3, 7 * num_objects) = x_lcs.segment(3, 7 * num_objects); // Object orientations & positions
+        candidate_state.segment(3, 7*num_objects + 3 + 6*num_objects) = x_lcs.segment(3, 7*num_objects + 3 + 6*num_objects); 
 
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
 

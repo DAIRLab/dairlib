@@ -37,7 +37,10 @@ def get_num_objects_from_yaml(yaml_path: str) -> int:
     return len(models)
 
 def calculate_contacts(num_objects: int) -> int:
-    return num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1
+    return int(num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1)
+
+def choose_2(num_objects: int) -> int:
+    return int(num_objects * (num_objects - 1) // 2)
 
 yaml_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
 num_objects = get_num_objects_from_yaml(yaml_path)
@@ -151,28 +154,35 @@ def process_base(
         return q_vector
     
     samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
+    samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects)]]
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
     samp_c3_options_yaml["q_vector_position"] = build_q_vector(num_objects)
 
-    samp_c3_options_yaml["g_gamma_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["g_lambda_n_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["g_lambda_t_list"] = [[1] * (4 * (num_objects * 3 + 1))]
-    samp_c3_options_yaml["g_lambda_list"] = [[0.005] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["g_gamma_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["g_lambda_n_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["g_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["g_lambda_list"] = [[0.005] * (4 * calculate_contacts(num_objects))]
 
-    samp_c3_options_yaml["u_gamma_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["u_lambda_n_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * (num_objects * 3 + 1))]
-    samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["u_gamma_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["u_lambda_n_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * calculate_contacts(num_objects))]
 
-    samp_c3_options_yaml["g_gamma_position_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["g_lambda_n_position_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["g_lambda_t_position_list"] = [[1] * (4 * (num_objects * 3 + 1))]
-    samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["g_gamma_position_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["g_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["g_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * calculate_contacts(num_objects))]
 
-    samp_c3_options_yaml["u_gamma_position_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * (num_objects * 3 + 1)]
-    samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * (num_objects * 3 + 1))]
-    samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * (num_objects * 3 + 1))]
+    samp_c3_options_yaml["u_gamma_position_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects)]
+    samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * calculate_contacts(num_objects))]
+
+    samp_c3_options_yaml["u_x"] = [10] * 3 + [100, 100, 100, 10, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
+    samp_c3_options_yaml["u_x_position"] = [10] * 3 + [100, 100, 100, 10, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
+    samp_c3_options_yaml["g_x"] = [950] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
+    samp_c3_options_yaml["g_x_position"] = [900] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
+
 
     save_yaml(samp_c3_options_yaml_path, samp_c3_options_yaml)
 

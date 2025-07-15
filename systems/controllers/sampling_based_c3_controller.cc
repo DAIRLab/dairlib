@@ -672,8 +672,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
 
-  std::cout << "Before generate samples" << std::endl;
-
   // Generate states, differing from the current state only by EE sample
   // locations.
   std::vector<Eigen::VectorXd> candidate_states =
@@ -711,6 +709,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<solvers::LCS> lcs_candidates = lcs_pair.first;
   std::vector<solvers::LCS> lcs_candidates_for_cost = lcs_pair.second;
 
+  std::cout << "Parallelization prep" << std::endl;
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
   all_sample_dynamically_feasible_plans_ =
@@ -724,9 +723,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!crossed_cost_switching_threshold_) {
     cost_type = progress_params_.cost_type_position;
   }
+std::cout << "Before Parallelization" << std::endl;
 
 // Parallelize over computing C3 costs for each sample.
-#pragma omp parallel for num_threads(num_threads_to_use_)
+//#pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
     bool print_cost_breakdown = radio_out->channel[7] &&
       (i == SampleIndex::kCurrentLocation);
@@ -739,7 +739,22 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::shared_ptr<solvers::C3> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
+    
+
     if (c3_options.projection_type == "MIQP") {
+      // for (int i = 0; i < N_; i++) {
+      //     std::cout << "Diag x at i=" << i << ": "
+      //               << G_.at(i).block(0, 0, n_, n_).diagonal().transpose() << std::endl;
+
+      //     std::cout << "Diag lambda at i=" << i << ": "
+      //               << G_.at(i).block(n_, n_, m_, m_).diagonal().transpose() << std::endl;
+
+      //     std::cout << "Diag u at i=" << i << ": "
+      //               << G_.at(i).block(n_ + m_, n_ + m_, k_, k_).diagonal().transpose() << std::endl;
+      // }
+
+
+
       test_c3_object = std::make_shared<C3MIQP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "QP") {
@@ -752,17 +767,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
 
-
+    std::cout << "Before calccost" << std::endl;
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
         controller_params_.num_objects, print_cost_breakdown, verbose_);
+    std::cout << "After calccost" << std::endl;
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
-    #pragma omp critical
+//    #pragma omp critical
     {
       c3_objects.at(i) = test_c3_object;
     }
@@ -778,15 +794,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
   // End of parallelization
+  std::cout << "After Parallelization" << std::endl;
 
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall
   // and could be considered as a repositioning target.
   MaintainSampleBuffer(x_lcs_curr);
+  std::cout << "After maintain buffer" << std::endl;
 
   // Augment the considered samples with the best from the buffer, if eligible.
   AugmentSamplesWithBuffer(c3_objects);
+  std::cout << "After Aguemnt buffer" << std::endl;
 
   // Set up hysteresis values based on if the cost switching threshold has been
   // crossed.
@@ -822,6 +841,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   } else {
     force_c3_mode = true;
   }
+  std::cout << "After all_sample_costs_" << std::endl;
+
 
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
@@ -948,6 +969,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
   }
+  std::cout << "After if dong c3" << std::endl;
+
 
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
@@ -963,11 +986,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
   c3_best_plan_ = c3_objects.at(best_sample_index_);
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
+  std::cout << "After c3_best_plan" << std::endl;
 
   // Update the execution trajectories.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
+
+  std::cout << "After UpdateRepositioningExecutionTrajectory" << std::endl;
 
   if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
@@ -1034,7 +1060,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_
               << std::endl;
   }
-
+  std::cout << "END OF FUNCTION" << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -1234,13 +1260,13 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states[i]);
 
-
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
       LCSFactory::PreProcessor(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to,
         c3_options.num_friction_directions, verbose_);
+      
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,

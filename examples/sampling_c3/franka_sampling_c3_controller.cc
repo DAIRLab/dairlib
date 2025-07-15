@@ -288,9 +288,8 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ee_ground_contact);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
-  if (!object_object_contact_pairs.empty()) {
-    contact_pairs.push_back(object_object_contact_pairs);
-  }
+  contact_pairs.push_back(object_object_contact_pairs);
+
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
@@ -677,7 +676,7 @@ int DoMain(int argc, char* argv[]) {
 			[&]() {
 				int total_count = 0;
 				for (const auto& sub : object_state_subs) {
-					if (sub->GetInternalMessageCount() <= 1) {
+					if (sub->GetInternalMessageCount() < 1) {
 						return false;
 					}
 				}

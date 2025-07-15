@@ -1,5 +1,7 @@
-object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
+object_model: examples/sampling_c3/urdf/nut/nut.sdf
+# This ^ will be overwritten by generating new files.
 object_models: ['examples/sampling_c3/urdf/nut/nut.sdf', 'examples/sampling_c3/urdf/letter_a/letter_a.sdf', 'examples/sampling_c3/urdf/lollipop/lollipop.sdf']
+# This ^ will be overwritten by generating new files.
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000
@@ -12,4 +14,6 @@ realtime_rate: 1
 
 q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 q_init_object: [0, 0, 0, 1, 0.5, 0, -0.004]
+# This ^ will be overwritten by generating new files.
 q_init_objects: [[0, 0, 0, 1, 0.5, 0.0, -0.004], [0, 0, 0, 1, 0.5, 0.0, -0.029], [0, 0, 0, 1, 0.5, 0.0, -0.004]]
+# This ^ will be overwritten by generating new files.

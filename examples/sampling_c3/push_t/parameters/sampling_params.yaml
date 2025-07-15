@@ -43,4 +43,8 @@ grid_y_limits: [-0.08, 0.08]
 min_sampling_radius: 0.07
 max_sampling_radius: 0.10
 
+buffer_distance: 0
+max_attempts: 0
+barycentric_bias: 0  
+
 z_height: -0.004

@@ -679,12 +679,13 @@ int DoMain(int argc, char* argv[]) {
 			[&]() {
 				int total_count = 0;
 				for (const auto& sub : object_state_subs) {
-					if (sub->GetInternalMessageCount() <= 1) {
+					if (sub->GetInternalMessageCount() < 1) {
 						return false;
 					}
 				}
 				return true;
 				});
+    std::cout << "LcmHandleSubscriptionsUntil finished" << std::endl;
   loop.Simulate();
   return 0;
 }

@@ -239,8 +239,6 @@ int DoMain(int argc, char* argv[]) {
   else if (FLAGS_demo_name == "anything") {
 		for (int i = 0; i < object_indices_lcs.size(); i++) { // exclude ee/ground
 			ModelInstanceIndex object_index = object_indices_lcs.at(i);
-			std::cout << "idx: " << object_index << std::endl;
-
 			drake::geometry::GeometryId mesh_geoms =
 					plant_lcs.GetCollisionGeometriesForBody(
 							plant_lcs.GetBodyByName("body", object_index))[0];
@@ -279,7 +277,6 @@ int DoMain(int argc, char* argv[]) {
 					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
 					object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
-					std::cout << "(" << i << ", " << j << ")" << std::endl;
 			}
 		}
     

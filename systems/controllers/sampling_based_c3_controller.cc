@@ -451,11 +451,22 @@ SamplingC3Controller::SamplingC3Controller(
       mesh_paths.push_back(path);
     }
   }  
+  std::unordered_map<std::string, int> counts;
+  for (const auto& item : mesh_paths) {
+    counts[item]++;
+  }
+
+  std::vector<std::string> mesh_paths_unique;
+  for (const auto& [key, _] : counts) {
+    mesh_paths_unique.push_back(key);
+    std::cout << key << std::endl;
+  }
+
 
   // N OBJECTS
   // Store faces and bins for each object
 
-  for (const std::string& mesh_path : mesh_paths) {
+  for (const std::string& mesh_path : mesh_paths_unique) {
       drake::geometry::TriangleSurfaceMesh<double>* mesh =
           new drake::geometry::TriangleSurfaceMesh<double>(
               drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));

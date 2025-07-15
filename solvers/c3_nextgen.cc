@@ -24,20 +24,12 @@ VectorXd C3NextGen::SolveSingleProjection(const MatrixXd& U, const VectorXd& del
                                      const int admm_iteration,
                                      const int& warm_start_index) {
   VectorXd delta_proj = delta_c;
-  const double EPSILON = 1e-8;
 
   // Handle complementarity constraints for each lambda-eta pair
   for (int i = 0; i < m_; ++i) {
-    double u_ratio = 0.0;
     double u1 =
         std::abs(U(n_ + m_ + k_ + i, n_ + m_ + k_ + i));
     double u2 = std::abs(U(n_ + i, n_ + i));
-
-    if (u2 < EPSILON) {
-      throw std::runtime_error("Numerical instability detected: cost weight for lambda is very "
-                               "close to zero in SolveSingleProjection");
-    }
-    u_ratio = std::sqrt(u1 / u2);
 
     double lambda_val = delta_c(n_ + i);
     double eta_val = delta_c(n_ + m_ + k_ + i);
@@ -51,9 +43,9 @@ VectorXd C3NextGen::SolveSingleProjection(const MatrixXd& U, const VectorXd& del
         delta_proj(n_ + i) = lambda_val;
         delta_proj(n_ + m_ + k_ + i) = 0;
       } else {
-        // If point (lambda, eta) is above the slope, set lambda to 0 and keep eta
+        // If point (lambda, eta) is above the slope sqrt(u1/u2), set lambda to 0 and keep eta
         // Otherwise, set lambda to lambda and set eta to 0
-        if (eta_val > u_ratio * lambda_val) {
+        if (eta_val * std::sqrt(u2) > lambda_val * std::sqrt(u1)) {
           delta_proj(n_ + i) = 0;
           delta_proj(n_ + m_ + k_ + i) = eta_val;
         } else {

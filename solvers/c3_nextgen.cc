@@ -27,25 +27,25 @@ VectorXd C3NextGen::SolveSingleProjection(const MatrixXd& U, const VectorXd& del
 
   // Handle complementarity constraints for each lambda-eta pair
   for (int i = 0; i < m_; ++i) {
-    double u1 =
+    double w_eta =
         std::abs(U(n_ + m_ + k_ + i, n_ + m_ + k_ + i));
-    double u2 = std::abs(U(n_ + i, n_ + i));
+    double w_lambda = std::abs(U(n_ + i, n_ + i));
 
     double lambda_val = delta_c(n_ + i);
     double eta_val = delta_c(n_ + m_ + k_ + i);
 
-    if (lambda_val < 0) {
+    if (lambda_val <= 0) {
       delta_proj(n_ + i) = 0;
       delta_proj(n_ + m_ + k_ + i) = std::max(0.0, eta_val);
     }
     else {
-      if (eta_val < 0) {
+      if (eta_val <= 0) {
         delta_proj(n_ + i) = lambda_val;
         delta_proj(n_ + m_ + k_ + i) = 0;
       } else {
-        // If point (lambda, eta) is above the slope sqrt(u1/u2), set lambda to 0 and keep eta
+        // If point (lambda, eta) is above the slope sqrt(w_lambda/w_eta), set lambda to 0 and keep eta
         // Otherwise, set lambda to lambda and set eta to 0
-        if (eta_val * std::sqrt(u2) > lambda_val * std::sqrt(u1)) {
+        if (eta_val * std::sqrt(w_eta) > lambda_val * std::sqrt(w_lambda)) {
           delta_proj(n_ + i) = 0;
           delta_proj(n_ + m_ + k_ + i) = eta_val;
         } else {

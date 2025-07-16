@@ -586,6 +586,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   auto start = std::chrono::high_resolution_clock::now();
 
   std::cout << "entered computeplan" << std::endl;
+  std::cout << "[ComputePlan] Called at t=" << context.get_time() << std::endl;
+  std::cout << "Discrete state groups: " << discrete_state->num_groups() << std::endl;
+  std::cout << "Group 0 size: " << discrete_state->get_vector(0).size() << std::endl;
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
@@ -623,7 +626,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   current_position_error_ = 0;
   current_orientation_error_ = 0;
 
-  std::cout << x_lcs_curr.transpose() << std::endl;
+  //std::cout << x_lcs_curr.transpose() << std::endl;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     double error = (x_lcs_curr.segment(7 + 7*i, 3) -
       x_lcs_final_des.get_value().segment(7 + 7*i, 3)).norm();
@@ -696,7 +699,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
 
-  std::cout << "After generate samples" << std::endl;
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_) {
@@ -751,6 +753,8 @@ std::cout << "Before Parallelization" << std::endl;
     Eigen::VectorXd test_state = candidate_states.at(i);
     solvers::LCS test_system = lcs_candidates.at(i);
 
+    std::cout << "TEST STATE: " << test_state.transpose() << std::endl;
+
     // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3> test_c3_object;
     std::vector<VectorXd> x_desired =
@@ -758,26 +762,19 @@ std::cout << "Before Parallelization" << std::endl;
     
 
     if (c3_options.projection_type == "MIQP") {
-      // for (int i = 0; i < N_; i++) {
-      //     std::cout << "Diag x at i=" << i << ": "
-      //               << G_.at(i).block(0, 0, n_, n_).diagonal().transpose() << std::endl;
-
-      //     std::cout << "Diag lambda at i=" << i << ": "
-      //               << G_.at(i).block(n_, n_, m_, m_).diagonal().transpose() << std::endl;
-
-      //     std::cout << "Diag u at i=" << i << ": "
-      //               << G_.at(i).block(n_ + m_, n_ + m_, k_, k_).diagonal().transpose() << std::endl;
-      // }
-
-
-
       test_c3_object = std::make_shared<C3MIQP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
+    std::cout << "init test_c3_obj" << std::endl;
+
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
+
+    std::cout << "Updated cost LCS" << std::endl;
+
+
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
@@ -789,12 +786,12 @@ std::cout << "Before Parallelization" << std::endl;
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
         controller_params_.num_objects, print_cost_breakdown, verbose_);
-    std::cout << "After calccost" << std::endl;
+    std::cout << "After calccost " << i << std::endl;
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
-//    #pragma omp critical
+    //#pragma omp critical
     {
       c3_objects.at(i) = test_c3_object;
     }
@@ -1500,11 +1497,15 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   VectorXd retained_costs =
     -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
 
+  // std::cout << "N_sample_buffer_: " << sampling_params_.N_sample_buffer << std::endl;
+  // std::cout << "satisfy_rot size: " << mask_satisfies_rot.at(0).size() << std::endl;
+
+  // Keep buffer if none of objects moved
   int retained_count = 0;
   for (int i = 0; i < sampling_params_.N_sample_buffer; i++) {
     bool keep = true;
     for (int j = 0; j < controller_params_.num_objects; j++) {
-      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { // if any object changed reject
+      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { 
         keep = false;
         break;
       } 

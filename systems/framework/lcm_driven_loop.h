@@ -205,6 +205,7 @@ class LcmDrivenLoop {
       state_sub_ = std::make_unique<Subscriber<lcmt_robot_output>>(
           drake_lcm_, backup_drive_channel);
     }
+    std::cout << "ACTIVE CHANNEL: " << active_channel_ << std::endl;
   };
 
   /// Constructor for single-input LcmDrivenLoop without lcm_parser
@@ -241,6 +242,8 @@ class LcmDrivenLoop {
     const double t0 =
         name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
     diagram_context.SetTime(t0);
+
+    std::cout << "After t0" << std::endl;
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
@@ -335,17 +338,21 @@ class LcmDrivenLoop {
           simulator_->Initialize();
         }
         simulator_->AdvanceTo(time);
+        std::cout << "advanced to time" << std::endl;
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(
           diagram_context, &diagram_context.get_mutable_discrete_state());
+        std::cout << "After CalcForcedDiscreteVariableUpdate" << std::endl;
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
         }
+        std::cout << "After forcedpublish" << std::endl;
 
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
+        std::cout << "After name_to_input_sub_map_" << std::endl;
       }
 
       // Update the name of the active channel if there are multiple inputs and

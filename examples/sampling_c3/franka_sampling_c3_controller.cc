@@ -103,6 +103,7 @@ int DoMain(int argc, char* argv[]) {
 	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
                   controller_params.include_end_effector_orientation);
 
+
   plant_lcs.Finalize();
 
 
@@ -297,12 +298,10 @@ int DoMain(int argc, char* argv[]) {
 	std::vector<LcmSubscriberSystem*> object_state_subs;
 
 	for (int i = 0; i < controller_params.num_objects; ++i) {
-		auto lcm_sub = LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-				lcm_channel_params.object_state_channels.at(i), &lcm);
-
-		object_state_subs.push_back(builder.AddSystem(std::move(lcm_sub)));
+			object_state_subs.push_back(builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+							lcm_channel_params.object_state_channels.at(i), &lcm)));
 	}
-     
+			
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
@@ -315,7 +314,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
 
-  std::cout << std::endl;
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
@@ -331,7 +329,7 @@ int DoMain(int argc, char* argv[]) {
     target_generator = 
 			std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
 					plant_object, controller_params.goal_params, object_indices);
-  } else if ((FLAGS_demo_name == "push_t") || (FLAGS_demo_name == "anything")) {
+  } else if (FLAGS_demo_name == "push_t") {
     target_generator =
 			std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
 					plant_object, controller_params.goal_params, object_indices);
@@ -372,7 +370,6 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
 
-    std::cout << "Reached random point." << std::endl;
   // Port 0 ee target
   builder.Connect(control_target->get_output_port_end_effector_target(), 
                   target_state_mux->get_input_port(0));
@@ -528,16 +525,30 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y",  "end_effector_z", 
-      "object_qw",       "object_qx",       "object_qy",       "object_qz",
-      "object_x",        "object_y",        "object_z",
-      "end_effector_vx", "end_effector_vy", "end_effector_vz",
-      "object_wx" ,      "object_wy",       "object_wz",
-      "object_vz",       "object_vz",       "object_vz",
-  };
 
-  std::cout << "Before state_sender" << std::endl;
+  std::vector<std::string> state_names = {
+      "end_effector_x",  "end_effector_y",  "end_effector_z"};
+	
+	std::vector<std::string> object_pose_names = {"object_qw", "object_qx", "object_qy", "object_qz", "object_x", "object_y", "object_z"};
+	std::vector<std::string> object_velo_names = {"object_wx", "object_wy", "object_wz", "object_vx", "object_vy", "object_vz"};
+	for (int i = 0; i < controller_params.num_objects; i++) {
+		for (int j = 0; j < object_pose_names.size(); j++) {
+			std::string item = object_pose_names.at(j) + "_" + std::to_string(i);
+			state_names.push_back(item);
+		}
+	} 
+	state_names.push_back("end_effector_vx");
+	state_names.push_back("end_effector_vy");
+	state_names.push_back("end_effector_vz");
+
+  for (int i = 0; i < controller_params.num_objects; i++) {
+		for (int j = 0; j < object_velo_names.size(); j++) {
+			std::string item = object_velo_names.at(j) + "_" + std::to_string(i);
+			state_names.push_back(item);
+		}
+	} 
+
+
   // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
       plant_lcs.num_positions() + plant_lcs.num_velocities(),
@@ -575,8 +586,8 @@ int DoMain(int argc, char* argv[]) {
 	std::vector<const drake::systems::InputPort<double>*> input_ports_object_state = 
 		control_target->get_input_ports_object_state();
 	for (int i = 0; i < controller_params.num_objects; i++) {
-	  builder.Connect(object_state_receivers.at(i)->get_output_port(),
-                   *(input_ports_object_state.at(i)));
+		builder.Connect(object_state_receivers.at(i)->get_output_port(),
+								*(input_ports_object_state.at(i)));
 	} 
 
   builder.Connect(target_state_mux->get_output_port(),
@@ -685,6 +696,7 @@ int DoMain(int argc, char* argv[]) {
 				return true;
 				});
     std::cout << "LcmHandleSubscriptionsUntil finished" << std::endl;
+	//std::this_thread::sleep_for(std::chrono::seconds(30));
   loop.Simulate();
   return 0;
 }

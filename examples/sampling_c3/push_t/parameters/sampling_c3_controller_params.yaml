@@ -19,6 +19,9 @@ object_model: examples/sampling_c3/urdf/push_t_control.sdf
 object_body_name: vertical_link
 base_name: dummy
 
+object_models: []
+base_names: []
+
 include_end_effector_orientation: false
 
 control_loop_delay_ms: 0

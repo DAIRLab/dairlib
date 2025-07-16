@@ -336,7 +336,6 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
   solve_time_ =
       std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
       1e6;
-  std::cout << "z_fin solve: " <<  zfin_[0].transpose() << std::endl;
 }
 
 // This function relies on the previously computed zfin_ from Solve.
@@ -350,8 +349,6 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     bool verbose) const {
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
-
-  std::cout << "z_fin calccost: " <<  zfin_[0].transpose() << std::endl;
 
   const int ee_vel_index = 7 * num_objects + 3;
   // Simulate the dynamics from the planned inputs.
@@ -665,8 +662,7 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
       std::cout<<"\nSIMULATING PD CONTROL"<<std::endl;
     }
     const int ee_vel_index = 7 * num_objects + 3;
-    std::cout << "z_fin size: " << zfin_[0].size() << std::endl;
-    std::cout << "z_fin PD: " <<  zfin_[0].transpose() << std::endl;
+
 
 
     // Obtain the solutions from C3.
@@ -677,15 +673,10 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
       XX[i] = zfin_[i].segment(0, n_);
       if (i == N_-1) {
         if (lcs_for_cost_) {
-          std::cout << "0" << std::endl;
           XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
-          std::cout << "0" << std::endl;
         }
         else{
-          std::cout << "1" << std::endl;
           XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
-          std::cout << "1" << std::endl;
-
         }
       }
     }
@@ -717,16 +708,10 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
           if (verbose) {
             std::cout<<"simulated step "<<i+1<<std::endl;
           }
-          std::cout << "2" << std::endl;
           XX_new[i+1] = lcs_for_cost_->Simulate(XX_new[i], UU_new[i], verbose);
-          std::cout << "2" << std::endl;
-
         }
         else{
-          std::cout << "3" << std::endl;
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
-          std::cout << "3" << std::endl;
-
         }
     }
     return {XX_new, UU_new};
@@ -740,7 +725,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta->at(i) - w->at(i);
   }
-
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
 
   if (verbose) {
@@ -756,7 +740,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
-
   if (U_[0].isZero(0)) {
     *delta = SolveProjection(*Gv, ZW, admm_iteration);
 
@@ -886,7 +869,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                         // sampling_c3_controller)
   }
 
-#pragma omp parallel for num_threads(options_.num_threads)
+//#pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
     if (options_.use_robust_formulation &&
         admm_iteration ==

@@ -48,7 +48,5 @@ buffer_distance: 0.05
 max_attempts: 100
 
 z_height: -0.004568184999999999
-z_height: 0
 
-max_attempts: 0
 barycentric_bias: 0  

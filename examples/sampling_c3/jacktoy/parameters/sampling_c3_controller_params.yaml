@@ -21,4 +21,7 @@ base_name: something
 
 include_end_effector_orientation: false
 
+object_models: []
+base_names: []
+
 control_loop_delay_ms: 0

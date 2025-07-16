@@ -14,8 +14,7 @@ def main(log_type, demo_name, folder_path):
     logdir = f"{folder_path}/{year}/{curr_date}"
     dair = op.abspath(op.join(op.dirname(__file__), "../../"))
 
-    if not op.isdir(logdir):
-        os.makedirs(logdir, exist_ok=True)
+    os.makedirs(logdir, exist_ok=True)
 
     # Hardcoded sampling_c3_controller_params path.
     sampling_c3_controller_params_path = op.join(

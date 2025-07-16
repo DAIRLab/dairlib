@@ -162,6 +162,9 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .get();
   }
   
+  // In the new C3 algorithm (temporarily named C4), we introduce a new slack variable, eta.
+  // The following constraint, originally part of the projection step, is now lifted into the QP:
+  //     eta = E * x + F * lambda + H * u + c
   if (options_.projection_type == "NEXTGEN") {
     MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
     EtaLinEq.block(0, n_ + m_ + k_, m_, m_) =
@@ -796,6 +799,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
           2 * G.at(i).block(n_, n_, m_, m_),
           -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
           lambda_.at(i), 1));
+      // Note: In C4, we don't have matching cost for state and input.
       if (options_.projection_type == "NEXTGEN") {
         costs_.push_back(prog_.AddQuadraticCost(
           2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
@@ -818,7 +822,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     }
   }
 
-  //  /// initialize decision variables to warm start
   if (warm_start_) {
     int index = solve_time_ / dt_;
     double weight = (solve_time_ - index * dt_) / dt_;

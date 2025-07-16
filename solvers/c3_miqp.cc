@@ -26,6 +26,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
+  std::cout << "cost_lin size: " << cost_lin.size() << std::endl;
+
   // set up for constraints (Ex + F \lambda + Hu + c >= 0)
   MatrixXd Mcons1(m_, n_ + m_ + k_);
   Mcons1 << E, F, H;

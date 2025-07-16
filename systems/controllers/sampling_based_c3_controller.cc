@@ -670,8 +670,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // If the object is close to desired XY location, track its full pose.
   if (!crossed_cost_switching_threshold_) {
-    if ((x_lcs_curr.segment(n_q_-3,2)-x_lcs_final_des.value().segment(n_q_-3,2))
-          .norm() < progress_params_.cost_switching_threshold_distance) {
+    double pose_diff = 0;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      pose_diff += (x_lcs_curr.segment(7 + 7*i ,2)-x_lcs_final_des.value().segment(7 + 7*i, 2)).norm();
+    }
+    if (pose_diff < progress_params_.cost_switching_threshold_distance) {
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 
@@ -760,6 +763,11 @@ std::cout << "Before Parallelization" << std::endl;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
     
+
+    std::cout << "Q_ size: " << Q_[0].rows() << " x " << Q_[0].cols() << std::endl;  
+    std::cout << "R_ size: " << R_[0].rows() << " x " << R_[0].cols() << std::endl;  
+    std::cout << "G_ size: " << G_[0].rows() << " x " << G_[0].cols() << std::endl;  
+    std::cout << "U_ size: " << U_[0].rows() << " x " << U_[0].cols() << std::endl;  
 
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
@@ -1643,12 +1651,22 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   bool updated_pos_or_rot = false;
   double cost_progress_fraction = -INFINITY; // Negative means progress.
 
-  Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(n_q_-7, n_q_-7, 7, 7);
-  Eigen::VectorXd pos_and_rot_error_vec =
-    x_lcs_curr.segment(n_q_-7, 7) -
-    x_lcs_final_des.get_value().segment(n_q_-7, 7);
-  double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
-                                 Q_pos_and_rot * pos_and_rot_error_vec;
+  std::vector<Eigen::MatrixXd> Q_pos_and_rots;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Q_pos_and_rots.push_back(Q_[0].block(3 + 7*i, 3 + 7*i, 7, 7));
+  }
+
+  std::vector<Eigen::VectorXd> pos_and_rot_error_vecs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pos_and_rot_error_vecs.push_back(
+        x_lcs_curr.segment(3 + 7*i, 7) - x_lcs_final_des.get_value().segment(3 + 7*i, 7)
+    );
+  }
+  double curr_pos_and_rot_cost = 0;  // accumulate costs across all objects
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    curr_pos_and_rot_cost += 
+      pos_and_rot_error_vecs.at(i).transpose() * Q_pos_and_rots.at(i) * pos_and_rot_error_vecs.at(i); 
+  }
 
   // Check for progress along different metrics.
   if ((all_sample_costs_[SampleIndex::kCurrentLocation] < lowest_cost_) ||
@@ -1785,6 +1803,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
 void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
+  std::cout << "OutputC3SolutionCurrPlanObject begin" << std::endl;
+
+
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
@@ -1806,8 +1827,8 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(3*i + 3, 3).cast<double>();
-    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 3*i + 3, 3).cast<double>();
+    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
+    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 7*i + 3, 3).cast<double>();
   } 
 
   LcmTrajectory::Trajectory object_traj;
@@ -1820,9 +1841,13 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples =
-    c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
+  MatrixXd orientation_samples = MatrixXd::Zero(4 * controller_params_.num_objects, N_);
+
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    orientation_samples.middleRows(4*i, 4) =
+      c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+  }
+
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
     std::vector<std::string>(orientation_samples.rows(), "double");
@@ -1834,6 +1859,8 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
+  std::cout << "OutputC3SolutionCurrPlanObject end" << std::endl;
+
 }
 
 void SamplingC3Controller::OutputC3SolutionCurrPlan(
@@ -1959,6 +1986,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
+  std::cout << "OutputC3SolutionBestPlanObject begin" << std::endl;
 
   auto z_sol = c3_best_plan_->GetFullSolution();
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
@@ -1978,8 +2006,8 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
 
   MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(3*i + 3, 3).cast<double>();
-    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 3*i + 3, 3).cast<double>();
+    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
+    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 7*i + 3, 3).cast<double>();
   } 
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
@@ -2008,6 +2036,8 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
+  std::cout << "OutputC3SolutionBestPlanObject end" << std::endl;
+
 }
 
 void SamplingC3Controller::OutputC3SolutionBestPlan(
@@ -2299,6 +2329,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan)
     const {
+  std::cout << "OutputDynamicallyFeasibleBestPlanObject begin" << std::endl;
+
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2343,6 +2375,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
 
   dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
   dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+  std::cout << "OutputDynamicallyFeasibleBestPlanObject end" << std::endl;
+
 }
 
 // Output port handlers for sample-related ports

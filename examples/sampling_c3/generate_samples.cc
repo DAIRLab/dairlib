@@ -608,7 +608,6 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         projected_sample_point[2] = z_height;
 
         Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
-        std::cout << "X_LCS SIZE: " << x_lcs.size() << std::endl;
         candidate_state.segment(0, 3) = projected_sample_point; // EE position
         candidate_state.segment(3, 7*num_objects + 3 + 6*num_objects) = x_lcs.segment(3, 7*num_objects + 3 + 6*num_objects); 
 

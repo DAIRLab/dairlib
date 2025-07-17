@@ -102,9 +102,10 @@ int do_main(int argc, char* argv[]) {
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
 
 	// Getting vector of object indices for all objects
-  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
+  AddObjectsToPlant(
     &plant, &scene_graph, vis_params.object_vis_models);
   plant.Finalize();
+
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
@@ -114,10 +115,21 @@ int do_main(int argc, char* argv[]) {
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  AddObjectsToPlant(&plant_object, nullptr,
+  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(&plant_object, nullptr,
                    vis_params.object_vis_models);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
+
+	std::cout << "object_indices size: " << object_indices.size() << std::endl;
+  for (int i = 0; i < object_indices.size(); i++) {
+    std::cout << object_indices.at(i) << ", ";
+  }
+	std::cout << std::endl;
+
+	std::cout << "Object_plant num_pos: " << plant_object.num_positions() << std::endl;
+	std::cout << "Object_plant num_velo: " << plant_object.num_velocities() << std::endl;
+
+
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto franka_state_receiver =
@@ -169,8 +181,8 @@ int do_main(int argc, char* argv[]) {
   for (int i = 0; i < object_state_receivers.size(); i++) {
     builder.Connect(object_state_receivers.at(i)->get_output_port(),
                     *(ro_model_object_inputs.at(i)));
-
   } 
+	std::cout << "After loop?" << std::endl;
 
   // LCM subscribers.
   auto franka_state_sub =
@@ -582,7 +594,7 @@ int do_main(int argc, char* argv[]) {
   simulator->Initialize();
 
   drake::log()->info("visualizer started");
-
+    std::cout << "Before simulator" << std::endl;
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;

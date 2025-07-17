@@ -243,8 +243,6 @@ class LcmDrivenLoop {
         name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
     diagram_context.SetTime(t0);
 
-    std::cout << "After t0" << std::endl;
-
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
     // Variable needed for the driven loop

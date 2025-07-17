@@ -126,9 +126,6 @@ void FrankaKinematics::ComputeLCSState(
     v_objects.segment(i * nv, nv) = object_outputs.at(i)->GetVelocities();
   }
 
-  std::cout << q_objects.transpose() << std::endl;
-
-
 
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);
@@ -144,7 +141,6 @@ void FrankaKinematics::ComputeLCSState(
       *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
 
   const Eigen::VectorXd& q = object_plant_.GetPositions(*object_context_);
-  std::cout << q.transpose() << std::endl;
 
   std::vector<drake::math::RigidTransform<double>> object_poses;
   for (ModelInstanceIndex idx : object_indices_) {
@@ -186,6 +182,7 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_objects);
   lcs_state->set_timestamp(franka_output->get_timestamp());
+  std::cout << "END of frankakinematics" << std::endl;
 }
 
 }  // namespace systems

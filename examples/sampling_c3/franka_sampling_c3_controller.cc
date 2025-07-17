@@ -87,14 +87,18 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_object(0.0);
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
     &plant_object, nullptr, controller_params.object_models);
-
 	
 	// exclude ee and ground
 	//std::vector<ModelInstanceIndex> object_indices(full_object_indices.begin()+2, full_object_indices.end()); 
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-
+	std::cout << "Num model instances: " << plant_object.num_model_instances() << ", object_indices size: " << object_indices.size() << std::endl;
+	for (ModelInstanceIndex i(0); i < plant_object.num_model_instances(); ++i) {
+		std::cout << "Instance " << i << ": " << plant_object.GetModelInstanceName(i) << std::endl;
+		//std::cout << "object_indices " << i << ": " << object_indices.at(i) << std::endl;
+	}
+	std::cout << std::endl;
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
@@ -102,9 +106,13 @@ int DoMain(int argc, char* argv[]) {
   std::vector<ModelInstanceIndex> object_indices_lcs = 
 	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
                   controller_params.include_end_effector_orientation);
-
-
   plant_lcs.Finalize();
+
+	std::cout << "Num model instances: " << plant_object.num_model_instances() << ", object_indices_lcs size: " << object_indices.size() << std::endl;
+	for (ModelInstanceIndex i(0); i < plant_lcs.num_model_instances(); ++i) {
+		std::cout << "Instance " << i << ": " << plant_lcs.GetModelInstanceName(i) << std::endl;
+		//std::cout << "object_indices_lcs " << i << ": " << object_indices_lcs.at(i) << std::endl;
+	}
 
 
 
@@ -272,7 +280,7 @@ int DoMain(int argc, char* argv[]) {
 		// Object-object contact pairs (excluding end effector)
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
-					if (j <= i) continue;
+					if (j < i) continue;
 
 					std::string key1 = "OBJECT_MESH_" + std::to_string(i);
 					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
@@ -580,7 +588,7 @@ int DoMain(int argc, char* argv[]) {
 																			*(reduced_order_model_receivers.at(i)));
 	} 
 
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   controller->get_input_port_lcs_state());
 
 	std::vector<const drake::systems::InputPort<double>*> input_ports_object_state = 
@@ -689,14 +697,14 @@ int DoMain(int argc, char* argv[]) {
 			[&]() {
 				int total_count = 0;
 				for (const auto& sub : object_state_subs) {
-					if (sub->GetInternalMessageCount() < 1) {
+					if (sub->GetInternalMessageCount() <= 1) {
 						return false;
 					}
 				}
 				return true;
 				});
     std::cout << "LcmHandleSubscriptionsUntil finished" << std::endl;
-	//std::this_thread::sleep_for(std::chrono::seconds(30));
+	std::this_thread::sleep_for(std::chrono::seconds(30));
   loop.Simulate();
   return 0;
 }

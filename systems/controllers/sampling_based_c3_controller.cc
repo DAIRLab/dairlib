@@ -714,7 +714,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
 
-  if (verbose_) {
+  if (true) {
     std::cout << "num_total_samples: " << num_total_samples << std::endl;
   }
 
@@ -788,6 +788,12 @@ std::cout << "Before Parallelization" << std::endl;
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
 
+    if (test_c3_object) {
+      std::cout << "test_c3_object exists" << std::endl;
+    } else {
+      std::cout << "test_c3_object doesnt exist" << std::endl;
+    }
+
     std::cout << "Before calccost" << std::endl;
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
@@ -799,7 +805,7 @@ std::cout << "Before Parallelization" << std::endl;
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
-    //#pragma omp critical
+    #pragma omp critical
     {
       c3_objects.at(i) = test_c3_object;
     }
@@ -825,6 +831,7 @@ std::cout << "Before Parallelization" << std::endl;
   std::cout << "After maintain buffer" << std::endl;
 
   // Augment the considered samples with the best from the buffer, if eligible.
+  std::cout << "c3_objects size: " << c3_objects.size() <<  std::endl;
   AugmentSamplesWithBuffer(c3_objects);
   std::cout << "After Aguemnt buffer" << std::endl;
 
@@ -1004,7 +1011,14 @@ std::cout << "Before Parallelization" << std::endl;
   }
 
   // Update C3 objects and intermediates for current and best samples.
+  std::cout << "c3_objects size: " << c3_objects.size() << std::endl;
+  auto ptr = c3_objects.at(SampleIndex::kCurrentLocation);
+  std::cout << "ptr.get(): " << ptr.get() << std::endl;
+  assert(ptr != nullptr);
+
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
+  std::cout << "Best sample index: " << best_sample_index_ << std::endl;
+
   c3_best_plan_ = c3_objects.at(best_sample_index_);
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
   std::cout << "After c3_best_plan" << std::endl;
@@ -1276,9 +1290,12 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
 
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
+    std::cout << "n_q: " << n_q_ << ", n_v_: " << n_v_ << std::endl;
+    std::cout << candidate_states[i].size() << std::endl;
     // Context needs to be updated to create the LCS objects.
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states[i]);
+    std::cout << "After updatecontext" << std::endl;
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
@@ -1286,12 +1303,17 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to,
         c3_options.num_friction_directions, verbose_);
-      
+    std::cout << "After preprocessor" << std::endl;
+
+    std::cout << c3_options.mu.size() << std::endl;
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
       contact_model_);
+    std::cout << "Before lcs_candidates.push_back" << std::endl;
     lcs_candidates.push_back(lcs_object_sample);
+    std::cout << "After linearize plant" << std::endl;
+
 
     // Create different LCS objects for cost calculation.
     vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
@@ -1614,16 +1636,21 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
 
     // Initialize the buffer plan with something.
     if (dynamically_feasible_buffer_plan_.size() != N_ + 1) {
+      std::cout << "Initialize the buffer plan with something." << std::endl;
+
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
+    
     }
     // If the best in the buffer is from the current set of samples, store the
     // associated C3 object and dynamically feasible plan, but don't add to the
     // set of samples to consider for repositioning.
     else if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
-             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {
+             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {       
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
+      std::cout << "else if" << std::endl;
+
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
     }
@@ -1631,6 +1658,11 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
     // consider it for repositioning by adding it to the set of samples, costs,
     // etc.
     else {
+      std::cout << "else" << std::endl;
+      if (c3_buffer_plan_) {
+        std::cout << "c3_buffer_plan exists" << std::endl;
+      }
+
       all_sample_costs_.push_back(lowest_buffer_cost);
       all_sample_locations_.push_back(best_buffer_ee_sample);
       c3_objects.push_back(c3_buffer_plan_);
@@ -1805,7 +1837,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     dairlib::lcmt_timestamped_saved_traj* output) const {
   std::cout << "OutputC3SolutionCurrPlanObject begin" << std::endl;
 
-
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
@@ -1827,8 +1858,8 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
-    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 7*i + 3, 3).cast<double>();
+    knots.middleRows(3*i, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
+    knots.middleRows(3*controller_params_.num_objects + 3*i, 3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
   } 
 
   LcmTrajectory::Trajectory object_traj;
@@ -2006,8 +2037,8 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
 
   MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i + 3, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
-    knots.middleRows(n_q_ + 3*i + 3, 3) = c3_solution->x_sol_.middleRows(n_q_ + 7*i + 3, 3).cast<double>();
+    knots.middleRows(3*i, 3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
+    knots.middleRows(3*controller_params_.num_objects + 3*i, 3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
   } 
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
@@ -2241,6 +2272,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
     const {
+  std::cout << "OutputDynamicallyFeasibleCurrPlanObject begin" << std::endl; 
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2250,7 +2282,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   }
 
   Eigen::MatrixXd knots =
-    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, dynamically_feasible_traj.size());
+    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, N_ + 1);
   Eigen::VectorXd timestamps =
     Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
   for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
@@ -2287,6 +2319,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   dynamically_feasible_curr_plan_object->saved_traj =
     lcm_traj.GenerateLcmObject();
   dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
+  std::cout << "OutputDynamicallyFeasibleCurrPlanObject end" << std::endl; 
 }
 
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(

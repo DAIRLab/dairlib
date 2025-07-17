@@ -40,6 +40,12 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   int n_contacts = contact_geoms.size();
 
+  std::cout << "contact_geoms size: " << contact_geoms.size() << std::endl;
+  std::cout << "Linearizeplanttolcs n_x: " << n_x << std::endl;
+  // if (plant_ad) {
+  //   std::cout << "plant_ad exists" << std::endl;
+  // }
+
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
   DRAKE_DEMAND(mu.size() == n_contacts);
@@ -49,7 +55,8 @@ LCS LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd C(n_v);
   plant_ad.CalcBiasTerm(context_ad, &C);
   VectorXd u_dyn = plant.get_actuation_input_port().Eval(context);
-
+  std::cout << "Calced bias term" << std::endl;
+ 
   auto B_dyn_ad = plant_ad.MakeActuationMatrix();
   AutoDiffVecXd Bu =
       B_dyn_ad * plant_ad.get_actuation_input_port().Eval(context_ad);
@@ -61,6 +68,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   MatrixX<AutoDiffXd> M(n_v, n_v);
   plant_ad.CalcMassMatrix(context_ad, &M);
+  std::cout << "Made mass matrix" << std::endl;
 
   // If this ldlt is slow, there are alternate formulations which avoid it
   AutoDiffVecXd vdot_no_contact =
@@ -78,6 +86,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd x_ad = plant_ad.GetPositionsAndVelocities(context_ad);
   AutoDiffVecXd qdot_no_contact(n_q);
   AutoDiffVecXd vel_ad = x_ad.tail(n_v);
+  std::cout << "Before MapVelocityToQDot" << std::endl;
 
   plant_ad.MapVelocityToQDot(context_ad, vel_ad, &qdot_no_contact);
   MatrixXd AB_q = ExtractGradient(qdot_no_contact);
@@ -94,6 +103,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
 
+  std::cout << "Before geomgeomcollider loop" << std::endl;
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
@@ -119,6 +129,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
   }
+  std::cout << "After geomgeomcollider loop" << std::endl;
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
@@ -273,6 +284,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     W_u = J_t * (AB_v_u);
     w = J_t * (d_v);
   }
+  std::cout << "after constraints" << std::endl;
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
   system.SetTangentGapLinearization(W_x, W_l, W_u, w);

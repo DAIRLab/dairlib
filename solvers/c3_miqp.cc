@@ -29,6 +29,13 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   std::cout << "cost_lin size: " << cost_lin.size() << std::endl;
 
   // set up for constraints (Ex + F \lambda + Hu + c >= 0)
+  std::cout << "U size: " << U.size() << std::endl;
+  std::cout << "delta_c size: " << delta_c.size() << std::endl;
+  std::cout << "E size: " << E.size() << std::endl;
+  std::cout << "F size: " << F.size() << std::endl;
+  std::cout << "H size: " << H.size() << std::endl;
+  std::cout << "c size: " << c.size() << std::endl;
+
   MatrixXd Mcons1(m_, n_ + m_ + k_);
   Mcons1 << E, F, H;
 
@@ -41,9 +48,14 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   GRBModel model = GRBModel(env_);
 
-  GRBVar delta_k[n_ + m_ + k_];
-  GRBVar binary[m_];
+  std::vector<GRBVar> delta_k(n_ + m_ + k_);
+  std::vector<GRBVar> binary(m_);
 
+  std::cout << "delta_k size: " << delta_k.size() << std::endl;
+  std::cout << "binary size: " << binary.size() << std::endl;
+
+
+  std::cout << "warm start index: " <<  warm_start_index << std::endl;
   for (int i = 0; i < m_; i++) {
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
     if (warm_start_index != -1) {
@@ -59,6 +71,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                      warm_start_delta_[admm_iteration][warm_start_index](i));
     }
   }
+  std::cout << "Before GRBQuadExpr size: " << std::endl;
+
 
   GRBQuadExpr obj = 0;
 
@@ -68,6 +82,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   }
 
   model.setObjective(obj, GRB_MINIMIZE);
+  std::cout << "After set objective" << std::endl;
+
 
   // initial state constraint
 //  if (warm_start_index == 0){
@@ -77,8 +93,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 //  }
 
   int M = 100000;  // big M variable
-  double coeff[n_ + m_ + k_];
-  double coeff2[n_ + m_ + k_];
+  std::vector<double> coeff(n_ + m_ + k_);
+  std::vector<double> coeff2 (n_ + m_ + k_);
 
   for (int i = 0; i < m_; i++) {
     GRBLinExpr lambda_expr = 0;
@@ -88,7 +104,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       coeff[j] = Mcons2(i, j);
     }
 
-    lambda_expr.addTerms(coeff, delta_k, n_ + m_ + k_);
+    lambda_expr.addTerms(coeff.data(), delta_k.data(), n_ + m_ + k_);
     model.addConstr(lambda_expr >= 0);
     model.addConstr(lambda_expr <= M * (1 - binary[i]));
 
@@ -99,27 +115,47 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       coeff2[j] = Mcons1(i, j);
     }
 
-    activation_expr.addTerms(coeff2, delta_k, n_ + m_ + k_);
+    activation_expr.addTerms(coeff2.data(), delta_k.data(), n_ + m_ + k_);    
     model.addConstr(activation_expr + c(i) >= 0);
     model.addConstr(activation_expr + c(i) <= M * binary[i]);
   }
 
-  model.optimize();
+  std::cout << "Before model.optimize" << std::endl;
 
-  VectorXd delta_kc(n_ + m_ + k_);
-  VectorXd binaryc(m_);
-  for (int i = 0; i < n_ + m_ + k_; i++) {
-    delta_kc(i) = delta_k[i].get(GRB_DoubleAttr_X);
-  }
-  for (int i = 0; i < m_; i++) {
-    binaryc(i) = binary[i].get(GRB_DoubleAttr_X);
+  try {
+    model.optimize();
+    std::cout << "After model.optimize" << std::endl;
+
+    int status = model.get(GRB_IntAttr_Status);
+    if (status == GRB_OPTIMAL || status == GRB_SUBOPTIMAL) {
+        std::cout << "=== Solution ===" << std::endl;
+
+        std::cout << "delta_k:" << std::endl;
+        for (int i = 0; i < delta_k.size(); ++i) {
+            double val = delta_k[i].get(GRB_DoubleAttr_X);
+            std::cout << "  delta_k[" << i << "] = " << val << std::endl;
+        }
+
+        std::cout << "binary:" << std::endl;
+        for (int i = 0; i < binary.size(); ++i) {
+            double val = binary[i].get(GRB_DoubleAttr_X);
+            std::cout << "  binary[" << i << "] = " << val << std::endl;
+        }
+
+        std::cout << "Objective value: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
+
+    } else {
+        std::cerr << "Model did not solve to optimality. Status = " << status << std::endl;
+    }
+  } catch (GRBException& e) {
+      std::cerr << "Gurobi Exception: " << e.getMessage()
+                << " (error code " << e.getErrorCode() << ")" << std::endl;
+  } catch (std::exception& e) {
+      std::cerr << "Standard Exception: " << e.what() << std::endl;
   }
 
-  if (warm_start_index != -1) {
-    warm_start_delta_[admm_iteration][warm_start_index] = delta_kc;
-    warm_start_binary_[admm_iteration][warm_start_index] = binaryc;
-  }
-  return delta_kc;
+  //return delta_kc;
+  return VectorXd::Zero(n_ + m_ + k_);
 }
 
 VectorXd C3MIQP::SolveRobustSingleProjection(

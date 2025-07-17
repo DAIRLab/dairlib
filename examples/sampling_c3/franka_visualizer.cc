@@ -102,16 +102,19 @@ int do_main(int argc, char* argv[]) {
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
 
 	// Getting vector of object indices for all objects
-  AddObjectsToPlant(
-    &plant, &scene_graph, vis_params.object_vis_models);
+  std::vector<ModelInstanceIndex> object_indices_plant = AddObjectsToPlant(
+        &plant, &scene_graph, vis_params.object_vis_models);
   plant.Finalize();
 
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka, nullptr, true, false);
+  ModelInstanceIndex franka_index0 = AddFrankaToPlant(&plant_franka, nullptr, true, false);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
+
+	std::cout << "Franka index plant: " << franka_index << std::endl;
+	std::cout << "Franka index plant_franka: " << franka_index0 << std::endl;
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
@@ -120,16 +123,12 @@ int do_main(int argc, char* argv[]) {
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-	std::cout << "object_indices size: " << object_indices.size() << std::endl;
-  for (int i = 0; i < object_indices.size(); i++) {
-    std::cout << object_indices.at(i) << ", ";
-  }
 	std::cout << std::endl;
 
 	std::cout << "Object_plant num_pos: " << plant_object.num_positions() << std::endl;
 	std::cout << "Object_plant num_velo: " << plant_object.num_velocities() << std::endl;
 
-
+  //std::this_thread::sleep_for(std::chrono::seconds(15));
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto franka_state_receiver =
@@ -137,7 +136,7 @@ int do_main(int argc, char* argv[]) {
 	
 	// Duplicating object state reciever for each object
   std::vector<ObjectStateReceiver*> object_state_receivers;
-  for (ModelInstanceIndex obj_index : object_indices) { 
+  for (ModelInstanceIndex obj_index : object_indices_plant) { 
       object_state_receivers.push_back(builder.AddSystem<ObjectStateReceiver>(plant, obj_index));
   }
 
@@ -154,12 +153,12 @@ int do_main(int argc, char* argv[]) {
       tray_passthroughs.push_back(
 				builder.AddSystem<SubvectorPassThrough>(
 						object_state_receivers.at(i)->get_output_port(0).size(), 0,
-						plant.num_positions(object_indices.at(i)))
+						plant.num_positions(object_indices_plant.at(i)))
 				);
   }
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index)};
-	for (ModelInstanceIndex obj_index : object_indices) {
+	for (ModelInstanceIndex obj_index : object_indices_plant) {
 		input_sizes.push_back(
 			plant.num_positions(obj_index)
 		);
@@ -171,8 +170,8 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false, 
-					object_indices);
+          controller_params.object_body_name, false, object_indices);
+
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
 
@@ -543,12 +542,15 @@ int do_main(int argc, char* argv[]) {
 	for (int i = 1; i <= tray_passthroughs.size(); i++) {
 		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(), mux->get_input_port(i));
 	} 
+	std::cout << "After tray passthrough" << std::endl;
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
+
+	std::cout << "Before object state receivers" << std::endl;
 	for (int i = 0; i < object_state_receivers.size(); i++) {
 		builder.Connect(*(object_state_receivers.at(i)), *(tray_passthroughs.at(i)));
 	} 
@@ -558,6 +560,7 @@ int do_main(int argc, char* argv[]) {
 		builder.Connect(*(object_state_subs.at(i)), *(object_state_receivers.at(i)));
 	} 
 
+	std::cout << "Before meshcat visuzlier" << std::endl;
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
 
@@ -576,14 +579,17 @@ int do_main(int argc, char* argv[]) {
 			);
 	}
 
+	std::cout << "Before init subscriber positions" << std::endl;
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
+	std::cout << "After init subscriber positions" << std::endl;
 	for (int i = 0; i < object_state_receivers.size(); i++) {
 		object_state_receivers.at(i)->InitializeSubscriberPositions(
 				plant, *object_state_sub_contexts.at(i));
 	}
 
 
+	std::cout << "Before simulator" << std::endl;
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   auto simulator =
@@ -592,6 +598,8 @@ int do_main(int argc, char* argv[]) {
   simulator->set_publish_at_initialization(false);
   simulator->set_target_realtime_rate(1.0);
   simulator->Initialize();
+
+	std::cout << "After simulator init" << std::endl;
 
   drake::log()->info("visualizer started");
     std::cout << "Before simulator" << std::endl;

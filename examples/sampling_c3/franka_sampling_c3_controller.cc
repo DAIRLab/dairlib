@@ -569,14 +569,14 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_franka_state());
 	for (int i = 0; i < controller_params.num_objects; i++) {
 			builder.Connect(object_state_subs.at(i)->get_output_port(),
-																			object_state_receivers.at(i)->get_input_port());
+							object_state_receivers.at(i)->get_input_port());
 	}
 
 	std::vector<const drake::systems::InputPort<double>*> reduced_order_model_receivers = 
 			reduced_order_model_receiver->get_input_ports_object_state();
 	for (int i = 0; i < controller_params.num_objects; i++) {
 			builder.Connect(object_state_receivers.at(i)->get_output_port(),
-																			*(reduced_order_model_receivers.at(i)));
+									*(reduced_order_model_receivers.at(i)));
 	} 
 
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),

@@ -140,6 +140,10 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
 )
 
 cc_binary(

@@ -336,21 +336,16 @@ class LcmDrivenLoop {
           simulator_->Initialize();
         }
         simulator_->AdvanceTo(time);
-        std::cout << "advanced to time" << std::endl;
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(
           diagram_context, &diagram_context.get_mutable_discrete_state());
-        std::cout << "After CalcForcedDiscreteVariableUpdate" << std::endl;
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
         }
-        std::cout << "After forcedpublish" << std::endl;
-
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
-        std::cout << "After name_to_input_sub_map_" << std::endl;
       }
 
       // Update the name of the active channel if there are multiple inputs and

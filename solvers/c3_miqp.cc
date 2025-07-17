@@ -11,7 +11,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
-  env_.set("LogToConsole", "1");
+  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
   env_.set("Threads", "5");
   env_.start();
@@ -26,6 +26,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
+  //std::cout << "cost lin: " << cost_lin.transpose() << std::endl;
+
   // set up for constraints (Ex + F \lambda + Hu + c >= 0)
   MatrixXd Mcons1(m_, n_ + m_ + k_);
   Mcons1 << E, F, H;
@@ -39,9 +41,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   GRBModel model = GRBModel(env_);
 
-  std::vector<GRBVar> delta_k(n_ + m_ + k_);
-  std::vector<GRBVar> binary(m_);
-
+  GRBVar delta_k[n_ + m_ + k_];
+  GRBVar binary[m_];
 
   for (int i = 0; i < m_; i++) {
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
@@ -59,8 +60,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     }
   }
 
-
   GRBQuadExpr obj = 0;
+
 
   for (int i = 0; i < n_ + m_ + k_; i++) {
     obj.addTerm(cost_lin(i), delta_k[i]);
@@ -69,17 +70,16 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-
   // initial state constraint
-//  if (warm_start_index == 0){
-//    for (int i = 0; i < n_; ++i){
-//      model.addConstr(delta_k[i] == delta_c[i]);
-//    }
-//  }
+  //  if (warm_start_index == 0){
+  //    for (int i = 0; i < n_; ++i){
+  //      model.addConstr(delta_k[i] == delta_c[i]);
+  //    }
+  //  }
 
-  int M = 100000;  // big M variable
-  std::vector<double> coeff(n_ + m_ + k_);
-  std::vector<double> coeff2 (n_ + m_ + k_);
+  int M = 10000000;  // big M variable
+  double coeff[n_ + m_ + k_];
+  double coeff2[n_ + m_ + k_];
 
   for (int i = 0; i < m_; i++) {
     GRBLinExpr lambda_expr = 0;
@@ -89,7 +89,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       coeff[j] = Mcons2(i, j);
     }
 
-    lambda_expr.addTerms(coeff.data(), delta_k.data(), n_ + m_ + k_);
+    lambda_expr.addTerms(coeff, delta_k, n_ + m_ + k_);
     model.addConstr(lambda_expr >= 0);
     model.addConstr(lambda_expr <= M * (1 - binary[i]));
 
@@ -100,15 +100,33 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       coeff2[j] = Mcons1(i, j);
     }
 
-    activation_expr.addTerms(coeff2.data(), delta_k.data(), n_ + m_ + k_);    
+    activation_expr.addTerms(coeff2, delta_k, n_ + m_ + k_);
     model.addConstr(activation_expr + c(i) >= 0);
     model.addConstr(activation_expr + c(i) <= M * binary[i]);
+
   }
 
+  // std::cout << "coeff: ";
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << coeff[i] << ", ";
+  // }
+  // std::cout << "\n\ncoeff2: ";
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << coeff2[i] << ", ";
+  // }
+  // std::cout << "\nc: " << std::endl;
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << c(i) << ", ";
+  // }
+  // std::cout << "\n" << std::endl;
 
+  // std::cout << "Before model.optimize" << std::endl;
   try {
     model.optimize();
-
+    if (model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE) {
+        model.computeIIS();
+        model.write("model_IIS.ilp");
+    }
     int status = model.get(GRB_IntAttr_Status);
     if (status == GRB_OPTIMAL || status == GRB_SUBOPTIMAL) {
 
@@ -122,8 +140,20 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       std::cerr << "Standard Exception: " << e.what() << std::endl;
   }
 
-  //return delta_kc;
-  return VectorXd::Zero(n_ + m_ + k_);
+  VectorXd delta_kc(n_ + m_ + k_);
+  VectorXd binaryc(m_);
+  for (int i = 0; i < n_ + m_ + k_; i++) {
+    delta_kc(i) = delta_k[i].get(GRB_DoubleAttr_X);
+  }
+  for (int i = 0; i < m_; i++) {
+    binaryc(i) = binary[i].get(GRB_DoubleAttr_X);
+  }
+
+  if (warm_start_index != -1) {
+    warm_start_delta_[admm_iteration][warm_start_index] = delta_kc;
+    warm_start_binary_[admm_iteration][warm_start_index] = binaryc;
+  }
+  return delta_kc;
 }
 
 VectorXd C3MIQP::SolveRobustSingleProjection(

@@ -108,7 +108,7 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
 
   if (flag == 0) {
-    std::cout << "LCP failed: returning x_init" << std::endl;
+    //std::cout << "LCP failed: returning x_init" << std::endl;
     return x_init;
   }
   // update

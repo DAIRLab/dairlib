@@ -535,14 +535,12 @@ int do_main(int argc, char* argv[]) {
         is_c3_mode_drawer->get_input_port_trajectory());
   }
 
-  std::cout << "Passed the step" << std::endl;
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
 	for (int i = 1; i <= tray_passthroughs.size(); i++) {
 		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(), mux->get_input_port(i));
 	} 
-	std::cout << "After tray passthrough" << std::endl;
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
@@ -550,7 +548,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
 
-	std::cout << "Before object state receivers" << std::endl;
 	for (int i = 0; i < object_state_receivers.size(); i++) {
 		builder.Connect(*(object_state_receivers.at(i)), *(tray_passthroughs.at(i)));
 	} 
@@ -560,7 +557,6 @@ int do_main(int argc, char* argv[]) {
 		builder.Connect(*(object_state_subs.at(i)), *(object_state_receivers.at(i)));
 	} 
 
-	std::cout << "Before meshcat visuzlier" << std::endl;
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
 
@@ -579,17 +575,14 @@ int do_main(int argc, char* argv[]) {
 			);
 	}
 
-	std::cout << "Before init subscriber positions" << std::endl;
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
-	std::cout << "After init subscriber positions" << std::endl;
 	for (int i = 0; i < object_state_receivers.size(); i++) {
 		object_state_receivers.at(i)->InitializeSubscriberPositions(
 				plant, *object_state_sub_contexts.at(i));
 	}
 
 
-	std::cout << "Before simulator" << std::endl;
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   auto simulator =
@@ -598,8 +591,6 @@ int do_main(int argc, char* argv[]) {
   simulator->set_publish_at_initialization(false);
   simulator->set_target_realtime_rate(1.0);
   simulator->Initialize();
-
-	std::cout << "After simulator init" << std::endl;
 
   drake::log()->info("visualizer started");
     std::cout << "Before simulator" << std::endl;

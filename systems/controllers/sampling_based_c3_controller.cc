@@ -437,84 +437,58 @@ SamplingC3Controller::SamplingC3Controller(
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal || 
       sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
     std::vector<std::string> mesh_paths;
-    const auto& query_port = plant_.get_geometry_query_input_port();
-    const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-    const auto& inspector = query_object.inspector();
-    for (auto id : inspector.GetAllGeometryIds()) {
-      const auto& shape = inspector.GetShape(id);
-      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
-
-      auto p = s.find("filename='");
-      if (p != std::string::npos) {
-        p += strlen("filename='");
-        auto q = s.find("'", p);
-        std::string path = s.substr(p, q - p);
-        mesh_paths.push_back(path);
-      }
-    }  
+    for (std::string base_name : controller_params_.base_names) {
+      std::string path = "examples/sampling_c3/urdf/" + base_name + ".obj";
+      mesh_paths.push_back(path);
+    }
     if (mesh_paths.empty()) {
       throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
     }
-    
-  std::unordered_map<std::string, int> counts;
-  for (const auto& item : mesh_paths) {
-    counts[item]++;
+
+    // N OBJECTS
+    // Store faces and bins for each object
+
+    for (const std::string& mesh_path : mesh_paths) {
+        drake::geometry::TriangleSurfaceMesh<double>* mesh =
+            new drake::geometry::TriangleSurfaceMesh<double>(
+                drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+
+        const auto& vertices = mesh->vertices();
+        int num_tri = mesh->num_triangles();
+
+        std::vector<Face> object_faces;
+        std::vector<double> object_bins;
+        object_bins.push_back(0.0);
+
+        double cumulative_area = 0.0;
+
+        for (int i = 0; i < num_tri; ++i) {
+            auto tri = mesh->triangles()[i];
+            Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+            Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+            Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+            Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+
+            if (std::abs(normal[2]) < 0.8) {
+                double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+                object_faces.push_back({area, normal, {v0, v1, v2}});
+                cumulative_area += area;
+                object_bins.push_back(cumulative_area);
+            }
+        }
+
+        if (object_faces.empty()) {
+            throw std::runtime_error("No valid faces found in " + mesh_path);
+        }
+
+        faces_per_object_.push_back(std::move(object_faces));
+        face_bins_per_object_.push_back(std::move(object_bins));
+        total_area_per_object_.push_back(cumulative_area);
+    }
+
   }
 
-  std::vector<std::string> mesh_paths_unique;
-  for (const auto& [key, _] : counts) {
-    mesh_paths_unique.push_back(key);
-    std::cout << key << std::endl;
-  }
-
-
-  // N OBJECTS
-  // Store faces and bins for each object
-
-  for (const std::string& mesh_path : mesh_paths_unique) {
-      drake::geometry::TriangleSurfaceMesh<double>* mesh =
-          new drake::geometry::TriangleSurfaceMesh<double>(
-              drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
-
-      const auto& vertices = mesh->vertices();
-      int num_tri = mesh->num_triangles();
-
-      std::vector<Face> object_faces;
-      std::vector<double> object_bins;
-      object_bins.push_back(0.0);
-
-      double cumulative_area = 0.0;
-
-      for (int i = 0; i < num_tri; ++i) {
-          auto tri = mesh->triangles()[i];
-          Eigen::Vector3d v0 = vertices[tri.vertex(0)];
-          Eigen::Vector3d v1 = vertices[tri.vertex(1)];
-          Eigen::Vector3d v2 = vertices[tri.vertex(2)];
-          Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
-
-          if (std::abs(normal[2]) < 0.8) {
-              double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-              object_faces.push_back({area, normal, {v0, v1, v2}});
-              cumulative_area += area;
-              object_bins.push_back(cumulative_area);
-          }
-      }
-
-      if (object_faces.empty()) {
-          throw std::runtime_error("No valid faces found in " + mesh_path);
-      }
-
-      faces_per_object_.push_back(std::move(object_faces));
-      face_bins_per_object_.push_back(std::move(object_bins));
-      total_area_per_object_.push_back(cumulative_area);
-  }
-
-
-  if (mesh_paths.empty()) {
-    throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
-  }
-
+  /*
   // SINGLE OBJECT (DEPRECATED SOON)
   int num_tri = 0;
   std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
@@ -563,9 +537,10 @@ SamplingC3Controller::SamplingC3Controller(
   if (faces_.empty()) {
     throw std::runtime_error("No valid faces found in any of the meshes.");
   }
+  */
   std::cout << "end of constructor" << std::endl;
 }
-}
+
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
@@ -585,7 +560,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
-  std::cout << "entered computeplan" << std::endl;
+  //std::cout << "entered computeplan" << std::endl;
 
   // Evaluate input ports.
   const auto& radio_out =
@@ -712,7 +687,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
 
-  if (true) {
+  if (verbose_) {
     std::cout << "num_total_samples: " << num_total_samples << std::endl;
   }
 
@@ -743,7 +718,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
 // Parallelize over computing C3 costs for each sample.
-//#pragma omp parallel for num_threads(num_threads_to_use_)
+#pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
     bool print_cost_breakdown = radio_out->channel[7] &&
       (i == SampleIndex::kCurrentLocation);
@@ -1261,7 +1236,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         sampling_c3_options_.resolve_contacts_to,
         c3_options.num_friction_directions, verbose_);
 
-    std::cout << c3_options.mu.size() << std::endl;
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
@@ -1590,7 +1564,6 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
 
     // Initialize the buffer plan with something.
     if (dynamically_feasible_buffer_plan_.size() != N_ + 1) {
-      std::cout << "Initialize the buffer plan with something." << std::endl;
 
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
       dynamically_feasible_buffer_plan_ =
@@ -1603,7 +1576,6 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
     else if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
              ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {       
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
-      std::cout << "else if" << std::endl;
 
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
@@ -1612,10 +1584,6 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
     // consider it for repositioning by adding it to the set of samples, costs,
     // etc.
     else {
-      std::cout << "else" << std::endl;
-      if (c3_buffer_plan_) {
-        std::cout << "c3_buffer_plan exists" << std::endl;
-      }
 
       all_sample_costs_.push_back(lowest_buffer_cost);
       all_sample_locations_.push_back(best_buffer_ee_sample);

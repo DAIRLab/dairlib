@@ -42,6 +42,8 @@ def calculate_contacts(num_objects: int) -> int:
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
 
+
+
 yaml_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
 num_objects = get_num_objects_from_yaml(yaml_path)
 num_contacts = calculate_contacts(num_objects)
@@ -200,6 +202,7 @@ if __name__ == "__main__":
     lcm_sim_yaml_path = config["lcm_channels_simulation_file"]
     samp_c3_options_yaml_path = config["sampling_c3_options_file"]
     goal_yaml_path = config["goal_params_file"]
+    repos_yaml_path = config["reposition_params_file"]
 
     urdf_dir = "examples/sampling_c3/urdf"
 
@@ -217,21 +220,28 @@ if __name__ == "__main__":
     sim_yaml = load_yaml(sim_yaml_path)
     lcm_sim_yaml = load_yaml(lcm_sim_yaml_path)
     goal_yaml = load_yaml(goal_yaml_path)
+    repos_yaml = load_yaml(repos_yaml_path)
 
     # Zero vectors only once
     controller_yaml["object_models"] = [""] * num_objects
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
-    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, 0.0, 0.0] for _ in range(num_objects)]
+    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.2 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
-    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379, -0.004] for _ in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379 + (0.2 * i), -0.004] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
+
+    
+    max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
+    max_z = max(max_zs)
+    repos_yaml['pwl_waypoint_height'] = float(-0.029 + max_z + 0.05)
 
     # Save pre-sized YAMLs
     save_yaml(controller_yaml_path, controller_yaml)
     save_yaml(vis_yaml_path, vis_yaml)
     save_yaml(sim_yaml_path, sim_yaml)
     save_yaml(lcm_sim_yaml_path, lcm_sim_yaml)
+    save_yaml(repos_yaml_path, repos_yaml)
 
     # Process all objects
     for base_name in base_names:

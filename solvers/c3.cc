@@ -518,8 +518,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
           x_desired_[i].segment(ee_vel_index,3));
     //obj_ang_vel
     for (int j = 0; j < num_objects; j++) {
-      obj_ang_vel_index = 7*j + 10;
-      obj_vel_index = 7*j + 16;
+      obj_ang_vel_index = 7*j + 6 + 7*num_objects;
+      obj_vel_index = 7*j + 9 + 7*num_objects;
       error_contrib_obj_ang_vel += 
         (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3)).transpose() * 
           (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3));
@@ -564,8 +564,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       (XX[N_].segment(ee_vel_index,3) - x_desired_[N_].segment(ee_vel_index,3));
 
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 7*j + 13;
-    obj_vel_index = 7*j + 16;
+    obj_ang_vel_index = 7*j + 6 + 7*num_objects;
+    obj_vel_index = 7*j + 9 + 7*num_objects;
     error_contrib_obj_ang_vel += 
       (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() * 
         (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3));
@@ -595,8 +595,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       Q_eff.at(N_).block(ee_vel_index,ee_vel_index,3,3)*(XX[N_].segment(ee_vel_index,3) - 
         x_desired_[N_].segment(ee_vel_index,3));
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 7*j + 13;
-    obj_vel_index = 7*j + 16;
+    obj_ang_vel_index = 7*j + 6 + 7*num_objects;
+    obj_vel_index = 7*j + 9 + 7*num_objects;
     cost_contrib_obj_ang_vel += 
       (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() *
         Q_eff.at(N_).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[N_].segment(obj_ang_vel_index,3) - 
@@ -869,7 +869,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                         // sampling_c3_controller)
   }
 
-//#pragma omp parallel for num_threads(options_.num_threads)
+#pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
     if (options_.use_robust_formulation &&
         admm_iteration ==

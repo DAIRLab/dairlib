@@ -40,10 +40,6 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   int n_contacts = contact_geoms.size();
 
-  // if (plant_ad) {
-  //   std::cout << "plant_ad exists" << std::endl;
-  // }
-
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
   DRAKE_DEMAND(mu.size() == n_contacts);
@@ -484,7 +480,8 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
       auto [phi_i, J_i] = collider.EvalPolytope(context,
                                                 num_friction_directions);
       distances.push_back(phi_i);
-      if (verbose) {
+
+      if (verbose) { 
         PrintVerboseContactInfo(plant, context, pair, phi_i);
       }
     }
@@ -500,6 +497,7 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
       }
     }
   }
+
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;
 }

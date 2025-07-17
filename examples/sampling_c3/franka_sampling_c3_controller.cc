@@ -270,20 +270,21 @@ int DoMain(int argc, char* argv[]) {
 		// Object-object contact pairs (excluding end effector)
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
-					if (j < i) continue;
+				if (j >= i) break;
 
-					std::string key1 = "OBJECT_MESH_" + std::to_string(i);
-					std::string key2 = "OBJECT_MESH_" + std::to_string(j);
+				std::string key1 = "OBJECT_MESH_" + std::to_string(i);
+				std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
-					object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
-			}
+				object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
+				std::cout << "(" << j << ", " << i << ")" << std::endl;
+		}
 		}
     
   }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
-  // Order:  EE-ground, EE-object, object-ground.
+  // Order:  EE-ground, EE-object, object-ground, object-object
   contact_pairs.push_back(ee_ground_contact);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
@@ -695,7 +696,7 @@ int DoMain(int argc, char* argv[]) {
 				return true;
 				});
   std::cout << "After LcmHandleSubscriptionsUntil" << std::endl;
-	//std::this_thread::sleep_for(std::chrono::seconds(15));
+  //std::this_thread::sleep_for(std::chrono::seconds(20));
   loop.Simulate();
   return 0;
 }

@@ -76,10 +76,9 @@ int DoMain(int argc, char* argv[]) {
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
-  std::vector<ModelInstanceIndex> object_indices;
+
   int num_objects = sim_params.object_models.size();
-  object_indices.reserve(num_objects);
-  object_indices = AddObjectsToPlant(
+  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
         &plant, &scene_graph, sim_params.object_models);
 
   // ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
@@ -106,6 +105,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<systems::ObjectStateSender*> object_state_senders;
   std::vector<LcmPublisherSystem*> object_state_pubs;
   for (int i = 0; i < num_objects; i++) {
+    std::cout << "Object index " << i << ": " << object_indices.at(i) << std::endl;
     object_state_senders.push_back(
       builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices.at(i)));
     object_state_pubs.push_back(

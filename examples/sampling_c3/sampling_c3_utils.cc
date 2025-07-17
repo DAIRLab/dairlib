@@ -118,9 +118,12 @@ void AddLCSModelToPlant(
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(kEndEffectorSimpleModel);
   parser_lcs.AddModels(kGroundModel);
-  for (std::string& model : object_models) {
-    obj_models.push_back(parser_lcs.AddModels(model)[0]);
-  }
+
+  for (const auto& model : object_models) {
+    obj_models.push_back(
+      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
+    );
+  } 
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
 

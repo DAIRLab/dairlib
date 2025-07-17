@@ -107,8 +107,7 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
   auto flag = LCPSolver.SolveLcpLemkeRegularized(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
 
-  std::cout << "FLAG: " << flag << std::endl;
-  if (!flag) {
+  if (flag == 0) {
     std::cout << "LCP failed: returning x_init" << std::endl;
     return x_init;
   }

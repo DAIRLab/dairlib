@@ -586,9 +586,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   auto start = std::chrono::high_resolution_clock::now();
 
   std::cout << "entered computeplan" << std::endl;
-  std::cout << "[ComputePlan] Called at t=" << context.get_time() << std::endl;
-  std::cout << "Discrete state groups: " << discrete_state->num_groups() << std::endl;
-  std::cout << "Group 0 size: " << discrete_state->get_vector(0).size() << std::endl;
+
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
@@ -730,7 +728,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<solvers::LCS> lcs_candidates = lcs_pair.first;
   std::vector<solvers::LCS> lcs_candidates_for_cost = lcs_pair.second;
 
-  std::cout << "Parallelization prep" << std::endl;
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
   all_sample_dynamically_feasible_plans_ =
@@ -744,7 +741,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!crossed_cost_switching_threshold_) {
     cost_type = progress_params_.cost_type_position;
   }
-std::cout << "Before Parallelization" << std::endl;
 
 // Parallelize over computing C3 costs for each sample.
 //#pragma omp parallel for num_threads(num_threads_to_use_)
@@ -756,18 +752,10 @@ std::cout << "Before Parallelization" << std::endl;
     Eigen::VectorXd test_state = candidate_states.at(i);
     solvers::LCS test_system = lcs_candidates.at(i);
 
-    std::cout << "TEST STATE: " << test_state.transpose() << std::endl;
-
     // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
-    
-
-    std::cout << "Q_ size: " << Q_[0].rows() << " x " << Q_[0].cols() << std::endl;  
-    std::cout << "R_ size: " << R_[0].rows() << " x " << R_[0].cols() << std::endl;  
-    std::cout << "G_ size: " << G_[0].rows() << " x " << G_[0].cols() << std::endl;  
-    std::cout << "U_ size: " << U_[0].rows() << " x " << U_[0].cols() << std::endl;  
 
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
@@ -776,31 +764,18 @@ std::cout << "Before Parallelization" << std::endl;
       test_c3_object = std::make_shared<C3QP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
-    std::cout << "init test_c3_obj" << std::endl;
 
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
-
-    std::cout << "Updated cost LCS" << std::endl;
-
-
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
 
-    if (test_c3_object) {
-      std::cout << "test_c3_object exists" << std::endl;
-    } else {
-      std::cout << "test_c3_object doesnt exist" << std::endl;
-    }
-
-    std::cout << "Before calccost" << std::endl;
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
         controller_params_.num_objects, print_cost_breakdown, verbose_);
-    std::cout << "After calccost " << i << std::endl;
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
@@ -821,19 +796,15 @@ std::cout << "Before Parallelization" << std::endl;
     }
   }
   // End of parallelization
-  std::cout << "After Parallelization" << std::endl;
 
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall
   // and could be considered as a repositioning target.
   MaintainSampleBuffer(x_lcs_curr);
-  std::cout << "After maintain buffer" << std::endl;
 
   // Augment the considered samples with the best from the buffer, if eligible.
-  std::cout << "c3_objects size: " << c3_objects.size() <<  std::endl;
   AugmentSamplesWithBuffer(c3_objects);
-  std::cout << "After Aguemnt buffer" << std::endl;
 
   // Set up hysteresis values based on if the cost switching threshold has been
   // crossed.
@@ -869,8 +840,6 @@ std::cout << "Before Parallelization" << std::endl;
   } else {
     force_c3_mode = true;
   }
-  std::cout << "After all_sample_costs_" << std::endl;
-
 
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
@@ -997,7 +966,6 @@ std::cout << "Before Parallelization" << std::endl;
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
   }
-  std::cout << "After if dong c3" << std::endl;
 
 
   if (verbose_) {
@@ -1011,24 +979,16 @@ std::cout << "Before Parallelization" << std::endl;
   }
 
   // Update C3 objects and intermediates for current and best samples.
-  std::cout << "c3_objects size: " << c3_objects.size() << std::endl;
-  auto ptr = c3_objects.at(SampleIndex::kCurrentLocation);
-  std::cout << "ptr.get(): " << ptr.get() << std::endl;
-  assert(ptr != nullptr);
-
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
-  std::cout << "Best sample index: " << best_sample_index_ << std::endl;
 
   c3_best_plan_ = c3_objects.at(best_sample_index_);
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
-  std::cout << "After c3_best_plan" << std::endl;
 
   // Update the execution trajectories.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
-  std::cout << "After UpdateRepositioningExecutionTrajectory" << std::endl;
 
   if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
@@ -1095,7 +1055,6 @@ std::cout << "Before Parallelization" << std::endl;
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_
               << std::endl;
   }
-  std::cout << "END OF FUNCTION" << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -1248,11 +1207,12 @@ void SamplingC3Controller::UpdateCostMatrices(
     for (int i = 0; i < controller_params_.num_objects; i++) {    
       Q_quaternion_dependent_regularizers_part_2.push_back(quats_desired.at(i) * quats_desired.at(i).transpose());
     }
-    for (int i = 0; i < controller_params_.num_objects; i++) {    
-      DRAKE_ASSERT(Q_quaternion_dependent_costs.at(i).rows() ==
-                  Q_quaternion_dependent_costs.at(i).cols() ==
-                  Q_quaternion_dependent_regularizers_part_2.at(i).rows() ==
-                  Q_quaternion_dependent_regularizers_part_2.at(i).cols() == 4);
+    for (int i = 0; i < controller_params_.num_objects; i++) {   
+      DRAKE_ASSERT(
+        Q_quaternion_dependent_costs.at(i).rows() == 4 &&
+        Q_quaternion_dependent_costs.at(i).cols() == 4 &&
+        Q_quaternion_dependent_regularizers_part_2.at(i).rows() == 4 &&
+        Q_quaternion_dependent_regularizers_part_2.at(i).cols() == 4);
     }
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; ++i) {
@@ -1290,12 +1250,9 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
 
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
-    std::cout << "n_q: " << n_q_ << ", n_v_: " << n_v_ << std::endl;
-    std::cout << candidate_states[i].size() << std::endl;
     // Context needs to be updated to create the LCS objects.
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states[i]);
-    std::cout << "After updatecontext" << std::endl;
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
@@ -1303,16 +1260,13 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to,
         c3_options.num_friction_directions, verbose_);
-    std::cout << "After preprocessor" << std::endl;
 
     std::cout << c3_options.mu.size() << std::endl;
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
       contact_model_);
-    std::cout << "Before lcs_candidates.push_back" << std::endl;
     lcs_candidates.push_back(lcs_object_sample);
-    std::cout << "After linearize plant" << std::endl;
 
 
     // Create different LCS objects for cost calculation.
@@ -1835,7 +1789,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
 void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
-  std::cout << "OutputC3SolutionCurrPlanObject begin" << std::endl;
 
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
@@ -1890,7 +1843,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
-  std::cout << "OutputC3SolutionCurrPlanObject end" << std::endl;
 
 }
 
@@ -2017,7 +1969,6 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
-  std::cout << "OutputC3SolutionBestPlanObject begin" << std::endl;
 
   auto z_sol = c3_best_plan_->GetFullSolution();
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
@@ -2067,7 +2018,6 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
-  std::cout << "OutputC3SolutionBestPlanObject end" << std::endl;
 
 }
 
@@ -2272,7 +2222,6 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
     const {
-  std::cout << "OutputDynamicallyFeasibleCurrPlanObject begin" << std::endl; 
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2306,7 +2255,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   LcmTrajectory::Trajectory object_orientation_traj;
   Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4*controller_params_.num_objects, N_ + 1);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    position_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
+    orientation_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
   } 
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
@@ -2319,7 +2268,6 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   dynamically_feasible_curr_plan_object->saved_traj =
     lcm_traj.GenerateLcmObject();
   dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
-  std::cout << "OutputDynamicallyFeasibleCurrPlanObject end" << std::endl; 
 }
 
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
@@ -2362,7 +2310,6 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan)
     const {
-  std::cout << "OutputDynamicallyFeasibleBestPlanObject begin" << std::endl;
 
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
@@ -2408,7 +2355,6 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
 
   dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
   dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
-  std::cout << "OutputDynamicallyFeasibleBestPlanObject end" << std::endl;
 
 }
 

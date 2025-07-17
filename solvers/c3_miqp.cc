@@ -26,16 +26,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
-  std::cout << "cost_lin size: " << cost_lin.size() << std::endl;
-
   // set up for constraints (Ex + F \lambda + Hu + c >= 0)
-  std::cout << "U size: " << U.size() << std::endl;
-  std::cout << "delta_c size: " << delta_c.size() << std::endl;
-  std::cout << "E size: " << E.size() << std::endl;
-  std::cout << "F size: " << F.size() << std::endl;
-  std::cout << "H size: " << H.size() << std::endl;
-  std::cout << "c size: " << c.size() << std::endl;
-
   MatrixXd Mcons1(m_, n_ + m_ + k_);
   Mcons1 << E, F, H;
 
@@ -51,11 +42,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   std::vector<GRBVar> delta_k(n_ + m_ + k_);
   std::vector<GRBVar> binary(m_);
 
-  std::cout << "delta_k size: " << delta_k.size() << std::endl;
-  std::cout << "binary size: " << binary.size() << std::endl;
 
-
-  std::cout << "warm start index: " <<  warm_start_index << std::endl;
   for (int i = 0; i < m_; i++) {
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
     if (warm_start_index != -1) {
@@ -71,7 +58,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                      warm_start_delta_[admm_iteration][warm_start_index](i));
     }
   }
-  std::cout << "Before GRBQuadExpr size: " << std::endl;
 
 
   GRBQuadExpr obj = 0;
@@ -82,7 +68,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   }
 
   model.setObjective(obj, GRB_MINIMIZE);
-  std::cout << "After set objective" << std::endl;
 
 
   // initial state constraint
@@ -120,29 +105,12 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.addConstr(activation_expr + c(i) <= M * binary[i]);
   }
 
-  std::cout << "Before model.optimize" << std::endl;
 
   try {
     model.optimize();
-    std::cout << "After model.optimize" << std::endl;
 
     int status = model.get(GRB_IntAttr_Status);
     if (status == GRB_OPTIMAL || status == GRB_SUBOPTIMAL) {
-        std::cout << "=== Solution ===" << std::endl;
-
-        std::cout << "delta_k:" << std::endl;
-        for (int i = 0; i < delta_k.size(); ++i) {
-            double val = delta_k[i].get(GRB_DoubleAttr_X);
-            std::cout << "  delta_k[" << i << "] = " << val << std::endl;
-        }
-
-        std::cout << "binary:" << std::endl;
-        for (int i = 0; i < binary.size(); ++i) {
-            double val = binary[i].get(GRB_DoubleAttr_X);
-            std::cout << "  binary[" << i << "] = " << val << std::endl;
-        }
-
-        std::cout << "Objective value: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
 
     } else {
         std::cerr << "Model did not solve to optimality. Status = " << status << std::endl;

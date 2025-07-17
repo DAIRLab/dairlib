@@ -93,11 +93,6 @@ int DoMain(int argc, char* argv[]) {
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-	std::cout << "Num model instances: " << plant_object.num_model_instances() << ", object_indices size: " << object_indices.size() << std::endl;
-	for (ModelInstanceIndex i(0); i < plant_object.num_model_instances(); ++i) {
-		std::cout << "Instance " << i << ": " << plant_object.GetModelInstanceName(i) << std::endl;
-		//std::cout << "object_indices " << i << ": " << object_indices.at(i) << std::endl;
-	}
 	std::cout << std::endl;
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
@@ -107,13 +102,6 @@ int DoMain(int argc, char* argv[]) {
 	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
                   controller_params.include_end_effector_orientation);
   plant_lcs.Finalize();
-
-	std::cout << "Num model instances: " << plant_object.num_model_instances() << ", object_indices_lcs size: " << object_indices.size() << std::endl;
-	for (ModelInstanceIndex i(0); i < plant_lcs.num_model_instances(); ++i) {
-		std::cout << "Instance " << i << ": " << plant_lcs.GetModelInstanceName(i) << std::endl;
-		//std::cout << "object_indices_lcs " << i << ": " << object_indices_lcs.at(i) << std::endl;
-	}
-
 
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
@@ -246,6 +234,7 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
+		std::cout << "Before contact_geoms" << std::endl;
 		for (int i = 0; i < object_indices_lcs.size(); i++) { // exclude ee/ground
 			ModelInstanceIndex object_index = object_indices_lcs.at(i);
 			drake::geometry::GeometryId mesh_geoms =
@@ -277,6 +266,7 @@ int DoMain(int argc, char* argv[]) {
 			ground_object_contact_pairs.push_back(SortedPair(
 					contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
+		std::cout << "Before object-object contacts" << std::endl;
 		// Object-object contact pairs (excluding end effector)
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
@@ -303,19 +293,18 @@ int DoMain(int argc, char* argv[]) {
   // Piece together the diagram.
   DiagramBuilder<double> builder;
 	
+	assert(lcm_channel_params.object_state_channels.size() == controller_params.num_objects);
 	std::vector<LcmSubscriberSystem*> object_state_subs;
-
 	for (int i = 0; i < controller_params.num_objects; ++i) {
 			object_state_subs.push_back(builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
 							lcm_channel_params.object_state_channels.at(i), &lcm)));
 	}
-			
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
   std::vector<systems::ObjectStateReceiver*> object_state_receivers;
   for (int i = 0; i < object_indices.size(); ++i) {
-    object_state_receivers.push_back(builder.AddSystem<systems::ObjectStateReceiver>(plant_object, object_indices.at(i)));
+    object_state_receivers.push_back(builder.AddSystem<systems::ObjectStateReceiver>(plant_lcs, object_indices_lcs.at(i)));
   }
 
   auto radio_sub =
@@ -331,6 +320,7 @@ int DoMain(int argc, char* argv[]) {
 					object_indices
 				);
 
+	std::cout << "Before target generator" << std::endl;
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
@@ -377,6 +367,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.target_generator_info_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
+	std::cout << "Before muxes" << std::endl;
 
   // Port 0 ee target
   builder.Connect(control_target->get_output_port_end_effector_target(), 
@@ -703,8 +694,8 @@ int DoMain(int argc, char* argv[]) {
 				}
 				return true;
 				});
-    std::cout << "LcmHandleSubscriptionsUntil finished" << std::endl;
-	std::this_thread::sleep_for(std::chrono::seconds(30));
+  std::cout << "After LcmHandleSubscriptionsUntil" << std::endl;
+	//std::this_thread::sleep_for(std::chrono::seconds(15));
   loop.Simulate();
   return 0;
 }

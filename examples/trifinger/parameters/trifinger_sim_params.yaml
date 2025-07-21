@@ -1,5 +1,5 @@
-trifinger_model: examples/trifinger/robot_properties_fingers/urdf/trifinger.urdf
-cube_model: examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf
+trifinger_model: examples/trifinger/models/urdf/trifinger.urdf
+cube_model: examples/trifinger/models/cube/cube_v2.urdf
 
 dt: 0.0005
 realtime_rate: 1.0

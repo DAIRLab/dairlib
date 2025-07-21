@@ -6,17 +6,15 @@ goal_params_file: examples/trifinger/parameters/goal_params.yaml
 
 sim_params_file: examples/trifinger/parameters/sim_params.yaml
 vis_params_file: examples/trifinger/parameters/vis_params.yaml
-osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
-osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
-osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
+osc_params_file: examples/trifinger/parameters/osc_params.yaml
+osqp_settings_file: examples/trifinger/parameters/sampling_c3_qp_settings.yaml
+osc_qp_settings_file: examples/trifinger/parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
 lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
-# Note:  Use capsule_1 body name as representative of the pose of the entire
-# jack model.  This works because capsule_1's origin is the same as the jack's.
-object_model: examples/sampling_c3/urdf/jack_control.sdf
-object_body_name: capsule_1
+object_model: examples/trifinger/models/cube/cube_v2.urdf
+object_body_name: cube
 
 include_end_effector_orientation: false
 

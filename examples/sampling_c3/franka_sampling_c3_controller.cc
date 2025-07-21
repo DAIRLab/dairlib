@@ -249,11 +249,11 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
-            plant_object, controller_params.goal_params);
+            3, plant_object, controller_params.goal_params);
   } else if (FLAGS_demo_name == "push_t") {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorPushT>(
-            plant_object, controller_params.goal_params);
+            3, plant_object, controller_params.goal_params);
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }

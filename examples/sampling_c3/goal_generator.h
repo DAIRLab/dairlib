@@ -50,6 +50,7 @@ namespace systems {
 class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
  public:
   SamplingC3GoalGenerator(
+    const int end_effector_num_positions,
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
     const std::vector<Eigen::Quaterniond>& nominal_orientations);
@@ -131,15 +132,17 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;
+  const int end_effector_num_positions_;
 };
 
 class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorJacktoy(
+    const int end_effector_num_positions,
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, kNominalOrientationsJack) {}
+        end_effector_num_positions, object_plant, goal_params, kNominalOrientationsJack) {}
 };
 
 
@@ -147,12 +150,23 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
 class SamplingC3GoalGeneratorPushT : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorPushT(
+    const int end_effector_num_positions,
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, kNominalOrientationsPlanar) {}
+        end_effector_num_positions, object_plant, goal_params, kNominalOrientationsPlanar) {}
 };
 
+
+class SamplingC3GoalGeneratorTrifinger : public SamplingC3GoalGenerator {
+ public:
+  SamplingC3GoalGeneratorTrifinger(
+    const int end_effector_num_positions,
+    const drake::multibody::MultibodyPlant<double>& object_plant,
+    const SamplingC3GoalParams& goal_params) :
+      SamplingC3GoalGenerator(
+        end_effector_num_positions, object_plant, goal_params, kNominalOrientationsPlanar) {}
+};
 
 }  // namespace systems
 }  // namespace dairlib

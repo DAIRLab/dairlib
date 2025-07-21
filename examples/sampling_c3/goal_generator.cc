@@ -12,9 +12,11 @@ namespace dairlib {
 namespace systems {
 
 SamplingC3GoalGenerator::SamplingC3GoalGenerator(
+    const int end_effector_num_positions,
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
     const std::vector<Eigen::Quaterniond>& nominal_orientations) :
+  end_effector_num_positions_(end_effector_num_positions),
   goal_params_(goal_params),
   nominal_orientations_(nominal_orientations) {
   // INPUT PORTS
@@ -31,22 +33,22 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
   // OUTPUT PORTS
   end_effector_target_port_ = this->DeclareVectorOutputPort(
       "end_effector_target",
-      BasicVector<double>(3),
+      BasicVector<double>(end_effector_num_positions_),
       &SamplingC3GoalGenerator::CalcEndEffectorTarget)
     .get_index();
   object_target_port_ = this->DeclareVectorOutputPort(
       "object_target",
-      BasicVector<double>(7),
+      BasicVector<double>(object_plant.num_positions()),
       &SamplingC3GoalGenerator::CalcObjectTarget)
     .get_index();
   object_velocity_target_port_ = this->DeclareVectorOutputPort(
       "object_velocity_target",
-      BasicVector<double>(6),
+      BasicVector<double>(object_plant.num_velocities()),
       &SamplingC3GoalGenerator::CalcObjectVelocityTarget)
     .get_index();
   object_final_target_port_ = this->DeclareVectorOutputPort(
       "object_final_target",
-      BasicVector<double>(7),
+      BasicVector<double>(object_plant.num_positions()),
       &SamplingC3GoalGenerator::OutputObjectFinalTarget)
     .get_index();
   target_gen_info_port_ = this->DeclareAbstractOutputPort(

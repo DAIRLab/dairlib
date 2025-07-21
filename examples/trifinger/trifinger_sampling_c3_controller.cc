@@ -13,12 +13,12 @@
 #include "examples/sampling_c3/goal_generator.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
-#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/trifinger/trifinger_utils.h"
+#include "examples/trifinger/systems/trifinger_kinematics.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/c3_state_sender.h"
 #include "systems/senders/sample_buffer_sender.h"
@@ -68,11 +68,11 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
-  // Create a Franka-only plant.
-  MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka);
-  plant_franka.Finalize();
-  auto franka_context = plant_franka.CreateDefaultContext();
+  // Create a Trifinger-only plant.
+  MultibodyPlant<double> trifinger(0.0);
+  AddTrifingerToPlant(&trifinger);
+  trifinger.Finalize();
+  auto trifinger_context = trifinger.CreateDefaultContext();
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
@@ -84,8 +84,8 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_model,
-                      controller_params.include_end_effector_orientation);
+  auto [trifinger_lcs_index, object_lcs_index] = AddLCSModelsToPlant(
+    &plant_lcs, &scene_graph, controller_params.object_model);
   plant_lcs.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
@@ -100,121 +100,69 @@ int DoMain(int argc, char* argv[]) {
 
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
+  std::vector<SortedPair<GeometryId>> ee_ground_contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
   std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
 
-  // All demos include the end effector and ground.
-  drake::geometry::GeometryId ee_contact_points =
-      plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName("end_effector_simple"))[0];
   drake::geometry::GeometryId ground_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
           plant_lcs.GetBodyByName("ground"))[0];
-  contact_geoms["EE"] = ee_contact_points;
+  drake::geometry::GeometryId fingertip_0_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("finger_tip_link_0"))[0];
+  drake::geometry::GeometryId fingertip_120_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("finger_tip_link_120"))[0];
+  drake::geometry::GeometryId fingertip_240_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("finger_tip_link_240"))[0];
+  drake::geometry::GeometryId cube_geoms = 
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("cube"))[0];
+  drake::geometry::GeometryId cube_sphere_1_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground_contact_point_1"))[0];
+  drake::geometry::GeometryId cube_sphere_3_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground_contact_point_3"))[0];
+  drake::geometry::GeometryId cube_sphere_5_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground_contact_point_5"))[0];
+  drake::geometry::GeometryId cube_sphere_7_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground_contact_point_7"))[0];
+  
   contact_geoms["GROUND"] = ground_geoms;
-  std::vector<SortedPair<GeometryId>> ee_ground_contact{
-      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
+  contact_geoms["FINGERTIP_0"] = fingertip_0_geoms;
+  contact_geoms["FINGERTIP_120"] = fingertip_120_geoms;
+  contact_geoms["FINGERTIP_240"] = fingertip_240_geoms;
+  contact_geoms["CUBE"] = cube_geoms;
+  contact_geoms["CUBE_SPHERE_1"] = cube_sphere_1_geoms;
+  contact_geoms["CUBE_SPHERE_3"] = cube_sphere_3_geoms;
+  contact_geoms["CUBE_SPHERE_5"] = cube_sphere_5_geoms;
+  contact_geoms["CUBE_SPHERE_7"] = cube_sphere_7_geoms;
 
-  if (FLAGS_demo_name == "jacktoy") {
-    drake::geometry::GeometryId capsule1_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_1"))[0];
-    drake::geometry::GeometryId capsule2_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_2"))[0];
-    drake::geometry::GeometryId capsule3_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_3"))[0];
+  ee_ground_contact_pairs = {};
 
-    drake::geometry::GeometryId capsule1_sphere1_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_1"))[1];
-    drake::geometry::GeometryId capsule1_sphere2_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_1"))[2];
-    drake::geometry::GeometryId capsule2_sphere1_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_2"))[1];
-    drake::geometry::GeometryId capsule2_sphere2_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_2"))[2];
-    drake::geometry::GeometryId capsule3_sphere1_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_3"))[1];
-    drake::geometry::GeometryId capsule3_sphere2_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("capsule_3"))[2];
+  ee_contact_pairs.push_back(
+      SortedPair(contact_geoms["FINGERTIP_0"], contact_geoms["CUBE"]));
+  ee_contact_pairs.push_back(
+      SortedPair(contact_geoms["FINGERTIP_120"], contact_geoms["CUBE"]));
+  ee_contact_pairs.push_back(
+      SortedPair(contact_geoms["FINGERTIP_240"], contact_geoms["CUBE"]));
 
-    contact_geoms["CAPSULE_1"] = capsule1_geoms;
-    contact_geoms["CAPSULE_2"] = capsule2_geoms;
-    contact_geoms["CAPSULE_3"] = capsule3_geoms;
-    contact_geoms["CAPSULE_1_SPHERE_1"] = capsule1_sphere1_geoms;
-    contact_geoms["CAPSULE_1_SPHERE_2"] = capsule1_sphere2_geoms;
-    contact_geoms["CAPSULE_2_SPHERE_1"] = capsule2_sphere1_geoms;
-    contact_geoms["CAPSULE_2_SPHERE_2"] = capsule2_sphere2_geoms;
-    contact_geoms["CAPSULE_3_SPHERE_1"] = capsule3_sphere1_geoms;
-    contact_geoms["CAPSULE_3_SPHERE_2"] = capsule3_sphere2_geoms;
+  ground_object_contact_pairs.push_back(SortedPair(
+      contact_geoms["CUBE_SPHERE_1"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(SortedPair(
+      contact_geoms["CUBE_SPHERE_3"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(SortedPair(
+      contact_geoms["CUBE_SPHERE_5"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(SortedPair(
+      contact_geoms["CUBE_SPHERE_7"], contact_geoms["GROUND"]));
 
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
-
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_1_SPHERE_1"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_1_SPHERE_2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_2_SPHERE_1"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_2_SPHERE_2"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_3_SPHERE_1"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(SortedPair(
-        contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
-  } else if (FLAGS_demo_name == "push_t") {
-    drake::geometry::GeometryId vertical_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("vertical_link"))[0];
-    drake::geometry::GeometryId horizontal_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("horizontal_link"))[0];
-
-    drake::geometry::GeometryId top_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("vertical_link"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("vertical_link"))[2];
-    drake::geometry::GeometryId bottom_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("vertical_link"))[3];
-
-    contact_geoms["VERTICAL_LINK"] = vertical_geoms;
-    contact_geoms["HORIZONTAL_LINK"] = horizontal_geoms;
-    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
-    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
-    contact_geoms["BOTTOM_SPHERE"] = bottom_sphere_geoms;
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["HORIZONTAL_LINK"]));
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], contact_geoms["VERTICAL_LINK"]));
-
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
-  } else {
-    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
-  }
-  // Order:  EE-ground, EE-object, object-ground.
-  contact_pairs.push_back(ee_ground_contact);
+  // Order: EE-object, object-ground.
+  contact_pairs.push_back(ee_ground_contact_pairs);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
 
@@ -224,40 +172,40 @@ int DoMain(int argc, char* argv[]) {
   auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, &lcm));
-  auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+  auto trifinger_state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(trifinger);
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
   auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
-          controller_params.object_body_name,
-          controller_params.include_end_effector_orientation);
+      builder.AddSystem<systems::TrifingerKinematics>(
+          trifinger, trifinger_context.get(), plant_object,
+          object_context.get(), kFingertip0Name, kFingertip120Name,
+          kFingertip240Name,
+          controller_params.object_body_name);
 
-  // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   target_generator =
       std::make_unique<systems::SamplingC3GoalGeneratorTrifinger>(
-          plant_object, controller_params.goal_params);
+          plant_lcs.num_positions(trifinger_lcs_index), plant_object, controller_params.goal_params);
   auto* control_target = builder.AddSystem(std::move(target_generator));
 
-  // Input sizes are EE position (3), object pose (7), EE velocity (3), object
-  // velocities (6).
-  std::vector<int> input_sizes = {3, 7, 3, 6};
+  std::vector<int> input_sizes = {plant_lcs.num_positions(trifinger_lcs_index), 
+   plant_lcs.num_positions(object_lcs_index), 
+   plant_lcs.num_velocities(trifinger_lcs_index),
+   plant_lcs.num_velocities(object_lcs_index)};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto final_target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
-          VectorXd::Zero(3));
+          VectorXd::Zero(plant_lcs.num_velocities(trifinger_lcs_index)));
   auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
-          VectorXd::Zero(6));
+          VectorXd::Zero(plant_lcs.num_velocities(object_lcs_index)));
   auto target_gen_info_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.target_generator_info_channel, &lcm,
@@ -390,11 +338,16 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y", "end_effector_z",  "object_qw",
-      "object_qx",       "object_qy",      "object_qz",       "object_x",
-      "object_y",        "object_z",       "end_effector_vx", "end_effector_vy",
-      "end_effector_vz", "object_wx",      "object_wy",       "object_wz",
-      "object_vz",       "object_vz",      "object_vz",
+      "finger0_x",  "finger0_y", "finger0_z",
+      "finger120_x",  "finger120_y", "finger120_z",  
+      "finger240_x",  "finger240_y", "finger240_z",  
+      "object_qw", "object_qx", "object_qy", "object_qz",     
+     "object_x", "object_y", "object_z",       
+     "finger0_vx", "finger0_vy", "finger0_vz",
+     "finger120_vx", "finger120_vy", "finger120_vz",
+     "finger240_vx", "finger240_vy", "finger240_vz",
+    "object_wx", "object_wy", "object_wz",
+     "object_vx", "object_vy", "object_vz",
   };
   // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
@@ -412,8 +365,8 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_final_target_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(franka_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_franka_state());
+  builder.Connect(trifinger_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_trifinger_state());
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
   builder.Connect(object_state_receiver->get_output_port(),
@@ -519,7 +472,7 @@ int DoMain(int argc, char* argv[]) {
   int lcm_buffer_size = 200;
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, shared_diagram, franka_state_receiver,
+      &lcm, shared_diagram, trifinger_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });

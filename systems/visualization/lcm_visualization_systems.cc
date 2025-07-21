@@ -147,10 +147,71 @@ LcmPoseDrawer::LcmPoseDrawer(
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
-  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
+  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryObjects);
 }
 
 drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, trajectory_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  const auto& lcmt_traj =
+      this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+          context, trajectory_input_port_);
+  auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+  MatrixXd object_poses = MatrixXd::Zero(7, N_);
+
+  const auto& lcm_translation_traj =
+      lcm_traj.GetTrajectory(translation_trajectory_name_);
+  auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
+      lcm_translation_traj.time_vector,
+      lcm_translation_traj.datapoints.topRows(3),
+      lcm_translation_traj.datapoints.bottomRows(3));
+  auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
+      {0, 1}, {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
+
+  if (lcm_traj.HasTrajectory(orientation_trajectory_name_)) {
+    const auto& lcm_orientation_traj =
+        lcm_traj.GetTrajectory(orientation_trajectory_name_);
+    std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
+    for (int i = 0; i < lcm_orientation_traj.datapoints.cols(); ++i) {
+      VectorXd orientation_sample = lcm_orientation_traj.datapoints.col(i);
+      if (orientation_sample.isZero()) {
+        quaternion_datapoints.push_back(Quaterniond(1, 0, 0, 0));
+      } else {
+        quaternion_datapoints.push_back(
+            Quaterniond(orientation_sample[0], orientation_sample[1],
+                        orientation_sample[2], orientation_sample[3]));
+      }
+    }
+    orientation_trajectory = PiecewiseQuaternionSlerp(
+        CopyVectorXdToStdVector(lcm_orientation_traj.time_vector),
+        quaternion_datapoints);
+  }
+
+  // ASSUMING orientation and translation trajectories have the same breaks.
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points.
+  VectorXd translation_breaks =
+      VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
+                          lcm_translation_traj.time_vector.tail(1)[0]);
+  for (int i = 0; i < object_poses.cols(); ++i) {
+    object_poses.col(i) << orientation_trajectory.value(
+        translation_breaks(i)),
+        translation_trajectory.value(translation_breaks(i));
+  }
+
+  multipose_visualizers_.at(0)->DrawPoses(object_poses);
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
@@ -170,10 +231,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 
   std::cout << "Before translation_trajectory = " << std::endl;
 
-  auto& translation_trajectory_names = this->translation_trajectory_names_;
-
-  std::cout << "translation_trajectory_names_ isze: " << translation_trajectory_names.size() << std::endl;
-  std::cout << "orientation_trajectory_names isze: " << this->orientation_trajectory_names_.size() << std::endl;
+  std::cout << "translation_trajectory_names_ size: " << translation_trajectory_names_.size() << std::endl;
+  std::cout << "orientation_trajectory_names size: " << orientation_trajectory_names_.size() << std::endl;
 
 
   std::vector<PiecewisePolynomial<double>> translation_trajectory;

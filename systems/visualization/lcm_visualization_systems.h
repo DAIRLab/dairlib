@@ -71,7 +71,7 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
   explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                         std::vector<std::string> model_files,
                         std::vector<std::string> translation_trajectory_names,
-                        std::vector<std::string>  orientation_trajectory_names,
+                        std::vector<std::string> orientation_trajectory_names,
                         const std::string& system_name = "",
                         int num_poses = 5,
                         bool add_transparency = true,
@@ -86,6 +86,10 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                         drake::trajectories::Trajectory<double>* traj) const;
 
   drake::systems::EventStatus DrawTrajectory(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  drake::systems::EventStatus DrawTrajectoryObjects(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 

@@ -428,7 +428,7 @@ SamplingC3Controller::SamplingC3Controller(
       }
     }  
     if (mesh_paths.empty()) {
-      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
+      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph, required if using kMeshNormal sampling strategy.");
     }
 
     // Load triangle meshes and count total triangles.

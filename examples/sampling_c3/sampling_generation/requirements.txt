@@ -3,3 +3,4 @@ ruamel.yaml
 pyglet
 fast_simplification
 pyvhacd
+vhacdx

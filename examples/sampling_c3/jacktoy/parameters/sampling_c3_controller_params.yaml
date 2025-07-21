@@ -17,6 +17,7 @@ lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channel
 # jack model.  This works because capsule_1's origin is the same as the jack's.
 object_model: examples/sampling_c3/urdf/jack_control.sdf
 object_body_name: capsule_1
+#Note: base_name is required for sampling_c3/anything, but not used in jacktoy.
 base_name: dummy
 
 include_end_effector_orientation: false

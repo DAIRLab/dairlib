@@ -716,7 +716,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!crossed_cost_switching_threshold_) {
     cost_type = progress_params_.cost_type_position;
   }
-std::cout << "Before parallelization" << std::endl;
 
 // Parallelize over computing C3 costs for each sample.
 #pragma omp parallel for num_threads(num_threads_to_use_)
@@ -755,6 +754,7 @@ std::cout << "Before parallelization" << std::endl;
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+
 
     #pragma omp critical
     {
@@ -1808,7 +1808,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     LcmTrajectory::Trajectory object_traj;
     object_traj.traj_name = "object_position_target_" + std::to_string(i);
     object_traj.datatypes = std::vector<std::string>(knots.at(i).rows(), "double");
-    object_traj.datapoints = knots.at(i);
+    object_traj.datapoints = knots.at(i);    
     object_traj.time_vector = c3_solution->time_vector_.cast<double>();
 
     object_trajs.push_back(object_traj);
@@ -2252,8 +2252,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
       Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
 
     for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
-      knot.col(j) = dynamically_feasible_traj[i].segment(3 + 7*i, 7);
-      timestamp(i) = i;
+      knot.col(j) = dynamically_feasible_traj[j].segment(3 + 7*i, 7);
+      timestamp(j) = j;
     }
     knots.push_back(knot);
     timestamps.push_back(timestamp);

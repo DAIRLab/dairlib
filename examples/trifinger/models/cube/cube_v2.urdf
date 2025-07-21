@@ -1,0 +1,176 @@
+<?xml version="1.0" ?>
+<robot name="cube">
+    <link name="cube">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.094"/>
+            <inertia ixx="0.00006619" ixy="0" ixz="0" iyy="0.00006619" iyz="0" izz="0.00006619"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="cube_v2.obj"/>
+            </geometry>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.065 0.065 0.065"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+
+    <link name="ground_contact_point_1">
+        <visual>
+            <geometry>
+                <sphere radius="5e-4"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_2">
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_3">
+        <visual>
+            <geometry>
+                <sphere radius="5e-4"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_4">
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_5">
+        <visual>
+            <geometry>
+                <sphere radius="5e-4"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_6">
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_7">
+        <visual>
+            <geometry>
+                <sphere radius="5e-4"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+    <link name="ground_contact_point_8">
+        <collision>
+            <geometry>
+                <sphere radius="1e-7"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+
+    <joint name="ground_contact_point_1_to_cube" type="fixed">
+        <origin xyz="-0.0325 -0.0325 -0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_1"/>
+    </joint>
+    <joint name="ground_contact_point_2_to_cube" type="fixed">
+        <origin xyz="-0.0325 -0.0325 0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_2"/>
+    </joint>
+    <joint name="ground_contact_point_3_to_cube" type="fixed">
+        <origin xyz="-0.0325 0.0325 -0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_3"/>
+    </joint>
+    <joint name="ground_contact_point_4_to_cube" type="fixed">
+        <origin xyz="-0.0325 0.0325 0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_4"/>
+    </joint>
+    <joint name="ground_contact_point_5_to_cube" type="fixed">
+        <origin xyz="0.0325 -0.0325 -0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_5"/>
+    </joint>
+    <joint name="ground_contact_point_6_to_cube" type="fixed">
+        <origin xyz="0.0325 -0.0325 0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_6"/>
+    </joint>
+    <joint name="ground_contact_point_7_to_cube" type="fixed">
+        <origin xyz="0.0325 0.0325 -0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_7"/>
+    </joint>
+    <joint name="ground_contact_point_8_to_cube" type="fixed">
+        <origin xyz="0.0325 0.0325 0.0325" rpy="0 0 0"/>
+        <parent link="cube"/>
+        <child link="ground_contact_point_8"/>
+    </joint>
+</robot>

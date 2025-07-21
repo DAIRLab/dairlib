@@ -244,6 +244,8 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_target());
+    builder.Connect(c3_state_target_sub->get_output_port(),
+                    c3_target_drawer->get_input_port_c3_state_final_target());
   }
 
   if (sim_params.visualize_c3_forces) {
@@ -281,6 +283,8 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
 
   auto diagram = builder.Build();
+  diagram->set_name("franka_c3_visualizer");
+  DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

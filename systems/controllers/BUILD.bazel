@@ -75,6 +75,9 @@ cc_library(
     name = "c3_controller",
     srcs = ["c3/c3_controller.cc"],
     hdrs = ["c3/c3_controller.h"],
+    data = [
+        "//solvers:solver_params",
+    ],
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
@@ -91,6 +94,9 @@ cc_library(
     name = "sampling_c3_controller",
     srcs = ["sampling_based_c3_controller.cc"],
     hdrs = ["sampling_based_c3_controller.h"],
+    data = [
+        "//solvers:solver_params",
+    ],
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",

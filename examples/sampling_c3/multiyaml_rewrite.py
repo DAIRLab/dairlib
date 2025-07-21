@@ -128,7 +128,7 @@ def process_base(
 
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
-    OBJECT_POSITION = [500, 500, 120]
+    OBJECT_POSITION = [200, 200, 120]
     EE_LINEAR_VELOCITY = [5, 5, 5]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
@@ -180,8 +180,8 @@ def process_base(
     samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects))]
     samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * calculate_contacts(num_objects))]
 
-    samp_c3_options_yaml["u_x"] = [10] * 3 + [100, 100, 100, 10, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
-    samp_c3_options_yaml["u_x_position"] = [10] * 3 + [100, 100, 100, 10, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
+    samp_c3_options_yaml["u_x"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
+    samp_c3_options_yaml["u_x_position"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
     samp_c3_options_yaml["g_x"] = [950] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
     samp_c3_options_yaml["g_x_position"] = [900] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
 

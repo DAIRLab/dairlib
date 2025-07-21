@@ -104,14 +104,14 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
 
-  //std::cout <<  << std::endl;
   auto flag = LCPSolver.SolveLcpLemkeRegularized(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
 
   if (flag == 0) {
-    //std::cout << "LCP failed: returning x_init" << std::endl;
+    std::cout << "LCP failed: returning x_init" << std::endl;
     return x_init;
   }
+
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
   if (verbose) {

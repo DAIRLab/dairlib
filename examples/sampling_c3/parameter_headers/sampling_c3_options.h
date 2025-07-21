@@ -28,6 +28,9 @@ struct SamplingC3Options : C3Options {
 
   double planning_dt_pose;
   double planning_dt_position;
+  double planning_dt_pose_cost;
+  double planning_dt_position_cost;
+  
 
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
@@ -248,6 +251,7 @@ struct SamplingC3Options : C3Options {
 
     void SetPositionTrackingOptions(C3Options* options) const {
       options->dt = planning_dt_position;
+      options->dt_cost = planning_dt_position_cost;
       options->w_Q = w_Q_position;
       options->w_R = w_R_position;
       options->w_G = w_G_position;
@@ -273,6 +277,7 @@ struct SamplingC3Options : C3Options {
 
     void SetPoseTrackingOptions(C3Options* options) const {
       options->dt = planning_dt_pose;
+      options->dt_cost = planning_dt_pose_cost;
       options->w_Q = w_Q;
       options->w_R = w_R;
       options->w_G = w_G;

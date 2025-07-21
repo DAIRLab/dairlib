@@ -116,7 +116,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto context = plant_lcs.CreateDefaultContext();
   Eigen::VectorXd x_pos = plant_lcs.GetPositionsAndVelocities(*context);
-    
+
   // Build the contact pairs based on the demo.
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;

@@ -84,6 +84,7 @@ struct C3Options {
   std::vector<double> mu;
   double dt;
   double solve_dt;    // unused
+  double dt_cost;
   int num_friction_directions;
   int num_contacts;
   Eigen::MatrixXd Q;

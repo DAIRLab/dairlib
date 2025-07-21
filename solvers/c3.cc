@@ -655,6 +655,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
 
   // Return the cost and associated state trajectory.
   std::pair <double, std::vector<VectorXd>> ret (cost, XX);
+  // for (int j =0; j <= N_; j++) {
+  //   std::cout << XX[j].transpose() << std::endl;
+  // }
+  // std::cout << "\n\n" << std::endl;
   return ret;
 }
 
@@ -708,6 +712,8 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
             Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
             Kd*(XX[i].segment(ee_vel_index, 3) - XX_new[i].segment(ee_vel_index, 3));
         }
+        std::cout << "UU: " << UU_new[i].transpose() << std::endl;
+
         if (lcs_for_cost_) {
 
           if (verbose) {
@@ -715,10 +721,12 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
           }
           XX_new[i+1] = lcs_for_cost_->Simulate(XX_new[i], UU_new[i], verbose);
         }
-        else{
+        else {
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
         }
+
     }
+    std::cout << "\n\n";
     return {XX_new, UU_new};
 }
 

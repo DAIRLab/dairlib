@@ -488,7 +488,7 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_state) {
     auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
+        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, vis_params.object_vis_models.size(), true, true);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),

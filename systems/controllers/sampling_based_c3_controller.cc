@@ -944,7 +944,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
-       (x_lcs_curr[2] < sampling_params_.z_height + 0.05))
+       (x_lcs_curr[2] < sampling_params_.z_height + 0.01))
     {
 
       is_doing_c3_ = true;
@@ -1259,7 +1259,6 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
       contact_model_);
     lcs_candidates.push_back(lcs_object_sample);
-
 
     // Create different LCS objects for cost calculation.
     vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;

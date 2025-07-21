@@ -716,6 +716,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!crossed_cost_switching_threshold_) {
     cost_type = progress_params_.cost_type_position;
   }
+std::cout << "Before parallelization" << std::endl;
 
 // Parallelize over computing C3 costs for each sample.
 #pragma omp parallel for num_threads(num_threads_to_use_)
@@ -770,6 +771,22 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
+  // const auto& query_port = plant_.get_geometry_query_input_port();
+  // const auto& query_object =
+  //   query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+
+  // const auto& results = query_object.ComputeSignedDistanceToPoint(x_lcs_curr.segment(0, 3));
+
+  // double actual_cost = all_sample_costs_[0];
+  // all_sample_costs_[0] = 696969696969;
+  // for (int i = 0; i < controller_params_.num_objects; i++) {
+  //   if (results[2 + 4*i].distance < 0.1) {
+  //     all_sample_costs_[0] = actual_cost;
+  //   }
+  // }
+
+
+
   // End of parallelization
 
   // Update the sample buffer.  Do this before switching modes since 1) if in
@@ -926,8 +943,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       (!progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
-       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost))
+       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
+       (x_lcs_curr[2] < sampling_params_.z_height + 0.05))
     {
+
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -952,7 +971,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "In C3 mode after considering switch? " << is_doing_c3_
               << std::endl;
   }
-
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
 
@@ -1757,7 +1775,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
 void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
-
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto c3_solution = std::make_unique<C3Output::C3Solution>();
@@ -1774,40 +1791,57 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
     c3_solution->u_sol_.col(i) =
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
   }
 
 
-  MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
+  std::vector<MatrixXd> knots;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i, 3) = c3_solution->x_sol_.middleRows(7*i + 3, 3).cast<double>();
-    knots.middleRows(3*controller_params_.num_objects + 3*i, 3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
-  } 
+    MatrixXd knot = MatrixXd::Zero(6, N_);
+    knot.topRows(3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
+    knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
 
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
-                         "object_target", "object_target", false);
+    knots.push_back(knot);
+  } 
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_traj;
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes = std::vector<std::string>(knots.at(i).rows(), "double");
+    object_traj.datapoints = knots.at(i);
+    object_traj.time_vector = c3_solution->time_vector_.cast<double>();
+
+    object_trajs.push_back(object_traj);
+  }
+
+
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
+  }
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
+                         "object_targets", "object_targets", false);
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4 * controller_params_.num_objects, N_);
-
+  
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    orientation_samples.middleRows(4*i, 4) =
+    MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
+    orientation_sample =
       c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
   }
 
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector =
-    c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
@@ -1954,35 +1988,46 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(controller_params_.num_objects * 6, N_);
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    knots.middleRows(3*i, 3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
-    knots.middleRows(3*controller_params_.num_objects + 3*i, 3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
-  } 
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
-                         "object_target", "object_target", false);
+    MatrixXd knot = MatrixXd::Zero(6, N_);
+    knot.topRows(3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
+    knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
+    LcmTrajectory::Trajectory object_traj;
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes = std::vector<std::string>(knot.rows(), "double");
+    object_traj.datapoints = knot;
+    object_traj.time_vector = c3_solution->time_vector_.cast<double>();
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4 * controller_params_.num_objects, N_);
+    object_trajs.push_back(object_traj);
+  } 
+  
+  std::vector<std::string> traj_names;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    orientation_samples.middleRows(4*i, 4) =
+    traj_names.push_back("object_position_target_" + std::to_string(i));
+  }
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
+                         "object_targets", "object_targets", false);
+
+
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_orientation_traj;
+    // first 3 rows are rpy, last 3 rows are angular velocity
+    MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
+    orientation_sample =
       c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
   } 
 
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector =
-    c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+  
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
@@ -2190,6 +2235,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
     const {
+    
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2198,44 +2244,64 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
         SampleIndex::kCurrentLocation)[i];
   }
 
-  Eigen::MatrixXd knots =
-    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, N_ + 1);
-  Eigen::VectorXd timestamps =
-    Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
-  for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7*controller_params_.num_objects, 7*controller_params_.num_objects);
-    timestamps(i) = i;
+  std::vector<Eigen::MatrixXd> knots;
+  std::vector<Eigen::VectorXd> timestamps;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Eigen::MatrixXd knot = Eigen::MatrixXd::Zero(7, N_ + 1);
+    Eigen::VectorXd timestamp = 
+      Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+
+    for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
+      knot.col(j) = dynamically_feasible_traj[i].segment(3 + 7*i, 7);
+      timestamp(i) = i;
+    }
+    knots.push_back(knot);
+    timestamps.push_back(timestamp);
+  }
+  
+
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_traj;
+    Eigen::MatrixXd position_sample = Eigen::MatrixXd::Zero(3, N_ + 1);
+    position_sample = knots.at(i).bottomRows(3);
+     object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes =
+      std::vector<std::string>(position_sample.rows(), "double");
+    object_traj.datapoints = position_sample;
+    object_traj.time_vector = timestamps.at(i).cast<double>();
+
+    object_trajs.push_back(object_traj);
+  } 
+ 
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
   }
 
-  LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3*controller_params_.num_objects, N_ + 1);
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    position_samples.middleRows(3*i, 3) = knots.middleRows(7*i + 4, 3);
-  } 
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes =
-    std::vector<std::string>(position_samples.rows(), "double");
-  object_traj.datapoints = position_samples;
-  object_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
                          "object_target", "object_target", false);
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4*controller_params_.num_objects, N_ + 1);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    orientation_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
-  } 
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector = timestamps.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+    LcmTrajectory::Trajectory object_orientation_traj;
+    Eigen::MatrixXd orientation_sample = Eigen::MatrixXd::Zero(4, N_ + 1);
+    for (int j = 0; j < controller_params_.num_objects; j++) {
+      orientation_sample = knots.at(i).topRows(4);
+    } 
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector = timestamps.at(i).cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+  }
+  
 
   dynamically_feasible_curr_plan_object->saved_traj =
     lcm_traj.GenerateLcmObject();
   dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
+
 }
 
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
@@ -2285,45 +2351,57 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     dynamically_feasible_traj[i] <<
       all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i];
   }
+  std::vector<Eigen::MatrixXd> knots;
+  std::vector<Eigen::VectorXd> timestamps;
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Eigen::MatrixXd knot =
+      Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
+    Eigen::VectorXd timestamp =
+      Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+    for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
+      knot.col(j) = dynamically_feasible_traj[j].segment(3 + 7*i, 7);
+      timestamp(j) = j;
+    }
+  
+    LcmTrajectory::Trajectory object_traj;
+    Eigen::MatrixXd position_sample = Eigen::MatrixXd::Zero(3, N_ + 1);
+    position_sample = knot.bottomRows(3);
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes =
+      std::vector<std::string>(position_sample.rows(), "double");
+    object_traj.datapoints = position_sample;
+    object_traj.time_vector = timestamp.cast<double>();
 
-  Eigen::MatrixXd knots =
-    Eigen::MatrixXd::Zero(7 * controller_params_.num_objects, dynamically_feasible_traj.size());
-  Eigen::VectorXd timestamps =
-    Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
-  for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7*controller_params_.num_objects, 7*controller_params_.num_objects);
-    timestamps(i) = i;
+    object_trajs.push_back(object_traj);
+    knots.push_back(knot);
+    timestamps.push_back(timestamp);
+  } 
+  
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
   }
-
-  LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3*controller_params_.num_objects, N_ + 1);
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    position_samples.middleRows(3*i, 3) = knots.middleRows(7*i + 4, 3);
-  } 
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes =
-    std::vector<std::string>(position_samples.rows(), "double");
-  object_traj.datapoints = position_samples;
-  object_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
                          "object_target", "object_target", false);
+                      
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4*controller_params_.num_objects, N_ + 1);
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    position_samples.middleRows(4*i, 4) = knots.middleRows(7*i, 4);
-  } 
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector = timestamps.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
 
-  dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
-  dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+    LcmTrajectory::Trajectory object_orientation_traj;
+    Eigen::MatrixXd orientation_sample = Eigen::MatrixXd::Zero(4, N_ + 1);
+    orientation_sample = knots.at(i).topRows(4);
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector = timestamps.at(i).cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
 
+    dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
+    dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+  }
 }
 
 // Output port handlers for sample-related ports

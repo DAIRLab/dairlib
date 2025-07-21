@@ -518,8 +518,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
           x_desired_[i].segment(ee_vel_index,3));
     //obj_ang_vel
     for (int j = 0; j < num_objects; j++) {
-      obj_ang_vel_index = 7*j + 6 + 7*num_objects;
-      obj_vel_index = 7*j + 9 + 7*num_objects;
+      obj_ang_vel_index = 6*j + 6 + 7*num_objects;
+      obj_vel_index = 6*j + 9 + 7*num_objects;
       error_contrib_obj_ang_vel += 
         (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3)).transpose() * 
           (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3));
@@ -529,7 +529,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
             x_desired_[i].segment(obj_ang_vel_index,3));
       //obj_vel
       error_contrib_obj_vel += 
-        (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3)).transpose() * 
+        (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3)).transpose() *  
           (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3));
       cost_contrib_obj_vel += 
         (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3)).transpose() *
@@ -540,7 +540,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     cost = cost + (XX[i] - x_desired_[i]).transpose() * 
             Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
               UU[i].transpose()*R_eff.at(i)*UU[i];
+
+   
+
   }
+
+  DRAKE_DEMAND(!std::isnan(cost_contrib_obj_vel));  
 
   // Handle the N_th state.
   cost = cost + (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(
@@ -564,8 +569,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       (XX[N_].segment(ee_vel_index,3) - x_desired_[N_].segment(ee_vel_index,3));
 
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 7*j + 6 + 7*num_objects;
-    obj_vel_index = 7*j + 9 + 7*num_objects;
+    obj_ang_vel_index = 6*j + 6 + 7*num_objects;
+    obj_vel_index = 6*j + 9 + 7*num_objects;
     error_contrib_obj_ang_vel += 
       (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() * 
         (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3));
@@ -595,8 +600,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       Q_eff.at(N_).block(ee_vel_index,ee_vel_index,3,3)*(XX[N_].segment(ee_vel_index,3) - 
         x_desired_[N_].segment(ee_vel_index,3));
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 7*j + 6 + 7*num_objects;
-    obj_vel_index = 7*j + 9 + 7*num_objects;
+    obj_ang_vel_index = 6*j + 6 + 7*num_objects;
+    obj_vel_index = 6*j + 9 + 7*num_objects;
     cost_contrib_obj_ang_vel += 
       (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() *
         Q_eff.at(N_).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[N_].segment(obj_ang_vel_index,3) - 

@@ -350,13 +350,23 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     trajectory_drawer_object_best->get_input_port_trajectory());
   }
+  std::vector<std::string> position_names;
+  std::vector<std::string> orientation_names;
+
+  std::cout << "SIZ:E " << object_indices.size() << std::endl;
+  for (int i = 0; i < object_indices.size(); i++) {
+    position_names.push_back("object_position_target" + std::to_string(i));
+    orientation_names.push_back("object_orientation_target" + std::to_string(i));
+  }
 
   if (vis_params.visualize_c3_plan_curr) {
-    auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-        "object_position_target", "object_orientation_target",
-        "plans/curr_planned", sampling_c3_options.N, true,
-        vis_params.c3_curr_object_color);
+    auto object_pose_drawer_curr =
+        builder.AddSystem<systems::LcmPoseDrawer>(
+                meshcat, vis_params.object_vis_models,
+                position_names, orientation_names,
+                "plans/curr_planned", sampling_c3_options.N, true,
+                vis_params.c3_curr_object_color);
+
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
                     object_pose_drawer_curr->get_input_port_trajectory());
 

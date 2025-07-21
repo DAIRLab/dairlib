@@ -77,7 +77,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   //    }
   //  }
 
-  int M = 10000000;  // big M variable
+  int M = 100000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 

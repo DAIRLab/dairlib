@@ -226,9 +226,9 @@ if __name__ == "__main__":
     controller_yaml["object_models"] = [""] * num_objects
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
-    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.2 * i), 0.0] for i in range(num_objects)]
+    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
-    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379 + (0.2 * i), -0.004] for i in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379 + (-0.2 * i), -0.004] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
     
@@ -242,6 +242,7 @@ if __name__ == "__main__":
     save_yaml(sim_yaml_path, sim_yaml)
     save_yaml(lcm_sim_yaml_path, lcm_sim_yaml)
     save_yaml(repos_yaml_path, repos_yaml)
+    save_yaml(goal_yaml_path, goal_yaml)
 
     # Process all objects
     for base_name in base_names:

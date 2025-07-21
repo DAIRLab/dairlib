@@ -67,6 +67,15 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          int num_poses = 5,
                          bool add_transparency = true,
                          const Eigen::VectorXd& rgb = Eigen::VectorXd());
+            
+  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                        std::vector<std::string> model_files,
+                        std::vector<std::string> translation_trajectory_names,
+                        std::vector<std::string>  orientation_trajectory_names,
+                        const std::string& system_name = "",
+                        int num_poses = 5,
+                        bool add_transparency = true,
+                        const Eigen::VectorXd& rgb = Eigen::VectorXd());
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -84,7 +93,10 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string translation_trajectory_name_;
   const std::string orientation_trajectory_name_;
-  std::unique_ptr<multibody::MultiposeVisualizer> multipose_visualizer_;
+
+  std::vector<std::string> translation_trajectory_names_;
+  std::vector<std::string> orientation_trajectory_names_;
+  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>> multipose_visualizers_;
   const int N_;
 };
 

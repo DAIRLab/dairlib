@@ -438,7 +438,8 @@ SamplingC3Controller::SamplingC3Controller(
     std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
     for (const std::string& mesh_path : mesh_paths) {
       drake::geometry::TriangleSurfaceMesh<double>* mesh = 
-        new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+        new drake::geometry::TriangleSurfaceMesh<double>(
+          drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
       meshes.push_back(mesh);
       num_tri += mesh->num_triangles();
     }

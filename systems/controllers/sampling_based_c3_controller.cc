@@ -417,7 +417,8 @@ SamplingC3Controller::SamplingC3Controller(
     const auto& inspector = query_object.inspector();
     for (auto id : inspector.GetAllGeometryIds()) {
       const auto& shape = inspector.GetShape(id);
-      std::string s = shape.to_string();  // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
+      std::string s = shape.to_string();  
+      // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
 
       auto p = s.find("filename='");
       if (p != std::string::npos) {
@@ -428,7 +429,8 @@ SamplingC3Controller::SamplingC3Controller(
       }
     }  
     if (mesh_paths.empty()) {
-      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph, required if using kMeshNormal sampling strategy.");
+      throw std::runtime_error("SamplingC3Controller: no mesh files found in 
+        SceneGraph, required if using kMeshNormal sampling strategy.");
     }
 
     // Load triangle meshes and count total triangles.
@@ -447,7 +449,8 @@ SamplingC3Controller::SamplingC3Controller(
     face_bins_.reserve(num_tri+1);
     face_bins_.push_back(0.0);
 
-    // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
+    // Iterate through all meshes, extract valid faces, and compute cumulative 
+    area bins.
     for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
       const auto& vertices = mesh->vertices();
       int num_tri = mesh->num_triangles();

@@ -98,6 +98,7 @@ cc_library(
         "//solvers:c3",
         "//solvers:c3_output",
         "//solvers:solver_options_io",
+        ":face",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "//examples/sampling_c3:generate_samples",
@@ -117,6 +118,12 @@ cc_library(
     linkopts = [
         "-lgomp",
     ],
+)
+
+cc_library(
+    name = "face",
+    hdrs = ["face.h"],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

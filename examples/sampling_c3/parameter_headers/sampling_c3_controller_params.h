@@ -26,8 +26,9 @@ struct SamplingC3ControllerParams {
   std::string lcm_channels_hardware_file;
   std::string lcm_channels_simulation_file;
 
-  std::string object_model;
-  std::string object_body_name;
+  std::string object_model;               // path to the controller sdf file
+  std::string object_body_name;           // name of the body in the sdf file 
+  std::string base_name;                  // name of the obj file to generate sdfs
 
   double workspace_margin;
   bool include_end_effector_orientation;
@@ -57,6 +58,7 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(lcm_channels_simulation_file));
     a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(object_body_name));
+    a->Visit(DRAKE_NVP(base_name));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
 

@@ -505,6 +505,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
   int obj_pos_index = 0;
   int obj_ang_vel_index = 0;
   int obj_vel_index = 0;
+
+  double cost_contrib_u = 0;
+
   // Calculate the error and cost contributions for each state.
   for (int i = 0; i < N_; i++) {
     //ee_pos
@@ -568,7 +571,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
             Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
               UU[i].transpose()*R_eff.at(i)*UU[i];
 
-   
+    cost_contrib_u += UU[i].transpose()*R_eff.at(i)*UU[i];
 
   }
 
@@ -672,6 +675,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       cost_contrib_obj_ang_vel<<std::endl;
     std::cout<<"\t total cost contribution from v_obj: "<<
       cost_contrib_obj_vel<<std::endl;
+    std::cout<<"\t total cost contribution from u: "<<
+      cost_contrib_u<<std::endl;
 
     std::cout<<"\t total cost is: "<< cost <<std::endl;
     std::cout<<"\t total cost object terms only is : "<< 
@@ -822,6 +827,11 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
   constraints_.clear();
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
+  // for (int i = 1; i < N_; i++) {
+  //   constraints_.push_back(prog_.AddLinearConstraint(x_[i][2] == x0[2]));
+
+  // }
+
 
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;

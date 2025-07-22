@@ -291,14 +291,12 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
     }
 
   }
-  std::cout << "Before multipose_visualizers DrawPoses" << std::endl;
 
   for (int i = 0; i < num_objects; i++) {
-    std::cout << object_poses.middleRows(7*i, 7) << std::endl << std::endl;
     multipose_visualizers_.at(i)->DrawPoses(object_poses.middleRows(7*i, 7));
   } 
 
-  std::cout << "After multipose_visualizers DrawPoses" << std::endl;
+
   return drake::systems::EventStatus::Succeeded();
 }
 

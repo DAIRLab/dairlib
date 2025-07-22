@@ -949,7 +949,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
-       (x_lcs_curr[2] < sampling_params_.z_height + 0.01))
+       (x_lcs_curr[2] < sampling_params_.z_height + 0.02))
     {
 
       is_doing_c3_ = true;
@@ -1116,7 +1116,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
     drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
   float approx_loop_dt = std::min(0.1, filtered_solve_time_);
-  float nominal_accel = 10;
+  float nominal_accel = 1;
   for (int i = 0; i < 3; i++) {
     x_lcs_curr[i] = std::clamp(
       x_pred_curr_plan_[i],

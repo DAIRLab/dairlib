@@ -47,7 +47,7 @@ num_contacts_index_for_cost: 0
 planning_dt_position: 0.1
 planning_dt_pose: 0.05
 
-lcs_dt_resolution: 2
+lcs_dt_resolution: 3
 
 ### Cost parameters
 ### If list of lists, then index into them with num_contact_index(_for_cost).
@@ -67,7 +67,7 @@ w_G: 0.25
 w_U: 0.26
 
 q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 5, 5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05] # object 2 linear velocity
-r_vector: [0.01, 0.01, 0.01]
+r_vector: [0.01, 0.01, 100000]
 
 # Penalty on matching projected variables
 g_x: [950, 950, 950, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]       #19
@@ -89,12 +89,12 @@ u_u: [0.01, 0.01, 0.01]
 ### Position tracking cost parameters
 # Matrix scaling
 w_Q_position: 45
-w_R_position: 1
+w_R_position: 0.5
 w_G_position: 0.25
 w_U_position: 0.26
 
 q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 5, 5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                        # object 2 linear velocity
-r_vector_position: [0.01, 0.01, 0.01]
+r_vector_position: [0.01, 0.01, 100]
 
 # Penalty on matching projected variables
 g_x_position: [900, 900, 900, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

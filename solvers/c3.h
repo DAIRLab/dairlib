@@ -33,7 +33,7 @@ class C3 {
   /// @param x_des Desired goal state
   /// @param options C3 options
   C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
+     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options, bool is_cost = false);
 
   virtual ~C3() = default;
 
@@ -213,6 +213,8 @@ class C3 {
   double dt_ = 0;
   double solve_time_ = 0;
   bool h_is_zero_;
+  bool is_cost_;
+  int resolution_;
 
   /// MathematicalProgram for QP step
   drake::solvers::OsqpSolver osqp_;

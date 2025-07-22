@@ -39,19 +39,14 @@ inline const std::vector<Eigen::Quaterniond> kNominalOrientationsJack{
 
 // Define the nominal orientations for any planar demo.
 inline const Eigen::Quaterniond kQUAT_FLAT{1.0, 0.0, 0.0, 0.0};
-inline std::vector<const std::vector<Eigen::Quaterniond>*> MakeNominalOrientationsPlanar(int n) {
+inline std::vector<std::vector<Eigen::Quaterniond>> MakeNominalOrientationsPlanar(int n) {
   std::vector<std::vector<Eigen::Quaterniond>> orientation_storage;
-  std::vector<const std::vector<Eigen::Quaterniond>*> ptrs;
-
-  orientation_storage.reserve(n);
-  ptrs.reserve(n);
 
   for (int i = 0; i < n; ++i) {
-    orientation_storage.emplace_back(std::vector<Eigen::Quaterniond>{kQUAT_FLAT});
-    ptrs.push_back(&orientation_storage.back());
+    orientation_storage.push_back({kQUAT_FLAT});
   }
 
-  return ptrs;
+  return orientation_storage;
 }
 
 
@@ -63,7 +58,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   SamplingC3GoalGenerator(
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
-    std::vector<const std::vector<Eigen::Quaterniond>*> nominal_orientations,
+    std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations,
     std::vector<drake::multibody::ModelInstanceIndex> object_indices);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
@@ -131,7 +126,7 @@ private:
   std::vector<drake::multibody::ModelInstanceIndex> object_indices_;
 
   const std::vector<Eigen::Quaterniond>& GetNominalOrientations(int index) const {
-    return *(nominal_orientations_.at(index)); }
+    return nominal_orientations_.at(index); }
 
   void CalcEndEffectorTarget(
       const drake::systems::Context<double>& context,
@@ -172,7 +167,7 @@ private:
   drake::systems::OutputPortIndex target_gen_info_port_;
 
   const SamplingC3GoalParams goal_params_;
-  std::vector<const std::vector<Eigen::Quaterniond>*> nominal_orientations_;
+  std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations_;
   mutable std::vector<Eigen::VectorXd> target_final_object_positions_;
   mutable std::vector<Eigen::VectorXd> target_final_object_orientations_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
@@ -190,8 +185,8 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
       SamplingC3GoalGenerator(
         object_plant,
         goal_params,
-        std::vector<const std::vector<Eigen::Quaterniond>*>{
-            &kNominalOrientationsJack},
+        std::vector<std::vector<Eigen::Quaterniond>>{
+            kNominalOrientationsJack},
         object_indices) {}
 };
 

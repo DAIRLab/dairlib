@@ -40,10 +40,9 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 }
 
 C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_des, const C3Options& options)
+       const vector<VectorXd>& x_des, const C3Options& options, bool is_cost)
     : warm_start_(options.warm_start),
       lcs_(lcs),
-      N_((lcs.A_).size()),
       n_((lcs.A_)[0].cols()),
       m_((lcs.D_)[0].cols()),
       k_((lcs.B_)[0].cols()),
@@ -63,8 +62,36 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       options_(options),
       h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
-      prog_(MathematicalProgram()) {
-        
+      prog_(MathematicalProgram()),
+      is_cost_(is_cost),
+      N_(lcs.A_.size()) {
+
+  resolution_ = (is_cost_) ? options_.lcs_dt_resolution : 1;
+
+  // std::cout << "C3 constructor start" << std::endl;
+  // std::cout << "Resolution: " << resolution_ << std::endl;
+  // std::cout << "is_cost_: " << std::to_string(is_cost_) << std::endl;
+  // std::cout << "N_: " << N_ << std::endl;
+  // std::cout << "Q size: " << Q_.size() << std::endl;
+  // std::cout << "R size: " << R_.size() << std::endl;
+  // std::cout << "U size: " << U_.size() << std::endl;
+  // std::cout << "G size: " << G_.size() << std::endl;
+
+  if (is_cost_) {
+    int init_size = R_.size();
+    for (int i = 0; i < N_ - init_size; i++) { // make sure costs are right size
+      Q_.push_back(Q_[0]);
+      R_.push_back(R_[0]);
+      U_.push_back(U_[0]);
+      G_.push_back(G_[0]);
+      x_desired_.push_back(x_desired_[0]);
+    }
+    // std::cout << "Q size: " << Q_.size() << std::endl;
+    // std::cout << "R size: " << R_.size() << std::endl;
+    // std::cout << "U size: " << U_.size() << std::endl;
+    // std::cout << "G size: " << G_.size() << std::endl;
+  }
+
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);
@@ -95,7 +122,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     }
   }
 
-  
+
   auto Dn = lcs.D_.at(0).norm();
   auto An = lcs.A_.at(0).norm();
   AnDn_ = An / Dn;
@@ -320,8 +347,8 @@ void C3::Solve(const VectorXd& x0, bool verbose) {
     x_sol_->at(0) = x0;
     for (int i = 1; i < N_; ++i) {
       z_sol_->at(i).segment(0, n_) =
-          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-          D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+          A_.at(i-1) * x_sol_->at(i - 1) + B_.at(i-1) * u_sol_->at(i - 1) +
+          D_.at(i-1) * lambda_sol_->at(i - 1) + d_.at(i-1);
     }
   }
 
@@ -676,7 +703,7 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
 
     // Obtain the solutions from C3.
     vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_));
+    std::vector<Eigen::VectorXd> XX(N_ +1, VectorXd::Zero(n_));
     for (int i = 0; i < N_; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
@@ -712,7 +739,6 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
             Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
             Kd*(XX[i].segment(ee_vel_index, 3) - XX_new[i].segment(ee_vel_index, 3));
         }
-        std::cout << "UU: " << UU_new[i].transpose() << std::endl;
 
         if (lcs_for_cost_) {
 
@@ -724,10 +750,22 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
         else {
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
         }
-
     }
-    std::cout << "\n\n";
+    std::vector<Eigen::VectorXd> UU_ret(N_, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX_ret(N_+1, VectorXd::Zero(n_)); 
+
+
+    if (is_cost_) {
+      for (int i = 0; i < N_; i += resolution_) {
+        UU_ret.at(i) = UU_new.at(i / resolution_);
+        XX_ret.at(i) = XX_new.at(i / resolution_);
+      }
+      XX_ret.at(N_) = XX_new.at(N_);
+
+      return {XX_ret, UU_ret};
+    }
     return {XX_new, UU_new};
+
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
@@ -871,8 +909,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                                      vector<VectorXd>& WZ, int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
-  int i;
-
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
@@ -883,7 +919,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)
-  for (i = 0; i < N_; i++) {
+  for (int i = 0; i < N_; i++) {
     if (options_.use_robust_formulation &&
         admm_iteration ==
             (options_.admm_iter - 1)) {  // only on the last iteration

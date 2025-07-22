@@ -14,7 +14,7 @@ namespace systems {
 SamplingC3GoalGenerator::SamplingC3GoalGenerator(
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
-    std::vector<const std::vector<Eigen::Quaterniond>*> nominal_orientations, 
+    std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations, 
     std::vector<drake::multibody::ModelInstanceIndex> object_indices) :
   goal_params_(goal_params),
   nominal_orientations_(nominal_orientations),

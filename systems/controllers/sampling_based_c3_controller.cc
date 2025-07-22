@@ -76,6 +76,10 @@ SamplingC3Controller::SamplingC3Controller(
   C3Options c3_options = sampling_c3_options_.GetC3Options(
     crossed_cost_switching_threshold_);
 
+  DRAKE_DEMAND(c3_options.lcs_dt_resolution > 0);
+  std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
+  std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
+
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
   double discount_factor = 1;
@@ -131,7 +135,9 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
-  std::cout << "Created placeholder LCS" << std::endl;
+  std::cout << "lcs_placeholder size: " << lcs_placeholder.A_.size() << std::endl;
+  std::cout << "Q size: " << Q_.size() << std::endl;
+
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
@@ -555,6 +561,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
              sampling_c3_options_.planning_dt_position);
 }
 
+
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -666,7 +673,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
-
   // Generate states, differing from the current state only by EE sample
   // locations.
   std::vector<Eigen::VectorXd> candidate_states =
@@ -725,16 +731,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Get the candidate state and its LCS representation.
     Eigen::VectorXd test_state = candidate_states.at(i);
-    solvers::LCS test_system = lcs_candidates.at(i);
+    solvers::LCS test_system = lcs_candidates_for_cost.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
-
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
-        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options, true);
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
@@ -1162,6 +1167,7 @@ void SamplingC3Controller::UpdateCostMatrices(
   double discount_factor = 1;
 
   dt_ = c3_options.dt;
+  dt_cost_ = c3_options.dt_cost;
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
     discount_factor *= c3_options.gamma;
@@ -1271,7 +1277,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_, N_, contact_model_);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 

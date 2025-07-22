@@ -47,8 +47,7 @@ num_contacts_index_for_cost: 0
 planning_dt_position: 0.1
 planning_dt_pose: 0.05
 
-planning_dt_position_cost: 0.02
-planning_dt_pose_cost: 0.01
+lcs_dt_resolution: 2
 
 ### Cost parameters
 ### If list of lists, then index into them with num_contact_index(_for_cost).
@@ -63,7 +62,7 @@ Kd_for_ee_pd_rollout: 0.5
 ### Pose tracking cost parameters
 # Matrix scaling
 w_Q: 45
-w_R: 1
+w_R: 0.5
 w_G: 0.25
 w_U: 0.26
 
@@ -121,6 +120,7 @@ use_predicted_x0: false   # instead:  use_predicted_x0_c3,
                           #           use_predicted_x0_repos,
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
+dt_cost: 0
 solve_dt: 0       # unused
 mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists

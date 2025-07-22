@@ -276,6 +276,8 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
   system.SetTangentGapLinearization(W_x, W_l, W_u, w);
+  // std::cout << "lcs_factory dt: " << dt << std::endl;
+  // std::cout << "lcs_factory N: " << N << std::endl;
   return system;
 }
 

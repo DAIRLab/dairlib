@@ -8,8 +8,8 @@ using Eigen::VectorXd;
 using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
-               const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options), env_(true) {
+               const vector<VectorXd>& xdesired, const C3Options& options, bool is_cost)
+    : C3(LCS, costs, xdesired, options, is_cost), env_(true) {
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");

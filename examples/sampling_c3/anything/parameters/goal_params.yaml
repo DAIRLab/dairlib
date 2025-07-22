@@ -30,7 +30,7 @@ angle_err_to_vel_factor: 0
 fixed_target_position: [0.38, 0.18745379, -0.004]
 fixed_target_orientation: [-0.9327733, 0, 0, 0.36046353]
 
-fixed_target_positions: [[0.38, 0.18745379, -0.004], [0.38, -0.012546210000000002, -0.004]]
+fixed_target_positions: [[0.58, 0.25, -0.029], [0.3, 0.25, -0.028999999999999988]]
 fixed_target_orientations: [[-0.9327733, 0, 0, 0.36046353], [-0.9327733, 0, 0, 0.36046353]]
 
 

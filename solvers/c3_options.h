@@ -84,6 +84,7 @@ struct C3Options {
   std::vector<double> mu;
   double dt;
   double solve_dt;    // unused
+  int lcs_dt_resolution;
   double dt_cost;
   int num_friction_directions;
   int num_contacts;
@@ -119,6 +120,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(solve_dt));
+    a->Visit(DRAKE_NVP(lcs_dt_resolution));
+    a->Visit(DRAKE_NVP(dt_cost));
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts));
 

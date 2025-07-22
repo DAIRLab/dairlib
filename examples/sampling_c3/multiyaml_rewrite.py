@@ -221,6 +221,7 @@ if __name__ == "__main__":
     lcm_sim_yaml = load_yaml(lcm_sim_yaml_path)
     goal_yaml = load_yaml(goal_yaml_path)
     repos_yaml = load_yaml(repos_yaml_path)
+    sampling_yaml = load_yaml(sampling_yaml_path)
 
     # Zero vectors only once
     controller_yaml["object_models"] = [""] * num_objects
@@ -228,13 +229,37 @@ if __name__ == "__main__":
     sim_yaml["object_models"] = [""] * num_objects
     sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
-    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379 + (-0.2 * i), -0.004] for i in range(num_objects)]
+
+    max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
+    min_zs = [get_min_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
+
+    z_height = min_zs
+    for i in range(len(min_zs)):
+        z_height[i] = -0.029 - min_zs[i]
+
+    goal_yaml["fixed_target_positions"] = [[0.38, 0.18745379 + (-0.2 * i), z_height[i]] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
+
     
-    max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
+
+
     max_z = max(max_zs)
     repos_yaml['pwl_waypoint_height'] = float(-0.029 + max_z + 0.05)
+    
+    heights = min_zs
+    max_zs_world = heights
+    for i in range(len(max_zs)):
+        heights[i] = max_zs[i] - min_zs[i]
+        max_zs_world[i] = -0.029 + heights[i]
+    
+    min_max_z = min(max_zs_world)
+
+    sampling_yaml['z_height'] = max(-0.006, (-0.029 + min_max_z) / 2)
+    
+
+
+
 
     # Save pre-sized YAMLs
     save_yaml(controller_yaml_path, controller_yaml)
@@ -243,6 +268,7 @@ if __name__ == "__main__":
     save_yaml(lcm_sim_yaml_path, lcm_sim_yaml)
     save_yaml(repos_yaml_path, repos_yaml)
     save_yaml(goal_yaml_path, goal_yaml)
+    save_yaml(sampling_yaml_path, sampling_yaml)
 
     # Process all objects
     for base_name in base_names:

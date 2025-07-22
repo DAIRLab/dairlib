@@ -623,7 +623,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         //     std::string name = query_object.inspector().GetName(id);
         //     std::cout << "Geom: " << i << ", " << name << std::endl;
         // }
-
+        
 
         for (int i = 0; i < num_objects; i++) {
             //std::cout << results[2 + 4*i].distance << std::endl;

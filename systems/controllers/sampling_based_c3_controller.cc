@@ -429,8 +429,8 @@ SamplingC3Controller::SamplingC3Controller(
       }
     }  
     if (mesh_paths.empty()) {
-      throw std::runtime_error("SamplingC3Controller: no mesh files found in 
-        SceneGraph, required if using kMeshNormal sampling strategy.");
+      throw std::runtime_error("SamplingC3Controller: no mesh files found "
+        "in SceneGraph, required if using kMeshNormal sampling strategy.");
     }
 
     // Load triangle meshes and count total triangles.
@@ -451,7 +451,7 @@ SamplingC3Controller::SamplingC3Controller(
     face_bins_.push_back(0.0);
 
     // Iterate through all meshes, extract valid faces, and compute cumulative 
-    area bins.
+    // area bins.
     for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
       const auto& vertices = mesh->vertices();
       int num_tri = mesh->num_triangles();

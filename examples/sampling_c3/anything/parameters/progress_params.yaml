@@ -37,12 +37,12 @@ travel_cost_per_meter: 0
 
 # Number of control loops to wait before cutting off C3 due to unproductivity.
 # Used for kC3Cost, kConfigCost, kPosOrRotCost.
-num_control_loops_to_wait: 30
-num_control_loops_to_wait_position: 30
+num_control_loops_to_wait: 42
+num_control_loops_to_wait_position: 42
 
 # kConfigCostDrop parameters.
 progress_enforced_cost_drop: 0.1
-progress_enforced_over_n_loops: 40
+progress_enforced_over_n_loops: 50
 
 ### Hysteresis parameters for switching between C3 and repositioning modes.
 finished_reposition_cost: 1000000000

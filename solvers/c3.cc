@@ -66,7 +66,6 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
       is_cost_(is_cost),
       N_(lcs.A_.size()) {
 
-  resolution_ = (is_cost_) ? options_.lcs_dt_resolution : 1;
 
   // std::cout << "C3 constructor start" << std::endl;
   // std::cout << "Resolution: " << resolution_ << std::endl;
@@ -77,20 +76,20 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   // std::cout << "U size: " << U_.size() << std::endl;
   // std::cout << "G size: " << G_.size() << std::endl;
 
-  if (is_cost_) {
-    int init_size = R_.size();
-    for (int i = 0; i < N_ - init_size; i++) { // make sure costs are right size
-      Q_.push_back(Q_[0]);
-      R_.push_back(R_[0]);
-      U_.push_back(U_[0]);
-      G_.push_back(G_[0]);
-      x_desired_.push_back(x_desired_[0]);
-    }
-    // std::cout << "Q size: " << Q_.size() << std::endl;
-    // std::cout << "R size: " << R_.size() << std::endl;
-    // std::cout << "U size: " << U_.size() << std::endl;
-    // std::cout << "G size: " << G_.size() << std::endl;
-  }
+  // if (is_cost_) {
+  //   int init_size = R_.size();
+  //   for (int i = 0; i < N_ - init_size; i++) { // make sure costs are right size
+  //     Q_.push_back(Q_[0]);
+  //     R_.push_back(R_[0]);
+  //     U_.push_back(U_[0]);
+  //     G_.push_back(G_[0]);
+  //     x_desired_.push_back(x_desired_[0]);
+  //   }
+  //   // std::cout << "Q size: " << Q_.size() << std::endl;
+  //   // std::cout << "R size: " << R_.size() << std::endl;
+  //   // std::cout << "U size: " << U_.size() << std::endl;
+  //   // std::cout << "G size: " << G_.size() << std::endl;
+  // }
 
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
@@ -261,7 +260,7 @@ void C3::UpdateLCS(const LCS& lcs) {
 }
 
 void C3::UpdateCostLCS(const LCS& lcs_for_cost) {
-  DRAKE_DEMAND(lcs_for_cost.A_.size() == N_);
+  DRAKE_DEMAND(lcs_for_cost.A_.size() == N_ * options_.lcs_dt_resolution);
   DRAKE_DEMAND(lcs_for_cost.A_[0].rows() == n_);
   DRAKE_DEMAND(lcs_for_cost.A_[0].cols() == n_);
   DRAKE_DEMAND(lcs_for_cost.B_[0].cols() == k_);
@@ -374,14 +373,17 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     int num_objects,
     bool print_cost_breakdown,
     bool verbose) const {
-  vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
+
+  int resolution = options_.lcs_dt_resolution; 
+  
+  std::vector<VectorXd> UU(N_*resolution, VectorXd::Zero(k_));
+  std::vector<Eigen::VectorXd> XX(N_*resolution + 1, VectorXd::Zero(n_)); 
 
   const int ee_vel_index = 7 * num_objects + 3;
   // Simulate the dynamics from the planned inputs.
   if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_*resolution; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
@@ -394,7 +396,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
 
   // Use the C3 plan.
   else if (cost_type == C3CostComputationType::kUseC3Plan) {
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_*resolution; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       XX[i] = zfin_[i].segment(0, n_);
       if (i == N_-1) {
@@ -413,7 +415,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
   else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_*resolution; i++) {
       UU[i] = zfin_[i].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
@@ -423,9 +425,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
       }
     }
     // Replace ee traj with those from zfin_.
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_*resolution; i++) {
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      if (i == N_-1) {
+      if (i == N_*resolution-1) {
         if (lcs_for_cost_) {
           XX[i+1].segment(0,3) = 
             lcs_for_cost_->Simulate(XX[i], UU[i]).segment(0,3);
@@ -459,10 +461,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
 
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
-    for(int i = 0; i < N_; i++) {
+    for(int i = 0; i < N_*resolution; i++) {
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
       XX[i].segment(ee_vel_index,3) = zfin_[i].segment(ee_vel_index,3);
-      if (i == N_-1) {
+      if (i == N_*resolution-1) {
         XX[i+1].segment(0,3) = zfin_[i].segment(0,3);
         XX[i+1].segment(ee_vel_index,3) = zfin_[i].segment(ee_vel_index,3);
       }
@@ -478,6 +480,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
                                          force_tracking_disabled, 
                                          verbose);
   }
+
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
   std::vector<Eigen::MatrixXd> Q_eff = Q_;
@@ -509,69 +512,69 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
   double cost_contrib_u = 0;
 
   // Calculate the error and cost contributions for each state.
-  for (int i = 0; i < N_; i++) {
+  for (int i = 0; i < N_*resolution; i+=resolution) {
     //ee_pos
     error_contrib_ee_pos += 
-      (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
-        (XX[i].segment(0,3) - x_desired_[i].segment(0,3));
+      (XX[i].segment(0,3) - x_desired_[i / resolution].segment(0,3)).transpose() *
+        (XX[i].segment(0,3) - x_desired_[i / resolution].segment(0,3));
     cost_contrib_ee_pos += 
-      (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose() *
-        Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - 
-          x_desired_[i].segment(0,3));
+      (XX[i].segment(0,3) - x_desired_[i / resolution].segment(0,3)).transpose() *
+        Q_eff.at(i / resolution).block(0,0,3,3)*(XX[i].segment(0,3) - 
+          x_desired_[i / resolution].segment(0,3));
     //obj_orientation
     for (int j = 0; j < num_objects; j++) {
       obj_orientation_index = 7*j + 3;
       obj_pos_index = 7*j + 7;
       error_contrib_obj_orientation += 
-        (XX[i].segment(obj_orientation_index,4) - x_desired_[i].segment(obj_orientation_index,4)).transpose() * 
-          (XX[i].segment(obj_orientation_index,4) - x_desired_[i].segment(obj_orientation_index,4));
+        (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4)).transpose() * 
+          (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4));
       cost_contrib_obj_orientation += 
-        (XX[i].segment(obj_orientation_index,4) - x_desired_[i].segment(obj_orientation_index,4)).transpose() *
-          Q_eff.at(i).block(obj_orientation_index,obj_orientation_index,4,4) * 
-            (XX[i].segment(obj_orientation_index,4) - x_desired_[i].segment(obj_orientation_index,4));
+        (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4)).transpose() *
+          Q_eff.at(i / resolution).block(obj_orientation_index,obj_orientation_index,4,4) * 
+            (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4));
       //obj_pos
       error_contrib_obj_pos += 
-        (XX[i].segment(obj_pos_index,3) - x_desired_[i].segment(obj_pos_index,3)).transpose() * 
-          (XX[i].segment(obj_pos_index,3) - x_desired_[i].segment(obj_pos_index,3));
+        (XX[i].segment(obj_pos_index,3) - x_desired_[i / resolution].segment(obj_pos_index,3)).transpose() * 
+          (XX[i].segment(obj_pos_index,3) - x_desired_[i / resolution].segment(obj_pos_index,3));
       cost_contrib_obj_pos += 
-        (XX[i].segment(obj_pos_index,3) - x_desired_[i].segment(obj_pos_index,3)).transpose() *
-          Q_eff.at(i).block(obj_pos_index,obj_pos_index,3,3)*(XX[i].segment(obj_pos_index,3) - 
-            x_desired_[i].segment(obj_pos_index,3));
+        (XX[i].segment(obj_pos_index,3) - x_desired_[i / resolution].segment(obj_pos_index,3)).transpose() *
+          Q_eff.at(i / resolution).block(obj_pos_index,obj_pos_index,3,3)*(XX[i].segment(obj_pos_index,3) - 
+            x_desired_[i / resolution].segment(obj_pos_index,3));
     }
     //ee_vel
     error_contrib_ee_vel += 
-      (XX[i].segment(ee_vel_index,3) - x_desired_[i].segment(ee_vel_index,3)).transpose() * 
-        (XX[i].segment(ee_vel_index,3) - x_desired_[i].segment(ee_vel_index,3));
+      (XX[i].segment(ee_vel_index,3) - x_desired_[i / resolution].segment(ee_vel_index,3)).transpose() * 
+        (XX[i].segment(ee_vel_index,3) - x_desired_[i / resolution].segment(ee_vel_index,3));
     cost_contrib_ee_vel += 
-      (XX[i].segment(ee_vel_index,3) - x_desired_[i].segment(ee_vel_index,3)).transpose() *
-        Q_eff.at(i).block(ee_vel_index,ee_vel_index,3,3) * (XX[i].segment(ee_vel_index,3) - 
-          x_desired_[i].segment(ee_vel_index,3));
+      (XX[i].segment(ee_vel_index,3) - x_desired_[i / resolution].segment(ee_vel_index,3)).transpose() *
+        Q_eff.at(i / resolution).block(ee_vel_index,ee_vel_index,3,3) * (XX[i].segment(ee_vel_index,3) - 
+          x_desired_[i / resolution].segment(ee_vel_index,3));
     //obj_ang_vel
     for (int j = 0; j < num_objects; j++) {
       obj_ang_vel_index = 6*j + 6 + 7*num_objects;
       obj_vel_index = 6*j + 9 + 7*num_objects;
       error_contrib_obj_ang_vel += 
-        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3)).transpose() * 
-          (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3));
+        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3)).transpose() * 
+          (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3));
       cost_contrib_obj_ang_vel += 
-        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i].segment(obj_ang_vel_index,3)).transpose() *
-          Q_eff.at(i).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[i].segment(obj_ang_vel_index,3) - 
-            x_desired_[i].segment(obj_ang_vel_index,3));
+        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3)).transpose() *
+          Q_eff.at(i / resolution).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[i].segment(obj_ang_vel_index,3) - 
+            x_desired_[i / resolution].segment(obj_ang_vel_index,3));
       //obj_vel
       error_contrib_obj_vel += 
-        (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3)).transpose() *  
-          (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3));
+        (XX[i].segment(obj_vel_index,3) - x_desired_[i / resolution].segment(obj_vel_index,3)).transpose() *  
+          (XX[i].segment(obj_vel_index,3) - x_desired_[i / resolution].segment(obj_vel_index,3));
       cost_contrib_obj_vel += 
-        (XX[i].segment(obj_vel_index,3) - x_desired_[i].segment(obj_vel_index,3)).transpose() *
-          Q_eff.at(i).block(obj_vel_index,obj_vel_index,3,3)*(XX[i].segment(obj_vel_index,3) - 
-            x_desired_[i].segment(obj_vel_index,3));
+        (XX[i].segment(obj_vel_index,3) - x_desired_[i / resolution].segment(obj_vel_index,3)).transpose() *
+          Q_eff.at(i / resolution).block(obj_vel_index,obj_vel_index,3,3)*(XX[i].segment(obj_vel_index,3) - 
+            x_desired_[i / resolution].segment(obj_vel_index,3));
     }
 
-    cost = cost + (XX[i] - x_desired_[i]).transpose() * 
-            Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
-              UU[i].transpose()*R_eff.at(i)*UU[i];
+    cost = cost + (XX[i] - x_desired_[i / resolution]).transpose() * 
+            Q_eff.at(i / resolution)*(XX[i] - x_desired_[i / resolution]) + 
+              UU[i].transpose()*R_eff.at(i / resolution)*UU[i];
 
-    cost_contrib_u += UU[i].transpose()*R_eff.at(i)*UU[i];
+    cost_contrib_u += UU[i].transpose()*R_eff.at(i / resolution)*UU[i];
 
   }
 
@@ -685,8 +688,14 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
     std::cout<<"\n\n";
   }
 
-  // Return the cost and associated state trajectory.
-  std::pair <double, std::vector<VectorXd>> ret (cost, XX);
+  std::vector<VectorXd> XX_downsampled(N_ + 1, VectorXd::Zero(n_));
+
+  for (int i = 0; i < N_*resolution; i += resolution) {
+    XX_downsampled[i/resolution] = XX[i];
+  }
+  XX_downsampled[N_] = XX[N_*resolution];
+
+  std::pair <double, std::vector<VectorXd>> ret (cost, XX_downsampled);
   // for (int j =0; j <= N_; j++) {
   //   std::cout << XX[j].transpose() << std::endl;
   // }
@@ -704,15 +713,15 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
     }
     const int ee_vel_index = 7 * num_objects + 3;
 
-
+    int resolution = options_.lcs_dt_resolution;
 
     // Obtain the solutions from C3.
-    vector<VectorXd> UU(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX(N_ +1, VectorXd::Zero(n_));
-    for (int i = 0; i < N_; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
-      XX[i] = zfin_[i].segment(0, n_);
-      if (i == N_-1) {
+    vector<VectorXd> UU(N_*resolution, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX(N_*resolution +1, VectorXd::Zero(n_));
+    for (int i = 0; i < N_*resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
+      XX[i] = zfin_[i / resolution].segment(0, n_);
+      if (i == N_*resolution-1) {
         if (lcs_for_cost_) {
           XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
@@ -723,18 +732,18 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
     }
     
     // Set the PD gains for the emulated tracking controller.
-    Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout *Eigen::MatrixXd::Identity(3,3);
     Eigen::MatrixXd Kd = Kd_for_ee_pd_rollout*Eigen::MatrixXd::Identity(3,3);
 
     // Obtain modified solutions for the PD controller.
-    std::vector<Eigen::VectorXd> UU_new(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
+    std::vector<Eigen::VectorXd> UU_new(N_*resolution, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX_new(N_*resolution+1, VectorXd::Zero(n_));
 
     XX_new[0] = zfin_[0].segment(0, n_);
     // This will just be the original u from zfin_[0] for the first time step.
     // if the radio input is true, then the u will only emulate position
     // tracking using the PD controller.
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_*resolution; i++) {
         if (force_tracking_disabled) {
           UU_new[i] =  Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
                        Kd*(XX[i].segment(ee_vel_index, 3) - XX_new[i].segment(ee_vel_index, 3));
@@ -755,19 +764,6 @@ std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
         else {
           XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
         }
-    }
-    std::vector<Eigen::VectorXd> UU_ret(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX_ret(N_+1, VectorXd::Zero(n_)); 
-
-
-    if (is_cost_) {
-      for (int i = 0; i < N_; i += resolution_) {
-        UU_ret.at(i) = UU_new.at(i / resolution_);
-        XX_ret.at(i) = XX_new.at(i / resolution_);
-      }
-      XX_ret.at(N_) = XX_new.at(N_);
-
-      return {XX_ret, UU_ret};
     }
     return {XX_new, UU_new};
 

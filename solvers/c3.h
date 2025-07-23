@@ -214,7 +214,6 @@ class C3 {
   double solve_time_ = 0;
   bool h_is_zero_;
   bool is_cost_;
-  int resolution_;
 
   /// MathematicalProgram for QP step
   drake::solvers::OsqpSolver osqp_;

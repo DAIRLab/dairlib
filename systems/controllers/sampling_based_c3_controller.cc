@@ -731,7 +731,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Get the candidate state and its LCS representation.
     Eigen::VectorXd test_state = candidate_states.at(i);
-    solvers::LCS test_system = lcs_candidates_for_cost.at(i);
+    solvers::LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3> test_c3_object;
@@ -739,7 +739,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
-        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options, true);
+        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
         test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
@@ -756,10 +756,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
         controller_params_.num_objects, print_cost_breakdown, verbose_);
-
+          
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
-
 
     #pragma omp critical
     {
@@ -776,11 +775,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
-  // const auto& query_port = plant_.get_geometry_query_input_port();
-  // const auto& query_object =
-  //   query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-
-  // const auto& results = query_object.ComputeSignedDistanceToPoint(x_lcs_curr.segment(0, 3));
 
   // double actual_cost = all_sample_costs_[0];
   // all_sample_costs_[0] = 696969696969;
@@ -789,7 +783,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   //     all_sample_costs_[0] = actual_cost;
   //   }
   // }
-
 
 
   // End of parallelization
@@ -949,7 +942,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
-       (x_lcs_curr[2] < sampling_params_.z_height + 0.02))
+       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance))
     {
 
       is_doing_c3_ = true;

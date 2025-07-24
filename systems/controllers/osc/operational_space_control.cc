@@ -326,10 +326,12 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Track external force cost
-  int ne = id_qp_.lambda_e().rows();
-  for (const auto& data : *force_tracking_data_vec_) {
-    id_qp_.AddQuadraticCost(data->GetName(), MatrixXd::Zero(ne, ne),
-                            VectorXd::Zero(ne), id_qp_.lambda_e());
+  for (int i = 0; i < force_tracking_data_vec_->size(); i++) {
+    auto [start_idx, size] = id_qp_.lambda_e_start_and_size().at(force_tracking_data_vec_->at(i)->GetName());
+    id_qp_.AddQuadraticCost(force_tracking_data_vec_->at(i)->GetName(),
+                            MatrixXd::Zero(size, size),
+                            VectorXd::Zero(size),
+                            id_qp_.lambda_e().segment(start_idx, size));
   }
 
   // 6. Joint Limit cost

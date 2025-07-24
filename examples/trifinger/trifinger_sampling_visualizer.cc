@@ -7,7 +7,8 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/trifinger/trifinger_utils.h"
+#include "examples/trifinger/systems/trifinger_kinematics.h"
 #include "examples/sampling_c3/c3_mode_visualizer.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
@@ -17,7 +18,6 @@
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/franka_kinematics.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/sample_buffer_to_point_cloud.h"
@@ -76,8 +76,7 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path = "examples/trifinger/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
@@ -99,16 +98,16 @@ int do_main(int argc, char* argv[]) {
 
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
+  ModelInstanceIndex trifinger_index = AddTrifingerToPlant(&plant, &scene_graph);
   ModelInstanceIndex object_index = AddObjectToPlant(
     &plant, &scene_graph, vis_params.object_vis_model);
   plant.Finalize();
 
   // Create a Franka-only plant.
-  MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka, nullptr, true, false);
-  plant_franka.Finalize();
-  auto franka_context = plant_franka.CreateDefaultContext();
+  MultibodyPlant<double> plant_trifinger(0.0);
+  AddTrifingerToPlant(&plant_trifinger, nullptr);
+  plant_trifinger.Finalize();
+  auto trifinger_context = plant_trifinger.CreateDefaultContext();
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
@@ -121,36 +120,35 @@ int do_main(int argc, char* argv[]) {
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, lcs_scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &lcs_scene_graph, controller_params.object_model,
-                      controller_params.include_end_effector_orientation);
+  AddLCSModelsToPlant(&plant_lcs, &lcs_scene_graph, vis_params.object_vis_model);
   plant_lcs.Finalize();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  auto franka_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
+  auto trifinger_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant, trifinger_index);
   auto object_state_receiver =
       builder.AddSystem<ObjectStateReceiver>(plant, object_index);
-  auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      franka_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(franka_index));
+  auto trifinger_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      trifinger_state_receiver->get_output_port(0).size(), 0,
+      plant.num_positions(trifinger_index));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      franka_state_receiver->get_output_port(0).size(),
-      franka_state_receiver->get_output_port(0).size() - 1, 1);
-  auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      trifinger_state_receiver->get_output_port(0).size(),
+      trifinger_state_receiver->get_output_port(0).size() - 1, 1);
+  auto object_passthrough = builder.AddSystem<SubvectorPassThrough>(
       object_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(object_index));
 
-  std::vector<int> input_sizes = {plant.num_positions(franka_index),
+  std::vector<int> input_sizes = {plant.num_positions(trifinger_index),
                                   plant.num_positions(object_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false);
-  builder.Connect(franka_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_franka_state());
+      builder.AddSystem<systems::TrifingerKinematics>(
+          plant_trifinger, trifinger_context.get(), plant_object,
+          object_context.get(), kFingertip0Name, kFingertip120Name, kFingertip240Name,
+          controller_params.object_body_name);
+  builder.Connect(trifinger_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_trifinger_state());
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
 
@@ -235,24 +233,34 @@ int do_main(int argc, char* argv[]) {
   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
   if (vis_params.visualize_c3_workspace) {
-    // Note:  There are also robot radius limits which are not visualized.
-    double width = sampling_c3_options.workspace_limits[0][4] -
-                   sampling_c3_options.workspace_limits[0][3];   // x
-    double depth = sampling_c3_options.workspace_limits[1][4] -
-                   sampling_c3_options.workspace_limits[1][3];   // y
-    double height = sampling_c3_options.workspace_limits[2][4] -
-                    sampling_c3_options.workspace_limits[2][3];  // z
-    Vector3d workspace_center = {
-        0.5 * (sampling_c3_options.workspace_limits[0][4] +
-               sampling_c3_options.workspace_limits[0][3]),
-        0.5 * (sampling_c3_options.workspace_limits[1][4] +
-               sampling_c3_options.workspace_limits[1][3]),
-        0.5 * (sampling_c3_options.workspace_limits[2][4] +
-               sampling_c3_options.workspace_limits[2][3])};
-    meshcat->SetObject("c3_workspace",
-                       drake::geometry::Box(width, depth, height),
-                       {0, 1, 0, 0.2});
-    meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
+    std::vector<std::string> workspace_limits_names = {
+        "finger_0_workspace",
+        "finger_120_workspace",
+        "finger_240_workspace"};
+    std::vector<drake::geometry::Rgba> workspace_colors = {
+        drake::geometry::Rgba({1, 0, 0, 0.2}),
+        drake::geometry::Rgba({0, 1, 0, 0.2}), 
+        drake::geometry::Rgba({0, 0, 1, 0.2})};
+
+    for (int i = 0; i < workspace_limits_names.size(); i++) {
+      double width = sampling_c3_options.workspace_limits[i*3][10] -
+                     sampling_c3_options.workspace_limits[i*3][9];   // x
+      double depth = sampling_c3_options.workspace_limits[i*3+1][10] -
+                     sampling_c3_options.workspace_limits[i*3+1][9];   // y
+      double height = sampling_c3_options.workspace_limits[i*3+2][10] -
+                      sampling_c3_options.workspace_limits[i*3+2][9];  // z
+      Vector3d workspace_center = {
+          0.5 * (sampling_c3_options.workspace_limits[i*3][10] +
+                 sampling_c3_options.workspace_limits[i*3][9]),
+          0.5 * (sampling_c3_options.workspace_limits[i*3+1][10] +
+                 sampling_c3_options.workspace_limits[i*3+1][9]),
+          0.5 * (sampling_c3_options.workspace_limits[i*3+2][10] +
+                 sampling_c3_options.workspace_limits[i*3+2][9])};
+      meshcat->SetObject(workspace_limits_names[i],
+                         drake::geometry::Box(width, depth, height),
+                         workspace_colors[i]);
+      meshcat->SetTransform(workspace_limits_names[i], RigidTransformd(workspace_center));
+    }
   }
 
   if (vis_params.visualize_execution_plan) {
@@ -499,17 +507,17 @@ int do_main(int argc, char* argv[]) {
         is_c3_mode_drawer->get_input_port_trajectory());
   }
 
-  builder.Connect(franka_passthrough->get_output_port(),
+  builder.Connect(trifinger_passthrough->get_output_port(),
                   mux->get_input_port(0));
-  builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
+  builder.Connect(object_passthrough->get_output_port(), mux->get_input_port(1));
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
-  builder.Connect(*franka_state_receiver, *franka_passthrough);
-  builder.Connect(*franka_state_receiver, *robot_time_passthrough);
-  builder.Connect(*object_state_receiver, *tray_passthrough);
-  builder.Connect(*franka_state_sub, *franka_state_receiver);
+  builder.Connect(*trifinger_state_receiver, *trifinger_passthrough);
+  builder.Connect(*trifinger_state_receiver, *robot_time_passthrough);
+  builder.Connect(*object_state_receiver, *object_passthrough);
+  builder.Connect(*franka_state_sub, *trifinger_state_receiver);
   builder.Connect(*object_state_sub, *object_state_receiver);
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
@@ -524,7 +532,7 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   auto& object_state_sub_context =
       diagram->GetMutableSubsystemContext(*object_state_sub, context.get());
-  franka_state_receiver->InitializeSubscriberPositions(
+  trifinger_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
   object_state_receiver->InitializeSubscriberPositions(
       plant, object_state_sub_context);

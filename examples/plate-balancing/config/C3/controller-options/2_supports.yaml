@@ -5,11 +5,11 @@ solve_time_filter_alpha: 0.95
 publish_frequency: 0
 state_prediction_joints:
   - name: "plate_x"
-    max_acceleration: 2
+    max_acceleration: 10
   - name: "plate_y"
-    max_acceleration: 2
+    max_acceleration: 10
   - name: "plate_z"
-    max_acceleration: 2
+    max_acceleration: 10
 
 # Workspace Limits
 # End Effector Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub]

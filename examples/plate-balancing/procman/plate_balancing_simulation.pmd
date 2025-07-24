@@ -14,6 +14,10 @@ group "operator" {
         exec = "bazel-bin/examples/plate-balancing/run_visualizer";
         host = "localhost";
     }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
     cmd "start_logging" {
         exec = "python3 examples/plate-balancing/start_logging.py sim";
         host = "localhost";

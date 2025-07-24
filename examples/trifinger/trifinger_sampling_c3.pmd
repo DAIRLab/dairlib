@@ -1,13 +1,13 @@
 group "simulations" {
-    cmd "franka_sim" {
-        exec = "bazel-bin/examples/trifinger/trifinger_simulation";
+    cmd "trifinger_sim" {
+        exec = "bazel-bin/examples/trifinger/trifinger_sampling_sim";
         host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/trifinger/trifinger_visualizer --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
+        exec = "bazel-bin/examples/trifinger/trifinger_sampling_visualizer";
         host = "localhost";
     }
     cmd "drake-director" {
@@ -18,7 +18,7 @@ group "operator" {
 
 group "controllers" {    
     cmd "trifinger_osc" {
-        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller";
+        exec = "bazel-bin/examples/trifinger/trifinger_sampling_osc_controller";
         host = "localhost";
     }
     cmd "sampling_c3" {

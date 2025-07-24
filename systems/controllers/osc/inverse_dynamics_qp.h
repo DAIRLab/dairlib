@@ -163,6 +163,9 @@ class InverseDynamicsQp {
   [[nodiscard]] const drake::solvers::VectorXDecisionVariable& epsilon() const {
     return epsilon_;
   }
+  [[nodiscard]] const std::unordered_map<std::string, std::pair<int, int>>& lambda_e_start_and_size() const {
+    return lambda_e_start_and_size_;
+  }
 
   /*!
    * @return a const-reference to the underlying MathematicalProgram

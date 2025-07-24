@@ -11,7 +11,7 @@ namespace dairlib {
 static constexpr const char* kTrifingerModel =
   "examples/trifinger/models/urdf/trifinger.urdf";
 static constexpr const char* kGroundModel =
-  "examples/sampling_c3/urdf/ground.urdf";
+  "examples/trifinger/models/urdf/ground.urdf";
 static constexpr const char* kTrifingerSimplifiedModel =
   "examples/trifinger/models/urdf/simplified_trifinger.urdf";
 static constexpr const char* kFingertip0Name = "finger_tip_link_0";

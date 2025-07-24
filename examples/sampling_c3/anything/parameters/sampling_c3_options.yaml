@@ -47,7 +47,7 @@ num_contacts_index_for_cost: 0
 planning_dt_position: 0.1
 planning_dt_pose: 0.05
 
-lcs_dt_resolution: 3
+lcs_dt_resolution: 5
 
 ### Cost parameters
 ### If list of lists, then index into them with num_contact_index(_for_cost).

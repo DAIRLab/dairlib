@@ -242,6 +242,8 @@ if __name__ == "__main__":
     goal_yaml["fixed_target_positions"] = [[0.38 + (0.1*i), 0 + (0.3 * i), z_height[i]] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
+    print(z_height)
+    goal_yaml["resting_object_heights"] = z_height
 
     
 

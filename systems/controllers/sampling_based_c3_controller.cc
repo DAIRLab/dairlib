@@ -654,7 +654,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     for (int i = 0; i < controller_params_.num_objects; i++) {
       pose_diff += (x_lcs_curr.segment(7 + 7*i ,2)-x_lcs_final_des.value().segment(7 + 7*i, 2)).norm();
     }
-    if (pose_diff < progress_params_.cost_switching_threshold_distance) {
+    if (pose_diff < progress_params_.cost_switching_threshold_distance * controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 

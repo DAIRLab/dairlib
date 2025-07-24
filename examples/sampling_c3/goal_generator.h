@@ -124,6 +124,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
 
 private:
   std::vector<drake::multibody::ModelInstanceIndex> object_indices_;
+  mutable std::vector<bool> reached_goal_;
 
   const std::vector<Eigen::Quaterniond>& GetNominalOrientations(int index) const {
     return nominal_orientations_.at(index); }

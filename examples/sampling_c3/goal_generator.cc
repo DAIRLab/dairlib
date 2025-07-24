@@ -94,6 +94,8 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
   // Start with the fixed goal from the goal params.
   target_final_object_positions_ = goal_params_.fixed_target_positions;
   target_final_object_orientations_ = goal_params_.fixed_target_orientations;
+
+  reached_goal_ = std::vector<bool>(object_indices.size(), false);
 }
 
 // Fixes the EE target to be a fixed offset above the object.
@@ -134,9 +136,21 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
 
   if ((object_position_error < goal_params_.position_success_threshold) &&
       (object_angular_error < goal_params_.orientation_success_threshold)) {
-    std::cout << "\nMet pose goal!\n" << std::endl;
-    OnGoalReached(index);
+    std::cout << "\nObject " << index << " Met pose goal!\n" << std::endl;
+    reached_goal_[index] = true;
   }
+
+  bool all_reached = true;
+  for (int i = 0; i < reached_goal_.size(); i++) {
+    all_reached = all_reached && reached_goal_[i];
+  }
+  if (all_reached) {
+    for (int i = 0; i < reached_goal_.size(); i++) {
+        OnGoalReached(i);
+        reached_goal_[i] = false;
+    }
+  }
+
 
   // Apply lookahead.
   std::tie(target_obj_orientation, target_obj_position) =
@@ -209,7 +223,7 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
                       goal_params_.random_goal_y_limits[1]);
   }
 
-  target_final_object_positions_.at(index) << x, y, goal_params_.resting_object_height;
+  target_final_object_positions_.at(index) << x, y, goal_params_.resting_object_heights.at(index);
 }
 
 // Randomly generates final orientation from the set of valid orientations plus

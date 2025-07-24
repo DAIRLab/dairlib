@@ -606,24 +606,34 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   // TODO(yangwill): Clean up all this visualization, move to separate
   // visualization directory1
   for (int i = 0; i < num_objects_; i++) {
+    drake::geometry::Rgba color(
+    (50 * (i + 1)) % 256 / 255.0,
+    (100 * (i + 1)) % 256 / 255.0,
+    (150 * (i + 1)) % 256 / 255.0,
+    1.0);
+    drake::geometry::Rgba color_transparent(
+    (50 * (i + 1)) % 256 / 255.0,
+    (100 * (i + 1)) % 256 / 255.0,
+    (150 * (i + 1)) % 256 / 255.0,
+    1.0);
     meshcat_->SetObject(c3_final_target_object_paths_.at(i) + "/x-axis", cylinder_for_tray_,
-                        {1, 0, 0, 1});
+                        color);
     meshcat_->SetObject(c3_final_target_object_paths_.at(i) + "/y-axis", cylinder_for_tray_,
-                        {0, 1, 0, 1});
+                        color);
     meshcat_->SetObject(c3_final_target_object_paths_.at(i) + "/z-axis", cylinder_for_tray_,
-                        {0, 0, 1, 1});
+                        color);
     meshcat_->SetObject(c3_target_object_paths_.at(i) + "/x-axis", cylinder_for_tray_,
-                        {1, 0, 0, 0.3});
+                        color_transparent);
     meshcat_->SetObject(c3_target_object_paths_.at(i) + "/y-axis", cylinder_for_tray_,
-                        {0, 1, 0, 0.3});
+                        color_transparent);
     meshcat_->SetObject(c3_target_object_paths_.at(i) + "/z-axis", cylinder_for_tray_,
-                        {0, 0, 1, 0.3});
+                        color_transparent);
     meshcat_->SetObject(c3_actual_object_paths_.at(i) + "/x-axis", cylinder_for_tray_,
-                        {1, 0, 0, 1});
+                        color);
     meshcat_->SetObject(c3_actual_object_paths_.at(i) + "/y-axis", cylinder_for_tray_,
-                        {0, 1, 0, 1});
+                        color);
     meshcat_->SetObject(c3_actual_object_paths_.at(i) + "/z-axis", cylinder_for_tray_,
-                        {0, 0, 1, 1});
+                        color);
     }
   if (draw_ee_){
     meshcat_->SetObject(c3_target_ee_path_ + "/x-axis", cylinder_for_ee_,

@@ -25,6 +25,7 @@ struct SamplingC3GoalParams {
   double orientation_success_threshold;
 
   double resting_object_height;             // in world frame
+  std::vector<double> resting_object_heights;
   double ee_target_z_offset_above_object;   // defines EE goal wrt object height
 
   /// Lookahead parameters to define a sub-goal for C3.
@@ -60,6 +61,7 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_height));
+    a->Visit(DRAKE_NVP(resting_object_heights));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));

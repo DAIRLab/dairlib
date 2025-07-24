@@ -52,8 +52,6 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     *casted_traj = *trajectory_input;
   } else {
     PiecewiseQuaternionSlerp<double> result;
-    Eigen::VectorXd neutral_quaternion = VectorXd::Zero(4);
-    neutral_quaternion(0) = 1;
     result = drake::trajectories::PiecewiseQuaternionSlerp<double>(
         {0, 1},
         {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});

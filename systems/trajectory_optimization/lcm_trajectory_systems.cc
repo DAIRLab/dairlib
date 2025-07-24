@@ -216,8 +216,9 @@ void LcmC3TrajectoryReceiver::OutputQuaternionTrajectory(
     } else if (trajectory_block.datapoints.rows() == 4) {
       Eigen::Vector4d quat = trajectory_block.datapoints.topRows(4).col(i);
       quaternion_datapoints.push_back(
-          !quat.isZero() ? Eigen::Quaternion<double>(quat)
-                         : Eigen::Quaternion<double>(1, 0, 0, 0));
+          !quat.isZero()
+              ? Eigen::Quaternion<double>(quat[0], quat[1], quat[2], quat[3])
+              : Eigen::Quaternion<double>(1, 0, 0, 0));
     } else {
       throw std::runtime_error(
           "Invalid trajectory data points size: " +

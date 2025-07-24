@@ -36,7 +36,6 @@
             <length>0.022</length>
           </cylinder>
         </geometry>
-        <pose>0.15 0.3 0 0 0 0</pose>
       </collision>
     </link>
   </model>

@@ -403,7 +403,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   const auto active_contact_names = contact_names_map_.count(fsm_state) > 0
                                         ? contact_names_map_.at(fsm_state)
                                         : std::vector<std::string>();
-  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
+  std::vector<std::string> active_external_forces = {};
+  for (const auto& force_tracking_data : *force_tracking_data_vec_) {
+    active_external_forces.push_back(force_tracking_data->GetName());
+  }
+  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, active_external_forces);
 
   //  Invariant Impacts
   //  Only update when near an impact

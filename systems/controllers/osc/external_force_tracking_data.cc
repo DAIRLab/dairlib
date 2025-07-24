@@ -37,7 +37,7 @@ void ExternalForceTrackingData::Update(
     const drake::systems::Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t) {
   DRAKE_DEMAND(traj.rows() == 3);
-  lambda_des_ = traj.value(t);
+  lambda_des_ = -traj.value(t);
 }
 
 }  // namespace dairlib::systems::controllers

@@ -122,7 +122,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   } else if (strategy == SamplingStrategy::kBehindObjectFromGoal) {
     for (int i = 0; i < num_samples; i++) {
       candidate_states[i].head(3) = BehindObjectFromGoalSampling(
-        n_q, x_lcs, x_lcs_des, sampling_params.distance_behind_object);
+        n_q, x_lcs, x_lcs_des, sampling_params.distance_behind_object,
+        sampling_params.project_to_sampling_height,
+        sampling_params.sampling_height);
       if (sampling_params.filter_samples_for_safety &&
           !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
         throw std::runtime_error(
@@ -378,11 +380,17 @@ Eigen::Vector3d ShellSampling(
 // goal location.
 Eigen::Vector3d BehindObjectFromGoalSampling(
     const int& n_q, const Eigen::VectorXd& x_lcs,
-    const Eigen::VectorXd& x_lcs_des, const double& distance_behind_object) {
+    const Eigen::VectorXd& x_lcs_des, const double& distance_behind_object,
+    const bool& project_to_sampling_height, const double& sampling_height) {
   Eigen::Vector3d curr_position = x_lcs.segment(n_q - 3, 3);
   Eigen::Vector3d goal_position = x_lcs_des.segment(n_q - 3, 3);
   Eigen::Vector3d behind_dir = (curr_position - goal_position).normalized();
-  return curr_position + distance_behind_object * behind_dir;
+  Eigen::Vector3d behind_position =
+    curr_position + distance_behind_object * behind_dir;
+  if (project_to_sampling_height) {
+    behind_position[2] = sampling_height;
+  }
+  return behind_position;
 }
 
 

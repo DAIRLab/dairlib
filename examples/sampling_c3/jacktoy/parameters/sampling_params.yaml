@@ -9,7 +9,7 @@
 #                              surface.
 #   6. kBehindObjectFromGoal:  a sample a fixed distance behind the object from
 #                              the goal location.
-sampling_strategy: 2
+sampling_strategy: 6
 
 ### Parameters relevant for all sampling strategies.
 filter_samples_for_safety: true
@@ -48,3 +48,4 @@ max_sampling_radius: 0.10
 
 # kBehindObjectFromGoal parameters.
 distance_behind_object: 0.1
+project_to_sampling_height: false

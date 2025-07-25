@@ -26,7 +26,7 @@ qp_projection_scaling: 1
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
 workspace_limits: [[1, 0, 0, 0.15, 0.75],
                    [0, 1, 0, -0.6, 0.6],
-                   [0, 0, 1, -0.01, 0.3]]
+                   [0, 0, 1, -0.005, 0.3]]
 robot_radius_limits: [0.25, 0.75]
 workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]

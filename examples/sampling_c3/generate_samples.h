@@ -106,7 +106,9 @@ Eigen::Vector3d BehindObjectFromGoalSampling(
     const int& n_q,
     const Eigen::VectorXd& x_lcs,
     const Eigen::VectorXd& x_lcs_des,
-    const double& distance_behind_object
+    const double& distance_behind_object,
+    const bool& project_to_sampling_height,
+    const double& sampling_height
 );
 
 

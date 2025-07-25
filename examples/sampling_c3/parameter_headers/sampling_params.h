@@ -66,6 +66,7 @@ struct SamplingParams {
 
   /// kBehindObjectFromGoal parameters.
   double distance_behind_object;
+  bool project_to_sampling_height;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -88,5 +89,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(pos_error_sample_retention));
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(distance_behind_object));
+    a->Visit(DRAKE_NVP(project_to_sampling_height));
   }
 };

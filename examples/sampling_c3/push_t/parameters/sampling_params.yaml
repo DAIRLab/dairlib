@@ -47,3 +47,4 @@ max_sampling_radius: 0.10
 
 # kBehindObjectFromGoal parameters.
 distance_behind_object: 0.16
+project_to_sampling_height: true

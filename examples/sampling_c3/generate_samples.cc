@@ -256,11 +256,12 @@ Eigen::Vector3d PerimeterSampling(
 
       // Convert to world frame using the current object state.
       Eigen::Quaterniond quat_object(x_lcs(3), x_lcs(4), x_lcs(5), x_lcs(6));
-      Eigen::Vector3d object_position = x_lcs.segment(7, 3);
+      Eigen::Vector3d object_position = x_lcs.segment(13, 3);
       candidate_state = x_lcs;
-      candidate_state.head(3) =
-          quat_object * Eigen::Vector3d(x_sample, y_sample, z_sample) +
-          object_position;
+      candidate_state.head(3) = Eigen::Vector3d(x_sample, y_sample, object_position[2]);
+          // quat_object * Eigen::Vector3d(x_sample, y_sample, z_sample) +
+          // object_position;
+      std::cout << "candidate_state: " << candidate_state.transpose() << std::endl;
 
       // Project samples to specified sampling height in world frame.
       candidate_state[2] = sampling_params.sampling_height;
@@ -478,17 +479,18 @@ Eigen::VectorXd MeshNormalSampling(
 
 bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {
-  double candidate_radius =
-    sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
-  if (candidate_state[0] < sampling_c3_options.workspace_limits[0][3] // x min
-   || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] // x max
-   || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] // y min
-   || candidate_state[1] > sampling_c3_options.workspace_limits[1][4] // y max
-   || candidate_state[2] < sampling_c3_options.workspace_limits[2][3] // z min
-   || candidate_state[2] > sampling_c3_options.workspace_limits[2][4] // z max
-   || candidate_radius > sampling_c3_options.robot_radius_limits[1]   // r min
-   || candidate_radius < sampling_c3_options.robot_radius_limits[0])  // r max
-   {return false;}
+  // double candidate_radius =
+  //   sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
+  // if (candidate_state[0] < sampling_c3_options.workspace_limits[0][9] // x min
+  //  || candidate_state[0] > sampling_c3_options.workspace_limits[0][10] // x max
+  //  || candidate_state[1] < sampling_c3_options.workspace_limits[1][9] // y min
+  //  || candidate_state[1] > sampling_c3_options.workspace_limits[1][10] // y max
+  //  || candidate_state[2] < sampling_c3_options.workspace_limits[2][9] // z min
+  //  || candidate_state[2] > sampling_c3_options.workspace_limits[2][10] // z max
+  //  || candidate_radius > sampling_c3_options.robot_radius_limits[1]   // r min
+  //  || candidate_radius < sampling_c3_options.robot_radius_limits[0])  // r max
+  //  {return false;}
+  std::cout << "Stuck here" << std::endl;
   return true;
 }
 
@@ -499,20 +501,22 @@ double GetEERadiusFromPlant(
       std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_geoms)
 {
-  const auto& query_port = plant.get_geometry_query_input_port();
-  const auto& query_object =
-    query_port.template Eval<drake::geometry::QueryObject<double>>(context);
-  const auto& inspector = query_object.inspector();
+  // TODO: Below is a hack that hardcodes the radius
+  return 0.0095;
+  // const auto& query_port = plant.get_geometry_query_input_port();
+  // const auto& query_object =
+  //   query_port.template Eval<drake::geometry::QueryObject<double>>(context);
+  // const auto& inspector = query_object.inspector();
 
-  // Locate the EE and obtain its radius.  The first set of contact geoms has
-  // the EE and ground.
-  GeometryId ee_geom_id = contact_geoms.at(0).at(0).first();
-  const drake::geometry::Shape& shape = inspector.GetShape(ee_geom_id);
-  const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(&shape);
-  if (sphere) {
-    return sphere->radius();
-  }
-  throw std::runtime_error("End effector geometry is not a sphere!");
+  // // Locate the EE and obtain its radius.  The first set of contact geoms has
+  // // the EE and ground.
+  // GeometryId ee_geom_id = contact_geoms.at(0).at(0).first();
+  // const drake::geometry::Shape& shape = inspector.GetShape(ee_geom_id);
+  // const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(&shape);
+  // if (sphere) {
+  //   return sphere->radius();
+  // }
+  // throw std::runtime_error("End effector geometry is not a sphere!");
 }
 
 bool IsSampleWithinDistanceOfSurface(

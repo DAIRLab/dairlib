@@ -34,9 +34,9 @@ workspace_limits: [[1, 0, 0, 0, 0, 0, 0, 0, 0, -0.06, 0.02],
                    [0, 0, 0, 0, 0, 0, 0, 1, 0, -0.09, -0.01],
                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0.028, 0.033]]
 robot_radius_limits: [0.25, 0.75]
-workspace_margins: 0.02
-u_horizontal_limits: [-50, 50]
-u_vertical_limits: [-50, 50]
+workspace_margins: 0
+u_horizontal_limits: [-5, 5]
+u_vertical_limits: [-5, 5]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true

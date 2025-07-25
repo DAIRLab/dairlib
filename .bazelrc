@@ -61,3 +61,5 @@ build:omp --linkopt=-fopenmp
 
 # use python3 by default
 build --python_path=python3
+
+build --local_cpu_resources=8

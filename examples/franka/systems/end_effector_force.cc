@@ -1,3 +1,6 @@
+// Implements a trajectory generator for end effector forces with controller switching.
+// Manages when to apply force trajectories based on radio input and message counting.
+
 #include "end_effector_force.h"
 
 #include "dairlib/lcmt_radio_out.hpp"
@@ -22,7 +25,9 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
+EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator(
+    int ignore_messages_count) : ignore_message_count_(ignore_messages_count) {
+  // Declare input ports for trajectory and radio control.
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   trajectory_port_ =
@@ -33,9 +38,16 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
+  
+  // Initialize controller switch state and message counter.
   controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Ones(1));
+  messages_processed_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  
+  // Declare discrete update events.
   DeclareForcedDiscreteUpdateEvent(
       &EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate);
+  
+  // Declare output port for force trajectory.
   PiecewisePolynomial<double> empty_pp_traj(Vector3d::Zero());
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort(
@@ -46,11 +58,20 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
 EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
+  // Update controller switching logic and message counter.
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
+  
+  // Increment message counter if we haven't reached the ignore limit.
+  int current_count = static_cast<int>(context.get_discrete_state(messages_processed_index_)[0]);
+  if (current_count < ignore_message_count_) {
+    discrete_state->get_mutable_value(messages_processed_index_)[0] = current_count + 1;
+  }
+  
+  // Enable trajectory following when radio control is off and new trajectory arrives.
   if (!using_c3 && radio_out->value()[14] == 0) {
     if (!trajectory_input.value(0).isZero() &&
         (context.get_time() - trajectory_input.start_time()) < 0.04) {
@@ -63,7 +84,7 @@ EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
 void EndEffectorForceTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  //  // Read in finite state machine
+  // Read in finite state machine and trajectory input.
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
@@ -71,11 +92,18 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
+  
+  // Check message count for ignoring initial messages.
+  int messages_processed = static_cast<int>(context.get_discrete_state(messages_processed_index_)[0]);
+  bool should_ignore_trajectory = messages_processed < ignore_message_count_;
+  
+  // Output zero force if radio channels are active, trajectory is zero, or ignoring messages.
   if (radio_out->value()[11] || radio_out->value()[14] ||
-      trajectory_input.value(0).isZero()) {
+      trajectory_input.value(0).isZero() || should_ignore_trajectory) {
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {
+    // Output trajectory if controller is enabled and ignore period has passed.
     if (context.get_discrete_state(controller_switch_index_)[0]) {
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);

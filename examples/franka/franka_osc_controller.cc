@@ -138,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position, 5000);
   end_effector_trajectory->SetRemoteControlParameters(
       controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
@@ -147,7 +147,7 @@ int DoMain(int argc, char* argv[]) {
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
+      builder.AddSystem<EndEffectorForceTrajectoryGenerator>(5000);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));

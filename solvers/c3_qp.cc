@@ -29,7 +29,7 @@ using drake::solvers::Solve;
 
 C3QP::C3QP(const LCS& LCS, const CostMatrices& costs,
            const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options) {}
+    : BaseC3(LCS, costs, xdesired, options) {}
 
 VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
                                      const MatrixXd& E, const MatrixXd& F,

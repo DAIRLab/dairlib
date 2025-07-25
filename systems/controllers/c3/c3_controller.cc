@@ -15,7 +15,7 @@ using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
-using solvers::C3;
+using solvers::BaseC3;
 using solvers::C3MIQP;
 using solvers::C3QP;
 using solvers::LCS;
@@ -70,12 +70,12 @@ C3Controller::C3Controller(
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   if (c3_options_.projection_type == "MIQP") {
     c3_ = std::make_unique<C3MIQP>(lcs_placeholder,
-                                   C3::CostMatrices(Q_, R_, G_, U_),
+                                   BaseC3::CostMatrices(Q_, R_, G_, U_),
                                    x_desired_placeholder, c3_options_);
 
   } else if (c3_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder,
-                                 C3::CostMatrices(Q_, R_, G_, U_),
+                                 BaseC3::CostMatrices(Q_, R_, G_, U_),
                                  x_desired_placeholder, c3_options_);
 
   } else {

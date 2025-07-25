@@ -64,13 +64,13 @@ PYBIND11_MODULE(c3, m) {
         .value("kAnitescu", Enum::kAnitescu);
   }
 
-  py::class_<dairlib::solvers::C3::CostMatrices>(m, "CostMatrices")
+  py::class_<dairlib::solvers::BaseC3::CostMatrices>(m, "CostMatrices")
       .def(py::init<const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&>(),
            arg("Q"), arg("R"), arg("G"), arg("U"));
 
   py::class_<dairlib::solvers::C3MIQP>(m, "C3MIQP")
-      .def(py::init<const LCS&, const dairlib::solvers::C3::CostMatrices&,
+      .def(py::init<const LCS&, const dairlib::solvers::BaseC3::CostMatrices&,
                     const vector<VectorXd>&, const C3Options&>(),
            arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
       .def("Solve", &C3MIQP::Solve, arg("x0"), arg("verbose") = false)
@@ -83,7 +83,7 @@ PYBIND11_MODULE(c3, m) {
       .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))
       .def("AddLinearConstraint", &C3MIQP::AddLinearConstraint, arg("A"),
            arg("lower_bound"), arg("upper_bound"), arg("constraint"))
-      .def("RemoveConstraints", &C3MIQP::RemoveConstraints)
+      .def("RemoveConstraints", &C3MIQP::RemoveUserConstraints)
       .def("GetFullSolution", &C3MIQP::GetFullSolution)
       .def("GetStateSolution", &C3MIQP::GetStateSolution)
       .def("GetForceSolution", &C3MIQP::GetForceSolution)

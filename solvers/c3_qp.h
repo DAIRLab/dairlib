@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 
-#include "solvers/c3.h"
+#include "solvers/base_c3.h"
 #include "solvers/lcs.h"
 
 #include "drake/solvers/mathematical_program.h"
@@ -19,7 +19,7 @@
 namespace dairlib {
 namespace solvers {
 
-class C3QP final : public C3 {
+class C3QP final : public BaseC3 {
  public:
   /// Default constructor for time-varying LCS
   C3QP(const LCS& LCS, const CostMatrices& costs,

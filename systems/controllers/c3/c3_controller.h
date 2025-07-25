@@ -9,7 +9,7 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/c3.h"
+#include "solvers/base_c3.h"
 #include "solvers/c3_options.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
@@ -87,7 +87,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_u_;
   double dt_;
 
-  mutable std::unique_ptr<solvers::C3> c3_;
+  mutable std::unique_ptr<solvers::BaseC3> c3_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;

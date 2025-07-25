@@ -5,13 +5,13 @@
 #include <Eigen/Dense>
 
 #include "gurobi_c++.h"
-#include "solvers/c3.h"
+#include "solvers/base_c3.h"
 #include "solvers/lcs.h"
 
 namespace dairlib {
 namespace solvers {
 
-class C3MIQP final : public C3 {
+class C3MIQP final : public BaseC3 {
  public:
   /// Default constructor for time-varying LCS
   C3MIQP(const LCS& LCS, const CostMatrices& costs,

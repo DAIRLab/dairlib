@@ -15,7 +15,7 @@
 namespace dairlib {
 namespace solvers {
 
-class C3 {
+class BaseC3 {
  public:
   struct CostMatrices {
     CostMatrices() = default;
@@ -32,10 +32,10 @@ class C3 {
   /// @param costs Cost Matrices
   /// @param x_des Desired goal state
   /// @param options C3 options
-  C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
+  BaseC3(const LCS& LCS, const CostMatrices& costs,
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
-  virtual ~C3() = default;
+  virtual ~BaseC3() = default;
 
   /// Solve the MPC problem.
   /// @param x0 The initial state of the system
@@ -70,10 +70,10 @@ class C3 {
   /// @param verbose Whether to print additional information
   /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-    SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                      double Kd_for_ee_pd_rollout = 0.0,
-                      bool force_tracking_disabled = false,
-                      bool verbose = false) const;
+  SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
+                    double Kd_for_ee_pd_rollout = 0.0,
+                    bool force_tracking_disabled = false,
+                    bool verbose = false) const;
 
   /// Solve a single ADMM step.
   /// @param x0 The initial state of the system
@@ -117,7 +117,7 @@ class C3 {
                            double upper_bound, int constraint);
 
   /// remove all constraints
-  void RemoveConstraints();
+  void RemoveUserConstraints();
 
   /// Solve a projection step for a single knot point k.
   /// @param U Matrix for consensus cost
@@ -162,8 +162,8 @@ class C3 {
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
  public:
-  void UpdateCostMatrices(const C3::CostMatrices& costs);
-  void UpdateLCS(const LCS& lcs);
+  void UpdateCostMatrices(const BaseC3::CostMatrices& costs);
+  virtual void UpdateLCS(const LCS& lcs);
 
   /// Update the LCS used for cost computation.  This can differ from the LCS
   /// used for the solve, e.g. if more contacts are used for cost than for
@@ -174,6 +174,28 @@ class C3 {
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
  protected:
+  void ScaleLCS();
+  void InitializeWarmStarts();
+  void InitializeOptimizationVariables();
+  void InitializeDynamicsConstraints();
+  void InitializeStateAndInputCosts();
+
+  void ClearConstraintsQPStep();
+  void AddInitialStateConstraintQPStep(const Eigen::VectorXd& x0);
+  void SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0);
+  void ClearCostsQPStep();
+  virtual void AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
+                                      const std::vector<Eigen::VectorXd>& WD);
+  virtual void SetInitialGuessQPStep(const Eigen::VectorXd& x0,
+                                     int admm_iteration);
+
+  virtual void ExtractQPSolution(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration, bool is_final_solve);
+  virtual void UpdateWarmStarts(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration);
+
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_x_;
@@ -181,13 +203,12 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_; // n_x
-  const int m_; // n_lambda
-  const int k_; // n_u
+  const int n_;  // n_x
+  const int m_;  // n_lambda
+  const int k_;  // n_u
   const int z_size_;
   const C3Options options_;
 
- private:
   // TODO:  storing the LCS as a class variable makes the LCS matrices
   // redundant.  Could consider removing LCS matrices as class variables.
   mutable LCS lcs_;
@@ -225,9 +246,6 @@ class C3 {
 
   /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-
-  // Signed distance constraint eta = Ex + Hu + F lambda + c
-  std::vector<drake::solvers::LinearEqualityConstraint *> eta_constraints_;
 
   // initial state constraint
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>

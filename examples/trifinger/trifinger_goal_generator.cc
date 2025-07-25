@@ -1,4 +1,4 @@
-#include "goal_generator.h"
+#include "trifinger_goal_generator.h"
 
 #include <math.h>
 #include <drake/common/yaml/yaml_io.h>
@@ -66,11 +66,8 @@ SamplingC3GoalGeneratorTrifinger::SamplingC3GoalGeneratorTrifinger(
 void SamplingC3GoalGeneratorTrifinger::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
-  const StateVector<double>* object_state =
-    (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
-
-  VectorXd end_effector_position = object_state->GetPositions().tail(3);
-  end_effector_position[2] += goal_params_.ee_target_z_offset_above_object;
+  VectorXd end_effector_position(end_effector_num_positions_);
+  end_effector_position << 0, 0.05, 0.0325, 0.05, 0, 0.0325, 0, -0.05, 0.0325;
   target->SetFromVector(end_effector_position);
 }
 

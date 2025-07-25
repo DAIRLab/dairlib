@@ -134,28 +134,5 @@ class SamplingC3GoalGeneratorTrifinger : public drake::systems::LeafSystem<doubl
   mutable int orientation_index_ = -1;
   const int end_effector_num_positions_;
 };
-
-class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGeneratorTrifinger {
- public:
-  SamplingC3GoalGeneratorJacktoy(
-    const int end_effector_num_positions,
-    const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params) :
-      SamplingC3GoalGeneratorTrifinger(
-        end_effector_num_positions, object_plant, goal_params, kNominalOrientationsJack) {}
-};
-
-
-// class TargetGeneratorPushT : public TargetGenerator {
-class SamplingC3GoalGeneratorPushT : public SamplingC3GoalGeneratorTrifinger {
- public:
-  SamplingC3GoalGeneratorPushT(
-    const int end_effector_num_positions,
-    const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params) :
-      SamplingC3GoalGeneratorTrifinger(
-        end_effector_num_positions, object_plant, goal_params, kNominalOrientationsPlanar) {}
-};
-
 }  // namespace systems
 }  // namespace dairlib

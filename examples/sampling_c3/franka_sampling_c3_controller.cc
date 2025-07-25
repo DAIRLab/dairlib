@@ -245,7 +245,7 @@ int DoMain(int argc, char* argv[]) {
           controller_params.include_end_effector_orientation);
 
   // Select the target generator based on the demo.
-  std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
+  std::unique_ptr<systems::SamplingC3GoalGeneratorTrifinger> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
     target_generator =
         std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(

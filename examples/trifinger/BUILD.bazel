@@ -136,6 +136,21 @@ py_binary(
 #)
 
 cc_library(
+    name = "trifinger_goal_generator",
+    srcs = ["trifinger_goal_generator.cc"],
+    hdrs = ["trifinger_goal_generator.h"],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:goal_params",
+        "//systems/framework:vector",
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//common:math_utils",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "trifinger_utils",
     srcs = ["trifinger_utils.cc"],
     hdrs = ["trifinger_utils.h"],
@@ -157,7 +172,7 @@ cc_binary(
     ],
     deps = [
         "//common",
-        "//examples/sampling_c3:goal_generator",
+        "//examples/trifinger:trifinger_goal_generator",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//lcm:lcm_trajectory_saver",
@@ -173,6 +188,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    linkopts = ["-lblas", "-llapack"]
 )
 
 cc_binary(

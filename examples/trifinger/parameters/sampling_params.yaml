@@ -36,8 +36,8 @@ fixed_sample_locations: [[0.45, 0.270, 0.270],   # sample 1
                          [0.34, 0.455, 0.225]]   # sample 2
 
 # kRandomOnPerimeter parameters.
-grid_x_limits: [-0.12, 0.08]
-grid_y_limits: [-0.08, 0.08]
+grid_x_limits: [-0.06, 0.02]
+grid_y_limits: [0.01, 0.09]
 
 # kRandomOnShell parameters.
 min_sampling_radius: 0.07

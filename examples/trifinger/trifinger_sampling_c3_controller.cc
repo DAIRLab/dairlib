@@ -10,7 +10,7 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/goal_generator.h"
+#include "examples/trifinger/trifinger_goal_generator.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/trifinger/trifinger_utils.h"
@@ -186,10 +186,10 @@ int DoMain(int argc, char* argv[]) {
           kFingertip240Name,
           controller_params.object_body_name);
 
-  std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
+  std::unique_ptr<systems::SamplingC3GoalGeneratorTrifinger> target_generator;
   target_generator =
       std::make_unique<systems::SamplingC3GoalGeneratorTrifinger>(
-          plant_lcs.num_positions(trifinger_lcs_index), plant_object, controller_params.goal_params);
+          plant_lcs.num_positions(trifinger_lcs_index), plant_object, controller_params.goal_params, kNominalOrientationsPlanar);
   auto* control_target = builder.AddSystem(std::move(target_generator));
 
   std::vector<int> input_sizes = {plant_lcs.num_positions(trifinger_lcs_index), 

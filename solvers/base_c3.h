@@ -28,12 +28,16 @@ class BaseC3 {
     std::vector<Eigen::MatrixXd> G;
     std::vector<Eigen::MatrixXd> U;
   };
+
+  using CalcZSizeFunc = std::function<int(const LCS&)>;
+
   /// @param LCS LCS parameters
   /// @param costs Cost Matrices
   /// @param x_des Desired goal state
   /// @param options C3 options
   BaseC3(const LCS& LCS, const CostMatrices& costs,
-         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
+         CalcZSizeFunc calc_z_size = nullptr);
 
   virtual ~BaseC3() = default;
 
@@ -208,6 +212,7 @@ class BaseC3 {
   const int k_;  // n_u
   const int z_size_;
   const C3Options options_;
+  bool use_parallelization_in_projection_ = true;
 
   // TODO:  storing the LCS as a class variable makes the LCS matrices
   // redundant.  Could consider removing LCS matrices as class variables.
@@ -242,7 +247,6 @@ class BaseC3 {
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
-  std::vector<drake::solvers::VectorXDecisionVariable> eta_;
 
   /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
@@ -263,7 +267,6 @@ class BaseC3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
-  std::unique_ptr<std::vector<Eigen::VectorXd>> eta_sol_;
 
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;

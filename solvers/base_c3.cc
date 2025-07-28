@@ -40,7 +40,8 @@ BaseC3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 }
 
 BaseC3::BaseC3(const LCS& lcs, const BaseC3::CostMatrices& costs,
-               const vector<VectorXd>& x_des, const C3Options& options)
+               const vector<VectorXd>& x_des, const C3Options& options,
+               CalcZSizeFunc calc_z_size)
     : warm_start_(options.warm_start),
       lcs_(lcs),
       N_((lcs.A_).size()),
@@ -64,7 +65,7 @@ BaseC3::BaseC3(const LCS& lcs, const BaseC3::CostMatrices& costs,
       h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
       prog_(MathematicalProgram()),
-      z_size_(n_ + m_ + k_ + (options.projection_type == "NEXTGEN" ? m_ : 0)) {
+      z_size_(calc_z_size ? calc_z_size(lcs) : n_ + m_ + k_) {
   ScaleLCS();
   if (warm_start_) {
     InitializeWarmStarts();
@@ -865,7 +866,7 @@ vector<VectorXd> BaseC3::SolveProjection(const vector<MatrixXd>& U,
   }
 
 #pragma omp parallel for num_threads( \
-        options_.num_threads) if (options_.projection_type != "NEXTGEN")
+        options_.num_threads) if (use_parallelization_in_projection_)
   for (i = 0; i < N_; i++) {
     if (options_.use_robust_formulation &&
         admm_iteration ==

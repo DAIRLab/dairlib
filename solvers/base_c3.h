@@ -186,6 +186,8 @@ class BaseC3 {
   void InitializeDynamicsConstraints();
   void InitializeStateAndInputCosts();
 
+  void UpdateDynamicsConstraints();
+
   void ClearConstraintsQPStep();
   void AddInitialStateConstraintQPStep(const Eigen::VectorXd& x0);
   void SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0);

@@ -69,6 +69,7 @@ class C3Plus final : public BaseC3 {
   void AddEtaEqualityConstraints();
   void InitializeEtaAsOptimizationVariables();
   void UpdateLCS(const LCS& lcs) override;
+  void UpdateEtaConstraints();
   void AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
                               const std::vector<Eigen::VectorXd>& WD) override;
   void ExtractQPSolution(

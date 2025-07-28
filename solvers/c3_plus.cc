@@ -16,9 +16,14 @@ using std::vector;
 
 C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : BaseC3(LCS, costs, xdesired, options) {
+    : BaseC3(LCS, costs, xdesired, options, [](const class LCS& lcs) {
+        return (lcs.A_)[0].cols() + 2 * (lcs.D_)[0].cols() + (lcs.B_)[0].cols();
+      }) {
   InitializeEtaAsOptimizationVariables();
   AddEtaEqualityConstraints();
+
+  // Disable parallelization for C3+ because of the overhead cost
+  use_parallelization_in_projection_ = false;
 }
 
 void C3Plus::UpdateLCS(const LCS& lcs) {
@@ -79,8 +84,9 @@ void C3Plus::AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
   }
 }
 
-void C3Plus::ExtractQPSolution(const drake::solvers::MathematicalProgramResult& result,
-                               int admm_iteration, bool is_final_solve) {
+void C3Plus::ExtractQPSolution(
+    const drake::solvers::MathematicalProgramResult& result, int admm_iteration,
+    bool is_final_solve) {
   BaseC3::ExtractQPSolution(result, admm_iteration, is_final_solve);
   for (int i = 0; i < N_; i++) {
     if (is_final_solve) {
@@ -90,8 +96,9 @@ void C3Plus::ExtractQPSolution(const drake::solvers::MathematicalProgramResult& 
   }
 }
 
-void C3Plus::UpdateWarmStarts(const drake::solvers::MathematicalProgramResult& result,
-                              int admm_iteration) {
+void C3Plus::UpdateWarmStarts(
+    const drake::solvers::MathematicalProgramResult& result,
+    int admm_iteration) {
   BaseC3::UpdateWarmStarts(result, admm_iteration);
 }
 

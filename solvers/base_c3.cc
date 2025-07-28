@@ -228,26 +228,19 @@ void BaseC3::UpdateLCS(const LCS& lcs) {
   w_ = lcs.w_;
   h_is_zero_ = H_[0].isZero(0);
 
+  ScaleLCS();
+  UpdateDynamicsConstraints();
+}
+
+void BaseC3::UpdateDynamicsConstraints() {
   MatrixXd LinEq = MatrixXd::Zero(n_, n_ + n_ + m_ + k_);
   LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
-
-  auto Dn = D_.at(0).norm();
-  auto An = A_.at(0).norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    D_.at(i) *= AnDn_;
-    E_.at(i) /= AnDn_;
-    c_.at(i) /= AnDn_;
-    H_.at(i) /= AnDn_;
-  }
 
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
     LinEq.block(0, n_, n_, m_) = D_.at(i);
     LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
-
-    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d_.at(i));
+    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -d_.at(i));
   }
 }
 
@@ -757,22 +750,20 @@ void BaseC3::ClearCostsQPStep() {
 
 void BaseC3::AddMatchingCostsQPStep(const vector<MatrixXd>& G,
                                     const vector<VectorXd>& WD) {
-  for (int i = 0; i < N_ + 1; i++) {
-    if (i < N_) {
-      costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(n_, n_, m_, m_),
-          -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
-          lambda_.at(i), 1));
-      costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(0, 0, n_, n_),
-          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
-          1));
-      costs_.push_back(
-          prog_.AddQuadraticCost(2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_),
-                                 -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
-                                     WD.at(i).segment(n_ + m_, k_),
-                                 u_.at(i), 1));
-    }
+  for (int i = 0; i < N_; i++) {
+    costs_.push_back(prog_.AddQuadraticCost(
+        2 * G.at(i).block(n_, n_, m_, m_),
+        -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
+        lambda_.at(i), 1));
+    costs_.push_back(prog_.AddQuadraticCost(
+        2 * G.at(i).block(0, 0, n_, n_),
+        -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
+        1));
+    costs_.push_back(
+        prog_.AddQuadraticCost(2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_),
+                               -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
+                                   WD.at(i).segment(n_ + m_, k_),
+                               u_.at(i), 1));
   }
 }
 

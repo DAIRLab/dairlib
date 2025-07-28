@@ -28,13 +28,16 @@ C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
 
 void C3Plus::UpdateLCS(const LCS& lcs) {
   BaseC3::UpdateLCS(lcs);
+  UpdateEtaConstraints();
+}
+
+void C3Plus::UpdateEtaConstraints() {
   MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
   EtaLinEq.block(0, n_ + m_ + k_, m_, m_) = -1 * MatrixXd::Identity(m_, m_);
   for (int i = 0; i < N_; ++i) {
     EtaLinEq.block(0, 0, m_, n_) = E_.at(i);
     EtaLinEq.block(0, n_, m_, m_) = F_.at(i);
     EtaLinEq.block(0, n_ + m_, m_, k_) = H_.at(i);
-
     eta_constraints_[i]->UpdateCoefficients(EtaLinEq, -c_.at(i));
   }
 }

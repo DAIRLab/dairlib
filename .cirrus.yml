@@ -20,7 +20,6 @@ build_jammy_task:
       //...
 
 build_noble_task:
-  only_if: "$CIRRUS_PR != ''" # This condition ensures the task runs only for PRs
   timeout_in: 120m
   container:
     image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42

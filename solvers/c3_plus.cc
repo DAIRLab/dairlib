@@ -151,14 +151,5 @@ VectorXd C3Plus::SolveRobustSingleProjection(
     const int admm_iteration, const int& warm_start_index) {
   return delta_c;
 }
-
-std::vector<Eigen::VectorXd> C3Plus::GetWarmStartDelta() const {
-  return warm_start_delta_[0];
-}
-
-std::vector<Eigen::VectorXd> C3Plus::GetWarmStartBinary() const {
-  return warm_start_binary_[0];
-}
-
 }  // namespace solvers
 }  // namespace dairlib

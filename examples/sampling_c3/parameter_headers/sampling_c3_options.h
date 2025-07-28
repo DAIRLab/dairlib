@@ -82,7 +82,7 @@ struct SamplingC3Options : C3Options {
   std::vector<std::vector<double>> u_lambda_position_list;
   std::vector<double> u_u_position;
 
-  // Only for NEXTGEN projection type
+  // Only applicable for C3+
   std::vector<std::vector<double>> g_eta_slack_position_list;
   std::vector<std::vector<double>> g_eta_n_position_list;
   std::vector<std::vector<double>> g_eta_t_position_list;
@@ -150,7 +150,7 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(u_lambda_position_list));
     a->Visit(DRAKE_NVP(u_u_position));
 
-    // Only for NEXTGEN projection type
+    // Only applicable for C3+
     a->Visit(DRAKE_NVP(g_eta_slack_list));
     a->Visit(DRAKE_NVP(g_eta_n_list));
     a->Visit(DRAKE_NVP(g_eta_t_list));
@@ -218,7 +218,7 @@ struct SamplingC3Options : C3Options {
       }
       g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
 
-      if (options->projection_type == "NEXTGEN") {
+      if (options->projection_type == "C3+") {
           if (options->contact_model == "stewart_and_trinkle") {
           g_vector.insert(g_vector.end(), options->g_eta_slack.begin(),
                           options->g_eta_slack.end());
@@ -247,7 +247,7 @@ struct SamplingC3Options : C3Options {
       }
       u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
 
-      if (options->projection_type == "NEXTGEN") {
+      if (options->projection_type == "C3+") {
         if (options->contact_model == "stewart_and_trinkle") {
           u_vector.insert(u_vector.end(), options->u_eta_slack.begin(),
                           options->u_eta_slack.end());
@@ -338,8 +338,8 @@ struct SamplingC3Options : C3Options {
       options->u_lambda = u_lambda_position_list[num_contacts_index];
       options->u_u = u_u_position;
 
-      // Only for NEXTGEN projection type
-      if (options->projection_type == "NEXTGEN") {
+      // Only applicable for C3+
+      if (options->projection_type == "C3+") {
         options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
         options->g_eta_n = g_eta_n_position_list[num_contacts_index];
         options->g_eta_t = g_eta_t_position_list[num_contacts_index];
@@ -375,8 +375,8 @@ struct SamplingC3Options : C3Options {
       options->u_lambda_t = u_lambda_t_list[num_contacts_index];
       options->u_lambda = u_lambda_list[num_contacts_index];
       options->u_u = u_u;
-      // Only for NEXTGEN projection type
-      if (options->projection_type == "NEXTGEN") {
+
+      if (options->projection_type == "C3+") {
         options->g_eta_slack = g_eta_slack_list[num_contacts_index];
         options->g_eta_n = g_eta_n_list[num_contacts_index];
         options->g_eta_t = g_eta_t_list[num_contacts_index];

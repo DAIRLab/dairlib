@@ -112,11 +112,6 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_c3_options_.contact_model) << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
-  n_z_ = n_x_ + n_lambda_ + n_u_;
-
-  if (sampling_c3_options_.projection_type == "NEXTGEN") {
-    n_z_ += n_lambda_;
-  }
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
@@ -143,7 +138,7 @@ SamplingC3Controller::SamplingC3Controller(
     c3_buffer_plan_ = std::make_unique<C3QP>(
       lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
-  } else if (sampling_c3_options_.projection_type == "NEXTGEN") {
+  } else if (sampling_c3_options_.projection_type == "C3+") {
     c3_curr_plan_ = std::make_unique<C3Plus>(
       lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
@@ -157,7 +152,7 @@ SamplingC3Controller::SamplingC3Controller(
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
-
+  n_z_ = c3_curr_plan_->GetZSize();
 
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
@@ -684,7 +679,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
         test_system, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
-    } else if (c3_options.projection_type == "NEXTGEN") {
+    } else if (c3_options.projection_type == "C3+") {
       test_c3_object = std::make_shared<C3Plus>(
         test_system, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.

@@ -174,7 +174,7 @@ struct C3Options {
       g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
-    if (projection_type == "NEXTGEN") {
+    if (projection_type == "C3+") {
       if (contact_model == "stewart_and_trinkle") {
         g_vector.insert(g_vector.end(), g_eta_slack.begin(), g_eta_slack.end());
         g_vector.insert(g_vector.end(), g_eta_n.begin(), g_eta_n.end());
@@ -194,7 +194,7 @@ struct C3Options {
       u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
-    if (projection_type == "NEXTGEN") {
+    if (projection_type == "C3+") {
       if (contact_model == "stewart_and_trinkle") {
         u_vector.insert(u_vector.end(), u_eta_slack.begin(), u_eta_slack.end());
         u_vector.insert(u_vector.end(), u_eta_n.begin(), u_eta_n.end());

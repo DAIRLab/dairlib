@@ -165,6 +165,8 @@ class BaseC3 {
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
+  int GetZSize() { return z_size_; }
+
  public:
   void UpdateCostMatrices(const BaseC3::CostMatrices& costs);
   virtual void UpdateLCS(const LCS& lcs);

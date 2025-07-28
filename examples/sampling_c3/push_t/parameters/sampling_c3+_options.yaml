@@ -5,7 +5,7 @@ rho_scale: 3
 num_threads: 5
 num_outer_threads: 4
 delta_option: 1
-projection_type: 'NEXTGEN'     # 'MIQP' or 'QP' or 'NEXTGEN'
+projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
 end_on_qp_step: false
@@ -97,7 +97,7 @@ g_eta_list: [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
-# Penalty on matching the QP variables. In nextgen C3, we only match \eta and \lambda
+# Penalty on matching the QP variables. In C3+, we only match \eta and \lambda
 u_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 u_u: [0, 0, 0]
 u_gamma_list: [[1, 1, 1, 1],

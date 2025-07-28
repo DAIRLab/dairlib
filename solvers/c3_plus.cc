@@ -69,18 +69,16 @@ void C3Plus::AddEtaEqualityConstraints() {
 
 void C3Plus::AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
                                     const std::vector<Eigen::VectorXd>& WD) {
-  for (int i = 0; i < N_ + 1; i++) {
-    if (i < N_) {
-      costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(n_, n_, m_, m_),
-          -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
-          lambda_.at(i), 1));
-      costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
-          -2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
-              WD.at(i).segment(n_ + m_ + k_, m_),
-          eta_.at(i), 1));
-    }
+  for (int i = 0; i < N_; i++) {
+    costs_.push_back(prog_.AddQuadraticCost(
+        2 * G.at(i).block(n_, n_, m_, m_),
+        -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
+        lambda_.at(i), 1));
+    costs_.push_back(prog_.AddQuadraticCost(
+        2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
+        -2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
+            WD.at(i).segment(n_ + m_ + k_, m_),
+        eta_.at(i), 1));
   }
 }
 

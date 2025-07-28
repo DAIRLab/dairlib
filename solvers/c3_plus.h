@@ -19,11 +19,12 @@ namespace solvers {
 //
 // In C3+ QP step, we solve the following problem:
 //
-//   min_{x, u, λ, η}   g_x ||x - x_des||² + g_u ||u||² + g_λ ||λ - λ₀||² + g_η ||η - η₀||²
-//   s.t.        x_next = A * x + B * u + D * λ + d
-//               η = E * x + F * λ + H * u + c
-//               u_min ≤ u ≤ u_max
-//               x_min ≤ x ≤ x_max
+//   min_{x, u, λ, η}   g_x ||x - x_des||² + g_u ||u||² + 
+//                               g_λ ||λ - λ₀||² + g_η ||η - η₀||²
+//           s.t.       x_next = A * x + B * u + D * λ + d
+//                      η = E * x + F * λ + H * u + c
+//                      u_min ≤ u ≤ u_max
+//                      x_min ≤ x ≤ x_max
 //
 // In C3+ projection step, we aim to solve the following problem
 //
@@ -62,8 +63,6 @@ class C3Plus final : public BaseC3 {
       const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
       const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
       const int admm_iteration, const int& warm_start_index = -1) override;
-  std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
-  std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
 
  protected:
  private:

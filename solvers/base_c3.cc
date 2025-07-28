@@ -815,9 +815,6 @@ void BaseC3::ExtractQPSolution(
 void BaseC3::UpdateWarmStarts(
     const drake::solvers::MathematicalProgramResult& result,
     int admm_iteration) {
-  std::cout << "Updating warm starts" << std::endl;
-  std::cout << "size of warm_start_x_: " << warm_start_x_.size() << std::endl;
-  std::cout << "admm_iteration: " << admm_iteration << std::endl;
   for (int i = 0; i < N_; i++) {
     warm_start_x_[admm_iteration][i] = result.GetSolution(x_[i]);
     warm_start_lambda_[admm_iteration][i] = result.GetSolution(lambda_[i]);

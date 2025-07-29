@@ -159,7 +159,7 @@ int DoMain(int argc, char* argv[]) {
   // Trajectory generators for end effector position, orientation, and force
   auto end_effector_trajectory =
       builder.AddSystem<systems::EndEffectorTrajectoryGenerator>(
-          controller_config.neutral_position);
+          controller_config.neutral_position, 2000);
   end_effector_trajectory->SetRemoteControlParameters(
       controller_config.neutral_position, controller_config.x_scale,
       controller_config.y_scale, controller_config.z_scale);
@@ -168,7 +168,7 @@ int DoMain(int argc, char* argv[]) {
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_config.track_end_effector_orientation);
   auto end_effector_force_trajectory =
-      builder.AddSystem<systems::EndEffectorForceTrajectoryGenerator>();
+      builder.AddSystem<systems::EndEffectorForceTrajectoryGenerator>(2000);
 
   // Radio input for remote control
   auto radio_sub =

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <drake/systems/framework/leaf_system.h>
 #include <drake/common/trajectories/piecewise_polynomial.h>
+#include <drake/systems/framework/leaf_system.h>
 
 namespace dairlib {
 namespace examples {
@@ -22,7 +22,7 @@ class EndEffectorForceTrajectoryGenerator
   /**
    * @brief Constructor. Declares input/output ports and discrete state.
    */
-  EndEffectorForceTrajectoryGenerator();
+  EndEffectorForceTrajectoryGenerator(int ignore_messages_count = 0);
 
   /**
    * @brief Returns the input port for the force trajectory.
@@ -61,9 +61,14 @@ class EndEffectorForceTrajectoryGenerator
 
   drake::systems::DiscreteStateIndex
       controller_switch_index_;  ///< Index for controller switch state.
+  drake::systems::DiscreteStateIndex
+      messages_processed_index_;  ///< Counter for processed messages.
   drake::systems::InputPortIndex
       trajectory_port_;  ///< Input port index for trajectory.
   drake::systems::InputPortIndex radio_port_;  ///< Input port index for radio.
+
+  int ignore_message_count_;  ///< Number of messages to ignore before applying
+                              ///< trajectories.
 };
 
 }  // namespace systems

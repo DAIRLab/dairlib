@@ -22,7 +22,8 @@ class EndEffectorTrajectoryGenerator
    * @brief Constructor. Declares input/output ports and sets the neutral pose.
    * @param neutral_pose The default position for the end effector.
    */
-  EndEffectorTrajectoryGenerator(const Eigen::Vector3d& neutral_pose);
+  EndEffectorTrajectoryGenerator(const Eigen::Vector3d& neutral_pose,
+                                 int ignore_messages_count = 0);
 
   /**
    * @brief Returns the input port for the position trajectory.
@@ -51,6 +52,12 @@ class EndEffectorTrajectoryGenerator
 
  private:
   /**
+   * @brief Updates the message counter for ignoring initial messages.
+   */
+  drake::systems::EventStatus UpdateMessageCounter(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  /**
    * @brief Calculates the output trajectory based on radio input and trajectory
    * input.
    */
@@ -60,11 +67,15 @@ class EndEffectorTrajectoryGenerator
   drake::systems::InputPortIndex
       trajectory_port_;                        ///< Input port for trajectory.
   drake::systems::InputPortIndex radio_port_;  ///< Input port for radio signal.
+  drake::systems::DiscreteStateIndex
+      messages_processed_index_;  ///< Counter for processed messages.
 
   Eigen::Vector3d neutral_pose_ = {0.55, 0, 0.40};  ///< Default neutral pose.
-  double x_scale_;  ///< Scaling for x remote input.
-  double y_scale_;  ///< Scaling for y remote input.
-  double z_scale_;  ///< Scaling for z remote input.
+  int ignore_message_count_;  ///< Number of messages to ignore before applying
+                              ///< trajectory.
+  double x_scale_;            ///< Scaling for x remote input.
+  double y_scale_;            ///< Scaling for y remote input.
+  double z_scale_;            ///< Scaling for z remote input.
 };
 
 }  // namespace systems

@@ -173,6 +173,7 @@ u_eta_n: []
 u_eta_t: []
 u_eta: []
 
+# Only applicable for C3+
 g_eta_slack_list: []
 g_eta_n_list: []
 g_eta_t_list: []

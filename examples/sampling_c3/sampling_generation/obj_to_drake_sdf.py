@@ -5,7 +5,7 @@ import os
 import trimesh
 from lxml import etree as ET
 
-def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=100000, max_hulls=10):
+def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=100000, max_hulls=10, j=0):
     # Normalize input paths
     obj_file = os.path.abspath(obj_file)
     if output_dir is None:
@@ -22,7 +22,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     # Load mesh
     mesh = trimesh.load(obj_file, force="mesh", skip_materials=True)
     mesh.density = density
-    mass = mesh.mass
+    mass = mesh.mass 
     inertia = mesh.moment_inertia
 
     # Perform convex decomposition
@@ -52,7 +52,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     link = ET.SubElement(model, 'link', name="body")
 
     # Inertia 
-    ratio = 1 / mass
+    ratio = 0.2 / mass
 
     inertial = ET.SubElement(link, "inertial")
     ET.SubElement(inertial, "pose").text = "0 0 0 0 0 0"
@@ -69,6 +69,9 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     for i, convex_path in enumerate(convex_paths):
         convex_obj = os.path.basename(convex_path)
 
+        color = str((50 * (j + 1)) % 256 / 255.0) + " " + str((100 * (j + 1)) % 256 / 255.0) + " " + str((150 * (j + 1)) % 256 / 255.0) + " 1" 
+        print(color) 
+
         # Visual
         visual = ET.SubElement(link, "visual", name=f"convex_{i}")
         ET.SubElement(visual, "pose").text = "0 0 0 0 0 0"
@@ -76,7 +79,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
         mesh_elem = ET.SubElement(geometry, "mesh")
         ET.SubElement(mesh_elem, "uri").text = convex_obj
         material = ET.SubElement(visual, "material")
-        ET.SubElement(material, "diffuse").text = "0 0 0 1"
+        ET.SubElement(material, "diffuse").text = color
 
         # Collision
         collision = ET.SubElement(link, "collision", name=f"convex_{i}_volume")

@@ -10,14 +10,7 @@
           <iyy>0.0037840417</iyy>
           <izz>0.0047966779</izz>
           <ixy>-0.00012738992</ixy>
-          <ixz>-1.6760722e-05</ixz>
-          <iyz>-5.6722423e-06</iyz>
-        </inertia>
-      </inertial>
-      <visual name="convex_0">
-        <pose>0 0 0 0 0 0</pose>
-        <geometry>
-          <mesh>
+          <ixz>-1.6760722e-05</ixz>mu
             <uri>repaired_coarse_convex_0.obj</uri>
           </mesh>
         </geometry>

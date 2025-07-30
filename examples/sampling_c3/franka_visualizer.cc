@@ -602,7 +602,7 @@ int do_main(int argc, char* argv[]) {
   simulator->Initialize();
 
   drake::log()->info("visualizer started");
-    std::cout << "Before simulator" << std::endl;
+  std::cout << "Before simulator" << std::endl;
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;

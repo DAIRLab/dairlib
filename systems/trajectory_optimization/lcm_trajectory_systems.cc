@@ -77,6 +77,7 @@ void LcmTrajectoryReceiver::OutputTrajectory(
 LcmOrientationTrajectoryReceiver::LcmOrientationTrajectoryReceiver(
     std::string trajectory_name)
     : trajectory_name_(std::move(trajectory_name)) {
+  std::cout << "trajectory_name: " << trajectory_name_ << std::endl;
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -112,6 +113,7 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
       throw std::out_of_range("");
     }
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
+    //std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {

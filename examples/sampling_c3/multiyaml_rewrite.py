@@ -58,7 +58,8 @@ def process_base(
     goal_yaml_path: str,
     sampling_yaml_path: str,
     repos_yaml_path: str,
-    samp_c3_options_yaml_path: str
+    samp_c3_options_yaml_path: str,
+    index: int
 ):
     print(f"\n🚀 Processing object: {base_name}")
     output_dir = os.path.join(urdf_dir, base_name)
@@ -67,17 +68,22 @@ def process_base(
     obj_file = os.path.join(urdf_dir, f"{base_name}.obj")
     coarse_path, is_coarse = coarsify_obj(obj_file)
 
-    # Copy original OBJ to output directory
-    os.system(f"cp {obj_file} {output_dir}/")
-    print(f"📦 Copied {obj_file} → {output_dir}/")
+
 
     # Create SDF file paths
     coarse_suffix = "_coarse" if is_coarse else ""
     controller_sdf_path = os.path.join(output_dir, f"{base_name}{coarse_suffix}_controller.sdf")
     combined_sdf_path = os.path.join(output_dir, f"{base_name}{coarse_suffix}.sdf")
 
+    # Copy original OBJ to output directory
+    if (is_coarse):
+         obj_file = os.path.join(urdf_dir, f"{base_name}_coarse.obj")
+
+    os.system(f"cp {obj_file} {output_dir}/")
+    print(f"📦 Copied {obj_file} → {output_dir}/")
+
     # Generate SDFs
-    obj_to_drake_sdf(coarse_path, output_dir)
+    obj_to_drake_sdf(coarse_path, output_dir, j=index)
     make_sdf(coarse_path, controller_sdf_path)
 
     # Get min/max z-heights
@@ -85,7 +91,7 @@ def process_base(
     max_z = get_max_z_from_obj(coarse_path)
     print(f"✅ {base_name} → min_z={min_z:.6f}, max_z={max_z:.6f}")
 
-    index = base_names.index(base_name)
+    #index = base_names.index(base_name)
 
     # --- YAML Updates ---
     # 1. Update controller YAML
@@ -128,7 +134,7 @@ def process_base(
 
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
-    OBJECT_POSITION = [200, 200, 120]
+    OBJECT_POSITION = [300, 300, 120]
     EE_LINEAR_VELOCITY = [5, 5, 5]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
@@ -228,7 +234,7 @@ if __name__ == "__main__":
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
     #sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
-    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.27 + (0.25 * i), 0.0] for i in range(num_objects)]
+    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
 
     max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
@@ -239,11 +245,11 @@ if __name__ == "__main__":
         z_height[i] = -0.029 - min_zs[i]
 
     #goal_yaml["fixed_target_positions"] = [[0.45, 0.18745379 + (-0.4 * i), z_height[i]] for i in range(num_objects)]
-    goal_yaml["fixed_target_positions"] = [[0.38 + (0.1*i), 0 + (0.3 * i), z_height[i]] for i in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.45, 0.25 + (-0.5 * i), z_height[i]] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
-    print(z_height)
-    goal_yaml["resting_object_heights"] = z_height
+    print("z_height:", z_height, type(z_height))
+    goal_yaml["resting_object_heights"] = z_height.copy()
 
     
 
@@ -262,9 +268,6 @@ if __name__ == "__main__":
     sampling_yaml['z_height'] = max(-0.006, (-0.029 + min_max_z) / 2)
     
 
-
-
-
     # Save pre-sized YAMLs
     save_yaml(controller_yaml_path, controller_yaml)
     save_yaml(vis_yaml_path, vis_yaml)
@@ -275,12 +278,12 @@ if __name__ == "__main__":
     save_yaml(sampling_yaml_path, sampling_yaml)
 
     # Process all objects
-    for base_name in base_names:
+    for i in range(len(base_names)):
         process_base(
-            base_name, urdf_dir,
+            base_names[i], urdf_dir,
             controller_yaml_path, vis_yaml_path, sim_yaml_path,
             goal_yaml_path, sampling_yaml_path, repos_yaml_path,
-            samp_c3_options_yaml_path
+            samp_c3_options_yaml_path, i
         )
 
     print("🎉 All objects processed successfully.")

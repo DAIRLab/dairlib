@@ -1343,6 +1343,19 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   c3_execution_lcm_traj_.ClearTrajectories();
   c3_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
+  // Add ee orientation target
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(3, N_ + 1); 
+
+  LcmTrajectory::Trajectory ee_orientation_traj;
+  ee_orientation_traj.traj_name = "end_effector_orientation_target";
+  ee_orientation_traj.datatypes =  std::vector<std::string>(ee_orientations.rows(), "double"); // quaternion
+  ee_orientation_traj.datapoints = ee_orientations;
+  ee_orientation_traj.time_vector = timestamps.cast<double>();
+  std::cout << ee_orientation_traj.time_vector.size() << std::endl;
+
+  c3_execution_lcm_traj_.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+
+
   // Add end effector force target to LCM Trajectory.
   // In c3 mode, the end effector forces should match the solved c3 inputs.
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
@@ -1403,6 +1416,19 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   ee_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.ClearTrajectories();
   repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
+
+
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(3, N_);
+
+  LcmTrajectory::Trajectory ee_orientation_traj;
+  ee_orientation_traj.traj_name = "end_effector_orientation_target";
+  ee_orientation_traj.datatypes =  std::vector<std::string>(ee_orientations.rows(), "double"); // quaternion
+  ee_orientation_traj.datapoints = ee_orientations;
+  ee_orientation_traj.time_vector = timestamps.cast<double>();
+  std::cout << ee_orientation_traj.time_vector.size() << std::endl;
+
+  repos_execution_lcm_traj_.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+
 
   // In repositioning mode, the end effector should not exert forces.
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
@@ -2129,6 +2155,11 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
+  LcmTrajectory::Trajectory ee_orientation_traj = 
+    repos_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
+  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+
+                     
   LcmTrajectory::Trajectory force_traj =
     repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
@@ -2154,6 +2185,10 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
+
+  LcmTrajectory::Trajectory ee_orientation_traj =
+    execution_lcm_traj.GetTrajectory("end_effector_orientation_target");
+  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
 
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
   LcmTrajectory::Trajectory force_traj =
@@ -2213,11 +2248,6 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   LcmTrajectory::Trajectory ee_traj;
   Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, N_ + 1);
   position_samples = knots.bottomRows(3);
-  ee_traj.traj_name = "ee_position_target";
-  ee_traj.datatypes =
-    std::vector<std::string>(position_samples.rows(), "double");
-  ee_traj.datapoints = position_samples;
-  ee_traj.time_vector = timestamps.cast<double>();
 
   LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
                             "ee_position_target", "ee_position_target", false);

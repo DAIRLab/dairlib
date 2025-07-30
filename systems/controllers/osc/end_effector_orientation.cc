@@ -1,5 +1,5 @@
 #include "end_effector_orientation.h"
-
+#include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 
 using drake::systems::BasicVector;
@@ -37,13 +37,16 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     context, radio_port_);
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
       PiecewiseQuaternionSlerp<double>*>(traj);
-  if (radio_out->channel[14] and track_orientation_) {
+  //if (radio_out->channel[14] and track_orientation_) {  TODO: Figure out why teleop tracks end effector orientation
+  if (track_orientation_) {
+    std::cout << "track" << std::endl;
     const auto& trajectory_input =
         this->EvalAbstractInput(context, trajectory_port_)
             ->get_value<drake::trajectories::Trajectory<double>>();
     *casted_traj = *(PiecewiseQuaternionSlerp<double>*)dynamic_cast<
         const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
   } else {
+    std::cout << "no track" << std::endl;
     PiecewiseQuaternionSlerp<double> result;
     Eigen::VectorXd neutral_quaternion = VectorXd::Zero(4);
     neutral_quaternion(0) = 1;

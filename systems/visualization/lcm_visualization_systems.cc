@@ -615,7 +615,7 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
     (50 * (i + 1)) % 256 / 255.0,
     (100 * (i + 1)) % 256 / 255.0,
     (150 * (i + 1)) % 256 / 255.0,
-    1.0);
+    0.3);
     meshcat_->SetObject(c3_final_target_object_paths_.at(i) + "/x-axis", cylinder_for_tray_,
                         color);
     meshcat_->SetObject(c3_final_target_object_paths_.at(i) + "/y-axis", cylinder_for_tray_,

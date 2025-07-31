@@ -415,6 +415,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_pred_curr_plan_;
   mutable Eigen::VectorXd x_from_last_control_loop_;
   mutable Eigen::VectorXd x_pred_from_last_control_loop_;
+  mutable Eigen::Vector3d ee_position_curr_; 
 
   // C3 solution for current location.
   mutable std::shared_ptr<solvers::C3> c3_curr_plan_;

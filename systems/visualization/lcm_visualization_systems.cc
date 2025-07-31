@@ -53,7 +53,9 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+
   const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
+
   MatrixXd line_points = MatrixXd::Zero(3, N_);
   VectorXd breaks =
       VectorXd::LinSpaced(N_, trajectory_block.time_vector[0],
@@ -126,7 +128,6 @@ LcmPoseDrawer::LcmPoseDrawer(
       orientation_trajectory_names_(orientation_trajectory_names),
       N_(num_poses) {
   this->set_name("LcmPoseDrawer: " + system_name + translation_trajectory_names.at(0));
-  std::cout << "translation_trajectory_names_ size: " << translation_trajectory_names_.size() << std::endl;
 
   Eigen::VectorXd alpha_scale;
   if (add_transparency) {
@@ -166,6 +167,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
+
+
   auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
       lcm_translation_traj.time_vector,
       lcm_translation_traj.datapoints.topRows(3),
@@ -191,7 +194,6 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         CopyVectorXdToStdVector(lcm_orientation_traj.time_vector),
         quaternion_datapoints);
   }
-
   // ASSUMING orientation and translation trajectories have the same breaks.
   // This recreates the trajectory using the knot points and then evaluates the
   // trajectory at equal intervals based on the parameters. If the num_poses is
@@ -205,6 +207,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         translation_breaks(i)),
         translation_trajectory.value(translation_breaks(i));
   }
+
 
   multipose_visualizers_.at(0)->DrawPoses(object_poses);
 

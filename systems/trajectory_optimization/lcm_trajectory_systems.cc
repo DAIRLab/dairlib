@@ -116,10 +116,11 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
     //std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
+    std::cout << "traj data: " << trajectory_block.datapoints << std::endl;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {
+      Eigen::Vector4d quat_vec = trajectory_block.datapoints.col(i);
       quaternion_datapoints.push_back(
-          drake::math::RollPitchYaw<double>(trajectory_block.datapoints.col(i))
-              .ToQuaternion());
+        Eigen::Quaterniond(quat_vec(0), quat_vec(1), quat_vec(2), quat_vec(3)));
     }
     *casted_traj = PiecewiseQuaternionSlerp(
         CopyVectorXdToStdVector(trajectory_block.time_vector),

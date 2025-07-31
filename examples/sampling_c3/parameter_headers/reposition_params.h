@@ -46,6 +46,8 @@ struct SamplingC3RepositionParams {
   /// Piecewise-linear-specific parameters.
   double pwl_waypoint_height;
 
+  double max_tilt_angle; // angle of ee tilt in degrees
+
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, traj_type);
@@ -58,5 +60,6 @@ struct SamplingC3RepositionParams {
     a->Visit(DRAKE_NVP(circle_radius));
     a->Visit(DRAKE_NVP(circle_height));
     a->Visit(DRAKE_NVP(pwl_waypoint_height));
+    a->Visit(DRAKE_NVP(max_tilt_angle));    
   }
 };

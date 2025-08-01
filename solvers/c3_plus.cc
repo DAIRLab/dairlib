@@ -16,9 +16,8 @@ using std::vector;
 
 C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3Base(LCS, costs, xdesired, options, [](const class LCS& lcs) {
-        return (lcs.A_)[0].cols() + 2 * (lcs.D_)[0].cols() + (lcs.B_)[0].cols();
-      }) {
+    : C3Base(LCS, costs, xdesired, options,
+             LCS.A_[0].cols() + 2 * LCS.D_[0].cols() + LCS.B_[0].cols()) {
   // Initialize eta as optimization variables
   eta_ = vector<drake::solvers::VectorXDecisionVariable>();
   eta_sol_ = std::make_unique<std::vector<VectorXd>>();

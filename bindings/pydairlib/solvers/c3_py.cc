@@ -102,8 +102,6 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("warm_start", &C3Options::warm_start)
       .def_readwrite("use_predicted_x0", &C3Options::use_predicted_x0)
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
-      .def_readwrite("use_robust_formulation",
-                     &C3Options::use_robust_formulation)
       .def_readwrite("solve_time_filter_alpha",
                      &C3Options::solve_time_filter_alpha)
       .def_readwrite("publish_frequency", &C3Options::publish_frequency)

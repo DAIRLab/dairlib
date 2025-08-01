@@ -19,39 +19,15 @@ C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
     : C3Base(LCS, costs, xdesired, options, [](const class LCS& lcs) {
         return (lcs.A_)[0].cols() + 2 * (lcs.D_)[0].cols() + (lcs.B_)[0].cols();
       }) {
-  InitializeEtaAsOptimizationVariables();
-  AddEtaEqualityConstraints();
-
-  // Disable parallelization for C3+ because of the overhead cost
-  use_parallelization_in_projection_ = false;
-}
-
-void C3Plus::UpdateLCS(const LCS& lcs) {
-  C3Base::UpdateLCS(lcs);
-  UpdateEtaConstraints();
-}
-
-void C3Plus::UpdateEtaConstraints() {
-  MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
-  EtaLinEq.block(0, n_ + m_ + k_, m_, m_) = -1 * MatrixXd::Identity(m_, m_);
-  for (int i = 0; i < N_; ++i) {
-    EtaLinEq.block(0, 0, m_, n_) = E_.at(i);
-    EtaLinEq.block(0, n_, m_, m_) = F_.at(i);
-    EtaLinEq.block(0, n_ + m_, m_, k_) = H_.at(i);
-    eta_constraints_[i]->UpdateCoefficients(EtaLinEq, -c_.at(i));
-  }
-}
-
-void C3Plus::InitializeEtaAsOptimizationVariables() {
+  // Initialize eta as optimization variables
   eta_ = vector<drake::solvers::VectorXDecisionVariable>();
   eta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
     eta_sol_->push_back(Eigen::VectorXd::Zero(m_));
     eta_.push_back(prog_.NewContinuousVariables(m_, "eta" + std::to_string(i)));
   }
-}
 
-void C3Plus::AddEtaEqualityConstraints() {
+  // Add eta equality constraints η = E * x + F * λ + H * u + c
   MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
   EtaLinEq.block(0, n_ + m_ + k_, m_, m_) = -1 * MatrixXd::Identity(m_, m_);
   eta_constraints_.resize(N_);
@@ -68,10 +44,27 @@ void C3Plus::AddEtaEqualityConstraints() {
             .evaluator()
             .get();
   }
+
+  // Disable parallelization for C3+ because of the overhead cost
+  use_parallelization_in_projection_ = false;
 }
 
-void C3Plus::AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
-                                    const std::vector<Eigen::VectorXd>& WD) {
+void C3Plus::UpdateLCS(const LCS& lcs) {
+  C3Base::UpdateLCS(lcs);
+
+  // Update eta equality constraints with new LCS
+  MatrixXd EtaLinEq(m_, n_ + 2 * m_ + k_);
+  EtaLinEq.block(0, n_ + m_ + k_, m_, m_) = -1 * MatrixXd::Identity(m_, m_);
+  for (int i = 0; i < N_; ++i) {
+    EtaLinEq.block(0, 0, m_, n_) = E_.at(i);
+    EtaLinEq.block(0, n_, m_, m_) = F_.at(i);
+    EtaLinEq.block(0, n_ + m_, m_, k_) = H_.at(i);
+    eta_constraints_[i]->UpdateCoefficients(EtaLinEq, -c_.at(i));
+  }
+}
+
+void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
+                                     const std::vector<Eigen::VectorXd>& WD) {
   for (int i = 0; i < N_; i++) {
     costs_.push_back(prog_.AddQuadraticCost(
         2 * G.at(i).block(n_, n_, m_, m_),
@@ -142,15 +135,6 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
   }
 
   return delta_proj;
-}
-
-VectorXd C3Plus::SolveRobustSingleProjection(
-    const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E,
-    const MatrixXd& F, const MatrixXd& H, const VectorXd& c,
-    const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
-    const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
-    const int admm_iteration, const int& warm_start_index) {
-  return delta_c;
 }
 }  // namespace solvers
 }  // namespace dairlib

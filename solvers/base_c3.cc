@@ -721,35 +721,8 @@ void C3Base::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 }
 
-void C3Base::ClearConstraintsQPStep() {
-  for (auto& constraint : constraints_) {
-    prog_.RemoveConstraint(constraint);
-  }
-  constraints_.clear();
-}
-
-void C3Base::AddInitialStateConstraintQPStep(const Eigen::VectorXd& x0) {
-  constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
-}
-
-void C3Base::SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0) {
-  if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
-    VectorXd lambda0;
-    LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
-    constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
-  }
-}
-
-void C3Base::ClearCostsQPStep() {
-  for (auto& cost : costs_) {
-    prog_.RemoveCost(cost);
-  }
-  costs_.clear();
-}
-
-void C3Base::AddMatchingCostsQPStep(const vector<MatrixXd>& G,
-                                    const vector<VectorXd>& WD) {
+void C3Base::AddAugmentedCostsQPStep(const vector<MatrixXd>& G,
+                                     const vector<VectorXd>& WD) {
   for (int i = 0; i < N_; i++) {
     costs_.push_back(prog_.AddQuadraticCost(
         2 * G.at(i).block(n_, n_, m_, m_),
@@ -817,12 +790,30 @@ void C3Base::UpdateWarmStarts(
 vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                                  const vector<VectorXd>& WD, int admm_iteration,
                                  bool is_final_solve) {
-  ClearConstraintsQPStep();
-  AddInitialStateConstraintQPStep(x0);
-  SolvePassiveLCPIfApplicable(x0);
+  // Remove initial state and initial force constraint from previous solve
+  for (auto& constraint : constraints_) {
+    prog_.RemoveConstraint(constraint);
+  }
+  constraints_.clear();
 
-  ClearCostsQPStep();
-  AddMatchingCostsQPStep(G, WD);
+  // Add initial state constraint
+  constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
+
+  // H matrix does not depend on u, so just simulate passive system
+  if (h_is_zero_ == 1) {
+    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    VectorXd lambda0;
+    LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
+    constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
+  }
+
+  // Remove augmented costs from previous solve
+  for (auto& cost : costs_) {
+    prog_.RemoveCost(cost);
+  }
+  costs_.clear();
+
+  AddAugmentedCostsQPStep(G, WD);
 
   SetInitialGuessQPStep(x0, admm_iteration);
   MathematicalProgramResult result = osqp_.Solve(prog_);
@@ -856,40 +847,19 @@ vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
 #pragma omp parallel for num_threads( \
         options_.num_threads) if (use_parallelization_in_projection_)
   for (i = 0; i < N_; i++) {
-    if (options_.use_robust_formulation &&
-        admm_iteration ==
-            (options_.admm_iter - 1)) {  // only on the last iteration
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveRobustSingleProjection(
-              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveRobustSingleProjection(
-              U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-              admm_iteration, i + 1);
-        }
-      } else {
-        deltaProj[i] = SolveRobustSingleProjection(
-            U[i], WZ[i], E_[i], F_[i], H_[i], c_[i], W_x_, W_l_, W_u_, w_,
-            admm_iteration, -1);
-      }
-    } else {
-      if (warm_start_) {
-        if (i == N_ - 1) {
-          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, -1);
-        } else {
-          deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
-                                               c_[i], admm_iteration, i + 1);
-        }
-      } else {
+    if (warm_start_) {
+      if (i == N_ - 1) {
         deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
                                              c_[i], admm_iteration, -1);
+      } else {
+        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, i + 1);
       }
+    } else {
+      deltaProj[i] = SolveSingleProjection(U[i], WZ[i], E_[i], F_[i], H_[i],
+                                           c_[i], admm_iteration, -1);
     }
   }
-
   return deltaProj;
 }
 

@@ -51,9 +51,11 @@ max_sampling_radius: 0.10
 # kMeshNormal parameters
 buffer_distance: 0.05
 max_attempts: 100
-barycentric_bias: 0.6 # Values from 0 to infinity, <1 biases towards the vertices, 
+barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: 0.023
+z_height: -0.006
+gen_planar_samples: false # true = projects all samples to z_height
+ee_z_close: false # true = require ee to be close to sampling z-height before entering c3
 c3_min_clearance: 0.01
 # This ^ will be overwritten by generating new files.

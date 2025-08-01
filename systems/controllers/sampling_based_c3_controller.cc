@@ -946,7 +946,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
-       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance))
+       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance ||
+         !sampling_params_.ee_z_close))
     {
 
       is_doing_c3_ = true;
@@ -1359,12 +1360,17 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
   double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
-
   direction.normalize();
 
   Eigen::AngleAxisd angle_axis(theta, direction);
@@ -1457,7 +1463,13 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
@@ -1468,6 +1480,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   Eigen::AngleAxisd angle_axis(theta, direction);
   Eigen::Quaterniond q_rotated(angle_axis);
   Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(), q_rotated.z());
+
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
@@ -1847,7 +1860,13 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
@@ -2076,7 +2095,13 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
@@ -2397,7 +2422,13 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
@@ -2408,6 +2439,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   Eigen::AngleAxisd angle_axis(theta, direction);
   Eigen::Quaterniond q_rotated(angle_axis);
   Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(), q_rotated.z());
+
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
@@ -2543,7 +2575,15 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
+  
+  Eigen::Matrix3d rot;
+  rot << 0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1;
+  
   direction[2] = 0;
+  
+  direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
@@ -2554,6 +2594,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
   Eigen::AngleAxisd angle_axis(theta, direction);
   Eigen::Quaterniond q_rotated(angle_axis);
   Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(), q_rotated.z());
+
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;

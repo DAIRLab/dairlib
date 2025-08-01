@@ -71,6 +71,8 @@ struct SamplingParams {
   double barycentric_bias;
 
   double z_height;
+  bool ee_z_close;
+  bool gen_planar_samples;
   double c3_min_clearance;
 
 
@@ -100,5 +102,8 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(barycentric_bias));
     a->Visit(DRAKE_NVP(z_height));
     a->Visit(DRAKE_NVP(c3_min_clearance));
+    a->Visit(DRAKE_NVP(ee_z_close));
+    a->Visit(DRAKE_NVP(gen_planar_samples));
+
   }
 };

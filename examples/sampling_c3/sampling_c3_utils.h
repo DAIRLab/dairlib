@@ -44,12 +44,12 @@ static void SetWallOffsets(SamplingC3Options sampling_c3_options) {
   double width = sampling_c3_options.workspace_limits[1][4] - sampling_c3_options.workspace_limits[1][3];
 
   kLeftWallToGroundOffset[0] = -0.5 * length;
-  kLeftWallToGroundOffset[1] = 0.5 * width;
+  kLeftWallToGroundOffset[1] = 0.5 * width + 0.05; // account for width of wall
   
   kRightWallToGroundOffset[0] = -0.5 * length;
-  kRightWallToGroundOffset[1] = -0.5 * width;
+  kRightWallToGroundOffset[1] = -0.5 * width - 0.05;
 
-  kFrontWallToGroundOffset[0] = -length;
+  kFrontWallToGroundOffset[0] = -length - 0.05;
 } 
 
 /// Add the Franka to a given multibody plant and scene graph.

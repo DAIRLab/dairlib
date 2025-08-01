@@ -607,7 +607,14 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         
 
         Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * transformed_face.normal;
-        // projected_sample_point[2] = z_height;
+        if (sampling_params.gen_planar_samples) {
+          projected_sample_point[2] = z_height;
+        } else {
+          if (projected_sample_point[2] < -0.009) { // require ee radius clearance
+            projected_sample_point[2] = -0.009;
+          }
+        }
+
 
         Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
         candidate_state.segment(0, 3) = projected_sample_point; // EE position

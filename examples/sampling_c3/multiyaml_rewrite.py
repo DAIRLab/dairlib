@@ -374,18 +374,18 @@ if __name__ == "__main__":
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
     #sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
-    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
+    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.37, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
 
     max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
     min_zs = [get_min_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
-
-    z_height = min_zs
+    print(min_zs)
+    z_height = min_zs.copy()
     for i in range(len(min_zs)):
         z_height[i] = -0.029 - min_zs[i]
 
     #goal_yaml["fixed_target_positions"] = [[0.45, 0.18745379 + (-0.4 * i), z_height[i]] for i in range(num_objects)]
-    goal_yaml["fixed_target_positions"] = [[0.45, 0.25 + (-0.5 * i), z_height[i]] for i in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.45, 0.15 + (-0.3 * i), z_height[i]] for i in range(num_objects)]
     goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
 
     print("z_height:", z_height, type(z_height))
@@ -395,7 +395,11 @@ if __name__ == "__main__":
 
 
     max_z = max(max_zs)
-    repos_yaml['pwl_waypoint_height'] = float(-0.029 + max_z + 0.05)
+    min_z = min(min_zs)
+    print(max_z)
+    print(min_z)
+    print(max_z - min_z)
+    repos_yaml['pwl_waypoint_height'] = float(-0.029 + (max_z - min_z) + 0.05)
     
     heights = min_zs
     max_zs_world = heights

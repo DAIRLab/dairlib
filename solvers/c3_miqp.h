@@ -11,7 +11,7 @@
 namespace dairlib {
 namespace solvers {
 
-class C3MIQP final : public BaseC3 {
+class C3MIQP final : public C3Base {
  public:
   /// Default constructor for time-varying LCS
   C3MIQP(const LCS& LCS, const CostMatrices& costs,

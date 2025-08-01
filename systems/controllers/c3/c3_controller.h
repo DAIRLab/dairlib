@@ -87,7 +87,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_u_;
   double dt_;
 
-  mutable std::unique_ptr<solvers::BaseC3> c3_;
+  mutable std::unique_ptr<solvers::C3Base> c3_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;

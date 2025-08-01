@@ -64,13 +64,13 @@ PYBIND11_MODULE(c3, m) {
         .value("kAnitescu", Enum::kAnitescu);
   }
 
-  py::class_<dairlib::solvers::BaseC3::CostMatrices>(m, "CostMatrices")
+  py::class_<dairlib::solvers::C3Base::CostMatrices>(m, "CostMatrices")
       .def(py::init<const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&>(),
            arg("Q"), arg("R"), arg("G"), arg("U"));
 
   py::class_<dairlib::solvers::C3MIQP>(m, "C3MIQP")
-      .def(py::init<const LCS&, const dairlib::solvers::BaseC3::CostMatrices&,
+      .def(py::init<const LCS&, const dairlib::solvers::C3Base::CostMatrices&,
                     const vector<VectorXd>&, const C3Options&>(),
            arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
       .def("Solve", &C3MIQP::Solve, arg("x0"), arg("verbose") = false)

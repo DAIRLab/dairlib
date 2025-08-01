@@ -29,7 +29,7 @@ using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
 
-BaseC3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
+C3Base::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                                    const std::vector<Eigen::MatrixXd>& R,
                                    const std::vector<Eigen::MatrixXd>& G,
                                    const std::vector<Eigen::MatrixXd>& U) {
@@ -39,7 +39,7 @@ BaseC3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-BaseC3::BaseC3(const LCS& lcs, const BaseC3::CostMatrices& costs,
+C3Base::C3Base(const LCS& lcs, const C3Base::CostMatrices& costs,
                const vector<VectorXd>& x_des, const C3Options& options,
                CalcZSizeFunc calc_z_size)
     : warm_start_(options.warm_start),
@@ -75,7 +75,7 @@ BaseC3::BaseC3(const LCS& lcs, const BaseC3::CostMatrices& costs,
   InitializeStateAndInputCosts();
 }
 
-void BaseC3::ScaleLCS() {
+void C3Base::ScaleLCS() {
   DRAKE_DEMAND(lcs_.D_.at(0).norm() > 0);
   auto Dn = lcs_.D_.at(0).norm();
   auto An = lcs_.A_.at(0).norm();
@@ -88,7 +88,7 @@ void BaseC3::ScaleLCS() {
   }
 }
 
-void BaseC3::InitializeWarmStarts() {
+void C3Base::InitializeWarmStarts() {
   warm_start_delta_.resize(options_.admm_iter + 1);
   warm_start_binary_.resize(options_.admm_iter + 1);
   warm_start_x_.resize(options_.admm_iter + 1);
@@ -118,7 +118,7 @@ void BaseC3::InitializeWarmStarts() {
   }
 }
 
-void BaseC3::InitializeOptimizationVariables() {
+void C3Base::InitializeOptimizationVariables() {
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -149,7 +149,7 @@ void BaseC3::InitializeOptimizationVariables() {
   }
 }
 
-void BaseC3::InitializeDynamicsConstraints() {
+void C3Base::InitializeDynamicsConstraints() {
   MatrixXd LinEq(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
   dynamics_constraints_.resize(N_);
@@ -168,7 +168,7 @@ void BaseC3::InitializeDynamicsConstraints() {
   }
 }
 
-void BaseC3::InitializeStateAndInputCosts() {
+void C3Base::InitializeStateAndInputCosts() {
   target_cost_.resize(N_ + 1);
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
@@ -186,7 +186,7 @@ void BaseC3::InitializeStateAndInputCosts() {
   }
 }
 
-void BaseC3::UpdateCostMatrices(const BaseC3::CostMatrices& costs) {
+void C3Base::UpdateCostMatrices(const C3Base::CostMatrices& costs) {
   DRAKE_DEMAND(costs.Q.size() == N_ + 1);
   DRAKE_DEMAND(costs.R.size() == N_);
   DRAKE_DEMAND(costs.U.size() == N_);
@@ -205,7 +205,7 @@ void BaseC3::UpdateCostMatrices(const BaseC3::CostMatrices& costs) {
   G_ = costs.G;
 }
 
-void BaseC3::UpdateLCS(const LCS& lcs) {
+void C3Base::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.A_.size() == N_);
   DRAKE_DEMAND(lcs.A_[0].rows() == n_);
   DRAKE_DEMAND(lcs.A_[0].cols() == n_);
@@ -232,7 +232,7 @@ void BaseC3::UpdateLCS(const LCS& lcs) {
   UpdateDynamicsConstraints();
 }
 
-void BaseC3::UpdateDynamicsConstraints() {
+void C3Base::UpdateDynamicsConstraints() {
   MatrixXd LinEq = MatrixXd::Zero(n_, n_ + n_ + m_ + k_);
   LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
 
@@ -244,7 +244,7 @@ void BaseC3::UpdateDynamicsConstraints() {
   }
 }
 
-void BaseC3::UpdateCostLCS(const LCS& lcs_for_cost) {
+void C3Base::UpdateCostLCS(const LCS& lcs_for_cost) {
   DRAKE_DEMAND(lcs_for_cost.A_.size() == N_);
   DRAKE_DEMAND(lcs_for_cost.A_[0].rows() == n_);
   DRAKE_DEMAND(lcs_for_cost.A_[0].cols() == n_);
@@ -257,7 +257,7 @@ void BaseC3::UpdateCostLCS(const LCS& lcs_for_cost) {
   }
 }
 
-void BaseC3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
+void C3Base::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i]->UpdateCoefficients(2 * Q_.at(i),
@@ -265,7 +265,7 @@ void BaseC3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-void BaseC3::Solve(const VectorXd& x0, bool verbose) {
+void C3Base::Solve(const VectorXd& x0, bool verbose) {
   auto start = std::chrono::high_resolution_clock::now();
 
   VectorXd delta_init = VectorXd::Zero(z_size_);
@@ -348,7 +348,7 @@ void BaseC3::Solve(const VectorXd& x0, bool verbose) {
 }
 
 // This function relies on the previously computed zfin_ from Solve.
-std::pair<double, std::vector<Eigen::VectorXd>> BaseC3::CalcCost(
+std::pair<double, std::vector<Eigen::VectorXd>> C3Base::CalcCost(
     C3CostComputationType cost_type, double Kp_for_ee_pd_rollout,
     double Kd_for_ee_pd_rollout, bool force_tracking_disabled,
     bool print_cost_breakdown, bool verbose) const {
@@ -621,7 +621,7 @@ std::pair<double, std::vector<Eigen::VectorXd>> BaseC3::CalcCost(
 }
 
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-BaseC3::SimulatePDControl(double Kp_for_ee_pd_rollout,
+C3Base::SimulatePDControl(double Kp_for_ee_pd_rollout,
                           double Kd_for_ee_pd_rollout,
                           bool force_tracking_disabled, bool verbose) const {
   if (verbose) {
@@ -675,7 +675,7 @@ BaseC3::SimulatePDControl(double Kp_for_ee_pd_rollout,
   return {XX_new, UU_new};
 }
 
-void BaseC3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
+void C3Base::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
                       vector<VectorXd>* w, vector<MatrixXd>* Gv,
                       int admm_iteration, bool verbose) {
   vector<VectorXd> WD(N_, VectorXd::Zero(z_size_));
@@ -721,18 +721,18 @@ void BaseC3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 }
 
-void BaseC3::ClearConstraintsQPStep() {
+void C3Base::ClearConstraintsQPStep() {
   for (auto& constraint : constraints_) {
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
 }
 
-void BaseC3::AddInitialStateConstraintQPStep(const Eigen::VectorXd& x0) {
+void C3Base::AddInitialStateConstraintQPStep(const Eigen::VectorXd& x0) {
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 }
 
-void BaseC3::SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0) {
+void C3Base::SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0) {
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
@@ -741,14 +741,14 @@ void BaseC3::SolvePassiveLCPIfApplicable(const Eigen::VectorXd& x0) {
   }
 }
 
-void BaseC3::ClearCostsQPStep() {
+void C3Base::ClearCostsQPStep() {
   for (auto& cost : costs_) {
     prog_.RemoveCost(cost);
   }
   costs_.clear();
 }
 
-void BaseC3::AddMatchingCostsQPStep(const vector<MatrixXd>& G,
+void C3Base::AddMatchingCostsQPStep(const vector<MatrixXd>& G,
                                     const vector<VectorXd>& WD) {
   for (int i = 0; i < N_; i++) {
     costs_.push_back(prog_.AddQuadraticCost(
@@ -767,7 +767,7 @@ void BaseC3::AddMatchingCostsQPStep(const vector<MatrixXd>& G,
   }
 }
 
-void BaseC3::SetInitialGuessQPStep(const Eigen::VectorXd& x0,
+void C3Base::SetInitialGuessQPStep(const Eigen::VectorXd& x0,
                                    int admm_iteration) {
   if (warm_start_) {
     int index = solve_time_ / dt_;
@@ -788,7 +788,7 @@ void BaseC3::SetInitialGuessQPStep(const Eigen::VectorXd& x0,
   }
 }
 
-void BaseC3::ExtractQPSolution(
+void C3Base::ExtractQPSolution(
     const drake::solvers::MathematicalProgramResult& result, int admm_iteration,
     bool is_final_solve) {
   for (int i = 0; i < N_; i++) {
@@ -803,7 +803,7 @@ void BaseC3::ExtractQPSolution(
   }
 }
 
-void BaseC3::UpdateWarmStarts(
+void C3Base::UpdateWarmStarts(
     const drake::solvers::MathematicalProgramResult& result,
     int admm_iteration) {
   for (int i = 0; i < N_; i++) {
@@ -814,7 +814,7 @@ void BaseC3::UpdateWarmStarts(
   warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
 }
 
-vector<VectorXd> BaseC3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
+vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                                  const vector<VectorXd>& WD, int admm_iteration,
                                  bool is_final_solve) {
   ClearConstraintsQPStep();
@@ -838,7 +838,7 @@ vector<VectorXd> BaseC3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
 }
 
-vector<VectorXd> BaseC3::SolveProjection(const vector<MatrixXd>& U,
+vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
                                          vector<VectorXd>& WZ,
                                          int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(z_size_));
@@ -893,7 +893,7 @@ vector<VectorXd> BaseC3::SolveProjection(const vector<MatrixXd>& U,
   return deltaProj;
 }
 
-void BaseC3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
+void C3Base::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                                  double upper_bound, int constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; i++) {
@@ -917,7 +917,7 @@ void BaseC3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
   }
 }
 
-void BaseC3::RemoveUserConstraints() {
+void C3Base::RemoveUserConstraints() {
   for (auto& userconstraint : user_constraints_) {
     prog_.RemoveConstraint(userconstraint);
   }

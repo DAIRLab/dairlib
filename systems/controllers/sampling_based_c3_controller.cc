@@ -37,7 +37,7 @@ using Eigen::MatrixXf;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
-using solvers::BaseC3;
+using solvers::C3Base;
 using solvers::C3MIQP;
 using solvers::C3QP;
 using solvers::C3Plus;
@@ -120,33 +120,33 @@ SamplingC3Controller::SamplingC3Controller(
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_best_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_),
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(
-        lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
     c3_best_plan_ = std::make_unique<C3QP>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_buffer_plan_ = std::make_unique<C3QP>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
   } else if (sampling_c3_options_.projection_type == "C3+") {
     c3_curr_plan_ = std::make_unique<C3Plus>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_best_plan_ = std::make_unique<C3Plus>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_buffer_plan_ = std::make_unique<C3Plus>(
-      lcs_placeholder, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
@@ -581,7 +581,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::vector<std::vector<Eigen::VectorXd>>(
       num_total_samples,
       std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
-  std::vector<std::shared_ptr<solvers::BaseC3>> c3_objects(
+  std::vector<std::shared_ptr<solvers::C3Base>> c3_objects(
     num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
   C3CostComputationType cost_type = progress_params_.cost_type;
@@ -600,18 +600,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     solvers::LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
-    std::shared_ptr<solvers::BaseC3> test_c3_object;
+    std::shared_ptr<solvers::C3Base> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
-        test_system, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
-        test_system, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "C3+") {
       test_c3_object = std::make_shared<C3Plus>(
-        test_system, BaseC3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
@@ -1359,7 +1359,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
 // If eligible, augment the current control loop's considered samples with the
 // best one from the buffer.
 void SamplingC3Controller::AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::BaseC3>>& c3_objects) const {
+    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const {
   // Add the best from the buffer to the samples, but only if in C3 mode and
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&

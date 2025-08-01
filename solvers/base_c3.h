@@ -29,15 +29,25 @@ class C3Base {
     std::vector<Eigen::MatrixXd> U;
   };
 
-  using CalcZSizeFunc = std::function<int(const LCS&)>;
-
-  /// @param LCS LCS parameters
-  /// @param costs Cost Matrices
-  /// @param x_des Desired goal state
-  /// @param options C3 options
+  /// @param lcs       Parameters defining the LCS (Linear Complementarity System).
+  /// @param costs     Cost matrices used in the optimization.
+  /// @param x_des     Desired goal state.
+  /// @param options   Options specific to the C3 formulation.
+  /// @param z_size    The size of the z vector, which varies depending on the C3 variant.
+  ///                    For example:
+  ///                      - C3MIQP / C3QP: z = [x, u, lambda]
+  ///                      - C3Plus:        z = [x, u, lambda, eta]
   C3Base(const LCS& LCS, const CostMatrices& costs,
          const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
-         CalcZSizeFunc calc_z_size = nullptr);
+         const int z_size);
+
+  /// @param lcs       Parameters defining the LCS (Linear Complementarity System).
+  /// @param costs     Cost matrices used in the optimization.
+  /// @param x_des     Desired goal state.
+  /// @param options   Options specific to the C3 formulation.
+  /// @note Using this constructor will set z_size to the default value, which is size_x + size_u + size_lambda
+  C3Base(const LCS& LCS, const CostMatrices& costs,
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
   virtual ~C3Base() = default;
 

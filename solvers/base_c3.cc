@@ -41,7 +41,7 @@ C3Base::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 
 C3Base::C3Base(const LCS& lcs, const C3Base::CostMatrices& costs,
                const vector<VectorXd>& x_des, const C3Options& options,
-               CalcZSizeFunc calc_z_size)
+               const int z_size)
     : warm_start_(options.warm_start),
       lcs_(lcs),
       N_((lcs.A_).size()),
@@ -65,7 +65,7 @@ C3Base::C3Base(const LCS& lcs, const C3Base::CostMatrices& costs,
       h_is_zero_(lcs.H_[0].isZero(0)),
       osqp_(OsqpSolver()),
       prog_(MathematicalProgram()),
-      z_size_(calc_z_size ? calc_z_size(lcs) : n_ + m_ + k_) {
+      z_size_(z_size) {
   ScaleLCS();
   if (warm_start_) {
     InitializeWarmStarts();
@@ -74,6 +74,12 @@ C3Base::C3Base(const LCS& lcs, const C3Base::CostMatrices& costs,
   InitializeDynamicsConstraints();
   InitializeStateAndInputCosts();
 }
+
+C3Base::C3Base(const LCS& lcs, const C3Base::CostMatrices& costs,
+               const std::vector<Eigen::VectorXd>& x_des,
+               const C3Options& options)
+    : C3Base(lcs, costs, x_des, options,
+             lcs.A_[0].cols() + lcs.D_[0].cols() + lcs.B_[0].cols()) {}
 
 void C3Base::ScaleLCS() {
   DRAKE_DEMAND(lcs_.D_.at(0).norm() > 0);

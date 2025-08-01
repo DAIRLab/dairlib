@@ -231,7 +231,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void MaintainSampleBuffer(const Eigen::VectorXd& x_lcs) const;
 
   void AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::BaseC3>>& c3_objects) const;
+    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const;
 
   void KeepTrackOfC3ModeProgress(
     const drake::VectorX<double>& x_lcs_curr,
@@ -413,7 +413,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_pred_from_last_control_loop_;
 
   // C3 solution for current location.
-  mutable std::shared_ptr<solvers::BaseC3> c3_curr_plan_;
+  mutable std::shared_ptr<solvers::C3Base> c3_curr_plan_;
   // TODO: these are currently assigned values but go unused -- may be useful if
   // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
@@ -421,7 +421,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::VectorXd> w_curr_plan_;
 
   // C3 solution for best sample location.
-  mutable std::shared_ptr<solvers::BaseC3> c3_best_plan_;
+  mutable std::shared_ptr<solvers::C3Base> c3_best_plan_;
   // TODO: these are currently assigned values but go unused -- may be useful if
   // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_best_plan_;
@@ -429,7 +429,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
 
   // C3 solution for best sample in buffer.
-  mutable std::shared_ptr<solvers::BaseC3> c3_buffer_plan_;
+  mutable std::shared_ptr<solvers::C3Base> c3_buffer_plan_;
   mutable std::vector<Eigen::VectorXd> dynamically_feasible_buffer_plan_;
 
   // LCS trajectories for C3 or repositioning modes.

@@ -15,7 +15,7 @@
 namespace dairlib {
 namespace solvers {
 
-class BaseC3 {
+class C3Base {
  public:
   struct CostMatrices {
     CostMatrices() = default;
@@ -35,11 +35,11 @@ class BaseC3 {
   /// @param costs Cost Matrices
   /// @param x_des Desired goal state
   /// @param options C3 options
-  BaseC3(const LCS& LCS, const CostMatrices& costs,
+  C3Base(const LCS& LCS, const CostMatrices& costs,
          const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
          CalcZSizeFunc calc_z_size = nullptr);
 
-  virtual ~BaseC3() = default;
+  virtual ~C3Base() = default;
 
   /// Solve the MPC problem.
   /// @param x0 The initial state of the system
@@ -168,7 +168,7 @@ class BaseC3 {
   int GetZSize() { return z_size_; }
 
  public:
-  void UpdateCostMatrices(const BaseC3::CostMatrices& costs);
+  void UpdateCostMatrices(const C3Base::CostMatrices& costs);
   virtual void UpdateLCS(const LCS& lcs);
 
   /// Update the LCS used for cost computation.  This can differ from the LCS

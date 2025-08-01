@@ -1,6 +1,6 @@
-sampling_c3_options_file: examples/sampling_c3/push_t/parameters/sampling_c3+_options.yaml
+sampling_c3_options_file: examples/sampling_c3/push_t/parameters/sampling_c3plus_options.yaml
 reposition_params_file: examples/sampling_c3/push_t/parameters/reposition_params.yaml
-progress_params_file: examples/sampling_c3/push_t/parameters/progress_params_c3+.yaml
+progress_params_file: examples/sampling_c3/push_t/parameters/progress_params_c3plus.yaml
 sampling_params_file: examples/sampling_c3/push_t/parameters/sampling_params.yaml
 goal_params_file: examples/sampling_c3/push_t/parameters/goal_params.yaml
 

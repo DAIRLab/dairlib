@@ -9,7 +9,7 @@ using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : BaseC3(LCS, costs, xdesired, options), env_(true) {
+    : C3Base(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");

@@ -16,7 +16,7 @@ using std::vector;
 
 C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : BaseC3(LCS, costs, xdesired, options, [](const class LCS& lcs) {
+    : C3Base(LCS, costs, xdesired, options, [](const class LCS& lcs) {
         return (lcs.A_)[0].cols() + 2 * (lcs.D_)[0].cols() + (lcs.B_)[0].cols();
       }) {
   InitializeEtaAsOptimizationVariables();
@@ -27,7 +27,7 @@ C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
 }
 
 void C3Plus::UpdateLCS(const LCS& lcs) {
-  BaseC3::UpdateLCS(lcs);
+  C3Base::UpdateLCS(lcs);
   UpdateEtaConstraints();
 }
 
@@ -88,7 +88,7 @@ void C3Plus::AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
 void C3Plus::ExtractQPSolution(
     const drake::solvers::MathematicalProgramResult& result, int admm_iteration,
     bool is_final_solve) {
-  BaseC3::ExtractQPSolution(result, admm_iteration, is_final_solve);
+  C3Base::ExtractQPSolution(result, admm_iteration, is_final_solve);
   for (int i = 0; i < N_; i++) {
     if (is_final_solve) {
       eta_sol_->at(i) = result.GetSolution(eta_[i]);
@@ -100,7 +100,7 @@ void C3Plus::ExtractQPSolution(
 void C3Plus::UpdateWarmStarts(
     const drake::solvers::MathematicalProgramResult& result,
     int admm_iteration) {
-  BaseC3::UpdateWarmStarts(result, admm_iteration);
+  C3Base::UpdateWarmStarts(result, admm_iteration);
 }
 
 VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,

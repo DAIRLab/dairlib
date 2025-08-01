@@ -44,7 +44,7 @@ namespace solvers {
 // 3. λ₀ > 0 and η₀ <= 0, then λ = λ₀ and η = 0
 // 4. λ₀ > 0, η₀ > 0, and η₀ > sqrt(w_λ/w_η) * λ₀, then λ = 0 and η = η₀
 // 5. λ₀ > 0, η₀ > 0, and η₀ <= sqrt(w_λ/w_η) * λ₀, then λ = λ₀ and η = 0
-class C3Plus final : public BaseC3 {
+class C3Plus final : public C3Base {
  public:
   C3Plus(const LCS& LCS, const CostMatrices& costs,
          const std::vector<Eigen::VectorXd>& xdesired,

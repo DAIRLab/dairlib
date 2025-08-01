@@ -19,7 +19,7 @@ namespace solvers {
 //
 // In C3+ QP step, we solve the following problem:
 //
-//   min_{x, u, λ, η}   g_x ||x - x_des||² + g_u ||u||² + 
+//   min_{x, u, λ, η}   g_x ||x - x_des||² + g_u ||u||² +
 //                               g_λ ||λ - λ₀||² + g_η ||η - η₀||²
 //           s.t.       x_next = A * x + B * u + D * λ + d
 //                      η = E * x + F * λ + H * u + c
@@ -56,22 +56,11 @@ class C3Plus final : public C3Base {
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
-  Eigen::VectorXd SolveRobustSingleProjection(
-      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
-      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
-      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
-      const int admm_iteration, const int& warm_start_index = -1) override;
 
- protected:
  private:
-  void AddEtaEqualityConstraints();
-  void InitializeEtaAsOptimizationVariables();
   void UpdateLCS(const LCS& lcs) override;
-  void UpdateEtaConstraints();
-  void AddMatchingCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
-                              const std::vector<Eigen::VectorXd>& WD) override;
+  void AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
+                               const std::vector<Eigen::VectorXd>& WD) override;
   void ExtractQPSolution(
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve) override;

@@ -290,7 +290,6 @@ struct SamplingC3Options : C3Options {
       options->warm_start = warm_start;
       options->use_predicted_x0 = false;  // unused by sampling C3
       options->end_on_qp_step = end_on_qp_step;
-      options->use_robust_formulation = use_robust_formulation;
       options->solve_time_filter_alpha = solve_time_filter_alpha;
       options->publish_frequency = publish_frequency;
 

@@ -36,19 +36,155 @@ def get_num_objects_from_yaml(yaml_path: str) -> int:
     models = data.get("base_names")
     return len(models)
 
-def calculate_contacts(num_objects: int) -> int:
-    return int(num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1)
+def calculate_contacts(num_objects: int, include_walls: int) -> int:
+
+    return int(num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1 + include_walls)
 
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
 
 
+def make_walls(samp_c3_options_yaml_path):
+    samp_c3_options = load_yaml(samp_c3_options_yaml_path)
+
+    workspace_limits = samp_c3_options['workspace_limits']
+    length = workspace_limits[0][4]
+    width = workspace_limits[1][4] - workspace_limits[1][3]
+
+    side_size_str = str(length) + " 0.1 0.2"
+
+    left_wall = f"""<?xml version="1.0" encoding="utf-8"?>
+        <robot name="left_wall">
+        <link name="left_wall">
+            <inertial>
+            <mass value="1"/>
+            <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+            </inertial>
+            <visual>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{side_size_str}"/>
+            </geometry>
+            </visual>
+            <collision name="left_wall">
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{side_size_str}"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+            </collision>
+            <contact>
+            <lateral_friction value="0.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="0.0"/>
+            </contact>
+        </link>
+
+        <drake:collision_filter_group name="left_wall_group">
+            <drake:member link="left_wall"/>
+            <drake:ignored_collision_filter_group name="left_wall_group"/>
+        </drake:collision_filter_group>
+        </robot>
+        """
+    
+    right_wall = f"""<?xml version="1.0" encoding="utf-8"?>
+        <robot name="right_wall">
+        <link name="right_wall">
+            <inertial>
+            <mass value="1"/>
+            <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+            </inertial>
+            <visual>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{side_size_str}"/>
+            </geometry>
+            </visual>
+            <collision name="right_wall">
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{side_size_str}"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+            </collision>
+            <contact>
+            <lateral_friction value="0.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="0.0"/>
+            </contact>
+        </link>
+
+        <drake:collision_filter_group name="right_wall_group">
+            <drake:member link="right_wall"/>
+            <drake:ignored_collision_filter_group name="right_wall_group"/>
+        </drake:collision_filter_group>
+        </robot>
+        """
+    
+    front_size_str = "0.1 " + str(width) + " 0.2"
+
+    front_wall = f"""<?xml version="1.0" encoding="utf-8"?>
+        <robot name="front_wall">
+        <link name="front_wall">
+            <inertial>
+            <mass value="1"/>
+            <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+            </inertial>
+            <visual>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{front_size_str}"/>
+            </geometry>
+            </visual>
+            <collision name="front_wall">
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="{front_size_str}"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+            </collision>
+            <contact>
+            <lateral_friction value="0.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="0.0"/>
+            </contact>
+        </link>
+
+        <drake:collision_filter_group name="front_wall_group">
+            <drake:member link="front_wall"/>
+            <drake:ignored_collision_filter_group name="front_wall_group"/>
+        </drake:collision_filter_group>
+        </robot>
+        """
+    
+    with open('examples/sampling_c3/urdf/wall_left.urdf', 'w') as f:
+        f.write(left_wall)
+    print(f"Wrote left wall")
+
+    with open('examples/sampling_c3/urdf/wall_right.urdf', 'w') as f:
+        f.write(right_wall)
+    print(f"Wrote right wall")
+    with open('examples/sampling_c3/urdf/wall_front.urdf', 'w') as f:
+        f.write(front_wall)
+    print(f"Wrote front wall")
 
 yaml_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
 num_objects = get_num_objects_from_yaml(yaml_path)
-num_contacts = calculate_contacts(num_objects)
+num_contacts = calculate_contacts(num_objects, 0)
 print("Number of objects:", num_objects)
-print("Number of contacts:", num_contacts)
+print("Number of contacts no walls:", num_contacts)
 def process_base(
     base_name: str,
     urdf_dir: str,
@@ -162,29 +298,31 @@ def process_base(
         return q_vector
     
     samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
-    samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects)]]
+
+    include_walls = 2 if (controller_yaml['include_walls']) else 0
+    samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects), include_walls * num_objects]]
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
     samp_c3_options_yaml["q_vector_position"] = build_q_vector(num_objects)
 
-    samp_c3_options_yaml["g_gamma_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["g_lambda_n_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["g_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects))]
-    samp_c3_options_yaml["g_lambda_list"] = [[0.005] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["g_gamma_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["g_lambda_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["g_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+    samp_c3_options_yaml["g_lambda_list"] = [[0.005] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
 
-    samp_c3_options_yaml["u_gamma_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["u_lambda_n_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects))]
-    samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["u_gamma_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["u_lambda_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+    samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
 
-    samp_c3_options_yaml["g_gamma_position_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["g_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["g_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects))]
-    samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["g_gamma_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["g_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["g_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+    samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
 
-    samp_c3_options_yaml["u_gamma_position_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects)]
-    samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects))]
-    samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * calculate_contacts(num_objects))]
+    samp_c3_options_yaml["u_gamma_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
+    samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+    samp_c3_options_yaml["u_lambda_position_list"] = [[10] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
 
     samp_c3_options_yaml["u_x"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
     samp_c3_options_yaml["u_x_position"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
@@ -219,6 +357,8 @@ if __name__ == "__main__":
     if not base_names:
         print("❌ No base_names found in config.")
         sys.exit(1)
+
+    make_walls(samp_c3_options_yaml_path)
 
     # Load YAMLs once to pre-size vectors
     controller_yaml = load_yaml(controller_yaml_path)

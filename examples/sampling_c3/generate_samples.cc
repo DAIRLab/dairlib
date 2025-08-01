@@ -37,7 +37,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<double> face_bins,
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
-    std::vector<double> total_area_per_object
+    std::vector<double> total_area_per_object,
+    bool include_walls
       ) {
   // Determine number of samples based on mode.
   int num_samples;
@@ -141,7 +142,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, query_object, faces_per_object,
-          face_bins_per_object, total_area_per_object);
+          face_bins_per_object, total_area_per_object, include_walls);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
@@ -513,7 +514,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
-    std::vector<double> total_area_per_object
+    std::vector<double> total_area_per_object,
+    bool include_walls
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -605,7 +607,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         
 
         Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * transformed_face.normal;
-        projected_sample_point[2] = z_height;
+        // projected_sample_point[2] = z_height;
 
         Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
         candidate_state.segment(0, 3) = projected_sample_point; // EE position
@@ -623,7 +625,14 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         //     std::string name = query_object.inspector().GetName(id);
         //     std::cout << "Geom: " << i << ", " << name << std::endl;
         // }
-        
+        if (include_walls) {
+          for (int i = results.size()-3; i < results.size(); i++) {
+              if (results[i].distance <= sampling_params.sample_projection_clearance) {
+                in_collision = true;
+                break;
+            }
+          }
+        }
 
         for (int i = 0; i < num_objects; i++) {
             //std::cout << results[2 + 4*i].distance << std::endl;

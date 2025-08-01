@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: ['examples/sampling_c3/urdf/repaired0/repaired0_coarse.sdf', 'examples/sampling_c3/urdf/repaired1/repaired1.sdf']
+object_vis_models: ['examples/sampling_c3/urdf/letter_a/letter_a.sdf']
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]

@@ -21,6 +21,7 @@
 #include "common/find_resource.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
@@ -70,12 +71,15 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       controller_params.sim_params_file);
+  SamplingC3Options sampling_c3_options = 
+       drake::yaml::LoadYamlFile<SamplingC3Options>(controller_params.sampling_c3_options_file);
 
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
+  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph, true, true, 
+      controller_params.include_walls, &sampling_c3_options);
 
   int num_objects = sim_params.object_models.size();
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(

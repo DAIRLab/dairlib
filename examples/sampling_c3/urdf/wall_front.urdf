@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+        <robot name="front_wall">
+        <link name="front_wall">
+            <inertial>
+            <mass value="1"/>
+            <inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+            </inertial>
+            <visual>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="0.1 0.914 0.2"/>
+            </geometry>
+            </visual>
+            <collision name="front_wall">
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <box size="0.1 0.914 0.2"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.5"/>
+            </drake:proximity_properties>
+            </collision>
+            <contact>
+            <lateral_friction value="0.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="0.0"/>
+            </contact>
+        </link>
+
+        <drake:collision_filter_group name="front_wall_group">
+            <drake:member link="front_wall"/>
+            <drake:ignored_collision_filter_group name="front_wall_group"/>
+        </drake:collision_filter_group>
+        </robot>
+        

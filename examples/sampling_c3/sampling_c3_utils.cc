@@ -15,7 +15,11 @@ using drake::multibody::Parser;
 ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
                                     SceneGraph<double>* scene_graph,
                                     const bool& include_ee,
-                                    const bool& include_ground_and_platform) {
+                                    const bool& include_ground_and_platform,
+                                    const bool& add_walls,
+                                    SamplingC3Options* sampling_c3_options) {
+
+  
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 
@@ -47,6 +51,29 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
                       plant->GetFrameByName("ground"), X_F_G_franka);
     plant->WeldFrames(plant->GetFrameByName("panda_link0"),
                       plant->GetFrameByName("platform"), X_F_P);
+  }
+
+  if (add_walls) {
+    DRAKE_DEMAND(sampling_c3_options != nullptr);
+    SetWallOffsets(*sampling_c3_options);
+
+    parser.AddModels(FindResourceOrThrow(kLeftWallModel));
+    parser.AddModels(FindResourceOrThrow(kRightWallModel));
+    parser.AddModels(FindResourceOrThrow(kFrontWallModel));
+
+    RigidTransform<double> X_LW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kLeftWallToGroundOffset);
+    RigidTransform<double> X_RW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kRightWallToGroundOffset);
+    RigidTransform<double> X_FW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kFrontWallToGroundOffset);
+
+    plant->WeldFrames(plant->GetFrameByName("left_wall"),
+                      plant->GetFrameByName("ground"), X_LW_G);
+    plant->WeldFrames(plant->GetFrameByName("right_wall"),
+                      plant->GetFrameByName("ground"), X_RW_G);
+    plant->WeldFrames(plant->GetFrameByName("front_wall"),
+                      plant->GetFrameByName("ground"), X_FW_G);
   }
 
   return franka_index;
@@ -100,14 +127,17 @@ void AddLCSModelToPlant(
                     plant->GetFrameByName("base_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
+
 }
 
 
- std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
+std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
     std::vector<std::string> object_models,
-    const bool& include_end_effector_orientation) {
+    const bool& include_end_effector_orientation,
+    const bool& add_walls,
+    SamplingC3Options* sampling_c3_options) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
@@ -133,6 +163,31 @@ void AddLCSModelToPlant(
                     plant->GetFrameByName("base_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
+
+  
+  if (add_walls) {
+    DRAKE_DEMAND(sampling_c3_options != nullptr);
+    SetWallOffsets(*sampling_c3_options);
+
+    parser_lcs.AddModels(FindResourceOrThrow(kLeftWallModel));
+    parser_lcs.AddModels(FindResourceOrThrow(kRightWallModel));
+    parser_lcs.AddModels(FindResourceOrThrow(kFrontWallModel));
+
+    RigidTransform<double> X_LW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kLeftWallToGroundOffset);
+    RigidTransform<double> X_RW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kRightWallToGroundOffset);
+    RigidTransform<double> X_FW_G = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), kFrontWallToGroundOffset);
+
+    plant->WeldFrames(plant->GetFrameByName("left_wall"),
+                      plant->GetFrameByName("ground"), X_LW_G);
+    plant->WeldFrames(plant->GetFrameByName("right_wall"),
+                      plant->GetFrameByName("ground"), X_RW_G);
+    plant->WeldFrames(plant->GetFrameByName("front_wall"),
+                      plant->GetFrameByName("ground"), X_FW_G);
+  }
+
   return obj_models;
 }
 

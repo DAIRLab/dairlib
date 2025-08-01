@@ -475,7 +475,7 @@ SamplingC3Controller::SamplingC3Controller(
             Eigen::Vector3d v2 = vertices[tri.vertex(2)];
             Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
 
-            if (std::abs(normal[2]) < 0.8) {
+            if (std::abs(normal[2]) < 5) {
                 double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
                 object_faces.push_back({area, normal, {v0, v1, v2}});
                 cumulative_area += area;
@@ -676,11 +676,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
   // Generate states, differing from the current state only by EE sample
   // locations.
+
   std::vector<Eigen::VectorXd> candidate_states =
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
-                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
+                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
+                         total_area_per_object_, controller_params_.include_walls);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -709,6 +711,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     candidate_states, x_lcs_curr, c3_options, c3_options);
   std::vector<solvers::LCS> lcs_candidates = lcs_pair.first;
   std::vector<solvers::LCS> lcs_candidates_for_cost = lcs_pair.second;
+
 
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
@@ -1360,7 +1363,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 
@@ -1458,7 +1461,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 
@@ -1848,7 +1851,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 
@@ -2077,7 +2080,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 
@@ -2398,7 +2401,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 
@@ -2544,7 +2547,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
   // Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() - max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
+  double theta = (direction.norm() / max_dist) * reposition_params_.max_tilt_angle  * M_PI / 180.0;
 
   direction.normalize();
 

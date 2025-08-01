@@ -76,10 +76,12 @@ int DoMain(int argc, char* argv[]) {
       controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
+  SamplingC3Options sampling_c3_options = 
+       drake::yaml::LoadYamlFile<SamplingC3Options>(controller_params.sampling_c3_options_file);
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka);
+  AddFrankaToPlant(&plant_franka, nullptr, true, true, controller_params.include_walls, &sampling_c3_options);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
@@ -100,7 +102,8 @@ int DoMain(int argc, char* argv[]) {
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   std::vector<ModelInstanceIndex> object_indices_lcs = 
 	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
-                  controller_params.include_end_effector_orientation);
+                  controller_params.include_end_effector_orientation,
+                  controller_params.include_walls, &sampling_c3_options);
   plant_lcs.Finalize();
 
 
@@ -136,6 +139,7 @@ int DoMain(int argc, char* argv[]) {
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
 
   std::vector<SortedPair<GeometryId>> object_object_contact_pairs;
+  std::vector<SortedPair<GeometryId>> wall_object_contact_pairs;
 
   if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId capsule1_geoms =
@@ -235,6 +239,21 @@ int DoMain(int argc, char* argv[]) {
   }
   else if (FLAGS_demo_name == "anything") {
 		std::cout << "Before contact_geoms" << std::endl;
+		if (controller_params.include_walls) {
+			drake::geometry::GeometryId left_wall_geoms =
+				plant_lcs.GetCollisionGeometriesForBody(
+						plant_lcs.GetBodyByName("left_wall"))[0];
+			drake::geometry::GeometryId right_wall_geoms =
+				plant_lcs.GetCollisionGeometriesForBody(
+						plant_lcs.GetBodyByName("right_wall"))[0];
+			drake::geometry::GeometryId front_wall_geoms =
+				plant_lcs.GetCollisionGeometriesForBody(
+						plant_lcs.GetBodyByName("front_wall"))[0];
+
+			contact_geoms["LEFT_WALL"] = left_wall_geoms;
+			contact_geoms["RIGHT_WALL"] = right_wall_geoms;
+			contact_geoms["FRONT_WALL"] = front_wall_geoms;
+		}
 		for (int i = 0; i < object_indices_lcs.size(); i++) { // exclude ee/ground
 			ModelInstanceIndex object_index = object_indices_lcs.at(i);
 			drake::geometry::GeometryId mesh_geoms =
@@ -255,6 +274,16 @@ int DoMain(int argc, char* argv[]) {
 			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
 			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
 			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
+			
+
+			if (controller_params.include_walls) {	
+				wall_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["LEFT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));				
+				wall_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["RIGHT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));					
+				wall_object_contact_pairs.push_back(SortedPair(
+					contact_geoms["FRONT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));						
+			}
 
 			ee_contact_pairs.push_back(
 					SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));
@@ -289,6 +318,7 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
   contact_pairs.push_back(object_object_contact_pairs);
+	contact_pairs.push_back(wall_object_contact_pairs);
 
 
   // Piece together the diagram.

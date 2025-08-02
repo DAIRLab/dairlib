@@ -19,11 +19,11 @@ group "operator" {
 
 group "controllers (hardware)" {
     cmd "sampling_c3" {
-        exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=false --demo_name=push_t;
+        exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=false --demo_name=push_t --lcm_url=udpm://239.255.76.67:7667?ttl=1";
         host = "sampling_c3_localhost";
     }
     cmd "franka_osc" {
-        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=false --demo_name=push_t --lcm_url=udpm://239.255.76.67:7667?ttl=1;
+        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=false --demo_name=push_t --lcm_url=udpm://239.255.76.67:7667?ttl=1";
         host = "franka_control";
     }
 }
@@ -49,7 +49,7 @@ group "drivers" {
         host = "franka_control";
     }
     cmd "torque_driver" {
-        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
+        exec = "bazel-bin/franka-driver/franka_driver_v5 --robot_ip_address=172.16.0.2 --control_mode=torque";
         host = "drake_franka_driver";
     }
 }

@@ -27,6 +27,7 @@
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -93,11 +94,12 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("sampling_c3_franka_bridge_driver_out"));
+  DrawAndSaveDiagramGraph(*owned_diagram);
 
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<drake::lcmt_panda_status> loop(
-      &lcm, std::move(owned_diagram), franka_state_translator,
+      &lcm, shared_diagram, franka_state_translator,
       franka_driver_channel_params.franka_status_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

@@ -11,7 +11,7 @@ import yaml
 def main(log_type, demo_name):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"/mnt/data2/bibit/logs/{year}/{curr_date}"
+    logdir = f"/mnt/data2/anything/logs/{year}/{curr_date}"
     dair = op.abspath(op.join(op.dirname(__file__), "../../"))
 
     if not op.isdir(logdir):

@@ -103,35 +103,30 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
                                        const int& warm_start_index) {
   VectorXd delta_proj = delta_c;
 
-  // Handle complementarity constraints for each lambda-eta pair
-  for (int i = 0; i < m_; ++i) {
-    double w_eta = std::abs(U(n_ + m_ + k_ + i, n_ + m_ + k_ + i));
-    double w_lambda = std::abs(U(n_ + i, n_ + i));
+  // Extract the weight vectors for lambda and eta from the diagonal of the cost
+  // matrix U.
+  // Use absolute values to ensure numerical safety when taking square roots,
+  // in case the user inadvertently supplies negative weights.
+  VectorXd w_eta_vec =
+      U.block(n_ + m_ + k_, n_ + m_ + k_, m_, m_).diagonal().cwiseAbs();
+  VectorXd w_lambda_vec = U.block(n_, n_, m_, m_).diagonal().cwiseAbs();
 
-    double lambda_val = delta_c(n_ + i);
-    double eta_val = delta_c(n_ + m_ + k_ + i);
+  VectorXd lambda_c = delta_c.segment(n_, m_);
+  VectorXd eta_c = delta_c.segment(n_ + m_ + k_, m_);
 
-    if (lambda_val <= 0) {
-      delta_proj(n_ + i) = 0;
-      delta_proj(n_ + m_ + k_ + i) = std::max(0.0, eta_val);
-    } else {
-      if (eta_val <= 0) {
-        delta_proj(n_ + i) = lambda_val;
-        delta_proj(n_ + m_ + k_ + i) = 0;
-      } else {
-        // If point (lambda, eta) is above the slope sqrt(w_lambda/w_eta), set
-        // lambda to 0 and keep eta Otherwise, set lambda to lambda and set eta
-        // to 0
-        if (eta_val * std::sqrt(w_eta) > lambda_val * std::sqrt(w_lambda)) {
-          delta_proj(n_ + i) = 0;
-          delta_proj(n_ + m_ + k_ + i) = eta_val;
-        } else {
-          delta_proj(n_ + i) = lambda_val;
-          delta_proj(n_ + m_ + k_ + i) = 0;
-        }
-      }
-    }
-  }
+  // Set the smaller of lambda and eta to zero
+  Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =
+      eta_c.array() * w_eta_vec.array().sqrt() >
+      lambda_c.array() * w_lambda_vec.array().sqrt();
+
+  delta_proj.segment(n_, m_) = eta_larger.select(VectorXd::Zero(m_), lambda_c);
+  delta_proj.segment(n_ + m_ + k_, m_) =
+      eta_larger.select(eta_c, VectorXd::Zero(m_));
+
+  // Clip lambda and eta at 0
+  delta_proj.segment(n_, m_) = delta_proj.segment(n_, m_).cwiseMax(0);
+  delta_proj.segment(n_ + m_ + k_, m_) =
+      delta_proj.segment(n_ + m_ + k_, m_).cwiseMax(0);
 
   return delta_proj;
 }

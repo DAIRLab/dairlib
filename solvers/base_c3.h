@@ -29,23 +29,13 @@ class C3Base {
     std::vector<Eigen::MatrixXd> U;
   };
 
-  /// @param lcs       Parameters defining the LCS (Linear Complementarity System).
+  /// @param lcs       Parameters defining the LCS (Linear Complementarity
+  /// System).
   /// @param costs     Cost matrices used in the optimization.
   /// @param x_des     Desired goal state.
   /// @param options   Options specific to the C3 formulation.
-  /// @param z_size    The size of the z vector, which varies depending on the C3 variant.
-  ///                    For example:
-  ///                      - C3MIQP / C3QP: z = [x, u, lambda]
-  ///                      - C3Plus:        z = [x, u, lambda, eta]
-  C3Base(const LCS& LCS, const CostMatrices& costs,
-         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
-         const int z_size);
-
-  /// @param lcs       Parameters defining the LCS (Linear Complementarity System).
-  /// @param costs     Cost matrices used in the optimization.
-  /// @param x_des     Desired goal state.
-  /// @param options   Options specific to the C3 formulation.
-  /// @note Using this constructor will set z_size to the default value, which is size_x + size_u + size_lambda
+  /// @note Using this constructor will set z_size to the default value, which
+  /// is size_x + size_u + size_lambda
   C3Base(const LCS& LCS, const CostMatrices& costs,
          const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
@@ -171,6 +161,22 @@ class C3Base {
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
  protected:
+  /// @param lcs      Parameters defining the LCS.
+  /// @param costs    Cost matrices used in the optimization.
+  /// @param x_des    Desired goal state trajectory.
+  /// @param options  Options specific to the C3 formulation.
+  /// @param z_size   Size of the z vector, which depends on the specific C3
+  /// variant.
+  ///                 For example:
+  ///                   - C3MIQP / C3QP: z = [x, u, lambda]
+  ///                   - C3Plus:        z = [x, u, lambda, eta]
+  ///
+  /// This constructor is intended for internal use only. The public constructor
+  /// delegates to this one, passing in an explicitly computed z vector size.
+  C3Base(const LCS& lcs, const CostMatrices& costs,
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
+         int z_size);
+
   // Helper functions for C3Base constructor
   void ScaleLCS();
   void InitializeWarmStarts();

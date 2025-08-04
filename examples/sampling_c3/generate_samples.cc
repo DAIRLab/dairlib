@@ -38,7 +38,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    bool include_walls
+    bool include_walls,
+    std::vector<bool> object_on_target
       ) {
   // Determine number of samples based on mode.
   int num_samples;
@@ -142,7 +143,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, query_object, faces_per_object,
-          face_bins_per_object, total_area_per_object, include_walls);
+          face_bins_per_object, total_area_per_object, include_walls, object_on_target);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
@@ -515,7 +516,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    bool include_walls
+    bool include_walls,
+    std::vector<bool> object_on_target
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -523,9 +525,9 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     int attempts = 0;
     double distance = 0;
 
-    int num_objects = faces_per_object.size();
+    int num_objects = object_on_target.size();
     //std::cout << "num_objects: " << num_objects << std::endl;
-
+    
     // Parse x_lcs into EE position and object poses
     Eigen::Vector3d ee_position = x_lcs.head(3);
     std::vector<Eigen::Quaterniond> object_quats;
@@ -548,10 +550,25 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         object_positions.push_back(pos_object);
     }
 
-    // Compute total area across all objects
+    int num_objects_selected = 0;
     double total_area_all_objects = 0.0;
-    for (const auto& area : total_area_per_object) {
-        total_area_all_objects += area;
+    std::vector<std::vector<Face>> faces_per_object_selected;
+    std::vector<std::vector<double>> face_bins_per_object_selected;
+    std::vector<double> total_area_per_object_selected;
+    std::vector<Eigen::Quaterniond> object_quats_selected;
+    std::vector<Eigen::Vector3d> object_positions_selected;
+
+    // Only consider objects not already on target
+    for (int i = 0; i < object_on_target.size(); i++) {
+      if (!object_on_target.at(i)) {
+        num_objects_selected++;
+        total_area_all_objects += total_area_per_object.at(i);
+        faces_per_object_selected.push_back(faces_per_object.at(i));
+        face_bins_per_object_selected.push_back(face_bins_per_object.at(i));
+        total_area_per_object_selected.push_back(total_area_per_object.at(i));
+        object_quats_selected.push_back(object_quats.at(i));
+        object_positions_selected.push_back(object_positions.at(i));
+      }
     }
 
     // RNG setup
@@ -564,22 +581,22 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         int selected_obj_idx = -1;
         double area_accumulator = 0.0;
 
-        for (int obj_idx = 0; obj_idx < num_objects; ++obj_idx) {
-            area_accumulator += total_area_per_object[obj_idx];
+        for (int obj_idx = 0; obj_idx < num_objects_selected; ++obj_idx) {
+            area_accumulator += total_area_per_object_selected[obj_idx];
             if (target_area <= area_accumulator) {
                 selected_obj_idx = obj_idx;
                 break;
             }
         }
-        if (selected_obj_idx < 0) selected_obj_idx = num_objects - 1; // fallback
+        if (selected_obj_idx < 0) selected_obj_idx = num_objects_selected - 1; // fallback
 
-        const auto& faces = faces_per_object[selected_obj_idx];
-        const auto& bins = face_bins_per_object[selected_obj_idx];
+        const auto& faces = faces_per_object_selected[selected_obj_idx];
+        const auto& bins = face_bins_per_object_selected[selected_obj_idx];
 
         // Transform faces for selected object
         std::vector<Face> faces_world;
-        Eigen::Matrix3d R = object_quats[selected_obj_idx].toRotationMatrix();
-        Eigen::Vector3d t = object_positions[selected_obj_idx];
+        Eigen::Matrix3d R = object_quats_selected[selected_obj_idx].toRotationMatrix();
+        Eigen::Vector3d t = object_positions_selected[selected_obj_idx];
 
         // Select face weighted by area (area is rotation-invariant)
         std::uniform_real_distribution<double> dis_face(0.0, bins.back());

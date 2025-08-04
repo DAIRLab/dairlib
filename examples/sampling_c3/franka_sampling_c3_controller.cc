@@ -254,21 +254,23 @@ int DoMain(int argc, char* argv[]) {
 			contact_geoms["RIGHT_WALL"] = right_wall_geoms;
 			contact_geoms["FRONT_WALL"] = front_wall_geoms;
 		}
-		for (int i = 0; i < object_indices_lcs.size(); i++) { // exclude ee/ground
-			ModelInstanceIndex object_index = object_indices_lcs.at(i);
-			drake::geometry::GeometryId mesh_geoms =
-					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName("body", object_index))[0];
 
+		for (int i = 0; i < controller_params.base_names.size(); i++) { // exclude ee/ground
+			std::string body_name = controller_params.base_names.at(i);
+			drake::geometry::GeometryId mesh_geoms =
+			plant_lcs.GetCollisionGeometriesForBody(
+					plant_lcs.GetBodyByName(body_name))[0];
+			std::cout << "Body name: " << body_name << std::endl;
+			std::cout << "mesh_geoms: " << mesh_geoms << std::endl;
 			drake::geometry::GeometryId top_left_sphere_geoms =
 					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName("body", object_index))[1];
+							plant_lcs.GetBodyByName(body_name))[1];
 			drake::geometry::GeometryId top_right_sphere_geoms =
 					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName("body", object_index))[2];
+							plant_lcs.GetBodyByName(body_name))[2];
 			drake::geometry::GeometryId bottom_sphere_geoms =
 					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName("body", object_index))[3];
+							plant_lcs.GetBodyByName(body_name))[3];
 
 			contact_geoms["OBJECT_MESH_" + std::to_string(i)] = mesh_geoms;
 			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
@@ -348,7 +350,7 @@ int DoMain(int argc, char* argv[]) {
           object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation,
-					object_indices
+		  controller_params.base_names
 				);
 
 	std::cout << "Before target generator" << std::endl;
@@ -443,8 +445,8 @@ int DoMain(int argc, char* argv[]) {
 
 	// Ports (n+2) to (2n+1) constant vector
 	for (int i = 0; i < controller_params.num_objects; i++) {								
-			builder.Connect(object_zero_velocity_source->get_output_port(),
-																			final_target_state_mux->get_input_port(i + controller_params.num_objects + 2));
+		builder.Connect(object_zero_velocity_source->get_output_port(),
+			final_target_state_mux->get_input_port(i + controller_params.num_objects + 2));
 	} 
 
   // Sampling C3 controller.

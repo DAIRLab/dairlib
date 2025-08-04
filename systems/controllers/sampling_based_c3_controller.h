@@ -371,6 +371,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   SamplingParams sampling_params_;
   SamplingC3RepositionParams reposition_params_;
   SamplingC3ProgressParams progress_params_;
+  SamplingC3GoalParams goal_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")

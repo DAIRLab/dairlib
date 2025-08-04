@@ -49,7 +49,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     sdf_path = os.path.join(output_dir, obj_name + ".sdf")
     sdf = ET.Element('sdf', version="1.7")
     model = ET.SubElement(sdf, 'model', name=model_name)
-    link = ET.SubElement(model, 'link', name="body")
+    link = ET.SubElement(model, 'link', name=obj_name)
 
     # Inertia 
     ratio = 0.2 / mass

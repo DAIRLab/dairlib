@@ -55,6 +55,9 @@ struct SamplingC3GoalParams {
   Eigen::VectorXd random_goal_y_limits;
   Eigen::VectorXd random_goal_radius_limits;
 
+  int random_goal_gen_max_attempts;
+  double pairwise_goal_distance;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, goal_mode);
@@ -74,5 +77,7 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(random_goal_x_limits));
     a->Visit(DRAKE_NVP(random_goal_y_limits));
     a->Visit(DRAKE_NVP(random_goal_radius_limits));
+    a->Visit(DRAKE_NVP(random_goal_gen_max_attempts));
+    a->Visit(DRAKE_NVP(pairwise_goal_distance));
   }
 };

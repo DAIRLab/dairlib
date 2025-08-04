@@ -66,6 +66,7 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_params_(controller_params_.sampling_params),
       reposition_params_(controller_params_.reposition_params),
       progress_params_(controller_params_.progress_params),
+      goal_params_(controller_params_.goal_params),
       G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G)),
       U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U)),
       N_(sampling_c3_options_.N),
@@ -567,7 +568,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
-  //std::cout << "entered computeplan" << std::endl;
 
   // Evaluate input ports.
   const auto& radio_out =
@@ -577,9 +577,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& x_lcs_final_des =
-      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);                                                  
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);     
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);
+      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);    
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
   ee_position_curr_ = x_lcs_curr.segment(0, 3);
@@ -677,12 +677,27 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Generate states, differing from the current state only by EE sample
   // locations.
 
+  std::vector<bool> object_on_target;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    double object_position_error =
+      (x_lcs_curr.segment(7 + 7*i, 3) - x_lcs_des.get_value().segment(7 + 7*i, 3)).norm();
+      Eigen::Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7*i));
+      Eigen::Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7*i));
+
+      Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
+    double object_angular_error = angle_axis_diff.angle();
+    
+    object_on_target.push_back((object_position_error < goal_params_.position_success_threshold) &&
+        (object_angular_error < goal_params_.orientation_success_threshold));
+  }
+
   std::vector<Eigen::VectorXd> candidate_states =
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, controller_params_.include_walls);
+                         total_area_per_object_, controller_params_.include_walls,
+                        object_on_target);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -727,7 +742,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     cost_type = progress_params_.cost_type_position;
   }
 
-// Parallelize over computing C3 costs for each sample.
+  // Parallelize over computing C3 costs for each sample.
 #pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
     bool print_cost_breakdown = radio_out->channel[7] &&
@@ -780,17 +795,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-  // double actual_cost = all_sample_costs_[0];
-  // all_sample_costs_[0] = 696969696969;
-  // for (int i = 0; i < controller_params_.num_objects; i++) {
-  //   if (results[2 + 4*i].distance < 0.1) {
-  //     all_sample_costs_[0] = actual_cost;
-  //   }
-  // }
-
-
   // End of parallelization
-
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall

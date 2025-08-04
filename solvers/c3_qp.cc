@@ -29,7 +29,7 @@ using drake::solvers::Solve;
 
 C3QP::C3QP(const LCS& LCS, const CostMatrices& costs,
            const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options) {}
+    : C3Base(LCS, costs, xdesired, options) {}
 
 VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
                                      const MatrixXd& E, const MatrixXd& F,
@@ -92,14 +92,6 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   delta_kc.segment(n_ + m_, k_) = uSol;
 
   return delta_kc;
-}
-
-VectorXd C3QP::SolveRobustSingleProjection(const MatrixXd& U, const VectorXd& delta_c, const MatrixXd& E,
-                                             const MatrixXd& F, const MatrixXd& H, const VectorXd& c,
-                                             const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
-                                             const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
-                                             const int admm_iteration, const int& warm_start_index) {
-  return delta_c;
 }
 
 std::vector<Eigen::VectorXd> C3QP::GetWarmStartDelta() const {

@@ -19,7 +19,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 examples/sampling_c3/start_logging.py sim jacktoy";
+        exec = "python3 examples/sampling_c3/start_logging.py sim jacktoy /mnt/data2/jacktoy/logs/";
         host = "localhost";
     }
 }

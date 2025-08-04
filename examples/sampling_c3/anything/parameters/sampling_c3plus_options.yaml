@@ -5,7 +5,7 @@ rho_scale: 3
 num_threads: 5
 num_outer_threads: 4
 delta_option: 1
-projection_type: 'MIQP'     # 'MIQP' or 'QP'
+projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
 end_on_qp_step: false
@@ -36,8 +36,8 @@ use_predicted_x0_c3: true
 use_predicted_x0_repos: true
 use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
-### Push-Anything demo specific parameters:
-# Contact pairs include a number of (ee-ground, ee-object, object-ground).
+### Push-T demo specific parameters:
+# Contact pairs include a number of (ee-ground, ee-T, T-ground).
 mu_per_pair_type: [0.4165, 1, 0.4615]   # match URDFs with (2mu1*mu2)/(mu1+mu2)
 resolve_contacts_to_lists: [[0, 1, 3]]
 
@@ -60,9 +60,9 @@ Kd_for_ee_pd_rollout: 0.5
 
 ### Pose tracking cost parameters
 # Matrix scaling
-w_Q: 45
+w_Q: 50
 w_R: 1
-w_G: 0.25
+w_G: 0.01
 w_U: 0.26
 
 q_vector: [0.01, 0.01, 0.01,    # EE position
@@ -74,27 +74,36 @@ q_vector: [0.01, 0.01, 0.01,    # EE position
 r_vector: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
-g_x: [950, 950, 950, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+g_u: [0, 0, 0]
 g_gamma_list: [[1, 1, 1, 1]]
 g_lambda_n_list: [[1, 1, 1, 1]]
 g_lambda_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_lambda_list: [[0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005]]
-g_u: [30, 30, 30]
+g_eta_slack_list: [[1, 1, 1, 1]]
+g_eta_n_list: [[1, 1, 1, 1]]
+g_eta_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_list: [[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
+g_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
-# Penalty on matching the QP variables
-u_x: [10, 10, 10, 100, 100, 100, 100, 10, 10, 10, 8, 8, 8, 1, 1, 1, 1, 1, 1]
+# Penalty on matching the QP variables. In C3+, we only match \eta and \lambda
+u_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+u_u: [0, 0, 0]
 u_gamma_list: [[1, 1, 1, 1]]
 u_lambda_n_list: [[1, 1, 1, 1]]
 u_lambda_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_slack_list: [[1, 1, 1, 1]]
+u_eta_n_list: [[1, 1, 1, 1]]
+u_eta_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
 # u_lambda_list is not used for the QP projection; overwritten by alpha*F.
-u_lambda_list: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]]
-u_u: [0.01, 0.01, 0.01]
+u_lambda_list: [[20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]]
+u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 ### Position tracking cost parameters
 # Matrix scaling
-w_Q_position: 45
+w_Q_position: 50
 w_R_position: 1
-w_G_position: 0.25
+w_G_position: 0.01
 w_U_position: 0.26
 
 q_vector_position: [0.01, 0.01, 0.01,       # EE position
@@ -106,21 +115,29 @@ q_vector_position: [0.01, 0.01, 0.01,       # EE position
 r_vector_position: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
-g_x_position: [900, 900, 900, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x_position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+g_u_position: [0, 0, 0]
 g_gamma_position_list: [[1, 1, 1, 1]]
 g_lambda_n_position_list: [[1, 1, 1, 1]]
 g_lambda_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_lambda_position_list: [[0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005]]
-g_u_position: [30, 30, 30]
+g_eta_slack_position_list: [[1, 1, 1, 1]]
+g_eta_n_position_list: [[1, 1, 1, 1]]
+g_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 # Penalty on matching the QP variables
-u_x_position: [10, 10, 10, 100, 100, 100, 100, 10, 10, 10, 8, 8, 8, 1, 1, 1, 1, 1, 1]
+u_x_position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+u_u_position: [0, 0, 0]
 u_gamma_position_list: [[1, 1, 1, 1]]
 u_lambda_n_position_list: [[1, 1, 1, 1]]
 u_lambda_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_slack_position_list: [[1, 1, 1, 1]]
+u_eta_n_position_list: [[1, 1, 1, 1]]
+u_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # u_lambda is not used for the QP projection; overwritten by alpha*F.
-u_lambda_position_list: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]]
-u_u_position: [0.01, 0.01, 0.01]
+u_lambda_position_list: [[20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]]
+u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 
 ### NO NEED TO CHANGE THE BELOW.  Parameters needed for the C3Options struct but
@@ -142,7 +159,6 @@ u_lambda_n: []
 u_lambda_t: []
 u_lambda: []
 
-# Only applicable for C3+
 g_eta_slack: []
 g_eta_n: []
 g_eta_t: []
@@ -151,19 +167,3 @@ u_eta_slack: []
 u_eta_n: []
 u_eta_t: []
 u_eta: []
-g_eta_slack_list: []
-g_eta_n_list: []
-g_eta_t_list: []
-g_eta_list: []
-u_eta_slack_list: []
-u_eta_n_list: []
-u_eta_t_list: []
-u_eta_list: []
-g_eta_slack_position_list: []
-g_eta_n_position_list: []
-g_eta_t_position_list: []
-g_eta_position_list: []
-u_eta_slack_position_list: []
-u_eta_n_position_list: []
-u_eta_t_position_list: []
-u_eta_position_list: []

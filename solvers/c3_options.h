@@ -42,7 +42,6 @@ struct C3Options {
   bool warm_start;
   bool use_predicted_x0;
   bool end_on_qp_step;
-  bool use_robust_formulation;
   double solve_time_filter_alpha;
   double publish_frequency;
 
@@ -68,6 +67,10 @@ struct C3Options {
   std::vector<double> g_lambda_n;
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
+  std::vector<double> g_eta_slack;
+  std::vector<double> g_eta_n;
+  std::vector<double> g_eta_t;
+  std::vector<double> g_eta;
   std::vector<double> g_u;
 
   std::vector<double> u_vector;
@@ -76,6 +79,10 @@ struct C3Options {
   std::vector<double> u_lambda_n;
   std::vector<double> u_lambda_t;
   std::vector<double> u_lambda;
+  std::vector<double> u_eta_slack;
+  std::vector<double> u_eta_n;
+  std::vector<double> u_eta_t;
+  std::vector<double> u_eta;
   std::vector<double> u_u;
 
   double qp_projection_alpha;
@@ -106,7 +113,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(end_on_qp_step));
-    a->Visit(DRAKE_NVP(use_robust_formulation));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
 
@@ -142,6 +148,16 @@ struct C3Options {
     a->Visit(DRAKE_NVP(u_lambda));
     a->Visit(DRAKE_NVP(u_u));
 
+    // Additional parameters for new C3 projection
+    a->Visit(DRAKE_NVP(g_eta_slack));
+    a->Visit(DRAKE_NVP(g_eta_n));
+    a->Visit(DRAKE_NVP(g_eta_t));
+    a->Visit(DRAKE_NVP(g_eta));
+    a->Visit(DRAKE_NVP(u_eta_slack));
+    a->Visit(DRAKE_NVP(u_eta_n));
+    a->Visit(DRAKE_NVP(u_eta_t));
+    a->Visit(DRAKE_NVP(u_eta));
+
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
     a->Visit(DRAKE_NVP(penalize_changes_in_u_across_solves));
@@ -155,8 +171,17 @@ struct C3Options {
     } else {
       g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
-
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
+    if (projection_type == "C3+") {
+      if (contact_model == "stewart_and_trinkle") {
+        g_vector.insert(g_vector.end(), g_eta_slack.begin(), g_eta_slack.end());
+        g_vector.insert(g_vector.end(), g_eta_n.begin(), g_eta_n.end());
+        g_vector.insert(g_vector.end(), g_eta_t.begin(), g_eta_t.end());
+      } else {
+        g_vector.insert(g_vector.end(), g_eta.begin(), g_eta.end());
+      }
+    }
+
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
     if (contact_model == "stewart_and_trinkle") {
@@ -167,6 +192,15 @@ struct C3Options {
       u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
+    if (projection_type == "C3+") {
+      if (contact_model == "stewart_and_trinkle") {
+        u_vector.insert(u_vector.end(), u_eta_slack.begin(), u_eta_slack.end());
+        u_vector.insert(u_vector.end(), u_eta_n.begin(), u_eta_n.end());
+        u_vector.insert(u_vector.end(), u_eta_t.begin(), u_eta_t.end());
+      } else {
+        u_vector.insert(u_vector.end(), u_eta.begin(), u_eta.end());
+      }
+    }
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());

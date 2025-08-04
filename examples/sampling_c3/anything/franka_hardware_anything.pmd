@@ -8,7 +8,7 @@ group "operator" {
         host = "sampling_c3_localhost";
     }
     cmd "logger" {
-        exec = "python3 examples/sampling_c3/start_logging.py hw anything";
+        exec = "python3 examples/sampling_c3/start_logging.py hw anything /mnt/data2/anything/logs/";
         host = "sampling_c3_localhost";
     }
     cmd "record_video" {

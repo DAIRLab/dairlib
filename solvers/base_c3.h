@@ -15,7 +15,7 @@
 namespace dairlib {
 namespace solvers {
 
-class C3 {
+class C3Base {
  public:
   struct CostMatrices {
     CostMatrices() = default;
@@ -28,14 +28,18 @@ class C3 {
     std::vector<Eigen::MatrixXd> G;
     std::vector<Eigen::MatrixXd> U;
   };
-  /// @param LCS LCS parameters
-  /// @param costs Cost Matrices
-  /// @param x_des Desired goal state
-  /// @param options C3 options
-  C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
 
-  virtual ~C3() = default;
+  /// @param lcs       Parameters defining the LCS (Linear Complementarity
+  /// System).
+  /// @param costs     Cost matrices used in the optimization.
+  /// @param x_des     Desired goal state.
+  /// @param options   Options specific to the C3 formulation.
+  /// @note Using this constructor will set z_size to the default value, which
+  /// is size_x + size_u + size_lambda
+  C3Base(const LCS& LCS, const CostMatrices& costs,
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options);
+
+  virtual ~C3Base() = default;
 
   /// Solve the MPC problem.
   /// @param x0 The initial state of the system
@@ -70,10 +74,10 @@ class C3 {
   /// @param verbose Whether to print additional information
   /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-    SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                      double Kd_for_ee_pd_rollout = 0.0,
-                      bool force_tracking_disabled = false,
-                      bool verbose = false) const;
+  SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
+                    double Kd_for_ee_pd_rollout = 0.0,
+                    bool force_tracking_disabled = false,
+                    bool verbose = false) const;
 
   /// Solve a single ADMM step.
   /// @param x0 The initial state of the system
@@ -117,7 +121,7 @@ class C3 {
                            double upper_bound, int constraint);
 
   /// remove all constraints
-  void RemoveConstraints();
+  void RemoveUserConstraints();
 
   /// Solve a projection step for a single knot point k.
   /// @param U Matrix for consensus cost
@@ -132,24 +136,6 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
-  /// Solve a robust (friction cone) projection step for a single knot point k.
-  /// @param U Matrix for consensus cost
-  /// @param delta_c A pointer to the copy of (z + w) variables
-  /// @param E, F, H, c LCS contact parameters
-  /// @param W_x, W_l, W_u, w Linearization of J_t v_{k+1} wrt x_k, lambda_k,
-  /// u_k
-  /// @param admm_iteration ADMM iteration for accurate warm starting
-  /// @param warm_start_index knot point index for warm starting
-  /// @return delta_k
-  virtual Eigen::VectorXd SolveRobustSingleProjection(
-      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
-      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
-      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
-      const int admm_iteration, const int& warm_start_index) = 0;
-
-  /// Solve a robust (friction cone) projection step for a single knot point
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
@@ -161,9 +147,10 @@ class C3 {
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
- public:
-  void UpdateCostMatrices(const C3::CostMatrices& costs);
-  void UpdateLCS(const LCS& lcs);
+  int GetZSize() { return z_size_; }
+
+  void UpdateCostMatrices(const C3Base::CostMatrices& costs);
+  virtual void UpdateLCS(const LCS& lcs);
 
   /// Update the LCS used for cost computation.  This can differ from the LCS
   /// used for the solve, e.g. if more contacts are used for cost than for
@@ -174,6 +161,43 @@ class C3 {
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
  protected:
+  /// @param lcs      Parameters defining the LCS.
+  /// @param costs    Cost matrices used in the optimization.
+  /// @param x_des    Desired goal state trajectory.
+  /// @param options  Options specific to the C3 formulation.
+  /// @param z_size   Size of the z vector, which depends on the specific C3
+  /// variant.
+  ///                 For example:
+  ///                   - C3MIQP / C3QP: z = [x, u, lambda]
+  ///                   - C3Plus:        z = [x, u, lambda, eta]
+  ///
+  /// This constructor is intended for internal use only. The public constructor
+  /// delegates to this one, passing in an explicitly computed z vector size.
+  C3Base(const LCS& lcs, const CostMatrices& costs,
+         const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
+         int z_size);
+
+  // Helper functions for C3Base constructor
+  void ScaleLCS();
+  void InitializeWarmStarts();
+  void InitializeOptimizationVariables();
+  void InitializeDynamicsConstraints();
+  void InitializeStateAndInputCosts();
+
+  void UpdateDynamicsConstraints();
+
+  // Helper functions for QP step
+  virtual void AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
+                                       const std::vector<Eigen::VectorXd>& WD);
+  virtual void SetInitialGuessQPStep(const Eigen::VectorXd& x0,
+                                     int admm_iteration);
+  virtual void ExtractQPSolution(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration, bool is_final_solve);
+  virtual void UpdateWarmStarts(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration);
+
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_x_;
@@ -181,12 +205,13 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_; // n_x
-  const int m_; // n_lambda
-  const int k_; // n_u
+  const int n_;  // n_x
+  const int m_;  // n_lambda
+  const int k_;  // n_u
+  const int z_size_;
   const C3Options options_;
+  bool use_parallelization_in_projection_ = true;
 
- private:
   // TODO:  storing the LCS as a class variable makes the LCS matrices
   // redundant.  Could consider removing LCS matrices as class variables.
   mutable LCS lcs_;
@@ -220,8 +245,10 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+
   /// QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
+
   // initial state constraint
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;

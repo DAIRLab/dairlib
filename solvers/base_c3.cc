@@ -356,7 +356,7 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
 // This function relies on the previously computed zfin_ from Solve.
 std::pair<double, std::vector<Eigen::VectorXd>> C3Base::CalcCost(
     C3CostComputationType cost_type, double Kp_for_ee_pd_rollout,
-    double Kd_for_ee_pd_rollout, bool force_tracking_disabled,
+    double Kd_for_ee_pd_rollout, bool force_tracking_disabled, int num_objects,
     bool print_cost_breakdown, bool verbose) const {
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_ + 1, VectorXd::Zero(n_));
@@ -628,7 +628,7 @@ std::pair<double, std::vector<Eigen::VectorXd>> C3Base::CalcCost(
 
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
 C3Base::SimulatePDControl(double Kp_for_ee_pd_rollout,
-                          double Kd_for_ee_pd_rollout,
+                          double Kd_for_ee_pd_rollout, int num_objects,
                           bool force_tracking_disabled, bool verbose) const {
   if (verbose) {
     std::cout << "\nSIMULATING PD CONTROL" << std::endl;

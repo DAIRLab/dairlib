@@ -61,8 +61,8 @@ class C3Base {
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type = kSimLCSReplaceC3EEPlan,
       double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-      bool force_tracking_disabled = false, int num_objects = 1, bool print_cost_breakdown = false,
-      bool verbose = false) const;
+      bool force_tracking_disabled = false, int num_objects = 1,
+      bool print_cost_breakdown = false, bool verbose = false) const;
 
   /// Helper function to simulate the dynamics with PD control on the EE
   /// location and velocity plans, and the control input plans.  Used for cost
@@ -75,8 +75,7 @@ class C3Base {
   /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                    double Kd_for_ee_pd_rollout = 0.0,
-                    int num_objects = 1,
+                    double Kd_for_ee_pd_rollout = 0.0, int num_objects = 1,
                     bool force_tracking_disabled = false,
                     bool verbose = false) const;
 
@@ -238,7 +237,6 @@ class C3Base {
   double dt_ = 0;
   double solve_time_ = 0;
   bool h_is_zero_;
-  bool is_cost_;
 
   /// MathematicalProgram for QP step
   drake::solvers::OsqpSolver osqp_;

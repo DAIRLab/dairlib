@@ -15,7 +15,7 @@ class C3MIQP final : public C3Base {
  public:
   /// Default constructor for time-varying LCS
   C3MIQP(const LCS& LCS, const CostMatrices& costs,
-         const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options, bool is_cost = false);
+         const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options);
 
   ~C3MIQP() override = default;
 

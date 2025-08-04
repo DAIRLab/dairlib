@@ -29,6 +29,9 @@ struct SamplingC3Options : C3Options {
 
   double planning_dt_pose;
   double planning_dt_position;
+  int lcs_dt_resolution;
+  double dt_cost;
+  
 
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
@@ -111,6 +114,8 @@ struct SamplingC3Options : C3Options {
 
     a->Visit(DRAKE_NVP(planning_dt_pose));
     a->Visit(DRAKE_NVP(planning_dt_position));
+    a->Visit(DRAKE_NVP(lcs_dt_resolution));
+    a->Visit(DRAKE_NVP(dt_cost));
 
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));
@@ -302,6 +307,7 @@ struct SamplingC3Options : C3Options {
       options->gamma = gamma;
 
       options->solve_dt = 0;  // unused in all of C3
+      options-> lcs_dt_resolution = lcs_dt_resolution;
       options->num_friction_directions = num_friction_directions;
 
       options->qp_projection_alpha = qp_projection_alpha;
@@ -315,6 +321,7 @@ struct SamplingC3Options : C3Options {
 
     void SetPositionTrackingOptions(C3Options* options) const {
       options->dt = planning_dt_position;
+      options->dt_cost = planning_dt_position / lcs_dt_resolution;
       options->w_Q = w_Q_position;
       options->w_R = w_R_position;
       options->w_G = w_G_position;
@@ -354,6 +361,7 @@ struct SamplingC3Options : C3Options {
 
     void SetPoseTrackingOptions(C3Options* options) const {
       options->dt = planning_dt_pose;
+      options->dt_cost = planning_dt_pose / lcs_dt_resolution;
       options->w_Q = w_Q;
       options->w_R = w_R;
       options->w_G = w_G;

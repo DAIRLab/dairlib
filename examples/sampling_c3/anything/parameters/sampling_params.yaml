@@ -9,7 +9,9 @@
 #                           surface.
 #   6. kMeshNormal:         randomly projects normal vectors off of mesh faces
 #                           and keeps samples far enough from object
-sampling_strategy: 6
+#   7. kMeshNormaMultiObject
+
+sampling_strategy: 7
 
 ### Parameters relevant for all sampling strategies.
 filter_samples_for_safety: true
@@ -35,7 +37,7 @@ max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 
 # kFixed parameters.
 fixed_sample_locations: [[0.45, 0.270, 0.270],
-                                                 # sample 1
+                                               # sample 1
 [0.34, 0.455, 0.225]] # sample 2
 
 # kRandomOnPerimeter parameters.
@@ -52,5 +54,6 @@ max_attempts: 100
 barycentric_bias: 0.6 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: 0.0009999999999999992
+z_height: 0.005499999999999996
+c3_min_clearance: 0.01
 # This ^ will be overwritten by generating new files.

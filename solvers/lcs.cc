@@ -35,7 +35,8 @@ LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
     : LCS(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B),
           vector<MatrixXd>(N, D), vector<VectorXd>(N, d),
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {}
+          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {
+          }
 
 LCS::LCS(const LCS& lcs)
     : N_(lcs.N_), dt_(lcs.dt_), n_(lcs.n_), m_(lcs.m_), k_(lcs.k_) {
@@ -110,6 +111,7 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
     std::cout << "LCP failed: returning x_init" << std::endl;
     return x_init;
   }
+
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
   if (verbose) {

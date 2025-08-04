@@ -100,59 +100,103 @@ int do_main(int argc, char* argv[]) {
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
   ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph);
-  ModelInstanceIndex object_index = AddObjectToPlant(
-    &plant, &scene_graph, vis_params.object_vis_model);
+
+	// Getting vector of object indices for all objects
+  std::vector<ModelInstanceIndex> object_indices_plant = AddObjectsToPlant(
+        &plant, &scene_graph, vis_params.object_vis_models);
   plant.Finalize();
+
 
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka, nullptr, true, false);
+  ModelInstanceIndex franka_index0 = AddFrankaToPlant(&plant_franka, nullptr, true, false);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
+	std::cout << "Franka index plant: " << franka_index << std::endl;
+	std::cout << "Franka index plant_franka: " << franka_index0 << std::endl;
+
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  AddObjectToPlant(&plant_object, nullptr,
-                   vis_params.object_vis_model);
+  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(&plant_object, nullptr,
+                   vis_params.object_vis_models);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
+
+	std::cout << std::endl;
+
+	std::cout << "Object_plant num_pos: " << plant_object.num_positions() << std::endl;
+	std::cout << "Object_plant num_velo: " << plant_object.num_velocities() << std::endl;
+
+  //std::this_thread::sleep_for(std::chrono::seconds(15));
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
-  auto object_state_receiver =
-      builder.AddSystem<ObjectStateReceiver>(plant, object_index);
+	
+	// Duplicating object state reciever for each object
+  std::vector<ObjectStateReceiver*> object_state_receivers;
+  for (ModelInstanceIndex obj_index : object_indices_plant) { 
+      object_state_receivers.push_back(builder.AddSystem<ObjectStateReceiver>(plant, obj_index));
+  }
+
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(),
       franka_state_receiver->get_output_port(0).size() - 1, 1);
-  auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      object_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(object_index));
 
-  std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(object_index)};
+  // Duplicating passthrough for each object
+  std::vector<SubvectorPassThrough<double>*> tray_passthroughs;
+  for (int i = 0; i < object_state_receivers.size(); i++) {  
+      tray_passthroughs.push_back(
+				builder.AddSystem<SubvectorPassThrough>(
+						object_state_receivers.at(i)->get_output_port(0).size(), 0,
+						plant.num_positions(object_indices_plant.at(i)))
+				);
+  }
+
+  std::vector<int> input_sizes = {plant.num_positions(franka_index)};
+	for (ModelInstanceIndex obj_index : object_indices_plant) {
+		input_sizes.push_back(
+			plant.num_positions(obj_index)
+		);
+	}
+	
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false);
+          controller_params.object_body_name, false, object_indices);
+
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
-  builder.Connect(object_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
+
+  std::vector<const drake::systems::InputPort<double>*> ro_model_object_inputs = 
+      reduced_order_model_receiver->get_input_ports_object_state();
+  for (int i = 0; i < object_state_receivers.size(); i++) {
+    builder.Connect(object_state_receivers.at(i)->get_output_port(),
+                    *(ro_model_object_inputs.at(i)));
+  } 
+	std::cout << "After loop?" << std::endl;
 
   // LCM subscribers.
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, lcm));
-  auto object_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.object_state_channel, lcm));
+
+			
+  std::vector<LcmSubscriberSystem*> object_state_subs;
+	for (int i = 0; i < object_state_receivers.size(); i++) {
+      object_state_subs.push_back(
+				builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.object_state_channels.at(i), lcm))
+				);
+	} 
+
   auto is_c3_mode_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, lcm));
@@ -306,13 +350,23 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     trajectory_drawer_object_best->get_input_port_trajectory());
   }
+  std::vector<std::string> position_names;
+  std::vector<std::string> orientation_names;
+
+  std::cout << "SIZE: " << object_indices.size() << std::endl;
+  for (int i = 0; i < object_indices.size(); i++) {
+    position_names.push_back("object_position_target_" + std::to_string(i));
+    orientation_names.push_back("object_orientation_target_" + std::to_string(i));
+  }
 
   if (vis_params.visualize_c3_plan_curr) {
-    auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-        "object_position_target", "object_orientation_target",
-        "plans/curr_planned", sampling_c3_options.N, true,
-        vis_params.c3_curr_object_color);
+    auto object_pose_drawer_curr =
+        builder.AddSystem<systems::LcmPoseDrawer>(
+                meshcat, vis_params.object_vis_models,
+                position_names, orientation_names,
+                "plans/curr_planned", sampling_c3_options.N, true,
+                vis_params.c3_curr_object_color);
+
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
                     object_pose_drawer_curr->get_input_port_trajectory());
 
@@ -328,9 +382,8 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.object_vis_model),
-            "object_position_target", "object_orientation_target",
+            meshcat, vis_params.object_vis_models,
+            position_names, orientation_names,
             "plans/dynamically_feasible_curr_plan",
             sampling_c3_options.N + 1, true, vis_params.df_curr_object_color);
     builder.Connect(
@@ -435,7 +488,7 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_state) {
     auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
+        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, vis_params.object_vis_models.size(), true, true);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),
@@ -477,7 +530,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_is_c3_mode) {
-    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
+    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>(plant_object);
     builder.Connect(is_c3_mode_sub->get_output_port(),
                     c3_mode_visualizer->get_input_port_is_c3_mode());
     builder.Connect(reduced_order_model_receiver->get_output_port(),
@@ -491,18 +544,27 @@ int do_main(int argc, char* argv[]) {
         is_c3_mode_drawer->get_input_port_trajectory());
   }
 
+
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
-  builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
+	for (int i = 1; i <= tray_passthroughs.size(); i++) {
+		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(), mux->get_input_port(i));
+	} 
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
-  builder.Connect(*object_state_receiver, *tray_passthrough);
+
+	for (int i = 0; i < object_state_receivers.size(); i++) {
+		builder.Connect(*(object_state_receivers.at(i)), *(tray_passthroughs.at(i)));
+	} 
   builder.Connect(*franka_state_sub, *franka_state_receiver);
-  builder.Connect(*object_state_sub, *object_state_receiver);
+
+	for (int i = 0; i < object_state_subs.size(); i++) {
+		builder.Connect(*(object_state_subs.at(i)), *(object_state_receivers.at(i)));
+	} 
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
@@ -514,12 +576,21 @@ int do_main(int argc, char* argv[]) {
 
   auto& franka_state_sub_context =
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
-  auto& object_state_sub_context =
-      diagram->GetMutableSubsystemContext(*object_state_sub, context.get());
+
+	std::vector<drake::systems::Context<double>*> object_state_sub_contexts;
+	for (int i = 0; i < object_state_receivers.size(); i++) {
+			object_state_sub_contexts.push_back(
+				&diagram->GetMutableSubsystemContext(*(object_state_subs.at(i)), context.get())
+			);
+	}
+
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
-  object_state_receiver->InitializeSubscriberPositions(
-      plant, object_state_sub_context);
+	for (int i = 0; i < object_state_receivers.size(); i++) {
+		object_state_receivers.at(i)->InitializeSubscriberPositions(
+				plant, *object_state_sub_contexts.at(i));
+	}
+
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
@@ -531,7 +602,7 @@ int do_main(int argc, char* argv[]) {
   simulator->Initialize();
 
   drake::log()->info("visualizer started");
-
+    std::cout << "Before simulator" << std::endl;
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;

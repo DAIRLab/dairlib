@@ -204,6 +204,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// Helper functions
   solvers::LCS CreatePlaceholderLCS() const;
 
+
   void ResolvePredictedEEState(
     const bool& is_teleop, drake::VectorX<double>& x_lcs_curr) const;
 
@@ -318,6 +319,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   std::vector<double> face_bins_;
   std::vector<Face> faces_;
+  std::vector<std::vector<Face>> faces_per_object_;
+  std::vector<std::vector<double>> face_bins_per_object_;
+  std::vector<double> total_area_per_object_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;
@@ -389,6 +393,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
   mutable double dt_ = 0.1;
+  mutable double dt_cost_ = 0.02;
 
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;

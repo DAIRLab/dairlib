@@ -1,5 +1,5 @@
 #include "sampling_c3_utils.h"
-
+#include <iostream>
 #include "common/find_resource.h"
 #include "drake/multibody/parsing/parser.h"
 
@@ -61,7 +61,23 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
   return parser.AddModels(FindResourceOrThrow(object_model))[0];
 }
 
-void AddLCSModelsToPlant(
+std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    std::vector<std::string> object_models) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+
+  std::vector<drake::multibody::ModelInstanceIndex> models;
+  for (const auto& model : object_models) {
+      models.push_back(
+        parser.AddModels(FindResourceOrThrow(model))[0]
+      );
+  } 
+  return models;
+}
+
+void AddLCSModelToPlant(
     MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph,
     const std::string& object_model,
@@ -84,6 +100,40 @@ void AddLCSModelsToPlant(
                     plant->GetFrameByName("base_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
+}
+
+
+ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
+    MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph,
+    std::vector<std::string> object_models,
+    const bool& include_end_effector_orientation) {
+  // Cannot currently handle end effector orientation (would just require new
+  // EE simple model with orientation DOFs).
+  DRAKE_ASSERT(!include_end_effector_orientation);
+
+  std::vector<drake::multibody::ModelInstanceIndex> obj_models;
+
+  Parser parser_lcs(plant);
+  parser_lcs.SetAutoRenaming(true);
+  parser_lcs.AddModels(kEndEffectorSimpleModel);
+  parser_lcs.AddModels(kGroundModel);
+
+  for (const auto& model : object_models) {
+    obj_models.push_back(
+      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
+    );
+  } 
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+
+  RigidTransform<double> X_W_G = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("base_link"), X_WI);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("ground"), X_W_G);
+  return obj_models;
 }
 
 }   // namespace dairlib

@@ -235,7 +235,6 @@ std::tuple<Vector3d, Vector3d, Vector3d, T>
   const SignedDistanceToPoint<T> signed_distance_to_point =
     query_object.ComputeSignedDistanceGeometryToPoint(
       sphere_center, geometry_set_with_mesh)[0];
-
   // Set the values.
   Vector3d p_ACa, p_BCb;
   T distance = signed_distance_to_point.distance - sphere_radius;

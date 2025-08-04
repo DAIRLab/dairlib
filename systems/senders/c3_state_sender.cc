@@ -1,5 +1,6 @@
 #include "systems/senders/c3_state_sender.h"
 #include "systems/framework/timestamped_vector.h"
+#include <iostream>
 
 namespace dairlib {
 

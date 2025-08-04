@@ -23,7 +23,8 @@ enum SamplingStrategy {
   kFixed,
   kRandomOnPerimeter,
   kRandomOnShell,
-  kMeshNormal
+  kMeshNormal,
+  kMeshNormalMultiObject
 };
 
 struct SamplingParams {
@@ -70,7 +71,7 @@ struct SamplingParams {
   double barycentric_bias;
 
   double z_height;
-
+  double c3_min_clearance;
 
 
   template <typename Archive>
@@ -98,5 +99,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(max_attempts));
     a->Visit(DRAKE_NVP(barycentric_bias));
     a->Visit(DRAKE_NVP(z_height));
+    a->Visit(DRAKE_NVP(c3_min_clearance));
   }
 };

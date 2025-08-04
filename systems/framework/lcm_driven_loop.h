@@ -205,6 +205,7 @@ class LcmDrivenLoop {
       state_sub_ = std::make_unique<Subscriber<lcmt_robot_output>>(
           drake_lcm_, backup_drive_channel);
     }
+    std::cout << "ACTIVE CHANNEL: " << active_channel_ << std::endl;
   };
 
   /// Constructor for single-input LcmDrivenLoop without lcm_parser
@@ -343,7 +344,6 @@ class LcmDrivenLoop {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
         }
-
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
       }

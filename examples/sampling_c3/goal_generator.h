@@ -16,7 +16,6 @@
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewiseQuaternionSlerp;
 
-
 // Define the nominal orientations for the jack demo.
 inline const Eigen::Quaterniond kQuatAllUp{
   0.88047623921714, 0.279848142333121, -0.36470519963100, -0.115916895959295};
@@ -40,8 +39,15 @@ inline const std::vector<Eigen::Quaterniond> kNominalOrientationsJack{
 
 // Define the nominal orientations for any planar demo.
 inline const Eigen::Quaterniond kQUAT_FLAT{1.0, 0.0, 0.0, 0.0};
-inline const std::vector<Eigen::Quaterniond> kNominalOrientationsPlanar{
-  kQUAT_FLAT};
+inline std::vector<std::vector<Eigen::Quaterniond>> MakeNominalOrientationsPlanar(int n) {
+  std::vector<std::vector<Eigen::Quaterniond>> orientation_storage;
+
+  for (int i = 0; i < n; ++i) {
+    orientation_storage.push_back({kQUAT_FLAT});
+  }
+
+  return orientation_storage;
+}
 
 
 namespace dairlib {
@@ -52,14 +58,22 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   SamplingC3GoalGenerator(
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
-    const std::vector<Eigen::Quaterniond>& nominal_orientations);
+    std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations,
+    std::vector<drake::multibody::ModelInstanceIndex> object_indices);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_object_state() const {
-    return this->get_input_port(object_state_port_);
+  std::vector<const drake::systems::InputPort<double>*> 
+    get_input_ports_object_state() const {
+    std::vector<const drake::systems::InputPort<double>*> output;
+    for (drake::systems::InputPortIndex port : object_state_ports_) {
+      output.push_back(
+        &this->get_input_port(port)
+      );
+    } 
+    return output;
   }
 
   const drake::systems::OutputPort<double>&
@@ -67,19 +81,37 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(end_effector_target_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_object_target()
-      const {
-    return this->get_output_port(object_target_port_);
+  std::vector<const drake::systems::OutputPort<double>*> 
+    get_output_ports_object_target() const {
+    std::vector<const drake::systems::OutputPort<double>*> output;
+    for (drake::systems::OutputPortIndex port : object_target_ports_) {
+      output.push_back(
+        &this->get_output_port(port)
+      );
+    } 
+    return output;
   }
 
-  const drake::systems::OutputPort<double>&
-  get_output_port_object_velocity_target() const {
-    return this->get_output_port(object_velocity_target_port_);
+  std::vector<const drake::systems::OutputPort<double>*>
+    get_output_ports_object_velocity_target() const {
+    std::vector<const drake::systems::OutputPort<double>*> output;
+    for (drake::systems::OutputPortIndex port : object_velocity_target_ports_) {
+      output.push_back(
+        &this->get_output_port(port)
+      );
+    } 
+    return output;
   }
 
-  const drake::systems::OutputPort<double>&
-  get_output_port_object_final_target() const {
-    return this->get_output_port(object_final_target_port_);
+  std::vector<const drake::systems::OutputPort<double>*>
+  get_output_ports_object_final_target() const {
+    std::vector<const drake::systems::OutputPort<double>*> output;
+    for (drake::systems::OutputPortIndex port : object_final_target_ports_) {
+      output.push_back(
+        &this->get_output_port(port)
+      );
+    } 
+    return output;
   }
 
   const drake::systems::OutputPort<double>& get_output_port_target_gen_info()
@@ -87,47 +119,58 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(target_gen_info_port_);
   }
 
- private:
-  const std::vector<Eigen::Quaterniond>& GetNominalOrientations() const {
-    return nominal_orientations_; }
+
+
+
+private:
+  std::vector<drake::multibody::ModelInstanceIndex> object_indices_;
+  mutable std::vector<bool> reached_goal_;
+
+  const std::vector<Eigen::Quaterniond>& GetNominalOrientations(int index) const {
+    return nominal_orientations_.at(index); }
 
   void CalcEndEffectorTarget(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* target) const;
   void CalcObjectTarget(
       const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const;
+      drake::systems::BasicVector<double>* target,
+      int index) const;
   void CalcObjectVelocityTarget(
       const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const;
+      drake::systems::BasicVector<double>* target,
+      int index) const;
   void OutputObjectFinalTarget(
       const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const;
+      drake::systems::BasicVector<double>* target,
+      int index) const;
+
   void OutputGoalGeneratorInfo(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* target) const;
-  void SetRandomizedTargetFinalObjectPosition() const;
-  void SetRandomizedTargetFinalObjectOrientation() const;
-  void CycleThroughOrientationSequence() const;
-  void OnGoalReached() const;
+  void SetRandomizedTargetFinalObjectPosition(int index) const;
+  void SetRandomizedTargetFinalObjectOrientation(int index) const;
+  void CycleThroughOrientationSequence(int index) const;
+  void OnGoalReached(int index) const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
     GenerateLineTrajectoryWithLookahead(
       const Eigen::Quaterniond& quat_curr_orientation,
-      const Eigen::Vector3d& obj_curr_position) const;
+      const Eigen::Vector3d& obj_curr_position,
+      int index) const;
 
   // Input ports
   drake::systems::InputPortIndex radio_port_;
-  drake::systems::InputPortIndex object_state_port_;
+  std::vector<drake::systems::InputPortIndex> object_state_ports_;
   drake::systems::OutputPortIndex end_effector_target_port_;
-  drake::systems::OutputPortIndex object_target_port_;
-  drake::systems::OutputPortIndex object_velocity_target_port_;
-  drake::systems::OutputPortIndex object_final_target_port_;
+  std::vector<drake::systems::OutputPortIndex> object_target_ports_;
+  std::vector<drake::systems::OutputPortIndex> object_velocity_target_ports_;
+  std::vector<drake::systems::OutputPortIndex> object_final_target_ports_;
   drake::systems::OutputPortIndex target_gen_info_port_;
 
   const SamplingC3GoalParams goal_params_;
-  const std::vector<Eigen::Quaterniond> nominal_orientations_;
-  mutable Eigen::VectorXd target_final_object_position_;
-  mutable Eigen::VectorXd target_final_object_orientation_;
+  std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations_;
+  mutable std::vector<Eigen::VectorXd> target_final_object_positions_;
+  mutable std::vector<Eigen::VectorXd> target_final_object_orientations_;
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;
@@ -137,9 +180,15 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorJacktoy(
     const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params) :
+    const SamplingC3GoalParams& goal_params, 
+    std::vector<drake::multibody::ModelInstanceIndex> object_indices
+  ) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, kNominalOrientationsJack) {}
+        object_plant,
+        goal_params,
+        std::vector<std::vector<Eigen::Quaterniond>>{
+            kNominalOrientationsJack},
+        object_indices) {}
 };
 
 
@@ -147,9 +196,11 @@ class SamplingC3GoalGeneratorPlanar : public SamplingC3GoalGenerator {
  public:
   SamplingC3GoalGeneratorPlanar(
     const drake::multibody::MultibodyPlant<double>& object_plant,
-    const SamplingC3GoalParams& goal_params) :
+    const SamplingC3GoalParams& goal_params,
+    std::vector<drake::multibody::ModelInstanceIndex> object_indices
+  ) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, kNominalOrientationsPlanar) {}
+        object_plant, goal_params, MakeNominalOrientationsPlanar(object_indices.size()), object_indices) {}
 };
 
 

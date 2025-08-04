@@ -53,16 +53,27 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const std::string& object_model = "");
 
+std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    std::vector<std::string> object_models = {});
+
+void AddLCSModelToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const std::string& object_model = "",
+    const bool& include_end_effector_orientation = false);
+
 /// Add LCS models to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param object_model the model of the object to add to the plant
 /// @param include_end_effector_orientation whether to include the end effector
 /// orientation as DOFs in the plant. True is currently unimplemented.
-void AddLCSModelsToPlant(
+std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const std::string& object_model = "",
+    std::vector<std::string> object_models = {},
     const bool& include_end_effector_orientation = false);
 
 }   // namespace dairlib

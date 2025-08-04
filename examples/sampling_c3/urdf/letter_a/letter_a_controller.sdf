@@ -15,7 +15,6 @@
             <iyz>0.0</iyz>
         </inertia>
       </inertial>
-
       <visual name="body">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
@@ -75,6 +74,7 @@
         </drake:proximity_properties>
         <pose> 0.08951880 -0.00121480 0.00000000 0 0 0</pose>
       </collision>
+ 
     </link>
   </model>
 </sdf>

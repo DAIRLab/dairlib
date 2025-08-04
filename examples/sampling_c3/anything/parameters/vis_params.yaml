@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
-object_vis_model: examples/sampling_c3/urdf/frame/frame.sdf
-# This ^ will be overwritten by generating new files.
+object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
+object_vis_models: ['examples/sampling_c3/urdf/letter_a/letter_a.sdf', 'examples/sampling_c3/urdf/letter_r/letter_r.sdf']
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]
@@ -10,7 +10,7 @@ visualize_c3_workspace: false
 visualize_c3_state: true
 
 visualize_center_of_mass_plan_curr: false
-visualize_c3_forces_curr: false
+visualize_c3_forces_curr: true
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false
 
@@ -25,7 +25,7 @@ sample_color: [1.0, 1.0, 0.0]
 
 visualize_execution_plan: false
 
-visualize_c3_plan_curr: false
+visualize_c3_plan_curr: true
 c3_curr_object_color: []
 c3_curr_ee_color: [0.8, 0.8, 0.8]
 df_curr_object_color: []

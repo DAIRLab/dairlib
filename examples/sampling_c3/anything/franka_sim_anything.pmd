@@ -26,6 +26,18 @@ group "operator" {
         exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
         host = "localhost";
     }
+    cmd "generate_files" {
+        exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
+        host = "localhost";
+    }
+    cmd "multi_rewrite" {
+        exec = "python3 examples/sampling_c3/multiyaml_rewrite.py";
+        host = "localhost";
+    }
+    cmd "install_dependencies" {
+        exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
+        host = "localhost";
+    }
 }
 
 group "controllers" {    

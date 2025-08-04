@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace systems {
@@ -17,7 +18,8 @@ namespace systems {
 /// the visualizer).
 class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
  public:
-  C3ModeVisualizer();
+
+  explicit C3ModeVisualizer(const drake::multibody::MultibodyPlant<double>& plant);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_is_c3_mode() const {
@@ -43,6 +45,7 @@ class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex is_c3_mode_input_port_;
   drake::systems::InputPortIndex curr_lcs_state_;
   drake::systems::OutputPortIndex c3_mode_visualization_traj_port_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
 };
 
 }  // namespace systems

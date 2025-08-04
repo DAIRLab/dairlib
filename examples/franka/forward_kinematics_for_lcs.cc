@@ -175,7 +175,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(tray_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
+                  *(reduced_order_model_receiver->get_input_ports_object_state().at(0)));
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
   builder.Connect(target_state_mux->get_output_port(),

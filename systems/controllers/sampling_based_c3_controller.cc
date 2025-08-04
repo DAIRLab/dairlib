@@ -78,6 +78,10 @@ SamplingC3Controller::SamplingC3Controller(
   C3Options c3_options = sampling_c3_options_.GetC3Options(
     crossed_cost_switching_threshold_);
 
+  DRAKE_DEMAND(c3_options.lcs_dt_resolution > 0);
+  std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
+  std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
+
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
   double discount_factor = 1;
@@ -87,14 +91,29 @@ SamplingC3Controller::SamplingC3Controller(
     discount_factor *= c3_options.gamma;
   }
   Q_.push_back(discount_factor * c3_options.Q);
+
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
-
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;
 
+  if (verbose_) {
+
+    std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
+    std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
+    std::cout << "R Rows: " << R_[0].rows() << std::endl;
+    std::cout << "R Cols: " << R_[0].cols() << std::endl;
+    std::cout << "G Rows: " << G_[0].rows() << std::endl;
+    std::cout << "G Cols: " << G_[0].cols() << std::endl;
+    std::cout << "U Rows: " << U_[0].rows() << std::endl;
+    std::cout << "U Cols: " << U_[0].cols() << std::endl;
+  }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
@@ -118,16 +137,22 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  std::cout << "lcs_placeholder size: " << lcs_placeholder.A_.size() << std::endl;
+  std::cout << "Q size: " << Q_.size() << std::endl;
+
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
+
     c3_best_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
+
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
       lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
+
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(
         lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
@@ -157,6 +182,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
+  std::cout << "Set solver options" << std::endl;
 
   // Set actor bounds.
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -201,6 +227,11 @@ SamplingC3Controller::SamplingC3Controller(
       A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
   }
 
+  std::cout << "n_q_" << n_q_ << std::endl;
+  std::cout << "n_v_" << n_v_ << std::endl;
+  std::cout << "n_u_" << n_u_ << std::endl;
+  std::cout << "n_x_" << n_x_ << std::endl;  
+  
   // Input ports.
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -213,7 +244,7 @@ SamplingC3Controller::SamplingC3Controller(
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
   final_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
-
+  
   // Output ports.
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -422,49 +453,81 @@ SamplingC3Controller::SamplingC3Controller(
   }
 
   // Below code loads in the mesh and enumerates triangular faces.
-  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal) {
+  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal || 
+      sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
     std::vector<std::string> mesh_paths;
-    const auto& query_port = plant_.get_geometry_query_input_port();
-    const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
-    const auto& inspector = query_object.inspector();
-    for (auto id : inspector.GetAllGeometryIds()) {
-      const auto& shape = inspector.GetShape(id);
-      std::string s = shape.to_string();  
-      // e.g. "Mesh(filename='/path/to/foo.obj', scale=1)"
-
-      auto p = s.find("filename='");
-      if (p != std::string::npos) {
-        p += strlen("filename='");
-        auto q = s.find("'", p);
-        std::string path = s.substr(p, q - p);
-        mesh_paths.push_back(path);
-      }
-    }  
+    for (std::string base_name : controller_params_.base_names) {
+      std::string path = "examples/sampling_c3/urdf/" + base_name + ".obj";
+      mesh_paths.push_back(path);
+    }
     if (mesh_paths.empty()) {
-      throw std::runtime_error("SamplingC3Controller: no mesh files found "
-        "in SceneGraph, required if using kMeshNormal sampling strategy.");
+      throw std::runtime_error("SamplingC3Controller: no mesh files found in SceneGraph");
     }
 
-    // Load triangle meshes and count total triangles.
-    int num_tri = 0;
-    std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
+    // N OBJECTS
+    // Store faces and bins for each object
+
     for (const std::string& mesh_path : mesh_paths) {
-      drake::geometry::TriangleSurfaceMesh<double>* mesh = 
-        new drake::geometry::TriangleSurfaceMesh<double>(
-          drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
-      meshes.push_back(mesh);
-      num_tri += mesh->num_triangles();
+        drake::geometry::TriangleSurfaceMesh<double>* mesh =
+            new drake::geometry::TriangleSurfaceMesh<double>(
+                drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+
+        const auto& vertices = mesh->vertices();
+        int num_tri = mesh->num_triangles();
+
+        std::vector<Face> object_faces;
+        std::vector<double> object_bins;
+        object_bins.push_back(0.0);
+
+        double cumulative_area = 0.0;
+
+        for (int i = 0; i < num_tri; ++i) {
+            auto tri = mesh->triangles()[i];
+            Eigen::Vector3d v0 = vertices[tri.vertex(0)];
+            Eigen::Vector3d v1 = vertices[tri.vertex(1)];
+            Eigen::Vector3d v2 = vertices[tri.vertex(2)];
+            Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
+
+            if (std::abs(normal[2]) < 0.8) {
+                double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
+                object_faces.push_back({area, normal, {v0, v1, v2}});
+                cumulative_area += area;
+                object_bins.push_back(cumulative_area);
+            }
+        }
+
+        if (object_faces.empty()) {
+            throw std::runtime_error("No valid faces found in " + mesh_path);
+        }
+
+        faces_per_object_.push_back(std::move(object_faces));
+        face_bins_per_object_.push_back(std::move(object_bins));
+        total_area_per_object_.push_back(cumulative_area);
     }
 
-    //Initialize face storage and reserve estimated size.
-    int j = 0;
-    faces_.reserve(num_tri);
-    face_bins_.reserve(num_tri+1);
-    face_bins_.push_back(0.0);
+  }
 
-    // Iterate through all meshes, extract valid faces, and compute cumulative 
-    // area bins.
+  /*
+  // SINGLE OBJECT (DEPRECATED SOON)
+  int num_tri = 0;
+  std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
+  for (const std::string& mesh_path : mesh_paths) {
+    drake::geometry::TriangleSurfaceMesh<double>* mesh = 
+      new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
+    meshes.push_back(mesh);
+    num_tri += mesh->num_triangles();
+  }
+
+  // Get faces with relatively horizontal normals
+  int j = 0;
+  faces_.reserve(num_tri);
+  face_bins_.reserve(num_tri+1);
+  face_bins_.push_back(0.0);
+  for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
+    const auto& vertices = mesh->vertices();
+    int num_tri = mesh->num_triangles();
+
+    // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
     for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
       const auto& vertices = mesh->vertices();
       int num_tri = mesh->num_triangles();
@@ -489,7 +552,14 @@ SamplingC3Controller::SamplingC3Controller(
       throw std::runtime_error("No valid faces found in any of the meshes.");
     }
   }
+
+  if (faces_.empty()) {
+    throw std::runtime_error("No valid faces found in any of the meshes.");
+  }
+  */
+  std::cout << "end of constructor" << std::endl;
 }
+
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
@@ -504,10 +574,13 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
              sampling_c3_options_.planning_dt_position);
 }
 
+
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
+
+  //std::cout << "entered computeplan" << std::endl;
 
   // Evaluate input ports.
   const auto& radio_out =
@@ -517,15 +590,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& x_lcs_final_des =
-      *this->template EvalVectorInput<BasicVector>(context,
-                                                   final_target_input_port_);
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);                                                  
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
-
+      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
-
   if (verbose_) {
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
     std::cout << "x_lcs_des: " << x_lcs_des.get_value().transpose()
@@ -547,17 +616,24 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   CheckForWorkspaceLimitViolations(lcs_x_curr);
 
   // Compute the current position and orientation errors.
-  current_position_error_ =
-    (x_lcs_curr.segment(n_q_-3, 3) -
-     x_lcs_final_des.get_value().segment(n_q_-3, 3)).norm();
-  Eigen::Quaterniond curr_quat(
-    x_lcs_curr[n_q_-7], x_lcs_curr[n_q_-6],
-    x_lcs_curr[n_q_-5], x_lcs_curr[n_q_-4]);
-  Eigen::Quaterniond des_quat(
-    x_lcs_final_des.get_value()[n_q_-7], x_lcs_final_des.get_value()[n_q_-6],
-    x_lcs_final_des.get_value()[n_q_-5], x_lcs_final_des.get_value()[n_q_-4]);
-  Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
-  current_orientation_error_ = angle_axis_diff.angle();
+  current_position_error_ = 0;
+  current_orientation_error_ = 0;
+
+  //std::cout << x_lcs_curr.transpose() << std::endl;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    double error = (x_lcs_curr.segment(7 + 7*i, 3) -
+      x_lcs_final_des.get_value().segment(7 + 7*i, 3)).norm();
+    current_position_error_ += error;
+
+    Eigen::Quaterniond curr_quat(
+      x_lcs_curr[3 + 7*i], x_lcs_curr[4 + 7*i],
+      x_lcs_curr[5 + 7*i], x_lcs_curr[6 + 7*i]);
+    Eigen::Quaterniond des_quat(
+      x_lcs_final_des.get_value()[3 + 7*i], x_lcs_final_des.get_value()[4 + 7*i],
+      x_lcs_final_des.get_value()[5 + 7*i], x_lcs_final_des.get_value()[6 + 7*i]);
+    Eigen::AngleAxis<double> angle_axis_diff(des_quat * curr_quat.inverse());
+    current_orientation_error_ += angle_axis_diff.angle();
+  }
 
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
@@ -582,14 +658,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Reset the sample buffer now that the costs have changed.
     sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ =
-      -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+    sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
   }
 
   // If the object is close to desired XY location, track its full pose.
   if (!crossed_cost_switching_threshold_) {
-    if ((x_lcs_curr.segment(n_q_-3,2)-x_lcs_final_des.value().segment(n_q_-3,2))
-          .norm() < progress_params_.cost_switching_threshold_distance) {
+    double pose_diff = 0;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      pose_diff += (x_lcs_curr.segment(7 + 7*i ,2)-x_lcs_final_des.value().segment(7 + 7*i, 2)).norm();
+    }
+    if (pose_diff < progress_params_.cost_switching_threshold_distance * controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 
@@ -608,14 +686,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
-
   // Generate states, differing from the current state only by EE sample
   // locations.
   std::vector<Eigen::VectorXd> candidate_states =
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
-                         faces_, face_bins_);
+                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, total_area_per_object_);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -683,21 +760,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object = std::make_shared<C3Plus>(
         test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
+
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
+
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-        print_cost_breakdown, verbose_);
-
+        controller_params_.num_objects, print_cost_breakdown, verbose_);
+          
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
-#pragma omp critical
+    #pragma omp critical
     {
       c3_objects.at(i) = test_c3_object;
     }
@@ -712,6 +791,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
+
+  // double actual_cost = all_sample_costs_[0];
+  // all_sample_costs_[0] = 696969696969;
+  // for (int i = 0; i < controller_params_.num_objects; i++) {
+  //   if (results[2 + 4*i].distance < 0.1) {
+  //     all_sample_costs_[0] = actual_cost;
+  //   }
+  // }
+
+
   // End of parallelization
 
   // Update the sample buffer.  Do this before switching modes since 1) if in
@@ -868,8 +957,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       (!progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
-       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost))
+       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
+       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance))
     {
+
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -884,6 +975,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
     for (int i = 0; i < num_total_samples; i++) {
@@ -893,9 +985,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "In C3 mode after considering switch? " << is_doing_c3_
               << std::endl;
   }
-
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
+
   c3_best_plan_ = c3_objects.at(best_sample_index_);
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
 
@@ -903,6 +995,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
+
 
   if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
@@ -969,7 +1062,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cout << "At end of loop filtered_solve_time_: " << filtered_solve_time_
               << std::endl;
   }
-
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -1033,7 +1125,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
     drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
   float approx_loop_dt = std::min(0.1, filtered_solve_time_);
-  float nominal_accel = 10;
+  float nominal_accel = 1;
   for (int i = 0; i < 3; i++) {
     x_lcs_curr[i] = std::clamp(
       x_pred_curr_plan_[i],
@@ -1084,6 +1176,7 @@ void SamplingC3Controller::UpdateCostMatrices(
   double discount_factor = 1;
 
   dt_ = c3_options.dt;
+  dt_cost_ = c3_options.dt_cost;
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
     discount_factor *= c3_options.gamma;
@@ -1096,36 +1189,50 @@ void SamplingC3Controller::UpdateCostMatrices(
 
   if (sampling_c3_options_.use_quaternion_dependent_cost &&
       crossed_cost_switching_threshold_) {
-    Eigen::VectorXd quat = x_lcs_curr.segment(3, 4);
-    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3, 4);
-    Eigen::MatrixXd Q_quaternion_dependent_cost =
-      hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
-
+    std::vector<Eigen::VectorXd> quats;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      quats.push_back(x_lcs_curr.segment(3 + 7*i, 4));
+    }
+    std::vector<Eigen::VectorXd> quats_desired;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      quats_desired.push_back(x_lcs_des.get_value().segment(3 + 7*i, 4));
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_costs;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      Q_quaternion_dependent_costs.push_back(hessian_of_squared_quaternion_angle_difference(quats.at(i), quats_desired.at(i)));
+    }
     // Get the eigenvalues of the hessian to regularize so the Q matrix is
     // always PSD.
-    double min_eigval =
-      Q_quaternion_dependent_cost.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_1 =
-      std::max(0.0, -min_eigval) * Eigen::MatrixXd::Identity(4, 4);
-
-    Eigen::MatrixXd Q_quaternion_dependent_regularizer_part_2 =
-      quat_desired * quat_desired.transpose();
-    DRAKE_DEMAND((Q_quaternion_dependent_cost.rows() ==
-                  Q_quaternion_dependent_cost.cols()) &&
-                 (Q_quaternion_dependent_cost.rows() ==
-                  Q_quaternion_dependent_regularizer_part_2.rows()) &&
-                 (Q_quaternion_dependent_cost.rows() ==
-                  Q_quaternion_dependent_regularizer_part_2.cols()) &&
-                 (Q_quaternion_dependent_cost.rows() == 4));
+    std::vector<double> min_eigvals;
+    for (int i = 0; i < controller_params_.num_objects; i++) {
+      min_eigvals.push_back(Q_quaternion_dependent_costs.at(i).eigenvalues().real().minCoeff());
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_1;
+    for (int i = 0; i < controller_params_.num_objects; i++) {    
+      Q_quaternion_dependent_regularizers_part_1.push_back(std::max(0.0, -min_eigvals.at(i)) * Eigen::MatrixXd::Identity(4, 4));
+    }
+    std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_2;
+    for (int i = 0; i < controller_params_.num_objects; i++) {    
+      Q_quaternion_dependent_regularizers_part_2.push_back(quats_desired.at(i) * quats_desired.at(i).transpose());
+    }
+    for (int i = 0; i < controller_params_.num_objects; i++) {   
+      DRAKE_ASSERT(
+        Q_quaternion_dependent_costs.at(i).rows() == 4 &&
+        Q_quaternion_dependent_costs.at(i).cols() == 4 &&
+        Q_quaternion_dependent_regularizers_part_2.at(i).rows() == 4 &&
+        Q_quaternion_dependent_regularizers_part_2.at(i).cols() == 4);
+    }
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; ++i) {
-      Q_[i].block(3, 3, 4, 4) =
-        discount_factor * sampling_c3_options_.q_quaternion_dependent_weight *
-        (Q_quaternion_dependent_cost +
-         Q_quaternion_dependent_regularizer_part_1 +
-         sampling_c3_options_.q_quaternion_dependent_regularizer_fraction *
-           Q_quaternion_dependent_regularizer_part_2);
-      discount_factor *= sampling_c3_options_.gamma;
+      for (int j = 0; j < controller_params_.num_objects; j++) {
+        Q_[i].block(3 + 7*j, 3 + 7*j, 4, 4) =
+          discount_factor * sampling_c3_options_.q_quaternion_dependent_weight *
+          (Q_quaternion_dependent_costs.at(j) +
+          Q_quaternion_dependent_regularizers_part_1.at(j) +
+          sampling_c3_options_.q_quaternion_dependent_regularizer_fraction *
+            Q_quaternion_dependent_regularizers_part_2.at(j));
+        discount_factor *= sampling_c3_options_.gamma;
+      }
     }
   }
 
@@ -1161,6 +1268,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to,
         c3_options.num_friction_directions, verbose_);
+
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
@@ -1178,7 +1286,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_, N_, contact_model_);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -1329,39 +1437,77 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   // Determine if samples are outdated by comparing to the current object
   // position and orientation.
-  Vector3d object_pos = x_lcs.segment(n_q_-3, 3);
-  Eigen::Vector4d object_quat = x_lcs.segment(3, 4).normalized();
-
-  MatrixXd buffer_xyzs =
-    sample_buffer_.block(0, 7, sampling_params_.N_sample_buffer, 3);
-  MatrixXd buffer_quats =
-    sample_buffer_.block(0, 3, sampling_params_.N_sample_buffer, 4);
+  std::vector<Vector3d> object_poss;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    object_poss.push_back(x_lcs.segment(7 + 7*i, 3));
+  } 
+  std::vector<Eigen::Vector4d> object_quats;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    object_quats.push_back(x_lcs.segment(3 + 7*i, 4).normalized());
+  } 
+  std::vector<MatrixXd> buffers_xyzs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    buffers_xyzs.push_back(sample_buffer_.block(0, 7 + 7*i, sampling_params_.N_sample_buffer, 3));
+  }
+  std::vector<MatrixXd> buffers_quats;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    buffers_quats.push_back(sample_buffer_.block(0, 3 + 7*i, sampling_params_.N_sample_buffer, 4));
+  }
 
   // First, remove outdated samples that have moved too much from current object
   // configuration.
-  VectorXd quat_dots = (buffer_quats * object_quat).array().abs();
-  VectorXd angles = (2.0 * quat_dots.array().acos());
-  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_rot =
-    (angles.array() < sampling_params_.ang_error_sample_retention);
+  std::vector<VectorXd> quat_dots;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    quat_dots.push_back((buffers_quats.at(i) * object_quats.at(i)).array().abs());
+  }
+  std::vector<VectorXd> angles;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    angles.push_back(2.0 * quat_dots.at(i).array().acos());
+  }
 
-  MatrixXd pos_deltas = buffer_xyzs.rowwise() - object_pos.transpose();
-  VectorXd distances = pos_deltas.rowwise().norm();
-  Eigen::Array<bool, Eigen::Dynamic, 1> mask_satisfies_pos =
-    (distances.array() < sampling_params_.pos_error_sample_retention);
+  std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_rot;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    mask_satisfies_rot.push_back(angles.at(i).array() < sampling_params_.ang_error_sample_retention);
+  }
 
+  std::vector<MatrixXd> pos_deltas;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pos_deltas.push_back(buffers_xyzs.at(i).rowwise() - object_poss.at(i).transpose());
+  }
+  std::vector<VectorXd> distances;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    distances.push_back(pos_deltas.at(i).rowwise().norm());
+  }
+  std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_pos;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.ang_error_sample_retention);
+  }
   MatrixXd retained_samples =
     MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   VectorXd retained_costs =
     -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+
+  // std::cout << "N_sample_buffer_: " << sampling_params_.N_sample_buffer << std::endl;
+  // std::cout << "satisfy_rot size: " << mask_satisfies_rot.at(0).size() << std::endl;
+
+  // Keep buffer if none of objects moved
   int retained_count = 0;
   for (int i = 0; i < sampling_params_.N_sample_buffer; i++) {
-    if (mask_satisfies_rot[i] && mask_satisfies_pos[i]) {
+    bool keep = true;
+    for (int j = 0; j < controller_params_.num_objects; j++) {
+      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { 
+        keep = false;
+        break;
+      } 
+    }
+    if (keep) {
       retained_samples.row(retained_count) = sample_buffer_.row(i);
       retained_costs[retained_count] = sample_costs_buffer_[i];
       retained_count++;
-    } else if (sample_costs_buffer_[i] < 0) {
+    }    
+    if (sample_costs_buffer_[i] < 0) {
       break;
-    }
+    } 
   }
   sample_buffer_ = retained_samples;
   sample_costs_buffer_ = retained_costs;
@@ -1400,7 +1546,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       VectorXd new_config = x_lcs.segment(0, n_q_);
       new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
       // Ensure a normalized quaternion is written to the buffer.
-      new_config.segment(3, 4) = object_quat;
+      for (int i = 0; i < controller_params_.num_objects; i++) {
+        new_config.segment(3 + 7*i, 4) = object_quats.at(i);
+      }
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
         all_sample_costs_[i - retained_count];
@@ -1448,16 +1596,19 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
 
     // Initialize the buffer plan with something.
     if (dynamically_feasible_buffer_plan_.size() != N_ + 1) {
+
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
+    
     }
     // If the best in the buffer is from the current set of samples, store the
     // associated C3 object and dynamically feasible plan, but don't add to the
     // set of samples to consider for repositioning.
     else if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
-             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {
+             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {       
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
+
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
     }
@@ -1465,6 +1616,7 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
     // consider it for repositioning by adding it to the set of samples, costs,
     // etc.
     else {
+
       all_sample_costs_.push_back(lowest_buffer_cost);
       all_sample_locations_.push_back(best_buffer_ee_sample);
       c3_objects.push_back(c3_buffer_plan_);
@@ -1485,12 +1637,22 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   bool updated_pos_or_rot = false;
   double cost_progress_fraction = -INFINITY; // Negative means progress.
 
-  Eigen::MatrixXd Q_pos_and_rot = Q_[0].block(n_q_-7, n_q_-7, 7, 7);
-  Eigen::VectorXd pos_and_rot_error_vec =
-    x_lcs_curr.segment(n_q_-7, 7) -
-    x_lcs_final_des.get_value().segment(n_q_-7, 7);
-  double curr_pos_and_rot_cost = pos_and_rot_error_vec.transpose() *
-                                 Q_pos_and_rot * pos_and_rot_error_vec;
+  std::vector<Eigen::MatrixXd> Q_pos_and_rots;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Q_pos_and_rots.push_back(Q_[0].block(3 + 7*i, 3 + 7*i, 7, 7));
+  }
+
+  std::vector<Eigen::VectorXd> pos_and_rot_error_vecs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pos_and_rot_error_vecs.push_back(
+        x_lcs_curr.segment(3 + 7*i, 7) - x_lcs_final_des.get_value().segment(3 + 7*i, 7)
+    );
+  }
+  double curr_pos_and_rot_cost = 0;  // accumulate costs across all objects
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    curr_pos_and_rot_cost += 
+      pos_and_rot_error_vecs.at(i).transpose() * Q_pos_and_rots.at(i) * pos_and_rot_error_vecs.at(i); 
+  }
 
   // Check for progress along different metrics.
   if ((all_sample_costs_[SampleIndex::kCurrentLocation] < lowest_cost_) ||
@@ -1599,7 +1761,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
   knots.bottomRows(3) =
-    c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+  c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
 
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_position_target";
@@ -1643,36 +1805,61 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
     c3_solution->u_sol_.col(i) =
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
-  knots.bottomRows(3) =
-    c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
-                         "object_target", "object_target", false);
+
+  std::vector<MatrixXd> knots;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    MatrixXd knot = MatrixXd::Zero(6, N_);
+    knot.topRows(3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
+    knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
+
+    knots.push_back(knot);
+  } 
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_traj;
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes = std::vector<std::string>(knots.at(i).rows(), "double");
+    object_traj.datapoints = knots.at(i);    
+    object_traj.time_vector = c3_solution->time_vector_.cast<double>();
+
+    object_trajs.push_back(object_traj);
+  }
+
+
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
+  }
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
+                         "object_targets", "object_targets", false);
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples =
-    c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector =
-    c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+  
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
+    orientation_sample =
+      c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+  }
+
+
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
+
 }
 
 void SamplingC3Controller::OutputC3SolutionCurrPlan(
@@ -1815,34 +2002,50 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
-  knots.bottomRows(3) =
-    c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
-                         "object_target", "object_target", false);
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    MatrixXd knot = MatrixXd::Zero(6, N_);
+    knot.topRows(3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
+    knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
+    LcmTrajectory::Trajectory object_traj;
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes = std::vector<std::string>(knot.rows(), "double");
+    object_traj.datapoints = knot;
+    object_traj.time_vector = c3_solution->time_vector_.cast<double>();
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  // first 3 rows are rpy, last 3 rows are angular velocity
-  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  orientation_samples =
-    c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector =
-    c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+    object_trajs.push_back(object_traj);
+  } 
+  
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
+  }
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
+                         "object_targets", "object_targets", false);
+
+
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_orientation_traj;
+    // first 3 rows are rpy, last 3 rows are angular velocity
+    MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
+    orientation_sample =
+      c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+  } 
+
+  
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
+
 }
 
 void SamplingC3Controller::OutputC3SolutionBestPlan(
@@ -2046,6 +2249,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
     const {
+    
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2054,40 +2258,64 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
         SampleIndex::kCurrentLocation)[i];
   }
 
-  Eigen::MatrixXd knots =
-    Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
-  Eigen::VectorXd timestamps =
-    Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
-  for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7, 7);
-    timestamps(i) = i;
+  std::vector<Eigen::MatrixXd> knots;
+  std::vector<Eigen::VectorXd> timestamps;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Eigen::MatrixXd knot = Eigen::MatrixXd::Zero(7, N_ + 1);
+    Eigen::VectorXd timestamp = 
+      Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
+
+    for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
+      knot.col(j) = dynamically_feasible_traj[j].segment(3 + 7*i, 7);
+      timestamp(j) = j;
+    }
+    knots.push_back(knot);
+    timestamps.push_back(timestamp);
+  }
+  
+
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_traj;
+    Eigen::MatrixXd position_sample = Eigen::MatrixXd::Zero(3, N_ + 1);
+    position_sample = knots.at(i).bottomRows(3);
+     object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes =
+      std::vector<std::string>(position_sample.rows(), "double");
+    object_traj.datapoints = position_sample;
+    object_traj.time_vector = timestamps.at(i).cast<double>();
+
+    object_trajs.push_back(object_traj);
+  } 
+ 
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
   }
 
-  LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
-  position_samples = knots.bottomRows(3);
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes =
-    std::vector<std::string>(position_samples.rows(), "double");
-  object_traj.datapoints = position_samples;
-  object_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
                          "object_target", "object_target", false);
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
-  orientation_samples = knots.topRows(4);
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector = timestamps.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    LcmTrajectory::Trajectory object_orientation_traj;
+    Eigen::MatrixXd orientation_sample = Eigen::MatrixXd::Zero(4, N_ + 1);
+    for (int j = 0; j < controller_params_.num_objects; j++) {
+      orientation_sample = knots.at(i).topRows(4);
+    } 
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector = timestamps.at(i).cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+  }
+  
 
   dynamically_feasible_curr_plan_object->saved_traj =
     lcm_traj.GenerateLcmObject();
   dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
+
 }
 
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
@@ -2130,46 +2358,64 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan)
     const {
+
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
     dynamically_feasible_traj[i] <<
       all_sample_dynamically_feasible_plans_.at(best_sample_index_)[i];
   }
-
-  Eigen::MatrixXd knots =
+  std::vector<Eigen::MatrixXd> knots;
+  std::vector<Eigen::VectorXd> timestamps;
+  std::vector<LcmTrajectory::Trajectory> object_trajs;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Eigen::MatrixXd knot =
       Eigen::MatrixXd::Zero(7, dynamically_feasible_traj.size());
-  Eigen::VectorXd timestamps =
+    Eigen::VectorXd timestamp =
       Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
-  for (int i = 0; i < dynamically_feasible_traj.size(); i++) {
-    knots.col(i) = dynamically_feasible_traj[i].segment(n_q_-7, 7);
-    timestamps(i) = i;
+    for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
+      knot.col(j) = dynamically_feasible_traj[j].segment(3 + 7*i, 7);
+      timestamp(j) = j;
+    }
+  
+    LcmTrajectory::Trajectory object_traj;
+    Eigen::MatrixXd position_sample = Eigen::MatrixXd::Zero(3, N_ + 1);
+    position_sample = knot.bottomRows(3);
+    object_traj.traj_name = "object_position_target_" + std::to_string(i);
+    object_traj.datatypes =
+      std::vector<std::string>(position_sample.rows(), "double");
+    object_traj.datapoints = position_sample;
+    object_traj.time_vector = timestamp.cast<double>();
+
+    object_trajs.push_back(object_traj);
+    knots.push_back(knot);
+    timestamps.push_back(timestamp);
+  } 
+  
+  std::vector<std::string> traj_names;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    traj_names.push_back("object_position_target_" + std::to_string(i));
   }
-
-  LcmTrajectory::Trajectory object_traj;
-  Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, 6);
-  position_samples = knots.bottomRows(3);
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes =
-    std::vector<std::string>(position_samples.rows(), "double");
-  object_traj.datapoints = position_samples;
-  object_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+  LcmTrajectory lcm_traj(object_trajs, traj_names,
                          "object_target", "object_target", false);
+                      
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  Eigen::MatrixXd orientation_samples = Eigen::MatrixXd::Zero(4, 6);
-  orientation_samples = knots.topRows(4);
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-    std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector = timestamps.cast<double>();
-  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                         object_orientation_traj);
+  for (int i = 0; i < controller_params_.num_objects; i++) {
 
-  dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
-  dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+    LcmTrajectory::Trajectory object_orientation_traj;
+    Eigen::MatrixXd orientation_sample = Eigen::MatrixXd::Zero(4, N_ + 1);
+    orientation_sample = knots.at(i).topRows(4);
+    object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
+    object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_sample.rows(), "double");
+    object_orientation_traj.datapoints = orientation_sample;
+    object_orientation_traj.time_vector = timestamps.at(i).cast<double>();
+    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                          object_orientation_traj);
+
+    dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
+    dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
+  }
 }
 
 // Output port handlers for sample-related ports

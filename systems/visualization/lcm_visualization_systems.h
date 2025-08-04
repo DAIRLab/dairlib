@@ -67,6 +67,15 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          int num_poses = 5,
                          bool add_transparency = true,
                          const Eigen::VectorXd& rgb = Eigen::VectorXd());
+            
+  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                        std::vector<std::string> model_files,
+                        std::vector<std::string> translation_trajectory_names,
+                        std::vector<std::string> orientation_trajectory_names,
+                        const std::string& system_name = "",
+                        int num_poses = 5,
+                        bool add_transparency = true,
+                        const Eigen::VectorXd& rgb = Eigen::VectorXd());
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -80,11 +89,18 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawTrajectoryObjects(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   drake::systems::InputPortIndex trajectory_input_port_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string translation_trajectory_name_;
   const std::string orientation_trajectory_name_;
-  std::unique_ptr<multibody::MultiposeVisualizer> multipose_visualizer_;
+
+  std::vector<std::string> translation_trajectory_names_;
+  std::vector<std::string> orientation_trajectory_names_;
+  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>> multipose_visualizers_;
   const int N_;
 };
 
@@ -147,6 +163,8 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
  public:
   explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                              bool draw_tray = true, bool draw_ee = false);
+  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&, int num_objects,
+                             bool draw_tray = true, bool draw_ee = false);
 
   const drake::systems::InputPort<double>& get_input_port_c3_state_final_target()
       const {
@@ -168,6 +186,9 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawC3StateMulti(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
   drake::systems::InputPortIndex c3_state_final_target_input_port_;
@@ -176,6 +197,7 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
 
   bool draw_tray_;
   bool draw_ee_;
+  int num_objects_;
 
   drake::systems::DiscreteStateIndex last_update_time_index_;
 
@@ -189,6 +211,13 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
   const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
+  
+  std::vector<std::string> c3_state_paths_;
+  std::vector<std::string> c3_final_target_object_paths_;
+  std::vector<std::string> c3_target_object_paths_;
+  std::vector<std::string> c3_actual_object_paths_;
+  std::vector<std::string> c3_target_ee_paths_;
+  std::vector<std::string> c3_actual_ee_paths_;
 };
 }  // namespace systems
 }  // namespace dairlib

@@ -574,7 +574,7 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   AddLCSModelsToPlant(&plant_for_lcs, &scene_graph,
-                      controller_params.object_model,
+                      controller_params.object_models,
                       controller_params.include_end_effector_orientation);
   plant_for_lcs.Finalize();
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =

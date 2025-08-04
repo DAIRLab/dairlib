@@ -1,6 +1,7 @@
 #include "update_context.h"
 
 #include <Eigen/Dense>
+#include <iostream>
 
 using Eigen::VectorXd;
 

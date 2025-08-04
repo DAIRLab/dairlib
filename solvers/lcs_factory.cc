@@ -49,7 +49,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd C(n_v);
   plant_ad.CalcBiasTerm(context_ad, &C);
   VectorXd u_dyn = plant.get_actuation_input_port().Eval(context);
-
+ 
   auto B_dyn_ad = plant_ad.MakeActuationMatrix();
   AutoDiffVecXd Bu =
       B_dyn_ad * plant_ad.get_actuation_input_port().Eval(context_ad);
@@ -276,6 +276,8 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
   system.SetTangentGapLinearization(W_x, W_l, W_u, w);
+  // std::cout << "lcs_factory dt: " << dt << std::endl;
+  // std::cout << "lcs_factory N: " << N << std::endl;
   return system;
 }
 
@@ -480,7 +482,8 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
       auto [phi_i, J_i] = collider.EvalPolytope(context,
                                                 num_friction_directions);
       distances.push_back(phi_i);
-      if (verbose) {
+
+      if (verbose) { 
         PrintVerboseContactInfo(plant, context, pair, phi_i);
       }
     }
@@ -496,6 +499,7 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
       }
     }
   }
+
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;
 }

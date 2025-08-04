@@ -26,6 +26,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
+  //std::cout << "cost lin: " << cost_lin.transpose() << std::endl;
+
   // set up for constraints (Ex + F \lambda + Hu + c >= 0)
   MatrixXd Mcons1(m_, n_ + m_ + k_);
   Mcons1 << E, F, H;
@@ -60,6 +62,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   GRBQuadExpr obj = 0;
 
+
   for (int i = 0; i < n_ + m_ + k_; i++) {
     obj.addTerm(cost_lin(i), delta_k[i]);
     obj.addTerm(U(i, i), delta_k[i], delta_k[i]);
@@ -93,9 +96,42 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     activation_expr.addTerms(coeff2, delta_k, n_ + m_ + k_);
     model.addConstr(activation_expr + c(i) >= 0);
     model.addConstr(activation_expr + c(i) <= M * binary[i]);
+
   }
 
-  model.optimize();
+  // std::cout << "coeff: ";
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << coeff[i] << ", ";
+  // }
+  // std::cout << "\n\ncoeff2: ";
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << coeff2[i] << ", ";
+  // }
+  // std::cout << "\nc: " << std::endl;
+  // for (int i = 0; i < n_ + m_ + k_; i++) {
+  //   std::cout << c(i) << ", ";
+  // }
+  // std::cout << "\n" << std::endl;
+
+  // std::cout << "Before model.optimize" << std::endl;
+  try {
+    model.optimize();
+    if (model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE) {
+        model.computeIIS();
+        model.write("model_IIS.ilp");
+    }
+    int status = model.get(GRB_IntAttr_Status);
+    if (status == GRB_OPTIMAL || status == GRB_SUBOPTIMAL) {
+
+    } else {
+        std::cerr << "Model did not solve to optimality. Status = " << status << std::endl;
+    }
+  } catch (GRBException& e) {
+      std::cerr << "Gurobi Exception: " << e.getMessage()
+                << " (error code " << e.getErrorCode() << ")" << std::endl;
+  } catch (std::exception& e) {
+      std::cerr << "Standard Exception: " << e.what() << std::endl;
+  }
 
   VectorXd delta_kc(n_ + m_ + k_);
   VectorXd binaryc(m_);

@@ -90,7 +90,7 @@ def run_sim(intrinsics, gains):
   builder.Connect(franka_state_sender.get_output_port(),
                   c3_controller.get_input_port_robot_state())
   builder.Connect(tray_state_sender.get_output_port(),
-                  c3_controller.get_input_port_object_state())
+                  c3_controller.get_input_ports_object_state()[0])
 
   builder.Connect(plant.get_state_output_port(franka_index),
                   franka_state_sender.get_input_port_state())

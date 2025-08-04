@@ -1,4 +1,5 @@
 #include "robot_lcm_systems.h"
+#include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -33,7 +34,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -58,7 +59,6 @@ RobotOutputReceiver::RobotOutputReceiver(
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
-
   positions_start_idx_ =
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .position_start();
@@ -307,7 +307,7 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -364,6 +364,7 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
     int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
+
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);
@@ -427,7 +428,7 @@ ObjectStateSender::ObjectStateSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 

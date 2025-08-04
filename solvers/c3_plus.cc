@@ -105,11 +105,13 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
 
   // Extract the weight vectors for lambda and eta from the diagonal of the cost
   // matrix U.
-  // Use absolute values to ensure numerical safety when taking square roots,
-  // in case the user inadvertently supplies negative weights.
-  VectorXd w_eta_vec =
-      U.block(n_ + m_ + k_, n_ + m_ + k_, m_, m_).diagonal().cwiseAbs();
-  VectorXd w_lambda_vec = U.block(n_, n_, m_, m_).diagonal().cwiseAbs();
+  VectorXd w_eta_vec = U.block(n_ + m_ + k_, n_ + m_ + k_, m_, m_).diagonal();
+  VectorXd w_lambda_vec = U.block(n_, n_, m_, m_).diagonal();
+
+  // Throw an error if any weights are negative.
+  if (w_eta_vec.minCoeff() < 0 || w_lambda_vec.minCoeff() < 0) {
+    throw std::runtime_error("Negative weights in the cost matrix U are not allowed.");
+  }
 
   VectorXd lambda_c = delta_c.segment(n_, m_);
   VectorXd eta_c = delta_c.segment(n_ + m_ + k_, m_);

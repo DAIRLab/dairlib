@@ -1,12 +1,20 @@
 #pragma once
-#include <numeric>
 #include <iostream>
+#include <numeric>
 
-#include "solvers/c3_options.h"
+#include "c3/core/c3_options.h"
+#include "c3/multibody/lcs_factory_options.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct SamplingC3Options : C3Options {
+using c3::C3Options;
+using c3::LCSFactoryOptions;
+
+struct SamplingC3Options : C3Options, LCSFactoryOptions {
+  std::string projection_type;  // "QP" or "MIQP" or "C3+"
+  double solve_time_filter_alpha = 0.0;
+  double publish_frequency = 100.0;  // Hz
+
   int num_outer_threads;  // for outer sampling loop.
 
   /// Additional radius-based workspace limit.
@@ -74,7 +82,6 @@ struct SamplingC3Options : C3Options {
   std::vector<std::vector<double>> g_lambda_position_list;
   std::vector<double> g_u_position;
 
-
   std::vector<double> u_x_position;
   std::vector<std::vector<double>> u_gamma_position_list;
   std::vector<std::vector<double>> u_lambda_n_position_list;
@@ -92,12 +99,26 @@ struct SamplingC3Options : C3Options {
   std::vector<std::vector<double>> u_eta_t_position_list;
   std::vector<std::vector<double>> u_eta_position_list;
 
+  std::vector<double>
+      u_horizontal_limits;  ///< Limits for horizontal actuator inputs.
+  std::vector<double>
+      u_vertical_limits;  ///< Limits for vertical actuator inputs.
+  std::vector<Eigen::VectorXd>
+      workspace_limits;      ///< Workspace boundaries as vectors.
+  double workspace_margins;  ///< Margins to be maintained within the workspace.
+
   C3Options c3_options_pose;
+  LCSFactoryOptions lcs_factory_options_pose;
   C3Options c3_options_position;
+  LCSFactoryOptions lcs_factory_options_position;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     C3Options::Serialize(a);
+    LCSFactoryOptions::Serialize(a);
+    a->Visit(DRAKE_NVP(projection_type));
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
     a->Visit(DRAKE_NVP(num_outer_threads));
     a->Visit(DRAKE_NVP(robot_radius_limits));
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
@@ -168,16 +189,21 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(u_eta_t_position_list));
     a->Visit(DRAKE_NVP(u_eta_position_list));
 
+    a->Visit(DRAKE_NVP(u_horizontal_limits));
+    a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_limits));
+    a->Visit(DRAKE_NVP(workspace_margins));
+
     // Set a few parameters based on num_contacts_index, differentiating between
     // for C3 solve and for C3 cost computation.
     resolve_contacts_to = resolve_contacts_to_lists[num_contacts_index];
     resolve_contacts_to_for_cost =
-      resolve_contacts_to_lists[num_contacts_index_for_cost];
-    num_contacts = std::accumulate(
-      resolve_contacts_to.begin(), resolve_contacts_to.end(), 0);
-    num_contacts_for_cost = std::accumulate(
-      resolve_contacts_to_for_cost.begin(), resolve_contacts_to_for_cost.end(),
-      0);
+        resolve_contacts_to_lists[num_contacts_index_for_cost];
+    num_contacts = std::accumulate(resolve_contacts_to.begin(),
+                                   resolve_contacts_to.end(), 0);
+    num_contacts_for_cost =
+        std::accumulate(resolve_contacts_to_for_cost.begin(),
+                        resolve_contacts_to_for_cost.end(), 0);
     mu.clear();
     for (size_t i = 0; i < mu_per_pair_type.size(); ++i) {
       int repeat = resolve_contacts_to_lists[num_contacts_index][i];
@@ -190,201 +216,205 @@ struct SamplingC3Options : C3Options {
     }
 
     // Create C3 options for both pose and position tracking.
-    SetCommonC3Options(&c3_options_pose);
-    SetPoseTrackingOptions(&c3_options_pose);
-    SetCommonC3Options(&c3_options_position);
-    SetPositionTrackingOptions(&c3_options_position);
+    SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
+    SetPoseTrackingOptions(&c3_options_pose, &lcs_factory_options_pose);
+    SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
+    SetPositionTrackingOptions(&c3_options_position,
+                               &lcs_factory_options_position);
   }
 
   C3Options GetC3Options(const bool& is_pose_tracking) const {
-    if (is_pose_tracking) { return c3_options_pose; }
+    if (is_pose_tracking) {
+      return c3_options_pose;
+    }
     return c3_options_position;
   }
 
-  private:
-    void PopulateCostMatricesFromVectors(C3Options* options) const {
-      std::vector<double> g_vector = std::vector<double>();
-      g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
-      if (options->contact_model == "stewart_and_trinkle") {
-        g_vector.insert(g_vector.end(), options->g_gamma.begin(),
-                        options->g_gamma.end());
-        g_vector.insert(g_vector.end(), options->g_lambda_n.begin(),
-                        options->g_lambda_n.end());
-        g_vector.insert(g_vector.end(), options->g_lambda_t.begin(),
-                        options->g_lambda_t.end());
+  LCSFactoryOptions GetLCSFactoryOptions(const bool& is_pose_tracking) const {
+    if (is_pose_tracking) {
+      return lcs_factory_options_pose;
+    }
+    return lcs_factory_options_position;
+  }
+
+ private:
+  void PopulateCostMatricesFromVectors(C3Options* options) const {
+    std::vector<double> g_vector = std::vector<double>();
+    g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
+    if (contact_model == "stewart_and_trinkle") {
+      g_vector.insert(g_vector.end(), options->g_gamma.begin(),
+                      options->g_gamma.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_n.begin(),
+                      options->g_lambda_n.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_t.begin(),
+                      options->g_lambda_t.end());
+    } else {
+      g_vector.insert(g_vector.end(), options->g_lambda.begin(),
+                      options->g_lambda.end());
+    }
+    g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
+
+    if (projection_type == "C3+") {
+      if (contact_model == "stewart_and_trinkle") {
+        g_vector.insert(g_vector.end(), options->g_eta_slack->begin(),
+                        options->g_eta_slack->end());
+        g_vector.insert(g_vector.end(), options->g_eta_n->begin(),
+                        options->g_eta_n->end());
+        g_vector.insert(g_vector.end(), options->g_eta_t->begin(),
+                        options->g_eta_t->end());
       } else {
-        g_vector.insert(g_vector.end(), options->g_lambda.begin(),
-                        options->g_lambda.end());
+        g_vector.insert(g_vector.end(), options->g_eta->begin(),
+                        options->g_eta->end());
       }
-      g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
+    }
 
-      if (options->projection_type == "C3+") {
-          if (options->contact_model == "stewart_and_trinkle") {
-          g_vector.insert(g_vector.end(), options->g_eta_slack.begin(),
-                          options->g_eta_slack.end());
-          g_vector.insert(g_vector.end(), options->g_eta_n.begin(),
-                          options->g_eta_n.end());
-          g_vector.insert(g_vector.end(), options->g_eta_t.begin(),
-                          options->g_eta_t.end());
-        } else {
-          g_vector.insert(g_vector.end(), options->g_eta.begin(),
-                          options->g_eta.end());
-        }
-      }
+    std::vector<double> u_vector = std::vector<double>();
+    u_vector.insert(u_vector.end(), options->u_x.begin(), options->u_x.end());
+    if (contact_model == "stewart_and_trinkle") {
+      u_vector.insert(u_vector.end(), options->u_gamma.begin(),
+                      options->u_gamma.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_n.begin(),
+                      options->u_lambda_n.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_t.begin(),
+                      options->u_lambda_t.end());
+    } else {
+      u_vector.insert(u_vector.end(), options->u_lambda.begin(),
+                      options->u_lambda.end());
+    }
+    u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
 
-      std::vector<double> u_vector = std::vector<double>();
-      u_vector.insert(u_vector.end(), options->u_x.begin(), options->u_x.end());
-      if (options->contact_model == "stewart_and_trinkle") {
-        u_vector.insert(u_vector.end(), options->u_gamma.begin(),
-                        options->u_gamma.end());
-        u_vector.insert(u_vector.end(), options->u_lambda_n.begin(),
-                        options->u_lambda_n.end());
-        u_vector.insert(u_vector.end(), options->u_lambda_t.begin(),
-                        options->u_lambda_t.end());
+    if (projection_type == "C3+") {
+      if (contact_model == "stewart_and_trinkle") {
+        u_vector.insert(u_vector.end(), options->u_eta_slack->begin(),
+                        options->u_eta_slack->end());
+        u_vector.insert(u_vector.end(), options->u_eta_n->begin(),
+                        options->u_eta_n->end());
+        u_vector.insert(u_vector.end(), options->u_eta_t->begin(),
+                        options->u_eta_t->end());
       } else {
-        u_vector.insert(u_vector.end(), options->u_lambda.begin(),
-                        options->u_lambda.end());
+        u_vector.insert(u_vector.end(), options->u_eta->begin(),
+                        options->u_eta->end());
       }
-      u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
-
-      if (options->projection_type == "C3+") {
-        if (options->contact_model == "stewart_and_trinkle") {
-          u_vector.insert(u_vector.end(), options->u_eta_slack.begin(),
-                          options->u_eta_slack.end());
-          u_vector.insert(u_vector.end(), options->u_eta_n.begin(),
-                          options->u_eta_n.end());
-          u_vector.insert(u_vector.end(), options->u_eta_t.begin(),
-                          options->u_eta_t.end());
-        } else {
-          u_vector.insert(u_vector.end(), options->u_eta.begin(),
-                          options->u_eta.end());
-        }
-      }
-
-      options->g_vector = g_vector;
-      options->u_vector = u_vector;
-
-      Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
-          options->q_vector.data(), options->q_vector.size());
-      Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
-          options->r_vector.data(), options->r_vector.size());
-      Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
-          options->g_vector.data(), options->g_vector.size());
-      Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
-          options->u_vector.data(), options->u_vector.size());
-
-      options->Q = options->w_Q * q.asDiagonal();
-      options->R = options->w_R * r.asDiagonal();
-      options->G = options->w_G * g.asDiagonal();
-      options->U = options->w_U * u.asDiagonal();
     }
 
-    void SetCommonC3Options(C3Options* options) const {
-      options->admm_iter = admm_iter;
-      options->rho = rho;
-      options->rho_scale = rho_scale;
-      options->num_threads = num_threads;
-      options->delta_option = delta_option;
-      options->contact_model = contact_model;
-      options->projection_type = projection_type;
-      options->warm_start = warm_start;
-      options->use_predicted_x0 = false;  // unused by sampling C3
-      options->end_on_qp_step = end_on_qp_step;
-      options->solve_time_filter_alpha = solve_time_filter_alpha;
-      options->publish_frequency = publish_frequency;
+    options->g_vector = g_vector;
+    options->u_vector = u_vector;
 
-      options->workspace_limits = workspace_limits;
-      options->workspace_margins = workspace_margins;
-      options->u_horizontal_limits = u_horizontal_limits;
-      options->u_vertical_limits = u_vertical_limits;
+    Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
+        options->q_vector.data(), options->q_vector.size());
+    Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
+        options->r_vector.data(), options->r_vector.size());
+    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
+        options->g_vector.data(), options->g_vector.size());
+    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
+        options->u_vector.data(), options->u_vector.size());
 
-      options->N = N;
-      options->gamma = gamma;
+    options->Q = options->w_Q * q.asDiagonal();
+    options->R = options->w_R * r.asDiagonal();
+    options->G = options->w_G * g.asDiagonal();
+    options->U = options->w_U * u.asDiagonal();
+  }
 
-      options->solve_dt = 0;  // unused in all of C3
-      options->num_friction_directions = num_friction_directions;
+  void SetCommonOptions(C3Options* c3_options,
+                        LCSFactoryOptions* lcs_factory_options) const {
+    c3_options->warm_start = warm_start;
+    c3_options->penalize_input_change = penalize_input_change;
+    c3_options->end_on_qp_step = end_on_qp_step;
+    c3_options->scale_lcs = scale_lcs;
 
-      options->qp_projection_alpha = qp_projection_alpha;
-      options->qp_projection_scaling = qp_projection_scaling;
-      options->penalize_changes_in_u_across_solves =
-          penalize_changes_in_u_across_solves;
+    c3_options->num_threads = num_threads;
+    c3_options->delta_option = delta_option;
 
-      options->mu = mu;
-      options->num_contacts = num_contacts;
+    c3_options->admm_iter = admm_iter;
+
+    c3_options->gamma = gamma;
+    c3_options->rho_scale = rho_scale;
+
+    c3_options->M = M;
+    c3_options->qp_projection_alpha = qp_projection_alpha;
+    c3_options->qp_projection_scaling = qp_projection_scaling;
+
+    lcs_factory_options->contact_model = contact_model;
+    lcs_factory_options->num_contacts = num_contacts;
+    lcs_factory_options->num_friction_directions = num_friction_directions;
+    lcs_factory_options->spring_stiffness = 0;  // not used in sampling C3
+    lcs_factory_options->mu = mu;
+    lcs_factory_options->N = N;
+  }
+
+  void SetPositionTrackingOptions(
+      C3Options* c3_options, LCSFactoryOptions* lcs_factory_options) const {
+    lcs_factory_options->dt = planning_dt_position;
+    c3_options->w_Q = w_Q_position;
+    c3_options->w_R = w_R_position;
+    c3_options->w_G = w_G_position;
+    c3_options->w_U = w_U_position;
+    c3_options->q_vector = q_vector_position;
+    c3_options->r_vector = r_vector_position;
+
+    c3_options->g_x = g_x_position;
+    c3_options->g_gamma = g_gamma_position_list[num_contacts_index];
+    c3_options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
+    c3_options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
+    c3_options->g_lambda = g_lambda_position_list[num_contacts_index];
+    c3_options->g_u = g_u_position;
+
+    c3_options->u_x = u_x_position;
+    c3_options->u_gamma = u_gamma_position_list[num_contacts_index];
+    c3_options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
+    c3_options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
+    c3_options->u_lambda = u_lambda_position_list[num_contacts_index];
+    c3_options->u_u = u_u_position;
+
+    // Only applicable for C3+
+    if (projection_type == "C3+") {
+      c3_options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
+      c3_options->g_eta_n = g_eta_n_position_list[num_contacts_index];
+      c3_options->g_eta_t = g_eta_t_position_list[num_contacts_index];
+      c3_options->g_eta = g_eta_position_list[num_contacts_index];
+      c3_options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
+      c3_options->u_eta_n = u_eta_n_position_list[num_contacts_index];
+      c3_options->u_eta_t = u_eta_t_position_list[num_contacts_index];
+      c3_options->u_eta = u_eta_position_list[num_contacts_index];
     }
 
-    void SetPositionTrackingOptions(C3Options* options) const {
-      options->dt = planning_dt_position;
-      options->w_Q = w_Q_position;
-      options->w_R = w_R_position;
-      options->w_G = w_G_position;
-      options->w_U = w_U_position;
-      options->q_vector = q_vector_position;
-      options->r_vector = r_vector_position;
+    PopulateCostMatricesFromVectors(c3_options);
+  }
 
-      options->g_x = g_x_position;
-      options->g_gamma = g_gamma_position_list[num_contacts_index];
-      options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
-      options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
-      options->g_lambda = g_lambda_position_list[num_contacts_index];
-      options->g_u = g_u_position;
+  void SetPoseTrackingOptions(C3Options* c3_options,
+                              LCSFactoryOptions* lcs_factory_options) const {
+    lcs_factory_options->dt = planning_dt_pose;
+    c3_options->w_Q = w_Q;
+    c3_options->w_R = w_R;
+    c3_options->w_G = w_G;
+    c3_options->w_U = w_U;
+    c3_options->q_vector = q_vector;
+    c3_options->r_vector = r_vector;
 
+    c3_options->g_x = g_x;
+    c3_options->g_gamma = g_gamma_list[num_contacts_index];
+    c3_options->g_lambda_n = g_lambda_n_list[num_contacts_index];
+    c3_options->g_lambda_t = g_lambda_t_list[num_contacts_index];
+    c3_options->g_lambda = g_lambda_list[num_contacts_index];
+    c3_options->g_u = g_u;
 
-      options->u_x = u_x_position;
-      options->u_gamma = u_gamma_position_list[num_contacts_index];
-      options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
-      options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
-      options->u_lambda = u_lambda_position_list[num_contacts_index];
-      options->u_u = u_u_position;
+    c3_options->u_x = u_x;
+    c3_options->u_gamma = u_gamma_list[num_contacts_index];
+    c3_options->u_lambda_n = u_lambda_n_list[num_contacts_index];
+    c3_options->u_lambda_t = u_lambda_t_list[num_contacts_index];
+    c3_options->u_lambda = u_lambda_list[num_contacts_index];
+    c3_options->u_u = u_u;
 
-      // Only applicable for C3+
-      if (options->projection_type == "C3+") {
-        options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
-        options->g_eta_n = g_eta_n_position_list[num_contacts_index];
-        options->g_eta_t = g_eta_t_position_list[num_contacts_index];
-        options->g_eta = g_eta_position_list[num_contacts_index];
-        options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
-        options->u_eta_n = u_eta_n_position_list[num_contacts_index];
-        options->u_eta_t = u_eta_t_position_list[num_contacts_index];
-        options->u_eta = u_eta_position_list[num_contacts_index];
-      }
-
-      PopulateCostMatricesFromVectors(options);
+    if (projection_type == "C3+") {
+      c3_options->g_eta_slack = g_eta_slack_list[num_contacts_index];
+      c3_options->g_eta_n = g_eta_n_list[num_contacts_index];
+      c3_options->g_eta_t = g_eta_t_list[num_contacts_index];
+      c3_options->g_eta = g_eta_list[num_contacts_index];
+      c3_options->u_eta_slack = u_eta_slack_list[num_contacts_index];
+      c3_options->u_eta_n = u_eta_n_list[num_contacts_index];
+      c3_options->u_eta_t = u_eta_t_list[num_contacts_index];
+      c3_options->u_eta = u_eta_list[num_contacts_index];
     }
-
-    void SetPoseTrackingOptions(C3Options* options) const {
-      options->dt = planning_dt_pose;
-      options->w_Q = w_Q;
-      options->w_R = w_R;
-      options->w_G = w_G;
-      options->w_U = w_U;
-      options->q_vector = q_vector;
-      options->r_vector = r_vector;
-
-      options->g_x = g_x;
-      options->g_gamma = g_gamma_list[num_contacts_index];
-      options->g_lambda_n = g_lambda_n_list[num_contacts_index];
-      options->g_lambda_t = g_lambda_t_list[num_contacts_index];
-      options->g_lambda = g_lambda_list[num_contacts_index];
-      options->g_u = g_u;
-
-      options->u_x = u_x;
-      options->u_gamma = u_gamma_list[num_contacts_index];
-      options->u_lambda_n = u_lambda_n_list[num_contacts_index];
-      options->u_lambda_t = u_lambda_t_list[num_contacts_index];
-      options->u_lambda = u_lambda_list[num_contacts_index];
-      options->u_u = u_u;
-
-      if (options->projection_type == "C3+") {
-        options->g_eta_slack = g_eta_slack_list[num_contacts_index];
-        options->g_eta_n = g_eta_n_list[num_contacts_index];
-        options->g_eta_t = g_eta_t_list[num_contacts_index];
-        options->g_eta = g_eta_list[num_contacts_index];
-        options->u_eta_slack = u_eta_slack_list[num_contacts_index];
-        options->u_eta_n = u_eta_n_list[num_contacts_index];
-        options->u_eta_t = u_eta_t_list[num_contacts_index];
-        options->u_eta = u_eta_list[num_contacts_index];
-      }
-      PopulateCostMatricesFromVectors(options);
-    }
+    PopulateCostMatricesFromVectors(c3_options);
+  }
 };

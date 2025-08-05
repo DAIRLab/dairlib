@@ -100,7 +100,6 @@ cc_library(
         "//solvers:solver_options_io",
         ":face",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
         "//examples/sampling_c3:generate_samples",
         "//examples/sampling_c3:reposition",
         "//common:quaternion_error_hessian",
@@ -111,6 +110,8 @@ cc_library(
         "//examples/sampling_c3/parameter_headers:reposition_params",
         "//examples/sampling_c3/parameter_headers:progress_params",
         "//common:update_context",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
     ],
     copts = [
         "-fopenmp",

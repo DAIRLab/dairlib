@@ -47,38 +47,6 @@ class C3Base {
   /// @return void
   void Solve(const Eigen::VectorXd& x0, bool verbose = false);
 
-  /// Compute the MPC cost, using previously solved MPC solution.
-  /// @param cost_type The method of computing the cost
-  /// @param Kp_for_ee_pd_rollout Proportional gain for simulated EE PD control
-  /// used for some of the cost types
-  /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
-  /// used for some of the cost types
-  /// @param force_tracking_disabled Whether to simulate EE PD control with
-  /// feedforward u from the MPC solution
-  /// @param print_cost_breakdown Whether to print the cost breakdown
-  /// @param verbose Whether to print additional information
-  /// @return The cost and its associated state trajectory
-  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-      C3CostComputationType cost_type = kSimLCSReplaceC3EEPlan,
-      double Kp_for_ee_pd_rollout = 0.0, double Kd_for_ee_pd_rollout = 0.0,
-      bool force_tracking_disabled = false, bool print_cost_breakdown = false,
-      bool verbose = false) const;
-
-  /// Helper function to simulate the dynamics with PD control on the EE
-  /// location and velocity plans, and the control input plans.  Used for cost
-  /// types that simulate the impedance control.
-  /// @param Kp_for_ee_pd_rollout Proportional gain for simulated EE PD control
-  /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
-  /// @param force_tracking_disabled Whether to simulate EE PD control with
-  /// feedforward u from the MPC solution
-  /// @param verbose Whether to print additional information
-  /// @return the simulated state and input trajectories
-  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControl(double Kp_for_ee_pd_rollout = 0.0,
-                    double Kd_for_ee_pd_rollout = 0.0,
-                    bool force_tracking_disabled = false,
-                    bool verbose = false) const;
-
   /// Solve a single ADMM step.
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step

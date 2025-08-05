@@ -1,6 +1,6 @@
 ### C3 options
 admm_iter: 3
-rho: 0  #This isn't used anywhere!
+# rho: 0  #This isn't used anywhere!
 rho_scale: 3
 num_threads: 5
 num_outer_threads: 4
@@ -8,11 +8,13 @@ delta_option: 1
 projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
+scale_lcs: true
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
-penalize_changes_in_u_across_solves: false  # Penalize (u-u_prev) instead of u.
+penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
+spring_stiffness: 0.0  # Not used in C3+.
 
 N: 5
 gamma: 1.0  # discount factor on MPC costs
@@ -142,11 +144,11 @@ u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 ### NO NEED TO CHANGE THE BELOW.  Parameters needed for the C3Options struct but
 ### are overwritten by other sampling C3 parameters.
-use_predicted_x0: false   # instead:  use_predicted_x0_c3,
+# use_predicted_x0: false   # instead:  use_predicted_x0_c3,
                           #           use_predicted_x0_repos,
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
-solve_dt: 0       # unused
+# solve_dt: 0       # unused
 mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.

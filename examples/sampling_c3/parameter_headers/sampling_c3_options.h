@@ -3,11 +3,19 @@
 #include <numeric>
 #include <stdexcept>
 
-#include "solvers/c3_options.h"
+#include "c3/core/c3_options.h"
+#include "c3/multibody/lcs_factory_options.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct SamplingC3Options : C3Options {
+using c3::C3Options;
+using c3::LCSFactoryOptions;
+
+struct SamplingC3Options : C3Options, LCSFactoryOptions {
+  std::string projection_type;  // "QP" or "MIQP" or "C3+"
+  double solve_time_filter_alpha = 0.0;
+  double publish_frequency = 100.0;  // Hz
+
   int num_outer_threads;  // for outer sampling loop.
 
   /// Additional radius-based workspace limit.
@@ -36,7 +44,7 @@ struct SamplingC3Options : C3Options {
 
   int num_planar_contacts_cost;
   int n_lambda_with_tangential_cost;
-  std::vector<int> num_friction_directions_per_contact_cost;
+  std::vector<int> num_friction_directions_per_contact_for_cost;
   std::vector<int> starting_index_per_contact_in_lambda_t_vector_cost;
 
   double planning_dt_pose;
@@ -109,12 +117,26 @@ struct SamplingC3Options : C3Options {
   std::vector<std::vector<double>> u_eta_t_position_list;
   std::vector<std::vector<double>> u_eta_position_list;
 
+  std::vector<double>
+      u_horizontal_limits;  ///< Limits for horizontal actuator inputs.
+  std::vector<double>
+      u_vertical_limits;  ///< Limits for vertical actuator inputs.
+  std::vector<Eigen::VectorXd>
+      workspace_limits;      ///< Workspace boundaries as vectors.
+  double workspace_margins;  ///< Margins to be maintained within the workspace.
+
   C3Options c3_options_pose;
+  LCSFactoryOptions lcs_factory_options_pose;
   C3Options c3_options_position;
+  LCSFactoryOptions lcs_factory_options_position;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     C3Options::Serialize(a);
+    LCSFactoryOptions::Serialize(a);
+    a->Visit(DRAKE_NVP(projection_type));
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
     a->Visit(DRAKE_NVP(num_outer_threads));
     a->Visit(DRAKE_NVP(robot_radius_limits));
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
@@ -192,6 +214,11 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(u_eta_t_position_list));
     a->Visit(DRAKE_NVP(u_eta_position_list));
 
+    a->Visit(DRAKE_NVP(u_horizontal_limits));
+    a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_limits));
+    a->Visit(DRAKE_NVP(workspace_margins));
+
     // Set a few parameters based on num_contacts_index, differentiating between
     // for C3 solve and for C3 cost computation.
     resolve_contacts_to = resolve_contacts_to_lists[num_contacts_index];
@@ -256,10 +283,11 @@ struct SamplingC3Options : C3Options {
         2 * num_planar_contacts_cost;
 
     // Create C3 options for both pose and position tracking.
-    SetCommonC3Options(&c3_options_pose);
-    SetPoseTrackingOptions(&c3_options_pose);
-    SetCommonC3Options(&c3_options_position);
-    SetPositionTrackingOptions(&c3_options_position);
+    SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
+    SetPoseTrackingOptions(&c3_options_pose, &lcs_factory_options_pose);
+    SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
+    SetPositionTrackingOptions(&c3_options_position,
+                               &lcs_factory_options_position);
   }
 
   C3Options GetC3Options(const bool& is_pose_tracking) const {

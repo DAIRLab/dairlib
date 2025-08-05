@@ -8,6 +8,10 @@
 #include <Eigen/Dense>
 #include <omp.h>
 
+#include "c3/core/c3_miqp.h"
+#include "c3/core/c3_plus.h"
+#include "c3/core/c3_qp.h"
+#include "c3/multibody/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/sampling_c3/generate_samples.h"
@@ -24,6 +28,13 @@
 
 namespace dairlib {
 
+using c3::C3;
+using c3::C3MIQP;
+using c3::C3Plus;
+using c3::C3QP;
+using c3::LCS;
+using c3::multibody::LCSFactory;
+using dairlib::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::ModelInstanceIndex;
@@ -78,7 +89,7 @@ SamplingC3Controller::SamplingC3Controller(
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
 
-  DRAKE_DEMAND(c3_options.lcs_dt_resolution > 0);
+  DRAKE_DEMAND(sampling_c3_options_.lcs_dt_resolution > 0);
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -98,8 +109,8 @@ SamplingC3Controller::SamplingC3Controller(
   n_x_ = n_q_ + n_v_;
 
   if (verbose_) {
-    std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
-    std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
+    std::cout << "resolution: " << sampling_c3_options_.lcs_dt_resolution
+              << std::endl;
     std::cout << "n_q_" << n_q_ << std::endl;
     std::cout << "n_v_" << n_v_ << std::endl;
     std::cout << "n_u_" << n_u_ << std::endl;
@@ -131,7 +142,10 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
-  auto lcs_placeholder = CreatePlaceholderLCS();
+  auto lcs_placeholder =
+      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, sampling_c3_options_.N,
+                                sampling_c3_options_.planning_dt_position);
+
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
@@ -174,13 +188,12 @@ SamplingC3Controller::SamplingC3Controller(
   }
   n_z_ = c3_curr_plan_->GetZSize();
 
-  c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_best_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
-  std::cout << "Set solver options" << std::endl;
+  c3_curr_plan_->SetSolverOptions(solver_options_);
+  c3_best_plan_->SetSolverOptions(solver_options_);
+  c3_buffer_plan_->SetSolverOptions(solver_options_);
 
+  // Set actor bounds.
   if (!sampling_c3_options_.include_walls) {
-    // Set actor bounds.
     for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
@@ -753,7 +766,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   for (int i = 0; i < num_total_samples; i++) {
     all_sample_locations_.push_back(candidate_states[i].head(3));
   }
-
   // Make LCS objects for each sample.
   auto lcs_pair = SamplingC3Controller::CreateLCSObjectsForSamples(
       candidate_states, x_lcs_curr, c3_options, c3_options);
@@ -783,7 +795,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Get the candidate state and its LCS representation.
     Eigen::VectorXd test_state = candidate_states.at(i);
-    solvers::LCS test_system = lcs_candidates.at(i);
+    LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
     std::shared_ptr<solvers::C3Base> test_c3_object;
@@ -858,8 +870,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
     // Solve C3, store resulting object and cost.
-    test_c3_object->SetOsqpSolverOptions(solver_options_);
-    test_c3_object->Solve(test_state, verbose_);
+    test_c3_object->SetSolverOptions(solver_options_);
+    test_c3_object->Solve(test_state);
 
     auto cc_start = std::chrono::high_resolution_clock::now();
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
@@ -1133,11 +1145,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     for (int i = 0; i < N_; i++) {
       std::cout << "z[" << i << "]: " << zs[i].transpose() << std::endl;
     }
-    solvers::LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
-    Eigen::MatrixXd E = verbose_lcs.E_[0];
-    Eigen::MatrixXd F = verbose_lcs.F_[0];
-    Eigen::MatrixXd H = verbose_lcs.H_[0];
-    Eigen::VectorXd c = verbose_lcs.c_[0];
+    LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
+    Eigen::MatrixXd E = verbose_lcs.E()[0];
+    Eigen::MatrixXd F = verbose_lcs.F()[0];
+    Eigen::MatrixXd H = verbose_lcs.H()[0];
+    Eigen::VectorXd c = verbose_lcs.c()[0];
     std::cout << "\nRight side of complementarity: " << std::endl;
     for (int i = 0; i < N_; i++) {
       Eigen::VectorXd x = zs[i].head(n_x_);
@@ -1301,8 +1313,6 @@ void SamplingC3Controller::UpdateCostMatrices(
   U_.clear();
   double discount_factor = 1;
 
-  dt_ = c3_options.dt;
-  dt_cost_ = c3_options.dt_cost;
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
     discount_factor *= c3_options.gamma;
@@ -1378,15 +1388,63 @@ void SamplingC3Controller::UpdateCostMatrices(
   }
 }
 
+vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+    const vector<int>& resolve_contacts_to_list,
+    std::vector<int> num_friction_directions, bool verbose) const {
+  int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
+                                   resolve_contacts_to_list.end(), 0);
+  std::vector<SortedPair<GeometryId>> resolved_contacts;
+  resolved_contacts.reserve(n_contacts);
+
+  for (int i = 0; i < contact_geoms.size(); i++) {
+    DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+
+    const auto& candidates = contact_geoms[i];
+    const int num_to_select = resolve_contacts_to_list[i];
+
+    if (verbose && candidates.size() > 1) {
+      std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
+    }
+
+    std::vector<double> distances;
+    distances.reserve(candidates.size());
+
+    for (const auto& pair : candidates) {
+      multibody::GeomGeomCollider collider(plant, pair);
+      auto [phi_i, J_i] =
+          collider.EvalPolytope(context, num_friction_directions[i]);
+      distances.push_back(phi_i);
+      // if (verbose) {
+      //   PrintVerboseContactInfo(plant, context, pair, phi_i);
+      // }
+    }
+
+    for (int j = 0; j < num_to_select; ++j) {
+      auto min_it = std::min_element(distances.begin(), distances.end());
+      int min_index = std::distance(distances.begin(), min_it);
+      resolved_contacts.push_back(candidates[min_index]);
+      distances[min_index] = std::numeric_limits<double>::infinity();
+
+      if (verbose && candidates.size() > 1) {
+        std::cout << "   --> Chose option " << min_index << std::endl;
+      }
+    }
+  }
+  DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
+  return resolved_contacts;
+}
+
 // Create LCS objects (for the C3 solve and also for the C3 cost calculation)
 // for each sample.
-std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
+std::pair<std::vector<LCS>, std::vector<LCS>>
 SamplingC3Controller::CreateLCSObjectsForSamples(
     const std::vector<Eigen::VectorXd>& candidate_states,
-    const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
-    const C3Options& c3_options_curr_location) const {
-  std::vector<solvers::LCS> lcs_candidates;
-  std::vector<solvers::LCS> lcs_candidates_for_cost;
+    const drake::VectorX<double>& x_lcs_curr,
+    const LCSFactoryOptions& lcs_factory_options) const {
+  std::vector<LCS> lcs_candidates;
+  std::vector<LCS> lcs_candidates_for_cost;
 
   int num_total_samples = candidate_states.size();
   for (int i = 0; i < num_total_samples; i++) {
@@ -1437,21 +1495,21 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     // Print the LCS matrices for verbose inspection.
     solvers::LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
     std::cout << "A: " << std::endl;
-    std::cout << verbose_lcs.A_[0] << std::endl;
+    std::cout << verbose_lcs.A()[0] << std::endl;
     std::cout << "B: " << std::endl;
-    std::cout << verbose_lcs.B_[0] << std::endl;
+    std::cout << verbose_lcs.B()[0] << std::endl;
     std::cout << "D: " << std::endl;
-    std::cout << verbose_lcs.D_[0] << std::endl;
+    std::cout << verbose_lcs.D()[0] << std::endl;
     std::cout << "d: " << std::endl;
-    std::cout << verbose_lcs.d_[0] << std::endl;
+    std::cout << verbose_lcs.d()[0] << std::endl;
     std::cout << "E: " << std::endl;
-    std::cout << verbose_lcs.E_[0] << std::endl;
+    std::cout << verbose_lcs.E()[0] << std::endl;
     std::cout << "F: " << std::endl;
-    std::cout << verbose_lcs.F_[0] << std::endl;
+    std::cout << verbose_lcs.F()[0] << std::endl;
     std::cout << "H: " << std::endl;
-    std::cout << verbose_lcs.H_[0] << std::endl;
+    std::cout << verbose_lcs.H()[0] << std::endl;
     std::cout << "c: " << std::endl;
-    std::cout << verbose_lcs.c_[0] << std::endl;
+    std::cout << verbose_lcs.c()[0] << std::endl;
   }
 
   return std::make_pair(lcs_candidates, lcs_candidates_for_cost);
@@ -1856,7 +1914,7 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
 // If eligible, augment the current control loop's considered samples with the
 // best one from the buffer.
 void SamplingC3Controller::AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const {
+    std::vector<std::shared_ptr<C3>>& c3_objects) const {
   // Add the best from the buffer to the samples, but only if in C3 mode and
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&

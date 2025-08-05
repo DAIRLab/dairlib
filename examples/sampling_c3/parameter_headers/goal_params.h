@@ -23,6 +23,7 @@ struct SamplingC3GoalParams {
   /// Success thresholds for position and orientation.
   double position_success_threshold;
   double orientation_success_threshold;
+  bool only_use_xy_position;
 
   double resting_object_height;             // in world frame
   std::vector<double> resting_object_heights;
@@ -79,5 +80,6 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(random_goal_radius_limits));
     a->Visit(DRAKE_NVP(random_goal_gen_max_attempts));
     a->Visit(DRAKE_NVP(pairwise_goal_distance));
+    a->Visit(DRAKE_NVP(only_use_xy_position));
   }
 };

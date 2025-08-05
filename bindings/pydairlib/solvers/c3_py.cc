@@ -64,13 +64,13 @@ PYBIND11_MODULE(c3, m) {
         .value("kAnitescu", Enum::kAnitescu);
   }
 
-  py::class_<dairlib::solvers::C3::CostMatrices>(m, "CostMatrices")
+  py::class_<dairlib::solvers::C3Base::CostMatrices>(m, "CostMatrices")
       .def(py::init<const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&, const std::vector<Eigen::MatrixXd>&>(),
            arg("Q"), arg("R"), arg("G"), arg("U"));
 
   py::class_<dairlib::solvers::C3MIQP>(m, "C3MIQP")
-      .def(py::init<const LCS&, const dairlib::solvers::C3::CostMatrices&,
+      .def(py::init<const LCS&, const dairlib::solvers::C3Base::CostMatrices&,
                     const vector<VectorXd>&, const C3Options&>(),
            arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
       .def("Solve", &C3MIQP::Solve, arg("x0"), arg("verbose") = false)
@@ -83,7 +83,7 @@ PYBIND11_MODULE(c3, m) {
       .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))
       .def("AddLinearConstraint", &C3MIQP::AddLinearConstraint, arg("A"),
            arg("lower_bound"), arg("upper_bound"), arg("constraint"))
-      .def("RemoveConstraints", &C3MIQP::RemoveConstraints)
+      .def("RemoveConstraints", &C3MIQP::RemoveUserConstraints)
       .def("GetFullSolution", &C3MIQP::GetFullSolution)
       .def("GetStateSolution", &C3MIQP::GetStateSolution)
       .def("GetForceSolution", &C3MIQP::GetForceSolution)
@@ -102,8 +102,6 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("warm_start", &C3Options::warm_start)
       .def_readwrite("use_predicted_x0", &C3Options::use_predicted_x0)
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
-      .def_readwrite("use_robust_formulation",
-                     &C3Options::use_robust_formulation)
       .def_readwrite("solve_time_filter_alpha",
                      &C3Options::solve_time_filter_alpha)
       .def_readwrite("publish_frequency", &C3Options::publish_frequency)

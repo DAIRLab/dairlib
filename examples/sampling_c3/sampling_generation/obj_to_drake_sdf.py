@@ -1,5 +1,6 @@
-"""Convex decomposition for sim since Drake cannot handle collisions with non-convex meshes without using the convex hull in order to avoid mismatched geometry.
-"""
+"""Convex decomposition for sim since Drake cannot handle collisions with 
+non-convex meshes without using the convex hull in order to avoid mismatched 
+geometry. """
 
 import os
 import trimesh

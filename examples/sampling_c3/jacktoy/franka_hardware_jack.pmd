@@ -8,7 +8,7 @@ group "operator" {
         host = "sampling_c3_localhost";
     }
     cmd "logger" {
-        exec = "python3 examples/sampling_c3/start_logging.py hw jacktoy";
+        exec = "python3 examples/sampling_c3/start_logging.py hw jacktoy /mnt/data2/jacktoy/logs/";
         host = "sampling_c3_localhost";
     }
     cmd "record_video" {
@@ -49,7 +49,7 @@ group "drivers" {
         host = "franka_control";
     }
     cmd "torque_driver" {
-        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
+        exec = "bazel-bin/franka-driver/franka_driver_v5 --robot_ip_address=172.16.0.2 --control_mode=torque";
         host = "drake_franka_driver";
     }
 }

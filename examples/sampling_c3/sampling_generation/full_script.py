@@ -1,4 +1,8 @@
-""" Thsis script is used to generate the SDFs and update the YAML files for the sampling C3 controller. The requirements are that the base_name in sampling_c3_controller_params.yaml matches the name of the object in the urdf directory, the object is in .obj format, and the input/output folder contains the obj file in urdf/base_name."""
+""" Thsis script is used to generate the SDFs and update the YAML files for the 
+sampling C3 controller. The requirements are that the base_name in 
+sampling_c3_controller_params.yaml matches the name of the object in the urdf 
+directory, the object is in .obj format, and the input/output folder contains 
+the obj file in urdf/base_name."""
 
 import subprocess
 import sys

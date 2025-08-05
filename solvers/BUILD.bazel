@@ -22,15 +22,17 @@ cc_library(
 cc_library(
     name = "c3",
     srcs = [
-        "c3.cc",
+        "base_c3.cc",
         "c3_miqp.cc",
         "c3_qp.cc",
+        "c3_plus.cc",
     ],
     hdrs = [
-        "c3.h",
+        "base_c3.h",
         "c3_miqp.h",
         "c3_options.h",
         "c3_qp.h",
+        "c3_plus.h",
     ],
     copts = [
         "-fopenmp",

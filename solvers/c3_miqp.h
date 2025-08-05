@@ -5,17 +5,17 @@
 #include <Eigen/Dense>
 
 #include "gurobi_c++.h"
-#include "solvers/c3.h"
+#include "solvers/base_c3.h"
 #include "solvers/lcs.h"
 
 namespace dairlib {
 namespace solvers {
 
-class C3MIQP final : public C3 {
+class C3MIQP final : public C3Base {
  public:
   /// Default constructor for time-varying LCS
   C3MIQP(const LCS& LCS, const CostMatrices& costs,
-         const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options, bool is_cost = false);
+         const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options);
 
   ~C3MIQP() override = default;
 
@@ -28,14 +28,6 @@ class C3MIQP final : public C3 {
                                         const Eigen::VectorXd& c,
                                         const int admm_iteration,
                                         const int& warm_start_index = -1) override;
-   /// Robust projection method
-  Eigen::VectorXd SolveRobustSingleProjection(
-      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
-      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
-      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
-      const int admm_iteration, const int& warm_start_index = -1) override;
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
 

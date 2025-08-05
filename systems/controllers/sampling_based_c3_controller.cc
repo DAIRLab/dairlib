@@ -17,6 +17,7 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
 #include "solvers/c3_qp.h"
+#include "solvers/c3_plus.h"
 #include "solvers/lcs.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -36,9 +37,10 @@ using Eigen::MatrixXf;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
-using solvers::C3;
+using solvers::C3Base;
 using solvers::C3MIQP;
 using solvers::C3QP;
+using solvers::C3Plus;
 using solvers::LCS;
 using solvers::LCSFactory;
 using std::vector;
@@ -141,31 +143,42 @@ SamplingC3Controller::SamplingC3Controller(
 
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
 
     c3_best_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
 
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
-      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
 
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(
-        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
     c3_best_plan_ = std::make_unique<C3QP>(
-      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
     c3_buffer_plan_ = std::make_unique<C3QP>(
-      lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
+  } else if (sampling_c3_options_.projection_type == "C3+") {
+    c3_curr_plan_ = std::make_unique<C3Plus>(
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
+    c3_best_plan_ = std::make_unique<C3Plus>(
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
+      c3_options);
+    c3_buffer_plan_ = std::make_unique<C3Plus>(
+      lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired_placeholder,
       c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
+  n_z_ = c3_curr_plan_->GetZSize();
 
   c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   c3_best_plan_->SetOsqpSolverOptions(solver_options_);
@@ -240,9 +253,9 @@ SamplingC3Controller::SamplingC3Controller(
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
   auto c3_intermediates = C3Output::C3Intermediates();
-  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.z_ = MatrixXf::Zero(n_z_, N_);
+  c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
+  c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
@@ -734,7 +747,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::vector<std::vector<Eigen::VectorXd>>(
       num_total_samples,
       std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
-  std::vector<std::shared_ptr<solvers::C3>> c3_objects(
+  std::vector<std::shared_ptr<solvers::C3Base>> c3_objects(
     num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
   C3CostComputationType cost_type = progress_params_.cost_type;
@@ -753,15 +766,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     solvers::LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
-    std::shared_ptr<solvers::C3> test_c3_object;
+    std::shared_ptr<solvers::C3Base> test_c3_object;
     std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
     if (c3_options.projection_type == "MIQP") {
       test_c3_object = std::make_shared<C3MIQP>(
-        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } else if (c3_options.projection_type == "QP") {
       test_c3_object = std::make_shared<C3QP>(
-        test_system, C3::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
+    } else if (c3_options.projection_type == "C3+") {
+      test_c3_object = std::make_shared<C3Plus>(
+        test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
 
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
@@ -1657,7 +1673,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
 // If eligible, augment the current control loop's considered samples with the
 // best one from the buffer.
 void SamplingC3Controller::AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::C3>>& c3_objects) const {
+    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const {
   // Add the best from the buffer to the samples, but only if in C3 mode and
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&

@@ -96,7 +96,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
         )
         ET.SubElement(prox, ET.QName(drake_uri, "compliant_hydroelastic"))
         ET.SubElement(prox, ET.QName(drake_uri, "hydroelastic_modulus")).text = " 3.0e7 "
-        ET.SubElement(prox, ET.QName(drake_uri, "mesh_resolution_hint")).text = " 0.18 "
+        ET.SubElement(prox, ET.QName(drake_uri, "mesh_resolution_hint")).text = " 0.02 "
         ET.SubElement(prox, ET.QName(drake_uri, "hunt_crossley_dissipation")).text = "10"
         ET.SubElement(prox, ET.QName(drake_uri, "mu_dynamic")).text = "0.3"
 

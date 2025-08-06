@@ -627,8 +627,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         if (sampling_params.gen_planar_samples) {
           projected_sample_point[2] = z_height;
         } else {
-          if (projected_sample_point[2] < -0.009) { // require ee radius clearance
-            projected_sample_point[2] = -0.009;
+          if (projected_sample_point[2] < -0.008) { // require ee radius clearance
+            projected_sample_point[2] = -0.008;
           }
         }
 

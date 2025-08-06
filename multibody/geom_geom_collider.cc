@@ -239,6 +239,7 @@ std::tuple<Vector3d, Vector3d, Vector3d, T>
   Vector3d p_ACa, p_BCb;
   T distance = signed_distance_to_point.distance - sphere_radius;
   Vector3d nhat_BA_W = signed_distance_to_point.grad_W.normalized();
+  //std::cout << nhat_BA_W.transpose() << std::endl;
   if (is_A_mesh) {
     nhat_BA_W = -nhat_BA_W;
 

@@ -693,11 +693,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<bool> object_on_target;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     double object_position_error =
-      (x_lcs_curr.segment(7 + 7*i, 3) - x_lcs_des.get_value().segment(7 + 7*i, 3)).norm();
-      Eigen::Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7*i));
-      Eigen::Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7*i));
+      (x_lcs_curr.segment(7 + 7*i, 2) - x_lcs_des.get_value().segment(7 + 7*i, 2)).norm();
+    Eigen::Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7*i));
+    Eigen::Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7*i));
 
-      Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
+    Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
     double object_angular_error = angle_axis_diff.angle();
     
     object_on_target.push_back((object_position_error < goal_params_.position_success_threshold) &&
@@ -999,6 +999,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
 
   c3_best_plan_ = c3_objects.at(best_sample_index_);
+
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
 
   // Update the execution trajectories.
@@ -1153,6 +1154,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
 void SamplingC3Controller::CheckForWorkspaceLimitViolations(
     const TimestampedVector<double>* lcs_x_curr) const {
   // xyz checks
+  //std::cout << (*lcs_x_curr).get_data().transpose() << std::endl;
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                  sampling_c3_options_.workspace_limits[i].segment(0, 3) >
@@ -1335,6 +1337,11 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
   vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
+  if (x_sol[0][2] >= 0.03) {
+    for (int i = 0; i < N_; ++i) {
+      x_sol[i][2] -= 0.01;
+    }
+  }
   // Setting up matrices to set up LCMTrajectory object.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);

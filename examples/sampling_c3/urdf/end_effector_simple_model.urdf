@@ -26,8 +26,8 @@
         <sphere radius="0.0195"/>
       </geometry>
       <drake:proximity_properties>
-        <drake:mu_static value="1"/>
-        <drake:mu_dynamic value="1"/>
+        <drake:mu_static value="0.7"/>
+        <drake:mu_dynamic value="0.7"/>
       </drake:proximity_properties>
     </collision>
   </link>

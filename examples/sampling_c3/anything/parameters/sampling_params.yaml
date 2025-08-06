@@ -19,7 +19,7 @@ filter_samples_for_safety: true
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample
 # number solved in parallel for each control loop.
-num_additional_samples_repos: 1
+num_additional_samples_repos: 2
 num_additional_samples_c3: 2
 
 # Sample buffer parameters.
@@ -49,13 +49,14 @@ min_sampling_radius: 0.07
 max_sampling_radius: 0.10
 
 # kMeshNormal parameters
-buffer_distance: 0.05
+buffer_distance: 0.035
 max_attempts: 100
 barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: -0.006
+z_height: 0.006
+# This ^ will be overwritten by generating new files.
+
 gen_planar_samples: true # true = projects all samples to z_height
 ee_z_close: true # true = require ee to be close to sampling z-height before entering c3
 c3_min_clearance: 0.01
-# This ^ will be overwritten by generating new files.

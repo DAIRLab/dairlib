@@ -28,8 +28,8 @@ sphere_radius: 0.18
 circle_radius: 0.20
 circle_height: 0.00
 
-max_tilt_angle: 30
+max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
-pwl_waypoint_height: 0.09600000000000002
+pwl_waypoint_height: 0.06100000000000001
 # This ^ will be overwritten by generating new files.

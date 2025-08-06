@@ -38,8 +38,8 @@ struct SamplingC3Options : C3Options {
   double q_quaternion_dependent_weight;
   double q_quaternion_dependent_regularizer_fraction;
 
-  double Kp_for_ee_pd_rollout;
-  double Kd_for_ee_pd_rollout;
+  std::vector<double> Kp_for_ee_pd_rollout;
+  std::vector<double> Kd_for_ee_pd_rollout;
 
   /// Cost parameters for pose tracking.
   std::vector<std::vector<double>> g_gamma_list;

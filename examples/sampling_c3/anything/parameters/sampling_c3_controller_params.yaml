@@ -14,12 +14,12 @@ lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
-object_models: ['examples/sampling_c3/urdf/smaller_r/smaller_r_controller.sdf', 'examples/sampling_c3/urdf/smaller_a/smaller_a_controller.sdf', 'examples/sampling_c3/urdf/smaller_c/smaller_c_controller.sdf']
+object_models: ['examples/sampling_c3/urdf/smaller_r/smaller_r_controller.sdf', 'examples/sampling_c3/urdf/smaller_a/smaller_a_controller.sdf', 'examples/sampling_c3/urdf/smaller_i/smaller_i_controller.sdf', 'examples/sampling_c3/urdf/smaller_c/smaller_c_controller.sdf']
 object_body_name: body
 base_name: lollipop
-base_names: [smaller_r, smaller_a, smaller_c]
+base_names: [smaller_r, smaller_a, smaller_i, smaller_c]
 
 include_end_effector_orientation: false
-include_walls: false
+include_walls: true
 
 control_loop_delay_ms: 0

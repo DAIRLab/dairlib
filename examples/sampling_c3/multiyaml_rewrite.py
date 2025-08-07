@@ -271,7 +271,7 @@ def process_base(
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
     OBJECT_POSITION = [300, 300, 120]
-    EE_LINEAR_VELOCITY = [1, 1, 3]
+    EE_LINEAR_VELOCITY = [4, 4 ,5]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     
     min_max_z = min(max_zs_world)
 
-    sampling_yaml['z_height'] = max(-0.006, (-0.029 + min_max_z) / 2)
+    sampling_yaml['z_height'] = max(-0.001, (-0.029 + min_max_z) / 2 + 0.005)
     
 
     # Save pre-sized YAMLs

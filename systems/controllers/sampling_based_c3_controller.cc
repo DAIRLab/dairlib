@@ -185,25 +185,28 @@ SamplingC3Controller::SamplingC3Controller(
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
   std::cout << "Set solver options" << std::endl;
 
-  // Set actor bounds.
-  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
-    // TODO @bibit: For the T example, the z constraint is an equality
-    // constraint. This will be reflected in the params but need to make sure to
-    // put a comment here when the T example is added.
-    // The fourth parameter decides which optimization variable the constraint
-    // is applied to. 1 = x, 2 = u, 3 = lambda.
-    c3_curr_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
-    c3_best_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
-    c3_buffer_plan_->AddLinearConstraint(
-      A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
-      1);
+  if (!controller_params_.include_walls) {
+    // Set actor bounds.
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+      // TODO @bibit: For the T example, the z constraint is an equality
+      // constraint. This will be reflected in the params but need to make sure to
+      // put a comment here when the T example is added.
+      // The fourth parameter decides which optimization variable the constraint
+      // is applied to. 1 = x, 2 = u, 3 = lambda.
+      c3_curr_plan_->AddLinearConstraint(
+        A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
+        1);
+      c3_best_plan_->AddLinearConstraint(
+        A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
+        1);
+      c3_buffer_plan_->AddLinearConstraint(
+        A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4],
+        1);
+    }
   }
+
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
@@ -756,6 +759,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Parallelize over computing C3 costs for each sample.
+auto c3_start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
     bool print_cost_breakdown = radio_out->channel[7] &&
@@ -786,12 +790,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
 
+
+    auto cc_start = std::chrono::high_resolution_clock::now();
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
         controller_params_.num_objects, print_cost_breakdown, verbose_);
-          
+    auto cc_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
+    //std::cout << "CalcCost: " << duration_ms.count() << " ms" << std::endl;
+
+
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
@@ -810,7 +820,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       finished_reposition_flag_ = false;
     }
   }
+    auto c3_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration_ms = c3_end - c3_start;
 
+    //std::cout << "Parallelization: " << duration_ms.count() << " ms" << std::endl;
   // End of parallelization
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
@@ -1338,7 +1351,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
   if (x_sol[0][2] >= 0.03) {
-    for (int i = 0; i < N_; ++i) {
+    for (int i = 0; i < x_sol.size(); ++i) {
       x_sol[i][2] -= 0.01;
     }
   }

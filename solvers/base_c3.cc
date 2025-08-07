@@ -295,16 +295,26 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     }
   }
 
+  auto admm_start = std::chrono::high_resolution_clock::now();
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter, verbose);
   }
+  auto admm_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration_ms = admm_end - admm_start;
+  //std::cout << "ADMM: " << duration_ms.count() << " ms" << std::endl;
+
+
 
   vector<VectorXd> WD(N_, VectorXd::Zero(z_size_));
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
+  auto qp_start = std::chrono::high_resolution_clock::now();
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  auto qp_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> qp_dur = qp_end - qp_start;
+  //std::cout << "QP: " << qp_dur.count() << " ms" << std::endl;
 
   if (verbose) {
     std::cout << "x0: " << x0.transpose() << std::endl;

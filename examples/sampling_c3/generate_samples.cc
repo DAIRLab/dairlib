@@ -476,7 +476,7 @@ Eigen::VectorXd MeshNormalSampling(
 
       auto end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      std::cout << "Elapsed time: " << duration.count() << " µs" << std::endl;
+      //std::cout << "Elapsed time: " << duration.count() << " µs" << std::endl;
 
       // int min_distance_index = 0;
       // in_collision = IsSampleWithinDistanceOfSurface(

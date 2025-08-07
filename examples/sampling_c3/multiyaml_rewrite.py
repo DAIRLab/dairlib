@@ -412,7 +412,7 @@ if __name__ == "__main__":
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
     #sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
-    sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.45 + (0.05 * i), -0.25 + (0.25 * i), 0.0] for i in range(num_objects)]
+    sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.45 + (0.02 * i), -0.3 + (0.2 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
 
     max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
@@ -423,9 +423,9 @@ if __name__ == "__main__":
         z_height[i] = -0.029 - min_zs[i]
 
     #goal_yaml["fixed_target_positions"] = [[0.45, 0.18745379 + (-0.4 * i), z_height[i]] for i in range(num_objects)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.25 + (0.25 * (i % num_objects)), 
-                                                z_height[(i-1)]] for i in range(1, num_objects+1)]
-    goal_yaml["fixed_target_orientations"] = [[-0.9327733, 0, 0, 0.36046353] for _ in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (i % num_objects)), 
+                                                z_height[(i-2)]] for i in range(2, num_objects+2)]
+    goal_yaml["fixed_target_orientations"] = [[0, 0, 0, 1] for _ in range(num_objects)]
 
     print("z_height:", z_height, type(z_height))
     goal_yaml["resting_object_heights"] = z_height.copy()

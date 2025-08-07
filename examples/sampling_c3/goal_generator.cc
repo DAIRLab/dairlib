@@ -90,7 +90,7 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
 
   // Check if success has been met. Update goal if necessary.
   double object_position_error =
-    (obj_curr_position - target_final_object_position_).norm();
+    (obj_curr_position.segment(0, 2) - target_final_object_position_.segment(0, 2)).norm();
   Eigen::AngleAxis<double> angle_axis_diff(target_obj_orientation *
                                            curr_quat.inverse());
   double object_angular_error = angle_axis_diff.angle();

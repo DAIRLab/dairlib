@@ -15,6 +15,10 @@ group "operator" {
         exec = "python3 record_video.py";
         host = "franka_control";
     }
+    cmd "generate_files" {
+        exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
+        host = "sampling_c3_localhost";
+    }
 }
 
 group "controllers (hardware)" {

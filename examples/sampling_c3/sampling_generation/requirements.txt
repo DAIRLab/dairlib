@@ -1,6 +1,5 @@
 trimesh
 ruamel.yaml
-pyglet
+lxml
 fast_simplification
-pyvhacd
-vhacdx
+pyglet

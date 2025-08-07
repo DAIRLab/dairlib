@@ -10,9 +10,9 @@ import os
 import re
 import trimesh
 from ruamel.yaml import YAML
-from examples.sampling_c3.sampling_generation.controller_sdf_generation import make_sdf
-from examples.sampling_c3.sampling_generation.obj_to_drake_sdf import main as obj_to_drake_sdf
-from examples.sampling_c3.sampling_generation.obj_z_planes import get_min_z_from_obj, get_max_z_from_obj
+from controller_sdf_generation import make_sdf
+from obj_to_drake_sdf import main as obj_to_drake_sdf
+from obj_z_planes import get_min_z_from_obj, get_max_z_from_obj
 
 
 yaml_io = YAML()
@@ -23,8 +23,8 @@ yaml_io.width = 1000
 def coarsify_obj(path): # Returns path of object, if it coarsified it
     mesh = trimesh.load(path)  
     num_faces = len(mesh.faces)
-    if (num_faces > 5000):
-        ratio = 1 - (5000 / num_faces)
+    if (num_faces > 150000):
+        ratio = 1 - (150000 / num_faces)
         simplified = mesh.simplify_quadric_decimation(ratio)
         base, ext = os.path.splitext(path)
         new_path = base + "_coarse" + ext

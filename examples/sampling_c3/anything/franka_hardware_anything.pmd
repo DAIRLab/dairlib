@@ -15,6 +15,14 @@ group "operator" {
         exec = "python3 record_video.py";
         host = "franka_control";
     }
+    cmd "multi_rewrite" {
+        exec = "python3 examples/sampling_c3/multiyaml_rewrite.py";
+        host = "sampling_c3_localhost";
+    }
+    cmd "install_dependencies" {
+        exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
+        host = "sampling_c3_localhost";
+    }
 }
 
 group "controllers (hardware)" {

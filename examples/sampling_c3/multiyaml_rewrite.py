@@ -271,7 +271,7 @@ def process_base(
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
     OBJECT_POSITION = [300, 300, 120]
-    EE_LINEAR_VELOCITY = [4, 4 ,5]
+    EE_LINEAR_VELOCITY = [5, 5, 5]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 
@@ -382,6 +382,7 @@ if __name__ == "__main__":
     sampling_yaml_path = config["sampling_params_file"]
     repos_yaml_path = config["reposition_params_file"]
     lcm_sim_yaml_path = config["lcm_channels_simulation_file"]
+    lcm_hardware_yaml_path = config["lcm_channels_hardware_file"]
     samp_c3_options_yaml_path = config["sampling_c3_options_file"]
     goal_yaml_path = config["goal_params_file"]
     repos_yaml_path = config["reposition_params_file"]
@@ -403,6 +404,7 @@ if __name__ == "__main__":
     vis_yaml = load_yaml(vis_yaml_path)
     sim_yaml = load_yaml(sim_yaml_path)
     lcm_sim_yaml = load_yaml(lcm_sim_yaml_path)
+    lcm_hardware_yaml = load_yaml(lcm_hardware_yaml_path)
     goal_yaml = load_yaml(goal_yaml_path)
     repos_yaml = load_yaml(repos_yaml_path)
     sampling_yaml = load_yaml(sampling_yaml_path)
@@ -414,6 +416,7 @@ if __name__ == "__main__":
     #sim_yaml["q_init_objects"] = [[0, 0, 0, 1, 0.5, -0.2 + (0.4 * i), 0.0] for i in range(num_objects)]
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.04 * i), -0.3 + (0.2 * i), 0.0] for i in range(num_objects)]
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
+    lcm_hardware_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
 
     max_zs = [get_max_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
     min_zs = [get_min_z_from_obj(os.path.join(urdf_dir, f"{name}.obj")) for name in base_names]
@@ -456,6 +459,7 @@ if __name__ == "__main__":
     save_yaml(vis_yaml_path, vis_yaml)
     save_yaml(sim_yaml_path, sim_yaml)
     save_yaml(lcm_sim_yaml_path, lcm_sim_yaml)
+    save_yaml(lcm_hardware_yaml_path, lcm_hardware_yaml)
     save_yaml(repos_yaml_path, repos_yaml)
     save_yaml(goal_yaml_path, goal_yaml)
     save_yaml(sampling_yaml_path, sampling_yaml)

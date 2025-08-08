@@ -55,20 +55,21 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
 
   const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
-
+  Eigen::VectorXd trajectory_block_time_vector = 
+        PopulateTimeVectorOfLcmTrajectoryIfUnspecified(trajectory_block.time_vector);
   MatrixXd line_points = MatrixXd::Zero(3, N_);
   VectorXd breaks =
-      VectorXd::LinSpaced(N_, trajectory_block.time_vector[0],
-                          trajectory_block.time_vector.tail(1)[0]);
+      VectorXd::LinSpaced(N_, trajectory_block_time_vector[0],
+                          trajectory_block_time_vector.tail(1)[0]);
   if (trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-        trajectory_block.time_vector, trajectory_block.datapoints);
+        trajectory_block_time_vector, trajectory_block.datapoints);
     for (int i = 0; i < line_points.cols(); ++i) {
       line_points.col(i) = trajectory.value(breaks(i));
     }
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
-        trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
+        trajectory_block_time_vector, trajectory_block.datapoints.topRows(3),
         trajectory_block.datapoints.bottomRows(3));
     for (int i = 0; i < line_points.cols(); ++i) {
       line_points.col(i) = trajectory.value(breaks(i));
@@ -270,8 +271,10 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
                           orientation_sample[2], orientation_sample[3]));
         }
       }
+      Eigen::VectorXd orientation_time_vector = 
+        PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_orientation_traj.time_vector);
       orientation_trajectory.at(j) = PiecewiseQuaternionSlerp(
-          CopyVectorXdToStdVector(lcm_orientation_traj.time_vector),
+          CopyVectorXdToStdVector(orientation_time_vector),
           quaternion_datapoints);
     }
   }
@@ -381,7 +384,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       actor_trajectory_block.time_vector);
   if (actor_trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-        actor_trajectory_block.time_vector, actor_trajectory_block.datapoints);
+        actor_time_vector, actor_trajectory_block.datapoints);
     pose = trajectory.value(robot_time);
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(

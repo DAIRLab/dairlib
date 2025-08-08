@@ -736,20 +736,20 @@ C3Base::SimulatePDControl(
   }
 
   // Smooth XX and UU 
-  for (int i = 0; i < N_-1; i++) {
-    Eigen::VectorXd UU_start = UU[i * resolution];
-    Eigen::VectorXd UU_end = UU[(i+1) * resolution];
-    Eigen::VectorXd XX_start = XX[i * resolution];
-    Eigen::VectorXd XX_end = XX[(i+1) * resolution];    
+  // for (int i = 0; i < N_-1; i++) {
+  //   Eigen::VectorXd UU_start = UU[i * resolution];
+  //   Eigen::VectorXd UU_end = UU[(i+1) * resolution];
+  //   Eigen::VectorXd XX_start = XX[i * resolution];
+  //   Eigen::VectorXd XX_end = XX[(i+1) * resolution];    
 
-    Eigen::VectorXd UU_diff = UU_end - UU_start;
-    Eigen::VectorXd XX_diff = XX_end - XX_start;
+  //   Eigen::VectorXd UU_diff = UU_end - UU_start;
+  //   Eigen::VectorXd XX_diff = XX_end - XX_start;
 
-    for (int j = 0; j < resolution; j++) {
-      UU[i * resolution + j] = UU[i*resolution] + (j / resolution) * UU_diff;
-      XX[i * resolution + j] = XX[i*resolution] + (j / resolution) * XX_diff;
-    }
-  }
+  //   for (int j = 0; j < resolution; j++) {
+  //     UU[i * resolution + j] = UU[i*resolution] + (j / resolution) * UU_diff;
+  //     XX[i * resolution + j] = XX[i*resolution] + (j / resolution) * XX_diff;
+  //   }
+  // }
 
   // Set the PD gains for the emulated tracking controller.
   Eigen::VectorXd Kp_vector = Eigen::Map<Eigen::VectorXd>(Kp_for_ee_pd_rollout.data(), Kp_for_ee_pd_rollout.size());
@@ -895,6 +895,12 @@ void C3Base::ExtractQPSolution(
     z_sol_->at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     z_sol_->at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
   }
+  if (is_final_solve) {
+    for (int i = 0; i < u_sol_->size(); i++) {
+      std::cout << u_sol_->at(i).transpose() << std::endl;
+    }
+  }
+  std::cout << std::endl;
 }
 
 void C3Base::UpdateWarmStarts(
@@ -937,6 +943,28 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   AddAugmentedCostsQPStep(G, WD);
 
   SetInitialGuessQPStep(x0, admm_iteration);
+
+  // for (const auto& binding : prog_.GetAllConstraints()) {
+  //     std::cout << "Constraint type: "
+  //               << binding.evaluator()->get_description() << "\n";
+  //     try {
+  //         // Try to cast to a LinearConstraint to get A, l, u
+  //         auto lc = dynamic_cast<const drake::solvers::LinearConstraint*>(
+  //             binding.evaluator().get());
+  //         if (lc) {
+  //             std::cout << "A =\n" << lc->GetDenseA() << "\n";
+  //             std::cout << "Lower bound = " << lc->lower_bound().transpose() << "\n";
+  //             std::cout << "Upper bound = " << lc->upper_bound().transpose() << "\n";
+  //         }
+  //     } catch (...) {
+  //         std::cout << "  (not a LinearConstraint)\n";
+  //     }
+
+  //     std::cout << "Variables: " << binding.variables() << "\n";
+  //     std::cout << "-----------------------------\n";
+  // }
+
+
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (result.is_success()) {

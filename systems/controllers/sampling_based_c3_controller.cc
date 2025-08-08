@@ -1864,9 +1864,11 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution->time_vector_ = VectorXf::Zero(N_);
 
+  double base_time = filtered_solve_time_ + t;
+
   auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -1955,8 +1957,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
   c3_solution->time_vector_ = VectorXf::Zero(N_);
   auto z_sol = c3_curr_plan_->GetFullSolution();
 
+  double base_time = filtered_solve_time_ + t;
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -2024,9 +2027,11 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
+  double base_time = filtered_solve_time_ + t;
+
   auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -2092,8 +2097,10 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution->time_vector_ = VectorXf::Zero(N_);
 
+  double base_time = filtered_solve_time_ + t;
+
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -2102,7 +2109,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   }
 
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -2191,8 +2198,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
   c3_solution->u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution->time_vector_ = VectorXf::Zero(N_);
 
+  double base_time = filtered_solve_time_ + t;
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -2252,8 +2260,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_best_plan_->GetFullSolution();
+  double base_time = filtered_solve_time_ + t;
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = base_time + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
       z_sol[i].segment(n_x_, n_lambda_).cast<float>();

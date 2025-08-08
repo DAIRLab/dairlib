@@ -18,6 +18,21 @@
 namespace dairlib {
 namespace systems {
 
+// If the user does not provide a time vector, the default fallback is the epoch timestamp (seconds since 1970).
+// However, using these large absolute times with Drake's cubic spline constructor will throw an exception.
+// To avoid this, we generate a synthetic time vector with values spaced 1 second apart.
+inline Eigen::VectorXd PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+  const Eigen::VectorXd& time_vector){
+  Eigen::VectorXd new_time_vector = time_vector;
+  if (time_vector[0] > 1e9) {
+    for (int i = 0; i < time_vector.size(); ++i) {
+      new_time_vector[i] = 1.0 * i;
+    }
+    return new_time_vector;
+  }
+  return time_vector;
+};
+
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
 /// and draws it through meshcat.
 class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {

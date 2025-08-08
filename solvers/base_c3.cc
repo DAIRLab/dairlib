@@ -734,6 +734,23 @@ C3Base::SimulatePDControl(
       }
     }
   }
+
+  // Smooth XX and UU 
+  for (int i = 0; i < N_-1; i++) {
+    Eigen::VectorXd UU_start = UU[i * resolution];
+    Eigen::VectorXd UU_end = UU[(i+1) * resolution];
+    Eigen::VectorXd XX_start = XX[i * resolution];
+    Eigen::VectorXd XX_end = XX[(i+1) * resolution];    
+
+    Eigen::VectorXd UU_diff = UU_end - UU_start;
+    Eigen::VectorXd XX_diff = XX_end - XX_start;
+
+    for (int j = 0; j < resolution; j++) {
+      UU[i * resolution + j] = UU[i*resolution] + (j / resolution) * UU_diff;
+      XX[i * resolution + j] = XX[i*resolution] + (j / resolution) * XX_diff;
+    }
+  }
+
   // Set the PD gains for the emulated tracking controller.
   Eigen::VectorXd Kp_vector = Eigen::Map<Eigen::VectorXd>(Kp_for_ee_pd_rollout.data(), Kp_for_ee_pd_rollout.size());
   Eigen::VectorXd Kd_vector = Eigen::Map<Eigen::VectorXd>(Kd_for_ee_pd_rollout.data(), Kd_for_ee_pd_rollout.size());
@@ -751,7 +768,6 @@ C3Base::SimulatePDControl(
   // This will just be the original u from zfin_[0] for the first time step.
   // if the radio input is true, then the u will only emulate position
   // tracking using the PD controller.
-  XX_new[0][2] -= 0.01;
 
   for (int i = 0; i < N_*resolution; i++) {
 

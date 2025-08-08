@@ -168,9 +168,9 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
 
-
+  Eigen::VectorXd translation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
   auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
-      lcm_translation_traj.time_vector,
+      translation_time_vector,
       lcm_translation_traj.datapoints.topRows(3),
       lcm_translation_traj.datapoints.bottomRows(3));
   auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
@@ -179,6 +179,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   if (lcm_traj.HasTrajectory(orientation_trajectory_name_)) {
     const auto& lcm_orientation_traj =
         lcm_traj.GetTrajectory(orientation_trajectory_name_);
+    Eigen::VectorXd orientation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_orientation_traj.time_vector);    
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     for (int i = 0; i < lcm_orientation_traj.datapoints.cols(); ++i) {
       VectorXd orientation_sample = lcm_orientation_traj.datapoints.col(i);
@@ -191,7 +192,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
       }
     }
     orientation_trajectory = PiecewiseQuaternionSlerp(
-        CopyVectorXdToStdVector(lcm_orientation_traj.time_vector),
+        CopyVectorXdToStdVector(orientation_time_vector),
         quaternion_datapoints);
   }
   // ASSUMING orientation and translation trajectories have the same breaks.
@@ -200,8 +201,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   // equal to the number of knot points, then the poses will be the same as the
   // knot points.
   VectorXd translation_breaks =
-      VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
-                          lcm_translation_traj.time_vector.tail(1)[0]);
+      VectorXd::LinSpaced(N_, translation_time_vector[0],
+                          translation_time_vector.tail(1)[0]);
   for (int i = 0; i < object_poses.cols(); ++i) {
     object_poses.col(i) << orientation_trajectory.value(
         translation_breaks(i)),
@@ -236,11 +237,12 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
   for (int i = 0; i < num_objects; i++) {
     LcmTrajectory::Trajectory lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_names_.at(i));
-
+    Eigen::VectorXd translation_time_vector = 
+        PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
 
     translation_trajectory.push_back(
       PiecewisePolynomial<double>::CubicHermite(
-            lcm_translation_traj.time_vector,
+            translation_time_vector,
             lcm_translation_traj.datapoints.topRows(3),
             lcm_translation_traj.datapoints.bottomRows(3))
     );
@@ -281,9 +283,11 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
   // knot points.
   std::vector<VectorXd> translation_breaks;
   for (int i = 0; i < num_objects; i++) {
+    Eigen::VectorXd translation_time_vector = 
+        PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_trajs.at(i).time_vector);
     translation_breaks.push_back(
-      VectorXd::LinSpaced(N_, lcm_translation_trajs.at(i).time_vector[0],
-                        lcm_translation_trajs.at(i).time_vector.tail(1)[0]));
+      VectorXd::LinSpaced(N_, translation_time_vector[0],
+                          translation_time_vector.tail(1)[0]));
   } 
 
   for (int i = 0; i < object_poses.cols(); ++i) {
@@ -368,16 +372,20 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       lcm_traj.GetTrajectory(force_trajectory_name_);
   const auto& actor_trajectory_block =
       lcm_traj.GetTrajectory(actor_trajectory_name_);
+  Eigen::VectorXd force_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+        force_trajectory_block.time_vector);
   auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      force_trajectory_block.time_vector, force_trajectory_block.datapoints);
+      force_time_vector, force_trajectory_block.datapoints);
   VectorXd pose;
+  Eigen::VectorXd actor_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+      actor_trajectory_block.time_vector);
   if (actor_trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
         actor_trajectory_block.time_vector, actor_trajectory_block.datapoints);
     pose = trajectory.value(robot_time);
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
-        actor_trajectory_block.time_vector,
+        actor_time_vector,
         actor_trajectory_block.datapoints.topRows(3),
         actor_trajectory_block.datapoints.bottomRows(3));
     pose = trajectory.value(robot_time);

@@ -34,7 +34,7 @@ y_scale: 0.0002
 z_scale: 0.0002
 
 end_effector_acceleration: 10
-track_end_effector_orientation: true
+track_end_effector_orientation: false
 cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
 publish_debug_info: true

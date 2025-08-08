@@ -17,6 +17,7 @@ struct SamplingC3Options : C3Options {
   bool use_predicted_x0_repos;
   bool use_predicted_x0_reset_mechanism;  // Resets if prediction is too far.
 
+  bool with_z_lambda;
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
@@ -31,7 +32,7 @@ struct SamplingC3Options : C3Options {
   double planning_dt_position;
   int lcs_dt_resolution;
   double dt_cost;
-  
+
 
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
@@ -111,6 +112,8 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
+
+    a->Visit(DRAKE_NVP(with_z_lambda));
 
     a->Visit(DRAKE_NVP(planning_dt_pose));
     a->Visit(DRAKE_NVP(planning_dt_position));
@@ -317,6 +320,7 @@ struct SamplingC3Options : C3Options {
 
       options->mu = mu;
       options->num_contacts = num_contacts;
+      options->with_z_lambda = with_z_lambda;
     }
 
     void SetPositionTrackingOptions(C3Options* options) const {
@@ -356,6 +360,10 @@ struct SamplingC3Options : C3Options {
         options->u_eta = u_eta_position_list[num_contacts_index];
       }
 
+      if (!with_z_lambda) {
+        MakePlanarLambdaCost(options);
+      }
+
       PopulateCostMatricesFromVectors(options);
     }
 
@@ -393,6 +401,36 @@ struct SamplingC3Options : C3Options {
         options->u_eta_t = u_eta_t_list[num_contacts_index];
         options->u_eta = u_eta_list[num_contacts_index];
       }
+
+      if (!with_z_lambda) {
+        MakePlanarLambdaCost(options);
+      }
+
       PopulateCostMatricesFromVectors(options);
     }
+
+  void MakePlanarLambdaCost(C3Options* options) const{
+      int num_planar_contacts = 0;
+      //num contact of obj - obj, and obj-wall
+      for (int i = 3; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
+        num_planar_contacts+= resolve_contacts_to_lists[num_contacts_index][i];
+      }
+      int total_num_contacts = std::accumulate(resolve_contacts_to_lists[num_contacts_index].begin(), resolve_contacts_to_lists[num_contacts_index].end(), 0);
+
+      int it_first = 2*num_friction_directions* (total_num_contacts - num_planar_contacts);
+      int it_last = 2*num_friction_directions* (total_num_contacts - num_planar_contacts) + (2 * num_friction_directions -2)* num_planar_contacts;
+
+      options->g_lambda.erase(options->g_lambda.begin()+ it_first,options->g_lambda.begin()+ it_last);
+      options->u_lambda.erase(options->u_lambda.begin() + it_first,options->u_lambda.begin() + it_last);
+      options->g_lambda_t.erase(options->g_lambda_t.begin() + it_first,options->g_lambda_t.begin() + it_last);
+      options->u_lambda_t.erase(options->u_lambda_t.begin() + it_first,options->u_lambda_t.begin() + it_last);
+
+      if (options->projection_type == "C3+") {
+        options->g_eta.erase(options->g_eta.begin() + it_first,options->g_eta.begin() + it_last);
+        options->u_eta.erase(options->u_eta.begin() + it_first,options->u_eta.begin() + it_last);
+        options->g_eta_t.erase(options->g_eta_t.begin() + it_first,options->g_eta_t.begin() + it_last);
+        options->u_eta_t.erase(options->u_eta_t.begin() + it_first,options->u_eta_t.begin() + it_last);
+      }
+      }
+
 };

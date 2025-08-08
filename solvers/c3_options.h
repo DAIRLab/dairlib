@@ -95,6 +95,9 @@ struct C3Options {
   double dt_cost;
   int num_friction_directions;
   int num_contacts;
+
+  bool with_z_lambda;
+
   Eigen::MatrixXd Q;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
@@ -112,6 +115,9 @@ struct C3Options {
     if (projection_type == "QP") {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
+
+    a->Visit(DRAKE_NVP(with_z_lambda));
+
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(end_on_qp_step));

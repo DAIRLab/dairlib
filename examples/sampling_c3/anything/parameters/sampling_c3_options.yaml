@@ -14,6 +14,8 @@ publish_frequency: 0
 penalize_changes_in_u_across_solves: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 
+with_z_lambda: true
+
 N: 5
 gamma: 1.0  # discount factor on MPC costs
 

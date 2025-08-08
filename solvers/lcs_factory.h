@@ -55,7 +55,7 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu, double dt,
-      int N, ContactModel = ContactModel::kStewartAndTrinkle);
+      int N, ContactModel = ContactModel::kStewartAndTrinkle,bool with_z_lambda = true);
 
   static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -63,7 +63,7 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu,
-      ContactModel = ContactModel::kStewartAndTrinkle);
+      ContactModel = ContactModel::kStewartAndTrinkle, bool with_z_lambda = true);
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but
@@ -73,6 +73,10 @@ class LCSFactory {
   /// @param inactive_lambda_inds The indices for lambda that must be 0
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
+
+  static bool IsObjToObjContact( const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
+    drake::SortedPair<drake::geometry::GeometryId> contact_geoms);
 
   /// Optionally preprocess contact pairs to select the closest contacts
   /// @param plant The MultibodyPlant

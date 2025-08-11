@@ -15,8 +15,8 @@
 #                                    at the end.
 #  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
 #                                    object terms contribute to the final cost.
-cost_type: 5
-cost_type_position: 5
+cost_type: 0
+cost_type_position: 0
 
 # Progress metric to use to determine if C3 is making progress, all phrased as
 # improvement requirements over a number of control loops (defined as

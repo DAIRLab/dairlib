@@ -54,7 +54,7 @@ max_attempts: 100
 barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: 0.006200854999999999
+z_height: 0.00042499999999999743
 # This ^ will be overwritten by generating new files.
 
 gen_planar_samples: true # true = projects all samples to z_height

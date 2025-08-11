@@ -382,8 +382,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   // Simulate the dynamics from the planned inputs.
   if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
@@ -395,10 +395,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
 
   // Use the C3 plan.
   else if (cost_type == C3CostComputationType::kUseC3Plan) {
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
-      XX[i] = zfin_[i].segment(0, n_);
-      if (i == N_-1) {
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
+      XX[i] = zfin_[i / resolution].segment(0, n_);
+      if (i == N_-1) { 
         if (lcs_for_cost_) {
           XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
@@ -414,8 +414,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
@@ -424,9 +424,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
       }
     }
     // Replace ee traj with those from zfin_.
-    for (int i = 0; i < N_*resolution; i++) {
-      XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      if (i == N_*resolution-1) {
+    for (int i = 0; i < N_; i++) {
+      XX[i].segment(0,3) = zfin_[i / resolution].segment(0,3);
+      if (i == N_-1) {
         if (lcs_for_cost_) {
           XX[i+1].segment(0,3) = 
             lcs_for_cost_->Simulate(XX[i], UU[i]).segment(0,3);
@@ -895,12 +895,6 @@ void C3Base::ExtractQPSolution(
     z_sol_->at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
     z_sol_->at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
   }
-  if (is_final_solve) {
-    for (int i = 0; i < u_sol_->size(); i++) {
-      std::cout << u_sol_->at(i).transpose() << std::endl;
-    }
-  }
-  std::cout << std::endl;
 }
 
 void C3Base::UpdateWarmStarts(

@@ -31,7 +31,7 @@ struct SamplingC3Options : C3Options {
   double planning_dt_position;
   int lcs_dt_resolution;
   double dt_cost;
-  
+  double nominal_ee_accel;
 
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
@@ -116,6 +116,7 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(planning_dt_position));
     a->Visit(DRAKE_NVP(lcs_dt_resolution));
     a->Visit(DRAKE_NVP(dt_cost));
+    a->Visit(DRAKE_NVP(nominal_ee_accel));
 
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));

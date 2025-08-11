@@ -1,5 +1,5 @@
 ### C3 options
-admm_iter: 5
+admm_iter: 3
 rho: 0  #This isn't used anywhere!
 rho_scale: 3
 num_threads: 5
@@ -26,8 +26,8 @@ qp_projection_scaling: 1
 workspace_limits: [[1, 0, 0, 0.075, 0.71], [0, 1, 0, -0.457, 0.457], [0, 0, 1, -0.04, 0.3]]
 robot_radius_limits: [0.1, 0.9]
 workspace_margins: 0.02
-u_horizontal_limits: [-5, 5]
-u_vertical_limits: [-5, 5]
+u_horizontal_limits: [-6, 6]
+u_vertical_limits: [-1, 1]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true
@@ -36,7 +36,7 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
 ### Push-T demo specific parameters:
 # Contact pairs include a number of (ee-ground, ee-object, object-ground, object-object).
-mu_per_pair_type: [0.583, 0.66, 0.2857, 0.3, 0.375]     # match URDFs with (2mu1*mu2)/(mu1+mu2)
+mu_per_pair_type: [0.7, 0.583, 0.583, 0.5, 0.375]     # match URDFs with (2mu1*mu2)/(mu1+mu2)
 resolve_contacts_to_lists: [[0, 1, 3, 0, 0]]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
@@ -46,7 +46,8 @@ num_contacts_index_for_cost: 0
 planning_dt_position: 0.1
 planning_dt_pose: 0.05
 
-lcs_dt_resolution: 3
+lcs_dt_resolution: 1
+nominal_ee_accel: 1.5
 
 ### Cost parameters
 ### If list of lists, then index into them with num_contact_index(_for_cost).
@@ -55,17 +56,17 @@ use_quaternion_dependent_cost: true
 q_quaternion_dependent_weight: 1000
 q_quaternion_dependent_regularizer_fraction: 0
 
-Kp_for_ee_pd_rollout: [60, 60, 20]
+Kp_for_ee_pd_rollout: [100, 100, 20]
 Kd_for_ee_pd_rollout: [0.5, 0.5, 0.5]
 
 ### Pose tracking cost parameters
 # Matrix scaling
 w_Q: 50
 w_R: 10
-w_G: 0.05
+w_G: 0.3
 w_U: 0.5
 
-q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 300, 300, 120, 3.5, 3.5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                           # object 1 linear velocity
+q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 300, 300, 120, 5, 5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                               # object 1 linear velocity
 r_vector: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables
@@ -98,10 +99,10 @@ u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # Matrix scaling
 w_Q_position: 50
 w_R_position: 1
-w_G_position: 0.05
+w_G_position: 0.4
 w_U_position: 0.26
 
-q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 300, 300, 120, 3.5, 3.5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                           # object 2 linear velocity
+q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 300, 300, 120, 5, 5, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                               # object 2 linear velocity
 r_vector_position: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables

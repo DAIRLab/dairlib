@@ -1174,7 +1174,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
     drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
   float approx_loop_dt = std::min(0.1, filtered_solve_time_);
-  float nominal_accel = 1;
+  float nominal_accel = sampling_c3_options_.nominal_ee_accel;
   for (int i = 0; i < 3; i++) {
     x_lcs_curr[i] = std::clamp(
       x_pred_curr_plan_[i],

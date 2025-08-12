@@ -23,3 +23,6 @@ attic/multibody/solver_log/
 
 /tools/bazel_ros2_rules/bazel-*
 *.swp
+
+# MODULE lock file should remain untracked
+MODULE.bazel.lock

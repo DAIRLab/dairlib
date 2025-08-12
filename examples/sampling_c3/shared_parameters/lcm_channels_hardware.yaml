@@ -41,4 +41,4 @@ target_generator_info_channel: TARGET_GEN_INFO
 sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
-object_state_channels: [OBJECT_repaired0_STATE_SIMULATION, OBJECT_repaired1_STATE_SIMULATION]
+object_state_channels: [OBJECT_repaired0_STATE_SIMULATION]

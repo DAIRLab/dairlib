@@ -1415,6 +1415,10 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
       x_pred_curr_plan_ = knots.col(N_ - 1);
     }
   }
+  for (int i = 0; i < N_; i++) {
+    knots(2, i) = sampling_params_.z_height; // keep ee height constant
+    knots(5 + 7 * controller_params_.num_objects, i) = 0; // keep ee z-velo constant
+  }
 
   // Add end effector position target to LCM Trajectory.
   LcmTrajectory::Trajectory ee_traj;

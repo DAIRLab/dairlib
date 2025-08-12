@@ -2,8 +2,8 @@
 
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_estimated_joint_friction_trifinger.hpp"
-#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "dairlib/lcmt_fingertips_position.hpp"
+#include "dairlib/lcmt_fingertips_target_kinematics.hpp"
 #include "examples/trifinger/systems/fingertips_target_kinematics_receiver.h"
 #include "examples/trifinger/systems/fingertips_target_traj_demultiplexer.h"
 #include "examples/trifinger/systems/trifinger_joint_friction_compensation.h"
@@ -50,30 +50,33 @@ DEFINE_string(osqp_settings,
               "examples/trifinger/parameters"
               "/trifinger_osc_qp_settings.yaml",
               "Filepath containing qp settings");
-DEFINE_string(controller_parameters,
-              "examples/trifinger/parameters/trifinger_osc_controller_params"
-              ".yaml",
-              "Controller settings such as channels. Attempting to minimize "
-              "number of gflags");
-DEFINE_string(lcm_channels,
-              "examples/trifinger/parameters/lcm_channels_simulation.yaml",
-              "Filepath containing lcm channels");
+DEFINE_bool(is_simulation, true, "Whether to use simulation or hardware");
+DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0", "LCM url");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  std::string lcm_channels_file =
+      FLAGS_is_simulation
+          ? "examples/trifinger/parameters/lcm_channels_simulation.yaml"
+          : "examples/trifinger/parameters/lcm_channels_hardware.yaml";
+  std::string controller_parameters_file =
+      FLAGS_is_simulation ? "examples/trifinger/parameters/"
+                            "trifinger_osc_controller_params_sim.yaml"
+                          : "examples/trifinger/parameters/"
+                            "trifinger_osc_controller_params_hardware.yaml";
   // load parameters from yaml files.
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
   auto controller_params = drake::yaml::LoadYamlFile<TrifingerControllerParams>(
-      FLAGS_controller_parameters);
+      controller_parameters_file);
 
   auto lcm_channel_params =
-      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
+      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(lcm_channels_file);
 
   auto gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
+      FindResourceOrThrow(controller_parameters_file), {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -94,17 +97,16 @@ int DoMain(int argc, char* argv[]) {
 
   // create lcm systems.fingertip_0_name
   // 0 = sim, 1 = hardware
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=1");
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
   auto fingertips_target_kinematics_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_fingertips_target_kinematics>(
-              lcm_channel_params.fingertips_target_kinematics_channel, &lcm));
+          lcm_channel_params.fingertips_target_kinematics_channel, &lcm));
 
   auto fingertips_target_kinematics_receiver =
       builder.AddSystem<systems::FingertipTargetKinematicsReceiver>(
-          plant, plant_context.get(),
-          controller_params.fingertip_0_name,
+          plant, plant_context.get(), controller_params.fingertip_0_name,
           controller_params.fingertip_120_name,
           controller_params.fingertip_240_name,
           controller_params.target_kinematics_update_frequency);
@@ -188,9 +190,10 @@ int DoMain(int argc, char* argv[]) {
           plant_context.get());
   builder.Connect(fingertips_target_kinematics_sub->get_output_port(),
                   fingertips_target_kinematics_receiver
-                          ->get_input_port_fingertips_target_kinematics());
-  builder.Connect(state_receiver->get_output_port(0),
-                  fingertips_target_kinematics_receiver->get_input_port_state());
+                      ->get_input_port_fingertips_target_kinematics());
+  builder.Connect(
+      state_receiver->get_output_port(0),
+      fingertips_target_kinematics_receiver->get_input_port_state());
 
   builder.Connect(fingertips_target_kinematics_receiver
                       ->get_output_port_fingertips_target_traj(),
@@ -251,4 +254,4 @@ int DoMain(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {  return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

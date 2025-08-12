@@ -1,0 +1,51 @@
+group "Operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/trifinger/trifinger_visualizer --is_simulation=true";
+        host = "localhost";
+    }
+}
+
+group "Simulation" {
+    cmd "trifinger_simulation" {
+        exec = "bazel-bin/examples/trifinger/trifinger_simulation";
+        host = "localhost";
+    }
+}
+
+group "Controllers" {
+    cmd "trifinger_osc_controller" {
+        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller --is_simulation=true";
+        host = "localhost";
+    }
+}
+
+group "lcm-tools" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "Densetact"{
+    cmd "run_densetact"{
+        exec = "bazel-bin/examples/trifinger/densetact/densetact_main";
+        host = "localhost";
+    }
+}
+
+script "run-osc-controller-simulation" {
+    stop cmd "visualizer";
+    stop cmd "trifinger_simulation";
+    stop cmd "trifinger_osc_controller";
+    wait ms 100;
+    start cmd "visualizer";
+    start cmd "trifinger_osc_controller";
+    wait ms 100;
+    start cmd "trifinger_simulation";
+}
+
+script "stop-osc-controller-simulation" {
+    stop cmd "visualizer";
+    stop cmd "trifinger_simulation";
+    stop cmd "trifinger_osc_controller";
+}

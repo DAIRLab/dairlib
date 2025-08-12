@@ -15,7 +15,10 @@ cc_library(
 cc_library(
     name = "trifinger_osc_controller_params",
     hdrs = ["trifinger_osc_controller_params.h"],
-    data = ["trifinger_osc_controller_params.yaml"],
+    data = [
+        "trifinger_osc_controller_params_sim.yaml",
+        "trifinger_osc_controller_params_hardware.yaml",
+    ],
     deps = [
         "@drake//:drake_shared_library",
     ],

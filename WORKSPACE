@@ -97,50 +97,6 @@ http_archive(
     urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
 )
 
-# Try to build ROS2 workspace
-# TODO: use http_archive() and remove this local repo from dairlib
-local_repository(
-    name = "bazel_ros2_rules",
-    path = "./tools/bazel_ros2_rules",
-)
-
-load("@bazel_ros2_rules//deps:defs.bzl", "add_bazel_ros2_rules_dependencies")
-
-add_bazel_ros2_rules_dependencies()
-
-load("@bazel_ros2_rules//ros2:defs.bzl", "ros2_archive", "ros2_local_repository")
-
-# Please keep this list sorted
-ROS2_PACKAGES = [
-    "sensor_msgs",
-    "nav_msgs",
-    "action_msgs",
-    "builtin_interfaces",
-    "console_bridge_vendor",
-    "rclcpp",
-    "rclcpp_action",
-    "rclpy",
-    "ros2cli",
-    "ros2cli_common_extensions",
-    "rosbag2",
-    "rosidl_default_generators",
-    "tf2_py",
-] + [
-    # These are possible RMW implementations. Uncomment one and only one to
-    # change implementations
-    #"rmw_cyclonedds_cpp",
-    "rmw_fastrtps_cpp",
-]
-
-# Set ROS_DIR based on distro
-# Bug in Jazzy rosidl, need Humble
-# https://github.com/ros2/rosidl/issues/808
-ros2_local_repository(
-    name = "ros2",
-    include_packages = ROS2_PACKAGES,
-    workspaces = ["/opt/ros/humble"],
-)
-
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged
@@ -244,3 +200,31 @@ http_archive(
         "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
     ],
 )
+
+# Hedron's Compile Commands Extractor for Bazel
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+http_archive(
+    name = "hedron_compile_commands",
+    strip_prefix = "bazel-compile-commands-extractor-f5fbd4cee671d8d908f37c83abaf70fba5928fc7",
+
+    # Replace the commit hash (0e990032f3c5a866e72615cf67e5ce22186dcb97) in both places (below) with the latest (https://github.com/hedronvision/bazel-compile-commands-extractor/commits/main), rather than using the stale one here.
+    # Even better, set up Renovate and let it do the work for you (see "Suggestion: Updates" in the README).
+    url = "https://github.com/mikael-s-persson/bazel-compile-commands-extractor/archive/f5fbd4cee671d8d908f37c83abaf70fba5928fc7.tar.gz",
+    # When you first run this tool, it'll recommend a sha256 hash to put here with a message like: "DEBUG: Rule 'hedron_compile_commands' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = ..."
+)
+
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+
+hedron_compile_commands_setup()
+
+load("@hedron_compile_commands//:workspace_setup_transitive.bzl", "hedron_compile_commands_setup_transitive")
+
+hedron_compile_commands_setup_transitive()
+
+load("@hedron_compile_commands//:workspace_setup_transitive_transitive.bzl", "hedron_compile_commands_setup_transitive_transitive")
+
+hedron_compile_commands_setup_transitive_transitive()
+
+load("@hedron_compile_commands//:workspace_setup_transitive_transitive_transitive.bzl", "hedron_compile_commands_setup_transitive_transitive_transitive")
+
+hedron_compile_commands_setup_transitive_transitive_transitive()

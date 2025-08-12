@@ -27,10 +27,8 @@
 DEFINE_string(sim_parameters,
               "examples/trifinger/parameters/trifinger_sim_params.yaml",
               "Filepath to simulation configs");
-
-DEFINE_string(lcm_channels,
-              "examples/trifinger/parameters/lcm_channels_hardware.yaml",
-              "Filepath containing lcm channels");
+DEFINE_bool(is_simulation, true, "Whether to use simulation or hardware");
+DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0", "LCM url");
 
 namespace dairlib {
 using dairlib::systems::ObjectStateReceiver;
@@ -47,10 +45,14 @@ using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::string lcm_channels_file =
+      FLAGS_is_simulation
+          ? "examples/trifinger/parameters/lcm_channels_simulation.yaml"
+          : "examples/trifinger/parameters/lcm_channels_hardware.yaml";
   auto sim_params =
       drake::yaml::LoadYamlFile<TrifingerSimParams>(FLAGS_sim_parameters);
   auto lcm_channels =
-      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
+      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(lcm_channels_file);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -72,10 +74,8 @@ int DoMain(int argc, char* argv[]) {
                    drake::math::RigidTransform<double>::Identity());
   plant.Finalize();
 
-  /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
-  /// messages to Cassie
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-      "udpm://239.255.76.67:7667?ttl=1");
+  auto lcm =
+      builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(FLAGS_lcm_url);
 
   // Create trifinger and cube state receiver.
   auto trifinger_state_sub =
@@ -133,9 +133,9 @@ int DoMain(int argc, char* argv[]) {
   // trifinger_state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   // Add target visualization system
-  auto cube_target_sub = builder.AddSystem(
-    LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-        lcm_channels.cube_target_channel, lcm));
+  auto cube_target_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channels.cube_target_channel, lcm));
   auto target_drawer =
       builder.AddSystem<dairlib::systems::LcmCubeTargetDrawer>(meshcat);
   builder.Connect(cube_target_sub->get_output_port(0),

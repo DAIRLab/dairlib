@@ -71,7 +71,6 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
         convex_obj = os.path.basename(convex_path)
 
         color = str((50 * (j + 1)) % 256 / 255.0) + " " + str((100 * (j + 1)) % 256 / 255.0) + " " + str((150 * (j + 1)) % 256 / 255.0) + " 1" 
-        print(color) 
 
         # Visual
         visual = ET.SubElement(link, "visual", name=f"convex_{i}")

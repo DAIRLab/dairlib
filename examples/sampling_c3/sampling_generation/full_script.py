@@ -26,12 +26,9 @@ def coarsify_obj(path): # Returns path of object, if it coarsified it
     if (num_faces > 5000):
         ratio = 1 - (5000 / num_faces)
         simplified = mesh.simplify_quadric_decimation(ratio)
-        base, ext = os.path.splitext(path)
-        new_path = base + "_coarse" + ext
-        simplified.export(new_path)
-        return new_path, True
-    else:
-        return path, False
+        simplified.export(path)
+        return True
+    return False
 
 def load_yaml(path):
     with open(path, 'r') as f:
@@ -66,13 +63,13 @@ if __name__ == "__main__":
 
     obj_dir = f"examples/sampling_c3/urdf/{base_name}"
     obj_file = os.path.join(obj_dir, f"{base_name}.obj")
-    coarse_path, is_coarse = coarsify_obj(obj_file)
-
-    coarse = "_coarse" if is_coarse else ""
+    coarsify_obj(obj_file)
 
     convex_name = f"{base_name}_convex"
-    controller_sdf_path = os.path.join(output_dir, f"{base_name}{coarse}_controller.sdf")
-    combined_sdf_path = os.path.join(output_dir, f"{base_name}{coarse}.sdf")
+    controller_sdf_path = os.path.join(output_dir, f"{base_name}_controller.sdf")
+    combined_sdf_path = os.path.join(output_dir, f"{base_name}.sdf")
+
+    print(obj_file)
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -81,17 +78,17 @@ if __name__ == "__main__":
     print(f"Copied {obj_file} to {output_dir}/")
 
     # Generate the sim SDFs
-    obj_to_drake_sdf(coarse_path, output_dir)
+    obj_to_drake_sdf(obj_file, output_dir)
 
     # Generate controller SDF
-    make_sdf(coarse_path, controller_sdf_path)
+    make_sdf(obj_file, controller_sdf_path)
 
     # Find the min z height plane
-    min_z_output = get_min_z_from_obj(coarse_path)
+    min_z_output = get_min_z_from_obj(obj_file)
     print(f"Parsed min_z_output: {min_z_output:.6f}")
 
     # Find the max z height plane
-    max_z_output = get_max_z_from_obj(coarse_path)
+    max_z_output = get_max_z_from_obj(obj_file)
     print(f"Parsed max_z_output: {max_z_output:.6f}")
 
     # --- YAML UPDATES ---

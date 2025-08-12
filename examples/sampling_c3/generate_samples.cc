@@ -661,10 +661,13 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         for (int i = 0; i < num_objects; i++) {
             //std::cout << results[2 + 4*i].distance << std::endl;
             // Only compare with body_volume
-            if (results[2 + 4*i].distance <= sampling_params.sample_projection_clearance) {
+
+            for (int j = 2 + 13*i; j < 12 + 13*i; j++) { // Check each convex piece
+              if (results[j].distance <= sampling_params.sample_projection_clearance) {
                 in_collision = true;
                 break;
-            }
+              }
+            }            
         }
 
         if (!in_collision) {

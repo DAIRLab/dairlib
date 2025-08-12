@@ -1,5 +1,5 @@
 object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
-object_models: ['examples/sampling_c3/urdf/repaired0/repaired0.sdf']
+object_models: [examples/sampling_c3/urdf/repaired0/repaired0.sdf, examples/sampling_c3/urdf/repaired1/repaired1.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000
@@ -12,4 +12,4 @@ realtime_rate: 1
 
 q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 q_init_object: [0, 0, 0, 1, 0.5, 0, -0.004]
-q_init_objects: [[0.393, 0, 0, 0.92, 0.4, -0.3, -0.004748000000000002]]
+q_init_objects: [[0.393, 0, 0, 0.92, 0.4, -0.3, 0.0], [0.393, 0, 0, 0.92, 0.44, -0.09999999999999998, 0.0]]

@@ -461,7 +461,7 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
     std::vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
-      std::string path = "examples/sampling_c3/urdf/" + base_name + ".obj";
+      std::string path = "examples/sampling_c3/urdf/" + base_name + "/" + base_name + ".obj";
       mesh_paths.push_back(path);
     }
     if (mesh_paths.empty()) {

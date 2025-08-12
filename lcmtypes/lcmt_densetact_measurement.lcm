@@ -1,13 +1,13 @@
 package dairlib;
 
-/*  Measured DenseTact Contact Data
+/*  Measured DenseTact Contact
 */
 
 struct lcmt_densetact_measurement
 {
-  int64_t utime;
+  int64_t timestamp;
   boolean inContact;
-  double contactPose [4][4];
+  double contactFrame [4][4];
   double scaledNormal;
   double scaledFriction [2];
 }

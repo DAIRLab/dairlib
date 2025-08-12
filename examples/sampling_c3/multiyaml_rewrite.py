@@ -426,7 +426,7 @@ if __name__ == "__main__":
         z_height[i] = -0.029 - min_zs[i]
 
     #goal_yaml["fixed_target_positions"] = [[0.45, 0.18745379 + (-0.4 * i), z_height[i]] for i in range(num_objects)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (i % num_objects)), 
+    goal_yaml["fixed_target_positions"] = [[0.45, -0.1 + (0.2 * (i % num_objects)), 
                                                 z_height[(i-2)]] for i in range(2, num_objects+2)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     
     min_max_z = min(max_zs_world)
 
-    sampling_yaml['z_height'] = max(-0.001, (-0.029 + min_max_z) / 2 + 0.005)
+    sampling_yaml['z_height'] = max(-0.001, (-0.029 + min_max_z) / 2 + 0.008)
     
 
     # Save pre-sized YAMLs

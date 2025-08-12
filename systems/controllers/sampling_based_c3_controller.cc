@@ -791,7 +791,18 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
         A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
         test_c3_object->AddLinearConstraint(
-          A, c3_options.workspace_limits[i][3], c3_options.workspace_limits[i][4], 1);
+          A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+          c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
+      }
+      // Set object bounds
+      for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+        for (int j = 0; j < controller_params_.num_objects; j++) {
+          Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+          A.segment(7 + 7*j, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+          test_c3_object->AddLinearConstraint(
+            A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+            c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
+        }
       }
     }
     // Add force constraints

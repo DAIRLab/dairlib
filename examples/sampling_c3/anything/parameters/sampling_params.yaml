@@ -14,7 +14,7 @@
 sampling_strategy: 7
 
 ### Parameters relevant for all sampling strategies.
-filter_samples_for_safety: true
+filter_samples_for_safety: false
 
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample

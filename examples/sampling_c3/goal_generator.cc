@@ -222,6 +222,8 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
 void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) const {
   double x, y = 0;
 
+  
+
   for (int i = 0; i < goal_params_.random_goal_gen_max_attempts; i++) {
     std::cout << "goal_gen_attempt" << i << std::endl;
     // while ((sqrt(x * x + y * y) > goal_params_.random_goal_radius_limits[1]) ||
@@ -231,18 +233,21 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
     y = RandomUniform(goal_params_.random_goal_y_limits[0],
                       goal_params_.random_goal_y_limits[1]);
     //}
+    std::vector<Eigen::VectorXd> last_target_positions = target_final_object_positions_;
 
     bool too_close = false;
     for (int j = 0; j < target_final_object_positions_.size(); j++) {
-      if (j != index) {
-        double x_diff = target_final_object_positions_[j][0] - x;
-        double y_diff = target_final_object_positions_[j][1] - y;
-        if (sqrt(x_diff * x_diff + y_diff * y_diff) < goal_params_.pairwise_goal_distance) {
-          too_close = true;
-          break;
-        }
+      if (j > index) { // ignore old goals
+        break;
+      }
+      double x_diff = target_final_object_positions_[j][0] - x;
+      double y_diff = target_final_object_positions_[j][1] - y;
+      if (sqrt(x_diff * x_diff + y_diff * y_diff) < goal_params_.pairwise_goal_distance) {
+        too_close = true;
+        break;
       }
     }
+    
     if (index == 0) { // for first object set random goal 
       too_close = false;
     }

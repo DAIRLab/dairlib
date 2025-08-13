@@ -117,22 +117,28 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
+
+  auto [num_planar_contacts, num_direction_contacts_vector] = LCSFactory::ProcessPlanarInformation(sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],
+                                                                                                    sampling_c3_options_.resolve_contacts_to_lists[sampling_c3_options_.num_contacts_index],
+                                                                                                    sampling_c3_options_.num_friction_directions);
+
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
         2 * sampling_c3_options_.num_contacts +
         2 * sampling_c3_options_.num_friction_directions *
-            sampling_c3_options_.num_contacts;
+            (sampling_c3_options_.num_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
   } else if (sampling_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ = 2 * sampling_c3_options_.num_friction_directions *
-                sampling_c3_options_.num_contacts;
+                (sampling_c3_options_.num_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
   } else {
     std::cerr << ("Unknown or unsupported contact model: " +
       sampling_c3_options_.contact_model) << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
 
+  std::cout << "n_lambda_ not in LCS factory" << n_lambda_ << std::endl;
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
   auto lcs_placeholder = CreatePlaceholderLCS();
@@ -824,8 +830,9 @@ auto c3_start = std::chrono::high_resolution_clock::now();
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
+    std::cout << "start to solve" << std::endl;
     test_c3_object->Solve(test_state, verbose_);
-
+    std::cout << "finish to solve" << std::endl;
 
     auto cc_start = std::chrono::high_resolution_clock::now();
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
@@ -1333,7 +1340,53 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
-      contact_model_);
+      contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
+
+    solvers::LCS lcs_object_sample_fake = solvers::LCSFactory::LinearizePlantToLCS_fake(
+  plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+  c3_options.num_friction_directions, c3_options.mu, dt_, N_,
+  contact_model_);
+    if (lcs_object_sample.A_ == lcs_object_sample_fake.A_) {
+      std::cout << "same A" << std::endl;
+    }else {
+      std::cout << "not same A" << std::endl;
+    }
+
+    if (lcs_object_sample.B_ == lcs_object_sample_fake.B_) {
+      std::cout << "same B" << std::endl;
+    }else {
+      std::cout << "not same B" << std::endl;
+    }
+
+    if (lcs_object_sample.E_ == lcs_object_sample_fake.E_) {
+      std::cout << "same E" << std::endl;
+    }else {
+      std::cout << "not same E" << std::endl;
+    }
+
+    if (lcs_object_sample.F_ == lcs_object_sample_fake.F_) {
+      std::cout << "same F" << std::endl;
+    }else {
+      std::cout << "not same F" << std::endl;
+    }
+
+    if (lcs_object_sample.H_ == lcs_object_sample_fake.H_) {
+      std::cout << "same H" << std::endl;
+    }else {
+      std::cout << "not same H" << std::endl;
+    }
+
+    if (lcs_object_sample.d_ == lcs_object_sample_fake.d_) {
+      std::cout << "same d" << std::endl;
+    }else {
+      std::cout << "not same d" << std::endl;
+    }
+    if (lcs_object_sample.c_ == lcs_object_sample_fake.c_) {
+      std::cout << "same c" << std::endl;
+    }else {
+      std::cout << "not same c" << std::endl;
+    }
+
     lcs_candidates.push_back(lcs_object_sample);
 
     // Create different LCS objects for cost calculation.
@@ -1347,7 +1400,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index_for_cost],sampling_c3_options_.resolve_contacts_to);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -2118,10 +2171,30 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     sampling_c3_options_.resolve_contacts_to,
     c3_options.num_friction_directions, verbose_);
 
+  std::cout << "in outputLCScontactjacobiancurrPlan" << std::endl;
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
+
+
+  std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> lcs_contact_jacobian_fake = LCSFactory::ComputeContactJacobian_fake(
+  plant_, *context_, resolved_contact_pairs,
+  c3_options.num_friction_directions, c3_options.mu, contact_model_);
+
+  if (lcs_contact_jacobian->first == lcs_contact_jacobian_fake.first) {
+      std::cout << "jacobian first is same" << std::endl;
+  }else {
+      std::cout << "jacobian first is not same" << std::endl;
+  }
+
+  if (lcs_contact_jacobian->second == lcs_contact_jacobian_fake.second) {
+    std::cout << "jacobian second is same" << std::endl;
+  }else {
+    std::cout << "jacobian second is not same" << std::endl;
+  }
+
+
 }
 
 // Output port handlers for best sample location
@@ -2351,9 +2424,28 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     plant_, *context_, contact_pairs_,
     sampling_c3_options_.resolve_contacts_to,
     c3_options.num_friction_directions, verbose_);
+
+  std::cout << " in outputlcscontactjacobian best plan" << std::endl;
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
+
+  std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> lcs_contact_jacobian_fake = LCSFactory::ComputeContactJacobian_fake(
+  plant_, *context_, resolved_contact_pairs,
+  c3_options.num_friction_directions, c3_options.mu, contact_model_);
+
+  if (lcs_contact_jacobian->first == lcs_contact_jacobian_fake.first) {
+    std::cout << "jacobian first is same" << std::endl;
+  }else {
+    std::cout << "jacobian first is not same" << std::endl;
+  }
+
+  if (lcs_contact_jacobian->second == lcs_contact_jacobian_fake.second) {
+    std::cout << "jacobian second is same" << std::endl;
+  }else {
+    std::cout << "jacobian second is not same" << std::endl;
+  }
+
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

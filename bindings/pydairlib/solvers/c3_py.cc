@@ -54,7 +54,9 @@ PYBIND11_MODULE(c3, m) {
         py::arg("mu"),
         py::arg("dt"),
         py::arg("N"),
-        py::arg("contact_model"));
+        py::arg("contact_model"),
+        py::arg("resolve_PlanarContacts_vector"),
+        py::arg("resolve_contacts_to_list"));
 
   {
     using Enum = dairlib::solvers::ContactModel;

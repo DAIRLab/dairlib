@@ -20,6 +20,7 @@ struct SamplingC3Options : C3Options {
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
+  std::vector<std::vector<int>> resolve_PlanarContacts_to_lists;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
   int num_contacts_index;
@@ -109,6 +110,7 @@ struct SamplingC3Options : C3Options {
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
+    a->Visit(DRAKE_NVP(resolve_PlanarContacts_to_lists));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
 
@@ -356,7 +358,7 @@ struct SamplingC3Options : C3Options {
         options->u_eta_t = u_eta_t_position_list[num_contacts_index];
         options->u_eta = u_eta_position_list[num_contacts_index];
       }
-
+      MakePlanarLambdaCost(options);
       PopulateCostMatricesFromVectors(options);
     }
 
@@ -394,6 +396,32 @@ struct SamplingC3Options : C3Options {
         options->u_eta_t = u_eta_t_list[num_contacts_index];
         options->u_eta = u_eta_list[num_contacts_index];
       }
+      MakePlanarLambdaCost(options);
       PopulateCostMatricesFromVectors(options);
     }
+
+  void MakePlanarLambdaCost(C3Options* options) const{
+      int offset = 0;
+      for (int i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
+        if (resolve_PlanarContacts_to_lists[num_contacts_index][i]) {
+          std::cout << "i am running make planar" << std::endl;
+          int index_erase_contacts_begin =  2 * num_friction_directions * std::accumulate(resolve_contacts_to_lists[num_contacts_index].begin(), resolve_contacts_to_lists[num_contacts_index].begin() + i, 0) - offset;
+          int index_erase_contacts_end = index_erase_contacts_begin + 2 * (num_friction_directions - 1) * resolve_contacts_to_lists[num_contacts_index][i];
+
+          options->g_lambda.erase(options->g_lambda.begin()+ index_erase_contacts_begin,options->g_lambda.begin()+ index_erase_contacts_end);
+          options->u_lambda.erase(options->u_lambda.begin() + index_erase_contacts_begin,options->u_lambda.begin() + index_erase_contacts_end);
+          options->g_lambda_t.erase(options->g_lambda_t.begin() + index_erase_contacts_begin,options->g_lambda_t.begin() + index_erase_contacts_end);
+          options->u_lambda_t.erase(options->u_lambda_t.begin() + index_erase_contacts_begin,options->u_lambda_t.begin() + index_erase_contacts_end);
+
+          if (options->projection_type == "C3+") {
+            options->g_eta.erase(options->g_eta.begin() + index_erase_contacts_begin,options->g_eta.begin() + index_erase_contacts_end);
+            options->u_eta.erase(options->u_eta.begin() + index_erase_contacts_begin,options->u_eta.begin() + index_erase_contacts_end);
+            options->g_eta_t.erase(options->g_eta_t.begin() + index_erase_contacts_begin,options->g_eta_t.begin() + index_erase_contacts_end);
+            options->u_eta_t.erase(options->u_eta_t.begin() + index_erase_contacts_begin,options->u_eta_t.begin() + index_erase_contacts_end);
+          }
+          offset += 2 * (num_friction_directions - 1)* resolve_contacts_to_lists[num_contacts_index][i];
+        }
+      }
+    }
+
 };

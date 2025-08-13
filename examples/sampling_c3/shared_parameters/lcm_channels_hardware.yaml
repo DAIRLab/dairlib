@@ -41,4 +41,4 @@ target_generator_info_channel: TARGET_GEN_INFO
 sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
-object_state_channels: [OBJECT_A_centered_STATE_SIMULATION, OBJECT_I_centered_STATE_SIMULATION, OBJECT_C_centered_STATE_SIMULATION, OBJECT_R_centered_STATE_SIMULATION]
+object_state_channels: [OBJECT_A_centered_STATE_SIMULATION, OBJECT_R_centered_STATE_SIMULATION]

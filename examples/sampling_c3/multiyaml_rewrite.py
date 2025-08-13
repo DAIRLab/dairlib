@@ -247,8 +247,8 @@ def set_object_paths(index, base_name, output_dir, controller_yaml, vis_yaml, si
 def build_q_vector(num_objects: int) -> list:
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
-    OBJECT_POSITION = [300, 300, 120]
-    EE_LINEAR_VELOCITY = [5, 5, 5]
+    OBJECT_POSITION = [200, 200, 120]
+    EE_LINEAR_VELOCITY = [8, 8, 5]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 
@@ -278,7 +278,16 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     include_walls = 2 if (controller_yaml['include_walls']) else 0
     samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects), include_walls * num_objects]]
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
-    samp_c3_options_yaml["q_vector_position"] = build_q_vector(num_objects)
+
+
+    # penalize ee velocity harder
+    q_vector_position = build_q_vector(num_objects)
+    q_vector_position[3 + 7*num_objects] *= 3
+    q_vector_position[4 + 7*num_objects] *= 3
+    q_vector_position[5 + 7*num_objects] *= 3
+
+    samp_c3_options_yaml["q_vector_position"] = q_vector_position
+
 
     samp_c3_options_yaml["g_x"] = [950] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
     samp_c3_options_yaml["g_gamma_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
@@ -317,9 +326,9 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["g_eta_slack_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["g_eta_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["g_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
-        samp_c3_options_yaml["g_lambda_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["g_lambda_position_list"] = [[2] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
-        samp_c3_options_yaml["g_x_position"] = [900] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
+        samp_c3_options_yaml["g_x_position"] = [950] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
     else: 
         samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_x_position"] = [0] * (6 + (13 * num_objects))
@@ -410,9 +419,9 @@ if __name__ == "__main__":
         z_height[i] = -0.029 - min_zs[i]
 
     # set init and goal poses
-    sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.04 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.1 + (0.2 * (index % num_objects)), 
-                                                z_height[(index-2)]] for index in range(2, num_objects+2)]
+    sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
+                                                z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
 

@@ -237,7 +237,10 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
 
     bool too_close = false;
     for (int j = 0; j < target_final_object_positions_.size(); j++) {
-      if (j > index) { // ignore old goals
+      if (index == 0 && j > index) {
+        break;
+      }
+      if (j >= index) { // ignore old goals
         break;
       }
       double x_diff = target_final_object_positions_[j][0] - x;
@@ -248,9 +251,9 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
       }
     }
     
-    if (index == 0) { // for first object set random goal 
-      too_close = false;
-    }
+    // if (index == 0) { // for first object set random goal 
+    //   too_close = false;
+    // }
     if (!too_close) break;
   }
 

@@ -1,5 +1,5 @@
 object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
-object_models: [examples/sampling_c3/urdf/A_centered/A_centered.sdf, examples/sampling_c3/urdf/C_centered/C_centered.sdf, examples/sampling_c3/urdf/I_centered/I_centered.sdf, examples/sampling_c3/urdf/R_centered/R_centered.sdf]
+object_models: [examples/sampling_c3/urdf/A_centered/A_centered.sdf, examples/sampling_c3/urdf/I_centered/I_centered.sdf, examples/sampling_c3/urdf/C_centered/C_centered.sdf, examples/sampling_c3/urdf/R_centered/R_centered.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000

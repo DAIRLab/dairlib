@@ -35,7 +35,8 @@ LCS LCSFactory::LinearizePlantToLCS(
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, ContactModel contact_model,const vector<int>& resolve_PlanarContacts_vector,const std::vector<int>& resolve_contacts_to_list) {
+    int N, ContactModel contact_model, const vector<int>& resolve_PlanarContacts_vector,
+    const std::vector<int>& resolve_contacts_to_list) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
 
@@ -43,7 +44,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
  auto [num_planar_contacts, num_direction_contacts_vector] = ProcessPlanarInformation(resolve_PlanarContacts_vector, resolve_contacts_to_list, num_friction_directions);
 
-  int num_direction_contacts =  2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+  int num_direction_contacts =  2 * num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());

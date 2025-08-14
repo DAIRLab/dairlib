@@ -57,18 +57,6 @@ class LCSFactory {
        int num_friction_directions, const std::vector<double>& mu, double dt,
        int N, ContactModel = ContactModel::kStewartAndTrinkle,const vector<int>& resolve_PlanarContacts_vector = {}, const std::vector<int>& resolve_contacts_to_list = {});
 
-
-    static LCS LinearizePlantToLCS_fake(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
-    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
-    int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, ContactModel = ContactModel::kStewartAndTrinkle);
-
-
   static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
@@ -76,14 +64,6 @@ class LCSFactory {
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu,
       ContactModel = ContactModel::kStewartAndTrinkle, const vector<int> resolve_PlanarContacts_vector = {},const std::vector<int>& resolve_contacts_to_list = {});
-
-    static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian_fake(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
-    int num_friction_directions, const std::vector<double>& mu,
-    ContactModel = ContactModel::kStewartAndTrinkle);
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but

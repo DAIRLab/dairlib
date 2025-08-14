@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: [examples/sampling_c3/urdf/A_centered/A_centered.sdf, examples/sampling_c3/urdf/R_centered/R_centered.sdf]
+object_vis_models: [examples/sampling_c3/urdf/A_centered/A_centered.sdf, examples/sampling_c3/urdf/C_centered/C_centered.sdf, examples/sampling_c3/urdf/I_centered/I_centered.sdf, examples/sampling_c3/urdf/R_centered/R_centered.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]

@@ -55,7 +55,6 @@ LCS LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd C(n_v);
   plant_ad.CalcBiasTerm(context_ad, &C);
   VectorXd u_dyn = plant.get_actuation_input_port().Eval(context);
-
   auto B_dyn_ad = plant_ad.MakeActuationMatrix();
   AutoDiffVecXd Bu =
       B_dyn_ad * plant_ad.get_actuation_input_port().Eval(context_ad);
@@ -325,7 +324,6 @@ LCSFactory::ComputeContactJacobian(
     // rows (1-num_friction directions) are the contact tangents
   }
 
-
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     MatrixXd J_c = MatrixXd::Zero(
         n_contacts + 2 * n_contacts * num_friction_directions, n_v);
@@ -341,24 +339,20 @@ LCSFactory::ComputeContactJacobian(
           MatrixXd::Ones(1, 2 * num_direction_contacts_vector[i]);
     }
 
-
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(num_direction_contacts);
-
-
+      
     for (int i = 0; i < mu_vec.rows(); i++) {
       int offset = 2 * std::accumulate(num_direction_contacts_vector.begin(),
                                 num_direction_contacts_vector.begin() + i, 0);
       int width  = 2 * num_direction_contacts_vector[i];
       anitescu_mu_vec.segment(offset, width).setConstant(mu[i]);
     }
+      
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
-
     return std::make_pair(J_c, contact_points);
-
-
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -570,7 +564,6 @@ void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
 }
 
 bool LCSFactory::CheckIfPlanarContact(int i, const vector<int> resolve_PlanarContacts_vector) {
-
   if (resolve_PlanarContacts_vector[i]) {
     return true;
   }else {

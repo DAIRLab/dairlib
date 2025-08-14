@@ -1,5 +1,6 @@
 #include <c3/core/c3.h>
 #include <c3/core/solver_options_io.h>
+#include <c3/multibody/lcs_factory.h>
 #include <c3/systems/c3_controller.h>
 #include <c3/systems/lcmt_generators/c3_output_generator.h>
 #include <c3/systems/lcmt_generators/c3_trajectory_generator.h>
@@ -41,6 +42,7 @@ DEFINE_bool(simulation, true, "Running in simulation or hardware");
 using c3::C3;
 using c3::ConstraintVariable;
 using c3::SolverOptionsFromYaml;
+using c3::multibody::LCSFactory;
 using c3::systems::C3Controller;
 using c3::systems::LCSFactorySystem;
 using c3::systems::lcmt_generators::C3OutputGenerator;
@@ -355,7 +357,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
       TriggerTypeSet({TriggerType::kForced}));
   ContactForceGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution(),
-      lcs_factory->get_output_port_lcs_contact_description(),
+      lcs_factory->get_output_port_lcs_contact_descriptions(),
       lcm_channel_params.c3_force_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
   C3TrajectoryGeneratorConfig actor_config =
@@ -408,6 +410,7 @@ int DoMain(std::string plate_balancing_config, bool is_simulation) {
 // Main entry point: parses command-line flags and runs the example.
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  drake::log()->set_level(spdlog::level::info);
   return dairlib::examples::plate_balancing::DoMain(
       FLAGS_plate_balancing_config, FLAGS_simulation);
 }

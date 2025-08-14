@@ -12,7 +12,7 @@ file_names:
   - 2_supports.yaml
   - 3_rotated_supports.yaml
   - 4_wall.yaml
-c3_controller_options_directory: examples/plate-balancing/config/C3/controller-options/
+c3_controller_options_directory: examples/plate-balancing/config/C3/controller-c3plus-options/
 c3_scene_config_directory: examples/plate-balancing/config/C3/scene-config/
 c3_osqp_settings_file: examples/plate-balancing/config/C3/solver_settings.yaml
 c3_actor_trajectory_generator_config: examples/plate-balancing/config/C3/trajectory-generator-config/actor_trajectory_generator.yaml

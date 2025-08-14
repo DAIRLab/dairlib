@@ -3,8 +3,8 @@ end_effector_model: examples/plate-balancing/urdf/plate_end_effector.urdf
 tray_model: examples/plate-balancing/urdf/tray.sdf # rigid contact model does not do sticking well
 object_model: examples/plate-balancing/urdf/cylinder_object.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 1000
-object_publish_rate: 1000
+tray_publish_rate: 100
+object_publish_rate: 100
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 

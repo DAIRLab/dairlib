@@ -404,7 +404,6 @@ struct SamplingC3Options : C3Options {
       int offset = 0;
       for (int i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
         if (resolve_PlanarContacts_to_lists[num_contacts_index][i]) {
-          std::cout << "i am running make planar" << std::endl;
           int index_erase_contacts_begin =  2 * num_friction_directions * std::accumulate(resolve_contacts_to_lists[num_contacts_index].begin(), resolve_contacts_to_lists[num_contacts_index].begin() + i, 0) - offset;
           int index_erase_contacts_end = index_erase_contacts_begin + 2 * (num_friction_directions - 1) * resolve_contacts_to_lists[num_contacts_index][i];
 

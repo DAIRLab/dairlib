@@ -38,7 +38,7 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 # Contact pairs include a number of (ee-ground, ee-object, object-ground, object-object, object-wall).
 mu_per_pair_type: [0.583, 0.42, 0.375, 0.3, 0.375]   # match URDFs with (2mu1*mu2)/(mu1+mu2)
 resolve_contacts_to_lists: [[0, 1, 3, 0, 2]]
-resolve_PlanarContacts_to_lists: [[0, 0, 0, 1, 1]]   # 0: 3D contact  1: planar contact
+resolve_as_planar_contacts_list: [0, 0, 0, 1, 1]   # 0: 3D contact  1: planar contact
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0

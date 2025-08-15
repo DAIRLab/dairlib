@@ -55,7 +55,7 @@ PYBIND11_MODULE(c3, m) {
         py::arg("dt"),
         py::arg("N"),
         py::arg("contact_model"),
-        py::arg("resolve_PlanarContacts_vector"),
+        py::arg("resolve_planar_contacts_vector"),
         py::arg("resolve_contacts_to_list"));
 
   {

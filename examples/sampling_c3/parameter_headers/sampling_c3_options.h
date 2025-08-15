@@ -20,7 +20,7 @@ struct SamplingC3Options : C3Options {
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
-  std::vector<std::vector<int>> resolve_PlanarContacts_to_lists;
+  std::vector<int> resolve_as_planar_contacts_list;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
   int num_contacts_index;
@@ -110,7 +110,7 @@ struct SamplingC3Options : C3Options {
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
-    a->Visit(DRAKE_NVP(resolve_PlanarContacts_to_lists));
+    a->Visit(DRAKE_NVP(resolve_as_planar_contacts_list));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
 
@@ -403,7 +403,7 @@ struct SamplingC3Options : C3Options {
   void MakePlanarLambdaCost(C3Options* options) const{
       int offset = 0;
       for (int i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
-        if (resolve_PlanarContacts_to_lists[num_contacts_index][i]) {
+        if (resolve_as_planar_contacts_list[i]) {
           int index_erase_contacts_begin =  2 * num_friction_directions * std::accumulate(resolve_contacts_to_lists[num_contacts_index].begin(), resolve_contacts_to_lists[num_contacts_index].begin() + i, 0) - offset;
           int index_erase_contacts_end = index_erase_contacts_begin + 2 * (num_friction_directions - 1) * resolve_contacts_to_lists[num_contacts_index][i];
 

@@ -118,9 +118,10 @@ SamplingC3Controller::SamplingC3Controller(
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
 
-  auto [num_planar_contacts, num_direction_contacts_vector] = LCSFactory::ProcessPlanarInformation(sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],
-                                                                                                    sampling_c3_options_.resolve_contacts_to_lists[sampling_c3_options_.num_contacts_index],
-                                                                                                    sampling_c3_options_.num_friction_directions);
+  auto [num_planar_contacts, num_direction_contacts_vector] =
+    LCSFactory::ProcessPlanarInformation(sampling_c3_options_.resolve_as_planar_contacts_list,
+      sampling_c3_options_.resolve_contacts_to_lists[sampling_c3_options_.num_contacts_index],
+      sampling_c3_options_.num_friction_directions);
 
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
@@ -138,7 +139,6 @@ SamplingC3Controller::SamplingC3Controller(
     DRAKE_THROW_UNLESS(false);
   }
 
-  std::cout << "n_lambda_ not in LCS factory" << n_lambda_ << std::endl;
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
   auto lcs_placeholder = CreatePlaceholderLCS();
@@ -1338,7 +1338,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
-      contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
+      contact_model_,sampling_c3_options_.resolve_as_planar_contacts_list,sampling_c3_options_.resolve_contacts_to);
 
     lcs_candidates.push_back(lcs_object_sample);
 
@@ -1353,7 +1353,9 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index_for_cost],sampling_c3_options_.resolve_contacts_to);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,
+        sampling_c3_options_.resolve_as_planar_contacts_list,
+        sampling_c3_options_.resolve_contacts_to);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -2127,8 +2129,9 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
-
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,
+    sampling_c3_options_.resolve_as_planar_contacts_list,
+    sampling_c3_options_.resolve_contacts_to);
 }
 
 // Output port handlers for best sample location
@@ -2361,7 +2364,9 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,
+    sampling_c3_options_.resolve_as_planar_contacts_list,
+    sampling_c3_options_.resolve_contacts_to);
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

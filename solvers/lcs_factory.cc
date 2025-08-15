@@ -35,16 +35,19 @@ LCS LCSFactory::LinearizePlantToLCS(
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, ContactModel contact_model, const vector<int>& resolve_PlanarContacts_vector,
+    int N, ContactModel contact_model, const vector<int>& resolve_as_planar_contacts_list,
     const std::vector<int>& resolve_contacts_to_list) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
 
   int n_contacts = contact_geoms.size();
 
- auto [num_planar_contacts, num_direction_contacts_vector] = ProcessPlanarInformation(resolve_PlanarContacts_vector, resolve_contacts_to_list, num_friction_directions);
+ auto [num_planar_contacts, direction_counts_per_contact] =
+   ProcessPlanarInformation(resolve_as_planar_contacts_list,
+     resolve_contacts_to_list, num_friction_directions);
 
-  int num_direction_contacts =  2 * num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+  int n_lambda_with_tangential =
+    2 * num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
@@ -97,7 +100,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
-  MatrixXd J_t(num_direction_contacts, n_v);
+  MatrixXd J_t(n_lambda_with_tangential, n_v);
 
   Eigen::Vector3d planar_normal(0, 0, 1);
   for (int i = 0; i < n_contacts; i++) {
@@ -105,14 +108,15 @@ LCS LCSFactory::LinearizePlantToLCS(
         plant,
         contact_geoms[i]);
 
-
-    auto [phi_i, J_i] = (num_direction_contacts_vector[i] == 1) ? collider.EvalPlanar(context, planar_normal) :
-                                                collider.EvalPolytope(context, num_direction_contacts_vector[i]);
+    auto [phi_i, J_i] =
+      (direction_counts_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal) :
+                                                collider.EvalPolytope(context, direction_counts_per_contact[i]);
 
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
-    J_t.block(2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0), 0, 2 * num_direction_contacts_vector[i],
-              n_v) = J_i.block(1, 0, 2 * num_direction_contacts_vector[i], n_v);
+    J_t.block(2 * std::accumulate(direction_counts_per_contact.begin(),direction_counts_per_contact.begin()+i,0),
+      0, 2 * direction_counts_per_contact[i], n_v) =
+        J_i.block(1, 0, 2 * direction_counts_per_contact[i], n_v);
 
     // J_i is 3 x n_v
     // row (0) is contact normal
@@ -146,19 +150,19 @@ LCS LCSFactory::LinearizePlantToLCS(
   d.tail(n_v) = dt * d_v;
 
   MatrixXd E_t =
-      MatrixXd::Zero(n_contacts, num_direction_contacts);
+      MatrixXd::Zero(n_contacts, n_lambda_with_tangential);
   for (int i = 0; i < n_contacts; i++) {
-    E_t.block(i, 2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0),
-      1, 2 * num_direction_contacts_vector[i]) =
-        MatrixXd::Ones(1, 2 * num_direction_contacts_vector[i]);
+    E_t.block(i, 2 * std::accumulate(direction_counts_per_contact.begin(),direction_counts_per_contact.begin()+i,0),
+      1, 2 * direction_counts_per_contact[i]) =
+        MatrixXd::Ones(1, 2 * direction_counts_per_contact[i]);
 
   }
 
   int n_lambda = 0;
   if (contact_model == ContactModel::kStewartAndTrinkle) {
-    n_lambda = 2 * n_contacts + num_direction_contacts;
+    n_lambda = 2 * n_contacts + n_lambda_with_tangential;
   } else {
-    n_lambda = num_direction_contacts;
+    n_lambda = n_lambda_with_tangential;
   }
 
   // Matrices with contact variables
@@ -174,21 +178,21 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd w = VectorXd::Zero(n_lambda);
 
   if (contact_model == ContactModel::kStewartAndTrinkle) {
-    D.block(0, 2 * n_contacts, n_q, num_direction_contacts) =
+    D.block(0, 2 * n_contacts, n_q, n_lambda_with_tangential) =
         dt * dt * qdotNv * MinvJ_t_T;
     D.block(n_q, 2 * n_contacts, n_v,
-            num_direction_contacts) = dt * MinvJ_t_T;
+            n_lambda_with_tangential) = dt * MinvJ_t_T;
     D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
     // Complementarity condition for gamma: mu lambda^n
     E.block(n_contacts, 0, n_contacts, n_q) =
         dt * dt * J_n * AB_v_q + J_n * vNqdot;
-    E.block(2 * n_contacts, 0, num_direction_contacts, n_q) =
+    E.block(2 * n_contacts, 0, n_lambda_with_tangential, n_q) =
         dt * J_t * AB_v_q;
     E.block(n_contacts, n_q, n_contacts, n_v) =
         dt * J_n + dt * dt * J_n * AB_v_v;
-    E.block(2 * n_contacts, n_q, num_direction_contacts,
+    E.block(2 * n_contacts, n_q, n_lambda_with_tangential,
             n_v) = J_t + dt * J_t * AB_v_v;
 
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
@@ -198,7 +202,7 @@ LCS LCSFactory::LinearizePlantToLCS(
 
     // Complementarity condition for gamma: lambda^t
     F.block(0, 2 * n_contacts, n_contacts,
-            num_direction_contacts) = -E_t;
+            n_lambda_with_tangential) = -E_t;
 
     // Complementarity condition for lambda_n: dt J_n (lambda^n component of
     // v_{k+1})
@@ -207,30 +211,30 @@ LCS LCSFactory::LinearizePlantToLCS(
     // Complementarity condition for lambda_n: dt J_n (lambda^t component of
     // v_{k+1})
     F.block(n_contacts, 2 * n_contacts, n_contacts,
-            num_direction_contacts) =
+            n_lambda_with_tangential) =
         dt * dt * J_n * MinvJ_t_T;
     // Complementarity condition for lambda_t: dt J_t (gamma component of
     // v_{k+1})
-    F.block(2 * n_contacts, 0, num_direction_contacts,
+    F.block(2 * n_contacts, 0, n_lambda_with_tangential,
             n_contacts) = E_t.transpose();
     // Complementarity condition for lambda_t: dt J_t (lambda^n component of
     // v_{k+1})
     F.block(2 * n_contacts, n_contacts,
-            num_direction_contacts, n_contacts) =
+            n_lambda_with_tangential, n_contacts) =
         dt * J_t * MinvJ_n_T;
     // Complementarity condition for lambda_t: dt J_t (lambda^t component of
     // v_{k+1})
     F.block(2 * n_contacts, 2 * n_contacts,
-            num_direction_contacts,
-            num_direction_contacts) = dt * J_t * MinvJ_t_T;
+            n_lambda_with_tangential,
+            n_lambda_with_tangential) = dt * J_t * MinvJ_t_T;
 
     H.block(n_contacts, 0, n_contacts, n_u) = dt * dt * J_n * AB_v_u;
-    H.block(2 * n_contacts, 0, num_direction_contacts, n_u) =
+    H.block(2 * n_contacts, 0, n_lambda_with_tangential, n_u) =
         dt * J_t * AB_v_u;
 
     c.segment(n_contacts, n_contacts) =
         phi + dt * dt * J_n * d_v - J_n * vNqdot * plant.GetPositions(context);
-    c.segment(2 * n_contacts, num_direction_contacts) =
+    c.segment(2 * n_contacts, n_lambda_with_tangential) =
         J_t * dt * d_v;
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
@@ -239,9 +243,9 @@ LCS LCSFactory::LinearizePlantToLCS(
     for (int i = 0; i < mu_vec.rows(); i++) {
 
 
-      int offset = 2 * std::accumulate(num_direction_contacts_vector.begin(),
-                                 num_direction_contacts_vector.begin() + i, 0);
-      int width  = 2 * num_direction_contacts_vector[i];
+      int offset = 2 * std::accumulate(direction_counts_per_contact.begin(),
+                                 direction_counts_per_contact.begin() + i, 0);
+      int width  = 2 * direction_counts_per_contact[i];
       anitescu_mu_vec.segment(offset, width).setConstant(mu[i]);
 
     }
@@ -290,19 +294,22 @@ LCSFactory::ComputeContactJacobian(
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
         contact_geoms,
     int num_friction_directions, const std::vector<double>& mu,
-    dairlib::solvers::ContactModel contact_model, const vector<int> resolve_PlanarContacts_vector,const std::vector<int>& resolve_contacts_to_list) {
+    dairlib::solvers::ContactModel contact_model,
+    const vector<int> resolve_as_planar_contacts_list,
+    const std::vector<int>& resolve_contacts_to_list) {
 
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();
 
-  auto [num_planar_contacts, num_direction_contacts_vector] = ProcessPlanarInformation(resolve_PlanarContacts_vector, resolve_contacts_to_list, num_friction_directions);
+  auto [num_planar_contacts, direction_counts_per_contact] =
+    ProcessPlanarInformation(resolve_as_planar_contacts_list, resolve_contacts_to_list, num_friction_directions);
 
-  int num_direction_contacts = 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+  int n_lambda_with_tangential = 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
-  MatrixXd J_t(num_direction_contacts, n_v);
+  MatrixXd J_t(n_lambda_with_tangential, n_v);
   std::vector<VectorXd> contact_points;
 
   for (int i = 0; i < n_contacts; i++) {
@@ -311,14 +318,17 @@ LCSFactory::ComputeContactJacobian(
         contact_geoms[i]);
 
     Eigen::Vector3d planar_normal(0, 0, 1);
-    auto [phi_i, J_i] = (num_direction_contacts_vector[i] == 1) ? collider.EvalPlanar(context, planar_normal): collider.EvalPolytope(context, num_direction_contacts_vector[i]);
+    auto [phi_i, J_i] =
+      (direction_counts_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal):
+                                              collider.EvalPolytope(context, direction_counts_per_contact[i]);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
     // TODO(yangwill): think about if we want to push back both witness points
     contact_points.push_back(p_WCa);
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
-    J_t.block(2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0), 0, 2 * num_direction_contacts_vector[i],
-                n_v) = J_i.block(1, 0, 2 * num_direction_contacts_vector[i], n_v);
+    J_t.block(2 * std::accumulate(direction_counts_per_contact.begin(),direction_counts_per_contact.begin()+i,0),
+      0, 2 * direction_counts_per_contact[i], n_v) =
+        J_i.block(1, 0, 2 * direction_counts_per_contact[i], n_v);
     // J_i is 3 x n_v
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
@@ -331,22 +341,22 @@ LCSFactory::ComputeContactJacobian(
     return std::make_pair(J_c, contact_points);
   } else if (contact_model == ContactModel::kAnitescu) {
     MatrixXd E_t =
-        MatrixXd::Zero(n_contacts, num_direction_contacts);
+        MatrixXd::Zero(n_contacts, n_lambda_with_tangential);
 
     for (int i = 0; i < n_contacts; i++) {
-      E_t.block(i, 2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0),
-        1, 2 * num_direction_contacts_vector[i]) =
-          MatrixXd::Ones(1, 2 * num_direction_contacts_vector[i]);
+      E_t.block(i, 2 * std::accumulate(direction_counts_per_contact.begin(),
+        direction_counts_per_contact.begin()+i,0), 1, 2 * direction_counts_per_contact[i]) =
+          MatrixXd::Ones(1, 2 * direction_counts_per_contact[i]);
     }
 
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
-    VectorXd anitescu_mu_vec = VectorXd::Zero(num_direction_contacts);
+    VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda_with_tangential);
       
     for (int i = 0; i < mu_vec.rows(); i++) {
-      int offset = 2 * std::accumulate(num_direction_contacts_vector.begin(),
-                                num_direction_contacts_vector.begin() + i, 0);
-      int width  = 2 * num_direction_contacts_vector[i];
+      int offset = 2 * std::accumulate(direction_counts_per_contact.begin(),
+                                direction_counts_per_contact.begin() + i, 0);
+      int width  = 2 * direction_counts_per_contact[i];
       anitescu_mu_vec.segment(offset, width).setConstant(mu[i]);
     }
       
@@ -563,29 +573,29 @@ void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
             << p_world_contact_b.transpose() << "]" << std::endl;
 }
 
-bool LCSFactory::CheckIfPlanarContact(int i, const vector<int> resolve_PlanarContacts_vector) {
-  if (resolve_PlanarContacts_vector[i]) {
+bool LCSFactory::CheckIfPlanarContact(int i, const vector<int> resolve_as_planar_contacts_list) {
+  if (resolve_as_planar_contacts_list[i]) {
     return true;
   }else {
     return false;
   }
 }
 
-std::pair<int, vector<int>> LCSFactory::ProcessPlanarInformation(const vector<int> resolve_PlanarContacts_vector, const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
+std::pair<int, vector<int>> LCSFactory::ProcessPlanarInformation(
+  const vector<int> resolve_as_planar_contacts_list,
+  const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
+
   int num_planar_contacts = 0;
   int planar_contact = 1;
-  vector<int> num_direction_contacts_vector;
+  vector<int> direction_counts_per_contact;
   for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
       for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
-        num_planar_contacts += (CheckIfPlanarContact(i, resolve_PlanarContacts_vector) ? 1 : 0);
-        num_direction_contacts_vector.push_back(CheckIfPlanarContact(i, resolve_PlanarContacts_vector) ? planar_contact : num_friction_directions);
+        num_planar_contacts += (CheckIfPlanarContact(i, resolve_as_planar_contacts_list) ? 1 : 0);
+        direction_counts_per_contact.push_back(CheckIfPlanarContact(i, resolve_as_planar_contacts_list) ? planar_contact : num_friction_directions);
       }
   }
-  return std::pair<int, vector<int>>(num_planar_contacts, num_direction_contacts_vector);
+  return std::pair<int, vector<int>>(num_planar_contacts, direction_counts_per_contact);
 }
-
-
-
 
 }  // namespace solvers
 }  // namespace dairlib

@@ -339,12 +339,12 @@ void ContactDataSender::Output(
 
   // DenseTact 1
   dairlib::lcmt_densetact_measurement contact_1;
-  contact_1.utime = context.get_time() * 1e6; 
+  contact_1.timestamp = context.get_time() * 1e6; 
   contact_1.inContact = contact_bool_1;
 
   for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-          contact_1.contactPose[i][j] = contact_frame_sensor1_CB(i, j);
+          contact_1.contactFrame[i][j] = contact_frame_sensor1_CB(i, j);
       }
   } 
 
@@ -357,12 +357,12 @@ void ContactDataSender::Output(
 
   // DenseTact 2
   dairlib::lcmt_densetact_measurement contact_2;
-  contact_2.utime = context.get_time() * 1e6; 
+  contact_2.timestamp = context.get_time() * 1e6; 
   contact_2.inContact = contact_bool_2;
 
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-        contact_2.contactPose[i][j] = contact_frame_sensor2_CB(i, j);
+        contact_2.contactFrame[i][j] = contact_frame_sensor2_CB(i, j);
       }
   } 
 

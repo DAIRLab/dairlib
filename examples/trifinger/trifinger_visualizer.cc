@@ -141,6 +141,15 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(cube_target_sub->get_output_port(0),
                   target_drawer->get_input_port(0));
 
+  // Add Densetact Data Visualization System
+  auto densetact_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_densetact_measurement_data>(
+          lcm_channels.densetact_channel, lcm));
+  auto densetact_drawer =
+      builder.AddSystem<dairlib::systems::LcmDensetactDrawer>(meshcat);
+  builder.Connect(densetact_sub->get_output_port(0),
+                  densetact_drawer->get_input_port(0));
+
   auto diagram = builder.Build();
 
   auto context = diagram->CreateDefaultContext();

@@ -42,6 +42,9 @@
   <material name="fingeredu_240_material">
     <color rgba="0 0.0 0.6 1.0"/>
   </material>
+  <material name="densetact_material">
+    <color rgba="1.0 1.0 1.0 0.5"/>
+  </material>
 
 
   <link name="finger_base_link_0">
@@ -156,13 +159,13 @@
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
-  <link name="finger_lower_link_0">
+  <link name="finger_lower_link_120">
     <visual>
       <origin rpy="0 0 1.5707" xyz="0.0203 -0.02832 -0.126"/>
       <geometry>
         <mesh filename="../meshes/edu/link_mount_dt2.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="fingeredu_0_material"/>
+      <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 1.5707" xyz="0.0203 -0.02832 -0.126"/>
@@ -179,17 +182,25 @@
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
-  <link name="densetact_0">
+  <link name="densetact_120">
       <inertial>
         <mass value="0.035"/>
         <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
       </inertial>
+    <!--
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
         <mesh filename="../meshes/edu/finger_tip_dt2.obj" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="fingeredu_0_material"/>
+    </visual>
+    -->
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+         <sphere radius="0.01575"/>
+      </geometry>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -198,8 +209,22 @@
       </geometry>
     </collision>
   </link>
+  <link name="densetact_120_vis">
+    <visual>
+      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
+      <geometry>
+        <mesh filename="../meshes/edu/finger_tip_dt2.obj" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="fingeredu_120_material"/>
+    </visual>
+  </link>
+  <joint name="densetact_120_to_vis" type="fixed">
+    <parent link="densetact_120"/>
+    <child link="densetact_120_vis"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+  </joint>
 
-  <link name="optical_center_0"/>
+  <link name="optical_center_120"/>
 
   <!-- kinematics -->
   <joint name="finger_base_to_upper_joint_0" type="revolute">
@@ -225,15 +250,16 @@
   </joint>
 
 
-  <joint name="mount_to_densetact_0" type="fixed">
-    <parent link="finger_lower_link_0"/>
-    <child link="densetact_0"/>
-    <origin rpy="0 0 0" xyz="0 -0.008 -0.14985"/>
+  <joint name="mount_to_densetact_120" type="fixed">
+    <parent link="finger_lower_link_120"/>
+    <child link="densetact_120"/>
+    <origin rpy="0 0 0" xyz="0 -0.008 -0.14785"/>
+    <!--<origin rpy="0 0 0" xyz="0 -0.008 -0.14985"/> -->
   </joint>
 
-   <joint name="densetact_0_to_optical_center" type="fixed">
-    <parent link="densetact_0"/>
-    <child link="optical_center_0"/>
+   <joint name="densetact_120_to_optical_center" type="fixed">
+    <parent link="densetact_120"/>
+    <child link="optical_center_120"/>
     <origin rpy="0 0 0" xyz="0 0 0.00360"/>
   </joint>
 
@@ -350,13 +376,13 @@
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
-  <link name="finger_lower_link_120">
+  <link name="finger_lower_link_0">
     <visual>
       <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1281"/>
       <geometry>
         <mesh filename="../meshes/edu/link_mount_dt1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="fingeredu_120_material"/>
+      <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1281"/>
@@ -374,17 +400,25 @@
     </inertial>
   </link>
 
-   <link name="densetact_120">
+   <link name="densetact_0">
     <inertial>
       <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
+    <!--
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
         <mesh filename="../meshes/edu/finger_tip_dt1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="fingeredu_120_material"/>
+    </visual>
+  -->
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+         <sphere radius="0.01575"/>
+      </geometry>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -393,8 +427,22 @@
       </geometry>
     </collision>
   </link>
+  <link name="densetact_0_vis">
+    <visual>
+      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
+      <geometry>
+        <mesh filename="../meshes/edu/finger_tip_dt1.obj" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="fingeredu_0_material"/>
+    </visual>
+  </link>
+  <joint name="densetact_0_to_vis" type="fixed">
+    <parent link="densetact_0"/>
+    <child link="densetact_0_vis"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+  </joint>
 
-  <link name="optical_center_120"/>
+  <link name="optical_center_0"/>
 
 
   <!-- kinematics -->
@@ -420,15 +468,16 @@
     <origin rpy="0 0 0" xyz="0 -0.03745 -0.16"/>
   </joint>
 
-  <joint name="mount_to_densetact_120" type="fixed">
-    <parent link="finger_lower_link_120"/>
-    <child link="densetact_120"/>
-    <origin rpy="0 0 0" xyz="0 -0.008 -0.151974"/>
+  <joint name="mount_to_densetact_0" type="fixed">
+    <parent link="finger_lower_link_0"/>
+    <child link="densetact_0"/>
+    <origin rpy="0 0 0" xyz="-0.005 -0.01 -0.140974"/>
+    <!--<origin rpy="0 0 0" xyz="0 -0.008 -0.151974"/>-->
   </joint>
 
-  <joint name="densetact_120_to_optical_center" type="fixed">
-    <parent link="densetact_120"/>
-    <child link="optical_center_120"/>
+  <joint name="densetact_0_to_optical_center" type="fixed">
+    <parent link="densetact_0"/>
+    <child link="optical_center_0"/>
     <origin rpy="0 0 0" xyz="0 0 0.00360"/>
   </joint>
 

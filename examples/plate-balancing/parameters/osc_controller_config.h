@@ -30,6 +30,7 @@ struct OSCControllerConfig : OSCGains {
                                           ///< constraints.
   bool publish_debug_info;           ///< Whether to publish debug information.
   Eigen::VectorXd neutral_position;  ///< Neutral joint positions for the robot.
+  std::optional<int> ignore_messages_count;     ///< Number of messages to ignore at startup.
   double x_scale;                    ///< Scaling factor for x position control.
   double y_scale;                    ///< Scaling factor for y position control.
   double z_scale;                    ///< Scaling factor for z position control.
@@ -72,6 +73,7 @@ struct OSCControllerConfig : OSCGains {
     a->Visit(DRAKE_NVP(enforce_acceleration_constraints));
     a->Visit(DRAKE_NVP(publish_debug_info));
     a->Visit(DRAKE_NVP(neutral_position));
+    a->Visit(DRAKE_NVP(ignore_messages_count));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));
     a->Visit(DRAKE_NVP(z_scale));

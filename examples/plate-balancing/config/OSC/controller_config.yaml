@@ -10,6 +10,7 @@ neutral_position: [0.55, 0, 0.45]
 x_scale: 0.4
 y_scale: 0.4
 z_scale: 0.1
+ignore_messages_count: 5000
 
 w_input: 0.00
 w_input_reg: 0.0

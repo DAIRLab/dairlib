@@ -23,7 +23,7 @@ qp_projection_scaling: 1
 
 ### Limits
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
-workspace_limits: [[1, 0, 0, 0.1, 0.71], [0, 1, 0, -0.457, 0.457], [0, 0, 1, -0.04, 0.3]]
+workspace_limits: [[1, 0, 0, 0.15, 0.71], [0, 1, 0, -0.457, 0.457], [0, 0, 1, -0.04, 0.3]]
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
 robot_radius_limits: [0.08, 0.84]
@@ -108,7 +108,7 @@ q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 300, 300, 120, 16, 16,
 r_vector_position: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables
-g_x_position: [900, 900, 900, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_x_position: [950, 950, 950, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_u_position: [0, 0, 0]
 g_gamma_position_list: [[1, 1, 1, 1]]
 g_lambda_n_position_list: [[1, 1, 1, 1]]
@@ -116,7 +116,7 @@ g_lambda_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_eta_slack_position_list: [[1, 1, 1, 1]]
 g_eta_n_position_list: [[1, 1, 1, 1]]
 g_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_lambda_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_position_list: [[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
 g_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 # Penalty on matching the QP variables

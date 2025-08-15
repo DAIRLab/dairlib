@@ -53,7 +53,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     link = ET.SubElement(model, 'link', name=obj_name)
 
     # Inertia 
-    ratio = 0.1 / mass
+    ratio = 0.05 / mass
 
     inertial = ET.SubElement(link, "inertial")
     ET.SubElement(inertial, "pose").text = "0 0 0 0 0 0"

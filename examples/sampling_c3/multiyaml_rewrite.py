@@ -36,7 +36,7 @@ def get_num_objects_from_yaml(yaml_path: str) -> int:
 
 def calculate_contacts(num_objects: int, include_walls: int) -> int:
 
-    return int(num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1 + include_walls)
+    return choose_2(num_objects) + num_objects * 3 + 1 + include_walls
 
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
@@ -247,8 +247,8 @@ def set_object_paths(index, base_name, output_dir, controller_yaml, vis_yaml, si
 def build_q_vector(num_objects: int) -> list:
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
-    OBJECT_POSITION = [300, 300, 120]
-    EE_LINEAR_VELOCITY = [8, 8, 5]
+    OBJECT_POSITION = [200, 200, 120]
+    EE_LINEAR_VELOCITY = [18, 18, 10]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 

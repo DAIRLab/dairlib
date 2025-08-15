@@ -105,7 +105,7 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
   VectorXd force;
 
   auto flag = LCPSolver.SolveLcpFastRegularized(
-      F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force, -20, 4, 2);
+      F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force, -5, 1, 0, 1e-4);
 
   if (flag == 0) {
     std::cout << "LCP failed: returning x_init" << std::endl;

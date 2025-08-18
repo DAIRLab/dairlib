@@ -5,14 +5,14 @@
     <link name="A_shape">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.1</mass>
+        <mass>0.05</mass>
         <inertia>
-          <ixx>0.0001630374</ixx>
-          <iyy>0.00011650608</iyy>
-          <izz>0.00025330772</izz>
-          <ixy>6.3150486e-07</ixy>
-          <ixz>-7.1958336e-12</ixz>
-          <iyz>-1.1892123e-12</iyz>
+          <ixx>8.1518702e-05</ixx>
+          <iyy>5.8253042e-05</iyy>
+          <izz>0.00012665386</izz>
+          <ixy>3.1575243e-07</ixy>
+          <ixz>-3.5979168e-12</ixz>
+          <iyz>-5.9460613e-13</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">

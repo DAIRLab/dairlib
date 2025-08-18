@@ -664,6 +664,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
     crossed_cost_switching_threshold_ = false;
     x_final_target_ = x_lcs_final_des.value();
+    //is_doing_c3_ = false;
     detected_goal_changes_++;
 
     // Reset the sample buffer now that the costs have changed.

@@ -8,13 +8,13 @@
             <visual>
             <origin xyz="0 0 0"/>
             <geometry>
-                <box size="0.71 0.1 0.2"/>
+                <box size="0.85 0.1 0.2"/>
             </geometry>
             </visual>
             <collision name="left_wall">
             <origin xyz="0 0 0"/>
             <geometry>
-                <box size="0.71 0.1 0.2"/>
+                <box size="0.85 0.1 0.2"/>
             </geometry>
             <drake:proximity_properties>
                 <drake:mu_static value="0.5"/>

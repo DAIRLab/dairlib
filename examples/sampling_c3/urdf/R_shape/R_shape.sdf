@@ -5,14 +5,14 @@
     <link name="R_shape">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.1</mass>
+        <mass>0.05</mass>
         <inertia>
-          <ixx>0.00016074972</ixx>
-          <iyy>0.00022436106</iyy>
-          <izz>0.00034236717</izz>
-          <ixy>-8.5156885e-06</ixy>
-          <ixz>1.8334264e-05</ixz>
-          <iyz>2.3393393e-06</iyz>
+          <ixx>0.00010148834</ixx>
+          <iyy>5.7969079e-05</iyy>
+          <izz>0.00014633043</izz>
+          <ixy>3.4539373e-06</ixy>
+          <ixz>1.7217571e-10</ixz>
+          <iyz>-4.5023761e-10</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">

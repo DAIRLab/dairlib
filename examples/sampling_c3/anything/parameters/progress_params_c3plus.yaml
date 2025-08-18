@@ -15,8 +15,8 @@
 #                                    at the end.
 #  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
 #                                    object terms contribute to the final cost.
-cost_type: 3
-cost_type_position: 3
+cost_type: 5
+cost_type_position: 5
 
 # Progress metric to use to determine if C3 is making progress, all phrased as
 # improvement requirements over a number of control loops (defined as
@@ -30,7 +30,7 @@ cost_type_position: 3
 track_c3_progress_via: 3
 
 # Ignore orientation errors when object is beyond this threshold from the goal.
-cost_switching_threshold_distance: 0.15
+cost_switching_threshold_distance: 0.3
 
 # Penalize repositioning distance.
 travel_cost_per_meter: 0
@@ -41,8 +41,8 @@ num_control_loops_to_wait: 40
 num_control_loops_to_wait_position: 40
 
 # kConfigCostDrop parameters.
-progress_enforced_cost_drop: 0.05
-progress_enforced_over_n_loops: 30
+progress_enforced_cost_drop: 0.1
+progress_enforced_over_n_loops: 70
 
 ### Hysteresis parameters for switching between C3 and repositioning modes.
 finished_reposition_cost: 1000000000

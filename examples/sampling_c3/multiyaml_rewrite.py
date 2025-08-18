@@ -36,7 +36,7 @@ def get_num_objects_from_yaml(yaml_path: str) -> int:
 
 def calculate_contacts(num_objects: int, include_walls: int) -> int:
 
-    return int(num_objects * (num_objects - 1) // 2 + num_objects * 3 + 1 + include_walls)
+    return choose_2(num_objects) + num_objects * 3 + 1 + include_walls
 
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
@@ -248,7 +248,7 @@ def build_q_vector(num_objects: int) -> list:
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
     OBJECT_POSITION = [200, 200, 120]
-    EE_LINEAR_VELOCITY = [8, 8, 5]
+    EE_LINEAR_VELOCITY = [18, 18, 10]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 
@@ -279,12 +279,10 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects), include_walls * num_objects]]
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
 
-
-    # penalize ee velocity harder
     q_vector_position = build_q_vector(num_objects)
-    q_vector_position[3 + 7*num_objects] *= 3
-    q_vector_position[4 + 7*num_objects] *= 3
-    q_vector_position[5 + 7*num_objects] *= 3
+    q_vector_position[3 + 7*num_objects] *= 2
+    q_vector_position[4 + 7*num_objects] *= 2
+    q_vector_position[5 + 7*num_objects] *= 2
 
     samp_c3_options_yaml["q_vector_position"] = q_vector_position
 
@@ -438,7 +436,7 @@ if __name__ == "__main__":
     
     min_max_z = min(max_zs_world)
 
-    sampling_yaml['z_height'] = max(-0.001, (-0.029 + min_max_z) / 2 + 0.008)
+    sampling_yaml['z_height'] = max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
     
     # Update c3_options
     is_c3_plus = "plus" in samp_c3_options_yaml_path

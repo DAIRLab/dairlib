@@ -255,6 +255,7 @@ int DoMain(int argc, char* argv[]) {
 			contact_geoms["FRONT_WALL"] = front_wall_geoms;
 		}
 
+        std::vector<std::vector<GeometryId>> all_object_geoms;
 		for (int i = 0; i < controller_params.base_names.size(); i++) { // exclude ee/ground
 			std::string body_name = controller_params.base_names.at(i);
 			drake::geometry::GeometryId mesh_geoms =
@@ -272,7 +273,6 @@ int DoMain(int argc, char* argv[]) {
 					plant_lcs.GetCollisionGeometriesForBody(
 							plant_lcs.GetBodyByName(body_name))[12];
 
-			contact_geoms["OBJECT_MESH_" + std::to_string(i)] = mesh_geoms;
 			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
 			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
 			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
@@ -288,14 +288,13 @@ int DoMain(int argc, char* argv[]) {
 			}
             
 			std::vector<GeometryId> all_geoms = plant_lcs.GetCollisionGeometriesForBody(
-																							plant_lcs.GetBodyByName(body_name));
+				plant_lcs.GetBodyByName(body_name));
 			std::vector<GeometryId> geom_ids(all_geoms.begin(), all_geoms.begin() + 10); // 10 convex pieces
 			for (int j = 0; j < geom_ids.size(); j++) {
 					ee_contact_pairs.push_back(
 							SortedPair(contact_geoms["EE"], geom_ids[j]));
 			}
-			// ee_contact_pairs.push_back(
-			// 		SortedPair(contact_geoms["EE"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));
+			all_object_geoms.push_back(geom_ids);
 
 			ground_object_contact_pairs.push_back(SortedPair(
 					contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
@@ -306,7 +305,7 @@ int DoMain(int argc, char* argv[]) {
 		} 
 
 		std::cout << "Before object-object contacts" << std::endl;
-		// Object-object contact pairs (excluding end effector)
+		// Object-object contact pairs (excluding end effector), each pair of convex pieces for each pair of objects
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
 				if (j >= i) break;
@@ -314,13 +313,20 @@ int DoMain(int argc, char* argv[]) {
 				std::string key1 = "OBJECT_MESH_" + std::to_string(i);
 				std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
-				object_object_contact_pairs.push_back(SortedPair(contact_geoms[key1], contact_geoms[key2]));
+                std::vector<GeometryId> object_1_geoms = all_object_geoms.at(i);
+                std::vector<GeometryId> object_2_geoms = all_object_geoms.at(j);
+
+                for (int p = 0; p < object_1_geoms.size(); p++) {
+                    for (int q = 0; q < object_2_geoms.size(); q++) {
+                        if (q >= p) break;
+                        object_object_contact_pairs.push_back(
+                            SortedPair(object_1_geoms.at(p), object_2_geoms.at(q)));
+                    }
+                }
 				std::cout << "(" << j << ", " << i << ")" << std::endl;
+		    }
 		}
-		}
-        for (int i = 0; i < contact_pairs.size(); i++) {
-            std::cout << "Contact pairs " << i << ": " << contact_pairs[i].size() << std::endl;
-        }
+
     
   }
   else {
@@ -332,7 +338,9 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ground_object_contact_pairs);
   contact_pairs.push_back(object_object_contact_pairs);
   contact_pairs.push_back(wall_object_contact_pairs);
-
+  for (int i = 0; i < contact_pairs.size(); i++) {
+    std::cout << "Contact pairs " << i << ": " << contact_pairs[i].size() << std::endl;
+    }
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;

@@ -24,9 +24,9 @@ num_additional_samples_c3: 2
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
-N_sample_buffer: 100
-pos_error_sample_retention: 0.003
-ang_error_sample_retention: 0.0349  # 0.0349 rad = 2 deg
+N_sample_buffer: 200
+pos_error_sample_retention: 0.002
+ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
 
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
@@ -54,7 +54,7 @@ max_attempts: 100
 barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: -0.001
+z_height: 0.002
 # This ^ will be overwritten by generating new files.
 
 gen_planar_samples: true # true = projects all samples to z_height

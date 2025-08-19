@@ -153,6 +153,7 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3Options sampling_c3_options =
       drake::yaml::LoadYamlFile<SamplingC3Options>(sampling_c3_options_path +
                                                    ".yaml");
+  int N = sampling_c3_options.N;
   // NOTE:  can temporarily hard code many more ADMM iterations or other
   // changes here, e.g.:
   // c3_options.admm_iter = 8;
@@ -244,23 +245,23 @@ int DoMain(int argc, char* argv[]) {
   Eigen::VectorXd x_lcs_desired = Eigen::VectorXd::Zero(19);
   Eigen::VectorXd x_lcs_final_desired = Eigen::VectorXd::Zero(19);
   Eigen::MatrixXd dyn_feas_curr_plan_obj_pos =
-      Eigen::MatrixXd::Zero(3, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_curr_plan_ee_pos =
-      Eigen::MatrixXd::Zero(3, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_curr_plan_obj_orientation =
-      Eigen::MatrixXd::Zero(4, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(4, N + 1);
   Eigen::MatrixXd dyn_feas_best_plan_obj_pos =
-      Eigen::MatrixXd::Zero(3, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_best_plan_ee_pos =
-      Eigen::MatrixXd::Zero(3, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_best_plan_obj_orientation =
-      Eigen::MatrixXd::Zero(4, c3_options.N + 1);
+      Eigen::MatrixXd::Zero(4, N + 1);
 
-  Eigen::MatrixXd u_sol = Eigen::MatrixXd::Zero(3, c3_options.N);
-  Eigen::MatrixXd x_sol = Eigen::MatrixXd::Zero(19, c3_options.N);
-  Eigen::MatrixXd lambda_sol = Eigen::MatrixXd::Zero(16, c3_options.N);
-  Eigen::MatrixXd w_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
-  Eigen::MatrixXd delta_sol = Eigen::MatrixXd::Zero(38, c3_options.N);
+  Eigen::MatrixXd u_sol = Eigen::MatrixXd::Zero(3, N);
+  Eigen::MatrixXd x_sol = Eigen::MatrixXd::Zero(19, N);
+  Eigen::MatrixXd lambda_sol = Eigen::MatrixXd::Zero(16, N);
+  Eigen::MatrixXd w_sol = Eigen::MatrixXd::Zero(38, N);
+  Eigen::MatrixXd delta_sol = Eigen::MatrixXd::Zero(38, N);
 
   // Collect the sample locations
   std::vector<Eigen::VectorXd> sample_locations_in_log;
@@ -324,13 +325,13 @@ int DoMain(int argc, char* argv[]) {
                     << " and event " << "timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
           for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_curr_plan_obj_orientation(i, j) =
                   message.saved_traj.trajectories[0].datapoints[i][j];
             }
           }
           for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_curr_plan_obj_pos(i, j) =
                   message.saved_traj.trajectories[1].datapoints[i][j];
             }
@@ -349,7 +350,7 @@ int DoMain(int argc, char* argv[]) {
                     << " and event timestamp " << adjusted_utimestamp / 1e6
                     << std::endl;
           for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_curr_plan_ee_pos(i, j) =
                   message.saved_traj.trajectories[0].datapoints[i][j];
             }
@@ -368,13 +369,13 @@ int DoMain(int argc, char* argv[]) {
                     << " and event timestamp " << adjusted_utimestamp / 1e6
                     << std::endl;
           for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_best_plan_obj_orientation(i, j) =
                   message.saved_traj.trajectories[0].datapoints[i][j];
             }
           }
           for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_best_plan_obj_pos(i, j) =
                   message.saved_traj.trajectories[1].datapoints[i][j];
             }
@@ -393,7 +394,7 @@ int DoMain(int argc, char* argv[]) {
                     << " and event timestamp " << adjusted_utimestamp / 1e6
                     << std::endl;
           for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < c3_options.N + 1; j++) {
+            for (int j = 0; j < N + 1; j++) {
               dyn_feas_best_plan_ee_pos(i, j) =
                   message.saved_traj.trajectories[0].datapoints[i][j];
             }
@@ -411,31 +412,31 @@ int DoMain(int argc, char* argv[]) {
                     << (message.utime) / 1e6 << " and event timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
           for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < c3_options.N; j++) {
+            for (int j = 0; j < N; j++) {
               u_sol(i, j) =
                   static_cast<double>(message.c3_solution.u_sol[i][j]);
             }
           }
           for (int i = 0; i < 19; i++) {
-            for (int j = 0; j < c3_options.N; j++) {
+            for (int j = 0; j < N; j++) {
               x_sol(i, j) =
                   static_cast<double>(message.c3_solution.x_sol[i][j]);
             }
           }
           for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < c3_options.N; j++) {
+            for (int j = 0; j < N; j++) {
               lambda_sol(i, j) =
                   static_cast<double>(message.c3_solution.lambda_sol[i][j]);
             }
           }
           for (int i = 0; i < 38; i++) {
-            for (int j = 0; j < c3_options.N; j++) {
+            for (int j = 0; j < N; j++) {
               w_sol(i, j) =
                   static_cast<double>(message.c3_intermediates.w_sol[i][j]);
             }
           }
           for (int i = 0; i < 38; i++) {
-            for (int j = 0; j < c3_options.N; j++) {
+            for (int j = 0; j < N; j++) {
               delta_sol(i, j) =
                   static_cast<double>(message.c3_intermediates.delta_sol[i][j]);
             }
@@ -506,12 +507,12 @@ int DoMain(int argc, char* argv[]) {
           (x_lcs_desired != Eigen::VectorXd::Zero(19)) &&
           (x_lcs_final_desired != Eigen::VectorXd::Zero(19)) &&
           (dyn_feas_curr_plan_ee_pos !=
-           Eigen::MatrixXd::Zero(3, c3_options.N + 1)) &&
+           Eigen::MatrixXd::Zero(3, N + 1)) &&
           (dyn_feas_curr_plan_obj_pos !=
-           Eigen::MatrixXd::Zero(3, c3_options.N + 1)) &&
+           Eigen::MatrixXd::Zero(3, N + 1)) &&
           (dyn_feas_curr_plan_obj_orientation !=
-           Eigen::MatrixXd::Zero(4, c3_options.N + 1)) &&
-          (u_sol != Eigen::MatrixXd::Zero(3, c3_options.N)) &&
+           Eigen::MatrixXd::Zero(4, N + 1)) &&
+          (u_sol != Eigen::MatrixXd::Zero(3, N)) &&
           (is_c3_mode_set) && (sample_locations_in_log.size() > 0) &&
           (sample_costs_in_log.size() > 0)) {
         break;

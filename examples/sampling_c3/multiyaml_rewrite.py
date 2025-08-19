@@ -248,7 +248,7 @@ def build_q_vector(num_objects: int) -> list:
     EE_POSITION = [0.01, 0.01, 0.01]
     OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
     OBJECT_POSITION = [200, 200, 120]
-    EE_LINEAR_VELOCITY = [18, 18, 10]
+    EE_LINEAR_VELOCITY = [15, 15, 10]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
 
@@ -280,9 +280,9 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
 
     q_vector_position = build_q_vector(num_objects)
-    q_vector_position[3 + 7*num_objects] *= 2
-    q_vector_position[4 + 7*num_objects] *= 2
-    q_vector_position[5 + 7*num_objects] *= 2
+    q_vector_position[3 + 7*num_objects] *= 1
+    q_vector_position[4 + 7*num_objects] *= 1
+    q_vector_position[5 + 7*num_objects] *= 1
 
     samp_c3_options_yaml["q_vector_position"] = q_vector_position
 
@@ -418,8 +418,10 @@ if __name__ == "__main__":
 
     # set init and goal poses
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
+    # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
+    #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
     goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
-                                                z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
+                                                z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
 

@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: [examples/sampling_c3/urdf/A_shape/A_shape.sdf, examples/sampling_c3/urdf/R_shape/R_shape.sdf]
+object_vis_models: [examples/sampling_c3/urdf/C_centered/C_centered.sdf, examples/sampling_c3/urdf/3_centered/3_centered.sdf, examples/sampling_c3/urdf/I_centered/I_centered.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]
@@ -25,7 +25,7 @@ sample_color: [1.0, 1.0, 0.0]
 
 visualize_execution_plan: false
 
-visualize_c3_plan_curr: true
+visualize_c3_plan_curr: false
 c3_curr_object_color: []
 c3_curr_ee_color: [0.8, 0.8, 0.8]
 df_curr_object_color: []

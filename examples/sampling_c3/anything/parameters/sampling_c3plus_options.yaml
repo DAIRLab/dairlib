@@ -40,9 +40,8 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 # Contact pairs include a number of (ee-ground, ee-object, object-ground, object-object).
 mu_per_pair_type: [0.823, 0.42, 0.46, 0.3, 0.375]     # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
-resolve_contacts_to_lists: [[0, 1, 6, 1, 0]]
+resolve_contacts_to_lists: [[0, 1, 9, 3, 0]]
 resolve_as_planar_contacts_list: [0, 0, 0, 1, 1]   # 0: 3D contact  1: planar contact
-
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0
@@ -71,7 +70,7 @@ w_R: 6
 w_G: 0.1
 w_U: 0.5
 
-q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 10, 10, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05] # object 1 linear velocity
+q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05] # object 1 linear velocity
 r_vector: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables
@@ -107,7 +106,7 @@ w_R_position: 6
 w_G_position: 0.1
 w_U_position: 0.26
 
-q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 10, 10, 5, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05] # object 2 linear velocity
+q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05] # object 2 linear velocity
 r_vector_position: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables

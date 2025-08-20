@@ -1330,7 +1330,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.mu, dt_, N_, sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.direction_counts_per_contact, sampling_c3_options_.contact_matrix_index,
+      sampling_c3_options_.num_friction_directions_per_contact, sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
       contact_model_);
 
     lcs_candidates.push_back(lcs_object_sample);
@@ -1347,8 +1347,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution,
         sampling_c3_options_.n_lambda_with_tangential_cost,
-        sampling_c3_options_.direction_counts_per_contact_cost,
-        sampling_c3_options_.contact_matrix_index_cost, contact_model_);
+        sampling_c3_options_.num_friction_directions_per_contact_cost,
+        sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector_cost, contact_model_);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -2123,8 +2123,8 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
     c3_options.mu, sampling_c3_options_.n_lambda_with_tangential,
-    sampling_c3_options_.direction_counts_per_contact,
-    sampling_c3_options_.contact_matrix_index, contact_model_);
+    sampling_c3_options_.num_friction_directions_per_contact,
+    sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector, contact_model_);
 }
 
 // Output port handlers for best sample location
@@ -2358,8 +2358,8 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
     c3_options.mu, sampling_c3_options_.n_lambda_with_tangential,
-    sampling_c3_options_.direction_counts_per_contact,
-    sampling_c3_options_.contact_matrix_index, contact_model_);
+    sampling_c3_options_.num_friction_directions_per_contact,
+    sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector, contact_model_);
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

@@ -1,7 +1,6 @@
 #include "solvers/lcs_factory.h"
 
 #include <iostream>
-#include <utility>
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -36,8 +35,8 @@ LCS LCSFactory::LinearizePlantToLCS(
     const vector<SortedPair<GeometryId>>& contact_geoms,
     const std::vector<double>& mu, double dt,
     int N, int n_lambda_with_tangential,
-    const std::vector<int>& direction_counts_per_contact,
-    const std::vector<int>& contact_matrix_index,
+    const std::vector<int>& num_friction_directions_per_contact,
+    const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
     ContactModel contact_model) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
@@ -97,6 +96,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(n_lambda_with_tangential, n_v);
 
+  // Perpendicular to the plane where c3 works
   Eigen::Vector3d planar_normal(0, 0, 1);
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
@@ -104,14 +104,14 @@ LCS LCSFactory::LinearizePlantToLCS(
         contact_geoms[i]);
 
     auto [phi_i, J_i] =
-      (direction_counts_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal) :
-                                                collider.EvalPolytope(context, direction_counts_per_contact[i]);
+      (num_friction_directions_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal) :
+                                                collider.EvalPolytope(context, num_friction_directions_per_contact[i]);
 
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
-    J_t.block(2 * contact_matrix_index[i],
-      0, 2 * direction_counts_per_contact[i], n_v) =
-        J_i.block(1, 0, 2 * direction_counts_per_contact[i], n_v);
+    J_t.block(starting_index_per_contact_in_lambda_t_vector[i],
+      0, 2 * num_friction_directions_per_contact[i], n_v) =
+        J_i.block(1, 0, 2 * num_friction_directions_per_contact[i], n_v);
 
     // J_i is 3 x n_v
     // row (0) is contact normal
@@ -147,9 +147,9 @@ LCS LCSFactory::LinearizePlantToLCS(
   MatrixXd E_t =
       MatrixXd::Zero(n_contacts, n_lambda_with_tangential);
   for (int i = 0; i < n_contacts; i++) {
-    E_t.block(i, 2 * contact_matrix_index[i],
-      1, 2 * direction_counts_per_contact[i]) =
-        MatrixXd::Ones(1, 2 * direction_counts_per_contact[i]);
+    E_t.block(i, starting_index_per_contact_in_lambda_t_vector[i],
+      1, 2 * num_friction_directions_per_contact[i]) =
+        MatrixXd::Ones(1, 2 * num_friction_directions_per_contact[i]);
 
   }
 
@@ -236,8 +236,8 @@ LCS LCSFactory::LinearizePlantToLCS(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
     for (int i = 0; i < mu_vec.rows(); i++) {
-      anitescu_mu_vec.segment(2 * contact_matrix_index[i],
-        2 * direction_counts_per_contact[i]).setConstant(mu[i]);
+      anitescu_mu_vec.segment(starting_index_per_contact_in_lambda_t_vector[i],
+        2 * num_friction_directions_per_contact[i]).setConstant(mu[i]);
     }
 
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
@@ -284,8 +284,8 @@ LCSFactory::ComputeContactJacobian(
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
         contact_geoms,
     const std::vector<double>& mu, int n_lambda_with_tangential,
-    const std::vector<int>& direction_counts_per_contact,
-    const std::vector<int>& contact_matrix_index,
+    const std::vector<int>& num_friction_directions_per_contact,
+    const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
     dairlib::solvers::ContactModel contact_model) {
 
   int n_contacts = contact_geoms.size();
@@ -301,16 +301,16 @@ LCSFactory::ComputeContactJacobian(
     multibody::GeomGeomCollider collider(plant, contact_geoms[i]);
     Eigen::Vector3d planar_normal(0, 0, 1);
     auto [phi_i, J_i] =
-      (direction_counts_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal):
-                                              collider.EvalPolytope(context, direction_counts_per_contact[i]);
+      (num_friction_directions_per_contact[i] == 1) ? collider.EvalPlanar(context, planar_normal):
+                                              collider.EvalPolytope(context, num_friction_directions_per_contact[i]);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
     // TODO(yangwill): think about if we want to push back both witness points
     contact_points.push_back(p_WCa);
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
-    J_t.block(2 * contact_matrix_index[i],
-      0, 2 * direction_counts_per_contact[i], n_v) =
-        J_i.block(1, 0, 2 * direction_counts_per_contact[i], n_v);
+    J_t.block(starting_index_per_contact_in_lambda_t_vector[i],
+      0, 2 * num_friction_directions_per_contact[i], n_v) =
+        J_i.block(1, 0, 2 * num_friction_directions_per_contact[i], n_v);
     // J_i is 3 x n_v
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
@@ -326,9 +326,9 @@ LCSFactory::ComputeContactJacobian(
         MatrixXd::Zero(n_contacts, n_lambda_with_tangential);
 
     for (int i = 0; i < n_contacts; i++) {
-      E_t.block(i, 2 * contact_matrix_index[i],
-        1, 2 * direction_counts_per_contact[i]) =
-          MatrixXd::Ones(1, 2 * direction_counts_per_contact[i]);
+      E_t.block(i, starting_index_per_contact_in_lambda_t_vector[i],
+        1, 2 * num_friction_directions_per_contact[i]) =
+          MatrixXd::Ones(1, 2 * num_friction_directions_per_contact[i]);
     }
 
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
@@ -336,8 +336,8 @@ LCSFactory::ComputeContactJacobian(
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda_with_tangential);
 
     for (int i = 0; i < mu_vec.rows(); i++) {
-      anitescu_mu_vec.segment(2 * contact_matrix_index[i],
-        2 * direction_counts_per_contact[i]).setConstant(mu[i]);
+      anitescu_mu_vec.segment(starting_index_per_contact_in_lambda_t_vector[i],
+        2 * num_friction_directions_per_contact[i]).setConstant(mu[i]);
     }
 
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();

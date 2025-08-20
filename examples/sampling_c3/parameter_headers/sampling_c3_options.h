@@ -30,13 +30,13 @@ struct SamplingC3Options : C3Options {
 
   int num_planar_contacts;
   int n_lambda_with_tangential;
-  std::vector<int> direction_counts_per_contact;
-  std::vector<int> contact_matrix_index;
+  std::vector<int> num_friction_directions_per_contact;
+  std::vector<int> starting_index_per_contact_in_lambda_t_vector;
 
   int num_planar_contacts_cost;
   int n_lambda_with_tangential_cost;
-  std::vector<int> direction_counts_per_contact_cost;
-  std::vector<int> contact_matrix_index_cost;
+  std::vector<int> num_friction_directions_per_contact_cost;
+  std::vector<int> starting_index_per_contact_in_lambda_t_vector_cost;
 
   double planning_dt_pose;
   double planning_dt_position;
@@ -207,28 +207,31 @@ struct SamplingC3Options : C3Options {
       mu_for_cost.insert(mu_for_cost.end(), repeat, mu_per_pair_type[i]);
     }
 
-    std::tie(num_planar_contacts, direction_counts_per_contact) =
-      ProcessPlanarInformation(resolve_as_planar_contacts_list,
+    // Process planar contact info
+    std::tie(num_planar_contacts, num_friction_directions_per_contact) =
+      ComputePlanarContactInfo(resolve_as_planar_contacts_list,
         resolve_contacts_to, num_friction_directions);
-    std::tie(num_planar_contacts_cost, direction_counts_per_contact_cost) =
-      ProcessPlanarInformation(resolve_as_planar_contacts_list,
+    std::tie(num_planar_contacts_cost, num_friction_directions_per_contact_cost) =
+      ComputePlanarContactInfo(resolve_as_planar_contacts_list,
         resolve_contacts_to_for_cost, num_friction_directions);
 
     for (size_t i = 0; i < num_contacts; ++i) {
-      contact_matrix_index.push_back(
-        std::accumulate(direction_counts_per_contact.begin(),
-          direction_counts_per_contact.begin()+i,0));
+      starting_index_per_contact_in_lambda_t_vector.push_back(
+        2 * std::accumulate(num_friction_directions_per_contact.begin(),
+          num_friction_directions_per_contact.begin()+i,0));
     }
     for (size_t i = 0; i < num_contacts_for_cost; ++i) {
-      contact_matrix_index_cost.push_back(
-        std::accumulate(direction_counts_per_contact_cost.begin(),
-          direction_counts_per_contact_cost.begin()+i,0));
+      starting_index_per_contact_in_lambda_t_vector_cost.push_back(
+        2 * std::accumulate(num_friction_directions_per_contact_cost.begin(),
+          num_friction_directions_per_contact_cost.begin()+i,0));
     }
 
     n_lambda_with_tangential =
-      2 * num_friction_directions * (num_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+      2 * num_friction_directions * (num_contacts - num_planar_contacts) +
+        2 * num_planar_contacts;
     n_lambda_with_tangential_cost =
-      2 * num_friction_directions * (num_contacts_for_cost - num_planar_contacts_cost) + 2 * 1 * num_planar_contacts_cost;
+      2 * num_friction_directions * (num_contacts_for_cost - num_planar_contacts_cost) +
+        2 * num_planar_contacts_cost;
 
     // Create C3 options for both pose and position tracking.
     SetCommonC3Options(&c3_options_pose);
@@ -433,63 +436,68 @@ struct SamplingC3Options : C3Options {
       PopulateCostMatricesFromVectors(options);
     }
 
+  // Convert lambda weights to the planar form:
   void MakePlanarLambdaCost(C3Options* options) const{
       int offset = 0;
-      for (int i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
+      for (size_t i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
         if (resolve_as_planar_contacts_list[i]) {
-          int index_erase_contacts_begin =
+          int erase_start_index_for_lambda =
             2 * num_friction_directions * std::accumulate(
               resolve_contacts_to_lists[num_contacts_index].begin(),
               resolve_contacts_to_lists[num_contacts_index].begin() + i, 0) - offset;
-          int index_erase_contacts_end =
-            index_erase_contacts_begin + 2 * (num_friction_directions - 1) * resolve_contacts_to_lists[num_contacts_index][i];
+          int erase_end_index_for_lambda =
+            erase_start_index_for_lambda + 2 * (num_friction_directions - 1) *
+              resolve_contacts_to_lists[num_contacts_index][i];
 
           options->g_lambda.erase(
-            options->g_lambda.begin()+ index_erase_contacts_begin,
-            options->g_lambda.begin()+ index_erase_contacts_end);
+            options->g_lambda.begin()+ erase_start_index_for_lambda,
+            options->g_lambda.begin()+ erase_end_index_for_lambda);
           options->u_lambda.erase(
-            options->u_lambda.begin() + index_erase_contacts_begin,
-            options->u_lambda.begin() + index_erase_contacts_end);
+            options->u_lambda.begin() + erase_start_index_for_lambda,
+            options->u_lambda.begin() + erase_end_index_for_lambda);
           options->g_lambda_t.erase(
-            options->g_lambda_t.begin() + index_erase_contacts_begin,
-            options->g_lambda_t.begin() + index_erase_contacts_end);
+            options->g_lambda_t.begin() + erase_start_index_for_lambda,
+            options->g_lambda_t.begin() + erase_end_index_for_lambda);
           options->u_lambda_t.erase(
-            options->u_lambda_t.begin() + index_erase_contacts_begin,
-            options->u_lambda_t.begin() + index_erase_contacts_end);
+            options->u_lambda_t.begin() + erase_start_index_for_lambda,
+            options->u_lambda_t.begin() + erase_end_index_for_lambda);
 
           if (options->projection_type == "C3+") {
             options->g_eta.erase(
-              options->g_eta.begin() + index_erase_contacts_begin,
-              options->g_eta.begin() + index_erase_contacts_end);
+              options->g_eta.begin() + erase_start_index_for_lambda,
+              options->g_eta.begin() + erase_end_index_for_lambda);
             options->u_eta.erase(
-              options->u_eta.begin() + index_erase_contacts_begin,
-              options->u_eta.begin() + index_erase_contacts_end);
+              options->u_eta.begin() + erase_start_index_for_lambda,
+              options->u_eta.begin() + erase_end_index_for_lambda);
             options->g_eta_t.erase(
-              options->g_eta_t.begin() + index_erase_contacts_begin,
-              options->g_eta_t.begin() + index_erase_contacts_end);
+              options->g_eta_t.begin() + erase_start_index_for_lambda,
+              options->g_eta_t.begin() + erase_end_index_for_lambda);
             options->u_eta_t.erase(
-              options->u_eta_t.begin() + index_erase_contacts_begin,
-              options->u_eta_t.begin() + index_erase_contacts_end);
+              options->u_eta_t.begin() + erase_start_index_for_lambda,
+              options->u_eta_t.begin() + erase_end_index_for_lambda);
           }
-          offset += 2 * (num_friction_directions - 1) * resolve_contacts_to_lists[num_contacts_index][i];
+          offset += 2 * (num_friction_directions - 1) *
+            resolve_contacts_to_lists[num_contacts_index][i];
         }
       }
     }
 
-  std::pair<int, std::vector<int>> ProcessPlanarInformation(
+  std::pair<int, std::vector<int>> ComputePlanarContactInfo(
   const std::vector<int>& resolve_as_planar_contacts_list,
   const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
 
       int num_planar_contacts = 0;
       int planar_contact = 1;
-      std::vector<int> direction_counts_per_contact;
+      std::vector<int> num_friction_directions_per_contact;
+      // Compute the number of planar contact 
       for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
         for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
           num_planar_contacts += (resolve_as_planar_contacts_list[i] ? 1 : 0);
-          direction_counts_per_contact.push_back(resolve_as_planar_contacts_list[i] ? planar_contact : num_friction_directions);
+          num_friction_directions_per_contact.push_back(resolve_as_planar_contacts_list[i]?
+            planar_contact : num_friction_directions);
         }
       }
-      return std::pair<int, std::vector<int>>(num_planar_contacts, direction_counts_per_contact);
+      return std::pair<int, std::vector<int>>(num_planar_contacts, num_friction_directions_per_contact);
     }
 
 };

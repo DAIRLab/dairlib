@@ -190,13 +190,3 @@ u_eta_slack_position_list: []
 u_eta_n_position_list: []
 u_eta_t_position_list: []
 u_eta_position_list: []
-
-num_planar_contacts: 0
-n_lambda_with_tangential: 0
-direction_counts_per_contact: []
-contact_matrix_index: []
-
-num_planar_contacts_cost: 0
-n_lambda_with_tangential_cost: 0
-direction_counts_per_contact_cost: []
-contact_matrix_index_cost: []

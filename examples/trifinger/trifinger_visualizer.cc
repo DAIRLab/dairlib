@@ -133,6 +133,7 @@ int DoMain(int argc, char* argv[]) {
   // trifinger_state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   // Add target visualization system
+  /*
   auto cube_target_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channels.cube_target_channel, lcm));
@@ -140,6 +141,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<dairlib::systems::LcmCubeTargetDrawer>(meshcat);
   builder.Connect(cube_target_sub->get_output_port(0),
                   target_drawer->get_input_port(0));
+  */
 
   // Add Densetact Data Visualization System
   auto densetact_sub =

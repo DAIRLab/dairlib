@@ -1,6 +1,7 @@
 trifinger_model: examples/trifinger/robot_properties_fingers/urdf/edu/dualfingeredu.urdf
 
-cube_model: examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf
+cube_model: examples/trifinger/robot_properties_fingers/active/active_d6.urdf
+#cube_model: examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf
 #cube_model: examples/trifinger/robot_properties_fingers/cube/HE_convex_terrain.urdf
 #cube_model: examples/trifinger/robot_properties_fingers/cube/HE_sphere.urdf
 

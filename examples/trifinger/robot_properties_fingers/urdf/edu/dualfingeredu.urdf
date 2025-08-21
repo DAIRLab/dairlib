@@ -187,19 +187,21 @@
         <mass value="0.035"/>
         <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
       </inertial>
-    <!--
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
         <mesh filename="../meshes/edu/finger_tip_dt2.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="fingeredu_0_material"/>
+      <material name="fingeredu_120_material"/>
     </visual>
-    -->
+  </link>
+
+  <link name="optical_center_120">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
          <sphere radius="0.01575"/>
+         <material name="densetact_material"/>
       </geometry>
     </visual>
     <collision>
@@ -209,22 +211,6 @@
       </geometry>
     </collision>
   </link>
-  <link name="densetact_120_vis">
-    <visual>
-      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
-      <geometry>
-        <mesh filename="../meshes/edu/finger_tip_dt2.obj" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="fingeredu_120_material"/>
-    </visual>
-  </link>
-  <joint name="densetact_120_to_vis" type="fixed">
-    <parent link="densetact_120"/>
-    <child link="densetact_120_vis"/>
-    <origin rpy="0 0 0" xyz="0 0 0"/>
-  </joint>
-
-  <link name="optical_center_120"/>
 
   <!-- kinematics -->
   <joint name="finger_base_to_upper_joint_0" type="revolute">
@@ -257,10 +243,11 @@
     <!--<origin rpy="0 0 0" xyz="0 -0.008 -0.14985"/> -->
   </joint>
 
-   <joint name="densetact_120_to_optical_center" type="fixed">
+  <joint name="densetact_120_to_optical_center" type="fixed">
     <parent link="densetact_120"/>
     <child link="optical_center_120"/>
-    <origin rpy="0 0 0" xyz="0 0 0.00360"/>
+    <!--<origin rpy="0 0 0" xyz="0 0 -0.00360"/> -->
+    <origin rpy="0 3.14159 1.57079" xyz="0 0 0"/>
   </joint>
 
 
@@ -405,19 +392,21 @@
       <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
-    <!--
     <visual>
       <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
       <geometry>
         <mesh filename="../meshes/edu/finger_tip_dt1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="fingeredu_120_material"/>
+      <material name="fingeredu_0_material"/>
     </visual>
-  -->
+  </link>
+
+  <link name="optical_center_0">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
          <sphere radius="0.01575"/>
+         <material name="densetact_material"/>
       </geometry>
     </visual>
     <collision>
@@ -427,22 +416,6 @@
       </geometry>
     </collision>
   </link>
-  <link name="densetact_0_vis">
-    <visual>
-      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
-      <geometry>
-        <mesh filename="../meshes/edu/finger_tip_dt1.obj" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="fingeredu_0_material"/>
-    </visual>
-  </link>
-  <joint name="densetact_0_to_vis" type="fixed">
-    <parent link="densetact_0"/>
-    <child link="densetact_0_vis"/>
-    <origin rpy="0 0 0" xyz="0 0 0"/>
-  </joint>
-
-  <link name="optical_center_0"/>
 
 
   <!-- kinematics -->
@@ -478,7 +451,8 @@
   <joint name="densetact_0_to_optical_center" type="fixed">
     <parent link="densetact_0"/>
     <child link="optical_center_0"/>
-    <origin rpy="0 0 0" xyz="0 0 0.00360"/>
+    <!--<origin rpy="0 0 0" xyz="0 0 -0.00360"/> -->
+    <origin rpy="0 3.14159 1.57079" xyz="0 0 0"/>
   </joint>
 
   <link name="finger_base_link_240">

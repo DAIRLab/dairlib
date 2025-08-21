@@ -58,10 +58,33 @@ LcmDensetactDrawer::LcmDensetactDrawer(
 drake::systems::EventStatus LcmDensetactDrawer::DrawDensetact(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
+  // Visualize Axes
+  Eigen::Vector3d scaledZ, scaledX, scaledY;
+  scaledZ << 0., 0., 0.03;
+  scaledX << 0.03, 0., 0.;
+  scaledY << 0., 0.03, 0.;
+  Eigen::Matrix3d contactRot;
+  Eigen::MatrixXd vertices(3, 2), xVert(3, 2), yVert(3, 2), zVert(3, 2);
+  vertices.col(0) << 0.0, 0.0, 0.0;
+  xVert.col(0) << 0.0, 0.0, 0.0;
+  yVert.col(0) << 0.0, 0.0, 0.0;
+  zVert.col(0) << 0.0, 0.0, 0.0;
+
+  vertices.col(1) = scaledZ;
+  xVert.col(1) = scaledX;
+  yVert.col(1) = scaledY;
+  zVert.col(1) = scaledZ;
+
+  for(std::string path : densetact_target_paths_) {
+    meshcat_->SetLine(path + "/xaxis", xVert, 5.0, {0.9, 0.1, 0.1, 1.0});
+    meshcat_->SetLine(path + "/yaxis", yVert, 5.0, {0.1, 0.9, 0.1, 1.0});
+    meshcat_->SetLine(path + "/zaxis", zVert, 5.0, {0.1, 0.1, 0.9, 1.0});
+  }
+  
   if (discrete_state->get_value(last_update_time_index_)[0] <= 0.) {
     // First Run
     for(std::string path : densetact_target_paths_) {
-      meshcat_->SetProperty(path, "visible", false, 0);
+      meshcat_->SetProperty(path, "visible", true, 0);
       meshcat_->SetObject(path, sphere_for_densetact_, {0.9, 0.1, 0.9, 0.5});
     }
     discrete_state->get_mutable_value(last_update_time_index_)[0] = 0.001; // 1ms
@@ -79,13 +102,6 @@ drake::systems::EventStatus LcmDensetactDrawer::DrawDensetact(
   }
   discrete_state->get_mutable_value(last_update_time_index_)[0] = densetact_data->sensorData[0].timestamp / 1e6;
 
-  Eigen::Vector3d scaledZ;
-  scaledZ << 0., 0., 0.03;
-  Eigen::Matrix3d contactRot;
-  Eigen::MatrixXd vertices(3, 2);
-  vertices.col(0) << 0.0, 0.0, 0.0;
-  vertices.col(1) = scaledZ;
-
   for(int8_t sensorid = 0; sensorid < densetact_data->numSensors; sensorid++) {
     if(sensorid >= (int8_t)densetact_target_paths_.size()) break;
     auto sensorData = densetact_data->sensorData[sensorid];
@@ -96,8 +112,9 @@ drake::systems::EventStatus LcmDensetactDrawer::DrawDensetact(
     for(int rowid = 0; rowid < 3; rowid++) {
       contactRot.row(rowid) << sensorData.contactFrame[rowid][0], sensorData.contactFrame[rowid][1], sensorData.contactFrame[rowid][2];
     }
-    
-    vertices.col(1) = contactRot * scaledZ;
+
+    // flip direction to go into object
+    vertices.col(1) = -1.0 * contactRot * scaledZ;
     meshcat_->SetLine(path + "/normal", vertices, 5.0, {0.9, 0.1, 0.9, 1.0});
   }
 

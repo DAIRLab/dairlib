@@ -55,7 +55,7 @@ class LcmDensetactDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Sphere sphere_for_densetact_ =
       drake::geometry::Sphere(0.016);
 
-  const std::vector<std::string> densetact_target_paths_ = {"visualizer/trifingeredu/densetact_0/densetact_data", "visualizer/trifingeredu/densetact_120/densetact_data"};
+  const std::vector<std::string> densetact_target_paths_ = {"visualizer/trifingeredu/optical_center_0/densetact_data", "visualizer/trifingeredu/optical_center_120/densetact_data"};
 };
 
 }  // namespace dairlib::systems

@@ -209,10 +209,10 @@ struct SamplingC3Options : C3Options {
 
     // Process planar contact info
     std::tie(num_planar_contacts, num_friction_directions_per_contact) =
-      ComputePlanarContactInfo(resolve_as_planar_contacts_list,
+      ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
         resolve_contacts_to, num_friction_directions);
     std::tie(num_planar_contacts_cost, num_friction_directions_per_contact_cost) =
-      ComputePlanarContactInfo(resolve_as_planar_contacts_list,
+      ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
         resolve_contacts_to_for_cost, num_friction_directions);
 
     for (size_t i = 0; i < num_contacts; ++i) {
@@ -482,18 +482,18 @@ struct SamplingC3Options : C3Options {
       }
     }
 
-  std::pair<int, std::vector<int>> ComputePlanarContactInfo(
+  //Compute total number of planar friction directions
+  //and create a vector that contains the number of friction directions for each contact point
+  std::pair<int, std::vector<int>> ProcessPlanarContactInformation(
   const std::vector<int>& resolve_as_planar_contacts_list,
   const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
-
       int num_planar_contacts = 0;
       int planar_contact = 1;
       std::vector<int> num_friction_directions_per_contact;
-      // Compute the number of planar contact 
       for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
         for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
           num_planar_contacts += (resolve_as_planar_contacts_list[i] ? 1 : 0);
-          num_friction_directions_per_contact.push_back(resolve_as_planar_contacts_list[i]?
+          num_friction_directions_per_contact.push_back(resolve_as_planar_contacts_list[i] ?
             planar_contact : num_friction_directions);
         }
       }

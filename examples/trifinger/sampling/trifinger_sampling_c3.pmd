@@ -1,13 +1,13 @@
 group "simulations" {
     cmd "trifinger_sim" {
-        exec = "bazel-bin/examples/trifinger/trifinger_sampling_sim";
+        exec = "bazel-bin/examples/trifinger/sampling/trifinger_sampling_sim";
         host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/trifinger/trifinger_sampling_visualizer";
+        exec = "bazel-bin/examples/trifinger/sampling/trifinger_sampling_visualizer";
         host = "localhost";
     }
     cmd "drake-director" {
@@ -18,11 +18,11 @@ group "operator" {
 
 group "controllers" {    
     cmd "trifinger_osc" {
-        exec = "bazel-bin/examples/trifinger/trifinger_sampling_osc_controller";
+        exec = "bazel-bin/examples/trifinger/sampling/trifinger_sampling_osc_controller";
         host = "localhost";
     }
     cmd "sampling_c3" {
-        exec = "bazel-bin/examples/trifinger/trifinger_sampling_c3_controller";
+        exec = "bazel-bin/examples/trifinger/sampling/trifinger_sampling_c3_controller";
         host = "localhost";
     }
 }
@@ -35,7 +35,6 @@ group "debug" {
 }
 
 script "start_experiment_no_logs"{
-    stop cmd "start_logging";
     restart cmd "trifinger_sim";
     restart cmd "trifinger_osc";
     wait ms 50;

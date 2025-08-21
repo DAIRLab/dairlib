@@ -121,13 +121,13 @@
     <parent link="base_link"/>
     <child link="finger_tip_120_fake_x"/>
     <axis xyz="1 0 0"/>
-   <limit lower="-0.06" upper="0.02"/>
+   <limit lower="0.01" upper="0.09"/>
 </joint>
 <joint name="finger_tip_120_to_base_y" type="prismatic">
     <parent link="finger_tip_120_fake_x"/>
     <child link="finger_tip_120_fake_y"/>
     <axis xyz="0 1 0"/>
-   <limit lower="-0.09" upper="0.01"/>
+   <limit lower="-0.04" upper="0.04"/>
 </joint>
 <joint name="finger_tip_120_to_base_z" type="prismatic">
     <parent link="finger_tip_120_fake_y"/>
@@ -135,18 +135,17 @@
     <axis xyz="0 0 1"/>
     <limit lower="0.028" upper="0.033"/>
 </joint>
-
 <joint name="finger_tip_240_to_base_x" type="prismatic">
     <parent link="base_link"/>
     <child link="finger_tip_240_fake_x"/>
     <axis xyz="1 0 0"/>
-   <limit lower="0.01" upper="0.09"/>
+   <limit lower="-0.06" upper="0.02"/>
 </joint>
 <joint name="finger_tip_240_to_base_y" type="prismatic">
     <parent link="finger_tip_240_fake_x"/>
     <child link="finger_tip_240_fake_y"/>
     <axis xyz="0 1 0"/>
-   <limit lower="-0.04" upper="0.04"/>
+   <limit lower="-0.09" upper="0.01"/>
 </joint>
 <joint name="finger_tip_240_to_base_z" type="prismatic">
     <parent link="finger_tip_240_fake_y"/>
@@ -154,6 +153,7 @@
     <axis xyz="0 0 1"/>
     <limit lower="0.028" upper="0.033"/>
 </joint>
+
 
 <transmission name="finger_tip_0_to_base_trans_x" type="SimpleTransmission">
     <actuator name="finger_tip_0_to_base_act_x"/>

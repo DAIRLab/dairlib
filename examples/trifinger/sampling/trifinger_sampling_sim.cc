@@ -1,4 +1,5 @@
 #include <math.h>
+
 #include <vector>
 
 #include <drake/common/find_resource.h>
@@ -19,10 +20,10 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/trifinger/trifinger_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
-#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/trifinger/trifinger_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -49,7 +50,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "trifinger",
@@ -59,7 +59,9 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
-  std::string controller_params_path = "examples/trifinger/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/trifinger/sampling/parameters/"
+      "sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
@@ -74,9 +76,10 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-  ModelInstanceIndex trifinger_index = AddTrifingerToPlant(&plant, &scene_graph);
-  ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
-                                                     sim_params.object_model);
+  ModelInstanceIndex trifinger_index =
+      AddTrifingerToPlant(&plant, &scene_graph);
+  ModelInstanceIndex object_index =
+      AddObjectToPlant(&plant, &scene_graph, sim_params.object_model);
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
 

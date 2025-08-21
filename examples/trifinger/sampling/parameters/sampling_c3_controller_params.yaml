@@ -1,13 +1,13 @@
-sampling_c3_options_file: examples/trifinger/parameters/sampling_c3_options.yaml
+sampling_c3_options_file: examples/trifinger/sampling/parameters/sampling_c3_options.yaml
 reposition_params_file: examples/trifinger/parameters/reposition_params.yaml
 progress_params_file: examples/trifinger/parameters/progress_params.yaml
-sampling_params_file: examples/trifinger/parameters/sampling_params.yaml
+sampling_params_file: examples/trifinger/sampling/parameters/sampling_params.yaml
 goal_params_file: examples/trifinger/parameters/goal_params.yaml
 
 sim_params_file: examples/trifinger/parameters/sim_params.yaml
 vis_params_file: examples/trifinger/parameters/vis_params.yaml
 osc_params_file: examples/trifinger/parameters/osc_params.yaml
-osqp_settings_file: examples/trifinger/parameters/sampling_c3_qp_settings.yaml
+osqp_settings_file: examples/trifinger/sampling/parameters/sampling_c3_qp_settings.yaml
 osc_qp_settings_file: examples/trifinger/parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
 lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
@@ -15,6 +15,7 @@ lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channel
 
 object_model: examples/trifinger/models/cube/cube_v2.urdf
 object_body_name: cube
+base_name: dummy
 
 include_end_effector_orientation: false
 

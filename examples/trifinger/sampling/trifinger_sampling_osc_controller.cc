@@ -3,16 +3,16 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/trifinger/trifinger_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/osc_params.h"
-#include "systems/controllers/osc/end_effector_force.h"
-#include "systems/controllers/osc/end_effector_orientation.h"
-#include "systems/controllers/osc/end_effector_position.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/trifinger/trifinger_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -63,17 +63,18 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // Load parameters.
-  std::string controller_params_path = 
-    "examples/trifinger/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/trifinger/sampling/parameters/"
+      "sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
   SamplingC3OSCParams osc_params =
       drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
           controller_params.osc_params_file);
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      controller_params.lcm_channels_simulation_file :
-      controller_params.lcm_channels_hardware_file;
+  std::string lcm_channels_file =
+      FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
+                          : controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
   drake::solvers::SolverOptions solver_options =
@@ -124,9 +125,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
-  Eigen::Vector3d fingertip_0_neutral_position{0,  0.05,  0.0325};
-  Eigen::Vector3d fingertip_120_neutral_position{0.05,  0, 0.0325};
-  Eigen::Vector3d fingertip_240_neutral_position{0, -0.05,  0.0325};
+  Eigen::Vector3d fingertip_0_neutral_position{-0.02, 0.05, 0.03};
+  Eigen::Vector3d fingertip_120_neutral_position{0.05, 0, 0.03};
+  Eigen::Vector3d fingertip_240_neutral_position{-0.02, -0.04, 0.03};
   auto fingertip_0_trajectory =
       builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
           plant, plant_context.get(), fingertip_0_neutral_position,
@@ -140,14 +141,14 @@ int DoMain(int argc, char* argv[]) {
           plant, plant_context.get(), fingertip_240_neutral_position,
           osc_params.teleop_neutral_position, kFingertip240Name);
   fingertip_0_trajectory->SetRemoteControlParameters(
-      fingertip_0_neutral_position, osc_params.x_scale,
-      osc_params.y_scale, osc_params.z_scale);
+      fingertip_0_neutral_position, osc_params.x_scale, osc_params.y_scale,
+      osc_params.z_scale);
   fingertip_120_trajectory->SetRemoteControlParameters(
-      fingertip_120_neutral_position, osc_params.x_scale,
-      osc_params.y_scale, osc_params.z_scale);
+      fingertip_120_neutral_position, osc_params.x_scale, osc_params.y_scale,
+      osc_params.z_scale);
   fingertip_240_trajectory->SetRemoteControlParameters(
-      fingertip_240_neutral_position, osc_params.x_scale,
-      osc_params.y_scale, osc_params.z_scale);
+      fingertip_240_neutral_position, osc_params.x_scale, osc_params.y_scale,
+      osc_params.z_scale);
   auto fingertip_0_force_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto fingertip_120_force_trajectory =
@@ -171,8 +172,7 @@ int DoMain(int argc, char* argv[]) {
   auto fingertip_0_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_0_target", osc_params.K_p_end_effector,
-          osc_params.K_d_end_effector, osc_params.W_end_effector,
-          plant, plant);
+          osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_0_position_tracking_data->AddPointToTrack(kFingertip0Name);
   const VectorXd& fingertip_0_acceleration_limits =
       osc_params.end_effector_acceleration * Vector3d::Ones();
@@ -187,8 +187,7 @@ int DoMain(int argc, char* argv[]) {
   auto fingertip_120_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_120_target", osc_params.K_p_end_effector,
-          osc_params.K_d_end_effector, osc_params.W_end_effector,
-          plant, plant);
+          osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_120_position_tracking_data->AddPointToTrack(kFingertip120Name);
   const VectorXd& fingertip_120_acceleration_limits =
       osc_params.end_effector_acceleration * Vector3d::Ones();
@@ -203,8 +202,7 @@ int DoMain(int argc, char* argv[]) {
   auto fingertip_240_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "fingertip_240_target", osc_params.K_p_end_effector,
-          osc_params.K_d_end_effector, osc_params.W_end_effector,
-          plant, plant);
+          osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_240_position_tracking_data->AddPointToTrack(kFingertip240Name);
   const VectorXd& fingertip_240_acceleration_limits =
       osc_params.end_effector_acceleration * Vector3d::Ones();
@@ -224,7 +222,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddForceTrackingData(std::move(fingertip_240_force_tracking_data));
   osc->SetAccelerationCostWeights(osc_params.W_acceleration);
   osc->SetInputCostWeights(osc_params.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(osc_params.W_input_smoothing_regularization);
+  osc->SetInputSmoothingCostWeights(
+      osc_params.W_input_smoothing_regularization);
   if (osc_params.enforce_acceleration_constraints) {
     osc->EnableAccelerationConstraints();
   } else {
@@ -237,7 +236,8 @@ int DoMain(int argc, char* argv[]) {
 
   if (osc_params.cancel_gravity_compensation) {
     if (FLAGS_is_simulation) {
-      std::cerr<<"Sim OSC needs cancel_gravity_compensation: false"<<std::endl;
+      std::cerr << "Sim OSC needs cancel_gravity_compensation: false"
+                << std::endl;
       return -1;
       return -1;
     }
@@ -250,7 +250,8 @@ int DoMain(int argc, char* argv[]) {
                     trifinger_command_sender->get_input_port());
   } else {
     if (!FLAGS_is_simulation) {
-      std::cerr<<"HW OSC needs cancel_gravity_compensation: true"<<std::endl;
+      std::cerr << "HW OSC needs cancel_gravity_compensation: true"
+                << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),

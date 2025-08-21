@@ -10,11 +10,11 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/trifinger/trifinger_goal_generator.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
-#include "examples/trifinger/trifinger_utils.h"
 #include "examples/trifinger/systems/trifinger_kinematics.h"
+#include "examples/trifinger/trifinger_goal_generator.h"
+#include "examples/trifinger/trifinger_utils.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -58,7 +58,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Load parameters.
   std::string controller_params_path =
-      "examples/trifinger/parameters/sampling_c3_controller_params.yaml";
+      "examples/trifinger/sampling/parameters/"
+      "sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
@@ -85,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   auto [trifinger_lcs_index, object_lcs_index] = AddLCSModelsToPlant(
-    &plant_lcs, &scene_graph, controller_params.object_model);
+      &plant_lcs, &scene_graph, controller_params.object_model);
   plant_lcs.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
@@ -117,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
   drake::geometry::GeometryId fingertip_240_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
           plant_lcs.GetBodyByName("finger_tip_link_240"))[0];
-  drake::geometry::GeometryId cube_geoms = 
+  drake::geometry::GeometryId cube_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
           plant_lcs.GetBodyByName("cube"))[0];
   drake::geometry::GeometryId cube_sphere_1_geoms =
@@ -132,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
   drake::geometry::GeometryId cube_sphere_7_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
           plant_lcs.GetBodyByName("ground_contact_point_7"))[0];
-  
+
   contact_geoms["GROUND"] = ground_geoms;
   contact_geoms["FINGERTIP_0"] = fingertip_0_geoms;
   contact_geoms["FINGERTIP_120"] = fingertip_120_geoms;
@@ -152,14 +153,14 @@ int DoMain(int argc, char* argv[]) {
   ee_contact_pairs.push_back(
       SortedPair(contact_geoms["FINGERTIP_240"], contact_geoms["CUBE"]));
 
-  ground_object_contact_pairs.push_back(SortedPair(
-      contact_geoms["CUBE_SPHERE_1"], contact_geoms["GROUND"]));
-  ground_object_contact_pairs.push_back(SortedPair(
-      contact_geoms["CUBE_SPHERE_3"], contact_geoms["GROUND"]));
-  ground_object_contact_pairs.push_back(SortedPair(
-      contact_geoms["CUBE_SPHERE_5"], contact_geoms["GROUND"]));
-  ground_object_contact_pairs.push_back(SortedPair(
-      contact_geoms["CUBE_SPHERE_7"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(
+      SortedPair(contact_geoms["CUBE_SPHERE_1"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(
+      SortedPair(contact_geoms["CUBE_SPHERE_3"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(
+      SortedPair(contact_geoms["CUBE_SPHERE_5"], contact_geoms["GROUND"]));
+  ground_object_contact_pairs.push_back(
+      SortedPair(contact_geoms["CUBE_SPHERE_7"], contact_geoms["GROUND"]));
 
   // Order: EE-object, object-ground.
   contact_pairs.push_back(ee_ground_contact_pairs);
@@ -183,19 +184,19 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::TrifingerKinematics>(
           trifinger, trifinger_context.get(), plant_object,
           object_context.get(), kFingertip0Name, kFingertip120Name,
-          kFingertip240Name,
-          controller_params.object_body_name);
+          kFingertip240Name, controller_params.object_body_name);
 
   std::unique_ptr<systems::SamplingC3GoalGeneratorTrifinger> target_generator;
   target_generator =
       std::make_unique<systems::SamplingC3GoalGeneratorTrifinger>(
-          plant_lcs.num_positions(trifinger_lcs_index), plant_object, controller_params.goal_params, kNominalOrientationsPlanar);
+          plant_lcs.num_positions(trifinger_lcs_index), plant_object,
+          controller_params.goal_params, kNominalOrientationsPlanar);
   auto* control_target = builder.AddSystem(std::move(target_generator));
 
-  std::vector<int> input_sizes = {plant_lcs.num_positions(trifinger_lcs_index), 
-   plant_lcs.num_positions(object_lcs_index), 
-   plant_lcs.num_velocities(trifinger_lcs_index),
-   plant_lcs.num_velocities(object_lcs_index)};
+  std::vector<int> input_sizes = {plant_lcs.num_positions(trifinger_lcs_index),
+                                  plant_lcs.num_positions(object_lcs_index),
+                                  plant_lcs.num_velocities(trifinger_lcs_index),
+                                  plant_lcs.num_velocities(object_lcs_index)};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto final_target_state_mux =
@@ -338,16 +339,14 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
-      "finger0_x",  "finger0_y", "finger0_z",
-      "finger120_x",  "finger120_y", "finger120_z",  
-      "finger240_x",  "finger240_y", "finger240_z",  
-      "object_qw", "object_qx", "object_qy", "object_qz",     
-     "object_x", "object_y", "object_z",       
-     "finger0_vx", "finger0_vy", "finger0_vz",
-     "finger120_vx", "finger120_vy", "finger120_vz",
-     "finger240_vx", "finger240_vy", "finger240_vz",
-    "object_wx", "object_wy", "object_wz",
-     "object_vx", "object_vy", "object_vz",
+      "finger0_x",    "finger0_y",    "finger0_z",    "finger120_x",
+      "finger120_y",  "finger120_z",  "finger240_x",  "finger240_y",
+      "finger240_z",  "object_qw",    "object_qx",    "object_qy",
+      "object_qz",    "object_x",     "object_y",     "object_z",
+      "finger0_vx",   "finger0_vy",   "finger0_vz",   "finger120_vx",
+      "finger120_vy", "finger120_vz", "finger240_vx", "finger240_vy",
+      "finger240_vz", "object_wx",    "object_wy",    "object_wz",
+      "object_vx",    "object_vy",    "object_vz",
   };
   // C3 state senders:  actual, target, and final target.
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
@@ -365,8 +364,9 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_final_target_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(trifinger_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_trifinger_state());
+  builder.Connect(
+      trifinger_state_receiver->get_output_port(),
+      reduced_order_model_receiver->get_input_port_trifinger_state());
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
   builder.Connect(object_state_receiver->get_output_port(),

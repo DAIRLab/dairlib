@@ -94,6 +94,10 @@ SamplingC3Controller::SamplingC3Controller(
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
 
+  for (const auto& joint_name : plant_.GetPositionNames()) {
+    std::cout << "Joint Name : " << joint_name << std::endl;
+  }
+
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
   n_lambda_ = LCSFactory::GetNumContactVariables(
@@ -155,9 +159,11 @@ SamplingC3Controller::SamplingC3Controller(
   //   Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
   //   A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
   //   // TODO @bibit: For the T example, the z constraint is an equality
-  //   // constraint. This will be reflected in the params but need to make sure to
+  //   // constraint. This will be reflected in the params but need to make sure
+  //   to
   //   // put a comment here when the T example is added.
-  //   // The fourth parameter decides which optimization variable the constraint
+  //   // The fourth parameter decides which optimization variable the
+  //   constraint
   //   // is applied to. 1 = x, 2 = u, 3 = lambda.
   //   c3_curr_plan_->AddLinearConstraint(
   //       A, sampling_c3_options_.workspace_limits[i][3],
@@ -865,8 +871,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // about position until the switching threshold has been crossed again.
   // Exclude the EE goal from the comparison, since that always changes to be
   // above the current object location.
-  if (!x_final_target_.segment(9, n_x_-9).isApprox(
-      x_lcs_final_des.value().segment(9, n_x_-9), 1e-5)) {
+  if (!x_final_target_.segment(9, n_x_ - 9)
+           .isApprox(x_lcs_final_des.value().segment(9, n_x_ - 9), 1e-5)) {
     std::cout << "Detected goal change!" << std::endl;
     if (verbose_) {
       std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
@@ -991,31 +997,35 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }  // Unknown projection types are rejected in the initialization.
 
     // Workspace limits.
-    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-      A.segment(0, 9) = sampling_c3_options_.workspace_limits[i].segment(0, 9);
-      // TODO @bibit: For planar examples, we may want the z constraint to be an
-      // equality constraint. This would require two different sets of workspace
-      // limits:  one for the C3 solve, and one for the controller for safety
-      // checks.
-      test_c3_object->AddLinearConstraint(
-        A, c3_options.workspace_limits[i][9], c3_options.workspace_limits[i][10],
-        1);
-    }
-    // Input limits.
-    for (int i : vector<int>({0, 1})) {
-      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-      A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-        A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1],
-        2);
-    }
-    for (int i : vector<int>({2})) {
-      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-      A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-        A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
-    }
+    // for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+    //   Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    //   A.segment(0, 9) = sampling_c3_options_.workspace_limits[i].segment(0,
+    //   9);
+    //   // TODO @bibit: For planar examples, we may want the z constraint to be
+    //   an
+    //   // equality constraint. This would require two different sets of
+    //   workspace
+    //   // limits:  one for the C3 solve, and one for the controller for safety
+    //   // checks.
+    //   test_c3_object->AddLinearConstraint(
+    //     A, c3_options.workspace_limits[i][9],
+    //     c3_options.workspace_limits[i][10], 1);
+    // }
+    // // Input limits.
+    // for (int i : vector<int>({0, 1})) {
+    //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    //   A(i) = 1.0;
+    //   test_c3_object->AddLinearConstraint(
+    //     A, c3_options.u_horizontal_limits[0],
+    //     c3_options.u_horizontal_limits[1], 2);
+    // }
+    // for (int i : vector<int>({2})) {
+    //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    //   A(i) = 1.0;
+    //   test_c3_object->AddLinearConstraint(
+    //     A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1],
+    //     2);
+    // }
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
@@ -1383,17 +1393,19 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
     const TimestampedVector<double>* lcs_x_curr) const {
   // xyz checks
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+    // std::cout << "Checking workspace limit " << i << ": "
+    //           << lcs_x_curr->get_data().segment(0, 9).transpose() << std::endl;
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 9).transpose() *
-                 sampling_c3_options_.workspace_limits[i].segment(0, 9) >
+                     sampling_c3_options_.workspace_limits[i].segment(0, 9) >
                  sampling_c3_options_.workspace_limits[i][9] -
-                 sampling_c3_options_.workspace_margins);
+                     sampling_c3_options_.workspace_margins);
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 9).transpose() *
-                 sampling_c3_options_.workspace_limits[i].segment(0, 9) <
+                     sampling_c3_options_.workspace_limits[i].segment(0, 9) <
                  sampling_c3_options_.workspace_limits[i][10] +
-                 sampling_c3_options_.workspace_margins);
+                     sampling_c3_options_.workspace_margins);
   }
   // radius checks
-  // DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
+  // DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +:
   //              std::pow(lcs_x_curr->get_data()[1], 2) >
   //              std::pow(sampling_c3_options_.robot_radius_limits[0] +
   //                       sampling_c3_options_.workspace_margins, 2));

@@ -1,6 +1,6 @@
 ### C3 options
 admm_iter: 3
-rho: 0  #This isn't used anywhere!
+# rho: 0  #This isn't used anywhere!
 rho_scale: 3
 num_threads: 5
 num_outer_threads: 4
@@ -8,12 +8,14 @@ delta_option: 1
 projection_type: 'MIQP'     # 'MIQP' or 'QP'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
+scale_lcs: true
 end_on_qp_step: false
-use_robust_formulation: false
+# use_robust_formulation: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
-penalize_changes_in_u_across_solves: false  # Penalize (u-u_prev) instead of u.
+penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
+spring_stiffness: 0.0  # Not used in C3+.
 
 N: 5
 gamma: 1.0  # discount factor on MPC costs
@@ -31,10 +33,10 @@ workspace_limits: [[1, 0, 0, 0, 0, 0, 0, 0, 0, -0.06, 0.02],
                    [0, 0, 0, 0, 1, 0, 0, 0, 0, -0.04, 0.04],
                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0.028, 0.033],
                    [0, 0, 0, 0, 0, 0, 1, 0, 0, -0.06, 0.02],
-                   [0, 0, 0, 0, 0, 0, 0, 1, 0, -0.09, -0.01],
+                   [0, 0, 0, 0, 0, 0, 0, 1, 0, -0.09, 0.01],
                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0.028, 0.033]]
 robot_radius_limits: [0.25, 0.75]
-workspace_margins: 0
+workspace_margins: 0.001
 u_horizontal_limits: [-5, 5]
 u_vertical_limits: [-5, 5]
 
@@ -216,11 +218,11 @@ u_u_position: [0.01, 0.01, 0.01,
 
 ### NO NEED TO CHANGE THE BELOW.  Parameters needed for the C3Options struct but
 ### are overwritten by other sampling C3 parameters.
-use_predicted_x0: false   # instead:  use_predicted_x0_c3,
+# use_predicted_x0: false   # instead:  use_predicted_x0_c3,
                           #           use_predicted_x0_repos,
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
-solve_dt: 0       # unused
+# solve_dt: 0       # unused
 mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.
@@ -232,3 +234,21 @@ u_gamma: []
 u_lambda_n: []
 u_lambda_t: []
 u_lambda: []
+
+# Only applicable for C3+
+g_eta_slack_list: []
+g_eta_n_list: []
+g_eta_t_list: []
+g_eta_list: []
+u_eta_slack_list: []
+u_eta_n_list: []
+u_eta_t_list: []
+u_eta_list: []
+g_eta_slack_position_list: []
+g_eta_n_position_list: []
+g_eta_t_position_list: []
+g_eta_position_list: []
+u_eta_slack_position_list: []
+u_eta_n_position_list: []
+u_eta_t_position_list: []
+u_eta_position_list: []

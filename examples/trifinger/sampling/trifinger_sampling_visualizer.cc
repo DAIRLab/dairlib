@@ -7,14 +7,14 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/trifinger/trifinger_utils.h"
-#include "examples/trifinger/systems/trifinger_kinematics.h"
 #include "examples/sampling_c3/c3_mode_visualizer.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/visualizer_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/parameter_headers/visualizer_params.h"
+#include "examples/trifinger/systems/trifinger_kinematics.h"
+#include "examples/trifinger/trifinger_utils.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -67,16 +67,17 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
-
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
-DEFINE_string(demo_name, "jacktoy",
+DEFINE_string(demo_name, "trifinger",
               "Name for the demo, used when building filepaths for output.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
-  std::string controller_params_path = "examples/trifinger/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/trifinger/sampling/parameters/"
+      "sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
@@ -85,9 +86,9 @@ int do_main(int argc, char* argv[]) {
           controller_params.vis_params_file);
   SamplingC3Options sampling_c3_options = controller_params.sampling_c3_options;
   SamplingParams sampling_params = controller_params.sampling_params;
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      controller_params.lcm_channels_simulation_file :
-      controller_params.lcm_channels_hardware_file;
+  std::string lcm_channels_file =
+      FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
+                          : controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
@@ -98,9 +99,10 @@ int do_main(int argc, char* argv[]) {
 
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-  ModelInstanceIndex trifinger_index = AddTrifingerToPlant(&plant, &scene_graph);
-  ModelInstanceIndex object_index = AddObjectToPlant(
-    &plant, &scene_graph, vis_params.object_vis_model);
+  ModelInstanceIndex trifinger_index =
+      AddTrifingerToPlant(&plant, &scene_graph);
+  ModelInstanceIndex object_index =
+      AddObjectToPlant(&plant, &scene_graph, vis_params.object_vis_model);
   plant.Finalize();
 
   // Create a Franka-only plant.
@@ -111,16 +113,16 @@ int do_main(int argc, char* argv[]) {
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  AddObjectToPlant(&plant_object, nullptr,
-                   vis_params.object_vis_model);
+  AddObjectToPlant(&plant_object, nullptr, vis_params.object_vis_model);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, lcs_scene_graph] =
-    AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsToPlant(&plant_lcs, &lcs_scene_graph, vis_params.object_vis_model);
+      AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+  AddLCSModelsToPlant(&plant_lcs, &lcs_scene_graph,
+                      vis_params.object_vis_model);
   plant_lcs.Finalize();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -145,10 +147,11 @@ int do_main(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::TrifingerKinematics>(
           plant_trifinger, trifinger_context.get(), plant_object,
-          object_context.get(), kFingertip0Name, kFingertip120Name, kFingertip240Name,
-          controller_params.object_body_name);
-  builder.Connect(trifinger_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_trifinger_state());
+          object_context.get(), kFingertip0Name, kFingertip120Name,
+          kFingertip240Name, controller_params.object_body_name);
+  builder.Connect(
+      trifinger_state_receiver->get_output_port(),
+      reduced_order_model_receiver->get_input_port_trifinger_state());
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
 
@@ -176,8 +179,8 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_curr_plan_channel, lcm));
-  auto trajectory_sub_force_curr = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
+  auto trajectory_sub_force_curr =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_curr_channel, lcm));
   auto dynamically_feasible_trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -193,8 +196,8 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_object_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_best_plan_channel, lcm));
-  auto trajectory_sub_force_best = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
+  auto trajectory_sub_force_best =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_best_channel, lcm));
   auto dynamically_feasible_trajectory_sub_object_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -207,21 +210,21 @@ int do_main(int argc, char* argv[]) {
   auto sample_location_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_locations_channel, lcm));
-  auto sample_buffer_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+  auto sample_buffer_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
           lcm_channel_params.sample_buffer_channel, lcm));
   auto sample_costs_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.sample_costs_channel, lcm));
 
-  auto c3_state_actual_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+  auto c3_state_actual_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
-  auto c3_state_target_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+  auto c3_state_target_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
-  auto c3_final_state_target_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+  auto c3_final_state_target_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_final_target_state_channel, lcm));
 
   auto to_pose =
@@ -234,32 +237,31 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_workspace) {
     std::vector<std::string> workspace_limits_names = {
-        "finger_0_workspace",
-        "finger_120_workspace",
-        "finger_240_workspace"};
+        "finger_0_workspace", "finger_120_workspace", "finger_240_workspace"};
     std::vector<drake::geometry::Rgba> workspace_colors = {
         drake::geometry::Rgba({1, 0, 0, 0.2}),
-        drake::geometry::Rgba({0, 1, 0, 0.2}), 
+        drake::geometry::Rgba({0, 1, 0, 0.2}),
         drake::geometry::Rgba({0, 0, 1, 0.2})};
 
     for (int i = 0; i < workspace_limits_names.size(); i++) {
-      double width = sampling_c3_options.workspace_limits[i*3][10] -
-                     sampling_c3_options.workspace_limits[i*3][9];   // x
-      double depth = sampling_c3_options.workspace_limits[i*3+1][10] -
-                     sampling_c3_options.workspace_limits[i*3+1][9];   // y
-      double height = sampling_c3_options.workspace_limits[i*3+2][10] -
-                      sampling_c3_options.workspace_limits[i*3+2][9];  // z
+      double width = sampling_c3_options.workspace_limits[i * 3][10] -
+                     sampling_c3_options.workspace_limits[i * 3][9];  // x
+      double depth = sampling_c3_options.workspace_limits[i * 3 + 1][10] -
+                     sampling_c3_options.workspace_limits[i * 3 + 1][9];  // y
+      double height = sampling_c3_options.workspace_limits[i * 3 + 2][10] -
+                      sampling_c3_options.workspace_limits[i * 3 + 2][9];  // z
       Vector3d workspace_center = {
-          0.5 * (sampling_c3_options.workspace_limits[i*3][10] +
-                 sampling_c3_options.workspace_limits[i*3][9]),
-          0.5 * (sampling_c3_options.workspace_limits[i*3+1][10] +
-                 sampling_c3_options.workspace_limits[i*3+1][9]),
-          0.5 * (sampling_c3_options.workspace_limits[i*3+2][10] +
-                 sampling_c3_options.workspace_limits[i*3+2][9])};
+          0.5 * (sampling_c3_options.workspace_limits[i * 3][10] +
+                 sampling_c3_options.workspace_limits[i * 3][9]),
+          0.5 * (sampling_c3_options.workspace_limits[i * 3 + 1][10] +
+                 sampling_c3_options.workspace_limits[i * 3 + 1][9]),
+          0.5 * (sampling_c3_options.workspace_limits[i * 3 + 2][10] +
+                 sampling_c3_options.workspace_limits[i * 3 + 2][9])};
       meshcat->SetObject(workspace_limits_names[i],
                          drake::geometry::Box(width, depth, height),
                          workspace_colors[i]);
-      meshcat->SetTransform(workspace_limits_names[i], RigidTransformd(workspace_center));
+      meshcat->SetTransform(workspace_limits_names[i],
+                            RigidTransformd(workspace_center));
     }
   }
 
@@ -334,8 +336,7 @@ int do_main(int argc, char* argv[]) {
 
     auto end_effector_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.ee_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
             "end_effector_position_target", "end_effector_orientation_target",
             "plans/curr_planned", sampling_c3_options.N, false,
             vis_params.c3_curr_ee_color);
@@ -344,11 +345,10 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.object_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.object_vis_model),
             "object_position_target", "object_orientation_target",
-            "plans/dynamically_feasible_curr_plan",
-            sampling_c3_options.N + 1, true, vis_params.df_curr_object_color);
+            "plans/dynamically_feasible_curr_plan", sampling_c3_options.N + 1,
+            true, vis_params.df_curr_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_curr->get_output_port(),
         dynamically_feasible_object_pose_drawer_curr
@@ -356,11 +356,10 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_actor_pose_drawer_curr_actor =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.ee_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
             "ee_position_target", "end_effector_orientation_target",
-            "plans/dynamically_feasible_curr_plan",
-            sampling_c3_options.N + 1, false, vis_params.df_curr_ee_color);
+            "plans/dynamically_feasible_curr_plan", sampling_c3_options.N + 1,
+            false, vis_params.df_curr_ee_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_actor_curr->get_output_port(),
         dynamically_feasible_actor_pose_drawer_curr_actor
@@ -369,8 +368,7 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_plan_best) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat,
-        FindResourceOrThrow(vis_params.object_vis_model),
+        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
         "object_position_target", "object_orientation_target",
         "plans/best_planned", sampling_c3_options.N, true,
         vis_params.c3_best_object_color);
@@ -379,8 +377,7 @@ int do_main(int argc, char* argv[]) {
 
     auto end_effector_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.ee_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
             "end_effector_position_target", "end_effector_orientation_target",
             "plans/best_planned", sampling_c3_options.N, false,
             vis_params.c3_best_ee_color);
@@ -389,8 +386,7 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.object_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.object_vis_model),
             "object_position_target", "object_orientation_target",
             "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
             true, vis_params.df_best_object_color);
@@ -401,11 +397,10 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_actor_pose_drawer_best_actor =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.ee_vis_model),
+            meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
             "ee_position_target", "end_effector_orientation_target",
-            "plans/dynamically_feasible_best_plan",
-            sampling_c3_options.N + 1, false, vis_params.df_best_ee_color);
+            "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
+            false, vis_params.df_best_ee_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_actor_best->get_output_port(),
         dynamically_feasible_actor_pose_drawer_best_actor
@@ -418,8 +413,7 @@ int do_main(int argc, char* argv[]) {
       from_buffer = 1;
     }
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat,
-        FindResourceOrThrow(vis_params.ee_vis_model),
+        meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
         "sample_locations", "unused_orientation_name", "samples",
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
                  sampling_params.num_additional_samples_repos + 1) +
@@ -493,7 +487,8 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_is_c3_mode) {
-    auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>(plant_lcs);
+    auto c3_mode_visualizer =
+        builder.AddSystem<systems::C3ModeVisualizer>(plant_lcs);
     builder.Connect(is_c3_mode_sub->get_output_port(),
                     c3_mode_visualizer->get_input_port_is_c3_mode());
     builder.Connect(reduced_order_model_receiver->get_output_port(),
@@ -509,7 +504,8 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(trifinger_passthrough->get_output_port(),
                   mux->get_input_port(0));
-  builder.Connect(object_passthrough->get_output_port(), mux->get_input_port(1));
+  builder.Connect(object_passthrough->get_output_port(),
+                  mux->get_input_port(1));
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
@@ -555,6 +551,4 @@ int do_main(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
-  return dairlib::do_main(argc, argv);
-}
+int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

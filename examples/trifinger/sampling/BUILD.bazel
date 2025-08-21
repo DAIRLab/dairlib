@@ -1,0 +1,107 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "trifinger_sampling_c3_controller",
+    srcs = ["trifinger_sampling_c3_controller.cc"],
+    data = [
+        "//examples/trifinger:trifinger_urdf",
+    ],
+    deps = [
+        "//common",
+        "//examples/trifinger:trifinger_goal_generator",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//lcm:lcm_trajectory_saver",
+        "//examples/trifinger:trifinger_utils",
+        "//examples/trifinger/systems:trifinger_kinematics",
+        "//systems/senders:sample_buffer_sender",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:sampling_c3_controller",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = ["-lblas", "-llapack"]
+)
+
+cc_binary(
+    name = "trifinger_sampling_osc_controller",
+    srcs = ["trifinger_sampling_osc_controller.cc"],
+    data = [
+        "//examples/trifinger:trifinger_urdf",
+    ],
+    deps = [
+        "//examples/trifinger:trifinger_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:osc_params",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = ["-lblas", "-llapack"]
+)
+
+
+cc_binary(
+    name = "trifinger_sampling_sim",
+    srcs = ["trifinger_sampling_sim.cc"],
+    data = [
+        "//examples/trifinger:trifinger_urdf",
+    ],
+    deps = [
+        "//examples/trifinger:trifinger_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = ["-lblas", "-llapack"]
+)
+
+cc_binary(
+    name = "trifinger_sampling_visualizer",
+    srcs = ["trifinger_sampling_visualizer.cc"],
+    data = [
+        "//examples/trifinger:trifinger_urdf",
+    ],
+    deps = [
+        "//examples/sampling_c3:c3_mode_visualizer",
+        "//examples/trifinger:trifinger_utils",
+        "//examples/trifinger/systems:trifinger_kinematics",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:visualizer_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = ["-lblas", "-llapack"]
+)

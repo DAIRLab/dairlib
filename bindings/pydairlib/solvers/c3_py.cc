@@ -50,13 +50,13 @@ PYBIND11_MODULE(c3, m) {
         py::arg("plant_ad"),
         py::arg("context_ad"),
         py::arg("contact_geoms"),
-        py::arg("num_friction_directions"),
         py::arg("mu"),
         py::arg("dt"),
         py::arg("N"),
-        py::arg("contact_model"),
-        py::arg("resolve_planar_contacts_vector"),
-        py::arg("resolve_contacts_to_list"));
+        py::arg("n_lambda_with_tangential"),
+        py::arg("num_friction_directions_per_contact"),
+        py::arg("starting_index_per_contact_in_lambda_t_vector"),
+        py::arg("contact_model"));
 
   {
     using Enum = dairlib::solvers::ContactModel;

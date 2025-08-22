@@ -34,29 +34,28 @@ static const Eigen::Vector3d kFrankaToPlatformOffset = {0, 0, -0.0145};
 static const Eigen::Vector3d kWorldToFrankaOffset = {0, 0, 0};
 static const Eigen::Vector3d kWorldToGroundOffset = kWorldToFrankaOffset +
                                                     kFrankaToGroundOffset;
-static Eigen::Vector3d kLeftWallToGroundOffset = {0, 0, 0};
-static Eigen::Vector3d kRightWallToGroundOffset = {0, 0, 0};
-static Eigen::Vector3d kFrontWallToGroundOffset = {0, 0, 0};
 
-// Pulls workspace limits and gets offsets for wall welding
-static void SetWallOffsets(SamplingC3Options sampling_c3_options) {
-  double length = sampling_c3_options.workspace_limits[0][4];
-  double width = sampling_c3_options.workspace_limits[1][4] - sampling_c3_options.workspace_limits[1][3];
-
-  kLeftWallToGroundOffset[0] = -0.5 * length;
-  kLeftWallToGroundOffset[1] = 0.5 * width + 0.05; // account for width of wall
-  
-  kRightWallToGroundOffset[0] = -0.5 * length;
-  kRightWallToGroundOffset[1] = -0.5 * width - 0.05;
-
-  kFrontWallToGroundOffset[0] = -length - 0.05;
-} 
+/// Bin wall constants.
+static const Eigen::Vector4d kWallColor = {0.7, 0.7, 0.7, 1.0};
+static const drake::multibody::CoulombFriction<double> kWallFriction(0.5, 0.5);
+static const float kWallHeight = 0.015;
+static const float kWallWidth = 0.075;
+static const float kWallLengthX = 0.7;
+static const float kWallLengthY = 0.9;
+static const float kWallCenterX = 0.5;
+static const Eigen::Vector3d kGroundToLeftWallOffset = {
+  kWallCenterX, (kWallLengthY+kWallWidth)/2, kWallHeight/2};
+static const Eigen::Vector3d kGroundToRightWallOffset = {
+  kWallCenterX, -(kWallLengthY+kWallWidth)/2, kWallHeight/2};
+static const Eigen::Vector3d kGroundToFrontWallOffset = {
+  kWallCenterX+(kWallLengthX+kWallWidth)/2, 0, kWallHeight/2};
+static const Eigen::Vector3d kGroundToBackWallOffset = {
+  kWallCenterX-(kWallLengthX+kWallWidth)/2, 0, kWallHeight/2};
 
 /// Add the Franka to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param add_walls whether to add border walls to workspace
-/// @param sampling_c3_options if add_walls == true, must include to get workspace limits
+/// @param include_walls whether to add border walls to workspace
 /// @param include_ground_and_platform whether to include the ground and
 /// platform in the plant. If false, only the Franka and end effector will be
 /// added.
@@ -66,8 +65,27 @@ drake::multibody::ModelInstanceIndex AddFrankaToPlant(
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const bool& include_ee = true,
     const bool& include_ground_and_platform = true,
-    const bool& add_walls = false,
-    SamplingC3Options* sampling_c3_options = nullptr);
+    const bool& include_walls = false);
+
+/// Add bin walls to a given multibody plant and scene graph.
+/// @param plant a pointer to the MultibodyPlant
+/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
+/// @param include_back_wall whether to include the back wall; may be desired to
+/// exclude the back wall in the LCS model.
+void AddWallsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const bool& include_back_wall = true);
+
+/// Add a box to a given multibody plant.
+/// @param plant a pointer to the MultibodyPlant
+/// @param box_size the size of the box to add
+/// @param box_name the name of the box
+void AddBoxToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    const Eigen::Vector3d& box_size,
+    const std::string& box_name);
 
 /// Add an object to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
@@ -88,23 +106,21 @@ void AddLCSModelToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const std::string& object_model = "",
-    const bool& include_end_effector_orientation = false);
+    const bool& include_end_effector_orientation = false,
+    const bool& include_walls = false);
 
 /// Add LCS models to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param object_model the model of the object to add to the plant
 /// @param include_end_effector_orientation whether to include the end effector
-/// @param add_walls whether to add border walls to workspace
-/// @param sampling_c3_options if add_walls == true, must include to get workspace limits
-/// orientation as DOFs in the plant. True is currently unimplemented.
+/// @param include_walls whether to add border walls to workspace
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     std::vector<std::string> object_models = {},
     const bool& include_end_effector_orientation = false,
-    const bool& add_walls = false,
-    SamplingC3Options* sampling_c3_options = nullptr);
+    const bool& include_walls = false);
 
 
 }   // namespace dairlib

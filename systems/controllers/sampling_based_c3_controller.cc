@@ -667,9 +667,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (!crossed_cost_switching_threshold_) {
     double pose_diff = 0;
     for (int i = 0; i < controller_params_.num_objects; i++) {
-      pose_diff += (x_lcs_curr.segment(7 + 7*i ,2)-x_lcs_final_des.value().segment(7 + 7*i, 2)).norm();
+      pose_diff += (x_lcs_curr.segment(7 + 7*i ,2) -
+                    x_lcs_final_des.value().segment(7 + 7*i, 2)).norm();
     }
-    if (pose_diff < progress_params_.cost_switching_threshold_distance * controller_params_.num_objects) {
+    if (pose_diff < progress_params_.cost_switching_threshold_distance *
+        controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 
@@ -693,16 +695,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   std::vector<bool> object_on_target;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    double object_position_error =
-      (x_lcs_curr.segment(7 + 7*i, 2) - x_lcs_des.get_value().segment(7 + 7*i, 2)).norm();
+    double object_position_error = (
+      x_lcs_curr.segment(7 + 7*i, 2) - x_lcs_des.get_value().segment(7 + 7*i, 2)
+    ).norm();
     Eigen::Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7*i));
     Eigen::Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7*i));
 
     Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
     double object_angular_error = angle_axis_diff.angle();
     
-    object_on_target.push_back((object_position_error < goal_params_.position_success_threshold) &&
-        (object_angular_error < goal_params_.orientation_success_threshold));
+    object_on_target.push_back(
+      (object_position_error < goal_params_.position_success_threshold) &&
+      (object_angular_error < goal_params_.orientation_success_threshold));
   }
 
   std::vector<Eigen::VectorXd> candidate_states =
@@ -1330,7 +1334,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.mu, dt_, N_, sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.num_friction_directions_per_contact, sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
+      sampling_c3_options_.num_friction_directions_per_contact,
+      sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
       contact_model_);
 
     lcs_candidates.push_back(lcs_object_sample);
@@ -1345,10 +1350,12 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
       solvers::LCSFactory::LinearizePlantToLCS(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
-        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution,
+        sampling_c3_options_.mu_for_cost, dt_cost_,
+        N_ * sampling_c3_options_.lcs_dt_resolution,
         sampling_c3_options_.n_lambda_with_tangential_cost,
         sampling_c3_options_.num_friction_directions_per_contact_cost,
-        sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector_cost, contact_model_);
+        sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector_cost,
+        contact_model_);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 

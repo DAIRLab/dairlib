@@ -79,9 +79,9 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3Options sampling_c3_options = 
        drake::yaml::LoadYamlFile<SamplingC3Options>(controller_params.sampling_c3_options_file);
 
-  // Create a Franka-only plant.
+  // Create a Franka-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_franka(0.0);
-  AddFrankaToPlant(&plant_franka, nullptr, true, true, controller_params.include_walls, &sampling_c3_options);
+  AddFrankaToPlant(&plant_franka, nullptr, true, true, false);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
@@ -101,9 +101,10 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
     AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   std::vector<ModelInstanceIndex> object_indices_lcs = 
-	AddLCSModelsToPlant(&plant_lcs, &scene_graph, controller_params.object_models,
-                  controller_params.include_end_effector_orientation,
-                  controller_params.include_walls, &sampling_c3_options);
+	AddLCSModelsToPlant(
+        &plant_lcs, &scene_graph, controller_params.object_models,
+        controller_params.include_end_effector_orientation,
+        controller_params.include_walls);
   plant_lcs.Finalize();
 
 
@@ -242,17 +243,21 @@ int DoMain(int argc, char* argv[]) {
 		if (controller_params.include_walls) {
 			drake::geometry::GeometryId left_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
-						plant_lcs.GetBodyByName("left_wall"))[0];
+                    plant_lcs.GetBodyByName("left_wall"))[0];
 			drake::geometry::GeometryId right_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
-						plant_lcs.GetBodyByName("right_wall"))[0];
+                    plant_lcs.GetBodyByName("right_wall"))[0];
 			drake::geometry::GeometryId front_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
-						plant_lcs.GetBodyByName("front_wall"))[0];
+                    plant_lcs.GetBodyByName("front_wall"))[0];
+			drake::geometry::GeometryId back_wall_geoms =
+				plant_lcs.GetCollisionGeometriesForBody(
+                    plant_lcs.GetBodyByName("back_wall"))[0];
 
 			contact_geoms["LEFT_WALL"] = left_wall_geoms;
 			contact_geoms["RIGHT_WALL"] = right_wall_geoms;
 			contact_geoms["FRONT_WALL"] = front_wall_geoms;
+			contact_geoms["BACK_WALL"] = back_wall_geoms;
 		}
 
         std::vector<std::vector<GeometryId>> all_object_geoms;
@@ -264,21 +269,25 @@ int DoMain(int argc, char* argv[]) {
 			std::cout << "Body name: " << body_name << std::endl;
 			std::cout << "mesh_geoms: " << mesh_geoms << std::endl;
 			drake::geometry::GeometryId top_left_sphere_geoms =
-					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName(body_name))[10];
+                plant_lcs.GetCollisionGeometriesForBody(
+                        plant_lcs.GetBodyByName(body_name))[10];
 			drake::geometry::GeometryId top_right_sphere_geoms =
-					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName(body_name))[11];
+                plant_lcs.GetCollisionGeometriesForBody(
+                        plant_lcs.GetBodyByName(body_name))[11];
 			drake::geometry::GeometryId bottom_sphere_geoms =
-					plant_lcs.GetCollisionGeometriesForBody(
-							plant_lcs.GetBodyByName(body_name))[12];
+                plant_lcs.GetCollisionGeometriesForBody(
+                        plant_lcs.GetBodyByName(body_name))[12];
 
 			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
 			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
 			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
 			
 
-			if (controller_params.include_walls) {	
+			if (controller_params.include_walls) {
+                // TODO: contact_geoms["OBJECT_MESH_{i}"] does not exist because
+                // there is no access to the full object mesh anymore, only the
+                // convex decomposition.  This needs to be resolved for
+                // including the bin walls in the controller's contact pairs.
 				wall_object_contact_pairs.push_back(SortedPair(
 					contact_geoms["LEFT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));				
 				wall_object_contact_pairs.push_back(SortedPair(
@@ -291,27 +300,25 @@ int DoMain(int argc, char* argv[]) {
 				plant_lcs.GetBodyByName(body_name));
 			std::vector<GeometryId> geom_ids(all_geoms.begin(), all_geoms.begin() + 10); // 10 convex pieces
 			for (int j = 0; j < geom_ids.size(); j++) {
-					ee_contact_pairs.push_back(
-							SortedPair(contact_geoms["EE"], geom_ids[j]));
+                ee_contact_pairs.push_back(
+                    SortedPair(contact_geoms["EE"], geom_ids[j]));
 			}
 			all_object_geoms.push_back(geom_ids);
 
 			ground_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+                contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 			ground_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+                contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 			ground_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
+                contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
 
 		std::cout << "Before object-object contacts" << std::endl;
-		// Object-object contact pairs (excluding end effector), each pair of convex pieces for each pair of objects
+		// Object-object contact pairs (excluding end effector), each pair of
+        // convex pieces for each pair of objects
 		for (int i = 0; i < controller_params.num_objects; i++) {
 			for (int j = 0; j < controller_params.num_objects; j++) {
 				if (j >= i) break;
-
-				std::string key1 = "OBJECT_MESH_" + std::to_string(i);
-				std::string key2 = "OBJECT_MESH_" + std::to_string(j);
 
                 std::vector<GeometryId> object_1_geoms = all_object_geoms.at(i);
                 std::vector<GeometryId> object_2_geoms = all_object_geoms.at(j);
@@ -340,23 +347,27 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(wall_object_contact_pairs);
   for (int i = 0; i < contact_pairs.size(); i++) {
     std::cout << "Contact pairs " << i << ": " << contact_pairs[i].size() << std::endl;
-    }
+  }
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
-	
-	assert(lcm_channel_params.object_state_channels.size() == controller_params.num_objects);
-	std::vector<LcmSubscriberSystem*> object_state_subs;
-	for (int i = 0; i < controller_params.num_objects; ++i) {
-			object_state_subs.push_back(builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-							lcm_channel_params.object_state_channels.at(i), &lcm)));
-	}
+
+  assert(lcm_channel_params.object_state_channels.size() ==
+         controller_params.num_objects);
+  std::vector<LcmSubscriberSystem*> object_state_subs;
+  for (int i = 0; i < controller_params.num_objects; ++i) {
+    object_state_subs.push_back(
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+            lcm_channel_params.object_state_channels.at(i), &lcm)));
+  }
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
   std::vector<systems::ObjectStateReceiver*> object_state_receivers;
   for (int i = 0; i < object_indices.size(); ++i) {
-    object_state_receivers.push_back(builder.AddSystem<systems::ObjectStateReceiver>(plant_lcs, object_indices_lcs.at(i)));
+    object_state_receivers.push_back(
+        builder.AddSystem<systems::ObjectStateReceiver>(
+            plant_lcs, object_indices_lcs.at(i)));
   }
 
   auto radio_sub =
@@ -370,9 +381,9 @@ int DoMain(int argc, char* argv[]) {
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation,
 		  controller_params.base_names
-				);
+    );
 
-	std::cout << "Before target generator" << std::endl;
+  std::cout << "Before target generator" << std::endl;
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
@@ -395,11 +406,11 @@ int DoMain(int argc, char* argv[]) {
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object
   // velocities (6).
-  std::vector<int> input_sizes = {3}; 											// ee position
+  std::vector<int> input_sizes = {3}; 						  // ee position
 	for (int i = 0; i < controller_params.num_objects; i++) { // object pose
 		input_sizes.push_back(7);
 	} 
-	input_sizes.push_back(3); 																// ee velocity
+	input_sizes.push_back(3); 								  // ee velocity
 	for (int i = 0; i < controller_params.num_objects; i++) { // object velocities
 		input_sizes.push_back(6);
 	} 

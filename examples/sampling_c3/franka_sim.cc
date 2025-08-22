@@ -78,8 +78,8 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-  ModelInstanceIndex franka_index = AddFrankaToPlant(&plant, &scene_graph, true, true, 
-      controller_params.include_walls, &sampling_c3_options);
+  ModelInstanceIndex franka_index = AddFrankaToPlant(
+    &plant, &scene_graph, true, true, controller_params.include_walls);
 
   int num_objects = sim_params.object_models.size();
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(

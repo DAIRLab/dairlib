@@ -1,5 +1,7 @@
 #pragma once
 
+#include <numeric>
+
 #include "common/file_utils.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
@@ -45,11 +47,14 @@ struct SamplingC3GoalParams {
   double angle_err_to_vel_factor;
 
   /// Initial goal (and only goal for fixed goal mode).
-  Eigen::VectorXd fixed_target_position;
-  Eigen::VectorXd fixed_target_orientation;
+  Eigen::Vector3d fixed_target_position;
+  Eigen::Vector4d fixed_target_orientation;
 
-  std::vector<Eigen::VectorXd> fixed_target_positions;
-  std::vector<Eigen::VectorXd> fixed_target_orientations;
+  std::vector<Eigen::Vector3d> fixed_target_positions;
+  std::vector<Eigen::Vector4d> fixed_target_orientations;
+
+  std::vector<std::pair<double, double>> sampling_area_y_limits;
+  std::vector<int> default_object_index_to_sampling_area_index_map;
 
   /// Random-specific parameters.
   Eigen::VectorXd random_goal_x_limits;
@@ -81,5 +86,30 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(random_goal_gen_max_attempts));
     a->Visit(DRAKE_NVP(pairwise_goal_distance));
     a->Visit(DRAKE_NVP(only_use_xy_position));
+    ComputeSamplingAreaYLimits();
+    SetDefaultObjectIndexToSamplingAreaIndexMap();
+  }
+
+  private:
+    // Compute y limits for each sampling area of each object
+    // Note: all sampling areas have the same x limits
+    void ComputeSamplingAreaYLimits() {
+      int num_objects = fixed_target_positions.size();
+      double step = (random_goal_y_limits[1] - random_goal_y_limits[0]) / num_objects;
+      for (int i = 0; i < num_objects; ++i) {
+          sampling_area_y_limits.push_back(
+            std::make_pair(random_goal_y_limits[0] + i * step,
+            random_goal_y_limits[0] + (i + 1) * step));
+      }
+    }
+
+    // By default, object index ith will be in sampling area ith
+    void SetDefaultObjectIndexToSamplingAreaIndexMap() {
+      int num_objects = fixed_target_positions.size();
+      default_object_index_to_sampling_area_index_map.resize(num_objects);
+      std::iota(
+        default_object_index_to_sampling_area_index_map.begin(),
+        default_object_index_to_sampling_area_index_map.end(), 0
+      );
   }
 };

@@ -1,6 +1,8 @@
 #include "goal_generator.h"
 
 #include <math.h>
+#include <cmath>
+#include <numeric>
 #include <drake/common/yaml/yaml_io.h>
 
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
@@ -95,6 +97,9 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
   target_final_object_positions_ = goal_params_.fixed_target_positions;
   target_final_object_orientations_ = goal_params_.fixed_target_orientations;
 
+  // Initialize the object index to sampling area index map
+  object_index_to_sampling_area_index_map_ = goal_params_.default_object_index_to_sampling_area_index_map;
+
   reached_goal_ = std::vector<bool>(object_indices.size(), false);
 }
 
@@ -151,12 +156,23 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
     all_reached = all_reached && reached_goal_[i];
   }
   if (all_reached) {
+    AssignObjectIndexToGoalSamplingArea();
+
+    // Collect object indices ordered by their assigned sampling areas (left → right)
+    std::vector<int> object_indices_to_process(reached_goal_.size());
     for (int i = 0; i < reached_goal_.size(); i++) {
+      int area_index = object_index_to_sampling_area_index_map_[i];
+      object_indices_to_process[area_index] = i;
+    }
+
+    for (auto i : object_indices_to_process) {
         OnGoalReached(i);
         reached_goal_[i] = false;
     }
-  }
 
+    // Reset the datum position for the next goal generation
+    datum_position_ = Eigen::VectorXd::Constant(3, std::numeric_limits<double>::quiet_NaN());
+  }
 
   // Apply lookahead.
   std::tie(target_obj_orientation, target_obj_position) =
@@ -218,46 +234,69 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
   target->SetFromVector(target_final_obj_state);
 }
 
-// Randomly generates final position within the specified goal limits in x/y/r.
-void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) const {
-  double x, y = 0;
+// Assigns the goal sampling area to each object such that the assignment is
+// different from the previous assignment for all objects.
+// For example, if there are 3 areas, and the current assignment is [0, 1, 2],
+// then the new assignment can be [1, 2, 0] or [2, 0, 1].
+void SamplingC3GoalGenerator::AssignObjectIndexToGoalSamplingArea() const {
+  std::vector<int> previous_map = object_index_to_sampling_area_index_map_;
+  int num_areas = goal_params_.sampling_area_y_limits.size();
 
+  // Fill with 0..num_areas-1
+  std::vector<int> new_map(num_areas);
+  std::iota(new_map.begin(), new_map.end(), 0);
+
+  std::mt19937 rng{std::random_device{}()};
+
+  // Keep shuffling until we get a derangement
+  do {
+    std::shuffle(new_map.begin(), new_map.end(), rng);
+  } while ([&] {
+    for (int i = 0; i < num_areas; ++i) {
+      if (new_map[i] == previous_map[i]) return true; // same at position i → not valid
+    }
+    return false;
+  }());
   
+  object_index_to_sampling_area_index_map_ = new_map;
+}
+
+void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) const {
+  double x = 0, y = 0;
+  double x_lower_limit = goal_params_.random_goal_x_limits[0];
+  double x_upper_limit = goal_params_.random_goal_x_limits[1];
+  double y_lower_limit = goal_params_.sampling_area_y_limits[
+    object_index_to_sampling_area_index_map_[index]].first;
+  double y_upper_limit = goal_params_.sampling_area_y_limits[
+    object_index_to_sampling_area_index_map_[index]].second;
+  double angle_limit = std::abs(std::asin((
+    x_upper_limit - x_lower_limit) / goal_params_.pairwise_goal_distance));
 
   for (int i = 0; i < goal_params_.random_goal_gen_max_attempts; i++) {
-    std::cout << "goal_gen_attempt" << i << std::endl;
-    // while ((sqrt(x * x + y * y) > goal_params_.random_goal_radius_limits[1]) ||
-    // (sqrt(x * x + y * y) < goal_params_.random_goal_radius_limits[0]) ) {
-    x = RandomUniform(goal_params_.random_goal_x_limits[0],
-                      goal_params_.random_goal_x_limits[1]);
-    y = RandomUniform(goal_params_.random_goal_y_limits[0],
-                      goal_params_.random_goal_y_limits[1]);
-    //}
-    std::vector<Eigen::VectorXd> last_target_positions = target_final_object_positions_;
-
-    bool too_close = false;
-    for (int j = 0; j < target_final_object_positions_.size(); j++) {
-      if (index == 0 && j > index) {
-        break;
-      }
-      if (j >= index) { // ignore old goals
-        break;
-      }
-      double x_diff = target_final_object_positions_[j][0] - x;
-      double y_diff = target_final_object_positions_[j][1] - y;
-      if (sqrt(x_diff * x_diff + y_diff * y_diff) < goal_params_.pairwise_goal_distance) {
-        too_close = true;
-        break;
-      }
+    if (datum_position_.hasNaN()){
+      x = RandomUniform(x_lower_limit, x_upper_limit);
+      y = y_lower_limit;
+      std::cout << "Object: " << index << " Sampled position at " << x << ", " << y << std::endl;
+      break;
     }
-    
-    // if (index == 0) { // for first object set random goal 
-    //   too_close = false;
-    // }
-    if (!too_close) break;
-  }
+    double random_angle = RandomUniform(-angle_limit, angle_limit);
+    x = datum_position_[0] + goal_params_.pairwise_goal_distance * std::sin(random_angle);
+    y = datum_position_[1] + goal_params_.pairwise_goal_distance * std::cos(random_angle);
 
+    bool is_sampled_goal_in_designated_area = 
+      x >= x_lower_limit && 
+      x <= x_upper_limit &&
+      y >= y_lower_limit &&
+      y <= y_upper_limit;
+
+    if (is_sampled_goal_in_designated_area){
+      std::cout << "Object: " << index << " Found suitable goal after " << 
+        i << " attempts" << " at " << x << ", " << y << std::endl;
+      break;
+    }
+  }
   target_final_object_positions_.at(index) << x, y, goal_params_.resting_object_heights.at(index);
+  datum_position_ << x, y, goal_params_.resting_object_heights.at(index);
 }
 
 // Randomly generates final orientation from the set of valid orientations plus

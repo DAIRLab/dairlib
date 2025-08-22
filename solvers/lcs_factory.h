@@ -79,12 +79,6 @@ class LCSFactory {
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
 
-  static bool CheckIfPlanarContact(int i, const vector<int> resolve_as_planar_contacts_list = {});
-
-  static std::pair<int, vector<int>>ProcessPlanarInformation(
-        const vector<int> resolve_as_planar_contacts_list,
-        const std::vector<int>& resolve_contacts_to_list,int num_friction_directions);
-
   /// Optionally preprocess contact pairs to select the closest contacts
   /// @param plant The MultibodyPlant
   /// @param context The plant context

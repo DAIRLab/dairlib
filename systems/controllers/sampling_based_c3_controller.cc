@@ -117,12 +117,6 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
-
-  auto [num_planar_contacts, num_direction_contacts_vector] =
-    LCSFactory::ProcessPlanarInformation(sampling_c3_options_.resolve_as_planar_contacts_list,
-      sampling_c3_options_.resolve_contacts_to_lists[sampling_c3_options_.num_contacts_index],
-      sampling_c3_options_.num_friction_directions);
-
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =

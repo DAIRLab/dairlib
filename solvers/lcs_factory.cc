@@ -1,7 +1,6 @@
 #include "solvers/lcs_factory.h"
 
 #include <iostream>
-#include <utility>
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -43,13 +42,6 @@ LCS LCSFactory::LinearizePlantToLCS(
   int n_u = plant_ad.num_actuators();
 
   int n_contacts = contact_geoms.size();
-
- auto [num_planar_contacts, direction_counts_per_contact] =
-   ProcessPlanarInformation(resolve_as_planar_contacts_list,
-     resolve_contacts_to_list, num_friction_directions);
-
-  int n_lambda_with_tangential =
-    2 * num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
@@ -299,11 +291,6 @@ LCSFactory::ComputeContactJacobian(
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();
-
-  auto [num_planar_contacts, direction_counts_per_contact] =
-    ProcessPlanarInformation(resolve_as_planar_contacts_list, resolve_contacts_to_list, num_friction_directions);
-
-  int n_lambda_with_tangential = 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
@@ -564,30 +551,6 @@ void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
             << ") with phi = " << phi_i << " between world points ["
             << p_world_contact_a.transpose() << "], ["
             << p_world_contact_b.transpose() << "]" << std::endl;
-}
-
-bool LCSFactory::CheckIfPlanarContact(int i, const vector<int> resolve_as_planar_contacts_list) {
-  if (resolve_as_planar_contacts_list[i]) {
-    return true;
-  }else {
-    return false;
-  }
-}
-
-std::pair<int, vector<int>> LCSFactory::ProcessPlanarInformation(
-  const vector<int> resolve_as_planar_contacts_list,
-  const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
-
-  int num_planar_contacts = 0;
-  int planar_contact = 1;
-  vector<int> direction_counts_per_contact;
-  for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
-      for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
-        num_planar_contacts += (CheckIfPlanarContact(i, resolve_as_planar_contacts_list) ? 1 : 0);
-        direction_counts_per_contact.push_back(CheckIfPlanarContact(i, resolve_as_planar_contacts_list) ? planar_contact : num_friction_directions);
-      }
-  }
-  return std::pair<int, vector<int>>(num_planar_contacts, direction_counts_per_contact);
 }
 
 }  // namespace solvers

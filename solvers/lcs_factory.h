@@ -53,16 +53,21 @@ class LCSFactory {
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          contact_geoms,
-      int num_friction_directions, const std::vector<double>& mu, double dt,
-      int N, ContactModel = ContactModel::kStewartAndTrinkle);
+           contact_geoms,
+      const std::vector<double>& mu, double dt,
+      int N, int n_lambda_with_tangential,
+      const std::vector<int>& num_friction_directions_per_contact,
+      const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
+      ContactModel = ContactModel::kStewartAndTrinkle);
 
   static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
-      int num_friction_directions, const std::vector<double>& mu,
+      const std::vector<double>& mu, int n_lambda_with_tangential,
+      const std::vector<int>& num_friction_directions_per_contact,
+      const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
       ContactModel = ContactModel::kStewartAndTrinkle);
 
   /// Create an LCS by fixing some modes from another LCS

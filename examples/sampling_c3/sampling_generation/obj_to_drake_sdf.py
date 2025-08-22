@@ -1,6 +1,6 @@
 """Convex decomposition for sim since Drake cannot handle collisions with 
 non-convex meshes without using the convex hull in order to avoid mismatched 
-geometry. """
+geometry."""
 
 import os
 import trimesh
@@ -34,10 +34,13 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     convex_dicts = trimesh.decomposition.convex_decomposition(mesh, **vhacd_kwargs)
     convex_meshes = [trimesh.Trimesh(**d) for d in convex_dicts]
 
-    # Export convex hulls as separate OBJs
+    # Export convex hulls (and original file) as separate OBJs
+    mesh.vertex_normals  # include this call to ensure vn lines in obj
+    mesh.export(obj_file)
     convex_paths = []
     for i, m in enumerate(convex_meshes):
         out_path = os.path.join(output_dir, f"{obj_name}_convex_{i}.obj")
+        m.vertex_normals  # include this call to ensure vn lines in obj
         m.export(out_path)
         convex_paths.append(out_path)
 

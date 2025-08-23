@@ -37,14 +37,14 @@ use_predicted_x0_repos: true
 use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
 ### Anything demo specific parameters:
-# Contact pairs include a number of (ee-ground, ee-object, object-ground, object-object, object-wall).
-mu_per_pair_type: [0.823, 0.42, 0.46, 0.3, 0.375]     # match URDFs with (2mu1*mu2)/(mu1+mu2)
+# Contact pairs include a number of (ee-ground, ee-object, object-ground, object-object (N choose 2 sub-lists), object-wall).
+mu_per_pair_type: [0.823, 0.42, 0.46, 0.3, 0.3, 0.3, 0.375]     # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
-resolve_contacts_to_lists: [[0, 1, 12, 6, 0]]
+resolve_contacts_to_lists: [[0, 1, 12, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]]
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
 #   0 → keep original friction directions (use all num_friction_directions)
 #   1 → treat as planar contact (reduce to 2 friction directions per contact)
-resolve_as_planar_contacts_list: [0, 0, 0, 0, 0]
+resolve_as_planar_contacts_list: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0

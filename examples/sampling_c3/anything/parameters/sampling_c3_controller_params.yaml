@@ -20,6 +20,5 @@ base_name: lollipop
 base_names: [I_centered, C_centered, R_shape, A_shape]
 
 include_end_effector_orientation: false
-include_walls: false
 
 control_loop_delay_ms: 0

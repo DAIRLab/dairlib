@@ -182,7 +182,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
   std::cout << "Set solver options" << std::endl;
 
-  if (!controller_params_.include_walls) {
+  if (!sampling_c3_options_.include_walls) {
     // Set actor bounds.
     for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
@@ -714,7 +714,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, controller_params_.include_walls,
+                         total_area_per_object_, sampling_c3_options_.include_walls,
                         object_on_target);
 
   // Add the previous best repositioning target to the candidate states at the
@@ -787,7 +787,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
     } // Unknown projection types are rejected in the initialization.
 
 
-    if (!controller_params_.include_walls) {
+    if (!sampling_c3_options_.include_walls) {
       // Set actor bounds.
       for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
         Eigen::RowVectorXd A = VectorXd::Zero(n_x_);

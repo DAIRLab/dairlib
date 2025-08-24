@@ -95,7 +95,6 @@ int DoMain(int argc, char* argv[]) {
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-	std::cout << std::endl;
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
@@ -241,7 +240,6 @@ int DoMain(int argc, char* argv[]) {
   }
   else if (FLAGS_demo_name == "anything") {
 		if (sampling_c3_options.include_walls) {
-		    std::cout << "Getting collision geometries for walls if needed." << std::endl;
 			drake::geometry::GeometryId left_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
                     plant_lcs.GetBodyByName("left_wall"))[0];
@@ -261,7 +259,6 @@ int DoMain(int argc, char* argv[]) {
 			contact_geoms["BACK_WALL"] = back_wall_geoms;
 		}
 
-        std::cout << "Getting collision geometries for objects." << std::endl;
         std::vector<std::vector<GeometryId>> all_object_geoms;
 		for (int i = 0; i < controller_params.base_names.size(); i++) { // exclude ee/ground
 			std::string body_name = controller_params.base_names.at(i);
@@ -289,7 +286,6 @@ int DoMain(int argc, char* argv[]) {
                 std::vector<drake::geometry::GeometryId>(object_geoms.begin(), object_geoms.end() - 3);
 
 			if (sampling_c3_options.include_walls) {
-                std::cout << "Getting wall-object contacts." << std::endl;
                 std::vector<GeometryId> wall_geoms{
                     contact_geoms["LEFT_WALL"],
                     contact_geoms["RIGHT_WALL"],
@@ -321,7 +317,6 @@ int DoMain(int argc, char* argv[]) {
                 contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
 
-		std::cout << "Getting object-object contacts." << std::endl;
 		// Object-object contact pairs (excluding end effector), each pair of
         // convex pieces for each pair of objects
 		for (int i = 0; i + 1 < controller_params.num_objects; i++) {
@@ -351,9 +346,6 @@ int DoMain(int argc, char* argv[]) {
   }
   for (const auto& wall_obj_pair : wall_object_contact_pairs) {
     contact_pairs.push_back(wall_obj_pair);
-  }
-  for (int i = 0; i < contact_pairs.size(); i++) {
-    std::cout << "Contact pairs " << i << ": " << contact_pairs[i].size() << std::endl;
   }
 
   // Piece together the diagram.

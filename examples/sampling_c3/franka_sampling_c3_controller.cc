@@ -104,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
 	AddLCSModelsToPlant(
         &plant_lcs, &scene_graph, controller_params.object_models,
         controller_params.include_end_effector_orientation,
-        controller_params.include_walls);
+        sampling_c3_options.include_walls);
   plant_lcs.Finalize();
 
 
@@ -240,7 +240,7 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
-		if (controller_params.include_walls) {
+		if (sampling_c3_options.include_walls) {
 		    std::cout << "Getting collision geometries for walls if needed." << std::endl;
 			drake::geometry::GeometryId left_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
@@ -288,22 +288,23 @@ int DoMain(int argc, char* argv[]) {
             const std::vector<drake::geometry::GeometryId> object_geoms_without_spheres = 
                 std::vector<drake::geometry::GeometryId>(object_geoms.begin(), object_geoms.end() - 3);
 
-			if (controller_params.include_walls) {
+			if (sampling_c3_options.include_walls) {
                 std::cout << "Getting wall-object contacts." << std::endl;
                 std::vector<GeometryId> wall_geoms{
                     contact_geoms["LEFT_WALL"],
                     contact_geoms["RIGHT_WALL"],
                     contact_geoms["FRONT_WALL"],
                 };
-                for (int i = 0; i < controller_params.num_objects; i++) {
-                    std::vector<SortedPair<GeometryId>> convex_piece_pairs;
-                    for (const auto& wall_geom : wall_geoms){
-                        for (const auto& object_geom : object_geoms_without_spheres){
-                            convex_piece_pairs.emplace_back(wall_geom, object_geom);
-                        }
-                    }
-                    wall_object_contact_pairs.push_back(std::move(convex_piece_pairs));
+                if (sampling_c3_options.include_back_wall) {
+                    wall_geoms.push_back(contact_geoms["BACK_WALL"]);
                 }
+                std::vector<SortedPair<GeometryId>> convex_piece_pairs;
+                for (const auto& wall_geom : wall_geoms){
+                    for (const auto& object_geom : object_geoms_without_spheres){
+                        convex_piece_pairs.emplace_back(wall_geom, object_geom);
+                    }
+                }
+                wall_object_contact_pairs.push_back(std::move(convex_piece_pairs));
 			}
             
 			for (int j = 0; j < object_geoms.size() - 3; j++) {

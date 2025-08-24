@@ -1,6 +1,7 @@
 #pragma once
 #include <numeric>
 #include <iostream>
+#include <stdexcept>
 
 #include "solvers/c3_options.h"
 
@@ -51,6 +52,9 @@ struct SamplingC3Options : C3Options {
 
   std::vector<double> Kp_for_ee_pd_rollout;
   std::vector<double> Kd_for_ee_pd_rollout;
+
+  bool include_walls;
+  bool include_back_wall;
 
   /// Cost parameters for pose tracking.
   std::vector<std::vector<double>> g_gamma_list;
@@ -137,6 +141,9 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(Kp_for_ee_pd_rollout));
     a->Visit(DRAKE_NVP(Kd_for_ee_pd_rollout));
 
+    a->Visit(DRAKE_NVP(include_walls));
+    a->Visit(DRAKE_NVP(include_back_wall));
+
     a->Visit(DRAKE_NVP(g_gamma_list));
     a->Visit(DRAKE_NVP(g_lambda_n_list));
     a->Visit(DRAKE_NVP(g_lambda_t_list));
@@ -191,6 +198,14 @@ struct SamplingC3Options : C3Options {
     resolve_contacts_to = resolve_contacts_to_lists[num_contacts_index];
     resolve_contacts_to_for_cost =
       resolve_contacts_to_lists[num_contacts_index_for_cost];
+
+    if (!include_walls){
+      if (resolve_contacts_to.back() != 0 || resolve_contacts_to_for_cost.back() != 0){
+        throw std::runtime_error(
+          "Walls are not included, the number of contacts between object and wall must be 0.");
+      }
+    }
+
     num_contacts = std::accumulate(
       resolve_contacts_to.begin(), resolve_contacts_to.end(), 0);
     num_contacts_for_cost = std::accumulate(

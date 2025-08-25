@@ -239,6 +239,9 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
 // For example, if there are 3 areas, and the current assignment is [0, 1, 2],
 // then the new assignment can be [1, 2, 0] or [2, 0, 1].
 void SamplingC3GoalGenerator::AssignObjectIndexToGoalSamplingArea() const {
+  if (object_index_to_sampling_area_index_map_.size() == 1) {
+    return;
+  }
   std::vector<int> previous_map = object_index_to_sampling_area_index_map_;
   int num_areas = goal_params_.sampling_area_y_limits.size();
 
@@ -275,7 +278,16 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
   for (int i = 0; i < goal_params_.random_goal_gen_max_attempts; i++) {
     if (datum_position_.hasNaN()){
       x = RandomUniform(x_lower_limit, x_upper_limit);
-      y = y_lower_limit;
+
+      // For 1–2 objects, the leftmost goal doesn’t need to be placed on the left edge.
+      // For 3+ objects, the leftmost goal must be on the left edge to ensure enough
+      // space for the remaining goals.
+      if (object_index_to_sampling_area_index_map_.size() <= 2) {
+        y = RandomUniform(y_lower_limit, y_upper_limit);
+      } else {
+        y = y_lower_limit;
+      }
+
       std::cout << "Object: " << index << " Sampled position at " << x << ", " << y << std::endl;
       break;
     }

@@ -1644,15 +1644,12 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   }
   std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_pos;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.ang_error_sample_retention);
+    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.pos_error_sample_retention);
   }
   MatrixXd retained_samples =
     MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   VectorXd retained_costs =
     -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
-
-  // std::cout << "N_sample_buffer_: " << sampling_params_.N_sample_buffer << std::endl;
-  // std::cout << "satisfy_rot size: " << mask_satisfies_rot.at(0).size() << std::endl;
 
   // Keep buffer if none of objects moved
   int retained_count = 0;

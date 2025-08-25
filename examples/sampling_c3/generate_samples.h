@@ -135,6 +135,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options, 
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,

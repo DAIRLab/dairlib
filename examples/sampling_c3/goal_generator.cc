@@ -248,16 +248,17 @@ void SamplingC3GoalGenerator::AssignObjectIndexToGoalSamplingArea() const {
 
   std::mt19937 rng{std::random_device{}()};
 
-  // Keep shuffling until we get a derangement
-  do {
-    std::shuffle(new_map.begin(), new_map.end(), rng);
-  } while ([&] {
-    for (int i = 0; i < num_areas; ++i) {
-      if (new_map[i] == previous_map[i]) return true; // same at position i → not valid
-    }
-    return false;
-  }());
-  
+  if (goal_params_.fixed_target_positions.size() != 1) {
+    // Keep shuffling until we get a derangement
+    do {
+      std::shuffle(new_map.begin(), new_map.end(), rng);
+    } while ([&] {
+      for (int i = 0; i < num_areas; ++i) {
+        if (new_map[i] == previous_map[i]) return true; // same at position i → not valid
+      }
+      return false;
+    }());
+  }
   object_index_to_sampling_area_index_map_ = new_map;
 }
 
@@ -270,9 +271,16 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
   double y_upper_limit = goal_params_.sampling_area_y_limits[
     object_index_to_sampling_area_index_map_[index]].second;
   double angle_limit = std::abs(std::asin((
-    x_upper_limit - x_lower_limit) / goal_params_.pairwise_goal_distance));
+    x_upper_limit - x_lower_limit) / goal_params_.pairwise_goal_distance));   
+
+  
 
   for (int i = 0; i < goal_params_.random_goal_gen_max_attempts; i++) {
+    if (goal_params_.fixed_target_positions.size() == 1) {
+      x = RandomUniform(x_lower_limit, x_upper_limit);
+      y = RandomUniform(y_lower_limit, y_upper_limit);
+      break;
+    }
     if (datum_position_.hasNaN()){
       x = RandomUniform(x_lower_limit, x_upper_limit);
       y = y_lower_limit;

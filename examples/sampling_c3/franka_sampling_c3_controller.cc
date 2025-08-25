@@ -282,19 +282,6 @@ int DoMain(int argc, char* argv[]) {
 			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
 			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
 			
-
-			if (controller_params.include_walls) {
-                // TODO: contact_geoms["OBJECT_MESH_{i}"] does not exist because
-                // there is no access to the full object mesh anymore, only the
-                // convex decomposition.  This needs to be resolved for
-                // including the bin walls in the controller's contact pairs.
-				wall_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["LEFT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));				
-				wall_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["RIGHT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));					
-				wall_object_contact_pairs.push_back(SortedPair(
-					contact_geoms["FRONT_WALL"], contact_geoms["OBJECT_MESH_" + std::to_string(i)]));						
-			}
             
 			std::vector<GeometryId> all_geoms = plant_lcs.GetCollisionGeometriesForBody(
 				plant_lcs.GetBodyByName(body_name));
@@ -312,6 +299,21 @@ int DoMain(int argc, char* argv[]) {
 			ground_object_contact_pairs.push_back(SortedPair(
                 contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
+
+        if (controller_params.include_walls) {
+            // TODO: contact_geoms["OBJECT_MESH_{i}"] does not exist because
+            // there is no access to the full object mesh anymore, only the
+            // convex decomposition.  This needs to be resolved for
+            // including the bin walls in the controller's contact pairs.
+
+            for (int i = 0; i < all_object_geoms.size(); i++) {
+                for (int j = 0; j < all_object_geoms.at(i).size(); j++) {
+                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["LEFT_WALL"], all_object_geoms.at(i).at(j)));
+                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["RIGHT_WALL"], all_object_geoms.at(i).at(j)));
+                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["FRONT_WALL"], all_object_geoms.at(i).at(j)));
+                }
+            } 				
+        }
 
 		std::cout << "Before object-object contacts" << std::endl;
 		// Object-object contact pairs (excluding end effector), each pair of

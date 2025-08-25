@@ -74,6 +74,7 @@ struct SamplingParams {
   bool ee_z_close;
   bool gen_planar_samples;
   double c3_min_clearance;
+  bool sample_on_wall;
 
 
   template <typename Archive>
@@ -104,6 +105,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(c3_min_clearance));
     a->Visit(DRAKE_NVP(ee_z_close));
     a->Visit(DRAKE_NVP(gen_planar_samples));
-
+    a->Visit(DRAKE_NVP(sample_on_wall));
   }
 };

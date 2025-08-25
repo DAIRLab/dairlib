@@ -142,7 +142,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       do {
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
-          contact_geoms, sampling_params, query_object, faces_per_object,
+          contact_geoms, sampling_params, sampling_c3_options, query_object, faces_per_object,
           face_bins_per_object, total_area_per_object, include_walls, object_on_target);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
@@ -512,6 +512,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options,
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
@@ -624,8 +625,28 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         
 
         Eigen::Vector3d projected_sample_point = sample_point + buffer_distance * transformed_face.normal;
+
         if (sampling_params.gen_planar_samples) {
-          projected_sample_point[2] = z_height;
+
+          if (include_walls && sampling_params.sample_on_wall) { // set z_height of sample to be higher, float above wall
+            double x_min = sampling_c3_options.workspace_limits[0][3];
+            double x_max = sampling_c3_options.workspace_limits[0][4];
+            double y_min = sampling_c3_options.workspace_limits[1][3];
+            double y_max = sampling_c3_options.workspace_limits[1][4];
+
+            // if ee is close to wall, raise z_height
+            if ((projected_sample_point[0] <= x_min + 0.03 && projected_sample_point[0] >= x_min - sampling_c3_options.workspace_margins) || 
+                (projected_sample_point[0] >= x_max - 0.03 && projected_sample_point[0] <= x_max + sampling_c3_options.workspace_margins) || 
+                (projected_sample_point[1] <= y_min + 0.03 && projected_sample_point[1] >= y_min - sampling_c3_options.workspace_margins) || 
+                (projected_sample_point[1] >= y_max - 0.03 && projected_sample_point[1] <= y_max + sampling_c3_options.workspace_margins)) {
+              projected_sample_point[2] = z_height + 0.01;
+            } else {
+              projected_sample_point[2] = z_height;
+            }
+          } else {
+            projected_sample_point[2] = z_height;
+          }
+
         } else {
           if (projected_sample_point[2] < -0.008) { // require ee radius clearance
             projected_sample_point[2] = -0.008;
@@ -649,8 +670,13 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         //     std::string name = query_object.inspector().GetName(id);
         //     std::cout << "Geom: " << i << ", " << name << std::endl;
         // }
-        if (include_walls) {
-          for (int i = results.size()-3; i < results.size(); i++) {
+
+        // Detect samples too close to wall
+        bool include_back_wall = true;
+        if (include_walls && !sampling_params.sample_on_wall) {
+          int offset = (include_back_wall) ? 4 : 3;
+
+          for (int i = results.size()-offset; i < results.size(); i++) {
               if (results[i].distance <= sampling_params.sample_projection_clearance) {
                 in_collision = true;
                 break;
@@ -662,7 +688,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
             //std::cout << results[2 + 4*i].distance << std::endl;
             // Only compare with body_volume
 
-            for (int j = 2 + 13*i; j < 12 + 13*i; j++) { // Check each convex piece
+            for (int j = 2 + 13*i; j < 12 + 13*i; j++) { // Check each convex piece, assumes 10 pieces/object
               if (results[j].distance <= sampling_params.sample_projection_clearance) {
                 in_collision = true;
                 break;

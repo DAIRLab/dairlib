@@ -60,6 +60,11 @@ group "drivers" {
         exec = "bazel-bin/franka-driver/franka_driver_v5 --robot_ip_address=172.16.0.2 --control_mode=torque";
         host = "drake_franka_driver";
     }
+    cmd "franka_status_only" {
+        exec = "bazel-bin/franka-driver/franka_driver_v5 --robot_ip_address=172.16.0.2 --control_mode=status_only";
+        host = "drake_franka_driver";
+    }
+
 }
 
 

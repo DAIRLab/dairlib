@@ -140,21 +140,21 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
   auto fingertip_0_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_0_target", controller_params.Kp_fingertip_0,
+          "fingertip_0_position_target", controller_params.Kp_fingertip_0,
           controller_params.Kd_fingertip_0, controller_params.W_fingertip_0,
           plant, plant);
   fingertip_0_position_tracking_data->AddPointToTrack(
       controller_params.fingertip_0_name);
   auto fingertip_120_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_120_target", controller_params.Kp_fingertip_120,
+          "fingertip_120_position_target", controller_params.Kp_fingertip_120,
           controller_params.Kd_fingertip_120, controller_params.W_fingertip_120,
           plant, plant);
   fingertip_120_position_tracking_data->AddPointToTrack(
       controller_params.fingertip_120_name);
   auto fingertip_240_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_240_target", controller_params.Kp_fingertip_240,
+          "fingertip_240_position_target", controller_params.Kp_fingertip_240,
           controller_params.Kd_fingertip_240, controller_params.W_fingertip_240,
           plant, plant);
   fingertip_240_position_tracking_data->AddPointToTrack(
@@ -192,14 +192,14 @@ int DoMain(int argc, char* argv[]) {
                       ->get_output_port_fingertips_target_traj(),
                   target_traj_demultiplexer->get_input_port_traj());
   builder.Connect(
-      target_traj_demultiplexer->get_output_port_fingertip_0_target_traj(),
-      osc->get_input_port_tracking_data("fingertip_0_target"));
+      target_traj_demultiplexer->get_output_port_fingertip_0_position_target_traj(),
+      osc->get_input_port_tracking_data("fingertip_0_position_target"));
   builder.Connect(
-      target_traj_demultiplexer->get_output_port_fingertip_120_target_traj(),
-      osc->get_input_port_tracking_data("fingertip_120_target"));
+      target_traj_demultiplexer->get_output_port_fingertip_120_position_target_traj(),
+      osc->get_input_port_tracking_data("fingertip_120_position_target"));
   builder.Connect(
-      target_traj_demultiplexer->get_output_port_fingertip_240_target_traj(),
-      osc->get_input_port_tracking_data("fingertip_240_target"));
+      target_traj_demultiplexer->get_output_port_fingertip_240_position_target_traj(),
+      osc->get_input_port_tracking_data("fingertip_240_position_target"));
 
   if (controller_params.require_friction_compensation) {
     auto joint_friction_compensator =

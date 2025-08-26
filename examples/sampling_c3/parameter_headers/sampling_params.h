@@ -23,7 +23,8 @@ enum SamplingStrategy {
   kFixed,
   kRandomOnPerimeter,
   kRandomOnShell,
-  kMeshNormal
+  kMeshNormal,
+  kRandomSamplingWithinJointLimits,
 };
 
 struct SamplingParams {

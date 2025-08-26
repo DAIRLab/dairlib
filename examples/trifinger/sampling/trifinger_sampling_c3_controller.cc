@@ -482,4 +482,7 @@ int DoMain(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+    drake::log()->set_level(spdlog::level::info);
+    return dairlib::DoMain(argc, argv);
+}

@@ -5,17 +5,17 @@ visualizer_publish_rate: 30
 camera_pose: [1.5, 0, 0.6]
 camera_target: [0.5, 0, 0.5]
 
-visualize_c3_workspace: true
-visualize_c3_state: true
+visualize_c3_workspace: false
+visualize_c3_state: false
 
 visualize_center_of_mass_plan_curr: false
-visualize_c3_forces_curr: false
+visualize_c3_forces_curr: true
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false
 
-visualize_is_c3_mode: true
-visualize_sample_locations: true
-visualize_sample_buffer: true
+visualize_is_c3_mode: false
+visualize_sample_locations: false
+visualize_sample_buffer: false
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.

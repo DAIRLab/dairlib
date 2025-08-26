@@ -17,21 +17,21 @@ FingertipsTargetTrajDemultiplexer::FingertipsTargetTrajDemultiplexer(
   PiecewisePolynomial<double> pp(Eigen::Vector3d::Zero());
   Trajectory<double>& traj_inst = pp;
 
-  fingertip_0_target_traj_port_ =
+  fingertip_0_position_target_traj_port_ =
       this->DeclareAbstractOutputPort(
-              "fingertip_0_target_traj", traj_inst,
+              "fingertip_0_position_target_traj", traj_inst,
               &FingertipsTargetTrajDemultiplexer::CalcFingertip0TargetTraj)
           .get_index();
 
-  fingertip_120_target_traj_port_ =
+  fingertip_120_position_target_traj_port_ =
       this->DeclareAbstractOutputPort(
-              "fingertip_120_target_traj", traj_inst,
+              "fingertip_120_position_target_traj", traj_inst,
               &FingertipsTargetTrajDemultiplexer::CalcFingertip120TargetTraj)
           .get_index();
 
-  fingertip_240_target_traj_port_ =
+  fingertip_240_position_target_traj_port_ =
       this->DeclareAbstractOutputPort(
-              "fingertip_240_target_traj", traj_inst,
+              "fingertip_240_position_target_traj", traj_inst,
               &FingertipsTargetTrajDemultiplexer::CalcFingertip240TargetTraj)
           .get_index();
 }

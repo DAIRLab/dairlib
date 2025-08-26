@@ -104,13 +104,13 @@ int DoMain(int argc, char* argv[]) {
   auto fingertip_240_position_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "fingertip_240_position_target");
-  auto fingertip_0_force_receiver =
+  auto fingertip_0_force_target_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "fingertip_0_force_target");
-  auto fingertip_120_force_receiver =
+  auto fingertip_120_force_target_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "fingertip_120_force_target");
-  auto fingertip_240_force_receiver =
+  auto fingertip_240_force_target_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "fingertip_240_force_target");
   auto trifinger_command_pub =
@@ -149,11 +149,11 @@ int DoMain(int argc, char* argv[]) {
   fingertip_240_trajectory->SetRemoteControlParameters(
       fingertip_240_neutral_position, osc_params.x_scale, osc_params.y_scale,
       osc_params.z_scale);
-  auto fingertip_0_force_trajectory =
+  auto fingertip_0_force_target_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
-  auto fingertip_120_force_trajectory =
+  auto fingertip_120_force_target_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
-  auto fingertip_240_force_trajectory =
+  auto fingertip_240_force_target_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -171,7 +171,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto fingertip_0_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_0_target", osc_params.K_p_end_effector,
+          "fingertip_0_position_target", osc_params.K_p_end_effector,
           osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_0_position_tracking_data->AddPointToTrack(kFingertip0Name);
   const VectorXd& fingertip_0_acceleration_limits =
@@ -179,14 +179,14 @@ int DoMain(int argc, char* argv[]) {
   fingertip_0_position_tracking_data->SetCmdAccelerationBounds(
       -fingertip_0_acceleration_limits, fingertip_0_acceleration_limits);
 
-  auto fingertip_0_force_tracking_data =
+  auto fingertip_0_force_target_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "fingertip_0_force", osc_params.W_ee_lambda, plant, plant,
+          "fingertip_0_force_target", osc_params.W_ee_lambda, plant, plant,
           kFingertip0Name, Vector3d::Zero());
 
   auto fingertip_120_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_120_target", osc_params.K_p_end_effector,
+          "fingertip_120_position_target", osc_params.K_p_end_effector,
           osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_120_position_tracking_data->AddPointToTrack(kFingertip120Name);
   const VectorXd& fingertip_120_acceleration_limits =
@@ -194,14 +194,14 @@ int DoMain(int argc, char* argv[]) {
   fingertip_120_position_tracking_data->SetCmdAccelerationBounds(
       -fingertip_120_acceleration_limits, fingertip_120_acceleration_limits);
 
-  auto fingertip_120_force_tracking_data =
+  auto fingertip_120_force_target_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "fingertip_120_force", osc_params.W_ee_lambda, plant, plant,
+          "fingertip_120_force_target", osc_params.W_ee_lambda, plant, plant,
           kFingertip120Name, Vector3d::Zero());
 
   auto fingertip_240_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "fingertip_240_target", osc_params.K_p_end_effector,
+          "fingertip_240_position_target", osc_params.K_p_end_effector,
           osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
   fingertip_240_position_tracking_data->AddPointToTrack(kFingertip240Name);
   const VectorXd& fingertip_240_acceleration_limits =
@@ -209,17 +209,17 @@ int DoMain(int argc, char* argv[]) {
   fingertip_240_position_tracking_data->SetCmdAccelerationBounds(
       -fingertip_240_acceleration_limits, fingertip_240_acceleration_limits);
 
-  auto fingertip_240_force_tracking_data =
+  auto fingertip_240_force_target_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
-          "fingertip_240_force", osc_params.W_ee_lambda, plant, plant,
+          "fingertip_240_force_target", osc_params.W_ee_lambda, plant, plant,
           kFingertip240Name, Vector3d::Zero());
 
   osc->AddTrackingData(std::move(fingertip_0_position_tracking_data));
   osc->AddTrackingData(std::move(fingertip_120_position_tracking_data));
   osc->AddTrackingData(std::move(fingertip_240_position_tracking_data));
-  osc->AddForceTrackingData(std::move(fingertip_0_force_tracking_data));
-  osc->AddForceTrackingData(std::move(fingertip_120_force_tracking_data));
-  osc->AddForceTrackingData(std::move(fingertip_240_force_tracking_data));
+  osc->AddForceTrackingData(std::move(fingertip_0_force_target_tracking_data));
+  osc->AddForceTrackingData(std::move(fingertip_120_force_target_tracking_data));
+  osc->AddForceTrackingData(std::move(fingertip_240_force_target_tracking_data));
   osc->SetAccelerationCostWeights(osc_params.W_acceleration);
   osc->SetInputCostWeights(osc_params.W_input_regularization);
   osc->SetInputSmoothingCostWeights(
@@ -265,11 +265,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(radio_sub->get_output_port(0),
                   fingertip_240_trajectory->get_input_port_radio());
   builder.Connect(radio_sub->get_output_port(0),
-                  fingertip_0_force_trajectory->get_input_port_radio());
+                  fingertip_0_force_target_trajectory->get_input_port_radio());
   builder.Connect(radio_sub->get_output_port(0),
-                  fingertip_120_force_trajectory->get_input_port_radio());
+                  fingertip_120_force_target_trajectory->get_input_port_radio());
   builder.Connect(radio_sub->get_output_port(0),
-                  fingertip_240_force_trajectory->get_input_port_radio());
+                  fingertip_240_force_target_trajectory->get_input_port_radio());
   builder.Connect(trifinger_command_sender->get_output_port(),
                   trifinger_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
@@ -286,11 +286,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
                   fingertip_240_position_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  fingertip_0_force_receiver->get_input_port_trajectory());
+                  fingertip_0_force_target_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  fingertip_120_force_receiver->get_input_port_trajectory());
+                  fingertip_120_force_target_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  fingertip_240_force_receiver->get_input_port_trajectory());
+                  fingertip_240_force_target_receiver->get_input_port_trajectory());
   builder.Connect(fingertip_0_position_receiver->get_output_port(0),
                   fingertip_0_trajectory->get_input_port_trajectory());
   builder.Connect(fingertip_120_position_receiver->get_output_port(0),
@@ -304,25 +304,25 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   fingertip_240_trajectory->get_input_port_state());
 
-  builder.Connect(fingertip_0_force_receiver->get_output_port(0),
-                  fingertip_0_force_trajectory->get_input_port_trajectory());
-  builder.Connect(fingertip_120_force_receiver->get_output_port(0),
-                  fingertip_120_force_trajectory->get_input_port_trajectory());
-  builder.Connect(fingertip_240_force_receiver->get_output_port(0),
-                  fingertip_240_force_trajectory->get_input_port_trajectory());
+  builder.Connect(fingertip_0_force_target_receiver->get_output_port(0),
+                  fingertip_0_force_target_trajectory->get_input_port_trajectory());
+  builder.Connect(fingertip_120_force_target_receiver->get_output_port(0),
+                  fingertip_120_force_target_trajectory->get_input_port_trajectory());
+  builder.Connect(fingertip_240_force_target_receiver->get_output_port(0),
+                  fingertip_240_force_target_trajectory->get_input_port_trajectory());
 
   builder.Connect(fingertip_0_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_0_target"));
+                  osc->get_input_port_tracking_data("fingertip_0_position_target"));
   builder.Connect(fingertip_120_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_120_target"));
+                  osc->get_input_port_tracking_data("fingertip_120_position_target"));
   builder.Connect(fingertip_240_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_240_target"));
-  builder.Connect(fingertip_0_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_0_force"));
-  builder.Connect(fingertip_120_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_120_force"));
-  builder.Connect(fingertip_240_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("fingertip_240_force"));
+                  osc->get_input_port_tracking_data("fingertip_240_position_target"));
+  builder.Connect(fingertip_0_force_target_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("fingertip_0_force_target"));
+  builder.Connect(fingertip_120_force_target_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("fingertip_120_force_target"));
+  builder.Connect(fingertip_240_force_target_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("fingertip_240_force_target"));
 
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);

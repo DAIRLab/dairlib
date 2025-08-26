@@ -131,7 +131,7 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
       drake::geometry::Cylinder(0.002, 1.0);
   const drake::geometry::MeshcatCone arrowhead_ =
       drake::geometry::MeshcatCone(0.004, 0.004, 0.004);
-  const std::string force_path_ = "c3_forces";
+  std::string force_path_ = "c3_forces";
   const std::string actor_trajectory_name_;
   const std::string force_trajectory_name_;
   const std::string lcs_force_trajectory_name_;
@@ -187,8 +187,12 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const std::string c3_final_target_object_path_ = "c3_state/c3_final_target_object";
   const std::string c3_target_object_path_ = "c3_state/c3_target_object";
   const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
-  const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
-  const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
+  const std::string c3_target_ee0_path_ = "c3_state/c3_target_ee0";
+  const std::string c3_actual_ee0_path_ = "c3_state/c3_actual_ee0";
+  const std::string c3_target_ee120_path_ = "c3_state/c3_target_ee120";
+  const std::string c3_actual_ee120_path_ = "c3_state/c3_actual_ee120";
+  const std::string c3_target_ee240_path_ = "c3_state/c3_target_ee240";
+  const std::string c3_actual_ee240_path_ = "c3_state/c3_actual_ee240";
 };
 }  // namespace systems
 }  // namespace dairlib

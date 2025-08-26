@@ -1,12 +1,12 @@
 sampling_c3_options_file: examples/trifinger/sampling/parameters/sampling_c3_options.yaml
-reposition_params_file: examples/trifinger/parameters/reposition_params.yaml
-progress_params_file: examples/trifinger/parameters/progress_params.yaml
+reposition_params_file: examples/trifinger/sampling/parameters/reposition_params.yaml
+progress_params_file: examples/trifinger/sampling/parameters/progress_params.yaml
 sampling_params_file: examples/trifinger/sampling/parameters/sampling_params.yaml
-goal_params_file: examples/trifinger/parameters/goal_params.yaml
+goal_params_file: examples/trifinger/sampling/parameters/goal_params.yaml
 
-sim_params_file: examples/trifinger/parameters/sim_params.yaml
-vis_params_file: examples/trifinger/parameters/vis_params.yaml
-osc_params_file: examples/trifinger/parameters/osc_params.yaml
+sim_params_file: examples/trifinger/sampling/parameters/sim_params.yaml
+vis_params_file: examples/trifinger/sampling/parameters/vis_params.yaml
+osc_params_file: examples/trifinger/sampling/parameters/osc_params.yaml
 osqp_settings_file: examples/trifinger/sampling/parameters/sampling_c3_qp_settings.yaml
 osc_qp_settings_file: examples/trifinger/parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml

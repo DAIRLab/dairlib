@@ -14,18 +14,18 @@ class FingertipsTargetTrajDemultiplexer
     return this->get_input_port(input_traj_port_);
   }
   const drake::systems::OutputPort<double>&
-  get_output_port_fingertip_0_target_traj() const {
-    return this->get_output_port(fingertip_0_target_traj_port_);
+  get_output_port_fingertip_0_position_target_traj() const {
+    return this->get_output_port(fingertip_0_position_target_traj_port_);
   }
 
   const drake::systems::OutputPort<double>&
-  get_output_port_fingertip_120_target_traj() const {
-    return this->get_output_port(fingertip_120_target_traj_port_);
+  get_output_port_fingertip_120_position_target_traj() const {
+    return this->get_output_port(fingertip_120_position_target_traj_port_);
   }
 
   const drake::systems::OutputPort<double>&
-  get_output_port_fingertip_240_target_traj() const {
-    return this->get_output_port(fingertip_240_target_traj_port_);
+  get_output_port_fingertip_240_position_target_traj() const {
+    return this->get_output_port(fingertip_240_position_target_traj_port_);
   }
 
  private:
@@ -51,8 +51,8 @@ class FingertipsTargetTrajDemultiplexer
   drake::systems::Context<double>* context_;
 
   drake::systems::InputPortIndex input_traj_port_;
-  drake::systems::OutputPortIndex fingertip_0_target_traj_port_;
-  drake::systems::OutputPortIndex fingertip_120_target_traj_port_;
-  drake::systems::OutputPortIndex fingertip_240_target_traj_port_;
+  drake::systems::OutputPortIndex fingertip_0_position_target_traj_port_;
+  drake::systems::OutputPortIndex fingertip_120_position_target_traj_port_;
+  drake::systems::OutputPortIndex fingertip_240_position_target_traj_port_;
 };
 }  // namespace dairlib::systems

@@ -71,6 +71,22 @@ DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(demo_name, "trifinger",
               "Name for the demo, used when building filepaths for output.");
 
+void AddForceVisualization(
+    DiagramBuilder<double>& builder,
+    std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string& position_trajectory, const std::string& force_trajectory,
+    const std::string& prefix,
+    const drake::systems::OutputPort<double>& trajectory_port,
+    const drake::systems::OutputPort<double>& force_port,
+    const drake::systems::OutputPort<double>& robot_time_port) {
+  auto force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
+      meshcat, position_trajectory, force_trajectory, "", prefix);
+  builder.Connect(trajectory_port,
+                  force_drawer->get_input_port_actor_trajectory());
+  builder.Connect(force_port, force_drawer->get_input_port_force_trajectory());
+  builder.Connect(robot_time_port, force_drawer->get_input_port_robot_time());
+}
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -268,10 +284,10 @@ int do_main(int argc, char* argv[]) {
   if (vis_params.visualize_execution_plan) {
     auto c3_exec_trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "end_effector_position_target", "c3_exec_");
+            meshcat, "fingertip_0_position_target", "c3_exec_");
     auto repos_trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "end_effector_position_target", "repos_exec_");
+            meshcat, "fingertip_0_position_target", "repos_exec_");
     c3_exec_trajectory_drawer_actor->SetLineColor(
         drake::geometry::Rgba({1, 0.75, 0.79, 1}));
     c3_exec_trajectory_drawer_actor->SetLineWidth(10000000);
@@ -455,35 +471,39 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_c3_forces_curr) {
-    auto end_effector_force_drawer_curr =
-        builder.AddSystem<systems::LcmForceDrawer>(
-            meshcat, "end_effector_position_target",
-            "end_effector_force_target", "lcs_force_trajectory_curr", "curr_");
-    builder.Connect(
-        trajectory_sub_actor_curr->get_output_port(),
-        end_effector_force_drawer_curr->get_input_port_actor_trajectory());
-    builder.Connect(
-        trajectory_sub_force_curr->get_output_port(),
-        end_effector_force_drawer_curr->get_input_port_force_trajectory());
-    builder.Connect(
-        robot_time_passthrough->get_output_port(),
-        end_effector_force_drawer_curr->get_input_port_robot_time());
+    AddForceVisualization(builder, meshcat, "fingertip_0_position_target",
+                          "fingertip_0_force_target", "curr_0_",
+                          trajectory_sub_actor_curr->get_output_port(),
+                          trajectory_sub_force_curr->get_output_port(),
+                          robot_time_passthrough->get_output_port());
+    AddForceVisualization(builder, meshcat, "fingertip_120_position_target",
+                          "fingertip_120_force_target", "curr_120_",
+                          trajectory_sub_actor_curr->get_output_port(),
+                          trajectory_sub_force_curr->get_output_port(),
+                          robot_time_passthrough->get_output_port());
+    AddForceVisualization(builder, meshcat, "fingertip_240_position_target",
+                          "fingertip_240_force_target", "curr_240_",
+                          trajectory_sub_actor_curr->get_output_port(),
+                          trajectory_sub_force_curr->get_output_port(),
+                          robot_time_passthrough->get_output_port());
   }
 
   if (vis_params.visualize_c3_forces_best) {
-    auto end_effector_force_drawer_best =
-        builder.AddSystem<systems::LcmForceDrawer>(
-            meshcat, "end_effector_position_target",
-            "end_effector_force_target", "lcs_force_trajectory_best", "best_");
-    builder.Connect(
-        trajectory_sub_actor_best->get_output_port(),
-        end_effector_force_drawer_best->get_input_port_actor_trajectory());
-    builder.Connect(
-        trajectory_sub_force_best->get_output_port(),
-        end_effector_force_drawer_best->get_input_port_force_trajectory());
-    builder.Connect(
-        robot_time_passthrough->get_output_port(),
-        end_effector_force_drawer_best->get_input_port_robot_time());
+    AddForceVisualization(builder, meshcat, "fingertip_0_position_target",
+                          "fingertip_0_force_target", "best_0_",
+                          trajectory_sub_actor_best->get_output_port(),
+                          trajectory_sub_force_best->get_output_port(),
+                          robot_time_passthrough->get_output_port());
+    AddForceVisualization(builder, meshcat, "fingertip_120_position_target",
+                          "fingertip_120_force_target", "best_120_",
+                          trajectory_sub_actor_best->get_output_port(),
+                          trajectory_sub_force_best->get_output_port(),
+                          robot_time_passthrough->get_output_port());
+    AddForceVisualization(builder, meshcat, "fingertip_240_position_target",
+                          "fingertip_240_force_target", "best_240_",
+                          trajectory_sub_actor_best->get_output_port(),
+                          trajectory_sub_force_best->get_output_port(),
+                          robot_time_passthrough->get_output_port());
   }
 
   if (vis_params.visualize_is_c3_mode) {

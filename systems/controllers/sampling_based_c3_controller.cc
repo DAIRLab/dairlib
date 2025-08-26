@@ -151,65 +151,11 @@ SamplingC3Controller::SamplingC3Controller(
   n_z_ = c3_curr_plan_->GetZSize();
 
   c3_curr_plan_->SetSolverOptions(solver_options_);
+  AddLinearConstraintToC3Plan(c3_curr_plan_);
   c3_best_plan_->SetSolverOptions(solver_options_);
+  AddLinearConstraintToC3Plan(c3_best_plan_);
   c3_buffer_plan_->SetSolverOptions(solver_options_);
-
-  // // Set actor bounds.
-  // for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-  //   Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-  //   A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
-  //   // TODO @bibit: For the T example, the z constraint is an equality
-  //   // constraint. This will be reflected in the params but need to make sure
-  //   to
-  //   // put a comment here when the T example is added.
-  //   // The fourth parameter decides which optimization variable the
-  //   constraint
-  //   // is applied to. 1 = x, 2 = u, 3 = lambda.
-  //   c3_curr_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.workspace_limits[i][3],
-  //       sampling_c3_options_.workspace_limits[i][4],
-  //       c3::ConstraintVariable::STATE);
-  //   c3_best_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.workspace_limits[i][3],
-  //       sampling_c3_options_.workspace_limits[i][4],
-  //       c3::ConstraintVariable::STATE);
-  //   c3_buffer_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.workspace_limits[i][3],
-  //       sampling_c3_options_.workspace_limits[i][4],
-  //       c3::ConstraintVariable::STATE);
-  // }
-  // for (int i : vector<int>({0, 1})) {
-  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-  //   A(i) = 1.0;
-  //   c3_curr_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_horizontal_limits[0],
-  //       sampling_c3_options_.u_horizontal_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  //   c3_best_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_horizontal_limits[0],
-  //       sampling_c3_options_.u_horizontal_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  //   c3_buffer_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_horizontal_limits[0],
-  //       sampling_c3_options_.u_horizontal_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  // }
-  // for (int i : vector<int>({2})) {
-  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-  //   A(i) = 1.0;
-  //   c3_curr_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_vertical_limits[0],
-  //       sampling_c3_options_.u_vertical_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  //   c3_best_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_vertical_limits[0],
-  //       sampling_c3_options_.u_vertical_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  //   c3_buffer_plan_->AddLinearConstraint(
-  //       A, sampling_c3_options_.u_vertical_limits[0],
-  //       sampling_c3_options_.u_vertical_limits[1],
-  //       c3::ConstraintVariable::INPUT);
-  // }
+  AddLinearConstraintToC3Plan(c3_buffer_plan_);
 
   // Input ports.
   radio_port_ =
@@ -250,7 +196,7 @@ SamplingC3Controller::SamplingC3Controller(
                sampling_params_.num_additional_samples_c3 + from_buffer);
   // The +1 here is to account for the current location.
   all_sample_locations_ =
-      vector<Vector3d>(max_num_samples_ + 1, Vector3d::Zero());
+      vector<VectorXd>(max_num_samples_ + 1, VectorXd::Zero(9));
   LcmTrajectory lcm_traj = LcmTrajectory();
 
   // Current location plan output ports.
@@ -503,6 +449,32 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
+void SamplingC3Controller::AddLinearConstraintToC3Plan(
+    std::shared_ptr<c3::C3> plan_) const {
+  // Set actor bounds.
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A.segment(0, 9) = sampling_c3_options_.workspace_limits[i].segment(0, 9);
+    plan_->AddLinearConstraint(A, sampling_c3_options_.workspace_limits[i][9],
+                               sampling_c3_options_.workspace_limits[i][10],
+                               c3::ConstraintVariable::STATE);
+  }
+  // for (int i : vector<int>({0, 1})) {
+  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+  //   A(i) = 1.0;
+  //   plan_->AddLinearConstraint(A, sampling_c3_options_.u_horizontal_limits[0],
+  //                              sampling_c3_options_.u_horizontal_limits[1],
+  //                              c3::ConstraintVariable::INPUT);
+  // }
+  // for (int i : vector<int>({2})) {
+  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+  //   A(i) = 1.0;
+  //   plan_->AddLinearConstraint(A, sampling_c3_options_.u_vertical_limits[0],
+  //                              sampling_c3_options_.u_vertical_limits[1],
+  //                              c3::ConstraintVariable::INPUT);
+  // }
+}
+
 // This function relies on the previously computed z_fin from Solve.
 std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
@@ -543,10 +515,10 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     }
     // Replace ee traj with those from z_fin.
     for (int i = 0; i < N_; i++) {
-      XX[i].segment(0, 3) = z_fin[i].segment(0, 3);
+      XX[i].segment(0, 9) = z_fin[i].segment(0, 9);
       if (i == N_ - 1) {
-        XX[i + 1].segment(0, 3) =
-            lcs_for_cost.Simulate(XX[i], UU[i]).segment(0, 3);
+        XX[i + 1].segment(0, 9) =
+            lcs_for_cost.Simulate(XX[i], UU[i]).segment(0, 9);
       }
     }
   }
@@ -572,11 +544,11 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
     for (int i = 0; i < N_; i++) {
-      XX[i].segment(0, 3) = z_fin[i].segment(0, 3);
-      XX[i].segment(10, 3) = z_fin[i].segment(10, 3);
+      XX[i].segment(0, 9) = z_fin[i].segment(0, 9);
+      XX[i].segment(16, 9) = z_fin[i].segment(16, 9);
       if (i == N_ - 1) {
-        XX[i + 1].segment(0, 3) = z_fin[i].segment(0, 3);
-        XX[i + 1].segment(10, 3) = z_fin[i].segment(10, 3);
+        XX[i + 1].segment(0, 9) = z_fin[i].segment(0, 9);
+        XX[i + 1].segment(16, 9) = z_fin[i].segment(16, 9);
       }
     }
   }
@@ -616,52 +588,52 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
   for (int i = 0; i < N_; i++) {
     // ee_pos
     error_contrib_ee_pos +=
-        (XX[i].segment(0, 3) - x_desired[i].segment(0, 3)).transpose() *
-        (XX[i].segment(0, 3) - x_desired[i].segment(0, 3));
+        (XX[i].segment(0, 9) - x_desired[i].segment(0, 9)).transpose() *
+        (XX[i].segment(0, 9) - x_desired[i].segment(0, 9));
     cost_contrib_ee_pos +=
-        (XX[i].segment(0, 3) - x_desired[i].segment(0, 3)).transpose() *
-        Q_eff.at(i).block(0, 0, 3, 3) *
-        (XX[i].segment(0, 3) - x_desired[i].segment(0, 3));
+        (XX[i].segment(0, 9) - x_desired[i].segment(0, 9)).transpose() *
+        Q_eff.at(i).block(0, 0, 9, 9) *
+        (XX[i].segment(0, 9) - x_desired[i].segment(0, 9));
     // obj_orientation
     error_contrib_obj_orientation +=
-        (XX[i].segment(3, 4) - x_desired[i].segment(3, 4)).transpose() *
-        (XX[i].segment(3, 4) - x_desired[i].segment(3, 4));
+        (XX[i].segment(9, 4) - x_desired[i].segment(9, 4)).transpose() *
+        (XX[i].segment(9, 4) - x_desired[i].segment(9, 4));
     cost_contrib_obj_orientation +=
-        (XX[i].segment(3, 4) - x_desired[i].segment(3, 4)).transpose() *
-        Q_eff.at(i).block(3, 3, 4, 4) *
-        (XX[i].segment(3, 4) - x_desired[i].segment(3, 4));
+        (XX[i].segment(9, 4) - x_desired[i].segment(9, 4)).transpose() *
+        Q_eff.at(i).block(9, 9, 4, 4) *
+        (XX[i].segment(9, 4) - x_desired[i].segment(9, 4));
     // obj_pos
     error_contrib_obj_pos +=
-        (XX[i].segment(7, 3) - x_desired[i].segment(7, 3)).transpose() *
-        (XX[i].segment(7, 3) - x_desired[i].segment(7, 3));
-    cost_contrib_obj_pos +=
-        (XX[i].segment(7, 3) - x_desired[i].segment(7, 3)).transpose() *
-        Q_eff.at(i).block(7, 7, 3, 3) *
-        (XX[i].segment(7, 3) - x_desired[i].segment(7, 3));
-    // ee_vel
-    error_contrib_ee_vel +=
-        (XX[i].segment(10, 3) - x_desired[i].segment(10, 3)).transpose() *
-        (XX[i].segment(10, 3) - x_desired[i].segment(10, 3));
-    cost_contrib_ee_vel +=
-        (XX[i].segment(10, 3) - x_desired[i].segment(10, 3)).transpose() *
-        Q_eff.at(i).block(10, 10, 3, 3) *
-        (XX[i].segment(10, 3) - x_desired[i].segment(10, 3));
-    // obj_ang_vel
-    error_contrib_obj_ang_vel +=
         (XX[i].segment(13, 3) - x_desired[i].segment(13, 3)).transpose() *
         (XX[i].segment(13, 3) - x_desired[i].segment(13, 3));
-    cost_contrib_obj_ang_vel +=
+    cost_contrib_obj_pos +=
         (XX[i].segment(13, 3) - x_desired[i].segment(13, 3)).transpose() *
         Q_eff.at(i).block(13, 13, 3, 3) *
         (XX[i].segment(13, 3) - x_desired[i].segment(13, 3));
+    // ee_vel
+    error_contrib_ee_vel +=
+        (XX[i].segment(16, 9) - x_desired[i].segment(16, 9)).transpose() *
+        (XX[i].segment(16, 9) - x_desired[i].segment(16, 9));
+    cost_contrib_ee_vel +=
+        (XX[i].segment(16, 9) - x_desired[i].segment(16, 9)).transpose() *
+        Q_eff.at(i).block(16, 16, 9, 9) *
+        (XX[i].segment(16, 9) - x_desired[i].segment(16, 9));
+    // obj_ang_vel
+    error_contrib_obj_ang_vel +=
+        (XX[i].segment(25, 3) - x_desired[i].segment(25, 3)).transpose() *
+        (XX[i].segment(25, 3) - x_desired[i].segment(25, 3));
+    cost_contrib_obj_ang_vel +=
+        (XX[i].segment(25, 3) - x_desired[i].segment(25, 3)).transpose() *
+        Q_eff.at(i).block(25, 25, 3, 3) *
+        (XX[i].segment(25, 3) - x_desired[i].segment(25, 3));
     // obj_vel
     error_contrib_obj_vel +=
-        (XX[i].segment(16, 3) - x_desired[i].segment(16, 3)).transpose() *
-        (XX[i].segment(16, 3) - x_desired[i].segment(16, 3));
+        (XX[i].segment(28, 3) - x_desired[i].segment(28, 3)).transpose() *
+        (XX[i].segment(28, 3) - x_desired[i].segment(28, 3));
     cost_contrib_obj_vel +=
-        (XX[i].segment(16, 3) - x_desired[i].segment(16, 3)).transpose() *
-        Q_eff.at(i).block(16, 16, 3, 3) *
-        (XX[i].segment(16, 3) - x_desired[i].segment(16, 3));
+        (XX[i].segment(28, 3) - x_desired[i].segment(28, 3)).transpose() *
+        Q_eff.at(i).block(28, 28, 3, 3) *
+        (XX[i].segment(28, 3) - x_desired[i].segment(28, 3));
 
     cost = cost +
            (XX[i] - x_desired[i]).transpose() * Q_eff.at(i) *
@@ -674,48 +646,48 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
                     (XX[N_] - x_desired[N_]);
 
   error_contrib_ee_pos +=
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+      (XX[N_].segment(0, 9) - x_desired[N_].segment(0, 9)).transpose() *
+      (XX[N_].segment(0, 9) - x_desired[N_].segment(0, 9));
   error_contrib_obj_orientation +=
-      (XX[N_].segment(3, 4) - x_desired[N_].segment(3, 4)).transpose() *
-      (XX[N_].segment(3, 4) - x_desired[N_].segment(3, 4));
+      (XX[N_].segment(9, 4) - x_desired[N_].segment(9, 4)).transpose() *
+      (XX[N_].segment(9, 4) - x_desired[N_].segment(9, 4));
   error_contrib_obj_pos +=
-      (XX[N_].segment(7, 3) - x_desired[N_].segment(7, 3)).transpose() *
-      (XX[N_].segment(7, 3) - x_desired[N_].segment(7, 3));
-  error_contrib_ee_vel +=
-      (XX[N_].segment(10, 3) - x_desired[N_].segment(10, 3)).transpose() *
-      (XX[N_].segment(10, 3) - x_desired[N_].segment(10, 3));
-  error_contrib_obj_ang_vel +=
       (XX[N_].segment(13, 3) - x_desired[N_].segment(13, 3)).transpose() *
       (XX[N_].segment(13, 3) - x_desired[N_].segment(13, 3));
+  error_contrib_ee_vel +=
+      (XX[N_].segment(16, 9) - x_desired[N_].segment(16, 9)).transpose() *
+      (XX[N_].segment(16, 9) - x_desired[N_].segment(16, 9));
+  error_contrib_obj_ang_vel +=
+      (XX[N_].segment(25, 3) - x_desired[N_].segment(25, 3)).transpose() *
+      (XX[N_].segment(25, 3) - x_desired[N_].segment(25, 3));
   error_contrib_obj_vel +=
-      (XX[N_].segment(16, 3) - x_desired[N_].segment(16, 3)).transpose() *
-      (XX[N_].segment(16, 3) - x_desired[N_].segment(16, 3));
+      (XX[N_].segment(28, 3) - x_desired[N_].segment(28, 3)).transpose() *
+      (XX[N_].segment(28, 3) - x_desired[N_].segment(28, 3));
 
   cost_contrib_ee_pos +=
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
-      Q_eff.at(N_).block(0, 0, 3, 3) *
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+      (XX[N_].segment(0, 9) - x_desired[N_].segment(0, 9)).transpose() *
+      Q_eff.at(N_).block(0, 0, 9, 9) *
+      (XX[N_].segment(0, 9) - x_desired[N_].segment(0, 9));
   cost_contrib_obj_orientation +=
-      (XX[N_].segment(3, 4) - x_desired[N_].segment(3, 4)).transpose() *
-      Q_eff.at(N_).block(3, 3, 4, 4) *
-      (XX[N_].segment(3, 4) - x_desired[N_].segment(3, 4));
+      (XX[N_].segment(9, 4) - x_desired[N_].segment(9, 4)).transpose() *
+      Q_eff.at(N_).block(9, 9, 4, 4) *
+      (XX[N_].segment(9, 4) - x_desired[N_].segment(9, 4));
   cost_contrib_obj_pos +=
-      (XX[N_].segment(7, 3) - x_desired[N_].segment(7, 3)).transpose() *
-      Q_eff.at(N_).block(7, 7, 3, 3) *
-      (XX[N_].segment(7, 3) - x_desired[N_].segment(7, 3));
-  cost_contrib_ee_vel +=
-      (XX[N_].segment(10, 3) - x_desired[N_].segment(10, 3)).transpose() *
-      Q_eff.at(N_).block(10, 10, 3, 3) *
-      (XX[N_].segment(10, 3) - x_desired[N_].segment(10, 3));
-  cost_contrib_obj_ang_vel +=
       (XX[N_].segment(13, 3) - x_desired[N_].segment(13, 3)).transpose() *
       Q_eff.at(N_).block(13, 13, 3, 3) *
       (XX[N_].segment(13, 3) - x_desired[N_].segment(13, 3));
+  cost_contrib_ee_vel +=
+      (XX[N_].segment(16, 9) - x_desired[N_].segment(16, 9)).transpose() *
+      Q_eff.at(N_).block(16, 16, 9, 9) *
+      (XX[N_].segment(16, 9) - x_desired[N_].segment(16, 9));
+  cost_contrib_obj_ang_vel +=
+      (XX[N_].segment(25, 3) - x_desired[N_].segment(25, 3)).transpose() *
+      Q_eff.at(N_).block(25, 25, 3, 3) *
+      (XX[N_].segment(25, 3) - x_desired[N_].segment(25, 3));
   cost_contrib_obj_vel +=
-      (XX[N_].segment(16, 3) - x_desired[N_].segment(16, 3)).transpose() *
-      Q_eff.at(N_).block(16, 16, 3, 3) *
-      (XX[N_].segment(16, 3) - x_desired[N_].segment(16, 3));
+      (XX[N_].segment(28, 3) - x_desired[N_].segment(28, 3)).transpose() *
+      Q_eff.at(N_).block(28, 28, 3, 3) *
+      (XX[N_].segment(28, 3) - x_desired[N_].segment(28, 3));
 
   if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
     cost = cost_contrib_obj_pos + cost_contrib_obj_orientation +
@@ -785,8 +757,8 @@ SamplingC3Controller::SimulatePDControl(
   }
 
   // Set the PD gains for the emulated tracking controller.
-  Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout * Eigen::MatrixXd::Identity(3, 3);
-  Eigen::MatrixXd Kd = Kd_for_ee_pd_rollout * Eigen::MatrixXd::Identity(3, 3);
+  Eigen::MatrixXd Kp = Kp_for_ee_pd_rollout * Eigen::MatrixXd::Identity(9, 9);
+  Eigen::MatrixXd Kd = Kd_for_ee_pd_rollout * Eigen::MatrixXd::Identity(9, 9);
 
   // Obtain modified solutions for the PD controller.
   std::vector<Eigen::VectorXd> UU_new(N_, VectorXd::Zero(n_u_));
@@ -798,11 +770,11 @@ SamplingC3Controller::SimulatePDControl(
   // tracking using the PD controller.
   for (int i = 0; i < N_; i++) {
     if (force_tracking_disabled) {
-      UU_new[i] = Kp * (XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
-                  Kd * (XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+      UU_new[i] = Kp * (XX[i].segment(0, 9) - XX_new[i].segment(0, 9)) +
+                  Kd * (XX[i].segment(16, 9) - XX_new[i].segment(16, 9));
     } else {
-      UU_new[i] = UU[i] + Kp * (XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
-                  Kd * (XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+      UU_new[i] = UU[i] + Kp * (XX[i].segment(0, 9) - XX_new[i].segment(0, 9)) +
+                  Kd * (XX[i].segment(16, 9) - XX_new[i].segment(16, 9));
     }
     if (verbose) {
       std::cout << "simulated step " << i + 1 << std::endl;
@@ -852,7 +824,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lcs_x_curr->get_timestamp();
 
   // Check for workspace limit violations; if any, the controller stops.
-  CheckForWorkspaceLimitViolations(lcs_x_curr);
+  // CheckForWorkspaceLimitViolations(lcs_x_curr);
 
   // Compute the current position and orientation errors.
   current_position_error_ = (x_lcs_curr.segment(n_q_ - 3, 3) -
@@ -934,7 +906,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // index 1 always. (Index 0 will become the current state.)
   if (!is_doing_c3_) {
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
-    repositioning_target_state.head(3) = prev_repositioning_target_;
+    repositioning_target_state.head(9) = prev_repositioning_target_;
     candidate_states.insert(candidate_states.begin(),
                             repositioning_target_state);
   }
@@ -949,7 +921,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the set of sample locations under consideration.
   all_sample_locations_.clear();
   for (int i = 0; i < num_total_samples; i++) {
-    all_sample_locations_.push_back(candidate_states[i].head(3));
+    all_sample_locations_.push_back(candidate_states[i].head(9));
   }
   // Make LCS objects for each sample.
   auto lcs_pair = SamplingC3Controller::CreateLCSObjectsForSamples(
@@ -995,6 +967,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object = std::make_shared<C3Plus>(test_system, c3_costmat,
                                                 x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
+    AddLinearConstraintToC3Plan(test_c3_object);
 
     // Workspace limits.
     // for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -1334,9 +1307,9 @@ void SamplingC3Controller::ResolvePredictedEEState(
   if (!x_pred_curr_plan_.isZero() && !is_teleop &&
       (in_c3_mode_and_predict || in_repos_mode_and_predict)) {
     // Consider the current, last, and predicted states.
-    Eigen::Vector3d curr_ee = x_lcs_curr.head(3);
-    Eigen::Vector3d last_ee = x_from_last_control_loop_.head(3);
-    Eigen::Vector3d pred_ee = x_pred_from_last_control_loop_.head(3);
+    Eigen::VectorXd curr_ee = x_lcs_curr.head(9);
+    Eigen::VectorXd last_ee = x_from_last_control_loop_.head(9);
+    Eigen::VectorXd pred_ee = x_pred_from_last_control_loop_.head(9);
 
     if (((curr_ee - last_ee).norm() < (curr_ee - pred_ee).norm()) &&
         (curr_ee - pred_ee).norm() > 0.01 &&
@@ -1375,7 +1348,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
   // Use fixed approximate loop time for acceleration capping heuristic.
   float approx_loop_dt = std::min(0.1, filtered_solve_time_);
   float nominal_accel = 10;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 9; i++) {
     x_lcs_curr[i] = std::clamp(
         x_pred_curr_plan_[i],
         x_lcs_curr[i] - nominal_accel * approx_loop_dt * approx_loop_dt,
@@ -1394,7 +1367,8 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
   // xyz checks
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     // std::cout << "Checking workspace limit " << i << ": "
-    //           << lcs_x_curr->get_data().segment(0, 9).transpose() << std::endl;
+    //           << lcs_x_curr->get_data().segment(0, 9).transpose() <<
+    //           std::endl;
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 9).transpose() *
                      sampling_c3_options_.workspace_limits[i].segment(0, 9) >
                  sampling_c3_options_.workspace_limits[i][9] -
@@ -1440,8 +1414,8 @@ void SamplingC3Controller::UpdateCostMatrices(
 
   if (sampling_c3_options_.use_quaternion_dependent_cost &&
       crossed_cost_switching_threshold_) {
-    Eigen::VectorXd quat = x_lcs_curr.segment(3, 4);
-    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(3, 4);
+    Eigen::VectorXd quat = x_lcs_curr.segment(9, 4);
+    Eigen::VectorXd quat_desired = x_lcs_des.get_value().segment(9, 4);
     Eigen::MatrixXd Q_quaternion_dependent_cost =
         hessian_of_squared_quaternion_angle_difference(quat, quat_desired);
 
@@ -1463,7 +1437,7 @@ void SamplingC3Controller::UpdateCostMatrices(
                  (Q_quaternion_dependent_cost.rows() == 4));
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; ++i) {
-      Q_[i].block(3, 3, 4, 4) =
+      Q_[i].block(9, 9, 4, 4) =
           discount_factor * sampling_c3_options_.q_quaternion_dependent_weight *
           (Q_quaternion_dependent_cost +
            Q_quaternion_dependent_regularizer_part_1 +
@@ -1609,6 +1583,76 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
   return std::make_pair(lcs_candidates, lcs_candidates_for_cost);
 }
 
+void SamplingC3Controller::UpdateLcmTrajectory(
+    LcmTrajectory& lcm_trajectory, const Eigen::VectorXd& timestamps,
+    const Eigen::MatrixXd& knots, const Eigen::MatrixXd& force_samples) const {
+  // Update the LCM trajectory with the new knots and timestamps.
+  lcm_trajectory.ClearTrajectories();
+
+  LcmTrajectory::Trajectory fingertip_0_position_trajectory;
+  fingertip_0_position_trajectory.traj_name = "fingertip_0_position_target";
+  fingertip_0_position_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_0_position_trajectory.datapoints =
+      knots(Eigen::seqN(0, 3), Eigen::seqN(0, N_));
+  fingertip_0_position_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_0_position_trajectory.traj_name,
+                               fingertip_0_position_trajectory);
+
+  LcmTrajectory::Trajectory fingertip_120_position_trajectory;
+  fingertip_120_position_trajectory.traj_name = "fingertip_120_position_target";
+  fingertip_120_position_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_120_position_trajectory.datapoints =
+      knots(Eigen::seqN(3, 3), Eigen::seqN(0, N_));
+  fingertip_120_position_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_120_position_trajectory.traj_name,
+                               fingertip_120_position_trajectory);
+
+  LcmTrajectory::Trajectory fingertip_240_position_trajectory;
+  fingertip_240_position_trajectory.traj_name = "fingertip_240_position_target";
+  fingertip_240_position_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_240_position_trajectory.datapoints =
+      knots(Eigen::seqN(6, 3), Eigen::seqN(0, N_));
+  fingertip_240_position_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_240_position_trajectory.traj_name,
+                               fingertip_240_position_trajectory);
+
+  // Add end effector force target to LCM Trajectory.
+  LcmTrajectory::Trajectory fingertip_0_force_target_trajectory;
+  fingertip_0_force_target_trajectory.traj_name = "fingertip_0_force_target";
+  fingertip_0_force_target_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_0_force_target_trajectory.datapoints =
+      force_samples(Eigen::seqN(0, 3), Eigen::seqN(0, N_));
+  fingertip_0_force_target_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_0_force_target_trajectory.traj_name,
+                               fingertip_0_force_target_trajectory);
+
+  LcmTrajectory::Trajectory fingertip_120_force_target_trajectory;
+  fingertip_120_force_target_trajectory.traj_name =
+      "fingertip_120_force_target";
+  fingertip_120_force_target_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_120_force_target_trajectory.datapoints =
+      force_samples(Eigen::seqN(3, 3), Eigen::seqN(0, N_));
+  fingertip_120_force_target_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_120_force_target_trajectory.traj_name,
+                               fingertip_120_force_target_trajectory);
+
+  LcmTrajectory::Trajectory fingertip_240_force_target_trajectory;
+  fingertip_240_force_target_trajectory.traj_name =
+      "fingertip_240_force_target";
+  fingertip_240_force_target_trajectory.datatypes =
+      std::vector<std::string>(3, "double");
+  fingertip_240_force_target_trajectory.datapoints =
+      force_samples(Eigen::seqN(6, 3), Eigen::seqN(0, N_));
+  fingertip_240_force_target_trajectory.time_vector = timestamps.cast<double>();
+  lcm_trajectory.AddTrajectory(fingertip_240_force_target_trajectory.traj_name,
+                               fingertip_240_force_target_trajectory);
+}
+
 void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     const VectorXd& x_lcs, const double& t_context) const {
   // Get the input and full state solution from the plan.
@@ -1640,28 +1684,13 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
-  // Add end effector position target to LCM Trajectory.
-  LcmTrajectory::Trajectory ee_traj;
-  ee_traj.traj_name = "end_effector_position_target";
-  ee_traj.datatypes = std::vector<std::string>(3, "double");
-  ee_traj.datapoints = knots(Eigen::seqN(0, 3), Eigen::seqN(0, N_));
-  ee_traj.time_vector = timestamps.cast<double>();
-  c3_execution_lcm_traj_.ClearTrajectories();
-  c3_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
-
-  // Add end effector force target to LCM Trajectory.
   // In c3 mode, the end effector forces should match the solved c3 inputs.
-  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
+  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(9, N_);
   for (int i = 0; i < N_; i++) {
     force_samples.col(i) = u_sol[i];
   }
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps.cast<double>();
-  c3_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
+
+  UpdateLcmTrajectory(c3_execution_lcm_traj_, timestamps, knots, force_samples);
 
   // No need to add object position and orientation since these are outputs sent
   // in the C3 plans.
@@ -1702,23 +1731,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     timestamps[i] = t_context + filtered_solve_time_ + (i)*dt_;
   }
 
-  LcmTrajectory::Trajectory ee_traj;
-  ee_traj.traj_name = "end_effector_position_target";
-  ee_traj.datatypes = std::vector<std::string>(3, "double");
-  ee_traj.datapoints = knots(Eigen::seqN(0, 3), Eigen::seqN(0, N_));
-  ee_traj.time_vector = timestamps.cast<double>();
-  repos_execution_lcm_traj_.ClearTrajectories();
-  repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
-
   // In repositioning mode, the end effector should not exert forces.
-  MatrixXd force_samples = MatrixXd::Zero(3, N_);
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps.cast<double>();
-  repos_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
+  MatrixXd force_samples = MatrixXd::Zero(9, N_);
+  UpdateLcmTrajectory(repos_execution_lcm_traj_, timestamps, knots,
+                      force_samples);
 
   // No need to add object position and orientation.
 }
@@ -1728,12 +1744,12 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   // Determine if samples are outdated by comparing to the current object
   // position and orientation.
   Vector3d object_pos = x_lcs.segment(n_q_ - 3, 3);
-  Eigen::Vector4d object_quat = x_lcs.segment(3, 4).normalized();
+  Eigen::Vector4d object_quat = x_lcs.segment(n_q_ - 7, 4).normalized();
 
   MatrixXd buffer_xyzs =
-      sample_buffer_.block(0, 7, sampling_params_.N_sample_buffer, 3);
+      sample_buffer_.block(0, n_q_ - 3, sampling_params_.N_sample_buffer, 3);
   MatrixXd buffer_quats =
-      sample_buffer_.block(0, 3, sampling_params_.N_sample_buffer, 4);
+      sample_buffer_.block(0, n_q_ - 7, sampling_params_.N_sample_buffer, 4);
 
   // First, remove outdated samples that have moved too much from current object
   // configuration.
@@ -1796,9 +1812,9 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       // Skip the repositioning target if in repositioning mode.
     } else {
       VectorXd new_config = x_lcs.segment(0, n_q_);
-      new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
+      new_config.segment(0, 9) = all_sample_locations_[i - retained_count];
       // Ensure a normalized quaternion is written to the buffer.
-      new_config.segment(3, 4) = object_quat;
+      new_config.segment(9, 4) = object_quat;
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
           all_sample_costs_[i - retained_count];
@@ -1833,8 +1849,8 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
   if ((is_doing_c3_) &&
       (sampling_params_.consider_best_buffer_sample_when_leaving_c3)) {
     double lowest_buffer_cost = sample_costs_buffer_[num_in_buffer_ - 1];
-    Vector3d best_buffer_ee_sample =
-        sample_buffer_.row(num_in_buffer_ - 1).head(3);
+    VectorXd best_buffer_ee_sample =
+        sample_buffer_.row(num_in_buffer_ - 1).head(9);
 
     double lowest_new_cost =
         *std::min_element(all_sample_costs_.begin(), all_sample_costs_.end());
@@ -1996,29 +2012,15 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
-  knots.bottomRows(3) =
-      c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+  MatrixXd knots = MatrixXd::Zero(18, N_);
+  knots.topRows(9) = c3_solution->x_sol_.topRows(9).cast<double>();
+  knots.bottomRows(9) =
+      c3_solution->x_sol_.bottomRows(n_v_).topRows(9).cast<double>();
 
-  LcmTrajectory::Trajectory end_effector_traj;
-  end_effector_traj.traj_name = "end_effector_position_target";
-  end_effector_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
-  end_effector_traj.datapoints = knots;
-  end_effector_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
-                         "end_effector_position_target",
-                         "end_effector_position_target", false);
-
+  LcmTrajectory lcm_traj;
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+  UpdateLcmTrajectory(lcm_traj, c3_solution->time_vector_.cast<double>(), knots,
+                      force_samples);
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
@@ -2168,29 +2170,15 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
-  knots.bottomRows(3) =
-      c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+  MatrixXd knots = MatrixXd::Zero(18, N_);
+  knots.topRows(9) = c3_solution->x_sol_.topRows(9).cast<double>();
+  knots.bottomRows(9) =
+      c3_solution->x_sol_.bottomRows(n_v_).topRows(9).cast<double>();
 
-  LcmTrajectory::Trajectory end_effector_traj;
-  end_effector_traj.traj_name = "end_effector_position_target";
-  end_effector_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
-  end_effector_traj.datapoints = knots;
-  end_effector_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
-                         "end_effector_position_target",
-                         "end_effector_position_target", false);
-
+  LcmTrajectory lcm_traj;
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+  UpdateLcmTrajectory(lcm_traj, c3_solution->time_vector_.cast<double>(), knots,
+                      force_samples);
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
@@ -2319,18 +2307,9 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_c3_execution_lcm_traj) const {
   // Returned trajectory includes EE positions and feed-forward forces.
-  LcmTrajectory::Trajectory end_effector_traj =
-      c3_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
-  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
-                         "end_effector_position_target",
-                         "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory force_traj =
-      c3_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
-  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
-
-  output_c3_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_c3_execution_lcm_traj->saved_traj =
+      c3_execution_lcm_traj_.GenerateLcmObject();
   output_c3_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
@@ -2339,18 +2318,9 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
     dairlib::lcmt_timestamped_saved_traj* output_repos_execution_lcm_traj)
     const {
   // Returned trajectory includes EE positions and feed-forward forces.
-  LcmTrajectory::Trajectory end_effector_traj =
-      repos_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
-  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
-                         "end_effector_position_target",
-                         "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory force_traj =
-      repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
-  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
-
-  output_repos_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_repos_execution_lcm_traj->saved_traj =
+      repos_execution_lcm_traj_.GenerateLcmObject();
   output_repos_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
@@ -2364,20 +2334,8 @@ void SamplingC3Controller::OutputTrajExecuteActor(
     execution_lcm_traj = repos_execution_lcm_traj_;
   }
 
-  // Returned trajectory includes EE positions and feed-forward forces.
-  LcmTrajectory::Trajectory end_effector_traj =
-      execution_lcm_traj.GetTrajectory("end_effector_position_target");
-  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
-                         "end_effector_position_target",
-                         "end_effector_position_target", false);
-
-  MatrixXd force_samples = MatrixXd::Zero(3, N_);
-  LcmTrajectory::Trajectory force_traj =
-      execution_lcm_traj.GetTrajectory("end_effector_force_target");
-  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
-
-  output_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_execution_lcm_traj->saved_traj =
+      execution_lcm_traj.GenerateLcmObject();
   output_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 

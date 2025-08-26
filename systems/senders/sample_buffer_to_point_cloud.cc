@@ -71,7 +71,7 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
     // Extract the end effector locations out of the configurations and the
     // samples' associated costs.
     int n_in_buffer = sample_buffer_lcmt->num_in_buffer;
-    ee_samples = Eigen::Matrix3Xf::Zero(3, n_in_buffer);
+    ee_samples = Eigen::Matrix3Xf::Zero(3, 3*n_in_buffer);
     Eigen::VectorXf costs = Eigen::VectorXf::Zero(n_in_buffer);
 
     for (int sample_i = 0; sample_i < n_in_buffer; sample_i++) {
@@ -79,7 +79,9 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
       std::vector<float> configuration_i =
           sample_buffer_lcmt->configurations[sample_i];
       for (int ee_i = 0; ee_i < 3; ee_i++) {
-        ee_samples(ee_i, sample_i) = configuration_i[ee_i];
+        ee_samples(ee_i, 3*sample_i) = configuration_i[ee_i];
+        ee_samples(ee_i, 3*sample_i+1) = configuration_i[3 + ee_i];
+        ee_samples(ee_i, 3*sample_i+2) = configuration_i[6 + ee_i];
       }
     }
 
@@ -114,9 +116,9 @@ void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(
         differences.row(i).minCoeff(&idx);
         closest_color_indices[i] = idx;
       }
-      rgbs = Eigen::Matrix3Xi::Zero(3, n_in_buffer);
-      for (int i = 0; i < n_in_buffer; i++) {
-        rgbs.col(i) = RGBs_.row(closest_color_indices(i));
+      rgbs = Eigen::Matrix3Xi::Zero(3, 3*n_in_buffer);
+      for (int i = 0; i < 3*n_in_buffer; i++) {
+        rgbs.col(i) = RGBs_.row(closest_color_indices(i/3));
       }
     }
   }

@@ -7,7 +7,7 @@ goal_mode: 0
 
 ### Parameters used for multiple goal modes.
 # Success thresholds for position and orientation.
-position_success_threshold: 0.02
+position_success_threshold: 0.002
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 
 resting_object_height: 0.031971466      # in world frame
@@ -27,11 +27,10 @@ angle_hysteresis: 0.4
 angle_err_to_vel_factor: 0
 
 # Initial goal (and only goal for fixed goal mode).
-fixed_target_position: [0.45, 0.2, 0.031971466]
-fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
-                           -0.3647051996310009, -0.11591689595929514]
+fixed_target_position: [0.01, 0, 0.032]
+fixed_target_orientation: [1, 0, 0, 0]
 
 # Random-specific parameters.
-random_goal_x_limits: [0.42, 0.5]
-random_goal_y_limits: [0.02, 0.25]
+random_goal_x_limits: [-0.01, 0.01]
+random_goal_y_limits: [-0.01, 0.01]
 random_goal_radius_limits: [0.48, 0.5]

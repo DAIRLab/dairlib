@@ -5,6 +5,8 @@
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>
+#include <drake/geometry/proximity/obj_to_surface_mesh.h>
+#include <drake/geometry/proximity/triangle_surface_mesh.h>
 
 #include "c3/core/c3.h"
 #include "c3/core/c3_options.h"
@@ -12,7 +14,6 @@
 #include "c3/core/solver_options_io.h"
 #include "c3/multibody/lcs_factory.h"
 #include "c3/multibody/lcs_factory_options.h"
-#include "solvers/c3_output.h"
 #include "common/find_resource.h"
 #include "common/update_context.h"
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
@@ -24,10 +25,9 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
-#include "systems/framework/timestamped_vector.h"
+#include "solvers/c3_output.h"
 #include "systems/controllers/face.h"
-#include <drake/geometry/proximity/triangle_surface_mesh.h>
-#include <drake/geometry/proximity/obj_to_surface_mesh.h>
+#include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -43,8 +43,8 @@ using drake::math::ExtractValue;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
-using systems::TimestampedVector;
 using systems::Face;
+using systems::TimestampedVector;
 
 namespace systems {
 
@@ -185,6 +185,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  void AddLinearConstraintToC3Plan(std::shared_ptr<c3::C3> plan_) const;
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
       const c3::C3::CostMatrices& c3_cost,
@@ -233,6 +234,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                               const double& t_context) const;
+
+  void UpdateLcmTrajectory(LcmTrajectory& lcm_trajectory,
+                           const Eigen::VectorXd& timestamps,
+                           const Eigen::MatrixXd& knots,
+                           const Eigen::MatrixXd& force_samples) const;
 
   void MaintainSampleBuffer(const Eigen::VectorXd& x_lcs) const;
 
@@ -440,10 +446,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable LcmTrajectory repos_execution_lcm_traj_;
 
   // Samples and associated costs computed in current control loop.
-  mutable std::vector<Eigen::Vector3d> all_sample_locations_;
+  mutable std::vector<Eigen::VectorXd> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>>
       all_sample_dynamically_feasible_plans_;
-  mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
+  mutable Eigen::VectorXd prev_repositioning_target_ = Eigen::VectorXd::Zero(9);
   mutable std::vector<double> all_sample_costs_;
 
   // To detect if the final goal has been updated.

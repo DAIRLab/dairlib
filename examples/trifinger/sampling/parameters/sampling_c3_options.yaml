@@ -9,7 +9,7 @@ projection_type: 'MIQP'     # 'MIQP' or 'QP'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
 scale_lcs: true
-end_on_qp_step: false
+end_on_qp_step: true
 # use_robust_formulation: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
@@ -67,14 +67,14 @@ Kd_for_ee_pd_rollout: 0.5
 
 ### Pose tracking cost parameters
 # Matrix scaling
-w_Q: 45
-w_R: 1
+w_Q: 1000
+w_R: 1000
 w_G: 0.25
 w_U: 0.26
 
-q_vector: [0.01, 0.01, 0.01,    # Finger 0 position
-           0.01, 0.01, 0.01,    # Finger 120 position
-           0.01, 0.01, 0.01,    # Finger 240 position
+q_vector: [1, 1, 1,    # Finger 0 position
+           1, 1, 1,    # Finger 120 position
+           1, 1, 1,    # Finger 240 position
            0.1, 0.1, 0.1, 0.1,  # object orientation
            200, 200, 120,       # object position
            5, 5, 5,             # Finger 0 linear velocity
@@ -82,9 +82,9 @@ q_vector: [0.01, 0.01, 0.01,    # Finger 0 position
            5, 5, 5,             # Finger 240 linear velocity
            0.05, 0.05, 0.05,    # object angular velocity
            0.05, 0.05, 0.05]    # object linear velocity
-r_vector: [0.01, 0.01, 0.01,    # Finger 0 position
-           0.01, 0.01, 0.01,    # Finger 120 position
-           0.01, 0.01, 0.01]    # Finger 240 position
+r_vector: [1, 1, 1,    # Finger 0 position
+           1, 1, 1,    # Finger 120 position
+           1, 1, 1]    # Finger 240 position
 
 # Penalty on matching projected variables
 g_x: [800, 800, 800,    # Finger 0 position

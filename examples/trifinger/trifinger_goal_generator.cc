@@ -67,7 +67,7 @@ void SamplingC3GoalGeneratorTrifinger::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
   VectorXd end_effector_position(end_effector_num_positions_);
-  end_effector_position << -0.02, -0.04, 0.03, -0.02, 0.05, 0.03,  0.05, 0, 0.03;
+  end_effector_position << -0.02, 0.05, 0.03, 0.05, 0, 0.03, -0.02, -0.04, 0.03;
   target->SetFromVector(end_effector_position);
 }
 

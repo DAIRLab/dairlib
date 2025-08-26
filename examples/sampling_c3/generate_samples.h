@@ -17,6 +17,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using dairlib::systems::Face;
 
+#define MAX_ITERATIONS_PER_SAMPLE 1000
+
 namespace dairlib {
 namespace systems {
 
@@ -117,6 +119,19 @@ Eigen::VectorXd MeshNormalSampling(
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<Face> faces,
     std::vector<double> face_bins);
+
+Eigen::VectorXd RandomSamplingWithinJointLimits(
+    const int& n_q, const int& n_v, const int& n_u,
+    const Eigen::VectorXd& x_lcs,
+    drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context,
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<
+        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+        contact_geoms,
+    const SamplingParams& sampling_params,
+    const SamplingC3Options sampling_c3_options);
 
 /// Whether the candidate state's EE location is within the robot workspace.
 bool IsSampleInWorkspace(

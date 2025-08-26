@@ -38,7 +38,6 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    bool include_walls,
     std::vector<bool> object_on_target
       ) {
   // Determine number of samples based on mode.
@@ -143,7 +142,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, sampling_c3_options, query_object, faces_per_object,
-          face_bins_per_object, total_area_per_object, include_walls, object_on_target);
+          face_bins_per_object, total_area_per_object, object_on_target);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
@@ -517,7 +516,6 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    bool include_walls,
     std::vector<bool> object_on_target
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
@@ -628,7 +626,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
 
         if (sampling_params.gen_planar_samples) {
 
-          if (include_walls && sampling_params.sample_on_wall) { // set z_height of sample to be higher, float above wall
+          if (sampling_c3_options.include_walls && sampling_params.sample_on_wall) { // set z_height of sample to be higher, float above wall
             double x_min = sampling_c3_options.workspace_limits[0][3];
             double x_max = sampling_c3_options.workspace_limits[0][4];
             double y_min = sampling_c3_options.workspace_limits[1][3];
@@ -672,9 +670,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         // }
 
         // Detect samples too close to wall
-        bool include_back_wall = true;
-        if (include_walls && !sampling_params.sample_on_wall) {
-          int offset = (include_back_wall) ? 4 : 3;
+        if (sampling_c3_options.include_walls && !sampling_params.sample_on_wall) {
+          int offset = (sampling_c3_options.include_back_wall) ? 4 : 3;
 
           for (int i = results.size()-offset; i < results.size(); i++) {
               if (results[i].distance <= sampling_params.sample_projection_clearance) {

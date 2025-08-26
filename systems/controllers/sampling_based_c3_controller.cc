@@ -182,7 +182,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
   std::cout << "Set solver options" << std::endl;
 
-  if (!controller_params_.include_walls) {
+  if (!sampling_c3_options_.include_walls) {
     // Set actor bounds.
     for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
@@ -714,8 +714,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, controller_params_.include_walls,
-                        object_on_target);
+                         total_area_per_object_, object_on_target);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -787,7 +786,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
     } // Unknown projection types are rejected in the initialization.
 
 
-    if (!controller_params_.include_walls) {
+    if (!sampling_c3_options_.include_walls) {
       // Set actor bounds.
       for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
         Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
@@ -1006,7 +1005,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
 
     double wall_offset = 0;
 
-    if (controller_params_.include_walls && sampling_params_.sample_on_wall) {
+    if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
       double x_min = sampling_c3_options_.workspace_limits[0][3];
       double x_max = sampling_c3_options_.workspace_limits[0][4];
       double y_min = sampling_c3_options_.workspace_limits[1][3];
@@ -1443,7 +1442,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   
   double wall_offset = 0;
   
-  if (controller_params_.include_walls && sampling_params_.sample_on_wall) {
+  if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
     double x_min = sampling_c3_options_.workspace_limits[0][3];
     double x_max = sampling_c3_options_.workspace_limits[0][4];
     double y_min = sampling_c3_options_.workspace_limits[1][3];
@@ -1679,15 +1678,12 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   }
   std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_pos;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.ang_error_sample_retention);
+    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.pos_error_sample_retention);
   }
   MatrixXd retained_samples =
     MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   VectorXd retained_costs =
     -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
-
-  // std::cout << "N_sample_buffer_: " << sampling_params_.N_sample_buffer << std::endl;
-  // std::cout << "satisfy_rot size: " << mask_satisfies_rot.at(0).size() << std::endl;
 
   // Keep buffer if none of objects moved
   int retained_count = 0;
@@ -2144,7 +2140,6 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
       lcs_contact_jacobian) const {
-
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2168,7 +2163,6 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     c3_options.mu, sampling_c3_options_.n_lambda_with_tangential,
     sampling_c3_options_.num_friction_directions_per_contact,
     sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector, contact_model_);
-
 }
 
 // Output port handlers for best sample location
@@ -2379,7 +2373,6 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
         lcs_contact_jacobian) const {
-
   const TimestampedVector<double>* lcs_x =
     (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                       lcs_state_input_port_);
@@ -2409,8 +2402,6 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 lcs_x->get_data());
-
-
 }
 
 // Output port handlers for executing C3 and repositioning ports

@@ -480,7 +480,8 @@ vector<SortedPair<GeometryId>> LCSFactory::PreProcessor(
     if (verbose && candidates.size() > 1) {
       std::cout << "Contact pair " << i << " : choosing " << num_to_select <<
         " among:" << std::endl;
-    }  
+    }
+
     std::vector<double> distances;
     distances.reserve(candidates.size());
     for (const auto& pair : candidates) {

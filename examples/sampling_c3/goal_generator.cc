@@ -239,6 +239,9 @@ void SamplingC3GoalGenerator::OutputObjectFinalTarget(
 // For example, if there are 3 areas, and the current assignment is [0, 1, 2],
 // then the new assignment can be [1, 2, 0] or [2, 0, 1].
 void SamplingC3GoalGenerator::AssignObjectIndexToGoalSamplingArea() const {
+  if (object_index_to_sampling_area_index_map_.size() == 1) {
+    return;
+  }
   std::vector<int> previous_map = object_index_to_sampling_area_index_map_;
   int num_areas = goal_params_.sampling_area_y_limits.size();
 
@@ -248,17 +251,16 @@ void SamplingC3GoalGenerator::AssignObjectIndexToGoalSamplingArea() const {
 
   std::mt19937 rng{std::random_device{}()};
 
-  if (goal_params_.fixed_target_positions.size() != 1) {
-    // Keep shuffling until we get a derangement
-    do {
-      std::shuffle(new_map.begin(), new_map.end(), rng);
-    } while ([&] {
-      for (int i = 0; i < num_areas; ++i) {
-        if (new_map[i] == previous_map[i]) return true; // same at position i → not valid
-      }
-      return false;
-    }());
-  }
+  // Keep shuffling until we get a derangement
+  do {
+    std::shuffle(new_map.begin(), new_map.end(), rng);
+  } while ([&] {
+    for (int i = 0; i < num_areas; ++i) {
+      if (new_map[i] == previous_map[i]) return true; // same at position i → not valid
+    }
+    return false;
+  }());
+  
   object_index_to_sampling_area_index_map_ = new_map;
 }
 
@@ -271,19 +273,21 @@ void SamplingC3GoalGenerator::SetRandomizedTargetFinalObjectPosition(int index) 
   double y_upper_limit = goal_params_.sampling_area_y_limits[
     object_index_to_sampling_area_index_map_[index]].second;
   double angle_limit = std::abs(std::asin((
-    x_upper_limit - x_lower_limit) / goal_params_.pairwise_goal_distance));   
-
-  
+    x_upper_limit - x_lower_limit) / goal_params_.pairwise_goal_distance));
 
   for (int i = 0; i < goal_params_.random_goal_gen_max_attempts; i++) {
-    if (goal_params_.fixed_target_positions.size() == 1) {
-      x = RandomUniform(x_lower_limit, x_upper_limit);
-      y = RandomUniform(y_lower_limit, y_upper_limit);
-      break;
-    }
     if (datum_position_.hasNaN()){
       x = RandomUniform(x_lower_limit, x_upper_limit);
-      y = y_lower_limit;
+
+      // For 1–2 objects, the leftmost goal doesn’t need to be placed on the left edge.
+      // For 3+ objects, the leftmost goal must be on the left edge to ensure enough
+      // space for the remaining goals.
+      if (object_index_to_sampling_area_index_map_.size() <= 2) {
+        y = RandomUniform(y_lower_limit, y_upper_limit);
+      } else {
+        y = y_lower_limit;
+      }
+
       std::cout << "Object: " << index << " Sampled position at " << x << ", " << y << std::endl;
       break;
     }

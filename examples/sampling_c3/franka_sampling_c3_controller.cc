@@ -95,7 +95,6 @@ int DoMain(int argc, char* argv[]) {
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-	std::cout << std::endl;
   // Create the LCS plant containing a floating EE, object, and ground.
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
@@ -104,7 +103,7 @@ int DoMain(int argc, char* argv[]) {
 	AddLCSModelsToPlant(
         &plant_lcs, &scene_graph, controller_params.object_models,
         controller_params.include_end_effector_orientation,
-        controller_params.include_walls);
+        sampling_c3_options.include_walls);
   plant_lcs.Finalize();
 
 
@@ -139,8 +138,9 @@ int DoMain(int argc, char* argv[]) {
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
 
-  std::vector<SortedPair<GeometryId>> object_object_contact_pairs;
-  std::vector<SortedPair<GeometryId>> wall_object_contact_pairs;
+  // For each pair of object-object or wall-object, we store the contact pairs between their convex pieces
+  std::vector<std::vector<SortedPair<GeometryId>>> object_object_contact_pairs;
+  std::vector<std::vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
 
   if (FLAGS_demo_name == "jacktoy") {
     drake::geometry::GeometryId capsule1_geoms =
@@ -239,8 +239,7 @@ int DoMain(int argc, char* argv[]) {
         contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   }
   else if (FLAGS_demo_name == "anything") {
-		std::cout << "Before contact_geoms" << std::endl;
-		if (controller_params.include_walls) {
+		if (sampling_c3_options.include_walls) {
 			drake::geometry::GeometryId left_wall_geoms =
 				plant_lcs.GetCollisionGeometriesForBody(
                     plant_lcs.GetBodyByName("left_wall"))[0];
@@ -263,34 +262,52 @@ int DoMain(int argc, char* argv[]) {
         std::vector<std::vector<GeometryId>> all_object_geoms;
 		for (int i = 0; i < controller_params.base_names.size(); i++) { // exclude ee/ground
 			std::string body_name = controller_params.base_names.at(i);
-			drake::geometry::GeometryId mesh_geoms =
-			plant_lcs.GetCollisionGeometriesForBody(
-					plant_lcs.GetBodyByName(body_name))[0];
-			std::cout << "Body name: " << body_name << std::endl;
-			std::cout << "mesh_geoms: " << mesh_geoms << std::endl;
-			drake::geometry::GeometryId top_left_sphere_geoms =
+			const std::vector<drake::geometry::GeometryId>& object_geoms = 
+                plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName(body_name));
+            
+            // Each object must contain at least 4 collision geometries:
+            // 1. The main body: it can be a single mesh or decomposed into multiple convex pieces
+            // 2. 3 spheres on the top left, top right, and bottom of the object
+            DRAKE_DEMAND(object_geoms.size() >= 4);
+			const auto& top_left_sphere_geoms =
                 plant_lcs.GetCollisionGeometriesForBody(
-                        plant_lcs.GetBodyByName(body_name))[10];
-			drake::geometry::GeometryId top_right_sphere_geoms =
+                        plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 3];
+			const auto& top_right_sphere_geoms =
                 plant_lcs.GetCollisionGeometriesForBody(
-                        plant_lcs.GetBodyByName(body_name))[11];
-			drake::geometry::GeometryId bottom_sphere_geoms =
+                        plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 2];
+			const auto& bottom_sphere_geoms =
                 plant_lcs.GetCollisionGeometriesForBody(
-                        plant_lcs.GetBodyByName(body_name))[12];
-
+                        plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 1];
 			contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] = top_left_sphere_geoms;
 			contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] = top_right_sphere_geoms;
 			contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
-			
-            
-			std::vector<GeometryId> all_geoms = plant_lcs.GetCollisionGeometriesForBody(
-				plant_lcs.GetBodyByName(body_name));
-			std::vector<GeometryId> geom_ids(all_geoms.begin(), all_geoms.begin() + 10); // 10 convex pieces
-			for (int j = 0; j < geom_ids.size(); j++) {
-                ee_contact_pairs.push_back(
-                    SortedPair(contact_geoms["EE"], geom_ids[j]));
+
+            const std::vector<drake::geometry::GeometryId> object_geoms_without_spheres = 
+                std::vector<drake::geometry::GeometryId>(object_geoms.begin(), object_geoms.end() - 3);
+
+			if (sampling_c3_options.include_walls) {
+                std::vector<GeometryId> wall_geoms{
+                    contact_geoms["LEFT_WALL"],
+                    contact_geoms["RIGHT_WALL"],
+                    contact_geoms["FRONT_WALL"],
+                };
+                if (sampling_c3_options.include_back_wall) {
+                    wall_geoms.push_back(contact_geoms["BACK_WALL"]);
+                }
+                std::vector<SortedPair<GeometryId>> convex_piece_pairs;
+                for (const auto& wall_geom : wall_geoms){
+                    for (const auto& object_geom : object_geoms_without_spheres){
+                        convex_piece_pairs.emplace_back(wall_geom, object_geom);
+                    }
+                }
+                wall_object_contact_pairs.push_back(std::move(convex_piece_pairs));
 			}
-			all_object_geoms.push_back(geom_ids);
+            
+			for (int j = 0; j < object_geoms.size() - 3; j++) {
+                ee_contact_pairs.push_back(
+                    SortedPair(contact_geoms["EE"], object_geoms[j]));
+			}
+			all_object_geoms.push_back(object_geoms_without_spheres);
 
 			ground_object_contact_pairs.push_back(SortedPair(
                 contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
@@ -300,43 +317,22 @@ int DoMain(int argc, char* argv[]) {
                 contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)], contact_geoms["GROUND"]));
 		} 
 
-        if (controller_params.include_walls) {
-            // TODO: contact_geoms["OBJECT_MESH_{i}"] does not exist because
-            // there is no access to the full object mesh anymore, only the
-            // convex decomposition.  This needs to be resolved for
-            // including the bin walls in the controller's contact pairs.
-
-            for (int i = 0; i < all_object_geoms.size(); i++) {
-                for (int j = 0; j < all_object_geoms.at(i).size(); j++) {
-                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["LEFT_WALL"], all_object_geoms.at(i).at(j)));
-                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["RIGHT_WALL"], all_object_geoms.at(i).at(j)));
-                    wall_object_contact_pairs.push_back(SortedPair(contact_geoms["FRONT_WALL"], all_object_geoms.at(i).at(j)));
-                }
-            } 				
-        }
-
-		std::cout << "Before object-object contacts" << std::endl;
 		// Object-object contact pairs (excluding end effector), each pair of
         // convex pieces for each pair of objects
-		for (int i = 0; i < controller_params.num_objects; i++) {
-			for (int j = 0; j < controller_params.num_objects; j++) {
-				if (j >= i) break;
+		for (int i = 0; i + 1 < controller_params.num_objects; i++) {
+			for (int j = i + 1; j < controller_params.num_objects; j++) {
+                std::vector<SortedPair<GeometryId>> convex_piece_pairs;
+                const std::vector<GeometryId>& object_1_geoms = all_object_geoms.at(i);
+                const std::vector<GeometryId>& object_2_geoms = all_object_geoms.at(j);
 
-                std::vector<GeometryId> object_1_geoms = all_object_geoms.at(i);
-                std::vector<GeometryId> object_2_geoms = all_object_geoms.at(j);
-
-                for (int p = 0; p < object_1_geoms.size(); p++) {
-                    for (int q = 0; q < object_2_geoms.size(); q++) {
-                        if (q >= p) break;
-                        object_object_contact_pairs.push_back(
-                            SortedPair(object_1_geoms.at(p), object_2_geoms.at(q)));
+                for (const auto& g1 : object_1_geoms) {
+                    for (const auto& g2 : object_2_geoms) {
+                        convex_piece_pairs.emplace_back(g1, g2);
                     }
                 }
-				std::cout << "(" << j << ", " << i << ")" << std::endl;
+                object_object_contact_pairs.push_back(std::move(convex_piece_pairs));
 		    }
 		}
-
-    
   }
   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
@@ -345,10 +341,11 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ee_ground_contact);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
-  contact_pairs.push_back(object_object_contact_pairs);
-  contact_pairs.push_back(wall_object_contact_pairs);
-  for (int i = 0; i < contact_pairs.size(); i++) {
-    std::cout << "Contact pairs " << i << ": " << contact_pairs[i].size() << std::endl;
+  for (const auto& obj_obj_pair : object_object_contact_pairs) {
+    contact_pairs.push_back(obj_obj_pair);
+  }
+  for (const auto& wall_obj_pair : wall_object_contact_pairs) {
+    contact_pairs.push_back(wall_obj_pair);
   }
 
   // Piece together the diagram.

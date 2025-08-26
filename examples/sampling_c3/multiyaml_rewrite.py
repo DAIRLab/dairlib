@@ -41,7 +41,6 @@ def calculate_contacts(num_objects: int, include_walls: int) -> int:
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
 
-
 yaml_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
 num_objects = get_num_objects_from_yaml(yaml_path)
 num_contacts = calculate_contacts(num_objects, 0)
@@ -106,6 +105,21 @@ def set_object_paths(index, base_name, output_dir, controller_yaml, vis_yaml, si
     sim_yaml["object_models"][index] = combined_sdf_path
 
 
+def build_mu_per_pair_type(num_objects: int, include_walls: int) -> list:
+    EE_GROUND_FRICTION_COEFFICIENT = 0.823 
+    EE_OBJECT_FRICTION_COEFFICIENT = 0.42
+    OBJECT_GROUND_FRICTION_COEFFICIENT = 0.46
+    OBJECT_OBJECT_FRICTION_COEFFICIENT = 0.3
+    OBJECT_WALL_FRICTION_COEFFICIENT = 0.375
+
+    mu_per_pair_type = [EE_GROUND_FRICTION_COEFFICIENT,
+                        EE_OBJECT_FRICTION_COEFFICIENT,
+                        OBJECT_GROUND_FRICTION_COEFFICIENT] + \
+                        [OBJECT_OBJECT_FRICTION_COEFFICIENT] * choose_2(num_objects)
+    if (include_walls):
+        mu_per_pair_type += [OBJECT_WALL_FRICTION_COEFFICIENT] * num_objects
+    return mu_per_pair_type
+
 
 # Build q_vector for n objects
 def build_q_vector(num_objects: int) -> list:
@@ -139,8 +153,13 @@ def build_q_vector(num_objects: int) -> list:
 def update_c3_options(is_c3_plus, samp_c3_options_yaml_path): 
     samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
 
-    include_walls = 2 if (controller_yaml['include_walls']) else 0
-    samp_c3_options_yaml['resolve_contacts_to_lists'] = [[0, 1, num_objects * 3, choose_2(num_objects), include_walls * num_objects]]
+    include_walls = 1 if (samp_c3_options_yaml['include_walls']) else 0
+    samp_c3_options_yaml['resolve_contacts_to_lists'] = [
+        [0, 1, num_objects * 3] + [1] * choose_2(num_objects) + [include_walls] * num_objects]
+    samp_c3_options_yaml['resolve_as_planar_contacts_list'] = \
+        [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
+    samp_c3_options_yaml["mu_per_pair_type"] = build_mu_per_pair_type(num_objects, include_walls)
+
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
 
     q_vector_position = build_q_vector(num_objects)
@@ -173,7 +192,7 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_list"] = [[20] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_eta_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x"] = [0] * (6 + (13 * num_objects))
     else:
@@ -203,7 +222,7 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_position_list"] = [[20] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x_position"] = [0] * (6 + (13 * num_objects))
     else:

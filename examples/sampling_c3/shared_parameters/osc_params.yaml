@@ -34,7 +34,7 @@ y_scale: 0.0002
 z_scale: 0.0002
 
 end_effector_acceleration: 10
-track_end_effector_orientation: true
+track_end_effector_orientation: false
 cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
 publish_debug_info: true
@@ -72,6 +72,6 @@ EndEffectorRotKd:
 # The end effector forces in the OSC are called lambdas but are really tracking
 # the forces at the end effector or the u_sol we get in c3.
 LambdaEndEffectorW:
-  [ 400, 0, 0,
-    0, 400, 0,
+  [ 1, 0, 0,
+    0, 1, 0,
     0, 0, 1 ]

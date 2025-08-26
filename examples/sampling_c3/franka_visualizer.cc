@@ -4,9 +4,6 @@
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
-#include <boost/stacktrace.hpp>
-#include <stdexcept>
-
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -103,7 +100,7 @@ int do_main(int argc, char* argv[]) {
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
   ModelInstanceIndex franka_index = AddFrankaToPlant(
-    &plant, &scene_graph, true, true, controller_params.include_walls);
+    &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
 	// Getting vector of object indices for all objects
   std::vector<ModelInstanceIndex> object_indices_plant = AddObjectsToPlant(

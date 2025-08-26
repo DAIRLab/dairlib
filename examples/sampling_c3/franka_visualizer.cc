@@ -4,9 +4,6 @@
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
-#include <boost/stacktrace.hpp>
-#include <stdexcept>
-
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"

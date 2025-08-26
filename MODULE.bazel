@@ -93,12 +93,11 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "2bd13495c3306cf7d53992e2495774d1ad454cca"
+    commit = "ed1cb0ed199901aeae85725502b583a2b40c9553"
 )
 
 INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"
 INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2edf"
-
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

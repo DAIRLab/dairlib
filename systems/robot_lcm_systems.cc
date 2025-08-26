@@ -33,7 +33,8 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -142,7 +143,8 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -307,7 +309,8 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -330,10 +333,10 @@ ObjectStateReceiver::ObjectStateReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;
@@ -398,7 +401,8 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -427,7 +431,8 @@ ObjectStateSender::ObjectStateSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 
@@ -458,10 +463,10 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;

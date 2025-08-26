@@ -1,0 +1,155 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_binary(
+    name = "run_simulation",
+    srcs = ["plate_balancing_simulation.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/plate-balancing/systems:franka_systems",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/lcmt_systems:lcmt_systems",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_controller",
+    srcs = ["franka_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/plate-balancing/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/lcmt_systems:lcmt_systems",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_c3_controller",
+    srcs = ["plate_balancing_c3_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/plate-balancing/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/lcmt_systems:lcmt_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "forward_kinematics_for_lcs",
+    srcs = ["forward_kinematics_for_lcs.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    copts = [
+        "-Iexternal",
+        "-Wno-sign-compare",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/plate-balancing/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/lcmt_systems:lcmt_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_visualizer",
+    srcs = ["plate_balancing_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/lcmt_systems:lcmt_systems",
+        "//examples/plate-balancing/systems/visualization:visualization_systems",
+        "@c3//lcmtypes:lcmt_c3",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "parameters",
+    hdrs = [
+        "parameters/c3_scene_config.h",
+        "parameters/simulation_config.h",
+        "parameters/simulation_scene_config.h",
+        "parameters/osc_controller_config.h",
+        "parameters/lcm_channel_config.h",
+        "parameters/plate_balancing_config.h",
+        "parameters/plate_balancing_target_config.h",
+        "parameters/plate_balancing_c3_controller_options.h"
+    ],
+    data = glob([
+        "**/*.yaml",
+    ]),
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

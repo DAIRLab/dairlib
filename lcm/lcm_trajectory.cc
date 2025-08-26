@@ -17,8 +17,10 @@ using Eigen::Dynamic;
 using Eigen::Map;
 using Eigen::Matrix;
 using Eigen::MatrixXd;
+using Eigen::MatrixXf;
 using Eigen::RowMajor;
 using Eigen::VectorXd;
+using Eigen::VectorXf;
 using std::string;
 using std::unordered_map;
 using std::vector;
@@ -55,6 +57,20 @@ LcmTrajectory::Trajectory::Trajectory(const string& traj_name,
   }
 }
 
+LcmTrajectory::Trajectory::Trajectory(const c3::lcmt_trajectory& trajectory) {
+  int num_points = trajectory.num_timesteps;
+  int num_datatypes = trajectory.vector_dim;
+  this->traj_name = trajectory.trajectory_name;
+  this->datatypes = std::vector<std::string>(num_datatypes, "float");
+  this->time_vector = VectorXf::Map(trajectory.timestamps.data(), num_points).cast<double>();
+  this->datapoints = MatrixXf(num_datatypes, num_points).cast<double>();
+
+  for (int i = 0; i < num_datatypes; ++i) {
+    this->datapoints.row(i) =
+        VectorXf::Map(&trajectory.values[i][0], num_points).cast<double>();
+  }
+}
+
 LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
                              const vector<string>& trajectory_names,
                              const string& name, const string& description,
@@ -79,6 +95,16 @@ LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
     string traj_name = traj.trajectory_names[i];
     trajectory_names_.push_back(traj_name);
     trajectories_[traj_name] = Trajectory(traj_name, traj.trajectories[i]);
+  }
+}
+
+LcmTrajectory::LcmTrajectory(const c3::lcmt_c3_trajectory& c3_trajectory) {
+  trajectories_ = unordered_map<string, Trajectory>();
+  trajectory_names_ = vector<std::string>();
+  for (int i = 0; i < c3_trajectory.num_trajectories; ++i) {
+    const auto trajectory = Trajectory(c3_trajectory.trajectories[i]);
+    trajectory_names_.push_back(trajectory.traj_name);
+    trajectories_[trajectory.traj_name] = trajectory; 
   }
 }
 

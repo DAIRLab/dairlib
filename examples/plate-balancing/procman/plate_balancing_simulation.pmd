@@ -1,0 +1,69 @@
+group "simulations" {
+    cmd "plate_balancing_simulation" {
+        exec = "bazel-bin/examples/plate-balancing/run_simulation";
+        host = "localhost";
+    }
+    cmd "forward_kinematics" {
+        exec = "bazel-bin/examples/plate-balancing/forward_kinematics_for_lcs";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/plate-balancing/run_visualizer";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
+    cmd "start_logging" {
+        exec = "python3 examples/plate-balancing/start_logging.py sim";
+        host = "localhost";
+    }
+}
+
+group "controllers" {
+    cmd "dairlab_osc" {
+        exec = "bazel-bin/examples/plate-balancing/run_osc_controller";
+        host = "localhost";
+    }
+    cmd "dairlab_c3" {
+        exec = "bazel-bin/examples/plate-balancing/run_c3_controller";
+        host = "localhost";
+    }
+    cmd "mujoco_mpc" {
+        exec = "../mujoco_mpc/build/bin/standalone_controller";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+script "c3_mpc" {
+    start cmd "plate_balancing_simulation";
+    start cmd "dairlab_osc";
+    start cmd "dairlab_c3";
+}
+
+script "mjmpc_with_drake_sim" {
+    start cmd "plate_balancing_simulation";
+    start cmd "dairlab_osc";
+    start cmd "mujoco_mpc";
+    start cmd "forward_kinematics";
+}
+
+script "start_operator_commands" {
+    start cmd "visualizer";
+}
+
+script "stop_controllers_and_simulators" {
+    stop group "simulations";
+    stop group "controllers";
+}

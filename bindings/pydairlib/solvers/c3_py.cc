@@ -1,7 +1,7 @@
+#include <drake/bindings/pydrake/common/sorted_pair_pybind.h>
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <drake/bindings/pydrake/common/sorted_pair_pybind.h>
 
 #include "solvers/c3_miqp.h"
 #include "solvers/lcs.h"
@@ -23,11 +23,11 @@ namespace pyc3 {
 PYBIND11_MODULE(c3, m) {
   py::class_<dairlib::solvers::LCS>(m, "LCS")
       .def(py::init<const vector<MatrixXd>&, const vector<MatrixXd>&,
-                   const vector<MatrixXd>&, const vector<VectorXd>&,
-                   const vector<MatrixXd>&, const vector<MatrixXd>&,
-                   const vector<MatrixXd>&, const vector<VectorXd>&, double>(),
-          arg("A"), arg("B"), arg("D"), arg("d"), arg("E"), arg("F"), arg("H"),
-          arg("c"), arg("dt"))
+                    const vector<MatrixXd>&, const vector<VectorXd>&,
+                    const vector<MatrixXd>&, const vector<MatrixXd>&,
+                    const vector<MatrixXd>&, const vector<VectorXd>&, double>(),
+           arg("A"), arg("B"), arg("D"), arg("d"), arg("E"), arg("F"), arg("H"),
+           arg("c"), arg("dt"))
       .def(py::init<const MatrixXd&, const MatrixXd&, const MatrixXd&,
                     const MatrixXd&, const MatrixXd&, const MatrixXd&,
                     const MatrixXd&, const VectorXd&, int, double>(),
@@ -44,17 +44,10 @@ PYBIND11_MODULE(c3, m) {
       .def("Simulate", &LCS::Simulate);
 
   m.def("LinearizePlantToLCS",
-        &dairlib::solvers::LCSFactory::LinearizePlantToLCS,
-        py::arg("plant"),
-        py::arg("context"),
-        py::arg("plant_ad"),
-        py::arg("context_ad"),
-        py::arg("contact_geoms"),
-        py::arg("num_friction_directions"),
-        py::arg("mu"),
-        py::arg("dt"),
-        py::arg("N"),
-        py::arg("contact_model"));
+        &dairlib::solvers::LCSFactory::LinearizePlantToLCS, py::arg("plant"),
+        py::arg("context"), py::arg("plant_ad"), py::arg("context_ad"),
+        py::arg("contact_geoms"), py::arg("num_friction_directions"),
+        py::arg("mu"), py::arg("dt"), py::arg("N"), py::arg("contact_model"));
 
   {
     using Enum = dairlib::solvers::ContactModel;
@@ -80,7 +73,8 @@ PYBIND11_MODULE(c3, m) {
            arg("G"), arg("admm_iteration"), arg("verbose") = false)
       .def("SolveQP", &C3MIQP::SolveQP, arg("x0"), arg("G"), arg("WD"),
            arg("admm_iteration"), arg("is_final_solve"))
-      .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))
+      .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"),
+           arg("admm_iteration"))
       .def("AddLinearConstraint", &C3MIQP::AddLinearConstraint, arg("A"),
            arg("lower_bound"), arg("upper_bound"), arg("constraint"))
       .def("RemoveConstraints", &C3MIQP::RemoveUserConstraints)

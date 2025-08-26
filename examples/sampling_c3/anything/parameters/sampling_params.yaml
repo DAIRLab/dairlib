@@ -59,4 +59,5 @@ z_height: 0.002
 
 gen_planar_samples: true # true = projects all samples to z_height
 ee_z_close: true # true = require ee to be close to sampling z-height before entering c3
+sample_on_wall: true
 c3_min_clearance: 0.01

@@ -714,8 +714,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
                          faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, sampling_c3_options_.include_walls,
-                        object_on_target);
+                         total_area_per_object_, object_on_target);
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -1004,6 +1003,23 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       }
     }
 
+    double wall_offset = 0;
+
+    if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
+      double x_min = sampling_c3_options_.workspace_limits[0][3];
+      double x_max = sampling_c3_options_.workspace_limits[0][4];
+      double y_min = sampling_c3_options_.workspace_limits[1][3];
+      double y_max = sampling_c3_options_.workspace_limits[1][4];
+    
+      // if ee is close to wall, raise z_height to avoid hitting
+      if ((x_lcs_curr[0] <= x_min + 0.05 && x_lcs_curr[0] >= x_min - sampling_c3_options_.workspace_margins) || 
+          (x_lcs_curr[0] >= x_max - 0.05 && x_lcs_curr[0] <= x_max + sampling_c3_options_.workspace_margins) || 
+          (x_lcs_curr[1] <= y_min + 0.05 && x_lcs_curr[1] >= y_min - sampling_c3_options_.workspace_margins) || 
+          (x_lcs_curr[1] >= y_max - 0.05 && x_lcs_curr[1] <= y_max + sampling_c3_options_.workspace_margins)) {
+            wall_offset = 0.01;
+      } 
+    }
+    
     // Switch to C3 if forced by xbox controller.
     if (force_c3_mode) {
       std::cout << "Forcing into C3 mode" << std::endl;
@@ -1017,7 +1033,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
-       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance ||
+       (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance + wall_offset ||
          !sampling_params_.ee_z_close))
     {
 
@@ -1422,9 +1438,27 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     } else {
       x_pred_curr_plan_ = knots.col(N_ - 1);
     }
+  }  
+  
+  double wall_offset = 0;
+  
+  if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
+    double x_min = sampling_c3_options_.workspace_limits[0][3];
+    double x_max = sampling_c3_options_.workspace_limits[0][4];
+    double y_min = sampling_c3_options_.workspace_limits[1][3];
+    double y_max = sampling_c3_options_.workspace_limits[1][4];
+  
+    // if ee is close to wall, raise z_height
+    if ((x_sol[0][0] <= x_min + 0.05 && x_sol[0][0] >= x_min - sampling_c3_options_.workspace_margins) || 
+        (x_sol[0][0] >= x_max - 0.05 && x_sol[0][0] <= x_max + sampling_c3_options_.workspace_margins) || 
+        (x_sol[0][1] <= y_min + 0.05 && x_sol[0][1] >= y_min - sampling_c3_options_.workspace_margins) || 
+        (x_sol[0][1] >= y_max - 0.05 && x_sol[0][1] <= y_max + sampling_c3_options_.workspace_margins)) {
+        wall_offset = 0.01;
+    } 
   }
+
   for (int i = 0; i < N_; i++) {
-    knots(2, i) = sampling_params_.z_height; // keep ee height constant
+    knots(2, i) = sampling_params_.z_height + wall_offset; // keep ee height constant
     knots(5 + 7 * controller_params_.num_objects, i) = 0; // keep ee z-velo constant
   }
 

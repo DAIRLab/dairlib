@@ -138,6 +138,33 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     distance = signed_distance_pair.distance;
   }
 
+
+  if (nhat_BA_W.array().isNaN().any()) {
+    GeometryId left_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("left_wall"))[0];
+    GeometryId right_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("right_wall"))[0];
+    GeometryId front_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("front_wall"))[0];
+    GeometryId back_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("back_wall"))[0];
+
+
+    if (geometry_id_A_ == left_wall_id || geometry_id_B_ == left_wall_id) {
+      std::cout << "set nhat_BA_W for left_wall" << std::endl;
+      nhat_BA_W = {0, -1, 0};
+    } else if (geometry_id_A_ == right_wall_id || geometry_id_B_ == right_wall_id) {
+      std::cout << "set nhat_BA_W for right_wall" << std::endl;
+      nhat_BA_W = {0, 1, 0};
+    } else if (geometry_id_A_ == front_wall_id || geometry_id_B_ == front_wall_id) {
+      std::cout << "set nhat_BA_W for front_wall" << std::endl;
+      nhat_BA_W = {-1, 0, 0};
+    } else if (geometry_id_A_ == back_wall_id || geometry_id_B_ == back_wall_id) {
+      std::cout << "set nhat_BA_W for back_wall" << std::endl;
+      nhat_BA_W = {1, 0, 0};
+    } else {
+      throw std::runtime_error("GeomGeomCollider: nhat_BA_W is NaN");
+    }
+
+  }
+
+
   int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities()
                                                 : plant_.num_positions();
   Matrix<double, 3, Eigen::Dynamic> Jv_WCa(3, n_cols);

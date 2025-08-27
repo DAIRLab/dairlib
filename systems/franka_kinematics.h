@@ -47,6 +47,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             const std::string& end_effector_name,
                             const std::string& object_name,
                             bool include_end_effector_orientation,
+                            const bool& orientation_is_quaternion,
                             std::vector<std::string> object_names);
 
  

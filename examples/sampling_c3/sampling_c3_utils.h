@@ -100,7 +100,8 @@ drake::multibody::ModelInstanceIndex AddObjectToPlant(
 std::vector<drake::multibody::ModelInstanceIndex> AddObjectsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    std::vector<std::string> object_models = {});
+    std::vector<std::string> object_models = {},
+    const bool& orientation_is_quaternion = true);
 
 void AddLCSModelToPlant(
     drake::multibody::MultibodyPlant<double>* plant,

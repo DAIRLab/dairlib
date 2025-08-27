@@ -276,5 +276,49 @@
         </drake:proximity_properties>
       </collision>
     </link>
+    <link name="A_shape_base"/>
+    <link name="fake_x"/>
+    <link name="fake_y"/>
+    <link name="fake_z"/>
+    <joint name="base_to_x" type="prismatic">
+      <parent>A_shape_base</parent>
+      <child>fake_x</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
+        </limit>
+      </axis>
+    </joint>
+    <joint name="x_to_y" type="prismatic">
+      <parent>fake_x</parent>
+      <child>fake_y</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
+        </limit>
+      </axis>
+    </joint>
+    <joint name="y_to_z" type="prismatic">
+      <parent>fake_y</parent>
+      <child>fake_z</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
+        </limit>
+      </axis>
+    </joint>
+    <joint name="z_to_rot" type="continuous">
+      <parent>fake_z</parent>
+      <child>A_shape</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
   </model>
 </sdf>

@@ -104,7 +104,8 @@ int do_main(int argc, char* argv[]) {
 
 	// Getting vector of object indices for all objects
   std::vector<ModelInstanceIndex> object_indices_plant = AddObjectsToPlant(
-        &plant, &scene_graph, vis_params.object_vis_models);
+    &plant, &scene_graph, vis_params.object_vis_models,
+    controller_params.orientation_is_quaternion);
   plant.Finalize();
 
 
@@ -120,17 +121,12 @@ int do_main(int argc, char* argv[]) {
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
-  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(&plant_object, nullptr,
-                   vis_params.object_vis_models);
+  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
+    &plant_object, nullptr, vis_params.object_vis_models,
+    controller_params.orientation_is_quaternion);
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
-	std::cout << std::endl;
-
-	std::cout << "Object_plant num_pos: " << plant_object.num_positions() << std::endl;
-	std::cout << "Object_plant num_velo: " << plant_object.num_velocities() << std::endl;
-
-  //std::this_thread::sleep_for(std::chrono::seconds(15));
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto franka_state_receiver =
@@ -139,7 +135,8 @@ int do_main(int argc, char* argv[]) {
 	// Duplicating object state reciever for each object
   std::vector<ObjectStateReceiver*> object_state_receivers;
   for (ModelInstanceIndex obj_index : object_indices_plant) { 
-      object_state_receivers.push_back(builder.AddSystem<ObjectStateReceiver>(plant, obj_index));
+      object_state_receivers.push_back(builder.AddSystem<ObjectStateReceiver>(
+        plant, obj_index));
   }
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -153,17 +150,15 @@ int do_main(int argc, char* argv[]) {
   std::vector<SubvectorPassThrough<double>*> tray_passthroughs;
   for (int i = 0; i < object_state_receivers.size(); i++) {  
       tray_passthroughs.push_back(
-				builder.AddSystem<SubvectorPassThrough>(
-						object_state_receivers.at(i)->get_output_port(0).size(), 0,
-						plant.num_positions(object_indices_plant.at(i)))
-				);
+          builder.AddSystem<SubvectorPassThrough>(
+              object_state_receivers.at(i)->get_output_port(0).size(), 0,
+              plant.num_positions(object_indices_plant.at(i)))
+          );
   }
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index)};
-	for (ModelInstanceIndex obj_index : object_indices_plant) {
-		input_sizes.push_back(
-			plant.num_positions(obj_index)
-		);
+  for (ModelInstanceIndex obj_index : object_indices_plant) {
+      input_sizes.push_back(plant.num_positions(obj_index));
 	}
 	
   auto mux =
@@ -172,7 +167,9 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false, controller_params.base_names);
+          controller_params.object_body_name, false,
+          controller_params.orientation_is_quaternion,
+          controller_params.base_names);
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -550,7 +547,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
 	for (int i = 1; i <= tray_passthroughs.size(); i++) {
-		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(), mux->get_input_port(i));
+		builder.Connect(tray_passthroughs.at(i-1)->get_output_port(),
+        mux->get_input_port(i));
 	} 
   builder.Connect(*mux, *to_pose);
   builder.Connect(

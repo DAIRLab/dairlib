@@ -55,6 +55,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                    const std::string& end_effector_name,
                                    const std::string& object_name,
                                    bool include_end_effector_orientation,
+                                   const bool& orientation_is_quaternion,
                                    std::vector<std::string> object_names)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
@@ -75,11 +76,13 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                                franka_plant.num_actuators()))
           .get_index();
 
+  int n_config = orientation_is_quaternion ? 7 : 4;
+  int n_vel = orientation_is_quaternion ? 6 : 4;
   for (int i = 0; i < num_objects_; i++) {
     std::string port_name = "x_object_" + std::to_string(i);
     object_state_ports_.push_back(
         this->DeclareVectorInputPort(
-              port_name, StateVector<double>(7, 6))
+              port_name, StateVector<double>(n_config, n_vel))
           .get_index()
     );
   } 

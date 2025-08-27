@@ -7,6 +7,7 @@ namespace dairlib {
 
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransform;
+using drake::multibody::BodyIndex;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -124,15 +125,25 @@ ModelInstanceIndex AddObjectToPlant(
 std::vector<ModelInstanceIndex> AddObjectsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
-    std::vector<std::string> object_models) {
+    std::vector<std::string> object_models,
+    const bool& orientation_is_quaternion) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 
   std::vector<ModelInstanceIndex> models;
   for (const auto& model : object_models) {
-      models.push_back(
-        parser.AddModels(FindResourceOrThrow(model))[0]
-      );
+    models.push_back(parser.AddModels(FindResourceOrThrow(model))[0]);
+    if (!orientation_is_quaternion) {
+      // Get the name of the object in the model.
+      ModelInstanceIndex obj_index = models.back();
+      BodyIndex body_index = plant->GetBodyIndices(obj_index)[0];
+      const std::string& obj_name = plant->get_body(body_index).name();
+
+      // Weld the object's base link to the world.
+      RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+      plant->WeldFrames(plant->world_frame(),
+                        plant->GetFrameByName(obj_name + "_base"), X_WI);
+    }
   }
   return models;
 }

@@ -34,6 +34,7 @@ struct SamplingC3ControllerParams {
 
   double workspace_margin;
   bool include_end_effector_orientation;
+  bool orientation_is_quaternion;
   int control_loop_delay_ms;
 
   int num_objects;
@@ -68,6 +69,7 @@ struct SamplingC3ControllerParams {
 
     a->Visit(DRAKE_NVP(base_names));
     a->Visit(DRAKE_NVP(object_models));
+    a->Visit(DRAKE_NVP(orientation_is_quaternion));
 
     /// Store individual parameter classes internally.
     sampling_c3_options = drake::yaml::LoadYamlFile<SamplingC3Options>(

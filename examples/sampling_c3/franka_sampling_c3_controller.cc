@@ -50,8 +50,6 @@ using drake::multibody::ModelInstanceIndex;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
 using std::vector;
 
 
@@ -88,7 +86,8 @@ int DoMain(int argc, char* argv[]) {
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
-    &plant_object, nullptr, controller_params.object_models);
+    &plant_object, nullptr, controller_params.object_models,
+    controller_params.orientation_is_quaternion);
 	
 	// exclude ee and ground
 	//std::vector<ModelInstanceIndex> object_indices(full_object_indices.begin()+2, full_object_indices.end()); 
@@ -379,6 +378,7 @@ int DoMain(int argc, char* argv[]) {
           object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation,
+          controller_params.orientation_is_quaternion,
 		  controller_params.base_names
     );
 

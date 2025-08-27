@@ -56,8 +56,66 @@ SDF_TEMPLATE = """<?xml version="1.0"?>
         <pose> {CORNER_XYNZ} 0 0 0</pose>
       </collision>
     </link>
+    {EXTRAS}
   </model>
 </sdf>
+"""
+
+PLANAR_ROTATION_EXTRAS = """
+    <link name="{OBJ}_base" />
+    <link name="fake_x" />
+    <link name="fake_y" />
+    <link name="fake_z" />
+
+    <joint name="base_to_x" type="prismatic">
+      <parent> {OBJ}_base </parent>
+      <child> fake_x </child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+            <lower>-1.79769e+308</lower>
+            <upper>1.79769e+308</upper>
+            <effort>0</effort>   <!-- Mark as unactuated -->
+        </limit>
+      </axis>
+    </joint>
+
+    <joint name="x_to_y" type="prismatic">
+      <parent> fake_x </parent>
+      <child> fake_y </child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+            <lower>-1.79769e+308</lower>
+            <upper>1.79769e+308</upper>
+            <effort>0</effort>   <!-- Mark as unactuated -->
+        </limit>
+      </axis>
+    </joint>
+
+    <joint name="y_to_z" type="prismatic">
+      <parent> fake_y </parent>
+      <child> fake_z </child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+            <lower>-1.79769e+308</lower>
+            <upper>1.79769e+308</upper>
+            <effort>0</effort>   <!-- Mark as unactuated -->
+        </limit>
+      </axis>
+    </joint>
+
+    <joint name="z_to_rot" type="continuous">
+      <parent> fake_z </parent>
+      <child> {OBJ} </child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+            <effort>0</effort>   <!-- Mark as unactuated -->
+        </limit>
+      </axis>
+    </joint>
 """
 
 def get_obj_corners(obj_file):
@@ -129,7 +187,7 @@ def make_convex_parts(convex_paths, base_name):
 
     return ''.join(parts)
 
-def make_sdf(obj_filename, output_path=None):
+def make_sdf(obj_filename, output_path=None, use_quats: bool = True):
     c_nxynz, c_nxnynz, c_xynz = get_obj_corners(obj_filename)
     obj_basename = os.path.basename(obj_filename)
     base_name = os.path.splitext(obj_basename)[0]
@@ -137,12 +195,16 @@ def make_sdf(obj_filename, output_path=None):
     convex_files = [f"{base_name}_convex_{i}.obj" for i in range(10)]
     convex_parts = make_convex_parts(convex_files, base_name)
 
-    sdf_xml = SDF_TEMPLATE.format(
+    sdf_template = SDF_TEMPLATE
+    extras = '' if use_quats else PLANAR_ROTATION_EXTRAS.format(OBJ=base_name)
+
+    sdf_xml = sdf_template.format(
         OBJ = base_name,
         CONVEX_PARTS = convex_parts,
         CORNER_NXYNZ=c_nxynz,
         CORNER_NXNYNZ=c_nxnynz,
         CORNER_XYNZ=c_xynz,
+        EXTRAS=extras,
     )
     if output_path:
         with open(output_path, 'w') as f:
@@ -153,8 +215,11 @@ def make_sdf(obj_filename, output_path=None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python controller_sdf_generation.py <obj_file> [output_file.sdf]")
+        print("Usage: python controller_sdf_generation.py <obj_file> " + \
+              "[output_file.sdf --use-quats]")
         sys.exit(1)
     obj_file = sys.argv[1]
-    out_path = sys.argv[2] if len(sys.argv) > 2 else None
-    make_sdf(obj_file, out_path)
+    out_path = sys.argv[2] if (len(sys.argv) > 2) and \
+      (sys.argv[2] != "--use-quats") else None
+    use_quats = "--use-quats" in sys.argv
+    make_sdf(obj_file, out_path, use_quats=use_quats)

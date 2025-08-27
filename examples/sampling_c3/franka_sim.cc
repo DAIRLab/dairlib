@@ -26,6 +26,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -42,8 +43,6 @@ using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::MatrixXd;
@@ -72,7 +71,8 @@ int DoMain(int argc, char* argv[]) {
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       controller_params.sim_params_file);
   SamplingC3Options sampling_c3_options = 
-       drake::yaml::LoadYamlFile<SamplingC3Options>(controller_params.sampling_c3_options_file);
+       drake::yaml::LoadYamlFile<SamplingC3Options>(
+          controller_params.sampling_c3_options_file);
 
   // Build the simulation plant.
   DiagramBuilder<double> builder;
@@ -83,20 +83,10 @@ int DoMain(int argc, char* argv[]) {
 
   int num_objects = sim_params.object_models.size();
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
-        &plant, &scene_graph, sim_params.object_models);
-
-  // ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
-  //                                                    sim_params.object_model);
-
-  // std::vector<ModelInstanceIndex> balls;
-//   int num_balls = 1;
-//   for (int i = 0; i < num_balls; i++) {
-//     ModelInstanceIndex object_index1 = AddObjectToPlant(&plant, &scene_graph,
-//                                                      "examples/sampling_c3/urdf/ball.urdf");
-//     balls.push_back(object_index1);
-//   }                                                                          
+    &plant, &scene_graph, sim_params.object_models,
+    controller_params.orientation_is_quaternion);
   plant.Finalize();
-  /* -------------------------------------------------------------------------------------------*/
+  /* -------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
   auto lcm =
@@ -131,6 +121,8 @@ int DoMain(int argc, char* argv[]) {
   }
 
   auto diagram = builder.Build();
+  diagram->set_name(("sampling_c3_sim_" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*diagram);
 
   drake::systems::Simulator<double> simulator(*diagram);
 
@@ -144,10 +136,10 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
+  int n_config = controller_params.orientation_is_quaternion ? 7 : 4;
   for (int i = 0; i < num_objects; i++) {
-      q.segment(7 * (i+1), 7) = sim_params.q_init_objects.at(i);
+      q.segment(7 + n_config*i, n_config) = sim_params.q_init_objects.at(i);
   }
-  q.tail(7) = sim_params.q_init_objects.at(num_objects - 1);
 
   std::cout << "q: " << q.transpose() << std::endl;
 

@@ -54,7 +54,10 @@ RobotOutputReceiver::RobotOutputReceiver(
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
-  num_efforts_ = plant.num_actuators();
+  num_efforts_ = plant.num_actuators(model_instance);
+  // TODO: make effort_index_map_ handle model_instance, for now cannot handle
+  // plants where there are some non-robot actuators.
+  DRAKE_ASSERT(num_efforts_ == plant.num_actuators());
   position_index_map_ =
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
@@ -72,7 +75,7 @@ RobotOutputReceiver::RobotOutputReceiver(
       "x, u, t",
       OutputVector<double>(plant.num_positions(model_instance),
                            plant.num_velocities(model_instance),
-                           plant.num_actuators()),
+                           plant.num_actuators(model_instance)),
       &RobotOutputReceiver::CopyOutput);
 }
 
@@ -211,12 +214,14 @@ RobotOutputSender::RobotOutputSender(
     : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
-  num_efforts_ = plant.num_actuators();
+  num_efforts_ = plant.num_actuators(model_instance);
 
   position_index_map_ =
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
+  // TODO: make effort_index_map_ handle model_instance, for now cannot handle
+  // plants where there are some non-robot actuators.
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
   positions_start_idx_ =
@@ -225,6 +230,13 @@ RobotOutputSender::RobotOutputSender(
   velocities_start_idx_ =
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .velocity_start();
+
+  
+  std::cout<<"RobotOutputSender -- num positions: "<<num_positions_<<std::endl;
+  std::cout<<"RobotOutputSender -- num velocities: "<<num_velocities_<<std::endl;
+  std::cout<<"RobotOutputSender -- num efforts: "<<num_efforts_<<std::endl;
+  std::cout<<"RobotOutputSender -- pos start idx: "<<positions_start_idx_<<std::endl;
+  std::cout<<"RobotOutputSender -- vel start idx: "<<velocities_start_idx_<<std::endl;
 
   ordered_position_names_ = multibody::ExtractOrderedNamesFromMap(
       position_index_map_, positions_start_idx_);
@@ -322,6 +334,7 @@ ObjectStateReceiver::ObjectStateReceiver(
 ObjectStateReceiver::ObjectStateReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance) {
+  std::cout<<"ObjectStateReceiver"<<std::endl;
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -339,12 +352,15 @@ ObjectStateReceiver::ObjectStateReceiver(
       break;
     }
   }
+  std::cout<<"ObjectStateReceiver -- num positions: "<<num_positions_<<std::endl;
+  std::cout<<"ObjectStateReceiver -- num velocities: "<<num_velocities_<<std::endl;
+  std::cout<<"ObjectStateReceiver -- pos start idx: "<<positions_start_idx_<<std::endl;
+  std::cout<<"ObjectStateReceiver -- vel start idx: "<<velocities_start_idx_<<std::endl;
   this->DeclareAbstractInputPort("lcmt_object_state",
                                  drake::Value<dairlib::lcmt_object_state>{});
   this->DeclareVectorOutputPort(
       "x, t",
-      StateVector<double>(plant.num_positions(model_instance),
-                          plant.num_velocities(model_instance)),
+      StateVector<double>(num_positions_, num_velocities_),
       &ObjectStateReceiver::CopyOutput);
 }
 
@@ -364,7 +380,6 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
     int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
-
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);
@@ -528,6 +543,20 @@ RobotInputReceiver::RobotInputReceiver(
       &RobotInputReceiver::CopyInputOut, {all_sources_ticket()});
 }
 
+RobotInputReceiver::RobotInputReceiver(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex model_instance) {
+  num_actuators_ = plant.num_actuators(model_instance);
+  // TODO: make effort_index_map_ handle model_instance, for now cannot handle
+  // plants where there are some non-robot actuators.
+  actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+  this->DeclareAbstractInputPort("lcmt_robot_input",
+                                 drake::Value<dairlib::lcmt_robot_input>{});
+  this->DeclareVectorOutputPort(
+      "u, t", TimestampedVector<double>(num_actuators_),
+      &RobotInputReceiver::CopyInputOut, {all_sources_ticket()});
+}
+
 void RobotInputReceiver::CopyInputOut(const Context<double>& context,
                                       TimestampedVector<double>* output) const {
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
@@ -593,10 +622,11 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           actuator_channel, lcm));
-  auto input_receiver = builder->AddSystem<RobotInputReceiver>(plant);
+  auto input_receiver = builder->AddSystem<RobotInputReceiver>(
+      plant, model_instance_index);
   auto passthrough = builder->AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
-      plant.get_actuation_input_port().size());
+      plant.get_actuation_input_port(model_instance_index).size());
   builder->Connect(*input_sub, *input_receiver);
   builder->Connect(*input_receiver, *passthrough);
 
@@ -615,10 +645,10 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     auto discrete_time_delay =
         builder->AddSystem<drake::systems::DiscreteTimeDelay>(
             1.0 / publish_rate, actuator_delay * publish_rate,
-            plant.num_actuators());
+            plant.num_actuators(model_instance_index));
     builder->Connect(*passthrough, *discrete_time_delay);
     builder->Connect(discrete_time_delay->get_output_port(),
-                     plant.get_actuation_input_port());
+                     plant.get_actuation_input_port(model_instance_index));
 
     if (publish_efforts) {
       builder->Connect(discrete_time_delay->get_output_port(),
@@ -626,7 +656,7 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     }
   } else {
     builder->Connect(passthrough->get_output_port(),
-                     plant.get_actuation_input_port());
+                     plant.get_actuation_input_port(model_instance_index));
     if (publish_efforts) {
       builder->Connect(passthrough->get_output_port(),
                        state_sender->get_input_port_effort());

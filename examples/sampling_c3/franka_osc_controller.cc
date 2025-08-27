@@ -47,8 +47,6 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using multibody::MakeNameToPositionsMap;
-using multibody::MakeNameToVelocitiesMap;
 
 using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;

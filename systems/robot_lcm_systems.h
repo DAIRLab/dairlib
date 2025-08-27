@@ -181,6 +181,10 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
 
+  explicit RobotInputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance);
+
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;

@@ -22,8 +22,6 @@ C3ModeVisualizer::C3ModeVisualizer(const drake::multibody::MultibodyPlant<double
       drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
     .get_index();
 
-  // 19 is the hardcoded size of the current lcs state vector. Alternatively,
-  // pass in the plant and read the size from there.
   int lcs_state_size = plant_.num_positions() + plant_.num_velocities() + 6;
   curr_lcs_state_ = this->DeclareVectorInputPort(
     "curr_lcs_state", TimestampedVector<double>(lcs_state_size)).get_index();

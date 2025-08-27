@@ -75,15 +75,50 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
             WD.at(i).segment(n_ + m_ + k_, m_),
         eta_.at(i), 1));
   }
+}
 
-  // TODO: this is a hack to enforce non-negativity constraints for lambda and eta
-  // @PDKy we need to separate this logic into a function.
-  for (int i = 0 ; i < N_; i++) {
-    for (int j = 0 ; j < 4; j++) {
-        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),lambda_.at(i)[j]);
-        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),eta_.at(i)[j]);
+void C3Plus::AddNonnegativityConstraintsOnLambdaEta(
+    const std::vector<int>& resolve_contacts_to_lists,
+    const std::vector<int>& resolve_as_planar_contacts_list,
+    const std::vector<int>& add_nonnegative_constraints_on_lambdaeta_list,
+    int num_friction_directions) {
+
+    vector<VectorXd> lb;
+    vector<VectorXd> ub;
+    vector<int> constraint_start_index_vector;
+    vector<int> constraint_length_vector;
+
+    for (int i = 0; i < resolve_as_planar_contacts_list.size(); ++i) {
+        if (add_nonnegative_constraints_on_lambdaeta_list.at(i)) {
+            int constraint_start_index = 0;
+            int constraint_length = 0;
+            for (int j = 0; j < i; ++j) {
+                constraint_start_index += resolve_contacts_to_lists.at(j) *
+                    (resolve_as_planar_contacts_list.at(j) ? 2 : 2 * num_friction_directions);
+            }
+            constraint_length += resolve_contacts_to_lists.at(i) *
+            (resolve_as_planar_contacts_list.at(i) ? 2 : 2 * num_friction_directions);
+
+            lb.push_back(VectorXd::Zero(constraint_length));
+            ub.push_back(Eigen::VectorXd::Constant(
+            constraint_length, std::numeric_limits<double>::infinity()));
+            constraint_start_index_vector.push_back(constraint_start_index);
+            constraint_length_vector.push_back(constraint_length);
+        }
     }
-  }
+
+    for (int i = 0; i < N_; ++i) {
+        for (int j = 0; j < lb.size(); ++j) {
+            prog_.AddBoundingBoxConstraint(lb.at(j), ub.at(j),
+                lambda_.at(i).segment(constraint_start_index_vector.at(j),
+                    constraint_length_vector.at(j)));
+            prog_.AddBoundingBoxConstraint(lb.at(j), ub.at(j),
+                eta_.at(i).segment(constraint_start_index_vector.at(j),
+                constraint_length_vector.at(j)));
+            std::cout << "start index " << constraint_start_index_vector.at(j) << std::endl;
+            std::cout << "length" << constraint_length_vector.at(j) << std::endl;
+        }
+    }
 }
 
 void C3Plus::ExtractQPSolution(

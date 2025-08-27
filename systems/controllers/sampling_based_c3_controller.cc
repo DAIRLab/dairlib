@@ -806,15 +806,6 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         }
       }
     }
-
-    // Add constraint on end-effector velocities
-    for (int i : vector<int>({0, 1, 2})) {
-      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-      A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-        A, -0.1, 0.1, 1);
-    }
-    
     // Add force constraints
     for (int i : vector<int>({0, 1})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -829,6 +820,14 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
     }
 
+    // Add non-negative constraint on lambda and eta
+    if (c3_options.projection_type == "C3+") {
+      test_c3_object->AddNonnegativityConstraintsOnLambdaEta(
+        sampling_c3_options_.resolve_contacts_to,
+        sampling_c3_options_.resolve_as_planar_contacts_list,
+        sampling_c3_options_.add_nonnegative_constraints_on_lambdaeta_list,
+        sampling_c3_options_.num_friction_directions);
+    }
 
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 

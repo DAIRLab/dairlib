@@ -47,16 +47,16 @@ num_contacts = calculate_contacts(num_objects, 0)
 print("Number of objects:", num_objects)
 print("Number of contacts no walls:", num_contacts)
 def process_obj(
-    base_name: str,
-    urdf_dir: str,
-    controller_yaml_path: str,
-    vis_yaml_path: str,
-    sim_yaml_path: str,
-    goal_yaml_path: str,
-    sampling_yaml_path: str,
-    repos_yaml_path: str,
-    samp_c3_options_yaml_path: str,
-    index: int
+        base_name: str,
+        urdf_dir: str,
+        controller_yaml_path: str,
+        vis_yaml_path: str,
+        sim_yaml_path: str,
+        goal_yaml_path: str,
+        sampling_yaml_path: str,
+        repos_yaml_path: str,
+        samp_c3_options_yaml_path: str,
+        index: int
 ):
     print(f"\nProcessing object: {base_name}")
     output_dir = os.path.join(urdf_dir, base_name)
@@ -65,7 +65,7 @@ def process_obj(
     obj_file = os.path.join(urdf_dir, f"{base_name}.obj")
     if not os.path.isfile(obj_file):
         obj_file = os.path.join(output_dir, f"{base_name}.obj")
-        
+
     is_coarse = coarsify_obj(obj_file)
 
     # Create SDF file paths
@@ -106,7 +106,7 @@ def set_object_paths(index, base_name, output_dir, controller_yaml, vis_yaml, si
 
 
 def build_mu_per_pair_type(num_objects: int, include_walls: int) -> list:
-    EE_GROUND_FRICTION_COEFFICIENT = 0.823 
+    EE_GROUND_FRICTION_COEFFICIENT = 0.823
     EE_OBJECT_FRICTION_COEFFICIENT = 0.42
     OBJECT_GROUND_FRICTION_COEFFICIENT = 0.46
     OBJECT_OBJECT_FRICTION_COEFFICIENT = 0.3
@@ -115,7 +115,7 @@ def build_mu_per_pair_type(num_objects: int, include_walls: int) -> list:
     mu_per_pair_type = [EE_GROUND_FRICTION_COEFFICIENT,
                         EE_OBJECT_FRICTION_COEFFICIENT,
                         OBJECT_GROUND_FRICTION_COEFFICIENT] + \
-                        [OBJECT_OBJECT_FRICTION_COEFFICIENT] * choose_2(num_objects)
+                       [OBJECT_OBJECT_FRICTION_COEFFICIENT] * choose_2(num_objects)
     if (include_walls):
         mu_per_pair_type += [OBJECT_WALL_FRICTION_COEFFICIENT] * num_objects
     return mu_per_pair_type
@@ -150,13 +150,15 @@ def build_q_vector(num_objects: int) -> list:
 
     return q_vector
 
-def update_c3_options(is_c3_plus, samp_c3_options_yaml_path): 
+def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
 
     include_walls = 1 if (samp_c3_options_yaml['include_walls']) else 0
     samp_c3_options_yaml['resolve_contacts_to_lists'] = [
         [0, 1, num_objects * 3] + [1] * choose_2(num_objects) + [include_walls] * num_objects]
     samp_c3_options_yaml['resolve_as_planar_contacts_list'] = \
+        [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
+    samp_c3_options_yaml['add_nonnegative_constraints_on_lambdaeta_list'] = \
         [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
     samp_c3_options_yaml["mu_per_pair_type"] = build_mu_per_pair_type(num_objects, include_walls)
 
@@ -181,17 +183,17 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["g_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_eta_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_lambda_list"] = [[2] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
-    else: 
+    else:
         samp_c3_options_yaml["g_lambda_list"] = [[0.05] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
 
     samp_c3_options_yaml["u_gamma_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
     samp_c3_options_yaml["u_lambda_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
     samp_c3_options_yaml["u_lambda_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
-    
+
     if (is_c3_plus):
         samp_c3_options_yaml["u_eta_slack_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
-        samp_c3_options_yaml["u_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
+        samp_c3_options_yaml["u_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_lambda_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_eta_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x"] = [0] * (6 + (13 * num_objects))
@@ -210,18 +212,18 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["g_lambda_position_list"] = [[2] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_x_position"] = [950] * 3 + [1] * (7*num_objects) + [0.1] * (3 + 6*num_objects)
-    else: 
+    else:
         samp_c3_options_yaml["g_lambda_position_list"] = [[0.005] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["g_x_position"] = [0] * (6 + (13 * num_objects))
 
-    
+
     samp_c3_options_yaml["u_gamma_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
     samp_c3_options_yaml["u_lambda_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
     samp_c3_options_yaml["u_lambda_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
     if (is_c3_plus):
         samp_c3_options_yaml["u_eta_slack_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
-        samp_c3_options_yaml["u_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
+        samp_c3_options_yaml["u_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x_position"] = [0] * (6 + (13 * num_objects))
@@ -258,7 +260,7 @@ if __name__ == "__main__":
 
 
 
-   
+
     # Process all objects into sdfs
     for i in range(len(base_names)):
         process_obj(
@@ -283,10 +285,10 @@ if __name__ == "__main__":
     vis_yaml["object_vis_models"] = [""] * num_objects
     sim_yaml["object_models"] = [""] * num_objects
 
-    for i in range(num_objects): 
+    for i in range(num_objects):
         output_dir = os.path.join(urdf_dir, base_names[i])
         set_object_paths(i, base_names[i], output_dir, controller_yaml, vis_yaml, sim_yaml)
-    
+
     lcm_sim_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
     lcm_hardware_yaml["object_state_channels"] = [f"OBJECT_{name}_STATE_SIMULATION" for name in base_names]
 
@@ -301,8 +303,8 @@ if __name__ == "__main__":
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
     # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
-                                                z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
+    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)),
+                                            z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
 
@@ -310,17 +312,17 @@ if __name__ == "__main__":
     max_z = max(max_zs)
     min_z = min(min_zs)
     repos_yaml['pwl_waypoint_height'] = float(-0.029 + (max_z - min_z) + 0.05)
-    
+
     heights = min_zs
     max_zs_world = heights
     for i in range(len(max_zs)):
         heights[i] = max_zs[i] - min_zs[i]
         max_zs_world[i] = -0.029 + heights[i]
-    
+
     min_max_z = min(max_zs_world)
 
     sampling_yaml['z_height'] = max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
-    
+
     # Update c3_options
     is_c3_plus = "plus" in samp_c3_options_yaml_path
     update_c3_options(is_c3_plus, samp_c3_options_yaml_path)

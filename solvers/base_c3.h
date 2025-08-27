@@ -161,6 +161,14 @@ class C3Base {
   void UpdateCostLCS(const LCS& lcs_for_cost);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
+  // This is used for adding a non-negative constraint on lambda and eta for the target
+  // group of contacts. This only been used by C3+
+  virtual void AddNonnegativityConstraintsOnLambdaEta(
+    const std::vector<int>& resolve_contacts_to_lists,
+    const std::vector<int>& resolve_as_planar_contacts_list,
+    const std::vector<int>& add_nonnegative_constraints_on_lambdaeta_list,
+    int num_friction_directions);
+
  protected:
   /// @param lcs      Parameters defining the LCS.
   /// @param costs    Cost matrices used in the optimization.

@@ -51,6 +51,13 @@ class C3Plus final : public C3Base {
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
+// This is used for adding a non-negative constraint on lambda and eta for the target
+// group of contacts. This only been used by C3+
+  void AddNonnegativityConstraintsOnLambdaEta(
+      const std::vector<int>& resolve_contacts_to_lists,
+      const std::vector<int>& resolve_as_planar_contacts_list,
+      const std::vector<int>& add_nonnegative_constraints_on_lambdaeta_list,
+      int num_friction_directions) override;
 
  private:
   void UpdateLCS(const LCS& lcs) override;

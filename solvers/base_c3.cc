@@ -861,6 +861,12 @@ void C3Base::AddAugmentedCostsQPStep(const vector<MatrixXd>& G,
   }
 }
 
+void C3Base::AddNonnegativityConstraintsOnLambdaEta(
+    const std::vector<int>& resolve_contacts_to_lists,
+    const std::vector<int>& resolve_as_planar_contacts_list,
+    const std::vector<int>& add_nonnegative_constraints_on_lambdaeta_list,
+    int num_friction_directions){};
+
 void C3Base::SetInitialGuessQPStep(const Eigen::VectorXd& x0,
                                    int admm_iteration) {
   if (warm_start_) {

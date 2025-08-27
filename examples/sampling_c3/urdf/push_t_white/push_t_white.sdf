@@ -5,14 +5,14 @@
     <link name="push_t_white">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.05</mass>
+        <mass>0.1</mass>
         <inertia>
-          <ixx>6.6960241e-05</ixx>
-          <iyy>0.00018931535</iyy>
-          <izz>0.00024000745</izz>
-          <ixy>-6.3975921e-06</ixy>
-          <ixz>-8.27951e-07</ixz>
-          <iyz>-2.7955875e-07</iyz>
+          <ixx>0.00013392048</ixx>
+          <iyy>0.0003786307</iyy>
+          <izz>0.00048001489</izz>
+          <ixy>-1.2795184e-05</ixy>
+          <ixz>-1.655902e-06</ixz>
+          <iyz>-5.5911749e-07</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">

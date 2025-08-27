@@ -89,7 +89,6 @@ w_G: 0.15
 w_U: 0.5
 
 q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
-# object 1 linear velocity
 r_vector: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables

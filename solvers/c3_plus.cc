@@ -75,6 +75,15 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
             WD.at(i).segment(n_ + m_ + k_, m_),
         eta_.at(i), 1));
   }
+
+  // TODO: this is a hack to enforce non-negativity constraints for lambda and eta
+  // @PDKy we need to separate this logic into a function.
+  for (int i = 0 ; i < N_; i++) {
+    for (int j = 0 ; j < 4; j++) {
+        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),lambda_.at(i)[j]);
+        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),eta_.at(i)[j]);
+    }
+  }
 }
 
 void C3Plus::ExtractQPSolution(

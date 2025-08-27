@@ -806,6 +806,15 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         }
       }
     }
+
+    // Add constraint on end-effector velocities
+    for (int i : vector<int>({0, 1, 2})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A(n_q_ + i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, -0.1, 0.1, 1);
+    }
+    
     // Add force constraints
     for (int i : vector<int>({0, 1})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);

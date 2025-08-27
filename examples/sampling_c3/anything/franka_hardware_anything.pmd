@@ -25,7 +25,7 @@ group "operator" {
     }
     cmd "move_to_target_joints" {
         exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
-        host = "localhost";
+        host = "sampling_c3_localhost";
     }
 }
 
@@ -98,12 +98,12 @@ script "start_mesh_scanning" {
     start cmd "franka_driver_out";
     start cmd "franka_driver_in";
     start cmd "torque_driver";
-    start cmd "move_to_target_joints";
+    start cmd "move_to_init";
 }
 
 script "stop_mesh_scanning" {
     stop group "drivers";
-    stop cmd "move_to_target_joints";
+    stop cmd "move_to_init";
 }
 
 script "start_experiment" {

@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
     # set init and goal poses
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
-    # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
+    # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)),
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
     goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)),
                                             z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]

@@ -22,6 +22,7 @@ struct SamplingC3Options : C3Options {
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
   std::vector<int> resolve_as_planar_contacts_list;
+  std::vector<int> add_nonnegative_constraints_on_lambdaeta_list;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
   int num_contacts_index;
@@ -125,6 +126,7 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
     a->Visit(DRAKE_NVP(resolve_as_planar_contacts_list));
+    a->Visit(DRAKE_NVP(add_nonnegative_constraints_on_lambdaeta_list));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
 

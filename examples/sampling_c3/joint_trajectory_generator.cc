@@ -21,8 +21,7 @@ using systems::OutputVector;
 
 JointTrajectoryGenerator::JointTrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::VectorXd& target_position)
-    : target_position_(target_position) {
+    const Eigen::VectorXd& default_target_position) {
   // Input/Output Setup
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
@@ -35,9 +34,17 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
       plant.num_velocities(), plant.num_actuators()))
     .get_index();
 
+  target_joint_position_port_ =
+    this->DeclareVectorInputPort("lcmt_franka_target_joint_position",
+      BasicVector<double>(plant.num_positions()))
+    .get_index();
+
   initial_position_index_ =
     this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
   initial_time_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+
+  target_position_index_ =
+    this->DeclareDiscreteState(default_target_position);
 
   DeclareForcedDiscreteUpdateEvent(
       &JointTrajectoryGenerator::DiscreteVariableUpdate);
@@ -64,9 +71,21 @@ drake::systems::EventStatus JointTrajectoryGenerator::DiscreteVariableUpdate(
   auto initial_positions =
     discrete_state->get_mutable_value(initial_position_index_);
   auto initial_time = discrete_state->get_mutable_value(initial_time_index_);
+  auto target_position = discrete_state->get_mutable_value(target_position_index_);
+
   const OutputVector<double>* franka_output =
     (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   if (initial_time[0] == 0.0) {  // poll once
+    initial_positions = franka_output->GetPositions();
+    initial_time[0] = context.get_time();
+  }
+
+  // Check if target has changed, if so, update and reset the initial positions and time
+  const auto& target_input = this->EvalVectorInput(context, target_joint_position_port_);
+  VectorXd target_data = target_input->get_value();
+  
+  if (!target_data.isZero() && (target_data - target_position).norm() > 1e-6) {
+    target_position = target_data;
     initial_positions = franka_output->GetPositions();
     initial_time[0] = context.get_time();
   }
@@ -86,6 +105,9 @@ void JointTrajectoryGenerator::CalcTraj(
     context.get_discrete_state(initial_position_index_).value();
   auto initial_time = context.get_discrete_state(initial_time_index_).value();
 
+  auto target_joint_position =
+    context.get_discrete_state(target_position_index_).value();
+
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
   std::vector<double> breaks = {initial_time[0] + 1.0, initial_time[0] + 6.0};
@@ -93,7 +115,7 @@ void JointTrajectoryGenerator::CalcTraj(
   sampled_positions[0] = MatrixXd::Zero(1, 1);
   sampled_positions[0] << initial_positions[joint_index];
   sampled_positions[1] = MatrixXd::Zero(1, 1);
-  sampled_positions[1] << target_position_[joint_index];
+  sampled_positions[1] << target_joint_position[joint_index];
   if (context.get_time() >= 1.0) {  // poll for a second
     *casted_traj =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(

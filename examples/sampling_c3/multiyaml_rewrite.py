@@ -47,16 +47,16 @@ num_contacts = calculate_contacts(num_objects, 0)
 print("Number of objects:", num_objects)
 print("Number of contacts no walls:", num_contacts)
 def process_obj(
-        base_name: str,
-        urdf_dir: str,
-        controller_yaml_path: str,
-        vis_yaml_path: str,
-        sim_yaml_path: str,
-        goal_yaml_path: str,
-        sampling_yaml_path: str,
-        repos_yaml_path: str,
-        samp_c3_options_yaml_path: str,
-        index: int
+    base_name: str,
+    urdf_dir: str,
+    controller_yaml_path: str,
+    vis_yaml_path: str,
+    sim_yaml_path: str,
+    goal_yaml_path: str,
+    sampling_yaml_path: str,
+    repos_yaml_path: str,
+    samp_c3_options_yaml_path: str,
+    index: int
 ):
     print(f"\nProcessing object: {base_name}")
     output_dir = os.path.join(urdf_dir, base_name)
@@ -115,7 +115,7 @@ def build_mu_per_pair_type(num_objects: int, include_walls: int) -> list:
     mu_per_pair_type = [EE_GROUND_FRICTION_COEFFICIENT,
                         EE_OBJECT_FRICTION_COEFFICIENT,
                         OBJECT_GROUND_FRICTION_COEFFICIENT] + \
-                       [OBJECT_OBJECT_FRICTION_COEFFICIENT] * choose_2(num_objects)
+                        [OBJECT_OBJECT_FRICTION_COEFFICIENT] * choose_2(num_objects)
     if (include_walls):
         mu_per_pair_type += [OBJECT_WALL_FRICTION_COEFFICIENT] * num_objects
     return mu_per_pair_type
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)),
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
     goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)),
-                                            z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
+                                                z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
 

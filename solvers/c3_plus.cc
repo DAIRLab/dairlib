@@ -115,8 +115,6 @@ void C3Plus::AddNonnegativityConstraintsOnLambdaEta(
             prog_.AddBoundingBoxConstraint(lb.at(j), ub.at(j),
                 eta_.at(i).segment(constraint_start_index_vector.at(j),
                 constraint_length_vector.at(j)));
-            std::cout << "start index " << constraint_start_index_vector.at(j) << std::endl;
-            std::cout << "length" << constraint_length_vector.at(j) << std::endl;
         }
     }
 }

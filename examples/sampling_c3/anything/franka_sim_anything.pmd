@@ -19,7 +19,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "move_to_target_joints" {
-        exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions --is_simulation=true";
+        exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
         host = "localhost";
     }
     cmd "start_logging" {

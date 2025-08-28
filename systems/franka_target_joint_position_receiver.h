@@ -6,8 +6,8 @@ using drake::systems::BasicVector;
 namespace dairlib {
 namespace systems {
 /// Receives the output of an LcmSubscriberSystem that subscribes to the
-/// robot input channel with LCM type lcmt_robot_input and outputs the
-/// robot inputs as a TimestampedVector.
+/// franka_target_joint_position with LCM type lcmt_franka_target_joint_position
+/// and outputs the joint positions as a BasicVector of size 7.
 class FrankaTargetJointPositionReceiver
     : public drake::systems::LeafSystem<double> {
  public:

@@ -35,7 +35,7 @@ JointTrajectoryGenerator::JointTrajectoryGenerator(
     .get_index();
 
   target_joint_position_port_ =
-    this->DeclareVectorInputPort("lcmt_franka_target_joint_position",
+    this->DeclareVectorInputPort("franka_target_joint_position",
       BasicVector<double>(plant.num_positions()))
     .get_index();
 

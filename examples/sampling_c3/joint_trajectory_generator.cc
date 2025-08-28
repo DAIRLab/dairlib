@@ -110,7 +110,7 @@ void JointTrajectoryGenerator::CalcTraj(
 
   const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
-  std::vector<double> breaks = {initial_time[0] + 1.0, initial_time[0] + 6.0};
+  std::vector<double> breaks = {initial_time[0] + 1.0, initial_time[0] + 10.0};
   std::vector<MatrixXd> sampled_positions(2);
   sampled_positions[0] = MatrixXd::Zero(1, 1);
   sampled_positions[0] << initial_positions[joint_index];

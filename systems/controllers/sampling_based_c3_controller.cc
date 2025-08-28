@@ -812,7 +812,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
       test_c3_object->AddLinearConstraint(
-        A, -0.1, 0.1, 1);
+        A, -0.15, 0.15, 1);
     }
     
     // Add force constraints

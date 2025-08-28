@@ -310,11 +310,7 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  auto qp_start = std::chrono::high_resolution_clock::now();
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
-  auto qp_end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> qp_dur = qp_end - qp_start;
-  //std::cout << "QP: " << qp_dur.count() << " ms" << std::endl;
 
   if (verbose) {
     std::cout << "x0: " << x0.transpose() << std::endl;
@@ -355,7 +351,7 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
 
-  zfin_ = zfin;
+  zfin_ = *z_sol_;
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   solve_time_ =

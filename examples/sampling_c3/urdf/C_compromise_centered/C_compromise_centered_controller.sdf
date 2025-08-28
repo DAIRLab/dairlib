@@ -10,7 +10,7 @@
         <inertia>
             <ixx>0.003</ixx>
             <iyy>0.003 </iyy>
-            <izz>0.006 </izz>
+            <izz>0.012 </izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>

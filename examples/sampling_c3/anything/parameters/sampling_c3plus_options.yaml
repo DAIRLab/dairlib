@@ -1,7 +1,7 @@
 ### C3 options
-admm_iter: 3
+admm_iter: 5
 rho: 0  #This isn't used anywhere!
-rho_scale: 3
+rho_scale: 2
 num_threads: 5
 num_outer_threads: 4
 delta_option: 1
@@ -14,7 +14,7 @@ publish_frequency: 0
 penalize_changes_in_u_across_solves: true  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 
-N: 10
+N: 5
 gamma: 1.0  # discount factor on MPC costs
 
 # As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
@@ -78,10 +78,10 @@ Kd_for_ee_pd_rollout: [0.5, 0.5, 0.5]
 # Matrix scaling
 w_Q: 50
 w_R: 6
-w_G: 0.15
+w_G: 0.18
 w_U: 0.5
 
-q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                             # object 1 linear velocity
+q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                          # object 1 linear velocity
 r_vector: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables
@@ -114,10 +114,10 @@ u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # Matrix scaling
 w_Q_position: 50
 w_R_position: 6
-w_G_position: 0.15
+w_G_position: 0.18
 w_U_position: 0.26
 
-q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                             # object 2 linear velocity
+q_vector_position: [0.01, 0.01, 0.01, 0, 0, 0, 0, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                          # object 2 linear velocity
 r_vector_position: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables

@@ -122,10 +122,16 @@ def build_mu_per_pair_type(num_objects: int, include_walls: int) -> list:
 
 
 # Build q_vector for n objects
-def build_q_vector(num_objects: int) -> list:
+def build_q_vector(num_objects: int, is_full_pose_tracking: bool = True) -> list:
     EE_POSITION = [0.01, 0.01, 0.01]
-    OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
-    OBJECT_POSITION = [200, 200, 120]
+
+    if (is_full_pose_tracking):
+        OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
+        OBJECT_POSITION = [150, 150, 120]
+    else:
+        OBJECT_ORIENTATION = [0, 0, 0, 0]
+        OBJECT_POSITION = [200, 200, 120]
+
     EE_LINEAR_VELOCITY = [15, 15, 10]
     OBJECT_ANGULAR_VELOCITY = [0.05, 0.05, 0.05]
     OBJECT_LINEAR_VELOCITY = [0.05, 0.05, 0.05]
@@ -160,9 +166,9 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
     samp_c3_options_yaml["mu_per_pair_type"] = build_mu_per_pair_type(num_objects, include_walls)
 
-    samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects)
+    samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects, is_full_pose_tracking=True)
 
-    q_vector_position = build_q_vector(num_objects)
+    q_vector_position = build_q_vector(num_objects, is_full_pose_tracking=False)
     q_vector_position[3 + 7*num_objects] *= 1
     q_vector_position[4 + 7*num_objects] *= 1
     q_vector_position[5 + 7*num_objects] *= 1

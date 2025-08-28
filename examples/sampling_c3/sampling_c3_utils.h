@@ -116,12 +116,51 @@ void AddLCSModelToPlant(
 /// @param object_model the model of the object to add to the plant
 /// @param include_end_effector_orientation whether to include the end effector
 /// @param include_walls whether to add border walls to workspace
+/// @param orientation_is_quaternion whether to consider object orientations as
+/// floating quaternions or as a single rotation about a vertical axis
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     std::vector<std::string> object_models = {},
     const bool& include_end_effector_orientation = false,
-    const bool& include_walls = false);
+    const bool& include_walls = false,
+    const bool& orientation_is_quaternion = true);
+
+/// State vector interpretation
+Eigen::Quaterniond GetObjectQuaternionFromTheta(const double& theta);
+Eigen::Quaterniond GetObjectQuaternionFromObjectConfig(
+    const Eigen::VectorXd& object_config,
+    const bool& orientation_is_quaternion
+);
+Eigen::Vector3d GetObjectPositionFromObjectConfig(
+    const Eigen::VectorXd& object_config,
+    const bool& orientation_is_quaternion
+);
+Eigen::VectorXd GetObjectConfigFromPosQuat(
+    const Eigen::Vector3d& object_xyz,
+    const Eigen::Quaterniond& object_quat,
+    const bool& orientation_is_quaternion
+);
+Eigen::VectorXd GetObjectVelocityFromLinRotVel(
+    const Eigen::Vector3d& obj_lin_vel,
+    const Eigen::Vector3d& obj_rot_vel,
+    const bool& orientation_is_quaternion
+);
+Eigen::VectorXd GetObjectConfigFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+);
+Eigen::Quaterniond GetObjectQuatFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+);
+Eigen::Vector3d GetObjectPosFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+);
 
 
 }   // namespace dairlib

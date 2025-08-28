@@ -178,8 +178,10 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
  public:
   explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                              bool draw_tray = true, bool draw_ee = false);
-  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&, int num_objects,
-                             bool draw_tray = true, bool draw_ee = false);
+  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                             int num_objects, bool draw_tray = true,
+                             bool draw_ee = false,
+                             const bool& orientation_is_quaternion = true);
 
   const drake::systems::InputPort<double>& get_input_port_c3_state_final_target()
       const {
@@ -210,8 +212,9 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex c3_state_target_input_port_;
   drake::systems::InputPortIndex c3_state_actual_input_port_;
 
-  bool draw_tray_;
-  bool draw_ee_;
+  const bool draw_object_;
+  const bool draw_ee_;
+  const bool orientation_is_quaternion_;
   int num_objects_;
 
   drake::systems::DiscreteStateIndex last_update_time_index_;

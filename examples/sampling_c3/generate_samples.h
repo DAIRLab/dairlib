@@ -42,7 +42,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
+    std::vector<bool> object_on_target,
+    const bool& orientation_is_quaternion
 );
 
 /// Individual sampling strategies returning 3D EE position
@@ -139,7 +140,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
+    std::vector<bool> object_on_target,
+    const bool& orientation_is_quaternion
 );
 
 

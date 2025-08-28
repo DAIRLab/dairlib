@@ -22,11 +22,6 @@ group "operator" {
         exec = "python3 examples/sampling_c3/start_logging.py sim anything /home/ericcui/logs";
         host = "localhost";
     }
-
-    cmd "generate_files" {
-        exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
-        host = "localhost";
-    }
     cmd "multi_rewrite" {
         exec = "python3 examples/sampling_c3/multiyaml_rewrite.py";
         host = "localhost";

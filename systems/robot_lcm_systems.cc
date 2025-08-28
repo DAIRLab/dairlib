@@ -334,7 +334,6 @@ ObjectStateReceiver::ObjectStateReceiver(
 ObjectStateReceiver::ObjectStateReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance) {
-  std::cout<<"ObjectStateReceiver"<<std::endl;
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -352,10 +351,6 @@ ObjectStateReceiver::ObjectStateReceiver(
       break;
     }
   }
-  std::cout<<"ObjectStateReceiver -- num positions: "<<num_positions_<<std::endl;
-  std::cout<<"ObjectStateReceiver -- num velocities: "<<num_velocities_<<std::endl;
-  std::cout<<"ObjectStateReceiver -- pos start idx: "<<positions_start_idx_<<std::endl;
-  std::cout<<"ObjectStateReceiver -- vel start idx: "<<velocities_start_idx_<<std::endl;
   this->DeclareAbstractInputPort("lcmt_object_state",
                                  drake::Value<dairlib::lcmt_object_state>{});
   this->DeclareVectorOutputPort(

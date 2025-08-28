@@ -371,14 +371,24 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
     bool force_tracking_disabled,
     int num_objects,
     bool print_cost_breakdown,
-    bool verbose) const {
+    bool verbose,
+    const bool& orientation_is_quaternion) const {
 
   int resolution = options_.lcs_dt_resolution; 
   
   std::vector<VectorXd> UU(N_*resolution, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_*resolution + 1, VectorXd::Zero(n_)); 
 
-  const int ee_vel_index = 7 * num_objects + 3;
+  const int n_q_per_object = orientation_is_quaternion? 7 : 4;
+  const int n_v_per_object = orientation_is_quaternion? 6 : 4;
+  const int ee_vel_index = 3 + n_q_per_object*num_objects;
+  const int first_obj_pos_index = orientation_is_quaternion? 7 : 3;
+  const int first_obj_rot_index = orientation_is_quaternion? 3 : 6;
+  const int first_obj_lin_vel_index = orientation_is_quaternion? 16 : 10;
+  const int first_obj_rot_vel_index = 13;
+  const int n_obj_rot = orientation_is_quaternion? 4 : 1;
+  const int n_obj_rot_vel = orientation_is_quaternion? 3 : 1;
+
   // Simulate the dynamics from the planned inputs.
   if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = zfin_[0].segment(0, n_);
@@ -446,6 +456,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
                                          Kd_for_ee_pd_rollout,
                                          num_objects,
                                          force_tracking_disabled, 
+                                         orientation_is_quaternion,
                                          verbose);
   }
 
@@ -456,6 +467,7 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
                                          Kd_for_ee_pd_rollout,
                                          num_objects,
                                          force_tracking_disabled, 
+                                         orientation_is_quaternion,
                                          verbose);
 
     // Replace the end effector position and velocity plans with the ones from
@@ -476,7 +488,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
     std::tie(XX, UU) = SimulatePDControl(Kp_for_ee_pd_rollout, 
                                          Kd_for_ee_pd_rollout,
                                          num_objects,
-                                         force_tracking_disabled, 
+                                         force_tracking_disabled,
+                                         orientation_is_quaternion,
                                          verbose);
   }
 
@@ -522,16 +535,16 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
           x_desired_[i / resolution].segment(0,3));
     //obj_orientation
     for (int j = 0; j < num_objects; j++) {
-      obj_orientation_index = 7*j + 3;
-      obj_pos_index = 7*j + 7;
+      obj_orientation_index = first_obj_rot_index + n_q_per_object*j;
       error_contrib_obj_orientation += 
-        (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4)).transpose() * 
-          (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4));
+        (XX[i].segment(obj_orientation_index,n_obj_rot) - x_desired_[i / resolution].segment(obj_orientation_index,n_obj_rot)).transpose() * 
+          (XX[i].segment(obj_orientation_index,n_obj_rot) - x_desired_[i / resolution].segment(obj_orientation_index,n_obj_rot));
       cost_contrib_obj_orientation += 
-        (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4)).transpose() *
-          Q_eff.at(i / resolution).block(obj_orientation_index,obj_orientation_index,4,4) * 
-            (XX[i].segment(obj_orientation_index,4) - x_desired_[i / resolution].segment(obj_orientation_index,4));
+        (XX[i].segment(obj_orientation_index,n_obj_rot) - x_desired_[i / resolution].segment(obj_orientation_index,n_obj_rot)).transpose() *
+          Q_eff.at(i / resolution).block(obj_orientation_index,obj_orientation_index,n_obj_rot,n_obj_rot) * 
+            (XX[i].segment(obj_orientation_index,n_obj_rot) - x_desired_[i / resolution].segment(obj_orientation_index,n_obj_rot));
       //obj_pos
+      obj_pos_index = first_obj_pos_index + n_q_per_object*j;
       error_contrib_obj_pos += 
         (XX[i].segment(obj_pos_index,3) - x_desired_[i / resolution].segment(obj_pos_index,3)).transpose() * 
           (XX[i].segment(obj_pos_index,3) - x_desired_[i / resolution].segment(obj_pos_index,3));
@@ -550,16 +563,16 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
           x_desired_[i / resolution].segment(ee_vel_index,3));
     //obj_ang_vel
     for (int j = 0; j < num_objects; j++) {
-      obj_ang_vel_index = 6*j + 6 + 7*num_objects;
-      obj_vel_index = 6*j + 9 + 7*num_objects;
+      obj_ang_vel_index = first_obj_rot_vel_index + n_v_per_object*j;
       error_contrib_obj_ang_vel += 
-        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3)).transpose() * 
-          (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3));
+        (XX[i].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[i / resolution].segment(obj_ang_vel_index,n_obj_rot_vel)).transpose() * 
+          (XX[i].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[i / resolution].segment(obj_ang_vel_index,n_obj_rot_vel));
       cost_contrib_obj_ang_vel += 
-        (XX[i].segment(obj_ang_vel_index,3) - x_desired_[i / resolution].segment(obj_ang_vel_index,3)).transpose() *
-          Q_eff.at(i / resolution).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[i].segment(obj_ang_vel_index,3) - 
-            x_desired_[i / resolution].segment(obj_ang_vel_index,3));
+        (XX[i].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[i / resolution].segment(obj_ang_vel_index,n_obj_rot_vel)).transpose() *
+          Q_eff.at(i / resolution).block(obj_ang_vel_index,obj_ang_vel_index,n_obj_rot_vel,n_obj_rot_vel)*(XX[i].segment(obj_ang_vel_index,n_obj_rot_vel) - 
+            x_desired_[i / resolution].segment(obj_ang_vel_index,n_obj_rot_vel));
       //obj_vel
+      obj_vel_index = first_obj_lin_vel_index + n_v_per_object*j;
       error_contrib_obj_vel += 
         (XX[i].segment(obj_vel_index,3) - x_desired_[i / resolution].segment(obj_vel_index,3)).transpose() *  
           (XX[i].segment(obj_vel_index,3) - x_desired_[i / resolution].segment(obj_vel_index,3));
@@ -587,11 +600,11 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
     (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3)).transpose() * 
       (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
   for (int j = 0; j < num_objects; j++) {
-    obj_orientation_index = 7*j + 3;
-    obj_pos_index = 7*j + 7;
+    obj_orientation_index = first_obj_rot_index + n_q_per_object*j;
+    obj_pos_index = first_obj_pos_index + n_q_per_object*j;
     error_contrib_obj_orientation += 
-      (XX[N_].segment(obj_orientation_index,4) - x_desired_[N_].segment(obj_orientation_index,4)).transpose() * 
-        (XX[N_].segment(obj_orientation_index,4) - x_desired_[N_].segment(obj_orientation_index,4));
+      (XX[N_].segment(obj_orientation_index,n_obj_rot) - x_desired_[N_].segment(obj_orientation_index,n_obj_rot)).transpose() * 
+        (XX[N_].segment(obj_orientation_index,n_obj_rot) - x_desired_[N_].segment(obj_orientation_index,n_obj_rot));
     error_contrib_obj_pos += 
       (XX[N_].segment(obj_pos_index,3) - x_desired_[N_].segment(obj_pos_index,3)).transpose() * 
         (XX[N_].segment(obj_pos_index,3) - x_desired_[N_].segment(obj_pos_index,3));
@@ -601,11 +614,11 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
       (XX[N_].segment(ee_vel_index,3) - x_desired_[N_].segment(ee_vel_index,3));
 
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 6*j + 6 + 7*num_objects;
-    obj_vel_index = 6*j + 9 + 7*num_objects;
+    obj_ang_vel_index = first_obj_rot_vel_index + n_obj_rot_vel*j;
+    obj_vel_index = first_obj_lin_vel_index + n_v_per_object*j;
     error_contrib_obj_ang_vel += 
-      (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() * 
-        (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3));
+      (XX[N_].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[N_].segment(obj_ang_vel_index,n_obj_rot_vel)).transpose() * 
+        (XX[N_].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[N_].segment(obj_ang_vel_index,n_obj_rot_vel));
     error_contrib_obj_vel += 
       (XX[N_].segment(obj_vel_index,3) - x_desired_[N_].segment(obj_vel_index,3)).transpose() * 
         (XX[N_].segment(obj_vel_index,3) - x_desired_[N_].segment(obj_vel_index,3));
@@ -616,12 +629,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
       Q_eff.at(N_).block(0,0,3,3) * 
         (XX[N_].segment(0,3) - x_desired_[N_].segment(0,3));
   for (int j = 0; j < num_objects; j++) {
-    obj_orientation_index = 7*j + 3;
-    obj_pos_index = 7*j + 7;
+    obj_orientation_index = first_obj_rot_index + n_q_per_object*j;
+    obj_pos_index = first_obj_pos_index + n_q_per_object*j;
     cost_contrib_obj_orientation += 
-      (XX[N_].segment(obj_orientation_index,4) - x_desired_[N_].segment(obj_orientation_index,4)).transpose() *
-        Q_eff.at(N_).block(obj_orientation_index,obj_orientation_index,4,4)*(XX[N_].segment(obj_orientation_index,4) - 
-          x_desired_[N_].segment(obj_orientation_index,4));
+      (XX[N_].segment(obj_orientation_index,n_obj_rot) - x_desired_[N_].segment(obj_orientation_index,n_obj_rot)).transpose() *
+        Q_eff.at(N_).block(obj_orientation_index,obj_orientation_index,n_obj_rot,n_obj_rot)*(XX[N_].segment(obj_orientation_index,n_obj_rot) - 
+          x_desired_[N_].segment(obj_orientation_index,n_obj_rot));
     cost_contrib_obj_pos += 
       (XX[N_].segment(obj_pos_index,3) - x_desired_[N_].segment(obj_pos_index,3)).transpose() *
         Q_eff.at(N_).block(obj_pos_index,obj_pos_index,3,3)*(XX[N_].segment(obj_pos_index,3) - 
@@ -632,12 +645,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
       Q_eff.at(N_).block(ee_vel_index,ee_vel_index,3,3)*(XX[N_].segment(ee_vel_index,3) - 
         x_desired_[N_].segment(ee_vel_index,3));
   for (int j = 0; j < num_objects; j++) {
-    obj_ang_vel_index = 6*j + 6 + 7*num_objects;
-    obj_vel_index = 6*j + 9 + 7*num_objects;
+    obj_ang_vel_index = first_obj_rot_vel_index + n_obj_rot_vel*j;
+    obj_vel_index = first_obj_lin_vel_index + n_v_per_object*j;
     cost_contrib_obj_ang_vel += 
-      (XX[N_].segment(obj_ang_vel_index,3) - x_desired_[N_].segment(obj_ang_vel_index,3)).transpose() *
-        Q_eff.at(N_).block(obj_ang_vel_index,obj_ang_vel_index,3,3)*(XX[N_].segment(obj_ang_vel_index,3) - 
-          x_desired_[N_].segment(obj_ang_vel_index,3));
+      (XX[N_].segment(obj_ang_vel_index,n_obj_rot_vel) - x_desired_[N_].segment(obj_ang_vel_index,n_obj_rot_vel)).transpose() *
+        Q_eff.at(N_).block(obj_ang_vel_index,obj_ang_vel_index,n_obj_rot_vel,n_obj_rot_vel)*(XX[N_].segment(obj_ang_vel_index,n_obj_rot_vel) - 
+          x_desired_[N_].segment(obj_ang_vel_index,n_obj_rot_vel));
     cost_contrib_obj_vel += 
       (XX[N_].segment(obj_vel_index,3) - x_desired_[N_].segment(obj_vel_index,3)).transpose() *
         Q_eff.at(N_).block(obj_vel_index,obj_vel_index,3,3)*(XX[N_].segment(obj_vel_index,3) - 
@@ -709,13 +722,16 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
 
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
 C3Base::SimulatePDControl(
-  std::vector<double> Kp_for_ee_pd_rollout, std::vector<double> Kd_for_ee_pd_rollout, int num_objects,
-  bool force_tracking_disabled, bool verbose) const
+  std::vector<double> Kp_for_ee_pd_rollout,
+  std::vector<double> Kd_for_ee_pd_rollout, int num_objects,
+  bool force_tracking_disabled, const bool& orientation_is_quaternion,
+  bool verbose) const
 {
   if (verbose) {
     std::cout<<"\nSIMULATING PD CONTROL"<<std::endl;
   }
-  const int ee_vel_index = 7 * num_objects + 3;
+  const int n_q_per_object = orientation_is_quaternion? 7 : 4;
+  const int ee_vel_index = n_q_per_object * num_objects + 3;
 
   int resolution = options_.lcs_dt_resolution;
 

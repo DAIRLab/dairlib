@@ -30,7 +30,7 @@ cost_type_position: 3
 track_c3_progress_via: 3
 
 # Ignore orientation errors when object is beyond this threshold from the goal.
-cost_switching_threshold_distance: 0.4
+cost_switching_threshold_distance: 0.15
 
 # Penalize repositioning distance.
 travel_cost_per_meter: 0

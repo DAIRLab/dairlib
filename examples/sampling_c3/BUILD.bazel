@@ -249,6 +249,7 @@ cc_library(
     hdrs = ["goal_generator.h"],
     deps = [
         "//examples/sampling_c3/parameter_headers:goal_params",
+        "//examples/sampling_c3:sampling_c3_utils",
         "//systems/framework:vector",
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
@@ -266,6 +267,7 @@ cc_library(
         "@drake//:drake_shared_library",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3:sampling_c3_utils",
         "//multibody:utils",
         "//systems/controllers:face",
         "//multibody:geom_geom_collider",

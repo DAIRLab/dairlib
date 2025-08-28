@@ -33,22 +33,13 @@ namespace systems {
 class FrankaKinematics : public drake::systems::LeafSystem<double> {
  public:
   explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
-                                Context<double>* franka_context,
-                                const MultibodyPlant<double>& object_plant,
-                                Context<double>* object_context,
-                                const std::string& end_effector_name,
-                                const std::string& object_name,
-                                bool include_end_effector_orientation);
-
-  explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                             Context<double>* franka_context,
                             const MultibodyPlant<double>& object_plant,
                             Context<double>* object_context,
                             const std::string& end_effector_name,
-                            const std::string& object_name,
+                            const std::vector<std::string>& object_names,
                             bool include_end_effector_orientation,
-                            const bool& orientation_is_quaternion,
-                            std::vector<std::string> object_names);
+                            const bool& orientation_is_quaternion = true);
 
  
   std::vector<const drake::systems::InputPort<double>*> get_input_ports_object_state() const {
@@ -83,7 +74,10 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   int num_end_effector_velocities_;
   int num_object_velocities_;
   std::vector<std::string> object_names_;
+  const bool orientation_is_quaternion_;
   int num_objects_;
+  int n_config_per_obj_;
+  int n_vel_per_obj_;
 
   const MultibodyPlant<double>& franka_plant_;
   Context<double>* franka_context_;

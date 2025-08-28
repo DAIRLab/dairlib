@@ -167,9 +167,8 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false,
-          controller_params.orientation_is_quaternion,
-          controller_params.base_names);
+          controller_params.base_names, false,
+          controller_params.orientation_is_quaternion);
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -486,8 +485,9 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_c3_state) {
-    auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, vis_params.object_vis_models.size(), true, true);
+    auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
+        meshcat, vis_params.object_vis_models.size(), true, true,
+        controller_params.orientation_is_quaternion);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),

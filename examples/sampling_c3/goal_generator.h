@@ -41,17 +41,13 @@ inline const std::vector<Eigen::Quaterniond> kNominalOrientationsJack{
 inline const Eigen::Quaterniond kQUAT_FLAT{1.0, 0.0, 0.0, 0.0};
 inline std::vector<std::vector<Eigen::Quaterniond>> MakeNominalOrientationsPlanar(int n) {
   std::vector<std::vector<Eigen::Quaterniond>> orientation_storage;
-
-  for (int i = 0; i < n; ++i) {
-    orientation_storage.push_back({kQUAT_FLAT});
-  }
-
+  for (int i = 0; i < n; ++i) { orientation_storage.push_back({kQUAT_FLAT}); }
   return orientation_storage;
 }
 
-
 namespace dairlib {
 namespace systems {
+
 
 class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
  public:
@@ -59,7 +55,8 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
     std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations,
-    std::vector<drake::multibody::ModelInstanceIndex> object_indices);
+    std::vector<drake::multibody::ModelInstanceIndex> object_indices,
+    const bool& orientation_is_quaternion = true);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -169,13 +166,17 @@ private:
   drake::systems::OutputPortIndex target_gen_info_port_;
 
   const SamplingC3GoalParams goal_params_;
+  const bool orientation_is_quaternion_ = true;
+  int n_config_per_obj_;
+  int n_vel_per_obj_;
   std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations_;
   mutable std::vector<Eigen::Vector3d> target_final_object_positions_;
   mutable std::vector<Eigen::Vector4d> target_final_object_orientations_;
   
   // indicates target final position of which object is in which sampling area
   mutable std::vector<int> object_index_to_sampling_area_index_map_;
-  mutable Eigen::Vector3d datum_position_ = Eigen::VectorXd::Constant(3, std::numeric_limits<double>::quiet_NaN());
+  mutable Eigen::Vector3d datum_position_ = Eigen::VectorXd::Constant(
+    3, std::numeric_limits<double>::quiet_NaN());
 
   mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
   mutable int goal_counter_ = 1;
@@ -203,10 +204,14 @@ class SamplingC3GoalGeneratorPlanar : public SamplingC3GoalGenerator {
   SamplingC3GoalGeneratorPlanar(
     const drake::multibody::MultibodyPlant<double>& object_plant,
     const SamplingC3GoalParams& goal_params,
-    std::vector<drake::multibody::ModelInstanceIndex> object_indices
+    std::vector<drake::multibody::ModelInstanceIndex> object_indices,
+    const bool& orientation_is_quaternion = true
   ) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, MakeNominalOrientationsPlanar(object_indices.size()), object_indices) {}
+        object_plant, goal_params,
+        MakeNominalOrientationsPlanar(object_indices.size()),
+        object_indices,
+        orientation_is_quaternion) {}
 };
 
 

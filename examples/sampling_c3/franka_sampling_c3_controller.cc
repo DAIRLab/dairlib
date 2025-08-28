@@ -102,7 +102,8 @@ int DoMain(int argc, char* argv[]) {
 	AddLCSModelsToPlant(
         &plant_lcs, &scene_graph, controller_params.object_models,
         controller_params.include_end_effector_orientation,
-        sampling_c3_options.include_walls);
+        sampling_c3_options.include_walls,
+        controller_params.orientation_is_quaternion);
   plant_lcs.Finalize();
 
 
@@ -376,42 +377,44 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
-          controller_params.object_body_name,
+		  controller_params.base_names,
           controller_params.include_end_effector_orientation,
-          controller_params.orientation_is_quaternion,
-		  controller_params.base_names
-    );
+          controller_params.orientation_is_quaternion);
 
   std::cout << "Before target generator" << std::endl;
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {
     target_generator = 
-			std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
-					plant_object, controller_params.goal_params, object_indices);
+        std::make_unique<systems::SamplingC3GoalGeneratorJacktoy>(
+            plant_object, controller_params.goal_params, object_indices);
   } else if (FLAGS_demo_name == "push_t") {
     target_generator =
-			std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-					plant_object, controller_params.goal_params, object_indices);
+        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+            plant_object, controller_params.goal_params, object_indices);
   } else if (FLAGS_demo_name == "anything") {
-		target_generator =
-			std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-					plant_object, controller_params.goal_params, object_indices);
-			
-	} else {
+    target_generator =
+        std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+            plant_object, controller_params.goal_params, object_indices,
+            controller_params.orientation_is_quaternion);
+
+  } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
 	auto* control_target = builder.AddSystem(std::move(target_generator));
 
-  // Input sizes are EE position (3), object pose (7), EE velocity (3), object
-  // velocities (6).
+  // Input sizes are EE position (3), object pose (7 or 4), EE velocity (3),
+  // object velocities (6 or 4).  The object pose/velocities are different sizes
+  // based on if their states are full floating base or planar with z rotation.
+  int n_config_per_obj = controller_params.orientation_is_quaternion? 7 : 4;
+  int n_vel_per_obj = controller_params.orientation_is_quaternion? 6 : 4;
   std::vector<int> input_sizes = {3}; 						  // ee position
-	for (int i = 0; i < controller_params.num_objects; i++) { // object pose
-		input_sizes.push_back(7);
+	for (int i = 0; i < controller_params.num_objects; i++) { // object config
+		input_sizes.push_back(n_config_per_obj);
 	} 
 	input_sizes.push_back(3); 								  // ee velocity
 	for (int i = 0; i < controller_params.num_objects; i++) { // object velocities
-		input_sizes.push_back(6);
+		input_sizes.push_back(n_vel_per_obj);
 	} 
 
   auto target_state_mux =
@@ -423,7 +426,7 @@ int DoMain(int argc, char* argv[]) {
           VectorXd::Zero(3));
   auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
-          VectorXd::Zero(6));
+          VectorXd::Zero(n_vel_per_obj));
   auto target_gen_info_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.target_generator_info_channel, &lcm,
@@ -590,11 +593,19 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y",  "end_effector_z"};
 	
-	std::vector<std::string> object_pose_names = {"object_qw", "object_qx", "object_qy", "object_qz", "object_x", "object_y", "object_z"};
-	std::vector<std::string> object_velo_names = {"object_wx", "object_wy", "object_wz", "object_vx", "object_vy", "object_vz"};
+  std::vector<std::string> object_pos_names;
+  std::vector<std::string> object_vel_names;
+  if (controller_params.orientation_is_quaternion) {
+      object_pos_names = {"object_qw", "object_qx", "object_qy", "object_qz", "object_x", "object_y", "object_z"};
+      object_vel_names = {"object_wx", "object_wy", "object_wz", "object_vx", "object_vy", "object_vz"};
+  }
+  else {
+      object_pos_names = {"object_x", "object_y", "object_z", "object_theta"};
+      object_vel_names = {"object_vx", "object_vy", "object_vz", "object_omega"};
+  }
 	for (int i = 0; i < controller_params.num_objects; i++) {
-		for (int j = 0; j < object_pose_names.size(); j++) {
-			std::string item = object_pose_names.at(j) + "_" + std::to_string(i);
+		for (int j = 0; j < object_pos_names.size(); j++) {
+			std::string item = object_pos_names.at(j) + "_" + std::to_string(i);
 			state_names.push_back(item);
 		}
 	} 
@@ -603,8 +614,8 @@ int DoMain(int argc, char* argv[]) {
 	state_names.push_back("end_effector_vz");
 
   for (int i = 0; i < controller_params.num_objects; i++) {
-		for (int j = 0; j < object_velo_names.size(); j++) {
-			std::string item = object_velo_names.at(j) + "_" + std::to_string(i);
+		for (int j = 0; j < object_vel_names.size(); j++) {
+			std::string item = object_vel_names.at(j) + "_" + std::to_string(i);
 			state_names.push_back(item);
 		}
 	} 

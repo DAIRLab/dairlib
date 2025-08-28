@@ -6,66 +6,24 @@
 namespace dairlib {
 namespace systems {
 
-FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
-                                   Context<double>* franka_context,
-                                   const MultibodyPlant<double>& object_plant,
-                                   Context<double>* object_context,
-                                   const std::string& end_effector_name,
-                                   const std::string& object_name,
-                                   bool include_end_effector_orientation)
-    : franka_plant_(franka_plant),
-      franka_context_(franka_context),
-      object_plant_(object_plant),
-      object_context_(object_context),
-      world_(franka_plant_.world_frame()),
-      end_effector_name_(end_effector_name),
-      object_name_(object_name),
-      include_end_effector_orientation_(include_end_effector_orientation) {
-  this->set_name("franka_kinematics");
-  franka_state_port_ =
-      this->DeclareVectorInputPort(
-              "x_franka", OutputVector<double>(franka_plant.num_positions(),
-                                               franka_plant.num_velocities(),
-                                               franka_plant.num_actuators()))
-          .get_index();
-
-  object_state_port_ =
-      this->DeclareVectorInputPort(
-              "x_object", StateVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities()))
-          .get_index();
-  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
-  num_object_positions_ = 7 * 2;
-  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
-  num_object_velocities_ = 6 * 2;
-  lcs_state_port_ =
-      this->DeclareVectorOutputPort(
-              "x_lcs",
-              FrankaKinematicsVector<double>(
-                  num_end_effector_positions_, num_object_positions_,
-                  num_end_effector_velocities_, num_object_velocities_),
-              &FrankaKinematics::ComputeLCSState)
-          .get_index();
-}
 
 FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                    Context<double>* franka_context,
                                    const MultibodyPlant<double>& object_plant,
                                    Context<double>* object_context,
                                    const std::string& end_effector_name,
-                                   const std::string& object_name,
+                                   const std::vector<std::string>& object_names,
                                    bool include_end_effector_orientation,
-                                   const bool& orientation_is_quaternion,
-                                   std::vector<std::string> object_names)
+                                   const bool& orientation_is_quaternion)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
       object_plant_(object_plant),
       object_context_(object_context),
       world_(franka_plant_.world_frame()),
       end_effector_name_(end_effector_name),
-      object_name_(object_name),
+      object_names_(object_names),
       include_end_effector_orientation_(include_end_effector_orientation),
-      object_names_(object_names) {
+      orientation_is_quaternion_(orientation_is_quaternion) {
 
   num_objects_ = object_names_.size();
   this->set_name("franka_kinematics");
@@ -76,13 +34,13 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                                franka_plant.num_actuators()))
           .get_index();
 
-  int n_config = orientation_is_quaternion ? 7 : 4;
-  int n_vel = orientation_is_quaternion ? 6 : 4;
+  n_config_per_obj_ = orientation_is_quaternion ? 7 : 4;
+  n_vel_per_obj_ = orientation_is_quaternion ? 6 : 4;
   for (int i = 0; i < num_objects_; i++) {
     std::string port_name = "x_object_" + std::to_string(i);
     object_state_ports_.push_back(
         this->DeclareVectorInputPort(
-              port_name, StateVector<double>(n_config, n_vel))
+              port_name, StateVector<double>(n_config_per_obj_, n_vel_per_obj_))
           .get_index()
     );
   } 
@@ -174,10 +132,20 @@ void FrankaKinematics::ComputeLCSState(
     end_effector_velocities << end_effector_spatial_velocity.translational();
   }
 
-  VectorXd object_positions(num_objects_ * 7);
+  VectorXd object_positions(num_objects_ * n_config_per_obj_);
   for (int i = 0; i < object_poses.size(); i++) {
-    object_positions.segment(i * 7, 4) = q_objects.segment(i * 7, 4); // ith orientation
-    object_positions.segment(i * 7 + 4, 3) = object_poses[i].translation(); // ith position
+    if (orientation_is_quaternion_) {
+      object_positions.segment(i*n_config_per_obj_, 4) =
+        q_objects.segment(i*n_config_per_obj_, 4); // ith orientation
+      object_positions.segment(i*n_config_per_obj_ + 4, 3) =
+        object_poses[i].translation(); // ith position
+    }
+    else {
+      object_positions.segment(i*n_config_per_obj_, 3) =
+        object_poses[i].translation(); // ith position
+      object_positions.segment(i*n_config_per_obj_ + 3, 1) =
+        q_objects.segment(i*n_config_per_obj_ + 3, 1); // ith orientation
+    }
   } 
 
   lcs_state->SetEndEffectorPositions(end_effector_positions);

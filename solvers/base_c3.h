@@ -63,7 +63,8 @@ class C3Base {
       std::vector<double> Kp_for_ee_pd_rollout = {0.0, 0.0, 0.0},  
       std::vector<double> Kd_for_ee_pd_rollout = {0.0, 0.0, 0.0},
       bool force_tracking_disabled = false, int num_objects = 1,
-      bool print_cost_breakdown = false, bool verbose = false) const;
+      bool print_cost_breakdown = false, bool verbose = false,
+      const bool& orientation_is_quaternion = true) const;
 
   /// Helper function to simulate the dynamics with PD control on the EE
   /// location and velocity plans, and the control input plans.  Used for cost
@@ -72,12 +73,15 @@ class C3Base {
   /// @param Kd_for_ee_pd_rollout Derivative gain for simulated EE PD control
   /// @param force_tracking_disabled Whether to simulate EE PD control with
   /// feedforward u from the MPC solution
+  /// @param orientation_is_quaternion whether object orientations are
+  /// represented by quaternion or scalar angle about vertical axis
   /// @param verbose Whether to print additional information
   /// @return the simulated state and input trajectories
   std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   SimulatePDControl(std::vector<double> Kp_for_ee_pd_rollout = {0.0, 0.0, 0.0},
                     std::vector<double> Kd_for_ee_pd_rollout = {0.0, 0.0, 0.0}, int num_objects = 1,
                     bool force_tracking_disabled = false,
+                    const bool& orientation_is_quaternion = true,
                     bool verbose = false) const;
 
   /// Solve a single ADMM step.

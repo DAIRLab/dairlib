@@ -1,6 +1,7 @@
 #include "sampling_c3_utils.h"
 #include <iostream>
 #include "common/find_resource.h"
+#include "drake/common/drake_assert.h"
 #include "drake/multibody/parsing/parser.h"
 
 namespace dairlib {
@@ -184,7 +185,8 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
     SceneGraph<double>* scene_graph,
     std::vector<std::string> object_models,
     const bool& include_end_effector_orientation,
-    const bool& include_walls) {
+    const bool& include_walls,
+    const bool& orientation_is_quaternion) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
@@ -196,12 +198,6 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   parser_lcs.AddModels(kEndEffectorSimpleModel);
   parser_lcs.AddModels(kGroundModel);
 
-  for (const auto& model : object_models) {
-    obj_models.push_back(
-      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
-    );
-  }
-
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_W_G = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
@@ -210,6 +206,21 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
 
+  for (const auto& model : object_models) {
+    obj_models.push_back(parser_lcs.AddModels(FindResourceOrThrow(model))[0]);
+    if (!orientation_is_quaternion) {
+      // Get the name of the object in the model.
+      ModelInstanceIndex obj_index = obj_models.back();
+      BodyIndex body_index = plant->GetBodyIndices(obj_index)[0];
+      const std::string& obj_name = plant->get_body(body_index).name();
+
+      // Weld the object's base link to the world.
+      RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+      plant->WeldFrames(plant->world_frame(),
+                        plant->GetFrameByName(obj_name + "_base"), X_WI);
+    }
+  }
+
   if (include_walls) {
     // TODO: may want to exclude the back wall for the LCS model.
     AddWallsToPlant(plant, scene_graph);  //, false);
@@ -217,5 +228,109 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
 
   return obj_models;
 }
+
+/// State vector interpretation
+Eigen::Quaterniond GetObjectQuaternionFromTheta(const double& theta) {
+  Eigen::AngleAxisd aa(theta, Eigen::Vector3d::UnitZ());
+  Eigen::Quaterniond quat(aa);
+  return quat;
+}
+
+Eigen::Quaterniond GetObjectQuaternionFromObjectConfig(
+    const Eigen::VectorXd& object_config,
+    const bool& orientation_is_quaternion
+) {
+  if (orientation_is_quaternion) {
+    DRAKE_DEMAND(object_config.size() == 7);
+    Eigen::Vector4d quat_coeffs = object_config.head(4);
+    quat_coeffs.normalize();
+    return Eigen::Quaterniond(quat_coeffs(0), quat_coeffs(1),
+                              quat_coeffs(2), quat_coeffs(3));
+  }
+  DRAKE_DEMAND(object_config.size() == 4);
+  return GetObjectQuaternionFromTheta(object_config(3));
+}
+
+Eigen::Vector3d GetObjectPositionFromObjectConfig(
+    const Eigen::VectorXd& object_config,
+    const bool& orientation_is_quaternion
+) {
+  if (orientation_is_quaternion) {
+    return object_config.tail(3);
+  }
+  return object_config.head(3);
+}
+
+Eigen::VectorXd GetObjectConfigFromPosQuat(
+    const Eigen::Vector3d& object_xyz,
+    const Eigen::Quaterniond& object_quat,
+    const bool& orientation_is_quaternion
+) {
+  if (orientation_is_quaternion) {
+    Eigen::VectorXd config = Eigen::VectorXd::Zero(7);
+    config << object_quat.w(), object_quat.x(), object_quat.y(),
+              object_quat.z(), object_xyz;
+    return config;
+  }
+  // Use only the vertical rotation components of the quaternion.
+  double w = object_quat.w();
+  double z = object_quat.z();
+  w = w / std::sqrt(w * w + z * z);
+  z = z / std::sqrt(w * w + z * z);
+  double theta = 2.0 * std::atan2(z, w);
+  Eigen::VectorXd config = Eigen::VectorXd::Zero(4);
+  config << object_xyz, theta;
+  return config;
+}
+
+Eigen::VectorXd GetObjectVelocityFromLinRotVel(
+    const Eigen::Vector3d& obj_lin_vel,
+    const Eigen::Vector3d& obj_rot_vel,
+    const bool& orientation_is_quaternion
+) {
+  if (orientation_is_quaternion) {
+    Eigen::VectorXd vel = Eigen::VectorXd::Zero(6);
+    vel << obj_rot_vel, obj_lin_vel;
+    return vel;
+  }
+  // Use only the vertical rotation component of the angular velocity.
+  Eigen::VectorXd vel = Eigen::VectorXd::Zero(4);
+  vel << obj_lin_vel, obj_rot_vel(2);
+  return vel;
+}
+
+Eigen::VectorXd GetObjectConfigFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+) {
+  if (orientation_is_quaternion) {
+    return x_lcs.segment<7>(3 + object_index*7);
+  }
+  return x_lcs.segment<4>(3 + object_index*4);
+}
+
+Eigen::Quaterniond GetObjectQuatFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+) {
+  Eigen::VectorXd object_config = GetObjectConfigFromLCSState(
+    x_lcs, object_index, orientation_is_quaternion);
+  return GetObjectQuaternionFromObjectConfig(
+    object_config, orientation_is_quaternion);
+}
+
+Eigen::Vector3d GetObjectPosFromLCSState(
+    const Eigen::VectorXd& x_lcs,
+    const int& object_index,
+    const bool& orientation_is_quaternion
+) {
+  Eigen::VectorXd object_config = GetObjectConfigFromLCSState(
+    x_lcs, object_index, orientation_is_quaternion);
+  return GetObjectPositionFromObjectConfig(
+    object_config, orientation_is_quaternion);
+}
+
 
 }   // namespace dairlib

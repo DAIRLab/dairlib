@@ -17,6 +17,7 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
+        "//examples/sampling_c3:sampling_c3_utils",
     ],
 )
 

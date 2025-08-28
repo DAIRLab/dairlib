@@ -5,6 +5,7 @@
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
 #include "common/eigen_utils.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 
 #include "drake/common/schema/rotation.h"
 #include "drake/geometry/rgba.h"
@@ -493,7 +494,8 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
 LcmC3TargetDrawer::LcmC3TargetDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat, bool draw_tray,
     bool draw_ee)
-    : meshcat_(meshcat), draw_tray_(draw_tray), draw_ee_(draw_ee) {
+    : meshcat_(meshcat), draw_object_(draw_tray), draw_ee_(draw_ee),
+      orientation_is_quaternion_(true) {
   this->set_name("LcmC3TargetDrawer");
   c3_state_final_target_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_state: final_target",
@@ -587,9 +589,11 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 }
 
 LcmC3TargetDrawer::LcmC3TargetDrawer(
-    const std::shared_ptr<drake::geometry::Meshcat>& meshcat, int num_objects, bool draw_tray,
-    bool draw_ee)
-    : meshcat_(meshcat), draw_tray_(draw_tray), draw_ee_(draw_ee), num_objects_(num_objects) {
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat, int num_objects,
+    bool draw_tray, bool draw_ee, const bool& orientation_is_quaternion)
+    : meshcat_(meshcat), draw_object_(draw_tray), draw_ee_(draw_ee),
+      num_objects_(num_objects),
+      orientation_is_quaternion_(orientation_is_quaternion) {
   this->set_name("LcmC3TargetDrawer");
   c3_state_final_target_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_state: final_target",
@@ -736,7 +740,7 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
       context, c3_state_target_input_port_);
   const auto& c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(
       context, c3_state_actual_input_port_);
-  if (draw_tray_) {
+  if (draw_object_) {
     meshcat_->SetTransform(
         c3_final_target_object_path_,
         RigidTransformd(
@@ -806,31 +810,40 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3StateMulti(
       context, c3_state_target_input_port_);
   const auto& c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(
       context, c3_state_actual_input_port_);
-  for (int i = 0; i < num_objects_; i++) {
-    if (draw_tray_) {
+  if (draw_object_) {
+    VectorXd c3_final_target_state = Eigen::Map<const Eigen::VectorXf>(
+      c3_final_target->state.data(), c3_final_target->state.size()
+    ).cast<double>();
+    VectorXd c3_target_state = Eigen::Map<const Eigen::VectorXf>(
+      c3_target->state.data(), c3_target->state.size()
+    ).cast<double>();
+    VectorXd c3_actual_state = Eigen::Map<const Eigen::VectorXf>(
+      c3_actual->state.data(), c3_actual->state.size()
+    ).cast<double>();
+    for (int i = 0; i < num_objects_; i++) {
       meshcat_->SetTransform(
           c3_final_target_object_paths_.at(i),
           RigidTransformd(
-              Eigen::Quaterniond(c3_final_target->state[3+7*i],
-                                c3_final_target->state[4+7*i],
-                                c3_final_target->state[5+7*i],
-                                c3_final_target->state[6+7*i]),
-              Vector3d{c3_final_target->state[7+7*i], c3_final_target->state[8+7*i],
-                      c3_final_target->state[9+7*i]}));
+              GetObjectQuatFromLCSState(c3_final_target_state, i,
+                                        orientation_is_quaternion_),
+              GetObjectPosFromLCSState(c3_final_target_state, i,
+                                       orientation_is_quaternion_)));
       meshcat_->SetTransform(
           c3_target_object_paths_.at(i),
           RigidTransformd(
-              Eigen::Quaterniond(c3_target->state[3+7*i], c3_target->state[4+7*i],
-                                c3_target->state[5+7*i], c3_target->state[6+7*i]),
-              Vector3d{c3_target->state[7+7*i], c3_target->state[8+7*i],
-                      c3_target->state[9+7*i]}), context.get_time());
+              GetObjectQuatFromLCSState(c3_target_state, i,
+                                        orientation_is_quaternion_),
+              GetObjectPosFromLCSState(c3_target_state, i,
+                                       orientation_is_quaternion_)),
+          context.get_time());
       meshcat_->SetTransform(
           c3_actual_object_paths_.at(i),
           RigidTransformd(
-              Eigen::Quaterniond(c3_actual->state[3+7*i], c3_actual->state[4+7*i],
-                                c3_actual->state[5+7*i], c3_actual->state[6+7*i]),
-              Vector3d{c3_actual->state[7+7*i], c3_actual->state[8+7*i],
-                      c3_actual->state[9+7*i]}), context.get_time());
+              GetObjectQuatFromLCSState(c3_actual_state, i,
+                                        orientation_is_quaternion_),
+              GetObjectPosFromLCSState(c3_actual_state, i,
+                                       orientation_is_quaternion_)),
+          context.get_time());
     }
   }
   if (draw_ee_) {

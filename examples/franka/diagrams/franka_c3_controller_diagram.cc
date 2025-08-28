@@ -172,11 +172,12 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
       builder.AddSystem<systems::RobotOutputReceiver>(*plant_franka_);
   auto tray_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(*plant_tray_);
+  std::vector<std::string> object_names = {"tray"};
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           *plant_franka_, plant_franka_context_.get(), *plant_tray_,
           plant_tray_context_.get(), scene_params.end_effector_name,
-          "tray", controller_params.include_end_effector_orientation);
+          object_names, controller_params.include_end_effector_orientation);
 
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(

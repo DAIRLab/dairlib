@@ -110,10 +110,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto tray_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
+  std::vector<std::string> object_names = {"tray"};
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          scene_params.end_effector_name, "tray",
+          scene_params.end_effector_name, object_names,
           controller_params.include_end_effector_orientation);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(

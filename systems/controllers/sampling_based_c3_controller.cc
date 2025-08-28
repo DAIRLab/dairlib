@@ -99,13 +99,16 @@ SamplingC3Controller::SamplingC3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
+  // Print the plant's position names.
+  for (int i = 0; i < n_q_; ++i) {
+    std::cout << "q_" << i << ": " << plant_.GetPositionNames().at(i) << std::endl;
+  }
   std::cout << "n_q_" << n_q_ << std::endl;
   std::cout << "n_v_" << n_v_ << std::endl;
   std::cout << "n_u_" << n_u_ << std::endl;
   std::cout << "n_x_" << n_x_ << std::endl;
 
   if (verbose_) {
-
     std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
     std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
     std::cout << "R Rows: " << R_[0].rows() << std::endl;
@@ -119,8 +122,8 @@ SamplingC3Controller::SamplingC3Controller(
 
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ =
-        2 * sampling_c3_options_.num_contacts + sampling_c3_options_.n_lambda_with_tangential;
+    n_lambda_ = 2 * sampling_c3_options_.num_contacts + 
+                sampling_c3_options_.n_lambda_with_tangential;
   } else if (sampling_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ = sampling_c3_options_.n_lambda_with_tangential;
@@ -228,11 +231,6 @@ SamplingC3Controller::SamplingC3Controller(
       A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
   }
 
-  std::cout << "n_q_" << n_q_ << std::endl;
-  std::cout << "n_v_" << n_v_ << std::endl;
-  std::cout << "n_u_" << n_u_ << std::endl;
-  std::cout << "n_x_" << n_x_ << std::endl;  
-  
   // Input ports.
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -695,11 +693,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   std::vector<bool> object_on_target;
   for (int i = 0; i < controller_params_.num_objects; i++) {
+    int x_idx = controller_params_.orientation_is_quaternion? 7 + 7*i : 3 + 4*i;
     double object_position_error = (
-      x_lcs_curr.segment(7 + 7*i, 2) - x_lcs_des.get_value().segment(7 + 7*i, 2)
+      x_lcs_curr.segment(x_idx, 2) - x_lcs_des.get_value().segment(x_idx, 2)
     ).norm();
-    Eigen::Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7*i));
-    Eigen::Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7*i));
+    
+    Eigen::Quaterniond q_des;
+    Eigen::Quaterniond q_curr;
+    if (controller_params_.orientation_is_quaternion) {
+      q_des = Eigen::Quaterniond(x_lcs_des.get_value().segment<4>(3 + 7*i));
+      q_curr = Eigen::Quaterniond(x_lcs_curr.segment<4>(3 + 7*i));
+    }
+    else {
+      q_des = Eigen::Quaterniond(Eigen::AngleAxisd(
+        x_lcs_des.value()[6 + 4*i], Eigen::Vector3d::UnitZ()));
+      q_curr = Eigen::Quaterniond(Eigen::AngleAxisd(
+        x_lcs_curr[6 + 4*i], Eigen::Vector3d::UnitZ()));
+    }
 
     Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
     double object_angular_error = angle_axis_diff.angle();
@@ -713,8 +723,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
                          sampling_params_, sampling_c3_options_, plant_,
                          context_, plant_ad_, context_ad_, contact_pairs_, 
-                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, object_on_target);
+                         faces_, face_bins_, faces_per_object_, 
+                         face_bins_per_object_, total_area_per_object_,
+                         object_on_target,
+                         controller_params_.orientation_is_quaternion);
+  std::cout<<"Generated samples"<<std::endl;
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -832,7 +845,8 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       test_c3_object->CalcCost(
         cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
         sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-        controller_params_.num_objects, print_cost_breakdown, verbose_);
+        controller_params_.num_objects, print_cost_breakdown, verbose_,
+        controller_params_.orientation_is_quaternion);
     auto cc_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
     //std::cout << "CalcCost: " << duration_ms.count() << " ms" << std::endl;
@@ -1632,6 +1646,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 }
 
 // Maintain the sample buffer:  prune outdated samples and add new.
+// TODO @bibit:  I suspect there are issues with this since the buffer doesn't
+// appear to fill up when orientation is planar rotation.
 void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
   // Determine if samples are outdated by comparing to the current object
   // position and orientation.

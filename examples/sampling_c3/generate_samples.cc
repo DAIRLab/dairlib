@@ -1,4 +1,5 @@
 #include "generate_samples.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "multibody/geom_geom_collider.h"
 
 #include <math.h>
@@ -38,8 +39,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
-      ) {
+    std::vector<bool> object_on_target,
+    const bool& orientation_is_quaternion
+) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -61,6 +63,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
 
   // Split function calls based on sampling strategy.
+  // TODO @bibit: send orientation_is_quaternion to more sampling strategies
   SamplingStrategy strategy = sampling_params.sampling_strategy;
   if (strategy == SamplingStrategy::kRadiallySymmetric) {
     for (int i = 0; i < num_samples; i++) {
@@ -141,8 +144,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       do {
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
-          contact_geoms, sampling_params, sampling_c3_options, query_object, faces_per_object,
-          face_bins_per_object, total_area_per_object, object_on_target);
+          contact_geoms, sampling_params, sampling_c3_options, query_object,
+          faces_per_object, face_bins_per_object, total_area_per_object,
+          object_on_target, orientation_is_quaternion);
       } while (sampling_params.filter_samples_for_safety &&
                !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
     }
@@ -516,7 +520,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
+    std::vector<bool> object_on_target,
+    const bool& orientation_is_quaternion
 ) {
     const double buffer_distance = sampling_params.buffer_distance;
     const double z_height = sampling_params.z_height;
@@ -525,28 +530,16 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     double distance = 0;
 
     int num_objects = object_on_target.size();
-    //std::cout << "num_objects: " << num_objects << std::endl;
-    
+
     // Parse x_lcs into EE position and object poses
     Eigen::Vector3d ee_position = x_lcs.head(3);
     std::vector<Eigen::Quaterniond> object_quats;
     std::vector<Eigen::Vector3d> object_positions;
-
     for (int obj_idx = 0; obj_idx < num_objects; ++obj_idx) {
-        int base_idx = 3 + obj_idx * 7; 
-        Eigen::Quaterniond quat_object(
-            x_lcs[base_idx],
-            x_lcs[base_idx + 1],
-            x_lcs[base_idx + 2],
-            x_lcs[base_idx + 3]
-        );
-        Eigen::Vector3d pos_object(
-            x_lcs[base_idx + 4],
-            x_lcs[base_idx + 5],
-            x_lcs[base_idx + 6]
-        );
-        object_quats.push_back(quat_object);
-        object_positions.push_back(pos_object);
+      object_quats.push_back(
+        GetObjectQuatFromLCSState(x_lcs, obj_idx, orientation_is_quaternion));
+      object_positions.push_back(
+        GetObjectPosFromLCSState(x_lcs, obj_idx, orientation_is_quaternion));
     }
 
     int num_objects_selected = 0;
@@ -654,11 +647,11 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
 
         Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
         candidate_state.segment(0, 3) = projected_sample_point; // EE position
-        candidate_state.segment(3, 7*num_objects + 3 + 6*num_objects) = x_lcs.segment(3, 7*num_objects + 3 + 6*num_objects); 
+        candidate_state.segment(3, n_q + n_v - 3) = x_lcs.segment(3, n_q + n_v - 3); 
 
         UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, candidate_state);
 
-        
+
         // Check collision with all objects
         bool in_collision = false;
         const auto& results = query_object.ComputeSignedDistanceToPoint(projected_sample_point);

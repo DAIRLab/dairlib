@@ -23,6 +23,10 @@ group "operator" {
         exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
         host = "sampling_c3_localhost";
     }
+    cmd "move_to_target_joints" {
+        exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
+        host = "sampling_c3_localhost";
+    }
 }
 
 group "controllers (hardware)" {
@@ -81,6 +85,25 @@ script "init_experiment" {
     start cmd "move_to_init";
     wait ms 10000;
     stop group "drivers";
+}
+
+script "start_mesh_scanning" {
+    stop cmd "sampling_c3";
+    stop cmd "franka_osc";
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
+    stop cmd "torque_driver";
+    stop cmd "move_to_target_joints";
+    wait ms 1000;
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "torque_driver";
+    start cmd "move_to_init";
+}
+
+script "stop_mesh_scanning" {
+    stop group "drivers";
+    stop cmd "move_to_init";
 }
 
 script "start_experiment" {

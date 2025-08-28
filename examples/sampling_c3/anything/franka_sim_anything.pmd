@@ -18,6 +18,10 @@ group "operator" {
         exec = "bazel-bin/examples/sampling_c3/xbox_script";
         host = "localhost";
     }
+    cmd "move_to_target_joints" {
+        exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
+        host = "localhost";
+    }
     cmd "start_logging" {
         exec = "python3 examples/sampling_c3/start_logging.py sim anything /home/ericcui/logs";
         host = "localhost";
@@ -50,6 +54,29 @@ group "controllers" {
         exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=true --demo_name=anything";
         host = "localhost";
     }
+}
+script "init_experiment" {
+    stop cmd "franka_sim";
+    stop cmd "franka_osc";
+    stop cmd "sampling_c3";
+    wait ms 1000;
+    start cmd "move_to_init";
+    start cmd "franka_sim";
+    wait ms 10000;
+    stop cmd "franka_sim";
+    stop cmd "move_to_init";
+}
+
+script "move_to_target_joints" {
+    stop cmd "franka_sim";
+    stop cmd "franka_osc";
+    stop cmd "sampling_c3";
+    stop cmd "move_to_init";
+    wait ms 1000;
+    start cmd "move_to_init";
+    start cmd "franka_sim";
+    wait ms 10000;
+    start cmd "move_to_target_joints";
 }
 
 group "debug" {

@@ -1,6 +1,7 @@
 
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
+#include <dairlib/lcmt_franka_target_joint_position.hpp>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
@@ -19,6 +20,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/franka_target_joint_position_receiver.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
@@ -178,6 +180,19 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(state_receiver->get_output_port(0),
                   joint_traj_generator->get_input_port_robot_state());
+
+  // Add the target joint position receiver
+  auto target_joint_position_receiver =
+      builder.AddSystem<systems::FrankaTargetJointPositionReceiver>();
+  auto target_joint_position_subscriber =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_franka_target_joint_position>(
+          lcm_channel_params.franka_target_joint_position_channel, &lcm));
+
+  // Connect the target joint position receiver
+  builder.Connect(target_joint_position_subscriber->get_output_port(),
+                  target_joint_position_receiver->get_input_port(0));
+  builder.Connect(target_joint_position_receiver->get_output_port(),
+                  joint_traj_generator->get_input_port_target_joint_position());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("sampling_c3_franka_joint_osc_controller"));

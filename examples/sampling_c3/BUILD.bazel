@@ -92,6 +92,7 @@ cc_binary(
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
+        "//systems:franka_target_joint_position_receiver",
         "//systems:system_utils",
         "//systems/controllers:gravity_compensator",
         "//systems/controllers/osc:operational_space_control",
@@ -307,6 +308,17 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "move_to_target_joint_positions",
+    srcs = ["move_to_target_joint_positions.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
     deps = [
         "//lcmtypes:lcmtypes_robot_py",
     ],

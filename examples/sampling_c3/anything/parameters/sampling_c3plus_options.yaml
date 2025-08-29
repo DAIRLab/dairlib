@@ -26,7 +26,7 @@ qp_projection_scaling: 1
 workspace_limits: [[1, 0, 0, 0.15, 0.8], [0, 1, 0, -0.457, 0.457], [0, 0, 1, -0.04, 0.3]]
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
-robot_radius_limits: [0.15, 0.84]
+robot_radius_limits: [0.15, 0.75]
 workspace_margins: 0.03
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [-3, 3]

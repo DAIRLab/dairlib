@@ -1,5 +1,5 @@
 object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
-object_models: [examples/sampling_c3/urdf/C_compromise_centered/C_compromise_centered.sdf]
+object_models: [examples/sampling_c3/urdf/xbox/xbox.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000

@@ -14,10 +14,10 @@ lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
-object_models: [examples/sampling_c3/urdf/xbox/xbox_controller.sdf]
+object_models: [examples/sampling_c3/urdf/C_compromise_centered/C_compromise_centered_controller.sdf]
 object_body_name: body
 base_name: lollipop
-base_names: [xbox]
+base_names: [C_compromise_centered]
 
 include_end_effector_orientation: false
 

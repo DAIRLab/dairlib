@@ -31,7 +31,7 @@ ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.025   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
+sample_projection_clearance: 0.03   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
 min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
 max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 
@@ -54,7 +54,7 @@ max_attempts: 100
 barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices, 
 # >1 biases towards centroid or edges, =1 is uniform.
 
-z_height: 0.002
+z_height: 0.004560129999999999
 # This ^ will be overwritten by generating new files.
 
 gen_planar_samples: true # true = projects all samples to z_height

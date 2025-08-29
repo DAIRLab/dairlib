@@ -6,7 +6,7 @@ import os
 import trimesh
 from lxml import etree as ET
 
-def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=100000, max_hulls=10, j=0):
+def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=400000, max_hulls=10, j=0):
     # Normalize input paths
     obj_file = os.path.abspath(obj_file)
     if output_dir is None:
@@ -29,7 +29,8 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     # Perform convex decomposition
     vhacd_kwargs = {
         'maxConvexHulls': max_hulls,
-        'resolution': resolution
+        'resolution': resolution,
+        'minimumVolumePercentErrorAllowed': 0.001
     }
     convex_dicts = trimesh.decomposition.convex_decomposition(mesh, **vhacd_kwargs)
     convex_meshes = [trimesh.Trimesh(**d) for d in convex_dicts]

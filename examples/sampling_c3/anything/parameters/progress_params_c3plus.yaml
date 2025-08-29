@@ -42,7 +42,7 @@ num_control_loops_to_wait_position: 5
 
 # kConfigCostDrop parameters.
 progress_enforced_cost_drop: 0.5
-progress_enforced_over_n_loops: 10
+progress_enforced_over_n_loops: 20
 
 ### Hysteresis parameters for switching between C3 and repositioning modes.
 finished_reposition_cost: 1000000000

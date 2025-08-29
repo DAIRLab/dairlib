@@ -84,12 +84,12 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
       costs_.push_back(prog_.AddQuadraticCost(
           2 * last_qp_G.at(i).block(n_, n_, m_, m_),
           -2 * last_qp_G.at(i).block(n_, n_, m_, m_) *
-              WD.at(i).segment(n_, m_),
+              delta.at(i).segment(n_, m_),
           lambda_.at(i), 1));
       costs_.push_back(prog_.AddQuadraticCost(
           2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
           -2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
-              WD.at(i).segment(n_ + m_ + k_, m_),
+              delta.at(i).segment(n_ + m_ + k_, m_),
           eta_.at(i), 1));
     }
   } else {

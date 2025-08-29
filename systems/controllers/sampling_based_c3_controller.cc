@@ -1233,22 +1233,18 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                  sampling_c3_options_.workspace_limits[i].segment(0, 3) >
-                 sampling_c3_options_.workspace_limits[i][3] -
-                 sampling_c3_options_.workspace_margins);
+                 sampling_c3_options_.workspace_limits[i][3]);
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                  sampling_c3_options_.workspace_limits[i].segment(0, 3) <
-                 sampling_c3_options_.workspace_limits[i][4] +
-                 sampling_c3_options_.workspace_margins);
+                 sampling_c3_options_.workspace_limits[i][4]);
   }
   // radius checks
   DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
                std::pow(lcs_x_curr->get_data()[1], 2) >
-               std::pow(sampling_c3_options_.robot_radius_limits[0] +
-                        sampling_c3_options_.workspace_margins, 2));
+               std::pow(sampling_c3_options_.robot_radius_limits[0], 2));
   DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
                std::pow(lcs_x_curr->get_data()[1], 2) <
-               std::pow(sampling_c3_options_.robot_radius_limits[1] -
-                        sampling_c3_options_.workspace_margins, 2));
+               std::pow(sampling_c3_options_.robot_radius_limits[1], 2));
 }
 
 // Update the cost matrices (Q_, R_, G_, U_) in preparation for C3 solves.

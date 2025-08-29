@@ -112,7 +112,7 @@ u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 ### Position tracking cost parameters
 # Matrix scaling
-w_Q_position: 80
+w_Q_position: 50
 w_R_position: 6
 w_G_position: 0.18
 w_U_position: 0.26

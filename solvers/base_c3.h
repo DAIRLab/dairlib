@@ -93,6 +93,11 @@ class C3Base {
                 std::vector<Eigen::MatrixXd>* G, int admm_iteration,
                 bool verbose = false);
 
+    virtual   std::vector<Eigen::VectorXd> SolveQP_final(const Eigen::VectorXd& x0,
+                                     const std::vector<Eigen::MatrixXd>& G,
+                                     const std::vector<Eigen::VectorXd>& delta,
+                                     int admm_iteration,
+                                     bool is_final_solve = false);
   /// Solve a single QP.
   /// @param x0 The initial state of the system
   /// @param G A pointer to the G variables from previous step

@@ -13,6 +13,18 @@ namespace solvers {
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
+    using Eigen::MatrixXd;
+    using Eigen::VectorXd;
+    using std::vector;
+
+    using drake::solvers::MathematicalProgram;
+    using drake::solvers::MathematicalProgramResult;
+    using drake::solvers::SolutionResult;
+    using drake::solvers::SolverOptions;
+
+    using drake::solvers::OsqpSolver;
+    using drake::solvers::OsqpSolverDetails;
+    using drake::solvers::Solve;
 
 C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
@@ -79,11 +91,100 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
   // TODO: this is a hack to enforce non-negativity constraints for lambda and eta
   // @PDKy we need to separate this logic into a function.
   for (int i = 0 ; i < N_; i++) {
-    for (int j = 0 ; j < 4; j++) {
+    for (int j = 0 ; j < 8; j++) {
         prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),lambda_.at(i)[j]);
         prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),eta_.at(i)[j]);
     }
   }
+}
+
+    vector<VectorXd> C3Plus::SolveQP_final(const VectorXd& x0, const vector<MatrixXd>& G,
+                                 const vector<VectorXd>& delta, int admm_iteration,
+                                 bool is_final_solve) {
+    // Remove initial state and initial force constraint from previous solve
+    for (auto& constraint : constraints_) {
+        prog_.RemoveConstraint(constraint);
+    }
+    constraints_.clear();
+
+    // Add initial state constraint
+    constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
+
+
+    // Remove augmented costs from previous solve
+    for (auto& cost : costs_) {
+        prog_.RemoveCost(cost);
+    }
+    costs_.clear();
+
+
+    SetInitialGuessQPStep(x0, admm_iteration);
+    //constraint version
+    //-------------------------------------------------------------------------------------------------------------
+    // for (int i = 0; i < N_; ++i) {
+    //     for (int j = 0; j < 4; ++j) {
+    //         prog_.AddBoundingBoxConstraint(0, WD.at(i)[n_+m_+k_+j], eta_.at(i)[j]);
+    //         prog_.AddLinearConstraint(lambda_.at(i)[j] == WD.at(i)[n_+j]);
+    //     }
+    // }
+
+    //
+    // //may need to add cost for other lambda and eta not totally sure about it
+    // for (int i = 0; i < N_; i++) {
+    //     costs_.push_back(prog_.AddQuadraticCost(
+    //         2 * G.at(i).block(n_+4, n_+4, m_-4, m_-4),
+    //         -2 * G.at(i).block(n_+4, n_+4, m_-4, m_-4) * WD.at(i).segment(n_+4, m_-4),
+    //         lambda_.at(i).segment(4, m_ -4), 1));
+    //     costs_.push_back(prog_.AddQuadraticCost(
+    //         2 * G.at(i).block(n_ + m_ + k_ + 4, n_ + m_ + k_ + 4 , m_ -4, m_ -4),
+    //         -2 * G.at(i).block(n_ + m_ + k_ + 4, n_ + m_ + k_ + 4, m_ - 4, m_ - 4) *
+    //             WD.at(i).segment(n_ + m_ + k_ + 4, m_ -4),
+    //         eta_.at(i).segment(4, m_ - 4), 1));
+    // }
+    //--------------------------------------------------------------------------------------------------------------------------------
+
+
+    //Cost version
+    //-----------------------------------------------------------------------------------------------------------------------------------------------
+    int big_M = 1e3;
+    std::vector<Eigen::MatrixXd> copy_G (N_ ,MatrixXd::Zero(n_ + m_ + k_ + m_, n_ + m_ + k_ + m_));
+    for (int i = 0; i < N_; ++i) {
+        int w_lambda_ = 1;
+        int w_eta_ = 1;
+        copy_G.at(i) = G.at(i);
+        for (int j = 0; j < 4; ++j) {
+            if (delta.at(i)[n_+j] == 0) {
+                copy_G.at(i).block(n_ + j, n_ + j, 1, 1) = big_M * G.at(i).block(n_ + j, n_ + j, 1, 1);
+            }else {
+                copy_G.at(i).block(n_ + m_ + k_ + j, n_ + m_ + k_  + j, 1, 1) = big_M * G.at(i).block(n_ + m_ + k_  + j, n_ + m_ + k_  + j, 1, 1);
+            }
+        }
+    }
+
+    for (int i = 0; i < N_; i++) {
+        costs_.push_back(prog_.AddQuadraticCost(
+            2 * copy_G.at(i).block(n_, n_, m_, m_),
+            -2 * copy_G.at(i).block(n_, n_, m_, m_) * delta.at(i).segment(n_, m_),
+            lambda_.at(i), 1));
+        costs_.push_back(prog_.AddQuadraticCost(
+            2 * copy_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
+            -2 * copy_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
+                delta.at(i).segment(n_ + m_ + k_, m_),
+            eta_.at(i), 1));
+    }
+    //--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    MathematicalProgramResult result = osqp_.Solve(prog_);
+
+    if (result.is_success()) {
+        if (warm_start_) {
+            UpdateWarmStarts(result, admm_iteration);
+        }
+        ExtractQPSolution(result, admm_iteration, is_final_solve);
+        return *z_sol_;
+    } else {
+        throw std::runtime_error("CAUTION: QP Step in C3 did not succeed");
+    }
 }
 
 void C3Plus::ExtractQPSolution(

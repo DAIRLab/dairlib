@@ -1029,7 +1029,11 @@ void C3Base::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
     }
   }
 }
-
+  std::vector<Eigen::VectorXd> C3Base::SolveQP_final(const Eigen::VectorXd& x0,
+                                           const std::vector<Eigen::MatrixXd>& G,
+                                           const std::vector<Eigen::VectorXd>& delta,
+                                           int admm_iteration,
+                                           bool is_final_solve){}
 void C3Base::RemoveUserConstraints() {
   for (auto& userconstraint : user_constraints_) {
     prog_.RemoveConstraint(userconstraint);

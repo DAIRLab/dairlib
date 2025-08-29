@@ -61,6 +61,11 @@ class C3Plus final : public C3Base {
       int admm_iteration, bool is_final_solve) override;
   void UpdateWarmStarts(const drake::solvers::MathematicalProgramResult& result,
                         int admm_iteration) override;
+    std::vector<Eigen::VectorXd> SolveQP_final(const Eigen::VectorXd& x0,
+                                         const std::vector<Eigen::MatrixXd>& G,
+                                         const std::vector<Eigen::VectorXd>& delta,
+                                         int admm_iteration,
+                                         bool is_final_solve = false) override;
   std::vector<drake::solvers::VectorXDecisionVariable> eta_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> eta_sol_;
 

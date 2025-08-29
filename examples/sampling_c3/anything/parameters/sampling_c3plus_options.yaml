@@ -76,12 +76,12 @@ Kd_for_ee_pd_rollout: [0.5, 0.5, 0.5]
 
 ### Pose tracking cost parameters
 # Matrix scaling
-w_Q: 50
+w_Q: 80
 w_R: 6
 w_G: 0.15
 w_U: 0.5
 
-q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                             # object 1 linear velocity
+q_vector: [0.01, 0.01, 0.01, 100, 100, 100, 100, 150, 150, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                               # object 1 linear velocity
 r_vector: [0.01, 0.01, 1]
 
 # Penalty on matching projected variables
@@ -107,7 +107,7 @@ u_eta_n_list: [[1, 1, 1, 1, 1]]
 u_eta_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 # u_lambda_list is not used for the QP projection; overwritten by alpha*F.
-u_lambda_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1, 1, 1, 1]]
+u_lambda_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 0.1, 0.1, 0.1, 0.1]]
 u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 ### Position tracking cost parameters
@@ -115,7 +115,7 @@ u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 w_Q_position: 50
 w_R_position: 6
 w_G_position: 0.15
-w_U_position: 0.26
+w_U_position: 1
 
 q_vector_position: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                             # object 2 linear velocity
 r_vector_position: [0.01, 0.01, 1]
@@ -142,7 +142,7 @@ u_eta_slack_position_list: [[1, 1, 1, 1, 1]]
 u_eta_n_position_list: [[1, 1, 1, 1, 1]]
 u_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # u_lambda is not used for the QP projection; overwritten by alpha*F.
-u_lambda_position_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1, 1, 1, 1]]
+u_lambda_position_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 0.1, 0.1, 0.1, 0.1]]
 u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 

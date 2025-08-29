@@ -16,6 +16,7 @@
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
 using dairlib::systems::Face;
 
 namespace dairlib {
@@ -42,7 +43,21 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
+    std::vector<bool> object_on_target,
+    const MatrixXd& unsuccessful_sample_buffer
+);
+
+bool SampleIsAcceptable(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options,
+    const MatrixXd& unsuccessful_samples
+);
+
+bool SampleAvoidsBadSpots(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingParams& sampling_params,
+    const MatrixXd& unsuccessful_samples
 );
 
 /// Individual sampling strategies returning 3D EE position

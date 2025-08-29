@@ -38,8 +38,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<Face>> faces_per_object,
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target
-      ) {
+    std::vector<bool> object_on_target,
+    const MatrixXd& unsuccessful_sample_buffer
+) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -67,8 +68,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       candidate_states[i].head(3) = RadiallySymmetricSampling(
         n_q, n_v, x_lcs, num_samples, i, sampling_params.sampling_radius,
         sampling_params.sampling_height);
-      if (sampling_params.filter_samples_for_safety &&
-          !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
+      if (!SampleIsAcceptable(
+            candidate_states[i], sampling_params, sampling_c3_options,
+            unsuccessful_sample_buffer)) {
         throw std::runtime_error(
           "Error:  Radially symmetric sample location is outside workspace.");
       }
@@ -79,8 +81,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i].head(3) = RandomOnCircleSampling(
           n_q, n_v, x_lcs, sampling_params.sampling_radius,
           sampling_params.sampling_height);
-      } while (sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+      } while (!SampleIsAcceptable(
+                  candidate_states[i], sampling_params, sampling_c3_options,
+                  unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kRandomOnSphere) {
     for (int i = 0; i < num_samples; i++) {
@@ -89,8 +92,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
           n_q, n_v, x_lcs, sampling_params.sampling_radius,
           sampling_params.min_angle_from_vertical,
           sampling_params.max_angle_from_vertical);
-      } while (sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+      } while (!SampleIsAcceptable(
+                  candidate_states[i], sampling_params, sampling_c3_options,
+                  unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kFixed) {
     if (num_samples > sampling_params.fixed_sample_locations.size()) {
@@ -103,8 +107,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       }
       candidate_states[i].head(3) = FixedSample(
         sampling_params.fixed_sample_locations.row(i));
-      if (sampling_params.filter_samples_for_safety &&
-          !IsSampleInWorkspace(candidate_states[i], sampling_c3_options)) {
+      if (!SampleIsAcceptable(
+            candidate_states[i], sampling_params, sampling_c3_options,
+            unsuccessful_sample_buffer)) {
         throw std::runtime_error(
           "Error:  Fixed sample location is outside workspace.");
       }
@@ -115,8 +120,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i].head(3) = PerimeterSampling(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, sampling_c3_options);
-      } while (sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+      } while (!SampleIsAcceptable(
+                  candidate_states[i], sampling_params, sampling_c3_options,
+                  unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kRandomOnShell) {
     for (int i = 0; i < num_samples; i++) {
@@ -124,8 +130,9 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i].head(3) = ShellSampling(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           contact_geoms, sampling_params, sampling_c3_options);
-      } while (sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+      } while (!SampleIsAcceptable(
+                  candidate_states[i], sampling_params, sampling_c3_options,
+                  unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kMeshNormal) {
     for (int i = 0; i < num_samples; i++){
@@ -133,18 +140,21 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
         candidate_states[i] = MeshNormalSampling(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
           sampling_params, query_object, faces, face_bins);
-      } while(sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+      } while(!SampleIsAcceptable(
+                candidate_states[i], sampling_params, sampling_c3_options,
+                unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
     for (int i = 0; i < num_samples; i++) {
       do {
         candidate_states[i] = MeshNormalSamplingMultiObject(
           n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
-          contact_geoms, sampling_params, sampling_c3_options, query_object, faces_per_object,
-          face_bins_per_object, total_area_per_object, object_on_target);
-      } while (sampling_params.filter_samples_for_safety &&
-               !IsSampleInWorkspace(candidate_states[i], sampling_c3_options));
+          contact_geoms, sampling_params, sampling_c3_options, query_object,
+          faces_per_object, face_bins_per_object, total_area_per_object,
+          object_on_target);
+      } while (!SampleIsAcceptable(
+                  candidate_states[i], sampling_params, sampling_c3_options,
+                  unsuccessful_sample_buffer));
     }
   }
   
@@ -152,6 +162,46 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     throw std::runtime_error("Error:  Sampling strategy not recognized.");
   }
   return candidate_states;
+}
+
+bool SampleIsAcceptable(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options,
+    const MatrixXd& unsuccessful_samples) {
+  // Condition 1:  Sample is within the workspace.
+  bool is_in_workspace = IsSampleInWorkspace(
+    candidate_state, sampling_c3_options);
+  bool condition_1 = sampling_params.filter_samples_for_safety?
+    is_in_workspace : true;
+
+  // Condition 2:  Sample avoids being near any unsuccessful samples.
+  bool avoids_bad_spots = SampleAvoidsBadSpots(
+    candidate_state, sampling_params, unsuccessful_samples);
+  bool condition_2 = sampling_params.avoid_choosing_unsuccessful_samples?
+    avoids_bad_spots : true;
+
+  return condition_1 && condition_2;
+}
+
+bool SampleAvoidsBadSpots(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingParams& sampling_params,
+    const MatrixXd& unsuccessful_samples
+) {
+  Vector3d ee_candidate = candidate_state.head(3);
+  for (int i = 0; i < unsuccessful_samples.rows(); i++) {
+    // If made it through all unsuccessful samples without detecting the
+    // candidate sample is too close, the unsuccessful samples are avoided.
+    if (unsuccessful_samples.row(i).sum() == 0) { break; }
+
+    // Detect if the candidate sample is too close to the unsuccessful sample.
+    Vector3d ee_bad = unsuccessful_samples.row(i).head(3);
+    if ((ee_candidate - ee_bad).norm() < sampling_params.unsuccessful_radius) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // kRadiallySymmetric:  Equally spaced on perimeter of circle of fixed radius

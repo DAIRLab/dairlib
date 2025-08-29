@@ -1066,7 +1066,8 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       mode_switch_reason_ = ModeSwitchReason::kToC3Xbox;
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
       // Add the current state to the unsuccessful sample buffer.  It gets
-      // automatically removed if the object moves.
+      // automatically removed if the object moves beyond the buffer movement
+      // thresholds.
       AddToUnsuccessfulBuffer(candidate_states[0]);
     }
     // Switch to C3 if the current sample is better, with hysteresis.
@@ -1091,7 +1092,8 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
       // Add the current state to the unsuccessful sample buffer.  It gets
-      // automatically removed if the object moves.
+      // automatically removed if the object moves beyond the buffer movement
+      // thresholds.
       AddToUnsuccessfulBuffer(candidate_states[0]);
     }
   }

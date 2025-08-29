@@ -12,9 +12,10 @@ using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-SampleBufferSender::SampleBufferSender(int buffer_size, int n_config)
+SampleBufferSender::SampleBufferSender(
+  int buffer_size, int n_config, std::string name)
     : buffer_size_(buffer_size), n_config_(n_config) {
-  this->set_name("sample_buffer_sender");
+  this->set_name(name);
 
   MatrixXd sample_buffer = MatrixXd::Zero(buffer_size_, n_config_);
   VectorXd cost_buffer = VectorXd::Zero(buffer_size_);

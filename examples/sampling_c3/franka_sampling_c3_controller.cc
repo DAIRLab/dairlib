@@ -544,10 +544,18 @@ int DoMain(int argc, char* argv[]) {
   // Sample-related senders/publishers.
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
       controller_params.sampling_params.N_sample_buffer,
-      plant_lcs.num_positions());
+      plant_lcs.num_positions(), "sample_buffer_sender");
   auto sample_buffer_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
           lcm_channel_params.sample_buffer_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto unsuccessful_sample_buffer_sender =
+      builder.AddSystem<systems::SampleBufferSender>(
+          controller_params.sampling_params.N_unsuccessful_sample_buffer,
+          plant_lcs.num_positions(), "unsuccessful_sample_buffer_sender");
+  auto unsuccessful_sample_buffer_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_sample_buffer>(
+          lcm_channel_params.unsuccessful_sample_buffer_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto sample_locations_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -727,6 +735,12 @@ int DoMain(int argc, char* argv[]) {
                   sample_buffer_sender->get_input_port_samples());
   builder.Connect(controller->get_output_port_sample_buffer_costs(),
                   sample_buffer_sender->get_input_port_sample_costs());
+  builder.Connect(unsuccessful_sample_buffer_sender->get_output_port_sample_buffer(),
+                  unsuccessful_sample_buffer_publisher->get_input_port());
+  builder.Connect(controller->get_output_port_unsuccessful_sample_buffer_configurations(),
+                  unsuccessful_sample_buffer_sender->get_input_port_samples());
+  builder.Connect(controller->get_output_port_unsuccessful_sample_buffer_costs(),
+                  unsuccessful_sample_buffer_sender->get_input_port_sample_costs());
 
   std::cout << "Before drawandsave" << std::endl;
   auto owned_diagram = builder.Build();

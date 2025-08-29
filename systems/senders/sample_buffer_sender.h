@@ -14,7 +14,7 @@ namespace systems {
 /// Converts sample costs and configurations to LCM type lcmt_sample_buffer
 class SampleBufferSender : public drake::systems::LeafSystem<double> {
  public:
-  SampleBufferSender(int buffer_size, int n_config);
+  SampleBufferSender(int buffer_size, int n_config, std::string name);
 
   const drake::systems::InputPort<double>& get_input_port_sample_costs() const {
     return this->get_input_port(sample_costs_port_);

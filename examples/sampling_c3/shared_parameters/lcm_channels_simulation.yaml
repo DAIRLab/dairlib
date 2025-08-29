@@ -31,6 +31,8 @@ c3_actual_state_channel: C3_ACTUAL              # lcmt_c3_state
 sample_locations_channel: SAMPLE_LOCATIONS
 sample_costs_channel: SAMPLE_COSTS
 sample_buffer_channel: SAMPLE_BUFFER            # lcmt_sample_buffer
+unsuccessful_sample_buffer_channel: UNSUCCESSFUL_SAMPLE_BUFFER
+                                                # lcmt_sample_buffer
 
 dynamically_feasible_curr_actor_plan_channel: DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN
 dynamically_feasible_curr_plan_channel: DYNAMICALLY_FEASIBLE_CURR_PLAN

@@ -28,6 +28,12 @@ N_sample_buffer: 200
 pos_error_sample_retention: 0.002
 ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
 
+# Unsuccessful sample buffer parameters.  Position and angular error sample
+# retention match that for the sample buffer above.
+avoid_choosing_unsuccessful_samples: true
+N_unsuccessful_sample_buffer: 10
+unsuccessful_radius: 0.01
+
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter

@@ -417,15 +417,34 @@ SamplingC3Controller::SamplingC3Controller(
   sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
   sample_buffer_configurations_port_ =
       this->DeclareAbstractOutputPort(
-              "sample_buffer_configurations", sample_buffer_,
-              &SamplingC3Controller::OutputSampleBufferConfigurations)
-          .get_index();
+            "sample_buffer_configurations", sample_buffer_,
+            &SamplingC3Controller::OutputSampleBufferConfigurations)
+        .get_index();
 
   sample_buffer_costs_port_ =
       this->DeclareAbstractOutputPort(
-              "sample_buffer_costs", sample_costs_buffer_,
-              &SamplingC3Controller::OutputSampleBufferCosts)
-          .get_index();
+            "sample_buffer_costs", sample_costs_buffer_,
+            &SamplingC3Controller::OutputSampleBufferCosts)
+        .get_index();
+
+  // Unsuccessful sample buffer related output ports.
+  unsuccessful_sample_buffer_ = MatrixXd::Zero(
+    sampling_params_.N_unsuccessful_sample_buffer, n_q_);
+  unsuccessful_sample_costs_buffer_ = -1 * VectorXd::Ones(
+    sampling_params_.N_unsuccessful_sample_buffer);
+  unsuccessful_sample_buffer_configurations_port_ =
+      this->DeclareAbstractOutputPort(
+            "unsuccessful_sample_buffer_configurations",
+            unsuccessful_sample_buffer_,
+            &SamplingC3Controller::OutputUnsuccessfulSampleBufferConfigurations)
+        .get_index();
+
+  unsuccessful_sample_buffer_costs_port_ =
+      this->DeclareAbstractOutputPort(
+            "unsuccessful_sample_buffer_costs",
+            unsuccessful_sample_costs_buffer_,
+            &SamplingC3Controller::OutputUnsuccessfulSampleBufferCosts)
+        .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
@@ -620,7 +639,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   current_position_error_ = 0;
   current_orientation_error_ = 0;
 
-  //std::cout << x_lcs_curr.transpose() << std::endl;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     double error = (x_lcs_curr.segment(7 + 7*i, 3) -
       x_lcs_final_des.get_value().segment(7 + 7*i, 3)).norm();
@@ -658,9 +676,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     //is_doing_c3_ = false;
     detected_goal_changes_++;
 
-    // Reset the sample buffer now that the costs have changed.
+    // Reset the sample buffers now that the costs have changed.
     sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+    sample_costs_buffer_ = -1*VectorXd::Ones(sampling_params_.N_sample_buffer);
+    num_in_buffer_ = 0;
+    unsuccessful_sample_buffer_ = MatrixXd::Zero(
+      sampling_params_.N_unsuccessful_sample_buffer, n_q_);
+    unsuccessful_sample_costs_buffer_ = -1 * VectorXd::Ones(
+      sampling_params_.N_unsuccessful_sample_buffer);
+    num_in_unsuccessful_buffer_ = 0;
   }
 
   // If the object is close to desired XY location, track its full pose.
@@ -675,10 +699,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       crossed_cost_switching_threshold_ = true;
       std::cout << "Crossed cost switching threshold." << std::endl;
 
-      // Reset the sample buffer and metrics now that the costs have changed.
+      // Reset the sample buffers and metrics now that the costs have changed.
       sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
       sample_costs_buffer_ =
         -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+      num_in_buffer_ = 0;
+      unsuccessful_sample_buffer_ = MatrixXd::Zero(
+        sampling_params_.N_unsuccessful_sample_buffer, n_q_);
+      unsuccessful_sample_costs_buffer_ = -1 * VectorXd::Ones(
+        sampling_params_.N_unsuccessful_sample_buffer);
+      num_in_unsuccessful_buffer_ = 0;
       if (is_doing_c3_) { ResetProgressMetrics(); }
     }
   }
@@ -709,12 +739,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       (object_angular_error < goal_params_.orientation_success_threshold));
   }
 
-  std::vector<Eigen::VectorXd> candidate_states =
-    GenerateSampleStates(n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_,
-                         sampling_params_, sampling_c3_options_, plant_,
-                         context_, plant_ad_, context_ad_, contact_pairs_, 
-                         faces_, face_bins_, faces_per_object_,  face_bins_per_object_, 
-                         total_area_per_object_, object_on_target);
+  std::vector<Eigen::VectorXd> candidate_states = GenerateSampleStates(
+    n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_,
+    sampling_c3_options_, plant_, context_, plant_ad_, context_ad_,
+    contact_pairs_, faces_, face_bins_, faces_per_object_,
+    face_bins_per_object_, total_area_per_object_, object_on_target,
+    unsuccessful_sample_buffer_
+  );
 
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
@@ -867,14 +898,13 @@ auto c3_start = std::chrono::high_resolution_clock::now();
   }
     auto c3_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = c3_end - c3_start;
-
-    //std::cout << "Parallelization: " << duration_ms.count() << " ms" << std::endl;
   // End of parallelization
+
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall
   // and could be considered as a repositioning target.
-  MaintainSampleBuffer(x_lcs_curr);
+  MaintainSampleBuffers(x_lcs_curr);
 
   // Augment the considered samples with the best from the buffer, if eligible.
   AugmentSamplesWithBuffer(c3_objects);
@@ -1035,6 +1065,10 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       is_doing_c3_ = true;
       mode_switch_reason_ = ModeSwitchReason::kToC3Xbox;
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
+      // Add the current state to the unsuccessful sample buffer.  It gets
+      // automatically removed if the object moves beyond the buffer movement
+      // thresholds.
+      AddToUnsuccessfulBuffer(candidate_states[0]);
     }
     // Switch to C3 if the current sample is better, with hysteresis.
     else if (
@@ -1057,6 +1091,10 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         std::cout << "Switching to C3 because lower in cost" << std::endl;
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
+      // Add the current state to the unsuccessful sample buffer.  It gets
+      // automatically removed if the object moves beyond the buffer movement
+      // thresholds.
+      AddToUnsuccessfulBuffer(candidate_states[0]);
     }
   }
 
@@ -1072,7 +1110,6 @@ auto c3_start = std::chrono::high_resolution_clock::now();
   }
   // Update C3 objects and intermediates for current and best samples.
   c3_curr_plan_ = c3_objects.at(SampleIndex::kCurrentLocation);
-
   c3_best_plan_ = c3_objects.at(best_sample_index_);
 
   // TODO If doing warmstarting, will need to save z, delta, and w vectors.
@@ -1640,83 +1677,80 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // No need to add object position and orientation.
 }
 
-// Maintain the sample buffer:  prune outdated samples and add new.
-void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
-  // Determine if samples are outdated by comparing to the current object
-  // position and orientation.
-  std::vector<Vector3d> object_poss;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    object_poss.push_back(x_lcs.segment(7 + 7*i, 3));
-  } 
-  std::vector<Eigen::Vector4d> object_quats;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    object_quats.push_back(x_lcs.segment(3 + 7*i, 4).normalized());
-  } 
-  std::vector<MatrixXd> buffers_xyzs;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    buffers_xyzs.push_back(sample_buffer_.block(0, 7 + 7*i, sampling_params_.N_sample_buffer, 3));
-  }
-  std::vector<MatrixXd> buffers_quats;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    buffers_quats.push_back(sample_buffer_.block(0, 3 + 7*i, sampling_params_.N_sample_buffer, 4));
-  }
-
-  // First, remove outdated samples that have moved too much from current object
-  // configuration.
-  std::vector<VectorXd> quat_dots;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    quat_dots.push_back((buffers_quats.at(i) * object_quats.at(i)).array().abs());
-  }
-  std::vector<VectorXd> angles;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    angles.push_back(2.0 * quat_dots.at(i).array().acos());
-  }
-
+// Prune outdated samples from a sample buffer, based on object motion.
+void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
+    const Eigen::VectorXd& x_lcs,
+    int* num_in_buffer,
+    Eigen::MatrixXd* sample_buffer,
+    Eigen::VectorXd* sample_costs_buffer) const {
+  int n_buffer_length = sample_costs_buffer->size();
+  // Get object positions and orientations, both current and from the buffer.
   std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_rot;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    mask_satisfies_rot.push_back(angles.at(i).array() < sampling_params_.ang_error_sample_retention);
-  }
-
-  std::vector<MatrixXd> pos_deltas;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    pos_deltas.push_back(buffers_xyzs.at(i).rowwise() - object_poss.at(i).transpose());
-  }
-  std::vector<VectorXd> distances;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    distances.push_back(pos_deltas.at(i).rowwise().norm());
-  }
   std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_pos;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    mask_satisfies_pos.push_back(distances.at(i).array() < sampling_params_.pos_error_sample_retention);
+    Vector3d object_pos = x_lcs.segment(7 + 7*i, 3);
+    Eigen::Vector4d object_quat = x_lcs.segment(3 + 7*i, 4).normalized();
+    MatrixXd buffer_xyzs = sample_buffer->block(0, 7 + 7*i, n_buffer_length, 3);
+    MatrixXd buffer_quats = sample_buffer->block(0, 3 + 7*i, n_buffer_length, 4);
+
+    // Compute the angular difference.
+    VectorXd quat_dots = (buffer_quats * object_quat).array().abs();
+    quat_dots = quat_dots.cwiseMax(-1.0).cwiseMin(1.0);
+    VectorXd angles = 2.0 * quat_dots.array().acos();
+    mask_satisfies_rot.push_back(
+      angles.array() < sampling_params_.ang_error_sample_retention);
+
+    // Compute the linear difference.
+    MatrixXd pos_deltas = buffer_xyzs.rowwise() - object_pos.transpose();
+    VectorXd distances = pos_deltas.rowwise().norm();
+    mask_satisfies_pos.push_back(
+      distances.array() < sampling_params_.pos_error_sample_retention);
   }
-  MatrixXd retained_samples =
-    MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-  VectorXd retained_costs =
-    -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
 
   // Keep buffer if none of objects moved
   int retained_count = 0;
-  for (int i = 0; i < sampling_params_.N_sample_buffer; i++) {
+  MatrixXd retained_samples = MatrixXd::Zero(n_buffer_length, n_q_);
+  VectorXd retained_costs = -1 * VectorXd::Ones(n_buffer_length);
+  for (int i = 0; i < *num_in_buffer; i++) {
     bool keep = true;
     for (int j = 0; j < controller_params_.num_objects; j++) {
       if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { 
         keep = false;
         break;
-      } 
+      }
     }
     if (keep) {
-      retained_samples.row(retained_count) = sample_buffer_.row(i);
-      retained_costs[retained_count] = sample_costs_buffer_[i];
+      retained_samples.row(retained_count) = sample_buffer->row(i);
+      retained_costs[retained_count] = (*sample_costs_buffer)[i];
       retained_count++;
-    }    
-    if (sample_costs_buffer_[i] < 0) {
+    }
+    if ((*sample_costs_buffer)[i] < 0) {
       break;
-    } 
+    }
   }
-  sample_buffer_ = retained_samples;
-  sample_costs_buffer_ = retained_costs;
+  *num_in_buffer = retained_count;
+  *sample_buffer = retained_samples;
+  *sample_costs_buffer = retained_costs;
+}
 
-  // Second, in preparation for adding new samples stored in
+// Maintain the sample buffers (both for keeping track of unattempted samples
+// and their costs, and of attempted unsuccessful samples):  prune outdated
+// samples and add new.
+void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
+  // First, handle the unsuccessful sample buffer.  This buffer just needs to
+  // prune outdated samples; new samples get added one at a time when the
+  // controller goes from repositioning to C3 mode.
+  PruneOutdatedSamplesFromBuffer(
+    x_lcs, &num_in_unsuccessful_buffer_, &unsuccessful_sample_buffer_,
+    &unsuccessful_sample_costs_buffer_);
+
+  // Second, handle the unattempted sample buffer.  First, prune outdated
+  // samples.
+  PruneOutdatedSamplesFromBuffer(
+    x_lcs, &num_in_buffer_, &sample_buffer_, &sample_costs_buffer_);
+  int retained_count = num_in_buffer_;
+
+  // Third, in preparation for adding new samples stored in
   // all_sample_locations_ (excluding the current location), if the buffer is
   // going to overflow, get rid of the oldest samples first.  NOTE:  Step 4
   // moves the lowest cost sample in the buffer to the end, so the best sample
@@ -1735,7 +1769,7 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       sample_costs_buffer_.segment(shift_by, retained_count);
   }
 
-  // Third, add the new samples stored in all_sample_locations_ and
+  // Fourth, add the new samples stored in all_sample_locations_ and
   // all_sample_costs_.  Don't add the current location (so the sample buffer
   // contains more broadly sampled locations) or a currently pursued
   // repositioning target.
@@ -1751,7 +1785,8 @@ void SamplingC3Controller::MaintainSampleBuffer(const VectorXd& x_lcs) const {
       new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
       // Ensure a normalized quaternion is written to the buffer.
       for (int i = 0; i < controller_params_.num_objects; i++) {
-        new_config.segment(3 + 7*i, 4) = object_quats.at(i);
+        Eigen::Vector4d object_quat = x_lcs.segment(3 + 7*i, 4).normalized();
+        new_config.segment(3 + 7*i, 4) = object_quat;
       }
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
@@ -1827,6 +1862,52 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
       all_sample_dynamically_feasible_plans_.push_back(
         dynamically_feasible_buffer_plan_);
     }
+  }
+}
+
+// Add the current state to the unsuccessful buffer.
+void SamplingC3Controller::AddToUnsuccessfulBuffer(
+    const Eigen::VectorXd& x_lcs) const {
+  // Check if the unsuccessful buffer is going to overflow.
+  if (num_in_unsuccessful_buffer_ ==
+      sampling_params_.N_unsuccessful_sample_buffer) {
+    std::cout<<"!!! WARNING !!! Unsuccessful sample buffer overflow"<<std::endl;
+    for (int i = 0; i < num_in_unsuccessful_buffer_-1; i++) {
+      unsuccessful_sample_buffer_.row(i) = unsuccessful_sample_buffer_.row(i+1);
+      unsuccessful_sample_costs_buffer_[i] =
+        unsuccessful_sample_costs_buffer_[i+1];
+    }
+    num_in_unsuccessful_buffer_--;
+  }
+  // Add the current location to the unsuccessful buffer.
+  unsuccessful_sample_buffer_.row(num_in_unsuccessful_buffer_) = x_lcs.head(n_q_);
+  unsuccessful_sample_costs_buffer_[num_in_unsuccessful_buffer_] = 
+    all_sample_costs_[0];
+  num_in_unsuccessful_buffer_++;
+
+  // If desired, remove nearby samples from the unattempted sample buffer.
+  if (sampling_params_.avoid_choosing_unsuccessful_samples) {
+    int retained_count = 0;
+    MatrixXd retained_samples = MatrixXd::Zero(
+      sampling_params_.N_sample_buffer, n_q_);
+    VectorXd retained_costs = -1 * VectorXd::Ones(
+      sampling_params_.N_sample_buffer);
+    for (int i = 0; i < num_in_buffer_; i++) {
+      // Check the EE position of the sample, and remove the sample from the
+      // buffer if too close to the new unsuccessful sample.
+      Vector3d ee_sample = sample_buffer_.row(i).head(3);
+      double ee_dist = (ee_sample - x_lcs.head(3)).norm();
+      if (ee_dist > sampling_params_.unsuccessful_radius) {
+        retained_samples.row(retained_count) = sample_buffer_.row(i);
+        retained_costs[retained_count] = sample_costs_buffer_[i];
+        retained_count++;
+      }
+    }
+    std::cout<<"Removed "<<num_in_buffer_ - retained_count<<
+      " samples from buffer to avoid repeats"<<std::endl;
+    num_in_buffer_ = retained_count;
+    sample_buffer_ = retained_samples;
+    sample_costs_buffer_ = retained_costs;
   }
 }
 
@@ -2917,6 +2998,18 @@ void SamplingC3Controller::OutputSampleBufferCosts(
     const drake::systems::Context<double>& context,
     Eigen::VectorXd* sample_buffer_costs) const {
   *sample_buffer_costs = sample_costs_buffer_;
+}
+
+void SamplingC3Controller::OutputUnsuccessfulSampleBufferConfigurations(
+    const drake::systems::Context<double>& context,
+    Eigen::MatrixXd* unsuccessful_sample_buffer_configurations) const {
+  *unsuccessful_sample_buffer_configurations = unsuccessful_sample_buffer_;
+}
+
+void SamplingC3Controller::OutputUnsuccessfulSampleBufferCosts(
+    const drake::systems::Context<double>& context,
+    Eigen::VectorXd* unsuccessful_sample_buffer_costs) const {
+  *unsuccessful_sample_buffer_costs = unsuccessful_sample_costs_buffer_;
 }
 
 }  // namespace systems

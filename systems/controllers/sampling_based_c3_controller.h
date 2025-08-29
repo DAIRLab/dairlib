@@ -194,6 +194,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   get_output_port_sample_buffer_costs() const {
     return this->get_output_port(sample_buffer_costs_port_);
   }
+  const drake::systems::OutputPort<double>&
+  get_output_port_unsuccessful_sample_buffer_configurations() const {
+    return this->get_output_port(
+      unsuccessful_sample_buffer_configurations_port_);
+  }
+  const drake::systems::OutputPort<double>&
+  get_output_port_unsuccessful_sample_buffer_costs() const {
+    return this->get_output_port(unsuccessful_sample_buffer_costs_port_);
+  }
 
  private:
   /// Function for computing one control loop
@@ -229,10 +238,18 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
     const double& t_context) const;
 
-  void MaintainSampleBuffer(const Eigen::VectorXd& x_lcs) const;
+  void PruneOutdatedSamplesFromBuffer(
+    const Eigen::VectorXd& x_lcs,
+    int* num_in_buffer,
+    Eigen::MatrixXd* sample_buffer,
+    Eigen::VectorXd* sample_costs_buffer) const;
+
+  void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 
   void AugmentSamplesWithBuffer(
     std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const;
+
+  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
 
   void KeepTrackOfC3ModeProgress(
     const drake::VectorX<double>& x_lcs_curr,
@@ -316,6 +333,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputSampleBufferCosts(
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* sample_buffer_costs) const;
+  void OutputUnsuccessfulSampleBufferConfigurations(
+      const drake::systems::Context<double>& context,
+      Eigen::MatrixXd* unsuccessful_sample_buffer_configurations) const;
+  void OutputUnsuccessfulSampleBufferCosts(
+      const drake::systems::Context<double>& context,
+      Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
 
   std::vector<double> face_bins_;
   std::vector<Face> faces_;
@@ -355,6 +378,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex debug_lcmt_port_;
   drake::systems::OutputPortIndex sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex sample_buffer_costs_port_;
+  drake::systems::OutputPortIndex unsuccessful_sample_buffer_configurations_port_;
+  drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
   // This plant_ has been made 'not const' so that the context can be updated.
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -458,6 +483,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable int num_in_buffer_ = 0;
   mutable Eigen::MatrixXd sample_buffer_;  // (N_sample_buffer x n_q)
   mutable Eigen::VectorXd sample_costs_buffer_;
+
+  // Unsuccessful sample buffer-related variables.
+  mutable int num_in_unsuccessful_buffer_ = 0;
+  mutable Eigen::MatrixXd unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
+  mutable Eigen::VectorXd unsuccessful_sample_costs_buffer_;
 
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;

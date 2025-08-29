@@ -41,6 +41,7 @@ struct SamplingC3LcmChannels {
   std::string sampling_c3_debug_channel;
   std::string is_c3_mode_channel;
   std::string target_generator_info_channel;
+  std::string franka_target_joint_position_channel;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -82,5 +83,6 @@ struct SamplingC3LcmChannels {
     a->Visit(DRAKE_NVP(sampling_c3_debug_channel));
     a->Visit(DRAKE_NVP(is_c3_mode_channel));
     a->Visit(DRAKE_NVP(target_generator_info_channel));
+    a->Visit(DRAKE_NVP(franka_target_joint_position_channel));
   }
 };

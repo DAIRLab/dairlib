@@ -10,13 +10,16 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   JointTrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::VectorXd& target_position);
+    const Eigen::VectorXd& default_target_position);
 
   const drake::systems::InputPort<double>& get_input_port_robot_state() const {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_target_joint_position() const {
+    return this->get_input_port(target_joint_position_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_joint(
       int joint_index) const {
@@ -33,10 +36,11 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex target_joint_position_port_;
   std::vector<drake::systems::OutputPortIndex> joint_trajectory_ports_;
   drake::systems::DiscreteStateIndex initial_position_index_;
   drake::systems::DiscreteStateIndex initial_time_index_;
-  const Eigen::VectorXd target_position_;
+  drake::systems::DiscreteStateIndex target_position_index_;
 
   double default_speed = 0.1;  // rad/s
 };

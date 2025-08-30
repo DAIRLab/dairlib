@@ -198,11 +198,11 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_list"] = [[1000] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_eta_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x"] = [0] * (6 + (13 * num_objects))
     else:
-        samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_list"] = [[10] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_x"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
 
     samp_c3_options_yaml["g_gamma_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
@@ -228,11 +228,11 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x_position"] = [0] * (6 + (13 * num_objects))
     else:
-        samp_c3_options_yaml["u_lambda_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
+        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_x_position"] = [10] * 3 + [100, 100, 100, 100, 10, 10, 10] * num_objects + [8] * 3 + [1] * (6*num_objects)
 
     save_yaml(samp_c3_options_yaml_path, samp_c3_options_yaml)

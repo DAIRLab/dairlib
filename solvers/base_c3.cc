@@ -310,11 +310,7 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  auto qp_start = std::chrono::high_resolution_clock::now();
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
-  auto qp_end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> qp_dur = qp_end - qp_start;
-  //std::cout << "QP: " << qp_dur.count() << " ms" << std::endl;
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, delta, options_.admm_iter, true);
 
   if (verbose) {
     std::cout << "x0: " << x0.transpose() << std::endl;
@@ -355,7 +351,7 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
 
-  zfin_ = zfin;
+  zfin_ = *z_sol_;
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   solve_time_ =
@@ -805,7 +801,7 @@ void C3Base::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-  vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
+  vector<VectorXd> z = SolveQP(x0, *Gv, WD, *delta, admm_iteration, false);
   if (verbose) {
     std::cout << "SolveQP Iteration: " << admm_iteration << std::endl;
     Eigen::MatrixXd verbose_z = Eigen::MatrixXd::Zero(z_size_, N_);
@@ -843,7 +839,9 @@ void C3Base::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 }
 
 void C3Base::AddAugmentedCostsQPStep(const vector<MatrixXd>& G,
-                                     const vector<VectorXd>& WD) {
+                                     const vector<VectorXd>& WD,
+                                     const vector<VectorXd>& delta,
+                                     bool is_final_solve) {
   for (int i = 0; i < N_; i++) {
     costs_.push_back(prog_.AddQuadraticCost(
         2 * G.at(i).block(n_, n_, m_, m_),
@@ -909,7 +907,8 @@ void C3Base::UpdateWarmStarts(
 }
 
 vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
-                                 const vector<VectorXd>& WD, int admm_iteration,
+                                 const vector<VectorXd>& WD, const vector<VectorXd>& delta,
+                                 int admm_iteration,
                                  bool is_final_solve) {
   // Remove initial state and initial force constraint from previous solve
   for (auto& constraint : constraints_) {
@@ -934,7 +933,7 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   }
   costs_.clear();
 
-  AddAugmentedCostsQPStep(G, WD);
+  AddAugmentedCostsQPStep(G, WD, delta, is_final_solve);
 
   SetInitialGuessQPStep(x0, admm_iteration);
 

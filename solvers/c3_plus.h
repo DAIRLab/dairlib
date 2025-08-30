@@ -55,7 +55,9 @@ class C3Plus final : public C3Base {
  private:
   void UpdateLCS(const LCS& lcs) override;
   void AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
-                               const std::vector<Eigen::VectorXd>& WD) override;
+                               const std::vector<Eigen::VectorXd>& WD,
+                               const std::vector<Eigen::VectorXd>& delta,
+                               bool is_final_solve) override;
   void ExtractQPSolution(
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve) override;

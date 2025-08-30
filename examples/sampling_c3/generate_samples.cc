@@ -775,14 +775,14 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {
   double candidate_radius =
     sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
-  if (candidate_state[0] < sampling_c3_options.workspace_limits[0][3] // x min
-   || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] + sampling_c3_options.workspace_margins // x max
-   || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] - sampling_c3_options.workspace_margins// y min
-   || candidate_state[1] > sampling_c3_options.workspace_limits[1][4]  + sampling_c3_options.workspace_margins// y max
+  if (candidate_state[0] < sampling_c3_options.workspace_limits[0][3] + sampling_c3_options.workspace_margins// x min
+   || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] - sampling_c3_options.workspace_margins // x max
+   || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] + sampling_c3_options.workspace_margins// y min
+   || candidate_state[1] > sampling_c3_options.workspace_limits[1][4] - sampling_c3_options.workspace_margins// y max
    || candidate_state[2] < sampling_c3_options.workspace_limits[2][3] // z min
    || candidate_state[2] > sampling_c3_options.workspace_limits[2][4] // z max
-   || candidate_radius > sampling_c3_options.robot_radius_limits[1]   // r min
-   || candidate_radius < sampling_c3_options.robot_radius_limits[0])  // r max
+   || candidate_radius > sampling_c3_options.robot_radius_limits[1] - sampling_c3_options.workspace_margins  // r min
+   || candidate_radius < sampling_c3_options.robot_radius_limits[0] + sampling_c3_options.workspace_margins) // r max
    {return false;}
   return true;
 }

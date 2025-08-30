@@ -80,7 +80,7 @@ PYBIND11_MODULE(c3, m) {
       .def("UpdateLCS", &C3MIQP::UpdateLCS, arg("lcs"))
       .def("ADMMStep", &C3MIQP::ADMMStep, arg("x0"), arg("delta"), arg("w"),
            arg("G"), arg("admm_iteration"), arg("verbose") = false)
-      .def("SolveQP", &C3MIQP::SolveQP, arg("x0"), arg("G"), arg("WD"),
+      .def("SolveQP", &C3MIQP::SolveQP, arg("x0"), arg("G"), arg("WD"), arg("delta"),
            arg("admm_iteration"), arg("is_final_solve"))
       .def("SolveProjection", &C3MIQP::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))
       .def("AddLinearConstraint", &C3MIQP::AddLinearConstraint, arg("A"),

@@ -39,8 +39,8 @@ fixed_target_orientations: [[0.707, 0, 0, 0.707]]
 
 
 # Random-specific parameters.
-random_goal_x_limits: [0.45, 0.6]
-random_goal_y_limits: [-0.3, 0.3]
+random_goal_x_limits: [0.45, 0.55]     # for small object use [0.45, 0.55]
+random_goal_y_limits: [-0.2, 0.2]   # for small object use [-0.3, 0.3]
 random_goal_radius_limits: [0.5, 0.52]
 
 random_goal_gen_max_attempts: 100

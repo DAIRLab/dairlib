@@ -104,6 +104,7 @@ class C3Base {
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        const std::vector<Eigen::MatrixXd>& G,
                                        const std::vector<Eigen::VectorXd>& WD,
+                                       const std::vector<Eigen::VectorXd>& delta,
                                        int admm_iteration,
                                        bool is_final_solve = false);
 
@@ -189,7 +190,9 @@ class C3Base {
 
   // Helper functions for QP step
   virtual void AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
-                                       const std::vector<Eigen::VectorXd>& WD);
+                                       const std::vector<Eigen::VectorXd>& WD,
+                                       const std::vector<Eigen::VectorXd>& delta,
+                                       bool is_final_solve);
   virtual void SetInitialGuessQPStep(const Eigen::VectorXd& x0,
                                      int admm_iteration);
   virtual void ExtractQPSolution(

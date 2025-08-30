@@ -63,25 +63,46 @@ void C3Plus::UpdateLCS(const LCS& lcs) {
 }
 
 void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
-                                     const std::vector<Eigen::VectorXd>& WD) {
-  for (int i = 0; i < N_; i++) {
-    costs_.push_back(prog_.AddQuadraticCost(
-        2 * G.at(i).block(n_, n_, m_, m_),
-        -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
-        lambda_.at(i), 1));
-    costs_.push_back(prog_.AddQuadraticCost(
-        2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
-        -2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
-            WD.at(i).segment(n_ + m_ + k_, m_),
-        eta_.at(i), 1));
-  }
+                                     const std::vector<Eigen::VectorXd>& WD,
+                                     const std::vector<Eigen::VectorXd>& delta,
+                                     bool is_final_solve) {
+  int large_coeff = 1000;
+  if (is_final_solve) {
+    std::vector<Eigen::MatrixXd> last_qp_G = G;
+    for (int i = 0; i < N_; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        if (delta.at(i)[n_ + j] == 0) {
+          last_qp_G.at(i).block(n_ + j, n_ + j, 1, 1) *= large_coeff;
+        } else {
+          last_qp_G.at(i).block(n_ + m_ + k_ + j, n_ + m_ + k_ + j, 1, 1) *=
+              large_coeff;
+        }
+      }
+    }
 
-  // TODO: this is a hack to enforce non-negativity constraints for lambda and eta
-  // @PDKy we need to separate this logic into a function.
-  for (int i = 0 ; i < N_; i++) {
-    for (int j = 0 ; j < 4; j++) {
-        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),lambda_.at(i)[j]);
-        prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),eta_.at(i)[j]);
+    for (int i = 0; i < N_; i++) {
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * last_qp_G.at(i).block(n_, n_, m_, m_),
+          -2 * last_qp_G.at(i).block(n_, n_, m_, m_) *
+              delta.at(i).segment(n_, m_),
+          lambda_.at(i), 1));
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
+          -2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
+              delta.at(i).segment(n_ + m_ + k_, m_),
+          eta_.at(i), 1));
+    }
+  } else {
+    for (int i = 0; i < N_; i++) {
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * G.at(i).block(n_, n_, m_, m_),
+          -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
+          lambda_.at(i), 1));
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
+          -2 * G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *
+              WD.at(i).segment(n_ + m_ + k_, m_),
+          eta_.at(i), 1));
     }
   }
 }
@@ -119,7 +140,8 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
 
   // Throw an error if any weights are negative.
   if (w_eta_vec.minCoeff() < 0 || w_lambda_vec.minCoeff() < 0) {
-    throw std::runtime_error("Negative weights in the cost matrix U are not allowed.");
+    throw std::runtime_error(
+        "Negative weights in the cost matrix U are not allowed.");
   }
 
   VectorXd lambda_c = delta_c.segment(n_, m_);

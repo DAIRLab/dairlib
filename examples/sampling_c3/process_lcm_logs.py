@@ -1,4 +1,17 @@
-"""LCM log processing script.  Generates plots and videos."""
+"""LCM log processing script.  Generates plots and videos.  Requires the
+following packages:
+
+pip install matplotlib click opencv-python tqdm PyYAML lcm drake scipy
+
+This script can be run in 3 ways:
+ 1. Single mode:  analyze a single log from filepath.
+ 2. Multi mode:  analyze multiple logs from filepath.
+ 3. Yaml mode:  analyze 1+ logs from experiment type, where the yaml file
+      specifies the log filepath(s) from the experiment type.
+
+Yaml mode is recommended and can be run via, e.g.:
+  python examples/sampling_c3/process_lcm_logs.py yaml letter_3
+"""
 
 import click
 import cv2
@@ -46,7 +59,7 @@ CHANNEL_LCMT = {
 LCM_TIME_KEY = 'lcm_timestamp'
 MSG_KEY = 'lcm_message'
 
-DT_WARNING = 0.5
+DT_WARNING = 1.0
 
 GOAL_ALPHA = 0.3
 
@@ -55,6 +68,11 @@ CAM_P = np.array([0.45, 0, 0.9])
 CAM_FOV = np.pi/6
 VIDEO_PIXELS = [320, 640]
 VIDEO_FPS = 30
+
+EXPERIMENT_YAML = op.join(
+  DAIRLIB_DIR, 'examples', 'sampling_c3', 'process_lcm_logs.yaml')
+with open(EXPERIMENT_YAML, 'r') as f:
+  EXPERIMENT_YAML = yaml.safe_load(f)
 
 
 def get_log_filepath_and_type(log_folder: str) -> Tuple[str, str]:
@@ -207,8 +225,9 @@ def plot_errors_for_goal(
     position_errors: np.ndarray, orientation_errors: np.ndarray,
     within_tolerance: np.ndarray, in_pose_tracking_mode: np.ndarray,
     object_names: list, pos_threshold: float, rot_threshold: float,
-    save_to: str = None) -> None:
-  outcome = 'Success' if goal+1 in completed_goals else 'Failure'
+    save_to: str = None, known_success: bool = True) -> None:
+  outcome = 'Success' if known_success or goal+1 in completed_goals else \
+    'Failure'
   start = np.where(completed_goals == goal)[0][0]
   end = np.where(completed_goals == goal)[0][-1] + 1
 
@@ -279,16 +298,41 @@ def build_object_urdf(obj_filepath: str, i: int, actual: bool) -> str:
       return tmp_file.name
 
 
+def pretty_dict_print(d: dict) -> None:
+  """Print a dictionary in a pretty format."""
+  print(f'\n')
+  for key, value in d.items():
+    val = value
+    if type(value) == float:
+      val = f'{value:.2f}'
+    print(f"{key}: {val}")
+
+
+def log_folders_from_subfolders(log_subfolders: List[str], log_dir: str
+                                ) -> List[str]:
+  log_folders = []
+  for subfolder in log_subfolders:
+    log_folder = op.join(log_dir, subfolder)
+    assert op.exists(log_folder), f'Log folder does not exist: {log_folder}'
+    log_folders.append(log_folder)
+  return log_folders
+
+
 class LogAnalyzer:
-  def __init__(self, log_filepaths: List[str], make_videos: bool = True):
+  def __init__(self, log_filepaths: List[str], make_plots: bool = True,
+               make_videos: bool = True):
     self.log_filepaths = log_filepaths
+    self.make_plots = make_plots
     self.make_videos = make_videos
 
     self.msgs_by_channel = {}
     for log in log_filepaths:
       self._read_log_messages(log)
 
-  def _read_log_messages(self, log_filepath: str, cut_off_teleop: bool = True):
+    self._report_statistics()
+
+  def _read_log_messages(self, log_filepath: str, cut_off_teleop: bool = True,
+                         cut_off_last_goal: bool = True):
     log_file = EventLog(log_filepath, 'r')
     event = log_file.read_next_event()
 
@@ -334,10 +378,11 @@ class LogAnalyzer:
     synced_msgs_by_channel = synchronize_msgs(messages_by_channel)
     add_to_msg_dict(self.msgs_by_channel, synced_msgs_by_channel)
 
-    self._extract_info_from_messages(log_filepath, synced_msgs_by_channel)
+    self._extract_info_from_messages(log_filepath, synced_msgs_by_channel,
+                                     cut_off_last_goal)
 
   def _extract_info_from_messages(
-      self, log_filepath: str, msgs_by_channel: dict):
+      self, log_filepath: str, msgs_by_channel: dict, cut_off_last_goal: bool):
     list_of_objects, list_of_models = get_object_names_and_models(log_filepath)
     pos_threshold, rot_threshold = get_tolerances(log_filepath)
 
@@ -379,16 +424,137 @@ class LogAnalyzer:
       completed_goals[i] = debug.detected_goal_changes
       in_pose_tracking_mode[i] = debug.in_pose_tracking_mode
 
-    for goal in np.unique(completed_goals):
-      plot_errors_for_goal(
-        goal, times, completed_goals, position_errors_by_object,
-        orientation_errors_by_object, within_tolerance, in_pose_tracking_mode,
-        list_of_objects, pos_threshold, rot_threshold,
-        save_to=get_log_output_folder(log_filepath))
+    if cut_off_last_goal:
+      uncompleted_goal = completed_goals[-1]
+      last_idx = np.where(completed_goals == uncompleted_goal)[0][0]
+
+      print(f'Cutting off last (uncompleted) goal (' + \
+            f'{times[-1] - times[last_idx]:.2f} secs)')
+
+      times = times[:last_idx]
+      current_by_object = current_by_object[:last_idx]
+      goals_by_object = goals_by_object[:last_idx]
+      ee_positions = ee_positions[:last_idx]
+      completed_goals = completed_goals[:last_idx]
+      in_pose_tracking_mode = in_pose_tracking_mode[:last_idx]
+      position_errors_by_object = position_errors_by_object[:last_idx]
+      orientation_errors_by_object = orientation_errors_by_object[:last_idx]
+      within_tolerance = within_tolerance[:last_idx]
+
+    if self.make_plots:
+      for goal in np.unique(completed_goals):
+        plot_errors_for_goal(
+          goal, times, completed_goals, position_errors_by_object,
+          orientation_errors_by_object, within_tolerance, in_pose_tracking_mode,
+          list_of_objects, pos_threshold, rot_threshold,
+          save_to=get_log_output_folder(log_filepath),
+          known_success=cut_off_last_goal)
 
     if self.make_videos:
       Visualizer(times, completed_goals, current_by_object, goals_by_object,
                  ee_positions, list_of_models, log_filepath)
+
+    self._save_info_from_log(
+      times, current_by_object, goals_by_object, ee_positions, completed_goals,
+      in_pose_tracking_mode, position_errors_by_object,
+      orientation_errors_by_object, within_tolerance, list_of_objects,
+      log_filepath)
+
+  def _save_info_from_log(
+      self, times: np.ndarray, current_by_object: np.ndarray,
+      goals_by_object: np.ndarray, ee_positions: np.ndarray,
+      completed_goals: np.ndarray, in_pose_tracking_mode: np.ndarray,
+      position_errors_by_object: np.ndarray,
+      orientation_errors_by_object: np.ndarray, within_tolerance: np.ndarray,
+      list_of_objects: List[str], log_filepath: str):
+    """Sizes:
+      - times: (n_timestamps,)
+      - current_by_object: (n_timestamps, n_objects, 7)
+      - goals_by_object: (n_timestamps, n_objects, 7)
+      - ee_positions: (n_timestamps, 3)
+      - completed_goals: (n_timestamps,)
+      - in_pose_tracking_mode: (n_timestamps,)
+      - position_errors_by_object: (n_timestamps, n_objects)
+      - orientation_errors_by_object: (n_timestamps, n_objects)
+      - within_tolerance: (n_timestamps, n_objects)
+      - log_indices: (n_timestamps)
+    """
+    log_idx = self.log_filepaths.index(log_filepath)
+    log_indices = np.ones((len(times),), dtype=int) * log_idx
+
+    n_objects = len(list_of_objects)
+
+    if not hasattr(self, 'times'):
+      self.times = np.zeros((0))
+      self.current_by_object = np.zeros((0, n_objects, 7))
+      self.goals_by_object = np.zeros((0, n_objects, 7))
+      self.ee_positions = np.zeros((0, 3))
+      self.completed_goals = np.zeros((0))
+      self.in_pose_tracking_mode = np.zeros((0))
+      self.position_errors_by_object = np.zeros((0, n_objects))
+      self.orientation_errors_by_object = np.zeros((0, n_objects))
+      self.within_tolerance = np.zeros((0, n_objects))
+      self.log_indices = np.zeros((0))
+      self.list_of_objects = np.array(list_of_objects)
+
+    else:
+      for obj in list_of_objects:
+        assert obj in self.list_of_objects, f'Object lists do not match ' + \
+          f'across logs: {list_of_objects=} for {log_filepath}, but got ' + \
+          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}'
+      for obj in self.list_of_objects:
+        assert obj in list_of_objects, f'Object lists do not match across ' + \
+          f'logs: {list_of_objects=} for {log_filepath}, but got ' + \
+          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}'
+
+      # Avoid gaps in time and completed goals when combining logs.
+      avg_dt = np.mean(np.diff(self.times))
+      times = times - (times[0] - self.times[-1]) + avg_dt
+      completed_goals = completed_goals + self.completed_goals[-1] + 1
+
+    # Concatenate from all logs.
+    self.times = np.concatenate((self.times, times), axis=0)
+    self.current_by_object = np.concatenate(
+      (self.current_by_object, current_by_object), axis=0)
+    self.goals_by_object = np.concatenate(
+      (self.goals_by_object, goals_by_object), axis=0)
+    self.ee_positions = np.concatenate(
+      (self.ee_positions, ee_positions), axis=0)
+    self.completed_goals = np.concatenate(
+      (self.completed_goals, completed_goals), axis=0)
+    self.in_pose_tracking_mode = np.concatenate(
+      (self.in_pose_tracking_mode, in_pose_tracking_mode), axis=0)
+    self.position_errors_by_object = np.concatenate(
+      (self.position_errors_by_object, position_errors_by_object), axis=0)
+    self.orientation_errors_by_object = np.concatenate(
+      (self.orientation_errors_by_object, orientation_errors_by_object), axis=0)
+    self.within_tolerance = np.concatenate(
+      (self.within_tolerance, within_tolerance), axis=0)
+    self.log_indices = np.concatenate((self.log_indices, log_indices), axis=0)
+
+  def _report_statistics(self):
+    # Get the indices of new completed goal changes.
+    completed_goal_indices = np.where(np.diff(self.completed_goals) == 1)[0] + 1
+    finished_goal_ts = self.times[completed_goal_indices]
+    # Include the first and last timestamp to get the start of the first goal
+    # and end of the last goal.
+    avg_dt = np.mean(np.diff(self.times))
+    t_splits = np.concatenate(
+      (np.array([0]), finished_goal_ts,
+       np.array([self.times[-1] + avg_dt])))
+
+    assert t_splits.shape[0] == len(np.unique(self.completed_goals)) + 1
+
+    times_to_goal = t_splits[1:] - t_splits[:-1]
+    stats = {
+      "num achieved goals": len(times_to_goal),
+      "mean time to goal": np.mean(times_to_goal).item(),
+      "standard deviation": np.std(times_to_goal).item(),
+      "min time to goal": np.min(times_to_goal).item(),
+      "max time to goal": np.max(times_to_goal).item(),
+      "all times to goal": times_to_goal
+    }
+    pretty_dict_print(stats)
 
 
 class Visualizer:
@@ -541,6 +707,18 @@ class Visualizer:
     self.speed_up_video(video_filepath, 10)
 
 
+def multi_command(log_folders: str, skip_plots: bool, videos: bool):
+  log_filepaths = []
+  log_type = None
+  for log_folder in log_folders:
+    log_filepath, new_log_type = get_log_filepath_and_type(log_folder)
+    log_type = new_log_type if log_type is None else log_type
+    assert log_type == new_log_type, f'Cannot combine logs of different ' + \
+      f'types: {log_type=}, {new_log_type=}'
+    log_filepaths.append(log_filepath)
+
+  LogAnalyzer(log_filepaths, make_plots=not skip_plots, make_videos=videos)
+
 
 @click.group()
 def cli():
@@ -549,10 +727,34 @@ def cli():
 
 @cli.command('single')
 @click.argument('log-folder', type=click.Path(exists=True), required=True)
-@click.option('--skip-videos', is_flag=True, help='skip video generation')
-def single_command(log_folder: str, skip_videos: bool):
+@click.option('--skip-plots', is_flag=True, help='skip plot generation')
+@click.option('--videos', is_flag=True, help='run video generation')
+def single_command(log_folder: str, skip_plots: bool, videos: bool):
   log_filepath, _log_type = get_log_filepath_and_type(log_folder)
-  LogAnalyzer([log_filepath], make_videos=not skip_videos)
+  LogAnalyzer([log_filepath], make_plots=not skip_plots, make_videos=videos)
+
+
+@cli.command('multi')
+@click.argument('log-folders', type=click.Path(exists=True), nargs=-1,
+                required=True)
+@click.option('--skip-plots', is_flag=True, help='skip plot generation')
+@click.option('--videos', is_flag=True, help='run video generation')
+def multi_dummy_command(log_folders: str, skip_plots: bool, videos: bool):
+  multi_command(log_folders, skip_plots, videos)
+
+
+@cli.command('yaml')
+@click.argument('experiment', type=str, required=True)
+@click.argument('log-dir', type=click.Path(exists=True),
+                default='/mnt/data2/anything/logs/2025', required=False)
+@click.option('--skip-plots', is_flag=True, help='skip plot generation')
+@click.option('--videos', is_flag=True, help='run video generation')
+def yaml_command(experiment: str, log_dir: str, skip_plots: bool, videos: bool):
+  assert experiment in EXPERIMENT_YAML.keys(), f'Unknown experiment not in ' + \
+    f'yaml: {experiment}'
+  log_subfolders = EXPERIMENT_YAML[experiment]
+  log_folders = log_folders_from_subfolders(log_subfolders, log_dir)
+  multi_command(log_folders, skip_plots, videos)
 
 
 if __name__ == '__main__':

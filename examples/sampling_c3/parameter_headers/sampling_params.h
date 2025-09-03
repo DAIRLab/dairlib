@@ -48,6 +48,8 @@ struct SamplingParams {
   /// Sample buffer parameters.
   bool avoid_choosing_unsuccessful_samples;
   int N_unsuccessful_sample_buffer;
+  double unsuccessful_pos_error_sample_retention;
+  double unsuccessful_ang_error_sample_retention;
   double unsuccessful_radius;
 
   /// Shared across multiple sampling strategies.
@@ -104,6 +106,8 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(ang_error_sample_retention));
     a->Visit(DRAKE_NVP(avoid_choosing_unsuccessful_samples));
     a->Visit(DRAKE_NVP(N_unsuccessful_sample_buffer));
+    a->Visit(DRAKE_NVP(unsuccessful_pos_error_sample_retention));
+    a->Visit(DRAKE_NVP(unsuccessful_ang_error_sample_retention));
     a->Visit(DRAKE_NVP(unsuccessful_radius));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
     a->Visit(DRAKE_NVP(buffer_distance));

@@ -508,7 +508,9 @@ SamplingC3Controller::SamplingC3Controller(
             Eigen::Vector3d v2 = vertices[tri.vertex(2)];
             Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
 
-            if (std::abs(normal[2]) < 5) {
+            // reject faces with normal vectors that are too vertical, with some buffer to account for inaccurate object tracking
+            double z_accept = std::pow(sampling_params_.buffer_distance, 2) - std::pow(sampling_params_.sample_projection_clearance, 2);
+            if (std::pow(std::abs(normal[2]), 2) < z_accept + 0.04) {
                 double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
                 object_faces.push_back({area, normal, {v0, v1, v2}});
                 cumulative_area += area;
@@ -747,9 +749,25 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     unsuccessful_sample_buffer_
   );
 
+  // Ensure prev_repositing_target_ is not inside the object
+  const auto& query_port = plant_.get_geometry_query_input_port();
+  const auto& query_object =
+    query_port.template Eval<drake::geometry::QueryObject<double>>(*context_);
+
+  const auto& results = query_object.ComputeSignedDistanceToPoint(prev_repositioning_target_.segment(0, 3));
+  bool in_collision = false;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    for (int j = 2 + 13*i; j < 12 + 13*i; j++) { // Check each convex piece, assumes 10 pieces/object
+      if (results[j].distance <= sampling_params_.sample_projection_clearance) {
+        in_collision = true;
+        break;
+      }
+    }            
+  }
+
   // Add the previous best repositioning target to the candidate states at the
   // index 1 always. (Index 0 will become the current state.)
-  if (!is_doing_c3_) {
+  if (!is_doing_c3_ && !in_collision) {
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
     repositioning_target_state.head(3) = prev_repositioning_target_;
     candidate_states.insert(candidate_states.begin(),
@@ -843,7 +861,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
       test_c3_object->AddLinearConstraint(
-        A, -0.12, 0.12, 1);
+        A, -0.14, 0.14, 1);
     }
     
     // Add force constraints
@@ -1678,7 +1696,9 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
     const Eigen::VectorXd& x_lcs,
     int* num_in_buffer,
     Eigen::MatrixXd* sample_buffer,
-    Eigen::VectorXd* sample_costs_buffer) const {
+    Eigen::VectorXd* sample_costs_buffer,
+    const double& pos_error_sample_retention,
+    const double& ang_error_sample_retention) const {
   int n_buffer_length = sample_costs_buffer->size();
   // Get object positions and orientations, both current and from the buffer.
   std::vector<Eigen::Array<bool, Eigen::Dynamic, 1>> mask_satisfies_rot;
@@ -1693,14 +1713,12 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
     VectorXd quat_dots = (buffer_quats * object_quat).array().abs();
     quat_dots = quat_dots.cwiseMax(-1.0).cwiseMin(1.0);
     VectorXd angles = 2.0 * quat_dots.array().acos();
-    mask_satisfies_rot.push_back(
-      angles.array() < sampling_params_.ang_error_sample_retention);
+    mask_satisfies_rot.push_back(angles.array() < ang_error_sample_retention);
 
     // Compute the linear difference.
     MatrixXd pos_deltas = buffer_xyzs.rowwise() - object_pos.transpose();
     VectorXd distances = pos_deltas.rowwise().norm();
-    mask_satisfies_pos.push_back(
-      distances.array() < sampling_params_.pos_error_sample_retention);
+    mask_satisfies_pos.push_back(distances.array() < pos_error_sample_retention);
   }
 
   // Keep buffer if none of objects moved
@@ -1738,12 +1756,16 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // controller goes from repositioning to C3 mode.
   PruneOutdatedSamplesFromBuffer(
     x_lcs, &num_in_unsuccessful_buffer_, &unsuccessful_sample_buffer_,
-    &unsuccessful_sample_costs_buffer_);
+    &unsuccessful_sample_costs_buffer_,
+    sampling_params_.unsuccessful_pos_error_sample_retention,
+    sampling_params_.unsuccessful_ang_error_sample_retention);
 
   // Second, handle the unattempted sample buffer.  First, prune outdated
   // samples.
   PruneOutdatedSamplesFromBuffer(
-    x_lcs, &num_in_buffer_, &sample_buffer_, &sample_costs_buffer_);
+    x_lcs, &num_in_buffer_, &sample_buffer_, &sample_costs_buffer_,
+    sampling_params_.pos_error_sample_retention,
+    sampling_params_.ang_error_sample_retention);
   int retained_count = num_in_buffer_;
 
   // Third, in preparation for adding new samples stored in

@@ -28,10 +28,11 @@ N_sample_buffer: 200
 pos_error_sample_retention: 0.002
 ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
 
-# Unsuccessful sample buffer parameters.  Position and angular error sample
-# retention match that for the sample buffer above.
+# Unsuccessful sample buffer parameters.
 avoid_choosing_unsuccessful_samples: true
 N_unsuccessful_sample_buffer: 10
+unsuccessful_pos_error_sample_retention: 0.006
+unsuccessful_ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
 unsuccessful_radius: 0.01
 
 # Shared across multiple sampling strategies.

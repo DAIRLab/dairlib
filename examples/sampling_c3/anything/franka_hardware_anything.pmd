@@ -73,6 +73,8 @@ group "drivers" {
 
 
 script "init_experiment" {
+    stop cmd "logger";
+    stop cmd "record_video";
     stop cmd "sampling_c3";
     stop cmd "franka_osc";
     stop cmd "franka_driver_out";
@@ -107,10 +109,13 @@ script "stop_mesh_scanning" {
 }
 
 script "start_experiment" {
+    stop cmd "logger";
+    stop cmd "record_video";
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
     stop cmd "torque_driver";
     stop cmd "franka_osc";
+    wait ms 500;
     start cmd "record_video";
     start cmd "logger";
     wait ms 1000;

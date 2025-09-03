@@ -781,8 +781,8 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
    || candidate_state[1] > sampling_c3_options.workspace_limits[1][4] - sampling_c3_options.workspace_margins// y max
    || candidate_state[2] < sampling_c3_options.workspace_limits[2][3] // z min
    || candidate_state[2] > sampling_c3_options.workspace_limits[2][4] // z max
-   || candidate_radius > sampling_c3_options.robot_radius_limits[1] - sampling_c3_options.workspace_margins  // r min
-   || candidate_radius < sampling_c3_options.robot_radius_limits[0] + sampling_c3_options.workspace_margins) // r max
+   || candidate_radius > sampling_c3_options.robot_radius_limits[1] - sampling_c3_options.workspace_margins  // r max
+   || candidate_radius < sampling_c3_options.robot_radius_limits[0] + sampling_c3_options.workspace_margins) // r min
    {return false;}
   return true;
 }

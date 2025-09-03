@@ -242,7 +242,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const Eigen::VectorXd& x_lcs,
     int* num_in_buffer,
     Eigen::MatrixXd* sample_buffer,
-    Eigen::VectorXd* sample_costs_buffer) const;
+    Eigen::VectorXd* sample_costs_buffer,
+    const double& pos_error_sample_retention,
+    const double& ang_error_sample_retention) const;
 
   void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 

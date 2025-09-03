@@ -13,8 +13,14 @@ yaml_io.default_flow_style = True
 def coarsify_obj(path):
     mesh = trimesh.load(path)
     num_faces = len(mesh.faces)
-    if num_faces > 150000:
-        ratio = 1 - (150000/num_faces)
+    if num_faces > 10000:
+        print("COARSIFIED")
+        ratio = 1 - (10000/num_faces)
+
+        root, ext = os.path.splitext(path)   
+        new_path = f"{root}_backup{ext}"
+
+        mesh.export(new_path) # make backup of object
         simplified = mesh.simplify_quadric_decimation(ratio)
         simplified.export(path)
         return True
@@ -307,7 +313,7 @@ if __name__ == "__main__":
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
     # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
+    goal_yaml["fixed_target_positions"] = [[0.5, -0.1 + (0.2 * (index % num_objects)), 
                                                 z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
@@ -325,7 +331,7 @@ if __name__ == "__main__":
     
     min_max_z = min(max_zs_world)
 
-    sampling_yaml['z_height'] = max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
+    sampling_yaml['z_height'] = 0.002 #max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
     
     # Update c3_options
     is_c3_plus = "plus" in samp_c3_options_yaml_path

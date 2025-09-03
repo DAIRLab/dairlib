@@ -25,6 +25,7 @@ import tqdm
 import yaml
 
 from lcm import EventLog
+from matplotlib.patches import Patch
 from scipy.spatial.transform import Rotation as R
 from typing import List, Tuple
 
@@ -109,28 +110,49 @@ def get_log_output_folder(log_folder_or_log: str) -> str:
 def inspect_debug_timestamps(channel: str, msg_dicts: List[dict]) -> None:
   lcm_ts, msg_ts = [], []
   for msg_dict in msg_dicts:
-    lcm_ts.append(msg_dict[LCM_TIME_KEY])
-    msg_ts.append(CHANNEL_LCMT[channel].decode(msg_dict[MSG_KEY]).utime)
+    lcm_ts.append(msg_dict[LCM_TIME_KEY] * 1e-6)
+    msg_ts.append(CHANNEL_LCMT[channel].decode(msg_dict[MSG_KEY]).utime * 1e-6)
 
   plt.figure(figsize=(10, 6))
 
   # First subplot: LCM and message timestamps
-  plt.subplot(2, 1, 1)
+  plt.subplot(4, 1, 1)
   plt.plot(lcm_ts, label='LCM Timestamp')
   plt.plot(msg_ts, label='Message Timestamp')
   plt.xlabel('Message Index')
-  plt.ylabel('Timestamp (us)')
+  plt.ylabel('Timestamp (s)')
   plt.legend()
   plt.title('Timestamps')
 
   # Second subplot: Difference between LCM and message timestamps
-  plt.subplot(2, 1, 2)
-  diff = [1e-6 * (l - m) for l, m in zip(lcm_ts, msg_ts)]
+  plt.subplot(4, 1, 2)
+  diff = [l - m for l, m in zip(lcm_ts, msg_ts)]
   plt.plot(diff, label='LCM - Message Timestamp')
   plt.xlabel('Message Index')
   plt.ylabel('Difference (s)')
   plt.legend()
   plt.title('Timestamp Difference')
+
+  # Third subplot: Gaps between just LCM timestamps
+  plt.subplot(4, 1, 3)
+  lcm_gaps = [lcm_ts[i] - lcm_ts[i - 1] for i in range(1, len(lcm_ts))]
+  plt.plot(lcm_gaps, label='LCM Gaps')
+  plt.xlabel('Message Index')
+  plt.ylabel('Gap (s)')
+  plt.legend()
+
+  # Fourth subplot: Number of detected goals
+  if channel == 'SAMPLING_C3_DEBUG':
+    num_goals = [
+      CHANNEL_LCMT[channel].decode(msg[MSG_KEY]).detected_goal_changes \
+      for msg in msg_dicts]
+    ts_abs = [msg[LCM_TIME_KEY] * 1e-6 for msg in msg_dicts]
+    ts = [t - ts_abs[0] for t in ts_abs]
+    plt.subplot(4, 1, 4)
+    plt.plot(ts, num_goals, label='Detected Goals')
+    plt.xlabel('Timestamp (s)')
+    plt.ylabel('Number of Goals')
+    plt.legend()
 
   plt.tight_layout()
   plt.show()
@@ -165,6 +187,7 @@ def synchronize_msgs(msg_dicts: List[dict]) -> List[dict]:
         print(f'WARNING: {channel=} nearest message is ' + \
               f'{abs(nearest[LCM_TIME_KEY] - lcm_time) * 1e-6:.2f} secs away')
       synced_msg_dicts[channel].append(nearest)
+    print(f'Synced {channel} to {min_channel}')
 
   print(f'\nAfter synchronization:')
   for channel, msgs in synced_msg_dicts.items():
@@ -220,12 +243,25 @@ def orientation_error(curr_config: np.ndarray, goal_config: np.ndarray) -> float
   return diff_rot.magnitude()
 
 
+def get_shading_masks(bool_array: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+  bool_array = bool_array.squeeze()
+  assert bool_array.ndim == 1
+  bool_array = bool_array.astype(bool)
+  right_shifted_yes = np.append(bool_array[0], bool_array[:-1])
+
+  yes_shading_mask = np.ravel(np.column_stack((right_shifted_yes, bool_array)))
+  no_shading_mask = np.ravel(np.column_stack((~right_shifted_yes, ~bool_array)))
+
+  return yes_shading_mask, no_shading_mask
+
+
 def plot_errors_for_goal(
     goal: int, times: np.ndarray, completed_goals: np.ndarray,
     position_errors: np.ndarray, orientation_errors: np.ndarray,
     within_tolerance: np.ndarray, in_pose_tracking_mode: np.ndarray,
-    object_names: list, pos_threshold: float, rot_threshold: float,
-    save_to: str = None, known_success: bool = True) -> None:
+    in_c3_mode: np.ndarray, object_names: list, pos_threshold: float,
+    rot_threshold: float, save_to: str = None, known_success: bool = True
+) -> None:
   outcome = 'Success' if known_success or goal+1 in completed_goals else \
     'Failure'
   start = np.where(completed_goals == goal)[0][0]
@@ -236,15 +272,25 @@ def plot_errors_for_goal(
   rot_errors = orientation_errors[start:end]
   within_tol = within_tolerance[start:end]
   in_pose_tracking_mode = in_pose_tracking_mode[start:end]
+  in_c3_mode = in_c3_mode[start:end]
+
+  # Some variables for doing C3/repositioning shading.
+  double_t = np.repeat(ts, 2)
+  c3_mask, repos_mask = get_shading_masks(in_c3_mode)
 
   fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
   for i, obj_name in enumerate(object_names):
     axs[0].plot(ts, pos_errors[:, i], label=obj_name)
     axs[1].plot(ts, rot_errors[:, i], label=obj_name)
+  for ax in axs:
+    ax.fill_between(double_t, 0, 1.05, where=c3_mask, color='white',
+                    alpha=0.5, transform=ax.get_xaxis_transform())
+    ax.fill_between(double_t, 0, 1.05, where=repos_mask, color='gray',
+                    alpha=0.5, transform=ax.get_xaxis_transform())
   axs[0].axhline(y=pos_threshold, linestyle='--', color='black',
-                 label=f'{pos_threshold:.2f}m threshold')
+                 label=f'Success threshold')
   axs[1].axhline(y=rot_threshold, linestyle='--', color='black',
-                 label=f'{rot_threshold:.2f} rad threshold')
+                 label=f'Success threshold')
   try:
     pose_tracking_t = ts[np.where(in_pose_tracking_mode)[0][0]]
     axs[0].axvline(x=pose_tracking_t, linestyle='--', color='purple',
@@ -253,15 +299,24 @@ def plot_errors_for_goal(
                   label='Starting full pose tracking')
   except IndexError:
     pass
-  axs[0].set_ylabel('Position Error (m)')
-  axs[1].set_ylabel('Orientation Error (rad)')
-  axs[1].set_xlabel('Time (s)')
-  axs[0].legend()
-  axs[1].legend()
+  axs[0].set_ylabel('Position Error (m)', fontsize=14)
+  axs[1].set_ylabel('Orientation Error (rad)', fontsize=14)
+  axs[1].set_xlabel('Time (s)', fontsize=14)
+
+  # Legend:  need to add patches manually.
+  c3_patch = Patch(facecolor='white', alpha=0.5, edgecolor='black',
+                   linewidth=1, label='Contact-rich mode')
+  rp_patch = Patch(facecolor='gray', alpha=0.5, edgecolor='black',
+                   linewidth=1, label='Contact-free mode')
+  axs[0].legend(
+    handles=axs[0].get_legend_handles_labels()[0] + [c3_patch, rp_patch],
+    fontsize=14, bbox_to_anchor=(1.01, 1), loc='upper left')
+
   axs[0].set_xlim([ts[0], ts[-1]])
   axs[0].set_ylim([0, None])
   axs[1].set_ylim([0, None])
-  plt.suptitle(f'Goal {goal}: {outcome}')
+  plt.suptitle(f'Goal {goal}: {outcome}', fontsize=16)
+  plt.tight_layout()
 
   if save_to is None:
     save_to = f'/tmp/goal_{goal}.png'
@@ -308,55 +363,93 @@ def pretty_dict_print(d: dict) -> None:
     print(f"{key}: {val}")
 
 
-def log_folders_from_subfolders(log_subfolders: List[str], log_dir: str
-                                ) -> List[str]:
-  log_folders = []
+def log_config_from_subfolders(log_subfolders: List[str], log_dir: str
+                                ) -> Tuple[List[str], List[float], List[float]]:
+  log_folders, start_times, end_times = [], [], []
   for subfolder in log_subfolders:
+    if ':' in subfolder:
+      times = subfolder.split(':')[1:]
+      if len(times) == 1:
+        start_times.append(float(times[0]))
+        end_times.append(None)
+      elif len(times) == 2:
+        start_times.append(float(times[0]))
+        end_times.append(float(times[1]))
+      else:
+        raise ValueError(f'Invalid time format in subfolder: {subfolder}')
+      subfolder = subfolder.split(':')[0]
+    else:
+      start_times.append(None)
+      end_times.append(None)
     log_folder = op.join(log_dir, subfolder)
     assert op.exists(log_folder), f'Log folder does not exist: {log_folder}'
     log_folders.append(log_folder)
-  return log_folders
+  return log_folders, start_times, end_times
 
 
 class LogAnalyzer:
-  def __init__(self, log_filepaths: List[str], make_plots: bool = True,
-               make_videos: bool = True):
+  def __init__(self, log_filepaths: List[str], start_times: List[float] = None,
+               end_times: List[float] = None, make_plots: bool = True,
+               make_videos: bool = True, cut_off_teleop: bool = True,
+               cut_off_last_goal: bool = True):
+    n_logs = len(log_filepaths)
+    start_times = [None]*n_logs if start_times is None else start_times
+    end_times = [None]*n_logs if end_times is None else end_times
+    assert len(start_times) == len(log_filepaths)
+    assert len(end_times) == len(log_filepaths)
+
     self.log_filepaths = log_filepaths
+    self.start_times = start_times
+    self.end_times = end_times
     self.make_plots = make_plots
     self.make_videos = make_videos
+    self.cut_off_teleop = cut_off_teleop
+    self.cut_off_last_goal = cut_off_last_goal
 
     self.msgs_by_channel = {}
-    for log in log_filepaths:
-      self._read_log_messages(log)
+    for log, start_time, end_time in zip(log_filepaths, start_times, end_times):
+      self._read_log_messages(log, start_time, end_time)
 
     self._report_statistics()
 
-  def _read_log_messages(self, log_filepath: str, cut_off_teleop: bool = True,
-                         cut_off_last_goal: bool = True):
+  def _read_log_messages(self, log_filepath: str, start_time: float = None,
+                         end_time: float = None):
+    start_utime = 0 if start_time is None else int(start_time * 1e6)
+    end_utime = 1e12 if end_time is None else int(end_time * 1e6)
+
     log_file = EventLog(log_filepath, 'r')
+    event = log_file.read_next_event()
+    init_utime = event.timestamp
+    t_init = 1e-6 * init_utime if event is not None else 0
+    t_start = t_init
+    log_file.seek_to_timestamp(init_utime + start_utime)
     event = log_file.read_next_event()
 
     messages_by_channel = {}
-    t_init = 1e-6 * event.timestamp if event is not None else 0
-    before_experiment = True if cut_off_teleop else False
+    before_experiment = True if self.cut_off_teleop else False
     after_experiment = False
 
     while event is not None:
+      # Detect if beyond hard cut-off.
+      if event.timestamp > init_utime + end_utime:
+        after_experiment = True
       # Detect if the experiment started.
-      if before_experiment:
+      if self.cut_off_teleop and before_experiment:
         if event.channel == 'SAMPLING_C3_DEBUG':
           if not CHANNEL_LCMT[event.channel].decode(event.data).is_teleop:
             print(f'Cut off {1e-6*event.timestamp - t_init:.2f} secs of ' + \
-                  f'pre-experiment teleop')
+                  f'pre-experiment')
             t_start = 1e-6 * event.timestamp
             before_experiment = False
       # Detect if the experiment ended.
-      if not before_experiment and not after_experiment:
+      if self.cut_off_teleop and \
+        (not before_experiment and not after_experiment):
         if event.channel == 'SAMPLING_C3_DEBUG':
           if CHANNEL_LCMT[event.channel].decode(event.data).is_teleop:
             after_experiment = True
       # Collect messages during the experiment.
-      if not before_experiment and not after_experiment:
+      if not self.cut_off_teleop or \
+        (not before_experiment and not after_experiment):
         message = {LCM_TIME_KEY: event.timestamp, MSG_KEY: event.data}
         if event.channel in messages_by_channel.keys():
           messages_by_channel[event.channel].append(message)
@@ -366,7 +459,8 @@ class LogAnalyzer:
       t_final = 1e-6 * event.timestamp
       event = log_file.read_next_event()
 
-    print(f'Cut off {t_final - t_end:.2f} secs of post-experiment teleop\n')
+    if self.cut_off_teleop:
+      print(f'Cut off {t_final - t_end:.2f} secs of post-experiment\n')
     duration = t_end - t_start
     for channel, msgs in messages_by_channel.items():
       print(f'{channel}: {len(msgs)} messages ({len(msgs)/duration:.2f} Hz)')
@@ -378,11 +472,10 @@ class LogAnalyzer:
     synced_msgs_by_channel = synchronize_msgs(messages_by_channel)
     add_to_msg_dict(self.msgs_by_channel, synced_msgs_by_channel)
 
-    self._extract_info_from_messages(log_filepath, synced_msgs_by_channel,
-                                     cut_off_last_goal)
+    self._extract_info_from_messages(log_filepath, synced_msgs_by_channel)
 
   def _extract_info_from_messages(
-      self, log_filepath: str, msgs_by_channel: dict, cut_off_last_goal: bool):
+      self, log_filepath: str, msgs_by_channel: dict):
     list_of_objects, list_of_models = get_object_names_and_models(log_filepath)
     pos_threshold, rot_threshold = get_tolerances(log_filepath)
 
@@ -397,6 +490,7 @@ class LogAnalyzer:
     ee_positions = np.zeros((n_timestamps, 3))
     completed_goals = np.zeros((n_timestamps), dtype=int)
     in_pose_tracking_mode = np.zeros((n_timestamps), dtype=bool)
+    in_c3_mode = np.zeros((n_timestamps), dtype=bool)
 
     position_errors_by_object = np.zeros((n_timestamps, n_objects))
     orientation_errors_by_object = np.zeros((n_timestamps, n_objects))
@@ -423,8 +517,9 @@ class LogAnalyzer:
         msgs_by_channel['SAMPLING_C3_DEBUG'][i][MSG_KEY])
       completed_goals[i] = debug.detected_goal_changes
       in_pose_tracking_mode[i] = debug.in_pose_tracking_mode
+      in_c3_mode[i] = debug.is_c3_mode
 
-    if cut_off_last_goal:
+    if self.cut_off_last_goal:
       uncompleted_goal = completed_goals[-1]
       last_idx = np.where(completed_goals == uncompleted_goal)[0][0]
 
@@ -437,6 +532,7 @@ class LogAnalyzer:
       ee_positions = ee_positions[:last_idx]
       completed_goals = completed_goals[:last_idx]
       in_pose_tracking_mode = in_pose_tracking_mode[:last_idx]
+      in_c3_mode = in_c3_mode[:last_idx]
       position_errors_by_object = position_errors_by_object[:last_idx]
       orientation_errors_by_object = orientation_errors_by_object[:last_idx]
       within_tolerance = within_tolerance[:last_idx]
@@ -446,9 +542,9 @@ class LogAnalyzer:
         plot_errors_for_goal(
           goal, times, completed_goals, position_errors_by_object,
           orientation_errors_by_object, within_tolerance, in_pose_tracking_mode,
-          list_of_objects, pos_threshold, rot_threshold,
+          in_c3_mode, list_of_objects, pos_threshold, rot_threshold,
           save_to=get_log_output_folder(log_filepath),
-          known_success=cut_off_last_goal)
+          known_success=self.cut_off_last_goal)
 
     if self.make_videos:
       Visualizer(times, completed_goals, current_by_object, goals_by_object,
@@ -707,17 +803,23 @@ class Visualizer:
     self.speed_up_video(video_filepath, 10)
 
 
-def multi_command(log_folders: str, skip_plots: bool, videos: bool):
+def multi_command(log_folders: str, start_times: List[float],
+                  end_times: List[float], skip_plots: bool, videos: bool):
   log_filepaths = []
   log_type = None
-  for log_folder in log_folders:
+
+  n_logs = len(log_folders)
+  start_times = [None]*n_logs if start_times is None else start_times
+  end_times = [None]*n_logs if end_times is None else end_times
+  for log_folder, start_t, end_t in zip(log_folders, start_times, end_times):
     log_filepath, new_log_type = get_log_filepath_and_type(log_folder)
     log_type = new_log_type if log_type is None else log_type
     assert log_type == new_log_type, f'Cannot combine logs of different ' + \
       f'types: {log_type=}, {new_log_type=}'
     log_filepaths.append(log_filepath)
 
-  LogAnalyzer(log_filepaths, make_plots=not skip_plots, make_videos=videos)
+  LogAnalyzer(log_filepaths, start_times=start_times, end_times=end_times,
+              make_plots=not skip_plots, make_videos=videos)
 
 
 @click.group()
@@ -727,11 +829,20 @@ def cli():
 
 @cli.command('single')
 @click.argument('log-folder', type=click.Path(exists=True), required=True)
+@click.option('--start-time', type=float, default=0,
+              help='start time in seconds')
+@click.option('--end-time', type=float, default=0, help='end time in seconds')
 @click.option('--skip-plots', is_flag=True, help='skip plot generation')
 @click.option('--videos', is_flag=True, help='run video generation')
-def single_command(log_folder: str, skip_plots: bool, videos: bool):
+def single_command(log_folder: str, start_time: float, end_time: float,
+                   skip_plots: bool, videos: bool):
   log_filepath, _log_type = get_log_filepath_and_type(log_folder)
-  LogAnalyzer([log_filepath], make_plots=not skip_plots, make_videos=videos)
+  la = LogAnalyzer(
+    [log_filepath], start_times=[start_time], end_times=[end_time],
+    make_plots=not skip_plots, make_videos=videos, cut_off_teleop=True,
+    cut_off_last_goal=True
+  )
+  breakpoint()
 
 
 @cli.command('multi')
@@ -740,7 +851,7 @@ def single_command(log_folder: str, skip_plots: bool, videos: bool):
 @click.option('--skip-plots', is_flag=True, help='skip plot generation')
 @click.option('--videos', is_flag=True, help='run video generation')
 def multi_dummy_command(log_folders: str, skip_plots: bool, videos: bool):
-  multi_command(log_folders, skip_plots, videos)
+  multi_command(log_folders, None, None, skip_plots, videos)
 
 
 @cli.command('yaml')
@@ -753,8 +864,9 @@ def yaml_command(experiment: str, log_dir: str, skip_plots: bool, videos: bool):
   assert experiment in EXPERIMENT_YAML.keys(), f'Unknown experiment not in ' + \
     f'yaml: {experiment}'
   log_subfolders = EXPERIMENT_YAML[experiment]
-  log_folders = log_folders_from_subfolders(log_subfolders, log_dir)
-  multi_command(log_folders, skip_plots, videos)
+  log_folders, start_times, end_times = log_config_from_subfolders(
+    log_subfolders, log_dir)
+  multi_command(log_folders, start_times, end_times, skip_plots, videos)
 
 
 if __name__ == '__main__':

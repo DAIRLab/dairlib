@@ -11,6 +11,13 @@ This script can be run in 3 ways:
 
 Yaml mode is recommended and can be run via, e.g.:
   python examples/sampling_c3/process_lcm_logs.py yaml letter_3
+
+NOTE:  The script assumes the experiment starts when the robot exits teleop mode
+for the first time.  In some logs, teleop mode was exited then re-entered
+immediately, which causes problems.  To avoid this, add a start time, which will
+cut off that number of seconds from the start of the log.  Use 'single' mode to
+find a good start time -- 'single' mode automatically opens a debugging plot
+that shows information including whether teleop mode is active or not.
 """
 
 import click
@@ -143,13 +150,17 @@ def inspect_debug_timestamps(channel: str, msg_dicts: List[dict]) -> None:
 
   # Fourth subplot: Number of detected goals
   if channel == 'SAMPLING_C3_DEBUG':
-    num_goals = [
+    num_goals = np.array([
       CHANNEL_LCMT[channel].decode(msg[MSG_KEY]).detected_goal_changes \
-      for msg in msg_dicts]
-    ts_abs = [msg[LCM_TIME_KEY] * 1e-6 for msg in msg_dicts]
-    ts = [t - ts_abs[0] for t in ts_abs]
+      for msg in msg_dicts])
+    max_n_goals = max(num_goals)
+    in_teleop = np.array([
+      (max_n_goals * 0.5)*CHANNEL_LCMT[channel].decode(msg[MSG_KEY]).is_teleop \
+      for msg in msg_dicts])
+    ts = [t - lcm_ts[0] for t in lcm_ts]
     plt.subplot(4, 1, 4)
     plt.plot(ts, num_goals, label='Detected Goals')
+    plt.plot(ts, in_teleop, label='In Teleop (scaled)')
     plt.xlabel('Timestamp (s)')
     plt.ylabel('Number of Goals')
     plt.legend()
@@ -391,7 +402,7 @@ class LogAnalyzer:
   def __init__(self, log_filepaths: List[str], start_times: List[float] = None,
                end_times: List[float] = None, make_plots: bool = True,
                make_videos: bool = True, cut_off_teleop: bool = True,
-               cut_off_last_goal: bool = True):
+               cut_off_last_goal: bool = True, debug: bool = False):
     n_logs = len(log_filepaths)
     start_times = [None]*n_logs if start_times is None else start_times
     end_times = [None]*n_logs if end_times is None else end_times
@@ -403,8 +414,9 @@ class LogAnalyzer:
     self.end_times = end_times
     self.make_plots = make_plots
     self.make_videos = make_videos
-    self.cut_off_teleop = cut_off_teleop
-    self.cut_off_last_goal = cut_off_last_goal
+    self.cut_off_teleop = False if debug else cut_off_teleop
+    self.cut_off_last_goal = False if debug else cut_off_last_goal
+    self.debug = debug
 
     self.msgs_by_channel = {}
     for log, start_time, end_time in zip(log_filepaths, start_times, end_times):
@@ -467,8 +479,11 @@ class LogAnalyzer:
     print(f'\nLength of log: {t_final - t_init:.2f} secs')
     print(f'Length of experiment: {duration:.2f} secs\n')
 
-    # inspect_debug_timestamps(
-    #   'SAMPLING_C3_DEBUG', messages_by_channel['SAMPLING_C3_DEBUG'])
+    if self.debug:
+      inspect_debug_timestamps(
+        'SAMPLING_C3_DEBUG', messages_by_channel['SAMPLING_C3_DEBUG'])
+      breakpoint()
+
     synced_msgs_by_channel = synchronize_msgs(messages_by_channel)
     add_to_msg_dict(self.msgs_by_channel, synced_msgs_by_channel)
 
@@ -811,7 +826,7 @@ def multi_command(log_folders: str, start_times: List[float],
   n_logs = len(log_folders)
   start_times = [None]*n_logs if start_times is None else start_times
   end_times = [None]*n_logs if end_times is None else end_times
-  for log_folder, start_t, end_t in zip(log_folders, start_times, end_times):
+  for log_folder in log_folders:
     log_filepath, new_log_type = get_log_filepath_and_type(log_folder)
     log_type = new_log_type if log_type is None else log_type
     assert log_type == new_log_type, f'Cannot combine logs of different ' + \
@@ -839,9 +854,7 @@ def single_command(log_folder: str, start_time: float, end_time: float,
   log_filepath, _log_type = get_log_filepath_and_type(log_folder)
   la = LogAnalyzer(
     [log_filepath], start_times=[start_time], end_times=[end_time],
-    make_plots=not skip_plots, make_videos=videos, cut_off_teleop=True,
-    cut_off_last_goal=True
-  )
+    make_plots=not skip_plots, make_videos=videos, debug=True)
   breakpoint()
 
 

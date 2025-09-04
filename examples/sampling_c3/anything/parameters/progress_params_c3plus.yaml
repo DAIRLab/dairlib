@@ -33,7 +33,7 @@ track_c3_progress_via: 3
 cost_switching_threshold_distance: 0.15
 
 # Penalize repositioning distance.
-travel_cost_per_meter: 0
+travel_cost_per_meter: 999
 
 # Number of control loops to wait before cutting off C3 due to unproductivity.
 # Used for kC3Cost, kConfigCost, kPosOrRotCost.

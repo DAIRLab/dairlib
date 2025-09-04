@@ -231,8 +231,8 @@ SamplingC3Controller::SamplingC3Controller(
   std::cout << "n_q_" << n_q_ << std::endl;
   std::cout << "n_v_" << n_v_ << std::endl;
   std::cout << "n_u_" << n_u_ << std::endl;
-  std::cout << "n_x_" << n_x_ << std::endl;  
-  
+  std::cout << "n_x_" << n_x_ << std::endl;
+
   // Input ports.
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -245,7 +245,7 @@ SamplingC3Controller::SamplingC3Controller(
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
   final_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
-  
+
   // Output ports.
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -473,7 +473,7 @@ SamplingC3Controller::SamplingC3Controller(
   }
 
   // Below code loads in the mesh and enumerates triangular faces.
-  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal || 
+  if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
     std::vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
@@ -534,7 +534,7 @@ SamplingC3Controller::SamplingC3Controller(
   int num_tri = 0;
   std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
   for (const std::string& mesh_path : mesh_paths) {
-    drake::geometry::TriangleSurfaceMesh<double>* mesh = 
+    drake::geometry::TriangleSurfaceMesh<double>* mesh =
       new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
     meshes.push_back(mesh);
     num_tri += mesh->num_triangles();
@@ -611,9 +611,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& x_lcs_final_des =
-      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);     
+      *this->template EvalVectorInput<BasicVector>(context, final_target_input_port_);
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);    
+      (TimestampedVector<double>*)this->EvalVectorInput(context, lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
   ee_position_curr_ = x_lcs_curr.segment(0, 3);
@@ -735,7 +735,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     Eigen::AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
     double object_angular_error = angle_axis_diff.angle();
-    
+
     object_on_target.push_back(
       (object_position_error < goal_params_.position_success_threshold) &&
       (object_angular_error < goal_params_.orientation_success_threshold));
@@ -762,7 +762,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         in_collision = true;
         break;
       }
-    }            
+    }
   }
 
   // Add the previous best repositioning target to the candidate states at the
@@ -841,7 +841,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
         A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
         test_c3_object->AddLinearConstraint(
-          A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+          A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins,
           c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
       }
       // Set object bounds
@@ -850,7 +850,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
           Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
           A.segment(7 + 7*j, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
           test_c3_object->AddLinearConstraint(
-            A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+            A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins,
             c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
         }
       }
@@ -863,7 +863,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       test_c3_object->AddLinearConstraint(
         A, -0.14, 0.14, 1);
     }
-    
+
     // Add force constraints
     for (int i : vector<int>({0, 1})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -1067,16 +1067,16 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       double x_max = sampling_c3_options_.workspace_limits[0][4];
       double y_min = sampling_c3_options_.workspace_limits[1][3];
       double y_max = sampling_c3_options_.workspace_limits[1][4];
-    
+
       // if ee is close to wall, raise z_height to avoid hitting
-      if ((x_lcs_curr[0] <= x_min + 0.05 && x_lcs_curr[0] >= x_min - sampling_c3_options_.workspace_margins) || 
-          (x_lcs_curr[0] >= x_max - 0.05 && x_lcs_curr[0] <= x_max + sampling_c3_options_.workspace_margins) || 
-          (x_lcs_curr[1] <= y_min + 0.05 && x_lcs_curr[1] >= y_min - sampling_c3_options_.workspace_margins) || 
+      if ((x_lcs_curr[0] <= x_min + 0.05 && x_lcs_curr[0] >= x_min - sampling_c3_options_.workspace_margins) ||
+          (x_lcs_curr[0] >= x_max - 0.05 && x_lcs_curr[0] <= x_max + sampling_c3_options_.workspace_margins) ||
+          (x_lcs_curr[1] <= y_min + 0.05 && x_lcs_curr[1] >= y_min - sampling_c3_options_.workspace_margins) ||
           (x_lcs_curr[1] >= y_max - 0.05 && x_lcs_curr[1] <= y_max + sampling_c3_options_.workspace_margins)) {
             wall_offset = 0.01;
-      } 
+      }
     }
-    
+
     // Switch to C3 if forced by xbox controller.
     if (force_c3_mode) {
       std::cout << "Forcing into C3 mode" << std::endl;
@@ -1093,7 +1093,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       (!progress_params_.use_relative_hysteresis &&
        best_other_cost > curr_cost + hyst_repos_to_c3) ||
       (progress_params_.use_relative_hysteresis &&
-       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) && 
+       best_other_cost > curr_cost + hyst_repos_to_c3_frac*best_other_cost) &&
        (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance + wall_offset ||
          !sampling_params_.ee_z_close))
     {
@@ -1346,14 +1346,14 @@ void SamplingC3Controller::UpdateCostMatrices(
       min_eigvals.push_back(Q_quaternion_dependent_costs.at(i).eigenvalues().real().minCoeff());
     }
     std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_1;
-    for (int i = 0; i < controller_params_.num_objects; i++) {    
+    for (int i = 0; i < controller_params_.num_objects; i++) {
       Q_quaternion_dependent_regularizers_part_1.push_back(std::max(0.0, -min_eigvals.at(i)) * Eigen::MatrixXd::Identity(4, 4));
     }
     std::vector<Eigen::MatrixXd> Q_quaternion_dependent_regularizers_part_2;
-    for (int i = 0; i < controller_params_.num_objects; i++) {    
+    for (int i = 0; i < controller_params_.num_objects; i++) {
       Q_quaternion_dependent_regularizers_part_2.push_back(quats_desired.at(i) * quats_desired.at(i).transpose());
     }
-    for (int i = 0; i < controller_params_.num_objects; i++) {   
+    for (int i = 0; i < controller_params_.num_objects; i++) {
       DRAKE_ASSERT(
         Q_quaternion_dependent_costs.at(i).rows() == 4 &&
         Q_quaternion_dependent_costs.at(i).cols() == 4 &&
@@ -1498,23 +1498,23 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     } else {
       x_pred_curr_plan_ = knots.col(N_ - 1);
     }
-  }  
-  
+  }
+
   double wall_offset = 0;
-  
+
   if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
     double x_min = sampling_c3_options_.workspace_limits[0][3];
     double x_max = sampling_c3_options_.workspace_limits[0][4];
     double y_min = sampling_c3_options_.workspace_limits[1][3];
     double y_max = sampling_c3_options_.workspace_limits[1][4];
-  
+
     // if ee is close to wall, raise z_height
-    if ((x_sol[0][0] <= x_min + 0.05 && x_sol[0][0] >= x_min - sampling_c3_options_.workspace_margins) || 
-        (x_sol[0][0] >= x_max - 0.05 && x_sol[0][0] <= x_max + sampling_c3_options_.workspace_margins) || 
-        (x_sol[0][1] <= y_min + 0.05 && x_sol[0][1] >= y_min - sampling_c3_options_.workspace_margins) || 
+    if ((x_sol[0][0] <= x_min + 0.05 && x_sol[0][0] >= x_min - sampling_c3_options_.workspace_margins) ||
+        (x_sol[0][0] >= x_max - 0.05 && x_sol[0][0] <= x_max + sampling_c3_options_.workspace_margins) ||
+        (x_sol[0][1] <= y_min + 0.05 && x_sol[0][1] >= y_min - sampling_c3_options_.workspace_margins) ||
         (x_sol[0][1] >= y_max - 0.05 && x_sol[0][1] <= y_max + sampling_c3_options_.workspace_margins)) {
         wall_offset = 0.01;
-    } 
+    }
   }
 
   for (int i = 0; i < N_; i++) {
@@ -1532,14 +1532,14 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   c3_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
   // Add ee orientation target
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
@@ -1547,7 +1547,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
   direction = rot * direction;
 
@@ -1562,7 +1562,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
+  }
 
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
@@ -1635,14 +1635,14 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
@@ -1650,7 +1650,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
   direction = rot * direction;
 
@@ -1667,7 +1667,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
+  }
 
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
@@ -1728,7 +1728,7 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
   for (int i = 0; i < *num_in_buffer; i++) {
     bool keep = true;
     for (int j = 0; j < controller_params_.num_objects; j++) {
-      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) { 
+      if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) {
         keep = false;
         break;
       }
@@ -1790,7 +1790,8 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // Fourth, add the new samples stored in all_sample_locations_ and
   // all_sample_costs_.  Don't add the current location (so the sample buffer
   // contains more broadly sampled locations) or a currently pursued
-  // repositioning target.
+  // repositioning target.  Remove the travel cost from the costs before adding
+  // to the buffer.
   int buffer_count = retained_count;
   for (int i = retained_count;
        i < retained_count + all_sample_locations_.size(); i++) {
@@ -1799,8 +1800,10 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
       // Skip the current location.
       // Skip the repositioning target if in repositioning mode.
     } else {
-      VectorXd new_config = x_lcs.segment(0, n_q_);
-      new_config.segment(0, 3) = all_sample_locations_[i - retained_count];
+      VectorXd new_config = x_lcs.head(n_q_);
+      new_config.head(3) = all_sample_locations_[i - retained_count];
+      double travel_cost = progress_params_.travel_cost_per_meter *
+        (new_config.head(2) - x_lcs.head(2)).norm();
       // Ensure a normalized quaternion is written to the buffer.
       for (int i = 0; i < controller_params_.num_objects; i++) {
         Eigen::Vector4d object_quat = x_lcs.segment(3 + 7*i, 4).normalized();
@@ -1808,14 +1811,22 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
       }
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] =
-        all_sample_costs_[i - retained_count];
+        all_sample_costs_[i - retained_count] - travel_cost;
       buffer_count++;
     }
   }
   num_in_buffer_ = buffer_count;
 
-  // Lastly, ensure the lowest cost sample is at the end of the buffer.
+  // Lastly, ensure the lowest cost sample is at the end of the buffer.  This
+  // cost factors in the travel cost.
   VectorXd eligible_costs = sample_costs_buffer_.head(num_in_buffer_);
+  // Incorporate travel costs for each sample in the buffer.
+  MatrixXd xy_samples = sample_buffer_.block(0, 0, num_in_buffer_, 2);
+  Eigen::Vector2d xy_ref = x_lcs.head(2);
+  VectorXd travel_costs = progress_params_.travel_cost_per_meter *
+    (xy_samples.rowwise() - xy_ref.transpose()).rowwise().norm();
+  eligible_costs += travel_costs;
+
   int lowest_cost_index;
   double lowest_buffer_cost = eligible_costs.minCoeff(&lowest_cost_index);
   VectorXd lowest_cost_sample = sample_buffer_.row(lowest_cost_index);
@@ -1839,10 +1850,17 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&
       (sampling_params_.consider_best_buffer_sample_when_leaving_c3)) {
+    // Get the lowest cost from the buffer, incorporating travel cost.
     double lowest_buffer_cost = sample_costs_buffer_[num_in_buffer_ - 1];
+    double travel_cost = progress_params_.travel_cost_per_meter *
+      (sample_buffer_.row(num_in_buffer_ - 1).head(2) -
+        all_sample_locations_[0].head(2)).norm();
+    lowest_buffer_cost += travel_cost;
     Vector3d best_buffer_ee_sample =
       sample_buffer_.row(num_in_buffer_ - 1).head(3);
 
+    // Get the lowest cost from the current set of samples (these already
+    // incoporate travel cost).
     double lowest_new_cost =
       *std::min_element(all_sample_costs_.begin(), all_sample_costs_.end());
     std::vector<double>::iterator it = std::min_element(
@@ -1853,19 +1871,16 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
 
     // Initialize the buffer plan with something.
     if (dynamically_feasible_buffer_plan_.size() != N_ + 1) {
-
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
-    
     }
     // If the best in the buffer is from the current set of samples, store the
     // associated C3 object and dynamically feasible plan, but don't add to the
     // set of samples to consider for repositioning.
     else if ((abs(lowest_buffer_cost - lowest_new_cost) < 1e-5) &&
-             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {       
+             ((best_buffer_ee_sample - best_new_ee_sample).norm() < 1e-5)) {
       c3_buffer_plan_ = c3_objects[lowest_new_cost_index];
-
       dynamically_feasible_buffer_plan_ =
         all_sample_dynamically_feasible_plans_[lowest_new_cost_index];
     }
@@ -1873,7 +1888,6 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
     // consider it for repositioning by adding it to the set of samples, costs,
     // etc.
     else {
-
       all_sample_costs_.push_back(lowest_buffer_cost);
       all_sample_locations_.push_back(best_buffer_ee_sample);
       c3_objects.push_back(c3_buffer_plan_);
@@ -1899,7 +1913,7 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(
   }
   // Add the current location to the unsuccessful buffer.
   unsuccessful_sample_buffer_.row(num_in_unsuccessful_buffer_) = x_lcs.head(n_q_);
-  unsuccessful_sample_costs_buffer_[num_in_unsuccessful_buffer_] = 
+  unsuccessful_sample_costs_buffer_[num_in_unsuccessful_buffer_] =
     all_sample_costs_[0];
   num_in_unsuccessful_buffer_++;
 
@@ -1953,8 +1967,8 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   }
   double curr_pos_and_rot_cost = 0;  // accumulate costs across all objects
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    curr_pos_and_rot_cost += 
-      pos_and_rot_error_vecs.at(i).transpose() * Q_pos_and_rots.at(i) * pos_and_rot_error_vecs.at(i); 
+    curr_pos_and_rot_cost +=
+      pos_and_rot_error_vecs.at(i).transpose() * Q_pos_and_rots.at(i) * pos_and_rot_error_vecs.at(i);
   }
 
   // Check for progress along different metrics.
@@ -2077,16 +2091,16 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
-  
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
@@ -2094,7 +2108,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
   direction = rot * direction;
 
@@ -2110,8 +2124,8 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
-  
+  }
+
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
   ee_orientation_traj.datatypes =  std::vector<std::string>(ee_orientations.rows(), "double"); // quaternion
@@ -2163,13 +2177,13 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
 
     knots.push_back(knot);
-  } 
+  }
   std::vector<LcmTrajectory::Trajectory> object_trajs;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     LcmTrajectory::Trajectory object_traj;
     object_traj.traj_name = "object_position_target_" + std::to_string(i);
     object_traj.datatypes = std::vector<std::string>(knots.at(i).rows(), "double");
-    object_traj.datapoints = knots.at(i);    
+    object_traj.datapoints = knots.at(i);
     object_traj.time_vector = c3_solution->time_vector_.cast<double>();
 
     object_trajs.push_back(object_traj);
@@ -2185,7 +2199,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
-  
+
   for (int i = 0; i < controller_params_.num_objects; i++) {
     MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
     orientation_sample =
@@ -2321,14 +2335,14 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
@@ -2336,7 +2350,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
   direction = rot * direction;
 
@@ -2352,9 +2366,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
+  }
 
-  
+
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
   ee_orientation_traj.datatypes =  std::vector<std::string>(ee_orientations.rows(), "double"); // quaternion
@@ -2409,8 +2423,8 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
     object_traj.time_vector = c3_solution->time_vector_.cast<double>();
 
     object_trajs.push_back(object_traj);
-  } 
-  
+  }
+
   std::vector<std::string> traj_names;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     traj_names.push_back("object_position_target_" + std::to_string(i));
@@ -2434,9 +2448,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       c3_solution->time_vector_.cast<double>();
     lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                           object_orientation_traj);
-  } 
+  }
 
-  
+
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
@@ -2525,7 +2539,7 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
                          "end_effector_position_target", false);
 
 
-  LcmTrajectory::Trajectory ee_orientation_traj = 
+  LcmTrajectory::Trajectory ee_orientation_traj =
     c3_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
   lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
 
@@ -2549,11 +2563,11 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory ee_orientation_traj = 
+  LcmTrajectory::Trajectory ee_orientation_traj =
     repos_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
   lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
 
-                     
+
   LcmTrajectory::Trajectory force_traj =
     repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
@@ -2645,7 +2659,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   Eigen::MatrixXd position_samples = Eigen::MatrixXd::Zero(3, N_ + 1);
   position_samples = knots.bottomRows(3);
   ee_traj.traj_name = "ee_position_target";
-  ee_traj.datatypes = 
+  ee_traj.datatypes =
       std::vector<std::string>(position_samples.rows(), "double");
   ee_traj.datapoints = position_samples;
   ee_traj.time_vector = timestamps.cast<double>();
@@ -2653,14 +2667,14 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
                             "ee_position_target", "ee_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
@@ -2668,7 +2682,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
   direction = rot * direction;
 
@@ -2685,7 +2699,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
+  }
 
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
@@ -2705,7 +2719,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
     const {
-    
+
   std::vector<Eigen::VectorXd> dynamically_feasible_traj =
     std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   for (int i = 0; i < N_ + 1; i++) {
@@ -2718,7 +2732,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   std::vector<Eigen::VectorXd> timestamps;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     Eigen::MatrixXd knot = Eigen::MatrixXd::Zero(7, N_ + 1);
-    Eigen::VectorXd timestamp = 
+    Eigen::VectorXd timestamp =
       Eigen::VectorXd::Zero(dynamically_feasible_traj.size());
 
     for (int j = 0; j < dynamically_feasible_traj.size(); j++) {
@@ -2728,7 +2742,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     knots.push_back(knot);
     timestamps.push_back(timestamp);
   }
-  
+
 
   std::vector<LcmTrajectory::Trajectory> object_trajs;
   for (int i = 0; i < controller_params_.num_objects; i++) {
@@ -2742,8 +2756,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     object_traj.time_vector = timestamps.at(i).cast<double>();
 
     object_trajs.push_back(object_traj);
-  } 
- 
+  }
+
   std::vector<std::string> traj_names;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     traj_names.push_back("object_position_target_" + std::to_string(i));
@@ -2757,7 +2771,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     Eigen::MatrixXd orientation_sample = Eigen::MatrixXd::Zero(4, N_ + 1);
     for (int j = 0; j < controller_params_.num_objects; j++) {
       orientation_sample = knots.at(i).topRows(4);
-    } 
+    }
     object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
     object_orientation_traj.datatypes =
       std::vector<std::string>(orientation_sample.rows(), "double");
@@ -2766,7 +2780,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                           object_orientation_traj);
   }
-  
+
 
   dynamically_feasible_curr_plan_object->saved_traj =
     lcm_traj.GenerateLcmObject();
@@ -2806,25 +2820,25 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
   LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
                             "ee_position_target", "ee_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_); 
+  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
 
   Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
   workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] + sampling_c3_options_.workspace_limits[0][4]) / 2;
   workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] + sampling_c3_options_.workspace_limits[1][4]) / 2;
 
-  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] - 
-      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);  
+  Eigen::Vector2d max_radius(sampling_c3_options_.workspace_limits[0][4] -
+      workspace_center[0], sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
   double max_dist = max_radius.norm();
 
   Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  
+
   Eigen::Matrix3d rot;
   rot << 0, 1, 0,
         -1, 0, 0,
         0, 0, 1;
-  
+
   direction[2] = 0;
-  
+
   direction = rot * direction;
 
   // If outside of radius, tilt ee so away from workspace center, otherwise set vertical
@@ -2840,7 +2854,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
 
   for (int i = 0; i < N_; i++) {
     ee_orientations.col(i) = q_vec;
-  } 
+  }
 
   LcmTrajectory::Trajectory ee_orientation_traj;
   ee_orientation_traj.traj_name = "end_effector_orientation_target";
@@ -2876,7 +2890,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
       knot.col(j) = dynamically_feasible_traj[j].segment(3 + 7*i, 7);
       timestamp(j) = j;
     }
-  
+
     LcmTrajectory::Trajectory object_traj;
     Eigen::MatrixXd position_sample = Eigen::MatrixXd::Zero(3, N_ + 1);
     position_sample = knot.bottomRows(3);
@@ -2889,15 +2903,15 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     object_trajs.push_back(object_traj);
     knots.push_back(knot);
     timestamps.push_back(timestamp);
-  } 
-  
+  }
+
   std::vector<std::string> traj_names;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     traj_names.push_back("object_position_target_" + std::to_string(i));
   }
   LcmTrajectory lcm_traj(object_trajs, traj_names,
                          "object_target", "object_target", false);
-                      
+
 
   for (int i = 0; i < controller_params_.num_objects; i++) {
 

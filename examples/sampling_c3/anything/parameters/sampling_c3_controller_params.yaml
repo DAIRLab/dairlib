@@ -14,10 +14,10 @@ lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
-object_models: [examples/sampling_c3/urdf/H_shape_video/H_shape_video_controller.sdf]
+object_models: [examples/sampling_c3/urdf/3_shape_video/3_shape_video_controller.sdf, examples/sampling_c3/urdf/B_shape_video/B_shape_video_controller.sdf]
 object_body_name: body
 base_name: lollipop
-base_names: [H_shape_video]
+base_names: [3_shape_video, B_shape_video]
 
 include_end_effector_orientation: false
 

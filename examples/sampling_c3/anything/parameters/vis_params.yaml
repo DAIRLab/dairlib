@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: [examples/sampling_c3/urdf/H_shape_video/H_shape_video.sdf]
+object_vis_models: [examples/sampling_c3/urdf/3_shape_video/3_shape_video.sdf, examples/sampling_c3/urdf/B_shape_video/B_shape_video.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]

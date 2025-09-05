@@ -149,6 +149,8 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
       (object_angular_error < goal_params_.orientation_success_threshold)) {
     std::cout << "\nObject " << index << " Met pose goal!\n" << std::endl;
     reached_goal_[index] = true;
+  }else{
+    reached_goal_[index] = false;
   }
 
   bool all_reached = true;

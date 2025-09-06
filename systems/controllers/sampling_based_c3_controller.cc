@@ -737,8 +737,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     double object_angular_error = angle_axis_diff.angle();
 
     object_on_target.push_back(
-      (object_position_error < goal_params_.position_success_threshold) &&
-      (object_angular_error < goal_params_.orientation_success_threshold));
+      ((crossed_cost_switching_threshold_) &&
+       (object_position_error < goal_params_.position_success_threshold) &&
+       (object_angular_error < goal_params_.orientation_success_threshold)) ||
+      ((!crossed_cost_switching_threshold_) &&
+       (object_position_error < goal_params_.position_success_threshold)));
   }
 
   std::vector<Eigen::VectorXd> candidate_states = GenerateSampleStates(

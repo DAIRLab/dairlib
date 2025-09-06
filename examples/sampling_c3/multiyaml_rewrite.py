@@ -175,7 +175,7 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml['resolve_contacts_to_lists'] = [
         [0, 1, num_objects * 3] + [1] * choose_2(num_objects) + [include_walls] * num_objects]
     samp_c3_options_yaml['resolve_as_planar_contacts_list'] = \
-        [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
+        [0, 0, 0] + [1] * choose_2(num_objects) + [include_walls] * num_objects
     samp_c3_options_yaml["mu_per_pair_type"] = build_mu_per_pair_type(num_objects, include_walls)
 
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects, is_full_pose_tracking=True)

@@ -626,26 +626,18 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
 
     do {
         // Select object weighted by total area 
-        double target_area = dis_obj(gen);
-        int selected_obj_idx = -1;
-        double area_accumulator = 0.0;
+        std::random_device rd;  
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(0, num_objects_selected - 1);
+        int selected_object_idx = dist(gen);
 
-        for (int obj_idx = 0; obj_idx < num_objects_selected; ++obj_idx) {
-            area_accumulator += total_area_per_object_selected[obj_idx];
-            if (target_area <= area_accumulator) {
-                selected_obj_idx = obj_idx;
-                break;
-            }
-        }
-        if (selected_obj_idx < 0) selected_obj_idx = num_objects_selected - 1; // fallback
-
-        const auto& faces = faces_per_object_selected[selected_obj_idx];
-        const auto& bins = face_bins_per_object_selected[selected_obj_idx];
+        const auto& faces = faces_per_object_selected[selected_object_idx];
+        const auto& bins = face_bins_per_object_selected[selected_object_idx];
 
         // Transform faces for selected object
         std::vector<Face> faces_world;
-        Eigen::Matrix3d R = object_quats_selected[selected_obj_idx].toRotationMatrix();
-        Eigen::Vector3d t = object_positions_selected[selected_obj_idx];
+        Eigen::Matrix3d R = object_quats_selected[selected_object_idx].toRotationMatrix();
+        Eigen::Vector3d t = object_positions_selected[selected_object_idx];
 
         // Select face weighted by area (area is rotation-invariant)
         std::uniform_real_distribution<double> dis_face(0.0, bins.back());

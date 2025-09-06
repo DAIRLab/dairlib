@@ -7,12 +7,12 @@
         <pose>0 0 0 0 0 0</pose>
         <mass>0.05</mass>
         <inertia>
-          <ixx>7.4275436e-05</ixx>
-          <iyy>0.00014832117</iyy>
-          <izz>0.00021277962</izz>
-          <ixy>-4.8328392e-06</ixy>
-          <ixz>2.6960628e-06</ixz>
-          <iyz>-1.5130503e-06</iyz>
+          <ixx>7.4299284e-05</ixx>
+          <iyy>0.00014828278</iyy>
+          <izz>0.00021277824</izz>
+          <ixy>-4.8875139e-06</ixy>
+          <ixz>2.683741e-06</ixz>
+          <iyz>-1.504576e-06</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">

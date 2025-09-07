@@ -30,7 +30,7 @@ cost_type_position: 5
 track_c3_progress_via: 3
 
 # Ignore orientation errors when object is beyond this threshold from the goal.
-cost_switching_threshold_distance: 0.05
+cost_switching_threshold_distance: 0.15
 
 # Penalize repositioning distance.
 travel_cost_per_meter: 0
@@ -42,7 +42,7 @@ num_control_loops_to_wait_position: 5
 
 # kConfigCostDrop parameters.
 progress_enforced_cost_drop: 0.5
-progress_enforced_over_n_loops: 25
+progress_enforced_over_n_loops: 30
 
 ### Hysteresis parameters for switching between C3 and repositioning modes.
 finished_reposition_cost: 1000000000

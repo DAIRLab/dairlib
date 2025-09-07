@@ -46,7 +46,7 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
         T = np.eye(4)
         T[:3, 3] = -1 * m.centroid
         m.apply_transform(T)
-        m = m.apply_scale(0.8)
+        m = m.apply_scale(0.7)
         m.apply_transform(np.linalg.inv(T))
 
         m.vertex_normals  # include this call to ensure vn lines in obj

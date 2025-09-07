@@ -960,15 +960,14 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
-  if (result.is_success()) {
-    if (warm_start_) {
-      UpdateWarmStarts(result, admm_iteration);
-    }
-    ExtractQPSolution(result, admm_iteration, is_final_solve);
-    return *z_sol_;
-  } else {
-    throw std::runtime_error("CAUTION: QP Step in C3 did not succeed");
+  if (!result.is_success()) {
+    std::cout << "CAUTION: QP Step in C3 did not succeed" << std::endl;
   }
+  if (warm_start_) {
+    UpdateWarmStarts(result, admm_iteration);
+  }
+  ExtractQPSolution(result, admm_iteration, is_final_solve);
+  return *z_sol_;
 }
 
 vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,

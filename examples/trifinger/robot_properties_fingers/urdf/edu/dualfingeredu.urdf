@@ -239,7 +239,7 @@
   <joint name="mount_to_densetact_120" type="fixed">
     <parent link="finger_lower_link_120"/>
     <child link="densetact_120"/>
-    <origin rpy="0 0 0" xyz="0 -0.008 -0.14785"/>
+    <origin rpy="0 0 0" xyz="0 -0.008 -0.14485"/>
     <!--<origin rpy="0 0 0" xyz="0 -0.008 -0.14985"/> -->
   </joint>
 
@@ -365,14 +365,15 @@
   </link>
   <link name="finger_lower_link_0">
     <visual>
-      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1281"/>
+      <!-- FYI: changed Z from -0.1281, 5mm -->
+      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1231"/>
       <geometry>
         <mesh filename="../meshes/edu/link_mount_dt1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
-      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1281"/>
+      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1231"/>
       <geometry>
         <mesh filename="../meshes/edu/link_mount_dt1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -444,7 +445,7 @@
   <joint name="mount_to_densetact_0" type="fixed">
     <parent link="finger_lower_link_0"/>
     <child link="densetact_0"/>
-    <origin rpy="0 0 0" xyz="-0.005 -0.01 -0.140974"/>
+    <origin rpy="0 0 0" xyz="-0.005 -0.01 -0.142974"/>
     <!--<origin rpy="0 0 0" xyz="0 -0.008 -0.151974"/>-->
   </joint>
 

@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: [examples/sampling_c3/urdf/R_shape/R_shape.sdf]
+object_vis_models: [examples/sampling_c3/urdf/A_shape_video/A_shape_video.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]
@@ -10,7 +10,7 @@ visualize_c3_workspace: false
 visualize_c3_state: true
 
 visualize_center_of_mass_plan_curr: false
-visualize_c3_forces_curr: true
+visualize_c3_forces_curr: false
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false
 

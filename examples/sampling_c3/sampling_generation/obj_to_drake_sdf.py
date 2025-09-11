@@ -2,6 +2,7 @@
 non-convex meshes without using the convex hull in order to avoid mismatched 
 geometry."""
 
+import numpy as np
 import os
 import trimesh
 from lxml import etree as ET
@@ -41,6 +42,13 @@ def main(obj_file, output_dir=None, model_name=None, density=1000.0, resolution=
     convex_paths = []
     for i, m in enumerate(convex_meshes):
         out_path = os.path.join(output_dir, f"{obj_name}_convex_{i}.obj")
+        # Translate to origin, rescale vertices, then translate back.
+        T = np.eye(4)
+        T[:3, 3] = -1 * m.centroid
+        m.apply_transform(T)
+        m = m.apply_scale(0.7)
+        m.apply_transform(np.linalg.inv(T))
+
         m.vertex_normals  # include this call to ensure vn lines in obj
         m.export(out_path)
         convex_paths.append(out_path)

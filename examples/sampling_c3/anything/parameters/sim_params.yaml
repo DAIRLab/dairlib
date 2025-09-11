@@ -1,5 +1,5 @@
 object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
-object_models: [examples/sampling_c3/urdf/R_shape/R_shape.sdf]
+object_models: [examples/sampling_c3/urdf/A_shape_video/A_shape_video.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000

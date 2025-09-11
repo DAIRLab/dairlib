@@ -19,7 +19,7 @@ filter_samples_for_safety: true
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample
 # number solved in parallel for each control loop.
-num_additional_samples_repos: 5
+num_additional_samples_repos: 4
 num_additional_samples_c3: 5
 
 # Sample buffer parameters.
@@ -28,16 +28,17 @@ N_sample_buffer: 200
 pos_error_sample_retention: 0.002
 ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
 
-# Unsuccessful sample buffer parameters.  Position and angular error sample
-# retention match that for the sample buffer above.
+# Unsuccessful sample buffer parameters.
 avoid_choosing_unsuccessful_samples: true
 N_unsuccessful_sample_buffer: 10
+unsuccessful_pos_error_sample_retention: 0.006
+unsuccessful_ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
 unsuccessful_radius: 0.01
 
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.03   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
+sample_projection_clearance: 0.027   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
 min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
 max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 

@@ -13,8 +13,14 @@ yaml_io.default_flow_style = True
 def coarsify_obj(path):
     mesh = trimesh.load(path)
     num_faces = len(mesh.faces)
-    if num_faces > 150000:
-        ratio = 1 - (150000/num_faces)
+    if num_faces > 10000:
+        print("COARSIFIED")
+        ratio = 1 - (10000/num_faces)
+
+        root, ext = os.path.splitext(path)   
+        new_path = f"{root}_backup{ext}"
+
+        mesh.export(new_path) # make backup of object
         simplified = mesh.simplify_quadric_decimation(ratio)
         simplified.export(path)
         return True
@@ -34,9 +40,15 @@ def get_num_objects_from_yaml(yaml_path: str) -> int:
     models = data.get("base_names")
     return len(models)
 
-def calculate_contacts(num_objects: int, include_walls: int) -> int:
+def compute_num_contacts_obj_to_obj(num_objects: int) -> int:
+    return choose_2(num_objects)
 
-    return choose_2(num_objects) + num_objects * 3 + 1 + include_walls
+def compute_num_contacts_obj_to_ground(num_objects: int) -> int:
+    return num_objects * 3
+
+def calculate_contacts(num_objects: int, include_walls: int) -> int:
+    return compute_num_contacts_obj_to_obj(num_objects) + \
+           compute_num_contacts_obj_to_ground(num_objects) + 1 + include_walls
 
 def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
@@ -126,7 +138,7 @@ def build_q_vector(num_objects: int, is_full_pose_tracking: bool = True) -> list
     EE_POSITION = [0.01, 0.01, 0.01]
 
     if (is_full_pose_tracking):
-        OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]
+        OBJECT_ORIENTATION = [0.1, 0.1, 0.1, 0.1]  
         OBJECT_POSITION = [150, 150, 120]
     else:
         OBJECT_ORIENTATION = [0, 0, 0, 0]
@@ -163,7 +175,7 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml['resolve_contacts_to_lists'] = [
         [0, 1, num_objects * 3] + [1] * choose_2(num_objects) + [include_walls] * num_objects]
     samp_c3_options_yaml['resolve_as_planar_contacts_list'] = \
-        [0] * len(samp_c3_options_yaml['resolve_contacts_to_lists'][0])
+        [0, 0, 0] + [1] * choose_2(num_objects) + [include_walls] * num_objects
     samp_c3_options_yaml["mu_per_pair_type"] = build_mu_per_pair_type(num_objects, include_walls)
 
     samp_c3_options_yaml["q_vector"] = build_q_vector(num_objects, is_full_pose_tracking=True)
@@ -198,7 +210,8 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_list"] = [[1000] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
+        samp_c3_options_yaml["u_lambda_list"] = [[1000] * 4 + [1000] * 4 * compute_num_contacts_obj_to_ground(num_objects) \
+                                               + [1] * 4 * compute_num_contacts_obj_to_obj(num_objects) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_eta_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x"] = [0] * (6 + (13 * num_objects))
     else:
@@ -228,7 +241,8 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["u_eta_slack_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_n_position_list"] = [[1] * calculate_contacts(num_objects, include_walls * num_objects)]
         samp_c3_options_yaml["u_eta_t_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]   
-        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * (4 * calculate_contacts(num_objects, 0)) + [1] * (4*num_objects*include_walls)]
+        samp_c3_options_yaml["u_lambda_position_list"] = [[1000] * 4 + [1000] * 4 * compute_num_contacts_obj_to_ground(num_objects) \
+                                               + [1] * 4 * compute_num_contacts_obj_to_obj(num_objects) + [1] * (4*num_objects*include_walls)]
         samp_c3_options_yaml["u_eta_position_list"] = [[1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))]
         samp_c3_options_yaml["u_x_position"] = [0] * (6 + (13 * num_objects))
     else:
@@ -307,7 +321,7 @@ if __name__ == "__main__":
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
     # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
-    goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
+    goal_yaml["fixed_target_positions"] = [[0.5, -0.1 + (0.2 * (index % num_objects)), 
                                                 z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 
@@ -325,7 +339,7 @@ if __name__ == "__main__":
     
     min_max_z = min(max_zs_world)
 
-    sampling_yaml['z_height'] = max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
+    sampling_yaml['z_height'] = 0.002 #max(0.002, (-0.029 + min_max_z) / 2 + 0.008)
     
     # Update c3_options
     is_c3_plus = "plus" in samp_c3_options_yaml_path

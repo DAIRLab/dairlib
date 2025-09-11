@@ -77,6 +77,9 @@ CAM_FOV = np.pi/6
 VIDEO_PIXELS = [320, 640]
 VIDEO_FPS = 30
 
+LOOSE_POS_TOL = 0.05
+LOOSE_ROT_TOL = 0.4
+
 EXPERIMENT_YAML = op.join(
   DAIRLIB_DIR, 'examples', 'sampling_c3', 'process_lcm_logs.yaml')
 with open(EXPERIMENT_YAML, 'r') as f:
@@ -194,11 +197,11 @@ def synchronize_msgs(msg_dicts: List[dict]) -> List[dict]:
       lcm_time = msg_dict[LCM_TIME_KEY]
       nearest = min(
         msg_dicts[channel], key=lambda x: abs(x[LCM_TIME_KEY] - lcm_time))
-      if abs(nearest[LCM_TIME_KEY] - lcm_time) > DT_WARNING * 1e6:
-        print(f'WARNING: {channel=} nearest message is ' + \
-              f'{abs(nearest[LCM_TIME_KEY] - lcm_time) * 1e-6:.2f} secs away')
+      # if abs(nearest[LCM_TIME_KEY] - lcm_time) > DT_WARNING * 1e6:
+      #   print(f'WARNING: {channel=} nearest message is ' + \
+      #         f'{abs(nearest[LCM_TIME_KEY] - lcm_time) * 1e-6:.2f} secs away')
       synced_msg_dicts[channel].append(nearest)
-    print(f'Synced {channel} to {min_channel}')
+    # print(f'Synced {channel} to {min_channel}')
 
   print(f'\nAfter synchronization:')
   for channel, msgs in synced_msg_dicts.items():
@@ -269,9 +272,10 @@ def get_shading_masks(bool_array: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 def plot_errors_for_goal(
     goal: int, times: np.ndarray, completed_goals: np.ndarray,
     position_errors: np.ndarray, orientation_errors: np.ndarray,
-    within_tolerance: np.ndarray, in_pose_tracking_mode: np.ndarray,
-    in_c3_mode: np.ndarray, object_names: list, pos_threshold: float,
-    rot_threshold: float, save_to: str = None, known_success: bool = True
+    within_tight_tolerance: np.ndarray, within_loose_tolerance: np.ndarray,
+    in_pose_tracking_mode: np.ndarray, in_c3_mode: np.ndarray,
+    object_names: list, pos_threshold: float, rot_threshold: float,
+    save_to: str = None, known_success: bool = True
 ) -> None:
   outcome = 'Success' if known_success or goal+1 in completed_goals else \
     'Failure'
@@ -281,9 +285,12 @@ def plot_errors_for_goal(
   ts = times[start:end] - times[start]
   pos_errors = position_errors[start:end]
   rot_errors = orientation_errors[start:end]
-  within_tol = within_tolerance[start:end]
+  within_tight_tol = within_tight_tolerance[start:end]
+  within_loose_tol = within_loose_tolerance[start:end]
   in_pose_tracking_mode = in_pose_tracking_mode[start:end]
   in_c3_mode = in_c3_mode[start:end]
+
+  n_objs = within_loose_tol.shape[1]
 
   # Some variables for doing C3/repositioning shading.
   double_t = np.repeat(ts, 2)
@@ -299,15 +306,30 @@ def plot_errors_for_goal(
     ax.fill_between(double_t, 0, 1.05, where=repos_mask, color='gray',
                     alpha=0.5, transform=ax.get_xaxis_transform())
   axs[0].axhline(y=pos_threshold, linestyle='--', color='black',
-                 label=f'Success threshold')
+                 label=f'Tight success threshold')
   axs[1].axhline(y=rot_threshold, linestyle='--', color='black',
-                 label=f'Success threshold')
+                 label=f'Tight success threshold')
+  axs[0].axhline(y=LOOSE_POS_TOL, linestyle='--', color='red',
+                 label=f'Loose success threshold')
+  axs[1].axhline(y=LOOSE_ROT_TOL, linestyle='--', color='red',
+                 label=f'Loose success threshold')
+  # Add vertical line when pose tracking kicks in, if not at the beginning.
   try:
     pose_tracking_t = ts[np.where(in_pose_tracking_mode)[0][0]]
     axs[0].axvline(x=pose_tracking_t, linestyle='--', color='purple',
                   label='Starting full pose tracking')
     axs[1].axvline(x=pose_tracking_t, linestyle='--', color='purple',
                   label='Starting full pose tracking')
+  except IndexError:
+    pass
+  # Add vertical line when loose tolerance is first met, if before end of trial.
+  try:
+    loose_tol_idx = np.where(within_loose_tol.sum(axis=1) == n_objs)[0][0]
+    t_to_loose = ts[loose_tol_idx]
+    axs[0].axvline(x=t_to_loose, linestyle='--', color='red',
+                  label='Met loose success threshold')
+    axs[1].axvline(x=t_to_loose, linestyle='--', color='red',
+                  label='Met loose success threshold')
   except IndexError:
     pass
   axs[0].set_ylabel('Position Error (m)', fontsize=14)
@@ -364,14 +386,26 @@ def build_object_urdf(obj_filepath: str, i: int, actual: bool) -> str:
       return tmp_file.name
 
 
-def pretty_dict_print(d: dict) -> None:
+def pretty_dict_print(d: dict, title: str = None) -> None:
   """Print a dictionary in a pretty format."""
-  print(f'\n')
+  print(f'\n{title}')
   for key, value in d.items():
     val = value
     if type(value) == float:
       val = f'{value:.2f}'
     print(f"{key}: {val}")
+
+
+def get_stats_dict(times_to_goal: np.ndarray) -> dict:
+  stats = {
+    "num achieved goals": len(times_to_goal),
+    "mean time to goal": np.mean(times_to_goal).item(),
+    "standard deviation": np.std(times_to_goal).item(),
+    "min time to goal": np.min(times_to_goal).item(),
+    "max time to goal": np.max(times_to_goal).item(),
+    "all times to goal": times_to_goal
+  }
+  return stats
 
 
 def log_config_from_subfolders(log_subfolders: List[str], log_dir: str
@@ -443,8 +477,10 @@ class LogAnalyzer:
 
     while event is not None:
       # Detect if beyond hard cut-off.
-      if event.timestamp > init_utime + end_utime:
+      if not after_experiment and event.timestamp > init_utime + end_utime:
+        before_experiment = False
         after_experiment = True
+        print(f'Cutting off log at {1e-6*event.timestamp - t_init:.2f} secs')
       # Detect if the experiment started.
       if self.cut_off_teleop and before_experiment:
         if event.channel == 'SAMPLING_C3_DEBUG':
@@ -509,7 +545,8 @@ class LogAnalyzer:
 
     position_errors_by_object = np.zeros((n_timestamps, n_objects))
     orientation_errors_by_object = np.zeros((n_timestamps, n_objects))
-    within_tolerance = np.zeros((n_timestamps, n_objects))
+    within_tight_tolerance = np.zeros((n_timestamps, n_objects))
+    within_loose_tolerance = np.zeros((n_timestamps, n_objects))
 
     for i in range(n_timestamps):
       goal = CHANNEL_LCMT['C3_FINAL_TARGET'].decode(
@@ -523,9 +560,12 @@ class LogAnalyzer:
           current_by_object[i, obj_i], goals_by_object[i, obj_i])
         orientation_errors_by_object[i, obj_i] = orientation_error(
           current_by_object[i, obj_i], goals_by_object[i, obj_i])
-        within_tolerance[i, obj_i] = \
+        within_tight_tolerance[i, obj_i] = \
           position_errors_by_object[i, obj_i] <= pos_threshold and \
           orientation_errors_by_object[i, obj_i] <= rot_threshold
+        within_loose_tolerance[i, obj_i] = \
+          position_errors_by_object[i, obj_i] <= LOOSE_POS_TOL and \
+          orientation_errors_by_object[i, obj_i] <= LOOSE_ROT_TOL
       ee_positions[i, :] = curr.state[:3]
 
       debug = CHANNEL_LCMT['SAMPLING_C3_DEBUG'].decode(
@@ -550,14 +590,16 @@ class LogAnalyzer:
       in_c3_mode = in_c3_mode[:last_idx]
       position_errors_by_object = position_errors_by_object[:last_idx]
       orientation_errors_by_object = orientation_errors_by_object[:last_idx]
-      within_tolerance = within_tolerance[:last_idx]
+      within_tight_tolerance = within_tight_tolerance[:last_idx]
+      within_loose_tolerance = within_loose_tolerance[:last_idx]
 
     if self.make_plots:
       for goal in np.unique(completed_goals):
         plot_errors_for_goal(
           goal, times, completed_goals, position_errors_by_object,
-          orientation_errors_by_object, within_tolerance, in_pose_tracking_mode,
-          in_c3_mode, list_of_objects, pos_threshold, rot_threshold,
+          orientation_errors_by_object, within_tight_tolerance,
+          within_loose_tolerance, in_pose_tracking_mode, in_c3_mode,
+          list_of_objects, pos_threshold, rot_threshold,
           save_to=get_log_output_folder(log_filepath),
           known_success=self.cut_off_last_goal)
 
@@ -568,15 +610,17 @@ class LogAnalyzer:
     self._save_info_from_log(
       times, current_by_object, goals_by_object, ee_positions, completed_goals,
       in_pose_tracking_mode, position_errors_by_object,
-      orientation_errors_by_object, within_tolerance, list_of_objects,
-      log_filepath)
+      orientation_errors_by_object, within_tight_tolerance,
+      within_loose_tolerance, list_of_objects, log_filepath)
 
   def _save_info_from_log(
       self, times: np.ndarray, current_by_object: np.ndarray,
       goals_by_object: np.ndarray, ee_positions: np.ndarray,
       completed_goals: np.ndarray, in_pose_tracking_mode: np.ndarray,
       position_errors_by_object: np.ndarray,
-      orientation_errors_by_object: np.ndarray, within_tolerance: np.ndarray,
+      orientation_errors_by_object: np.ndarray,
+      within_tight_tolerance: np.ndarray,
+      within_loose_tolerance: np.ndarray,
       list_of_objects: List[str], log_filepath: str):
     """Sizes:
       - times: (n_timestamps,)
@@ -587,7 +631,8 @@ class LogAnalyzer:
       - in_pose_tracking_mode: (n_timestamps,)
       - position_errors_by_object: (n_timestamps, n_objects)
       - orientation_errors_by_object: (n_timestamps, n_objects)
-      - within_tolerance: (n_timestamps, n_objects)
+      - within_tight_tolerance: (n_timestamps, n_objects)
+      - within_loose_tolerance: (n_timestamps, n_objects)
       - log_indices: (n_timestamps)
     """
     log_idx = self.log_filepaths.index(log_filepath)
@@ -604,7 +649,8 @@ class LogAnalyzer:
       self.in_pose_tracking_mode = np.zeros((0))
       self.position_errors_by_object = np.zeros((0, n_objects))
       self.orientation_errors_by_object = np.zeros((0, n_objects))
-      self.within_tolerance = np.zeros((0, n_objects))
+      self.within_tight_tolerance = np.zeros((0, n_objects))
+      self.within_loose_tolerance = np.zeros((0, n_objects))
       self.log_indices = np.zeros((0))
       self.list_of_objects = np.array(list_of_objects)
 
@@ -639,13 +685,15 @@ class LogAnalyzer:
       (self.position_errors_by_object, position_errors_by_object), axis=0)
     self.orientation_errors_by_object = np.concatenate(
       (self.orientation_errors_by_object, orientation_errors_by_object), axis=0)
-    self.within_tolerance = np.concatenate(
-      (self.within_tolerance, within_tolerance), axis=0)
+    self.within_tight_tolerance = np.concatenate(
+      (self.within_tight_tolerance, within_tight_tolerance), axis=0)
+    self.within_loose_tolerance = np.concatenate(
+      (self.within_loose_tolerance, within_loose_tolerance), axis=0)
     self.log_indices = np.concatenate((self.log_indices, log_indices), axis=0)
 
   def _report_statistics(self):
     # Get the indices of new completed goal changes.
-    completed_goal_indices = np.where(np.diff(self.completed_goals) == 1)[0] + 1
+    completed_goal_indices = np.where(np.diff(self.completed_goals) != 0)[0] + 1
     finished_goal_ts = self.times[completed_goal_indices]
     # Include the first and last timestamp to get the start of the first goal
     # and end of the last goal.
@@ -657,15 +705,25 @@ class LogAnalyzer:
     assert t_splits.shape[0] == len(np.unique(self.completed_goals)) + 1
 
     times_to_goal = t_splits[1:] - t_splits[:-1]
-    stats = {
-      "num achieved goals": len(times_to_goal),
-      "mean time to goal": np.mean(times_to_goal).item(),
-      "standard deviation": np.std(times_to_goal).item(),
-      "min time to goal": np.min(times_to_goal).item(),
-      "max time to goal": np.max(times_to_goal).item(),
-      "all times to goal": times_to_goal
-    }
-    pretty_dict_print(stats)
+    stats = get_stats_dict(times_to_goal)
+    pretty_dict_print(stats, title=f'Tight tolerances')
+
+    # Compute times to looser tolerances.
+    loose_times_to_goal = []
+    for i, goal_i in enumerate(np.unique(self.completed_goals)):
+      goal_indices = np.where(self.completed_goals == goal_i)[0]
+      n_objs = self.within_loose_tolerance.shape[1]
+      try:
+        loose_tol_idx = np.where(
+          self.within_loose_tolerance[goal_indices].sum(axis=1) == n_objs)[0][0]
+        t_to_loose = self.times[goal_indices][loose_tol_idx] - \
+          self.times[goal_indices][0]
+        loose_times_to_goal.append(t_to_loose)
+      except IndexError:
+        loose_times_to_goal.append(times_to_goal[i])
+
+    stats = get_stats_dict(np.array(loose_times_to_goal))
+    pretty_dict_print(stats, title=f'Loose tolerances')
 
 
 class Visualizer:
@@ -702,7 +760,7 @@ class Visualizer:
 
     plant.RegisterVisualGeometry(
       plant.world_body(), RigidTransform(p=np.array([0, 0, -0.029])),
-      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 0.5]))
+      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 0.5]))  # TODO change background color
     plant.Finalize()
     plant.set_name('plant')
 

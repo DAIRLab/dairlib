@@ -192,8 +192,7 @@ class SamplingC3GoalGeneratorJacktoy : public SamplingC3GoalGenerator {
       SamplingC3GoalGenerator(
         object_plant,
         goal_params,
-        std::vector<std::vector<Eigen::Quaterniond>>{
-            kNominalOrientationsJack},
+        std::vector<std::vector<Eigen::Quaterniond>>{kNominalOrientationsJack},
         object_indices) {}
 };
 
@@ -206,7 +205,13 @@ class SamplingC3GoalGeneratorPlanar : public SamplingC3GoalGenerator {
     std::vector<drake::multibody::ModelInstanceIndex> object_indices
   ) :
       SamplingC3GoalGenerator(
-        object_plant, goal_params, MakeNominalOrientationsPlanar(object_indices.size()), object_indices) {}
+        object_plant,
+        goal_params,
+        MakeNominalOrientationsPlanar(object_indices.size()),
+        object_indices) {}
+
+ private:
+  mutable int orientation_index_ = 0;
 };
 
 

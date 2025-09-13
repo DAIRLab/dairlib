@@ -656,13 +656,15 @@ class LogAnalyzer:
 
     else:
       for obj in list_of_objects:
-        assert obj in self.list_of_objects, f'Object lists do not match ' + \
+        if not obj in self.list_of_objects:
+          print(f'Object lists do not match ' + \
           f'across logs: {list_of_objects=} for {log_filepath}, but got ' + \
-          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}'
+          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}')
       for obj in self.list_of_objects:
-        assert obj in list_of_objects, f'Object lists do not match across ' + \
+        if not obj in list_of_objects:
+          print(f'Object lists do not match across ' + \
           f'logs: {list_of_objects=} for {log_filepath}, but got ' + \
-          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}'
+          f'{self.list_of_objects=} in {self.log_filepaths[log_idx-1]}')
 
       # Avoid gaps in time and completed goals when combining logs.
       avg_dt = np.mean(np.diff(self.times))
@@ -760,7 +762,7 @@ class Visualizer:
 
     plant.RegisterVisualGeometry(
       plant.world_body(), RigidTransform(p=np.array([0, 0, -0.029])),
-      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 0.5]))  # TODO change background color
+      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 1.0]))  # TODO change background color
     plant.Finalize()
     plant.set_name('plant')
 

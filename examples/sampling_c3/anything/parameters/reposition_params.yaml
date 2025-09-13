@@ -31,5 +31,5 @@ circle_height: 0.00
 max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
-pwl_waypoint_height: 0.07960213000000001
+pwl_waypoint_height: 0.08627675
 # This ^ will be overwritten by generating new files.

@@ -158,7 +158,7 @@ def build_q_vector(num_objects: int, is_full_pose_tracking: bool = True) -> list
         q_vector.extend(OBJECT_ORIENTATION)
         q_vector.extend(OBJECT_POSITION)
 
-    # 3. EE linear velocity
+    # 3. EE linear velocity\
     q_vector.extend(EE_LINEAR_VELOCITY)
 
     # 4. Object angular & linear velocities
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
     # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
     #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
-    goal_yaml["fixed_target_positions"] = [[0.5, -0.1 + (0.2 * (index % num_objects)), 
+    goal_yaml["fixed_target_positions"] = [[0.5, 0.2 * (index % num_objects) - (0.2*(num_objects-1))/2, 
                                                 z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
     goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
 

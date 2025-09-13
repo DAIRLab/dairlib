@@ -207,6 +207,9 @@ class SamplingC3GoalGeneratorPlanar : public SamplingC3GoalGenerator {
   ) :
       SamplingC3GoalGenerator(
         object_plant, goal_params, MakeNominalOrientationsPlanar(object_indices.size()), object_indices) {}
+
+ private:
+  mutable int orientation_index_ = 0;
 };
 
 

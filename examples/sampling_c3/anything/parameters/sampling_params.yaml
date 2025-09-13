@@ -19,14 +19,14 @@ filter_samples_for_safety: true
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample
 # number solved in parallel for each control loop.
-num_additional_samples_repos: 4
-num_additional_samples_c3: 5
+num_additional_samples_repos: 3
+num_additional_samples_c3: 4
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
 N_sample_buffer: 200
-pos_error_sample_retention: 0.002
-ang_error_sample_retention: 0.02  # 0.0349 rad = 2 deg
+pos_error_sample_retention: 0.004
+ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
 
 # Unsuccessful sample buffer parameters.
 avoid_choosing_unsuccessful_samples: true

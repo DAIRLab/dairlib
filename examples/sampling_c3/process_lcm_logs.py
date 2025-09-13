@@ -518,12 +518,11 @@ class LogAnalyzer:
     if self.debug:
       inspect_debug_timestamps(
         'SAMPLING_C3_DEBUG', messages_by_channel['SAMPLING_C3_DEBUG'])
-      breakpoint()
 
-    synced_msgs_by_channel = synchronize_msgs(messages_by_channel)
-    add_to_msg_dict(self.msgs_by_channel, synced_msgs_by_channel)
+    # synced_msgs_by_channel = synchronize_msgs(messages_by_channel)
+    # add_to_msg_dict(self.msgs_by_channel, synced_msgs_by_channel)
 
-    self._extract_info_from_messages(log_filepath, synced_msgs_by_channel)
+    self._extract_info_from_messages(log_filepath, messages_by_channel)
 
   def _extract_info_from_messages(
       self, log_filepath: str, msgs_by_channel: dict):
@@ -531,7 +530,7 @@ class LogAnalyzer:
     pos_threshold, rot_threshold = get_tolerances(log_filepath)
 
     n_objects = len(list_of_objects)
-    n_timestamps = len(msgs_by_channel['SAMPLING_C3_DEBUG'])
+    n_timestamps = min(len(msgs_by_channel['SAMPLING_C3_DEBUG']), len(msgs_by_channel['C3_FINAL_TARGET']), len(msgs_by_channel['C3_ACTUAL']))
 
     times = np.array([
       (msg[LCM_TIME_KEY]-msgs_by_channel['SAMPLING_C3_DEBUG'][0][LCM_TIME_KEY]
@@ -548,24 +547,29 @@ class LogAnalyzer:
     within_tight_tolerance = np.zeros((n_timestamps, n_objects))
     within_loose_tolerance = np.zeros((n_timestamps, n_objects))
 
+    self.all_lcs_target_states = []
+    self.all_lcs_actual_states = []
+
     for i in range(n_timestamps):
       goal = CHANNEL_LCMT['C3_FINAL_TARGET'].decode(
         msgs_by_channel['C3_FINAL_TARGET'][i][MSG_KEY])
+      self.all_lcs_target_states.append(goal.state)
       curr = CHANNEL_LCMT['C3_ACTUAL'].decode(
         msgs_by_channel['C3_ACTUAL'][i][MSG_KEY])
+      self.all_lcs_actual_states.append(curr.state)
       for obj_i in range(n_objects):
         current_by_object[i, obj_i, :] = curr.state[3+7*obj_i:3+7*(obj_i+1)]
         goals_by_object[i, obj_i, :] = goal.state[3+7*obj_i:3+7*(obj_i+1)]
         position_errors_by_object[i, obj_i] = position_error(
           current_by_object[i, obj_i], goals_by_object[i, obj_i])
-        orientation_errors_by_object[i, obj_i] = orientation_error(
-          current_by_object[i, obj_i], goals_by_object[i, obj_i])
-        within_tight_tolerance[i, obj_i] = \
-          position_errors_by_object[i, obj_i] <= pos_threshold and \
-          orientation_errors_by_object[i, obj_i] <= rot_threshold
-        within_loose_tolerance[i, obj_i] = \
-          position_errors_by_object[i, obj_i] <= LOOSE_POS_TOL and \
-          orientation_errors_by_object[i, obj_i] <= LOOSE_ROT_TOL
+        # orientation_errors_by_object[i, obj_i] = orientation_error(
+          # current_by_object[i, obj_i], goals_by_object[i, obj_i])
+        # within_tight_tolerance[i, obj_i] = \
+        #   position_errors_by_object[i, obj_i] <= pos_threshold and \
+        #   orientation_errors_by_object[i, obj_i] <= rot_threshold
+        # within_loose_tolerance[i, obj_i] = \
+        #   position_errors_by_object[i, obj_i] <= LOOSE_POS_TOL and \
+        #   orientation_errors_by_object[i, obj_i] <= LOOSE_ROT_TOL
       ee_positions[i, :] = curr.state[:3]
 
       debug = CHANNEL_LCMT['SAMPLING_C3_DEBUG'].decode(
@@ -573,6 +577,12 @@ class LogAnalyzer:
       completed_goals[i] = debug.detected_goal_changes
       in_pose_tracking_mode[i] = debug.in_pose_tracking_mode
       in_c3_mode[i] = debug.is_c3_mode
+
+    self.all_lcs_target_states = np.array(self.all_lcs_target_states)
+    self.all_lcs_actual_states = np.array(self.all_lcs_actual_states)
+    np.save('all_lcs_target_states_four_obj_hwlog000042_09_11_25.npy', self.all_lcs_target_states)
+    np.save('all_lcs_actual_states_four_obj_hwlog000042_09_11_25.npy', self.all_lcs_actual_states)
+    breakpoint()
 
     if self.cut_off_last_goal:
       uncompleted_goal = completed_goals[-1]

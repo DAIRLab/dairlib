@@ -33,6 +33,7 @@ cc_library(
         "//examples/sampling_c3/parameter_headers:progress_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
         "//examples/sampling_c3/parameter_headers:goal_params",
+        "//common:find_resource",
     ],
 )
 

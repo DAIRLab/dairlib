@@ -323,3 +323,58 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
+
+cc_library(
+    name = "push_anything_solver_benchmarker",
+    srcs = ["push_anything_solver_benchmarker.cc"],
+    hdrs = ["push_anything_solver_benchmarker.h"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//common",
+        "//systems:franka_kinematics",
+        "//systems:system_utils",
+        "//systems/controllers:sampling_c3_controller",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "//examples/sampling_c3:generate_samples",
+        "//examples/sampling_c3:reposition",
+        "//common:quaternion_error_hessian",
+        "//solvers:lcs",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:progress_params",
+        "//common:update_context",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+        "-lgomp",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+)
+
+py_binary(
+    name = "c3_c3plus_solve_time_comparison",
+    srcs = ["c3_c3plus_solve_time_comparison.py"],
+    deps = [
+        "//bindings/pydairlib",
+        "@drake//bindings/pydrake",
+    ],
+)

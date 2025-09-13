@@ -4,8 +4,10 @@
 #include <drake/bindings/pydrake/common/sorted_pair_pybind.h>
 
 #include "solvers/c3_miqp.h"
+#include "solvers/c3_plus.h"
 #include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
+
 
 namespace py = pybind11;
 
@@ -15,6 +17,7 @@ using py::arg;
 using std::vector;
 
 using dairlib::solvers::C3MIQP;
+using dairlib::solvers::C3Plus;
 using dairlib::solvers::LCS;
 
 namespace c3 {
@@ -91,7 +94,33 @@ PYBIND11_MODULE(c3, m) {
       .def("GetForceSolution", &C3MIQP::GetForceSolution)
       .def("GetInputSolution", &C3MIQP::GetInputSolution)
       .def("GetDualDeltaSolution", &C3MIQP::GetDualDeltaSolution)
-      .def("GetDualWSolution", &C3MIQP::GetDualWSolution);
+      .def("GetDualWSolution", &C3MIQP::GetDualWSolution)
+      .def("GetQPSolveTimes", &C3MIQP::GetQPSolveTimes)
+      .def("GetProjectionSolveTimes", &C3MIQP::GetProjectionSolveTimes);
+
+  py::class_<dairlib::solvers::C3Plus>(m, "C3Plus")
+      .def(py::init<const LCS&, const dairlib::solvers::C3Base::CostMatrices&,
+                    const vector<VectorXd>&, const C3Options&>(),
+           arg("LCS"), arg("costs"), arg("x_des"), arg("c3_options"))
+      .def("Solve", &C3Plus::Solve, arg("x0"), arg("verbose") = false)
+      .def("UpdateTarget", &C3Plus::UpdateTarget, arg("x0"))
+      .def("UpdateLCS", &C3Plus::UpdateLCS, arg("lcs"))
+      .def("ADMMStep", &C3Plus::ADMMStep, arg("x0"), arg("delta"), arg("w"),
+           arg("G"), arg("admm_iteration"), arg("verbose") = false)
+      .def("SolveQP", &C3Plus::SolveQP, arg("x0"), arg("G"), arg("WD"), arg("delta"),
+           arg("admm_iteration"), arg("is_final_solve"))
+      .def("SolveProjection", &C3Plus::SolveProjection, arg("U"), arg("WZ"), arg("admm_iteration"))
+      .def("AddLinearConstraint", &C3Plus::AddLinearConstraint, arg("A"),
+           arg("lower_bound"), arg("upper_bound"), arg("constraint"))
+      .def("RemoveConstraints", &C3Plus::RemoveUserConstraints)
+      .def("GetFullSolution", &C3Plus::GetFullSolution)
+      .def("GetStateSolution", &C3Plus::GetStateSolution)
+      .def("GetForceSolution", &C3Plus::GetForceSolution)
+      .def("GetInputSolution", &C3Plus::GetInputSolution)
+      .def("GetDualDeltaSolution", &C3Plus::GetDualDeltaSolution)
+      .def("GetDualWSolution", &C3Plus::GetDualWSolution)
+      .def("GetQPSolveTimes", &C3Plus::GetQPSolveTimes)
+      .def("GetProjectionSolveTimes", &C3Plus::GetProjectionSolveTimes);
 
   py::class_<C3Options> options(m, "C3Options");
   options.def(py::init<>())

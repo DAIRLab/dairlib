@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/find_resource.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
@@ -71,15 +72,15 @@ struct SamplingC3ControllerParams {
 
     /// Store individual parameter classes internally.
     sampling_c3_options = drake::yaml::LoadYamlFile<SamplingC3Options>(
-      sampling_c3_options_file);
+      dairlib::FindResourceOrThrow(sampling_c3_options_file));
     reposition_params = drake::yaml::LoadYamlFile<SamplingC3RepositionParams>(
-      reposition_params_file);
+      dairlib::FindResourceOrThrow(reposition_params_file));
     progress_params = drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
-      progress_params_file);
+      dairlib::FindResourceOrThrow(progress_params_file));
     sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
-      sampling_params_file);
+      dairlib::FindResourceOrThrow(sampling_params_file));
     goal_params = drake::yaml::LoadYamlFile<SamplingC3GoalParams>(
-      goal_params_file);
+      dairlib::FindResourceOrThrow(goal_params_file));
 
     num_objects = base_names.size();
   }

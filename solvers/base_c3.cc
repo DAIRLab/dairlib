@@ -910,6 +910,7 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                                  const vector<VectorXd>& WD, const vector<VectorXd>& delta,
                                  int admm_iteration,
                                  bool is_final_solve) {
+  auto start = std::chrono::high_resolution_clock::now();
   // Remove initial state and initial force constraint from previous solve
   for (auto& constraint : constraints_) {
     prog_.RemoveConstraint(constraint);
@@ -967,12 +968,17 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     UpdateWarmStarts(result, admm_iteration);
   }
   ExtractQPSolution(result, admm_iteration, is_final_solve);
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration_ms = end - start;
+  std::cout << "QP solve time: " << duration_ms.count() << " ms" << std::endl;
+  qp_solve_times_.push_back(duration_ms.count());
   return *z_sol_;
 }
 
 vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
                                          vector<VectorXd>& WZ,
                                          int admm_iteration) {
+  auto start = std::chrono::high_resolution_clock::now();
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(z_size_));
   int i;
 
@@ -1001,6 +1007,11 @@ vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
                                            c_[i], admm_iteration, -1);
     }
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration_ms = end - start;
+  std::cout << "Projection solve time: " << duration_ms.count() << " ms" << std::endl;
+  projection_solve_times_.push_back(duration_ms.count());
   return deltaProj;
 }
 

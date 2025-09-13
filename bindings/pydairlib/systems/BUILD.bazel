@@ -59,6 +59,23 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "push_anything_solver_benchmarker_py",
+    cc_deps = [
+        "//examples/sampling_c3:push_anything_solver_benchmarker",
+        "//systems/framework:vector",
+        "@drake//bindings/pydrake/common:value_pybind",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "push_anything_solver_benchmarker",
+    cc_srcs = ["push_anything_solver_benchmarker_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -78,6 +95,7 @@ PY_LIBRARIES = [
     ":robot_lcm_systems_py",
     ":primitives_py",
     ":framework_py",
+    ":push_anything_solver_benchmarker_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

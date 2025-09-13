@@ -148,6 +148,8 @@ class C3Base {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  std::vector<double> GetQPSolveTimes() { return qp_solve_times_; }
+  std::vector<double> GetProjectionSolveTimes() { return projection_solve_times_; }
 
   int GetZSize() { return z_size_; }
 
@@ -273,6 +275,9 @@ class C3Base {
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
+
+  std::vector<double> qp_solve_times_;
+  std::vector<double> projection_solve_times_;
 };
 
 }  // namespace solvers

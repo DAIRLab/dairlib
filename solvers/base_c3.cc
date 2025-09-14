@@ -970,7 +970,6 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   ExtractQPSolution(result, admm_iteration, is_final_solve);
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> duration_ms = end - start;
-  std::cout << "QP solve time: " << duration_ms.count() << " ms" << std::endl;
   qp_solve_times_.push_back(duration_ms.count());
   return *z_sol_;
 }
@@ -1010,7 +1009,6 @@ vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
 
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> duration_ms = end - start;
-  std::cout << "Projection solve time: " << duration_ms.count() << " ms" << std::endl;
   projection_solve_times_.push_back(duration_ms.count());
   return deltaProj;
 }

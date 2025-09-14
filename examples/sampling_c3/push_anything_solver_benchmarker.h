@@ -64,7 +64,8 @@ class PushAnythingSolverBenchmarker {
   int N_{0};
   bool verbose_{false};
 
-  solvers::ContactModel contact_model_;
+  solvers::ContactModel contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
+
 
   std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;

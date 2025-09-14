@@ -241,7 +241,7 @@ void PushAnythingSolverBenchmarker::Solve(const Eigen::VectorXd& x_lcs_curr,
       sampling_c3_options_.n_lambda_with_tangential,
       sampling_c3_options_.num_friction_directions_per_contact,
       sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+      solvers::ContactModel::kAnitescu);
 
   // Create the C3 object.
   std::shared_ptr<C3Base> c3_object;
@@ -310,12 +310,6 @@ void PushAnythingSolverBenchmarker::Solve(const Eigen::VectorXd& x_lcs_curr,
   // Solve C3, store resulting object and cost.
   c3_object->SetOsqpSolverOptions(solver_options_);
   c3_object->Solve(x_lcs_curr, verbose_);
-  for (int i = 0; i < c3_object->GetQPSolveTimes().size(); i++) {
-    std::cout << "qp_solve_times_: " << c3_object->GetQPSolveTimes()[i] << std::endl;
-  }
-  for (int i = 0; i < c3_object->GetProjectionSolveTimes().size(); i++) {
-    std::cout << "projection_solve_times_: " << c3_object->GetProjectionSolveTimes()[i] << std::endl;
-  }
   for (const auto& qptime : c3_object->GetQPSolveTimes()){
     qp_solve_times_.push_back(qptime);
   }

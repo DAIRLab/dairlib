@@ -1,0 +1,24 @@
+sampling_c3_options_file: examples/sampling_c3/anything/parameters/sampling_c3plus_options_four.yaml
+reposition_params_file: examples/sampling_c3/anything/parameters/reposition_params.yaml
+progress_params_file: examples/sampling_c3/anything/parameters/progress_params_c3plus.yaml
+sampling_params_file: examples/sampling_c3/anything/parameters/sampling_params.yaml
+goal_params_file: examples/sampling_c3/anything/parameters/goal_params.yaml
+
+sim_params_file: examples/sampling_c3/anything/parameters/sim_params.yaml
+vis_params_file: examples/sampling_c3/anything/parameters/vis_params.yaml
+osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
+osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
+osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
+franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
+lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
+lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
+
+object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
+object_models: [examples/sampling_c3/urdf/I_shape_texture/I_shape_texture_controller.sdf, examples/sampling_c3/urdf/C_shape_texture/C_shape_texture_controller.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture_controller.sdf, examples/sampling_c3/urdf/A_shape_video/A_shape_video_controller.sdf]
+object_body_name: body
+base_name: lollipop
+base_names: [I_shape_texture, C_shape_texture, R_shape_texture, A_shape_video]
+
+include_end_effector_orientation: false
+
+control_loop_delay_ms: 0

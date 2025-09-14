@@ -29,7 +29,6 @@ void UpdateContext(const int& n_q, const int& n_v, const int& n_u,
   plant_ad.SetPositionsAndVelocities(context_ad, xu_ad_test.head(n_q + n_v));
   multibody::SetInputsIfNew<AutoDiffXd>(plant_ad, xu_ad_test.tail(n_u),
                                         context_ad);
-
   plant.SetPositions(context, test_q);
   plant.SetVelocities(context, test_v);
   multibody::SetInputsIfNew<double>(plant, test_u, context);

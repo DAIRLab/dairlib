@@ -50,21 +50,22 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
 
   // Create the LCS plant containing a floating EE, object, and ground.
   drake::systems::DiagramBuilder<double> plant_lcs_builder;
-  auto [plant_lcs_, scene_graph] =
+  auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   std::vector<drake::multibody::ModelInstanceIndex> object_indices_lcs =
-      AddLCSModelsToPlant(&plant_lcs_, &scene_graph,
+      AddLCSModelsToPlant(&plant_lcs, &scene_graph,
                           controller_params_.object_models,
                           controller_params_.include_end_effector_orientation,
                           sampling_c3_options_.include_walls);
-  plant_lcs_.Finalize();
+  plant_lcs.Finalize();
 
-  plant_lcs_ad_ = drake::systems::System<double>::ToAutoDiffXd(plant_lcs_);
+  plant_lcs_ = &plant_lcs;
+  plant_lcs_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_lcs_);
 
-  auto plant_lcs_diagram = plant_lcs_builder.Build();
-  diagram_context_ = plant_lcs_diagram->CreateDefaultContext();
-  plant_lcs_context_ = &(plant_lcs_diagram->GetMutableSubsystemContext(
-      plant_lcs_, diagram_context_.get()));
+  plant_lcs_diagram_ = plant_lcs_builder.Build();
+  diagram_context_ = plant_lcs_diagram_->CreateDefaultContext();
+  plant_lcs_context_ = &(plant_lcs_diagram_->GetMutableSubsystemContext(
+      plant_lcs, diagram_context_.get()));
   context_ad_ = plant_lcs_ad_->CreateDefaultContext();
 
   // Build the contact pairs based on the demo.
@@ -76,11 +77,11 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
 
   // All demos include the end effector and ground.
   drake::geometry::GeometryId ee_contact_points =
-      plant_lcs_.GetCollisionGeometriesForBody(
-          plant_lcs_.GetBodyByName("end_effector_simple"))[0];
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("end_effector_simple"))[0];
   drake::geometry::GeometryId ground_geoms =
-      plant_lcs_.GetCollisionGeometriesForBody(
-          plant_lcs_.GetBodyByName("ground"))[0];
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ground"))[0];
   contact_geoms_["EE"] = ee_contact_points;
   contact_geoms_["GROUND"] = ground_geoms;
   std::vector<drake::SortedPair<drake::geometry::GeometryId>> ee_ground_contact{
@@ -94,17 +95,17 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
 
   if (sampling_c3_options_.include_walls) {
     drake::geometry::GeometryId left_wall_geoms =
-        plant_lcs_.GetCollisionGeometriesForBody(
-            plant_lcs_.GetBodyByName("left_wall"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("left_wall"))[0];
     drake::geometry::GeometryId right_wall_geoms =
-        plant_lcs_.GetCollisionGeometriesForBody(
-            plant_lcs_.GetBodyByName("right_wall"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("right_wall"))[0];
     drake::geometry::GeometryId front_wall_geoms =
-        plant_lcs_.GetCollisionGeometriesForBody(
-            plant_lcs_.GetBodyByName("front_wall"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("front_wall"))[0];
     drake::geometry::GeometryId back_wall_geoms =
-        plant_lcs_.GetCollisionGeometriesForBody(
-            plant_lcs_.GetBodyByName("back_wall"))[0];
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("back_wall"))[0];
 
     contact_geoms_["LEFT_WALL"] = left_wall_geoms;
     contact_geoms_["RIGHT_WALL"] = right_wall_geoms;
@@ -115,8 +116,8 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
   std::vector<std::vector<drake::geometry::GeometryId>> all_object_geoms;
   for (int i = 0; i < controller_params_.base_names.size(); i++) {
     std::string body_name = controller_params_.base_names.at(i);
-    const auto& object_geoms = plant_lcs_.GetCollisionGeometriesForBody(
-        plant_lcs_.GetBodyByName(body_name));
+    const auto& object_geoms = plant_lcs.GetCollisionGeometriesForBody(
+        plant_lcs.GetBodyByName(body_name));
 
     DRAKE_DEMAND(object_geoms.size() >= 4);
     const auto& top_left_sphere_geoms = object_geoms[object_geoms.size() - 3];
@@ -194,7 +195,7 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
   }
 
   contact_pairs_ = contact_pairs;
-  N_ = sampling_c3_options_.N;
+  N_ = c3_options_.N;
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -203,15 +204,16 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
     Q_.push_back(discount_factor * c3_options_.Q);
     R_.push_back(discount_factor * c3_options_.R);
     discount_factor *= c3_options_.gamma;
+    G_.push_back(c3_options_.G);
+    U_.push_back(c3_options_.U);
   }
   Q_.push_back(discount_factor * c3_options_.Q);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
-  G_ = std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G),
-  U_ = std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U),
-  n_q_ = plant_lcs_.num_positions();
-  n_v_ = plant_lcs_.num_velocities();
-  n_u_ = plant_lcs_.num_actuators();
+
+  n_q_ = plant_lcs.num_positions();
+  n_v_ = plant_lcs.num_velocities();
+  n_u_ = plant_lcs.num_actuators();
   n_x_ = n_q_ + n_v_;
   dt_ = c3_options_.dt;
 
@@ -224,17 +226,17 @@ PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
 
 void PushAnythingSolverBenchmarker::Solve(const Eigen::VectorXd& x_lcs_curr,
                                           const Eigen::VectorXd& x_lcs_des) {
-  UpdateContext(n_q_, n_v_, n_u_, plant_lcs_, plant_lcs_context_,
+  UpdateContext(n_q_, n_v_, n_u_, *plant_lcs_, plant_lcs_context_,
                 *plant_lcs_ad_.get(), context_ad_.get(), x_lcs_curr);
 
   // Resolve the contact pairs and create the LCS.
   vector<SortedPair<GeometryId>> resolved_contact_pairs =
-      LCSFactory::PreProcessor(plant_lcs_, *plant_lcs_context_, contact_pairs_,
+      LCSFactory::PreProcessor(*plant_lcs_, *plant_lcs_context_, contact_pairs_,
                                sampling_c3_options_.resolve_contacts_to,
                                c3_options_.num_friction_directions, verbose_);
 
   solvers::LCS lcs = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_lcs_, *plant_lcs_context_, *plant_lcs_ad_.get(), *context_ad_.get(),
+      *plant_lcs_, *plant_lcs_context_, *plant_lcs_ad_.get(), *context_ad_.get(),
       resolved_contact_pairs, c3_options_.mu, dt_, N_,
       sampling_c3_options_.n_lambda_with_tangential,
       sampling_c3_options_.num_friction_directions_per_contact,
@@ -303,16 +305,22 @@ void PushAnythingSolverBenchmarker::Solve(const Eigen::VectorXd& x_lcs_curr,
                                    c3_options_.u_vertical_limits[1], 2);
   }
 
-  c3_object->UpdateCostLCS(lcs);
+  c3_object->UpdateLCS(lcs);
 
   // Solve C3, store resulting object and cost.
   c3_object->SetOsqpSolverOptions(solver_options_);
   c3_object->Solve(x_lcs_curr, verbose_);
-  qp_solve_times_.insert(qp_solve_times_.end(),
-                         c3_object->GetQPSolveTimes().begin(),
-                         c3_object->GetQPSolveTimes().end());
-  projection_solve_times_.insert(projection_solve_times_.end(),
-                                 c3_object->GetProjectionSolveTimes().begin(),
-                                 c3_object->GetProjectionSolveTimes().end());
+  for (int i = 0; i < c3_object->GetQPSolveTimes().size(); i++) {
+    std::cout << "qp_solve_times_: " << c3_object->GetQPSolveTimes()[i] << std::endl;
+  }
+  for (int i = 0; i < c3_object->GetProjectionSolveTimes().size(); i++) {
+    std::cout << "projection_solve_times_: " << c3_object->GetProjectionSolveTimes()[i] << std::endl;
+  }
+  for (const auto& qptime : c3_object->GetQPSolveTimes()){
+    qp_solve_times_.push_back(qptime);
+  }
+  for (const auto& projection_time : c3_object->GetProjectionSolveTimes()){
+    projection_solve_times_.push_back(projection_time);
+  }
 }
 }  // namespace dairlib

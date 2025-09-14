@@ -44,7 +44,8 @@ class PushAnythingSolverBenchmarker {
   SamplingC3Options sampling_c3_options_;
   C3Options c3_options_;
 
-  drake::multibody::MultibodyPlant<double> plant_lcs_{0.0};
+  drake::multibody::MultibodyPlant<double>* plant_lcs_;
+  std::unique_ptr<drake::systems::Diagram<double>> plant_lcs_diagram_;
   std::unique_ptr<drake::systems::Context<double>> diagram_context_;
   drake::systems::Context<double>* plant_lcs_context_;
   std::unique_ptr<drake::multibody::MultibodyPlant<drake::AutoDiffXd>>

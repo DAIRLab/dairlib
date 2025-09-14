@@ -9,7 +9,9 @@ using dairlib::PushAnythingSolverBenchmarker;
 
 PYBIND11_MODULE(push_anything_solver_benchmarker, m) {
   py::class_<PushAnythingSolverBenchmarker>(m, "PushAnythingSolverBenchmarker")
-      .def(py::init<bool>(), py::arg("verbose") = false)
+      .def(py::init<bool, std::string, std::string>(),
+           py::arg("verbose") = false, py::arg("scenario") = "single",
+           py::arg("controller_type") = "c3")
       .def("solve", &PushAnythingSolverBenchmarker::Solve,
            py::arg("x_lcs_curr"), py::arg("x_lcs_des"),
            "Solve the pushing problem given current and desired LCS states.")

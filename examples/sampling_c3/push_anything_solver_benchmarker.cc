@@ -32,11 +32,11 @@ using solvers::C3Plus;
 using solvers::C3QP;
 using std::vector;
 
-PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose)
+PushAnythingSolverBenchmarker::PushAnythingSolverBenchmarker(bool verbose, std::string scenario, std::string controller_type)
     : verbose_(verbose) {
   std::string controller_params_path = dairlib::FindResourceOrThrow(
-      "examples/sampling_c3/anything/parameters/"
-      "sampling_c3_controller_params.yaml");
+      "examples/sampling_c3/anything/parameters/sampling_c3_controller_params_" + scenario + "_" + controller_type + ".yaml");
+  std::cout << "controller_params_path: " << controller_params_path << std::endl;
   controller_params_ = drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
       controller_params_path);
   std::string sampling_c3_options_path =

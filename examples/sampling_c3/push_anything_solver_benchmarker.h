@@ -30,7 +30,9 @@ namespace dairlib {
 
 class PushAnythingSolverBenchmarker {
  public:
-  explicit PushAnythingSolverBenchmarker(bool verbose = false);
+  explicit PushAnythingSolverBenchmarker(bool verbose = false,
+                                         std::string scenario = "single",
+                                         std::string controller_type = "c3");
 
   void Solve(const Eigen::VectorXd& x_lcs_curr,
              const Eigen::VectorXd& x_lcs_des);
@@ -64,8 +66,8 @@ class PushAnythingSolverBenchmarker {
   int N_{0};
   bool verbose_{false};
 
-  solvers::ContactModel contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-
+  solvers::ContactModel contact_model_ =
+      solvers::ContactModel::kStewartAndTrinkle;
 
   std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;

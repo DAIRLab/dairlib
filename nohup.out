@@ -1,0 +1,236 @@
+Computing main repo mapping: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //examples/sampling_c3:c3_c3plus_solve_time_comparison (0 packages loaded, 0 targets configured)
+Analyzing: target //examples/sampling_c3:c3_c3plus_solve_time_comparison (0 packages loaded, 0 targets configured)
+
+INFO: Analyzed target //examples/sampling_c3:c3_c3plus_solve_time_comparison (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //examples/sampling_c3:c3_c3plus_solve_time_comparison up-to-date:
+  bazel-bin/examples/sampling_c3/c3_c3plus_solve_time_comparison
+INFO: Elapsed time: 0.122s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/examples/sampling_c3/c3_c3plus_solve_time_comparison
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_single_c3+.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3plus_options_single.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_two_c3+.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3plus_options_two.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_three_c3+.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3plus_options_three.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_four_c3+.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3plus_options_four.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_single_c3.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_options_single.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_two_c3.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_options_two.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_three_c3.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_options_three.yaml
+controller_params_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_controller_params_four_c3.yaml
+sampling_c3_options_path: /home/anything/.cache/bazel/_bazel_anything/2042d7bf9ecfcab48099fddc5d5180f3/execroot/_main/examples/sampling_c3/anything/parameters/sampling_c3_options_four.yaml
+--------------------------------
+Benchmarking single with c3+
+Dimension of states: 19
+Solving 0 / 34653
+Solving 1000 / 34653
+Solving 2000 / 34653
+Solving 3000 / 34653
+Solving 4000 / 34653
+Solving 5000 / 34653
+Solving 6000 / 34653
+Solving 7000 / 34653
+Solving 8000 / 34653
+Solving 9000 / 34653
+Solving 10000 / 34653
+Solving 11000 / 34653
+Solving 12000 / 34653
+Solving 13000 / 34653
+Solving 14000 / 34653
+Solving 15000 / 34653
+Solving 16000 / 34653
+Solving 17000 / 34653
+Solving 18000 / 34653
+Solving 19000 / 34653
+Solving 20000 / 34653
+Solving 21000 / 34653
+Solving 22000 / 34653
+Solving 23000 / 34653
+Solving 24000 / 34653
+Solving 25000 / 34653
+Solving 26000 / 34653
+Solving 27000 / 34653
+Solving 28000 / 34653
+Solving 29000 / 34653
+Solving 30000 / 34653
+Solving 31000 / 34653
+Solving 32000 / 34653
+Solving 33000 / 34653
+Solving 34000 / 34653
+--------------------------------
+Benchmarking two with c3+
+Dimension of states: 32
+Solving 0 / 14102
+Solving 1000 / 14102
+Solving 2000 / 14102
+Solving 3000 / 14102
+Solving 4000 / 14102
+Solving 5000 / 14102
+Solving 6000 / 14102
+Solving 7000 / 14102
+Solving 8000 / 14102
+Solving 9000 / 14102
+Solving 10000 / 14102
+Solving 11000 / 14102
+Solving 12000 / 14102
+Solving 13000 / 14102
+Solving 14000 / 14102
+--------------------------------
+Benchmarking three with c3+
+Dimension of states: 45
+Solving 0 / 26043
+Solving 1000 / 26043
+Solving 2000 / 26043
+Solving 3000 / 26043
+Solving 4000 / 26043
+Solving 5000 / 26043
+Solving 6000 / 26043
+Solving 7000 / 26043
+Solving 8000 / 26043
+Solving 9000 / 26043
+Solving 10000 / 26043
+Solving 11000 / 26043
+Solving 12000 / 26043
+Solving 13000 / 26043
+Solving 14000 / 26043
+Solving 15000 / 26043
+Solving 16000 / 26043
+Solving 17000 / 26043
+Solving 18000 / 26043
+Solving 19000 / 26043
+Solving 20000 / 26043
+Solving 21000 / 26043
+Solving 22000 / 26043
+Solving 23000 / 26043
+Solving 24000 / 26043
+Solving 25000 / 26043
+Solving 26000 / 26043
+--------------------------------
+Benchmarking four with c3+
+Dimension of states: 58
+Solving 0 / 13387
+Solving 1000 / 13387
+Solving 2000 / 13387
+Solving 3000 / 13387
+Solving 4000 / 13387
+Solving 5000 / 13387
+Solving 6000 / 13387
+Solving 7000 / 13387
+Solving 8000 / 13387
+Solving 9000 / 13387
+Solving 10000 / 13387
+Solving 11000 / 13387
+Solving 12000 / 13387
+Solving 13000 / 13387
+--------------------------------
+Benchmarking single with c3
+Dimension of states: 19
+Solving 0 / 34653
+Solving 1000 / 34653
+Solving 2000 / 34653
+Solving 3000 / 34653
+Solving 4000 / 34653
+Solving 5000 / 34653
+Solving 6000 / 34653
+Solving 7000 / 34653
+Solving 8000 / 34653
+Solving 9000 / 34653
+Solving 10000 / 34653
+Solving 11000 / 34653
+Solving 12000 / 34653
+Solving 13000 / 34653
+Solving 14000 / 34653
+Solving 15000 / 34653
+Solving 16000 / 34653
+Solving 17000 / 34653
+Solving 18000 / 34653
+Solving 19000 / 34653
+Solving 20000 / 34653
+Solving 21000 / 34653
+Solving 22000 / 34653
+Solving 23000 / 34653
+Solving 24000 / 34653
+Solving 25000 / 34653
+Solving 26000 / 34653
+Solving 27000 / 34653
+Solving 28000 / 34653
+Solving 29000 / 34653
+Solving 30000 / 34653
+Solving 31000 / 34653
+Solving 32000 / 34653
+Solving 33000 / 34653
+Solving 34000 / 34653
+--------------------------------
+Benchmarking two with c3
+Dimension of states: 32
+Solving 0 / 14102
+Solving 1000 / 14102
+Solving 2000 / 14102
+Solving 3000 / 14102
+Solving 4000 / 14102
+Solving 5000 / 14102
+Solving 6000 / 14102
+Solving 7000 / 14102
+Solving 8000 / 14102
+Solving 9000 / 14102
+Solving 10000 / 14102
+Solving 11000 / 14102
+Solving 12000 / 14102
+Solving 13000 / 14102
+Solving 14000 / 14102
+--------------------------------
+Benchmarking three with c3
+Dimension of states: 45
+Solving 0 / 26043
+Solving 1000 / 26043
+Solving 2000 / 26043
+Solving 3000 / 26043
+Solving 4000 / 26043
+Solving 5000 / 26043
+Solving 6000 / 26043
+Solving 7000 / 26043
+Solving 8000 / 26043
+Solving 9000 / 26043
+Solving 10000 / 26043
+Solving 11000 / 26043
+Solving 12000 / 26043
+Solving 13000 / 26043
+Solving 14000 / 26043
+Solving 15000 / 26043
+Solving 16000 / 26043
+Solving 17000 / 26043
+Solving 18000 / 26043
+Solving 19000 / 26043
+Solving 20000 / 26043
+Solving 21000 / 26043
+Solving 22000 / 26043
+Solving 23000 / 26043
+Solving 24000 / 26043
+Solving 25000 / 26043
+Solving 26000 / 26043
+--------------------------------
+Benchmarking four with c3
+Dimension of states: 58
+Solving 0 / 13387
+Solving 1000 / 13387
+Solving 2000 / 13387
+Solving 3000 / 13387
+Solving 4000 / 13387
+Solving 5000 / 13387
+Solving 6000 / 13387
+Solving 7000 / 13387
+Solving 8000 / 13387
+Solving 9000 / 13387
+Solving 10000 / 13387
+Solving 11000 / 13387
+Solving 12000 / 13387
+Solving 13000 / 13387

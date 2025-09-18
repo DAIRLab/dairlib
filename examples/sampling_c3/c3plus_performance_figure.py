@@ -7,10 +7,12 @@ plt.style.use(['science'])
 
 object_names = ["Letter I", "Letter C", "Letter R", "Letter A",
                 "Letter Y", "Letter G", "Letter B", "Letter 3",
+                "Letter H", "Letter E", "Letter S",
                 "Expo Box", "Lotion", "Wood Block", "Tape",
-                "Letter H", "Letter E", "Letter S", "Eraser", "Milk Bottle",
+                "Eraser", "Milk Bottle",
                 "Clamp", "Chicken Broth", "Egg Carton", "Book",
-                "Baby Toy", "Gallon Milk", "Push T"]
+                "Baby Toy", "Gallon Milk", "Xbox", "Push T"]
+
 time_to_goal_dict = {
     "Letter I": np.array(
         [25.757018, 29.114636, 33.174714, 16.486989, 34.65505 , 30.222808,
@@ -251,6 +253,14 @@ time_to_goal_dict = {
           8.156285   ,25.274766   ,23.295628   ,11.82061    ,28.822678   ,19.092198,
          57.171497   ,18.564928   ,39.442278   ,37.31236    ,46.463339   ,36.40338742]
     ),
+    "Xbox": np.array(
+        [ 62.894928, 10.915822,  19.915158, 27.597123, 83.605054,
+          12.855497, 56.906219,  53.705217, 43.684693, 12.737488,
+          40.114951, 34.687578,  52.68694 , 39.964141, 81.28578,
+          22.8387  , 31.571843,  31.962357, 24.176806, 18.867526,
+          27.371348, 17.681364,  31.003389, 94.556216, 32.883328,
+          23.634579, 29.015133, 104.124353, 33.134581, 38.68076957]
+    )
 }
 
 time_to_goals = [time_to_goal_dict[obj_name].tolist()[2:] for obj_name in object_names]

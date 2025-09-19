@@ -1,8 +1,8 @@
 ## Single Object Experiments
 C: [
   '08_31_25/000006',
-  '08_31_25/000007',
-  '08_31_25/000008',
+  # '08_31_25/000007',   # don't need bc log 6 has 40 goals
+  # '08_31_25/000008',   # don't need bc log 6 has 40 goals
 ]
 eraser: [
   '09_07_25/000005',
@@ -90,12 +90,14 @@ B_and_3: [
   '09_04_25/000048',
 ]
 chicken_broth_and_expo: [
-  '09_05_25/000008:41.89:600',
+  # '09_05_25/000008:41.89:600',   # excludes first goal
+  '09_05_25/000008:0:600',         # for video ONLY, start at 0s
   '09_05_25/000011',
 ]
 chicken_broth_and_wood_block: [
-  '09_05_25/000023:0:700',
-  '09_05_25/000023:742.2',
+  # '09_05_25/000023:0:700',       # this split excludes goal 9 because
+  # '09_05_25/000023:742.2',       # problematic FP
+  '09_05_25/000023',               # for video ONLY, do continuous
 ]
 clamp_and_I: [
   '09_05_25/000027',
@@ -121,7 +123,8 @@ C3+: [
   '09_10_25/000021',
 ]
 ANY: [
-  '09_10_25/000008:106.7',
+  # '09_10_25/000008:106.7',       # excludes first goal
+  '09_10_25/000008',               # for video ONLY, start at 0s
 ]
 ING: [
   '09_10_25/000010',

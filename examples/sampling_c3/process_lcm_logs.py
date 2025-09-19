@@ -39,10 +39,11 @@ from typing import List, Tuple
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.geometry import HalfSpace, MeshcatVisualizer, StartMeshcat, \
   ClippingRange, DepthRange, DepthRenderCamera, RenderCameraCore, \
-  MakeRenderEngineVtk, RenderEngineVtkParams
+  MakeRenderEngineVtk, RenderEngineVtkParams, Box
 from pydrake.math import RigidTransform, RollPitchYaw
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlant, MultibodyPlantConfig
+from pydrake.multibody.tree import SpatialInertia
 from pydrake.systems.analysis import Simulator
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.systems.sensors import CameraInfo, RgbdSensor
@@ -67,14 +68,19 @@ CHANNEL_LCMT = {
 LCM_TIME_KEY = 'lcm_timestamp'
 MSG_KEY = 'lcm_message'
 
+# Change sync channel to None to auto-select channel with fewest messages.
+# Warning: the selected timestamps always come from SAMPLING_C3_DEBUG, so
+# syncing to a different channel may produce repeated times and can be a
+# problem.  Recommended to leave hard-coded as SAMPLING_C3_DEBUG.
+SYNC_CHANNEL_TO_USE = 'SAMPLING_C3_DEBUG'
 DT_WARNING = 1.0
 
 GOAL_ALPHA = 0.3
 
 CAM_RPY = RollPitchYaw(np.pi, 0, np.pi/2)
-CAM_P = np.array([0.45, 0, 0.9])
-CAM_FOV = np.pi/6
-VIDEO_PIXELS = [320, 640]
+CAM_P = np.array([0.5, 0, 0.4])
+CAM_FOV = np.pi/2
+VIDEO_PIXELS = [510, 630]
 VIDEO_FPS = 30
 
 LOOSE_POS_TOL = 0.05
@@ -175,25 +181,30 @@ def inspect_debug_timestamps(channel: str, msg_dicts: List[dict]) -> None:
 def channel_to_collect(channel: str) -> bool:
   if channel in CHANNEL_LCMT.keys():
     return True
-  if channel.startswith('OBJECT_') and channel.endswith('_STATE_SIMULATION'):
-    return True
+  # Uncomment to include all object state channels.
+  # if channel.startswith('OBJECT_') and channel.endswith('_STATE_SIMULATION'):
+  #   return True
   return False
 
 
 def synchronize_msgs(msg_dicts: List[dict]) -> List[dict]:
   synced_msg_dicts = {key: [] for key in msg_dicts.keys()}
 
-  # Determine the channel with fewest messages.
-  min_channel = min(msg_dicts, key=lambda k: len(msg_dicts[k]))
-  min_count = len(msg_dicts[min_channel])
-  print(f'Channel with fewest messages: {min_channel} ({min_count} messages)')
-  other_channels = msg_dicts.keys() - {min_channel}
+  if SYNC_CHANNEL_TO_USE is not None:
+    sync_channel = SYNC_CHANNEL_TO_USE
+  else:
+    # Determine the channel with fewest messages.
+    min_channel = min(msg_dicts, key=lambda k: len(msg_dicts[k]))
+    min_count = len(msg_dicts[min_channel])
+    print(f'Channel with fewest messages: {min_channel} ({min_count} messages)')
+    sync_channel = min_channel
+  other_channels = msg_dicts.keys() - {sync_channel}
 
   # Find the nearest message to every message in the synchronization channel.
   synced_msg_dicts = {key: [] for key in msg_dicts.keys()}
-  synced_msg_dicts[min_channel] = msg_dicts[min_channel]
+  synced_msg_dicts[sync_channel] = msg_dicts[sync_channel]
   for channel in other_channels:
-    for msg_dict in synced_msg_dicts[min_channel]:
+    for msg_dict in synced_msg_dicts[sync_channel]:
       lcm_time = msg_dict[LCM_TIME_KEY]
       nearest = min(
         msg_dicts[channel], key=lambda x: abs(x[LCM_TIME_KEY] - lcm_time))
@@ -201,7 +212,7 @@ def synchronize_msgs(msg_dicts: List[dict]) -> List[dict]:
       #   print(f'WARNING: {channel=} nearest message is ' + \
       #         f'{abs(nearest[LCM_TIME_KEY] - lcm_time) * 1e-6:.2f} secs away')
       synced_msg_dicts[channel].append(nearest)
-    # print(f'Synced {channel} to {min_channel}')
+    # print(f'Synced {channel} to {sync_channel}')
 
   print(f'\nAfter synchronization:')
   for channel, msgs in synced_msg_dicts.items():
@@ -386,6 +397,25 @@ def build_object_urdf(obj_filepath: str, i: int, actual: bool) -> str:
       return tmp_file.name
 
 
+def get_ee_visualization_urdf() -> str:
+  filepath = op.join(DAIRLIB_DIR, 'examples', 'sampling_c3', 'urdf',
+                     'ee_visualization_model.urdf')
+  # Read the file contents.
+  with open(filepath, 'r') as f:
+    contents = f.read()
+
+  # Replace the color.
+  contents = contents.replace('rgba="1.0 1.0 1.0 1.0"',
+                              f'rgba="0.2 0.2 0.2 1.0"')
+  # Replace the radius to match the hardware.
+  contents = contents.replace('radius="0.0198"', 'radius="0.0195"')
+
+  # Write the string to a tmp file.
+  with tempfile.NamedTemporaryFile(delete=False, suffix=".urdf") as tmp_file:
+    tmp_file.write(contents.encode())
+    return tmp_file.name
+
+
 def pretty_dict_print(d: dict, title: str = None) -> None:
   """Print a dictionary in a pretty format."""
   print(f'\n{title}')
@@ -430,6 +460,95 @@ def log_config_from_subfolders(log_subfolders: List[str], log_dir: str
     assert op.exists(log_folder), f'Log folder does not exist: {log_folder}'
     log_folders.append(log_folder)
   return log_folders, start_times, end_times
+
+
+def speed_up_video(video_filepath: str, speed_factor: int):
+  new_video_path = video_filepath.replace('.mp4', f'_{speed_factor}x.mp4')
+
+  cap = cv2.VideoCapture(video_filepath)
+  if not cap.isOpened():
+    raise IOError(f"Cannot open video file: {video_filepath}")
+
+  fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+  out = cv2.VideoWriter(new_video_path, fourcc, VIDEO_FPS,
+                        (VIDEO_PIXELS[1], VIDEO_PIXELS[0]))
+  frame_idx = 0
+  while True:
+    ret, frame = cap.read()
+    if not ret:
+      break
+    if frame_idx % speed_factor == 0:
+      out.write(frame)
+    frame_idx += 1
+
+  cap.release()
+  out.release()
+  print(f"Sped-up video saved to: {new_video_path}")
+
+
+def get_input_video_filepath(video_folder: str) -> str:
+  date, log_num = op.basename(video_folder).split('_log_')
+  log_num = int(log_num)
+  exp = None
+  for y_exp, y_log_list in EXPERIMENT_YAML.items():
+    for y_log in y_log_list:
+      y_date, y_log_num = y_log.split('/')
+      y_log_num = int(y_log_num.split(':')[0])
+      if date == y_date and log_num == y_log_num:
+        exp = y_exp
+        break
+  if exp is None:
+    raise ValueError(
+      f'Could not find experiment type for folder: {op.basename(video_folder)}')
+
+  for n_obj in ['Single Object','Two Objects','Three Objects','Four Objects']:
+    for file_extension in ['MOV']:
+      possible_path = op.join(
+        '/mnt/push_anything_videos/Push_anything/videos', n_obj, exp,
+        f'{exp}_{date}_hwlog{log_num:06d}_trimmed.{file_extension}')
+      print(f'Checking {possible_path}...', end=' ')
+      if op.exists(possible_path):
+        print('Found!')
+        return possible_path
+      print(f'Not found.')
+  raise ValueError(
+    f'Could not find input video for folder: {op.basename(video_folder)}')
+
+
+def get_output_video_filepath(video_folder: str) -> str:
+  date, log_num = op.basename(video_folder).split('_log_')
+  log_num = int(log_num)
+  exp = None
+  for y_exp, y_log_list in EXPERIMENT_YAML.items():
+    for y_log in y_log_list:
+      y_date, y_log_num = y_log.split('/')
+      y_log_num = int(y_log_num.split(':')[0])
+      if date == y_date and log_num == y_log_num:
+        exp = y_exp
+        break
+  if exp is None:
+    raise ValueError(
+      f'Could not find experiment type for folder: {op.basename(video_folder)}')
+
+  found_n_obj = False
+  for n_obj in ['Single Object','Two Objects','Three Objects','Four Objects']:
+    for file_extension in ['MOV']:
+      possible_path = op.join(
+        '/mnt/push_anything_videos/Push_anything/videos', n_obj, exp,
+        f'{exp}_{date}_hwlog{log_num:06d}_trimmed.{file_extension}')
+      print(f'Checking {possible_path}...', end=' ')
+      if op.exists(possible_path):
+        print('Found!')
+        found_n_obj = True
+        break
+      print(f'Not found.')
+    if found_n_obj:  break
+
+  if not found_n_obj:
+    raise ValueError(
+      f'Could not find input video for folder: {op.basename(video_folder)}')
+  return op.join('/mnt/push_anything_videos/Push_anything/videos/overlays_full',
+                 n_obj, f'{exp}_{date}_hwlog{log_num:06d}.mp4')
 
 
 class LogAnalyzer:
@@ -604,8 +723,8 @@ class LogAnalyzer:
           known_success=self.cut_off_last_goal)
 
     if self.make_videos:
-      Visualizer(times, completed_goals, current_by_object, goals_by_object,
-                 ee_positions, list_of_models, log_filepath)
+      VideoMaker(times, completed_goals, current_by_object, goals_by_object,
+                 ee_positions, list_of_models, log_filepath, overwrite=False)
 
     self._save_info_from_log(
       times, current_by_object, goals_by_object, ee_positions, completed_goals,
@@ -728,24 +847,92 @@ class LogAnalyzer:
     pretty_dict_print(stats, title=f'Loose tolerances')
 
 
-class Visualizer:
+class VideoMaker:
   def __init__(self, times: np.ndarray, completed_goals: np.ndarray,
                currs_by_object: np.ndarray, goals_by_object: np.ndarray,
                ee_positions: np.ndarray, object_models: List[str],
-               log_filepath: str):
+               log_filepath: str, overwrite: bool = False):
+    self.times = times
+    self.completed_goals = completed_goals
+    self.overwrite = overwrite
+
+    self.video_folder = get_log_output_folder(log_filepath)
+
+    self._make_meshcat_videos(
+      currs_by_object, goals_by_object, ee_positions, object_models,
+      log_filepath)
+    self._make_overlay_videos()
+
+  def _make_meshcat_videos(
+      self, currs_by_object: np.ndarray, goals_by_object: np.ndarray,
+      ee_positions: np.ndarray, object_models: List[str], log_filepath: str):
+    RenderingVisualizer(
+      self.times, self.completed_goals, currs_by_object, goals_by_object,
+      ee_positions, object_models, log_filepath=log_filepath,
+      overwrite=self.overwrite)
+
+  def _make_overlay_videos(self):
+    self.input_video = get_input_video_filepath(self.video_folder)
+    self._make_overlay_video()
+    # for goal in np.unique(self.completed_goals):
+    #   self._make_overlay_video(goal=goal)
+
+  def _make_overlay_video(self, goal: int = -1):
+    def copy_to_ssd(output_path: str) -> str:
+      ssd_path = get_output_video_filepath(self.video_folder)
+      if op.exists(ssd_path) and not self.overwrite:
+        print(f'Output video already exists at {ssd_path}, skipping copy.')
+        return
+      elif op.exists(ssd_path):
+        os.remove(ssd_path)
+      cmd = f'cp "{output_path}" "{ssd_path}"'
+      os.system(cmd)
+      print(f'Copied overlay video to {ssd_path}')
+
+    if goal != -1:
+      print(f'Skipping for now, to implement later.')  # TODO @bibit
+      return
+    video_name = 'overlay_full.mp4' if goal==-1 else f'overlay_goal_{goal}.mp4'
+    video_filepath = op.join(self.video_folder, video_name)
+
+    if op.exists(video_filepath) and not self.overwrite:
+      print(f'Video already exists at {video_filepath}, skipping...')
+      copy_to_ssd(video_filepath)
+      return
+
+    meshcat_video_name = 'full.mp4' if goal==-1 else f'goal_{goal}.mp4'
+    meshcat_video = op.join(self.video_folder, meshcat_video_name)
+
+    # First, overlay the videos.
+    cmd = f'ffmpeg -y -i "{self.input_video}" -i {meshcat_video} ' + \
+          f'-filter_complex "[1:v]scale=630:-1[v2];[0:v][v2]' + \
+          f'overlay=x=10:y=10" -c:v libx264 -c:a ' + \
+          f'copy {video_filepath}'
+    print(f'\n{cmd}\n')
+    os.system(cmd)
+    print(f'Wrote overlay video to {video_filepath}')
+    copy_to_ssd(video_filepath)
+
+
+class RenderingVisualizer:
+  def __init__(self, times: np.ndarray, completed_goals: np.ndarray,
+               currs_by_object: np.ndarray, goals_by_object: np.ndarray,
+               ee_positions: np.ndarray, object_models: List[str],
+               log_filepath: str, overwrite: bool = False):
     self.times = times
     self.completed_goals = completed_goals
     self.currs_by_object = currs_by_object
     self.goals_by_object = goals_by_object
     self.ee_positions = ee_positions
     self.object_models = object_models
+    self.overwrite = overwrite
 
     self.video_folder = get_log_output_folder(log_filepath)
 
     self.build_diagram()
     self.make_video()
-    for goal in np.unique(completed_goals):
-      self.make_video(goal=goal)
+    # for goal in np.unique(completed_goals):
+    #   self.make_video(goal=goal)
 
   def build_diagram(self):
     builder = DiagramBuilder()
@@ -754,15 +941,38 @@ class Visualizer:
     parser = Parser(plant)
     parser.SetAutoRenaming(True)
 
+    # Add walls that match the hardware setup.
+    WALL_NAMES = ['left', 'right', 'front', 'back']
+    WALL_SIZES = [[0.7, 0.075, 0.015], [0.7, 0.075, 0.015],
+                  [0.075, 0.9+2*0.075, 0.015], [0.075, 0.9+2*0.075, 0.015]]
+    WALL_LOCATIONS = [[0.5, (0.9+0.075)/2, 0.015/2-0.029],
+                      [0.5, -(0.9+0.075)/2, 0.015/2-0.029],
+                      [0.5+(0.7+0.075)/2, 0, 0.015/2-0.029],
+                      [0.5-(0.7+0.075)/2, 0, 0.015/2-0.029]]
+    for name, size, location in zip(WALL_NAMES, WALL_SIZES, WALL_LOCATIONS):
+      model_instance_index = plant.AddModelInstance(name)
+      body = plant.AddRigidBody(
+        name, model_instance_index,
+        SpatialInertia.SolidBoxWithMass(1.0, size[0]/2, size[1]/2, size[2]/2)
+      )
+      plant.RegisterVisualGeometry(
+        body, RigidTransform(), Box(size), name, np.array([0.9, 0.9, 0.9, 1.0])
+      )
+      plant.WeldFrames(plant.GetFrameByName('world'),
+                       body.body_frame(),
+                       RigidTransform(p=location))
+
+    # Add the robot (actual only) followed by the object(s) (actual and goal).
+    parser.AddModels(get_ee_visualization_urdf())
     for i, object_model in enumerate(self.object_models):
       print(object_model)
       obj_file = object_model.replace('.sdf', '.obj')
-      parser.AddModels(build_object_urdf(obj_file, i, actual=True))[0]
-      parser.AddModels(build_object_urdf(obj_file, i, actual=False))[0]
+      parser.AddModels(build_object_urdf(obj_file, i, actual=True))
+      parser.AddModels(build_object_urdf(obj_file, i, actual=False))
 
     plant.RegisterVisualGeometry(
       plant.world_body(), RigidTransform(p=np.array([0, 0, -0.029])),
-      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 1.0]))  # TODO change background color
+      HalfSpace(), 'table', np.array([0.5, 0.5, 0.5, 1.0]))
     plant.Finalize()
     plant.set_name('plant')
 
@@ -812,41 +1022,33 @@ class Visualizer:
     self.diagram = diagram
     self.simulator = simulator
 
-  def speed_up_video(self, video_filepath: str, speed_factor: int):
-    new_video_path = video_filepath.replace('.mp4', f'_{speed_factor}x.mp4')
-
-    cap = cv2.VideoCapture(video_filepath)
-    if not cap.isOpened():
-      raise IOError(f"Cannot open video file: {video_filepath}")
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(new_video_path, fourcc, VIDEO_FPS,
-                          (VIDEO_PIXELS[1], VIDEO_PIXELS[0]))
-    frame_idx = 0
-    while True:
-      ret, frame = cap.read()
-      if not ret:
-        break
-      if frame_idx % speed_factor == 0:
-        out.write(frame)
-      frame_idx += 1
-
-    cap.release()
-    out.release()
-    print(f"Sped-up video saved to: {new_video_path}")
-
   def make_video(self, goal: int = -1):
     video_name = 'full.mp4' if goal==-1 else f'goal_{goal}.mp4'
     video_filepath = op.join(self.video_folder, video_name)
     self.video_writer._filename = video_filepath
+
+    if op.exists(video_filepath) and not self.overwrite:
+      print(f'Video already exists at {video_filepath}, skipping...')
+      return
 
     indices = np.where(self.completed_goals == goal)[0] if goal >= 0 else \
       np.arange(len(self.times))
     ts = self.times[indices]
     currs_by_obj = self.currs_by_object[indices]
     goals_by_obj = self.goals_by_object[indices]
+    ee_xyzs = self.ee_positions[indices]
 
     system_traj = StackedTrajectory()
+    quat_traj = PiecewiseQuaternionSlerp(
+      breaks=ts, quaternions=[Quaternion()]*len(ts))
+    pos_traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
+      breaks=ts,
+      samples=ee_xyzs.T,
+      sample_dot_at_start=np.zeros(3),
+      sample_dot_at_end=np.zeros(3)
+    )
+    system_traj.Append(quat_traj)
+    system_traj.Append(pos_traj)
     for obj_i in range(currs_by_obj.shape[1]):
       quat_traj = PiecewiseQuaternionSlerp(
         breaks=ts,
@@ -862,7 +1064,7 @@ class Visualizer:
       system_traj.Append(pos_traj)
       system_traj.Append(PiecewisePolynomial.ZeroOrderHold(
         breaks=ts, samples=goals_by_obj[:, obj_i, :].T))
-      
+
     for t in tqdm.tqdm(np.arange(ts[0], ts[-1], 1/VIDEO_FPS)):
       context = self.simulator.get_context()
       plant_context = self.plant.GetMyMutableContextFromRoot(context)
@@ -874,8 +1076,8 @@ class Visualizer:
     self.video_writer.Save()
     print(f'Wrote video to {video_filepath}')
 
-    self.speed_up_video(video_filepath, 4)
-    self.speed_up_video(video_filepath, 10)
+    speed_up_video(video_filepath, 4)
+    speed_up_video(video_filepath, 10)
 
 
 def multi_command(log_folders: str, start_times: List[float],
@@ -892,6 +1094,11 @@ def multi_command(log_folders: str, start_times: List[float],
     assert log_type == new_log_type, f'Cannot combine logs of different ' + \
       f'types: {log_type=}, {new_log_type=}'
     log_filepaths.append(log_filepath)
+
+    # If meshcat video already exists and overlay step is the only part needed,
+    # can save a lot of processing time by skipping the log parsing (need to
+    # also comment out the RenderingVisualizer call in VideoMaker).
+    # VideoMaker(None, None, None, None, None, None, log_filepath, True)
 
   LogAnalyzer(log_filepaths, start_times=start_times, end_times=end_times,
               make_plots=not skip_plots, make_videos=videos)

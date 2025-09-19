@@ -251,7 +251,29 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
 
     save_yaml(samp_c3_options_yaml_path, samp_c3_options_yaml)
 
-if __name__ == "__main__":
+def set_goal_poses(goal_yaml: dict, z_height: list, base_names: list):
+    # Load the letter settings yaml.
+    letter_settings = load_yaml(
+        'examples/sampling_c3/anything/parameters/letter_settings.yaml')
+
+    positions = []
+    quaternions = []
+    num_objects = len(base_names)
+    for i, name in enumerate(base_names):
+        print(f"Object {i}: {name}, z_height: {z_height[i]:.6f}")
+        positions.append([0.5, 0.2 * (i % num_objects) - (0.2*(num_objects-1))/2, z_height[i]])
+        quaternions.append([0.707, 0, 0, 0.707])
+        if name in letter_settings.keys():
+            xy_offset, quat = letter_settings[name]
+            positions[-1][0] += xy_offset[0]
+            positions[-1][1] += xy_offset[1]
+            quaternions[-1] = quat
+
+    goal_yaml["fixed_target_positions"] = positions
+    goal_yaml["fixed_target_orientations"] = quaternions
+
+
+def main():
     # Config paths
     controller_yaml_path = "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
     config = load_yaml(controller_yaml_path)
@@ -276,9 +298,6 @@ if __name__ == "__main__":
         print("❌ No base_names found in config.")
         sys.exit(1)
 
-
-
-   
     # Process all objects into sdfs
     for i in range(len(base_names)):
         process_obj(
@@ -287,7 +306,6 @@ if __name__ == "__main__":
             goal_yaml_path, sampling_yaml_path, repos_yaml_path,
             samp_c3_options_yaml_path, i
         )
-
 
     # Load YAMLs once to pre-size vectors
     controller_yaml = load_yaml(controller_yaml_path)
@@ -319,12 +337,7 @@ if __name__ == "__main__":
 
     # set init and goal poses
     sim_yaml["q_init_objects"] = [[0.393, 0, 0, 0.92, 0.4 + (0.02 * index), -0.3 + (0.2 * index), 0.0] for index in range(num_objects)]
-    # goal_yaml["fixed_target_positions"] = [[0.45, -0.3 + (0.2 * (index % num_objects)), 
-    #                                             z_height[(index - num_objects + 1)]] for index in range(num_objects - 1, 2 * num_objects - 1)]
-    goal_yaml["fixed_target_positions"] = [[0.5, 0.2 * (index % num_objects) - (0.2*(num_objects-1))/2, 
-                                                z_height[(index - num_objects)]] for index in range(num_objects, 2 * num_objects)]
-    goal_yaml["fixed_target_orientations"] = [[0.707, 0, 0, 0.707] for _ in range(num_objects)]
-
+    set_goal_poses(goal_yaml, z_height, base_names)
 
     goal_yaml["resting_object_heights"] = z_height.copy()
     max_z = max(max_zs)
@@ -346,7 +359,6 @@ if __name__ == "__main__":
     update_c3_options(is_c3_plus, samp_c3_options_yaml_path)
     print(f"is_c3_plus: {is_c3_plus}")
 
-
     # Save pre-sized YAMLs
     save_yaml(controller_yaml_path, controller_yaml)
     save_yaml(vis_yaml_path, vis_yaml)
@@ -358,3 +370,7 @@ if __name__ == "__main__":
     save_yaml(sampling_yaml_path, sampling_yaml)
 
     print("🎉 All objects processed successfully.")
+
+
+if __name__ == "__main__":
+    main()

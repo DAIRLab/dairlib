@@ -23,6 +23,10 @@ group "operator" {
         exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
         host = "sampling_c3_localhost";
     }
+    cmd "visualize_goals" {
+        exec = "python3 examples/sampling_c3/visualize_goals.py";
+        host = "sampling_c3_localhost";
+    }
     cmd "move_to_target_joints" {
         exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
         host = "sampling_c3_localhost";

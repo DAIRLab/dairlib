@@ -43,6 +43,6 @@ target_generator_info_channel: TARGET_GEN_INFO
 sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
-object_state_channels: [OBJECT_C_shape_texture_STATE_SIMULATION, OBJECT_3_shape_video_STATE_SIMULATION, OBJECT_P_shape_texture_STATE_SIMULATION, OBJECT_O_shape_texture_STATE_SIMULATION]
+object_state_channels: [OBJECT_G_shape_video_STATE_SIMULATION, OBJECT_R_shape_texture_STATE_SIMULATION, OBJECT_A_shape_video_STATE_SIMULATION, OBJECT_S_shape_texture_STATE_SIMULATION, OBJECT_P_shape_texture_STATE_SIMULATION]
 
 franka_target_joint_position_channel: FRANKA_TARGET_JOINT_POSITION  # lcmt_franka_target_joint_position

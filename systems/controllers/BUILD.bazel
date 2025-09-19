@@ -95,8 +95,6 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
-        "//solvers:c3",
-        "//solvers:c3_output",
         "//solvers:solver_options_io",
         ":face",
         "//systems/framework:vector",

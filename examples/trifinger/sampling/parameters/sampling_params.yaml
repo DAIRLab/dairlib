@@ -20,7 +20,7 @@ num_additional_samples_c3: 2
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
-N_sample_buffer: 15
+N_sample_buffer: 3
 pos_error_sample_retention: 0.003
 ang_error_sample_retention: 0.0349  # 0.0349 rad = 2 deg
 

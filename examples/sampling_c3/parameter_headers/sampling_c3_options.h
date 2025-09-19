@@ -418,3 +418,12 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     PopulateCostMatricesFromVectors(c3_options);
   }
 };
+
+inline SamplingC3Options LoadSamplingC3Options(const std::string& filename) {
+  auto options = drake::yaml::LoadYamlFile<SamplingC3Options>(
+      filename, std::nullopt, std::nullopt,
+      drake::yaml::LoadYamlOptions{.allow_yaml_with_no_cpp = false,
+                                   .allow_cpp_with_no_yaml = true,
+                                   .retain_map_defaults = false});
+  return options;
+}

@@ -16,6 +16,7 @@
                         down.
 */
 enum RepositioningTrajectoryType {
+  kStraightLine,
   kSpline,
   kSpherical,
   kCircular,

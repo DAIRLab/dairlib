@@ -27,8 +27,8 @@ angle_hysteresis: 0.4
 angle_err_to_vel_factor: 0
 
 # Initial goal (and only goal for fixed goal mode).
-fixed_target_position: [0.01, 0, 0.032]
-fixed_target_orientation: [1, 0, 0, 0]
+fixed_target_position: [0.0, 0, 0.032]
+fixed_target_orientation: [0.7071068, 0, 0, -0.7071068]
 
 # Random-specific parameters.
 random_goal_x_limits: [-0.01, 0.01]

@@ -2,6 +2,11 @@
 # vi: set ft=python :
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = 'parameters',
+    srcs = glob(['parameters/**'])
+)
+
 cc_binary(
     name = "trifinger_sampling_c3_controller",
     srcs = ["trifinger_sampling_c3_controller.cc"],
@@ -23,6 +28,7 @@ cc_binary(
         "//systems/controllers:sampling_c3_controller",
         "//systems/framework:lcm_driven_loop",
         "//systems/trajectory_optimization:c3_output_systems",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

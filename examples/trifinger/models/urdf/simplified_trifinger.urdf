@@ -20,7 +20,7 @@
     </visual>
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="0.1"/>
+        <mass value="0.01"/>
         <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
     </inertial>
     <collision>
@@ -39,13 +39,13 @@
     <visual>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
-            <sphere radius="0.01"/>
+            <sphere radius="0.0095"/>
         </geometry>
         <material name="fingeredu_120_material"/>
     </visual>
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="0.1"/>
+        <mass value="0.01"/>
         <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
     </inertial>
     <collision>
@@ -70,7 +70,7 @@
     </visual>
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="0.1"/>
+        <mass value="0.01"/>
         <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
     </inertial>
     <collision>

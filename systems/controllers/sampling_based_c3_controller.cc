@@ -11,7 +11,6 @@
 #include "c3/core/c3_miqp.h"
 #include "c3/core/c3_plus.h"
 #include "c3/core/c3_qp.h"
-#include "c3/multibody/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/sampling_c3/generate_samples.h"
@@ -28,8 +27,9 @@ using c3::C3MIQP;
 using c3::C3Plus;
 using c3::C3QP;
 using c3::LCS;
+using c3::multibody::LCSContactDescription;
 using c3::multibody::LCSFactory;
-using dairlib::C3Output;
+using c3::systems::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::ModelInstanceIndex;
@@ -93,10 +93,6 @@ SamplingC3Controller::SamplingC3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-
-  for (const auto& joint_name : plant_.GetPositionNames()) {
-    std::cout << "Joint Name : " << joint_name << std::endl;
-  }
 
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
@@ -181,8 +177,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
-  auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
-                                        std::vector<Eigen::VectorXd>());
+  auto lcs_contact_jacobian = std::vector<LCSContactDescription>();
 
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
@@ -459,20 +454,21 @@ void SamplingC3Controller::AddLinearConstraintToC3Plan(
                                sampling_c3_options_.workspace_limits[i][10],
                                c3::ConstraintVariable::STATE);
   }
-  // for (int i : vector<int>({0, 1})) {
-  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-  //   A(i) = 1.0;
-  //   plan_->AddLinearConstraint(A, sampling_c3_options_.u_horizontal_limits[0],
-  //                              sampling_c3_options_.u_horizontal_limits[1],
-  //                              c3::ConstraintVariable::INPUT);
-  // }
-  // for (int i : vector<int>({2})) {
-  //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-  //   A(i) = 1.0;
-  //   plan_->AddLinearConstraint(A, sampling_c3_options_.u_vertical_limits[0],
-  //                              sampling_c3_options_.u_vertical_limits[1],
-  //                              c3::ConstraintVariable::INPUT);
-  // }
+  for (int i : vector<int>({0, 1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    plan_->AddLinearConstraint(A,
+    sampling_c3_options_.u_horizontal_limits[0],
+                               sampling_c3_options_.u_horizontal_limits[1],
+                               c3::ConstraintVariable::INPUT);
+  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    plan_->AddLinearConstraint(A, sampling_c3_options_.u_vertical_limits[0],
+                               sampling_c3_options_.u_vertical_limits[1],
+                               c3::ConstraintVariable::INPUT);
+  }
 }
 
 // This function relies on the previously computed z_fin from Solve.
@@ -968,37 +964,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                                 x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
     AddLinearConstraintToC3Plan(test_c3_object);
-
-    // Workspace limits.
-    // for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-    //   Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    //   A.segment(0, 9) = sampling_c3_options_.workspace_limits[i].segment(0,
-    //   9);
-    //   // TODO @bibit: For planar examples, we may want the z constraint to be
-    //   an
-    //   // equality constraint. This would require two different sets of
-    //   workspace
-    //   // limits:  one for the C3 solve, and one for the controller for safety
-    //   // checks.
-    //   test_c3_object->AddLinearConstraint(
-    //     A, c3_options.workspace_limits[i][9],
-    //     c3_options.workspace_limits[i][10], 1);
-    // }
-    // // Input limits.
-    // for (int i : vector<int>({0, 1})) {
-    //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    //   A(i) = 1.0;
-    //   test_c3_object->AddLinearConstraint(
-    //     A, c3_options.u_horizontal_limits[0],
-    //     c3_options.u_horizontal_limits[1], 2);
-    // }
-    // for (int i : vector<int>({2})) {
-    //   Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    //   A(i) = 1.0;
-    //   test_c3_object->AddLinearConstraint(
-    //     A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1],
-    //     2);
-    // }
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
@@ -1700,7 +1665,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     const VectorXd& x_lcs, const double& t_context) const {
   // Get the best sample location.
-  Eigen::Vector3d best_sample_location =
+  Eigen::VectorXd best_sample_location =
       all_sample_locations_[best_sample_index_];
   // Update the previous repositioning target for reference in next loop.
   prev_repositioning_target_ = best_sample_location;
@@ -2112,8 +2077,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_jacobian) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2136,7 +2100,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   *lcs_contact_jacobian =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 }
 
 // Output port handlers for best sample location
@@ -2270,8 +2234,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_jacobian) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2295,7 +2258,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   *lcs_contact_jacobian =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

@@ -383,9 +383,8 @@ void SamplingC3GoalGenerator::OnGoalReached(int index) const {
   } else if (goal_params_.goal_mode == GoalMode::kOrientationSequence) {
     // Set the next orientation in the sequence.
     CycleThroughOrientationSequence(index);
-  } else {
-    std::cout << "You have only specified a single goal." << std::endl;
   }
+  // Otherwise kFixedGoal, nothing to update.
   goal_counter_++;
 }
 

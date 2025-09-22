@@ -80,8 +80,6 @@ SamplingC3Controller::SamplingC3Controller(
     crossed_cost_switching_threshold_);
 
   DRAKE_DEMAND(c3_options.lcs_dt_resolution > 0);
-  std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
-  std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -99,13 +97,14 @@ SamplingC3Controller::SamplingC3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-  std::cout << "n_q_" << n_q_ << std::endl;
-  std::cout << "n_v_" << n_v_ << std::endl;
-  std::cout << "n_u_" << n_u_ << std::endl;
-  std::cout << "n_x_" << n_x_ << std::endl;
 
   if (verbose_) {
-
+    std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
+    std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
+    std::cout << "n_q_" << n_q_ << std::endl;
+    std::cout << "n_v_" << n_v_ << std::endl;
+    std::cout << "n_u_" << n_u_ << std::endl;
+    std::cout << "n_x_" << n_x_ << std::endl;
     std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
     std::cout << "Q Cols: " << Q_[0].cols() << std::endl;
     std::cout << "R Rows: " << R_[0].rows() << std::endl;
@@ -135,8 +134,6 @@ SamplingC3Controller::SamplingC3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
-  std::cout << "lcs_placeholder size: " << lcs_placeholder.A_.size() << std::endl;
-  std::cout << "Q size: " << Q_.size() << std::endl;
 
   if (sampling_c3_options_.projection_type == "MIQP") {
     c3_curr_plan_ = std::make_unique<C3MIQP>(
@@ -227,11 +224,6 @@ SamplingC3Controller::SamplingC3Controller(
     c3_buffer_plan_->AddLinearConstraint(
       A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
   }
-
-  std::cout << "n_q_" << n_q_ << std::endl;
-  std::cout << "n_v_" << n_v_ << std::endl;
-  std::cout << "n_u_" << n_u_ << std::endl;
-  std::cout << "n_x_" << n_x_ << std::endl;
 
   // Input ports.
   radio_port_ =
@@ -528,58 +520,6 @@ SamplingC3Controller::SamplingC3Controller(
     }
 
   }
-
-  /*
-  // SINGLE OBJECT (DEPRECATED SOON)
-  int num_tri = 0;
-  std::vector<drake::geometry::TriangleSurfaceMesh<double>*> meshes ;
-  for (const std::string& mesh_path : mesh_paths) {
-    drake::geometry::TriangleSurfaceMesh<double>* mesh =
-      new drake::geometry::TriangleSurfaceMesh<double>(drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
-    meshes.push_back(mesh);
-    num_tri += mesh->num_triangles();
-  }
-
-  // Get faces with relatively horizontal normals
-  int j = 0;
-  faces_.reserve(num_tri);
-  face_bins_.reserve(num_tri+1);
-  face_bins_.push_back(0.0);
-  for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
-    const auto& vertices = mesh->vertices();
-    int num_tri = mesh->num_triangles();
-
-    // Iterate through all meshes, extract valid faces, and compute cumulative area bins.
-    for (drake::geometry::TriangleSurfaceMesh<double>* mesh : meshes) {
-      const auto& vertices = mesh->vertices();
-      int num_tri = mesh->num_triangles();
-
-      for (int i = 0; i < num_tri; ++i) {
-        auto tri = mesh->triangles()[i];
-        Eigen::Vector3d v0 = vertices[tri.vertex(0)];
-        Eigen::Vector3d v1 = vertices[tri.vertex(1)];
-        Eigen::Vector3d v2 = vertices[tri.vertex(2)];
-        Eigen::Vector3d normal = (v1 - v0).cross(v2 - v0).normalized();
-
-        if (std::abs(normal[2]) < 0.8) {
-          double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
-          faces_.push_back({area, normal, {v0, v1, v2}});
-          face_bins_.push_back(face_bins_[j] + area);
-          j++;
-        }
-      }
-    }
-
-    if (faces_.empty()) {
-      throw std::runtime_error("No valid faces found in any of the meshes.");
-    }
-  }
-
-  if (faces_.empty()) {
-    throw std::runtime_error("No valid faces found in any of the meshes.");
-  }
-  */
-  std::cout << "end of constructor" << std::endl;
 }
 
 
@@ -726,6 +666,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // locations.
 
   std::vector<bool> object_on_target;
+  bool all_reached = true;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     double object_position_error = (
       x_lcs_curr.segment(7 + 7*i, 2) - x_lcs_des.get_value().segment(7 + 7*i, 2)
@@ -742,15 +683,29 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        (object_angular_error < goal_params_.orientation_success_threshold)) ||
       ((!crossed_cost_switching_threshold_) &&
        (object_position_error < goal_params_.position_success_threshold)));
+    all_reached = all_reached && object_on_target[i];
   }
 
-  std::vector<Eigen::VectorXd> candidate_states = GenerateSampleStates(
-    n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_,
-    sampling_c3_options_, plant_, context_, plant_ad_, context_ad_,
-    contact_pairs_, faces_, face_bins_, faces_per_object_,
-    face_bins_per_object_, total_area_per_object_, object_on_target,
-    unsuccessful_sample_buffer_
-  );
+  // Used fixed samples if fixed goal and all objects on target.
+  std::vector<VectorXd> candidate_states;
+  if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+    int num_samples = is_doing_c3_? sampling_params_.num_additional_samples_c3 :
+      sampling_params_.num_additional_samples_repos;
+    for (int i = 0; i < num_samples; i++) {
+      candidate_states.push_back(x_lcs_curr);
+      candidate_states[i].head(3) << 0.3, 0.4, 0.1;
+    }
+  }
+  // Generate new samples according to sampling strategy.
+  else {
+    candidate_states = GenerateSampleStates(
+      n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3_, sampling_params_,
+      sampling_c3_options_, plant_, context_, plant_ad_, context_ad_,
+      contact_pairs_, faces_, face_bins_, faces_per_object_,
+      face_bins_per_object_, total_area_per_object_, object_on_target,
+      unsuccessful_sample_buffer_
+    );
+  }
 
   // Ensure prev_repositing_target_ is not inside the object
   const auto& query_port = plant_.get_geometry_query_input_port();
@@ -896,8 +851,6 @@ auto c3_start = std::chrono::high_resolution_clock::now();
         controller_params_.num_objects, print_cost_breakdown, verbose_);
     auto cc_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
-    //std::cout << "CalcCost: " << duration_ms.count() << " ms" << std::endl;
-
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
@@ -988,8 +941,13 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       x_lcs_curr, x_lcs_final_des, met_minimum_progress,
       print_current_pos_and_rot_cost);
 
+    // Switch to repositioning if fixed goals have all been met.
+    if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+      is_doing_c3_ = false;
+      std::cout<<"All objects on target, switching to repositioning mode"<<std::endl;
+    }
     // Switch to repositioning if progress was insufficient.
-    if (!met_minimum_progress && !force_c3_mode &&
+    else if (!met_minimum_progress && !force_c3_mode &&
         (sampling_params_.num_additional_samples_c3 > 0)) {
       is_doing_c3_ = false;
       mode_switch_reason_ = ModeSwitchReason::kToReposUnproductive;
@@ -1091,6 +1049,11 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       // thresholds.
       AddToUnsuccessfulBuffer(candidate_states[0]);
     }
+    // Stay in repositioning if fixed goal is met.
+    else if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+      finished_reposition_flag_ = false;
+      std::cout << "All objects at fixed goals; stay out of the way." << std::endl;
+    }
     // Switch to C3 if the current sample is better, with hysteresis.
     else if (
       (!progress_params_.use_relative_hysteresis &&
@@ -1100,7 +1063,6 @@ auto c3_start = std::chrono::high_resolution_clock::now();
        (x_lcs_curr[2] < sampling_params_.z_height + sampling_params_.c3_min_clearance + wall_offset ||
          !sampling_params_.ee_z_close))
     {
-
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -1287,7 +1249,6 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
 void SamplingC3Controller::CheckForWorkspaceLimitViolations(
     const TimestampedVector<double>* lcs_x_curr) const {
   // xyz checks
-  //std::cout << (*lcs_x_curr).get_data().transpose() << std::endl;
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                  sampling_c3_options_.workspace_limits[i].segment(0, 3) >
@@ -1938,8 +1899,6 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(
         retained_count++;
       }
     }
-    std::cout<<"Removed "<<num_in_buffer_ - retained_count<<
-      " samples from buffer to avoid repeats"<<std::endl;
     num_in_buffer_ = retained_count;
     sample_buffer_ = retained_samples;
     sample_costs_buffer_ = retained_costs;

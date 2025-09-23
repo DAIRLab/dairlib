@@ -480,6 +480,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;
   mutable int detected_goal_changes_ = -1;
+  mutable bool achieved_fixed_goal_ = false;
 
   // Sample buffer-related variables.
   mutable int num_in_buffer_ = 0;

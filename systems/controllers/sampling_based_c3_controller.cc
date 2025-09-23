@@ -688,7 +688,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Used fixed samples if fixed goal and all objects on target.
   std::vector<VectorXd> candidate_states;
-  if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+  if (achieved_fixed_goal_ ||
+      (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal)) {
+    achieved_fixed_goal_ = true;
     int num_samples = is_doing_c3_? sampling_params_.num_additional_samples_c3 :
       sampling_params_.num_additional_samples_repos;
     for (int i = 0; i < num_samples; i++) {
@@ -942,7 +944,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       print_current_pos_and_rot_cost);
 
     // Switch to repositioning if fixed goals have all been met.
-    if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+    if (achieved_fixed_goal_) {
       is_doing_c3_ = false;
       std::cout<<"All objects on target, switching to repositioning mode"<<std::endl;
     }
@@ -1050,7 +1052,7 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       AddToUnsuccessfulBuffer(candidate_states[0]);
     }
     // Stay in repositioning if fixed goal is met.
-    else if (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal) {
+    else if (achieved_fixed_goal_) {
       finished_reposition_flag_ = false;
       std::cout << "All objects at fixed goals; stay out of the way." << std::endl;
     }

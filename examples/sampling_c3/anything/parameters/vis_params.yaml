@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
-object_vis_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture.sdf, examples/sampling_c3/urdf/A_shape_video/A_shape_video.sdf, examples/sampling_c3/urdf/S_shape_texture/S_shape_texture.sdf, examples/sampling_c3/urdf/P_shape_texture/P_shape_texture.sdf]
+object_vis_models: [examples/sampling_c3/urdf/S_shape_video/S_shape_video_full_mesh.sdf, examples/sampling_c3/urdf/book/book_full_mesh.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]
@@ -10,13 +10,13 @@ visualize_c3_workspace: false
 visualize_c3_state: true
 
 visualize_center_of_mass_plan_curr: false
-visualize_c3_forces_curr: false
+visualize_c3_forces_curr: true
 visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false
 
-visualize_is_c3_mode: true
-visualize_sample_locations: true
-visualize_sample_buffer: true
+visualize_is_c3_mode: false
+visualize_sample_locations: false
+visualize_sample_buffer: false
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.

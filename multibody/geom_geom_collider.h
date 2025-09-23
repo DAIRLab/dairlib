@@ -65,6 +65,8 @@ class GeomGeomCollider {
 
   std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
       const drake::systems::Context<double>& context);
+  std::pair<drake::VectorX<double>, Eigen::Matrix<double, Eigen::Dynamic, 3>> CalcWitnessPointsAndForceBasisInWorldFrame(
+      const drake::systems::Context<double>& context, bool planar);
 
  private:
   std::pair<T, drake::MatrixX<T>> DoEval(

@@ -107,6 +107,62 @@ GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
 }
 
 template <typename T>
+std::pair<VectorX<double>, Eigen::Matrix<double, Eigen::Dynamic, 3>>
+GeomGeomCollider<T>::CalcWitnessPointsAndForceBasisInWorldFrame(const Context<double>& context, bool planar) {
+  const auto& query_port = plant_.get_geometry_query_input_port();
+  const auto& query_object =
+      query_port.template Eval<drake::geometry::QueryObject<T>>(context);
+  const auto& inspector = query_object.inspector();
+
+  Vector3d p_ACa;
+
+  const SignedDistancePair<T> signed_distance_pair =
+    query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
+                                                        geometry_id_B_);
+  p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
+          signed_distance_pair.p_ACa;
+  Vector3d nhat_BA_W = signed_distance_pair.nhat_BA_W;
+
+  const auto frame_A_id = inspector.GetFrameId(geometry_id_A_);
+  const auto& frameA = plant_.GetBodyFromFrameId(frame_A_id)->body_frame();
+
+  Vector3d p_WCa = Vector3d::Zero();
+  plant_.CalcPointsPositions(context, frameA, p_ACa, plant_.world_frame(),
+                             &p_WCa);
+
+  // Build friction basis (1 normal, 4 tangents)
+  int num_friction_directions = 2;
+  Matrix<double, Eigen::Dynamic, 3> force_basis(2 * num_friction_directions + 1, 3);
+  if (!planar) {
+    force_basis.row(0) << 1, 0, 0;
+
+    for (int i = 0; i < num_friction_directions; i++) {
+      double theta = (M_PI * i) / num_friction_directions;
+      force_basis.row(2 * i + 1) = Vector3d(0, cos(theta), sin(theta));
+      force_basis.row(2 * i + 2) = -force_basis.row(2 * i + 1);
+    }
+
+    auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(nhat_BA_W, 0);
+    force_basis = force_basis * R_WC.matrix().transpose();
+  }
+  else{
+    Vector3d planar_normal = force_basis.row(0);
+    force_basis = Eigen::MatrixXd::Zero(3, 3);
+    force_basis.resize(3, 3);
+    // First row is the contact normal, projected to the plane
+    force_basis.row(0) = nhat_BA_W - planar_normal*planar_normal.dot(nhat_BA_W);
+    force_basis.row(0).normalize();
+
+    // Second row is the cross product between contact normal and planar normal
+    force_basis.row(1) = nhat_BA_W.cross(planar_normal);
+    force_basis.row(1).normalize();
+    force_basis.row(2) = -force_basis.row(1);
+  }
+
+  return std::pair<VectorX<double>, Eigen::Matrix<double, Eigen::Dynamic, 3>>(p_WCa, force_basis);
+}
+
+template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     const Context<T>& context, Matrix<double, Eigen::Dynamic, 3> force_basis,
     JacobianWrtVariable wrt, bool planar) {

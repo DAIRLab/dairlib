@@ -341,7 +341,7 @@ LcmForceDrawer::LcmForceDrawer(
                       actor_force_color_);
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
                       actor_force_color_);
-  meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
+  meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true);
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
@@ -419,7 +419,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
         force_arrow_path + "/head",
         RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                         Vector3d{0, 0, height + arrowhead_height}), context.get_time());
-    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true, context.get_time());
+    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false, context.get_time());
   } else {
     meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false, context.get_time());
   }
@@ -446,17 +446,32 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
       c3_forces->utime * 1e-6;
 
   for (int i = 0; i < c3_forces->num_forces; ++i) {
-    const VectorXd force = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+    VectorXd force = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         c3_forces->forces[i].contact_force, 3);
+    auto contact_force_color= drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
+    if (i == 0){
+      contact_force_color= drake::geometry::Rgba(0.2549, 0.4117, 1, 1.0);
+      force *= -1;
+    }
+    else if (i > 0 && i <= 6){
+      contact_force_color= drake::geometry::Rgba(0.58, 0.0, 0.8274, 1.0);
+      force *= -1;
+    }
+    else if (i > 6 && i < 8){
+      contact_force_color= drake::geometry::Rgba(1.0, 0.27, 0.0, 1.0);
+    }
+    else {
+      contact_force_color= drake::geometry::Rgba(0.0, 0.502, 0.0, 1.0);
+    }
     auto force_norm = force.norm();
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
     if (force_norm >= 0.01) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
-                            contact_force_color_);
+                            contact_force_color);
         meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_,
-                            contact_force_color_);
+                            contact_force_color);
       }
 
       const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
@@ -545,6 +560,8 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
                         {0, 1, 0, 1});
     meshcat_->SetObject(c3_actual_ee_path_ + "/z-axis", cylinder_for_ee_,
                         {0, 0, 1, 1});
+    meshcat_->SetProperty(c3_target_ee_path_, "visible", false, 0);
+    meshcat_->SetProperty(c3_actual_ee_path_, "visible", false, 0);
   }
   auto x_axis_transform =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),

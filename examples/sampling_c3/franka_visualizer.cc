@@ -1,5 +1,6 @@
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
@@ -14,6 +15,7 @@
 #include "examples/sampling_c3/parameter_headers/visualizer_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/franka_forces_corrector.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -199,6 +201,8 @@ int do_main(int argc, char* argv[]) {
 				);
 	} 
 
+  auto franka_forces_corrector = builder.AddSystem<systems::FrankaForcesCorrector>();
+
   auto is_c3_mode_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.is_c3_mode_channel, lcm));
@@ -226,6 +230,9 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_curr_actor_plan_channel,
           lcm));
+  auto c3_debug_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_c3_output>(
+          lcm_channel_params.c3_debug_output_curr_channel, lcm));
 
   auto trajectory_sub_actor_best = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -362,25 +369,25 @@ int do_main(int argc, char* argv[]) {
   }
 
   if (vis_params.visualize_c3_plan_curr) {
-    auto object_pose_drawer_curr =
-        builder.AddSystem<systems::LcmPoseDrawer>(
-                meshcat, vis_params.object_vis_models,
-                position_names, orientation_names,
-                "plans/curr_planned", sampling_c3_options.N, true,
-                vis_params.c3_curr_object_color);
+    // auto object_pose_drawer_curr =
+    //     builder.AddSystem<systems::LcmPoseDrawer>(
+    //             meshcat, vis_params.object_vis_models,
+    //             position_names, orientation_names,
+    //             "plans/curr_planned", sampling_c3_options.N, true,
+    //             vis_params.c3_curr_object_color);
 
-    builder.Connect(trajectory_sub_object_curr->get_output_port(),
-                    object_pose_drawer_curr->get_input_port_trajectory());
+    // builder.Connect(trajectory_sub_object_curr->get_output_port(),
+    //                 object_pose_drawer_curr->get_input_port_trajectory());
 
-    auto end_effector_pose_drawer_curr =
-        builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
-            FindResourceOrThrow(vis_params.ee_vis_model),
-            "end_effector_position_target", "end_effector_orientation_target",
-            "plans/curr_planned", sampling_c3_options.N, false,
-            vis_params.c3_curr_ee_color);
-    builder.Connect(trajectory_sub_actor_curr->get_output_port(),
-                    end_effector_pose_drawer_curr->get_input_port_trajectory());
+    // auto end_effector_pose_drawer_curr =
+    //     builder.AddSystem<systems::LcmPoseDrawer>(
+    //         meshcat,
+    //         FindResourceOrThrow(vis_params.ee_vis_model),
+    //         "end_effector_position_target", "end_effector_orientation_target",
+    //         "plans/curr_planned", sampling_c3_options.N, false,
+    //         vis_params.c3_curr_ee_color);
+    // builder.Connect(trajectory_sub_actor_curr->get_output_port(),
+    //                 end_effector_pose_drawer_curr->get_input_port_trajectory());
 
     auto dynamically_feasible_object_pose_drawer_curr =
         builder.AddSystem<systems::LcmPoseDrawer>(
@@ -508,8 +515,14 @@ int do_main(int argc, char* argv[]) {
         trajectory_sub_actor_curr->get_output_port(),
         end_effector_force_drawer_curr->get_input_port_actor_trajectory());
     builder.Connect(
-        trajectory_sub_force_curr->get_output_port(),
+        c3_debug_sub->get_output_port(),
+        franka_forces_corrector->get_input_port_c3_debug());
+    builder.Connect(
+        franka_forces_corrector->get_output_port_c3_corrected_forces(),
         end_effector_force_drawer_curr->get_input_port_force_trajectory());
+    // builder.Connect(
+    //     trajectory_sub_force_curr->get_output_port(),
+    //     end_effector_force_drawer_curr->get_input_port_force_trajectory());
     builder.Connect(
         robot_time_passthrough->get_output_port(),
         end_effector_force_drawer_curr->get_input_port_robot_time());

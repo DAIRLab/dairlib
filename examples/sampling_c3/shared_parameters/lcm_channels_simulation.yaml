@@ -2,7 +2,7 @@
 
 franka_state_channel: FRANKA_STATE_SIMULATION   # lcmt_robot_output
 object_state_channel: OBJECT_STATE_SIMULATION   # lcmt_object_state
-object_state_channels: [OBJECT_G_shape_video_STATE_SIMULATION, OBJECT_R_shape_texture_STATE_SIMULATION, OBJECT_A_shape_video_STATE_SIMULATION, OBJECT_S_shape_texture_STATE_SIMULATION, OBJECT_P_shape_texture_STATE_SIMULATION]                                        # lcmt_object_state
+object_state_channels: [OBJECT_S_shape_video_STATE_SIMULATION, OBJECT_book_STATE_SIMULATION]                                                                                                # lcmt_object_state
 franka_input_channel: FRANKA_INPUT              # lcmt_robot_input
 
 osc_channel: OSC_FRANKA                         # lcmt_robot_input

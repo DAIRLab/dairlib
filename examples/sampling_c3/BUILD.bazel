@@ -128,6 +128,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:visualizer_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3:franka_forces_corrector",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -321,5 +322,32 @@ py_binary(
     ],
     deps = [
         "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+cc_library(
+    name = "franka_forces_corrector",
+    srcs = ["franka_forces_corrector.cc"],
+    hdrs = ["franka_forces_corrector.h"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//common",
+        "//systems:system_utils",
+        "//multibody:utils",
+        "//solvers:c3_output",
+        "//systems/framework:vector",
+        "//common:update_context",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

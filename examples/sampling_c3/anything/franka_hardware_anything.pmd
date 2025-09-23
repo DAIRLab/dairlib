@@ -72,9 +72,18 @@ group "drivers" {
         exec = "bazel-bin/franka-driver/franka_driver_v5 --robot_ip_address=172.16.0.2 --control_mode=status_only";
         host = "drake_franka_driver";
     }
-
 }
 
+group "object tracking" {
+    cmd "do_object_tracking" {
+        exec = "python3 examples/sampling_c3/publish_object_names.py";
+        host = "sampling_c3_localhost";
+    }
+    cmd "stop_object_tracking" {
+        exec = "python3 examples/sampling_c3/publish_object_names.py --empty";
+        host = "sampling_c3_localhost";
+    }
+}
 
 script "init_experiment" {
     stop cmd "logger";
@@ -137,6 +146,7 @@ script "start_operator_commands" {
     restart cmd "visualizer";
     restart cmd "xbox";
     restart cmd "lcm-spy";
+    start cmd "do_object_tracking";
 }
 
 script "stop_experiment" {

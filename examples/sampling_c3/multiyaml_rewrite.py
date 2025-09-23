@@ -214,7 +214,7 @@ def build_q_vector(num_objects: int, is_full_pose_tracking: bool = True) -> list
 def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     samp_c3_options_yaml = load_yaml(samp_c3_options_yaml_path)
     include_walls = INCLUDE_WALLS_CONFIGS[num_objects]
-    samp_c3_options_yaml["include_walls"] = include_walls
+    samp_c3_options_yaml["include_walls"] = True if include_walls else False
     samp_c3_options_yaml["N"] = PLANNING_HORIZON_CONFIGS[num_objects]
     samp_c3_options_yaml["num_outer_threads"] = NUM_OUTER_THREADS_CONFIGS[num_objects]
     samp_c3_options_yaml["w_Q"] = W_Q_CONFIGS[num_objects]

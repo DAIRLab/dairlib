@@ -116,8 +116,8 @@ def get_log_output_folder(log_folder_or_log: str) -> str:
   log_folder = log_folder[:-1] if log_folder[-1] == '/' else log_folder
   date = log_folder.split('/')[-2]
   log_num = int(log_folder.split('/')[-1])
-  output_folder = op.abspath(
-    op.join(DAIRLIB_DIR, '..', 'log_outputs', f'{date}_log_{log_num}'))
+  output_folder = op.abspath(op.join(
+    '/mnt/data2/bibit/push_anything_log_outputs', f'{date}_log_{log_num}'))
   if not op.exists(output_folder):
     os.makedirs(output_folder)
   return output_folder

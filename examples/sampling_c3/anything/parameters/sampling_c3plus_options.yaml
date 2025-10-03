@@ -15,6 +15,7 @@ publish_frequency: 0
 penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 spring_stiffness: 0.0  # Not used in C3+.
+final_augmented_cost_scaling: 1000.0
 
 N: 7
 gamma: 1.0  # discount factor on MPC costs
@@ -155,6 +156,7 @@ u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
 # solve_dt: 0       # unused
+dt_cost: 0      
 mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.

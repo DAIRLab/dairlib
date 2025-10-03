@@ -827,7 +827,7 @@ bool IsSampleWithinDistanceOfSurface(
     multibody::GeomGeomCollider collider(plant, pair);
 
     auto [phi_i, J_i] = collider.EvalPolytope(
-      *context, sampling_c3_options.num_friction_directions);
+      *context, sampling_c3_options.num_friction_directions.value());
     distances.push_back(phi_i);
   }
 

@@ -17,11 +17,6 @@
 #include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/reposition.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_miqp.h"
-#include "solvers/c3_options.h"
-#include "solvers/c3_plus.h"
-#include "solvers/c3_qp.h"
-#include "solvers/lcs.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -48,12 +43,6 @@ using Eigen::MatrixXf;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
-using solvers::C3Base;
-using solvers::C3MIQP;
-using solvers::C3Plus;
-using solvers::C3QP;
-using solvers::LCS;
-using solvers::LCSFactory;
 using std::vector;
 using systems::TimestampedVector;
 
@@ -126,19 +115,11 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
-  if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ = 2 * sampling_c3_options_.num_contacts +
-                sampling_c3_options_.n_lambda_with_tangential;
-  } else if (sampling_c3_options_.contact_model == "anitescu") {
-    contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ = sampling_c3_options_.n_lambda_with_tangential;
-  } else {
-    std::cerr << ("Unknown or unsupported contact model: " +
-                  sampling_c3_options_.contact_model)
-              << std::endl;
-    DRAKE_THROW_UNLESS(false);
-  }
+  n_lambda_ = LCSFactory::GetNumContactVariables(
+      c3::multibody::GetContactModelMap().at(
+          controller_params_.sampling_c3_options.contact_model),
+      sampling_c3_options_.num_contacts,
+      sampling_c3_options_.num_friction_directions_per_contact);
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
@@ -150,37 +131,34 @@ SamplingC3Controller::SamplingC3Controller(
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
   if (sampling_c3_options_.projection_type == "MIQP") {
-    c3_curr_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-
-    c3_best_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-
+    c3_curr_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
+    c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
-
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                           C3Base::CostMatrices(Q_, R_, G_, U_),
+                                           C3::CostMatrices(Q_, R_, G_, U_),
                                            x_desired_placeholder, c3_options);
     c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                           C3Base::CostMatrices(Q_, R_, G_, U_),
+                                           C3::CostMatrices(Q_, R_, G_, U_),
                                            x_desired_placeholder, c3_options);
-    c3_buffer_plan_ = std::make_unique<C3QP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
+    c3_buffer_plan_ = std::make_unique<C3QP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "C3+") {
-    c3_curr_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-    c3_best_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
+    c3_curr_plan_ = std::make_unique<C3Plus>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
+    c3_best_plan_ = std::make_unique<C3Plus>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
@@ -202,35 +180,52 @@ SamplingC3Controller::SamplingC3Controller(
       // to put a comment here when the T example is added. The fourth parameter
       // decides which optimization variable the constraint is applied to. 1 =
       // x, 2 = u, 3 = lambda.
-      c3_curr_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                         c3_options.workspace_limits[i][4], 1);
-      c3_best_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                         c3_options.workspace_limits[i][4], 1);
-      c3_buffer_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                           c3_options.workspace_limits[i][4],
-                                           1);
+      c3_curr_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
+      c3_best_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
+      c3_buffer_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
     }
   }
 
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                       c3_options.u_horizontal_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                       c3_options.u_horizontal_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                         c3_options.u_horizontal_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_best_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_buffer_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                       c3_options.u_vertical_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                       c3_options.u_vertical_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                         c3_options.u_vertical_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_best_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_buffer_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
   }
 
   // Input ports.
@@ -536,17 +531,434 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
-LCS SamplingC3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
-  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
-  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, sampling_c3_options_.N,
-             sampling_c3_options_.planning_dt_position);
+// This function relies on the previously computed z_fin from Solve.
+std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
+    C3CostComputationType cost_type, const LCS& lcs_for_cost,
+    const C3::CostMatrices& c3_cost, const std::vector<VectorXd> x_desired,
+    const std::vector<Eigen::VectorXd> z_fin, bool force_tracking_disabled,
+    int num_objects, bool print_cost_breakdown, bool verbose) const {
+  int resolution = sampling_c3_options_.lcs_dt_resolution;
+
+  vector<VectorXd> UU(N_ * resolution, VectorXd::Zero(n_u_));
+  std::vector<Eigen::VectorXd> XX(N_ * resolution + 1, VectorXd::Zero(n_x_));
+
+  const int ee_vel_index = 7 * num_objects + 3;
+
+  // Simulate the dynamics from the planned inputs.
+  if (cost_type == C3CostComputationType::kSimLCS) {
+    XX[0] = z_fin[0].segment(0, n_x_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+    }
+  }
+
+  // Use the C3 plan.
+  else if (cost_type == C3CostComputationType::kUseC3Plan) {
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
+      XX[i] = z_fin[i / resolution].segment(0, n_x_);
+      if (i == N_ - 1) {
+        XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+      }
+    }
+  }
+
+  // Simulate the dynamics from the planned inputs only for the object; use
+  // the planned EE trajectory.
+  else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
+    // Simulate the object trajectory.
+    XX[0] = z_fin[0].segment(0, n_x_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+    }
+    // Replace ee traj with those from z_fin.
+    for (int i = 0; i < N_; i++) {
+      XX[i].segment(0, 3) = z_fin[i / resolution].segment(0, 3);
+      if (i == N_ - 1) {
+        XX[i + 1].segment(0, 3) =
+            lcs_for_cost.Simulate(XX[i], UU[i]).segment(0, 3);
+      }
+    }
+  }
+
+  // Try to emulate the real cost of the system associated not only applying
+  // the planned u but also the u associated with tracking the position plan
+  // over time.
+  else if (cost_type == C3CostComputationType::kSimImpedance) {
+    std::tie(XX, UU) = SimulatePDControl(lcs_for_cost, z_fin, num_objects,
+                                         force_tracking_disabled, verbose);
+  }
+
+  // The same as the previous cost type except the EE states are replaced with
+  // the plan from C3 at the end.
+  else if (cost_type == C3CostComputationType::kSimImpedanceReplaceC3EEPlan) {
+    std::tie(XX, UU) = SimulatePDControl(lcs_for_cost, z_fin, num_objects,
+                                         force_tracking_disabled, verbose);
+
+    // Replace the end effector position and velocity plans with the ones from
+    // the C3 plan.
+    for (int i = 0; i < N_ * resolution; i++) {
+      XX[i].segment(0, 3) = z_fin[i].segment(0, 3);
+      XX[i].segment(ee_vel_index, 3) = z_fin[i].segment(ee_vel_index, 3);
+      if (i == N_ * resolution - 1) {
+        XX[i + 1].segment(0, 3) = z_fin[i].segment(0, 3);
+        XX[i + 1].segment(ee_vel_index, 3) = z_fin[i].segment(ee_vel_index, 3);
+      }
+    }
+  }
+
+  // The same as the previous cost type except only object terms contribute to
+  // the final cost.
+  if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
+    std::tie(XX, UU) = SimulatePDControl(lcs_for_cost, z_fin, num_objects,
+                                         force_tracking_disabled, verbose);
+  }
+
+  // Declare Q_eff and R_eff as the Q and R to use for cost computation.
+  std::vector<Eigen::MatrixXd> Q_eff = c3_cost.Q;
+  std::vector<Eigen::MatrixXd> R_eff = c3_cost.R;
+
+  // Calculate the cost over the N+1 time steps.
+  double cost = 0;
+
+  // used only for verbose mode printouts
+  double error_contrib_ee_pos = 0;
+  double error_contrib_obj_orientation = 0;
+  double error_contrib_obj_pos = 0;
+  double error_contrib_ee_vel = 0;
+  double error_contrib_obj_ang_vel = 0;
+  double error_contrib_obj_vel = 0;
+
+  double cost_contrib_ee_pos = 0;
+  double cost_contrib_obj_orientation = 0;
+  double cost_contrib_obj_pos = 0;
+  double cost_contrib_ee_vel = 0;
+  double cost_contrib_obj_ang_vel = 0;
+  double cost_contrib_obj_vel = 0;
+
+  int obj_orientation_index = 0;
+  int obj_pos_index = 0;
+  int obj_ang_vel_index = 0;
+  int obj_vel_index = 0;
+
+  double cost_contrib_u = 0;
+
+  // Calculate the error and cost contributions for each state.
+  for (int i = 0; i < N_ * resolution; i += resolution) {
+    // ee_pos
+    error_contrib_ee_pos +=
+        (XX[i].segment(0, 3) - x_desired[i / resolution].segment(0, 3))
+            .transpose() *
+        (XX[i].segment(0, 3) - x_desired[i / resolution].segment(0, 3));
+    cost_contrib_ee_pos +=
+        (XX[i].segment(0, 3) - x_desired[i / resolution].segment(0, 3))
+            .transpose() *
+        Q_eff.at(i / resolution).block(0, 0, 3, 3) *
+        (XX[i].segment(0, 3) - x_desired[i / resolution].segment(0, 3));
+    // obj_orientation
+    for (int j = 0; j < num_objects; j++) {
+      obj_orientation_index = 7 * j + 3;
+      obj_pos_index = 7 * j + 7;
+      error_contrib_obj_orientation +=
+          (XX[i].segment(obj_orientation_index, 4) -
+           x_desired[i / resolution].segment(obj_orientation_index, 4))
+              .transpose() *
+          (XX[i].segment(obj_orientation_index, 4) -
+           x_desired[i / resolution].segment(obj_orientation_index, 4));
+      cost_contrib_obj_orientation +=
+          (XX[i].segment(obj_orientation_index, 4) -
+           x_desired[i / resolution].segment(obj_orientation_index, 4))
+              .transpose() *
+          Q_eff.at(i / resolution)
+              .block(obj_orientation_index, obj_orientation_index, 4, 4) *
+          (XX[i].segment(obj_orientation_index, 4) -
+           x_desired[i / resolution].segment(obj_orientation_index, 4));
+      // obj_pos
+      error_contrib_obj_pos +=
+          (XX[i].segment(obj_pos_index, 3) -
+           x_desired[i / resolution].segment(obj_pos_index, 3))
+              .transpose() *
+          (XX[i].segment(obj_pos_index, 3) -
+           x_desired[i / resolution].segment(obj_pos_index, 3));
+      cost_contrib_obj_pos +=
+          (XX[i].segment(obj_pos_index, 3) -
+           x_desired[i / resolution].segment(obj_pos_index, 3))
+              .transpose() *
+          Q_eff.at(i / resolution).block(obj_pos_index, obj_pos_index, 3, 3) *
+          (XX[i].segment(obj_pos_index, 3) -
+           x_desired[i / resolution].segment(obj_pos_index, 3));
+    }
+    // ee_vel
+    error_contrib_ee_vel +=
+        (XX[i].segment(ee_vel_index, 3) -
+         x_desired[i / resolution].segment(ee_vel_index, 3))
+            .transpose() *
+        (XX[i].segment(ee_vel_index, 3) -
+         x_desired[i / resolution].segment(ee_vel_index, 3));
+    cost_contrib_ee_vel +=
+        (XX[i].segment(ee_vel_index, 3) -
+         x_desired[i / resolution].segment(ee_vel_index, 3))
+            .transpose() *
+        Q_eff.at(i / resolution).block(ee_vel_index, ee_vel_index, 3, 3) *
+        (XX[i].segment(ee_vel_index, 3) -
+         x_desired[i / resolution].segment(ee_vel_index, 3));
+    // obj_ang_vel
+    for (int j = 0; j < num_objects; j++) {
+      obj_ang_vel_index = 6 * j + 6 + 7 * num_objects;
+      obj_vel_index = 6 * j + 9 + 7 * num_objects;
+      error_contrib_obj_ang_vel +=
+          (XX[i].segment(obj_ang_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_ang_vel_index, 3))
+              .transpose() *
+          (XX[i].segment(obj_ang_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_ang_vel_index, 3));
+      cost_contrib_obj_ang_vel +=
+          (XX[i].segment(obj_ang_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_ang_vel_index, 3))
+              .transpose() *
+          Q_eff.at(i / resolution)
+              .block(obj_ang_vel_index, obj_ang_vel_index, 3, 3) *
+          (XX[i].segment(obj_ang_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_ang_vel_index, 3));
+      // obj_vel
+      error_contrib_obj_vel +=
+          (XX[i].segment(obj_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_vel_index, 3))
+              .transpose() *
+          (XX[i].segment(obj_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_vel_index, 3));
+      cost_contrib_obj_vel +=
+          (XX[i].segment(obj_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_vel_index, 3))
+              .transpose() *
+          Q_eff.at(i / resolution).block(obj_vel_index, obj_vel_index, 3, 3) *
+          (XX[i].segment(obj_vel_index, 3) -
+           x_desired[i / resolution].segment(obj_vel_index, 3));
+    }
+
+    cost = cost +
+           (XX[i] - x_desired[i / resolution]).transpose() *
+               Q_eff.at(i / resolution) * (XX[i] - x_desired[i / resolution]) +
+           UU[i].transpose() * R_eff.at(i / resolution) * UU[i];
+
+    cost_contrib_u += UU[i].transpose() * R_eff.at(i / resolution) * UU[i];
+  }
+
+  DRAKE_DEMAND(!std::isnan(cost_contrib_obj_vel));
+
+  // Handle the N_th state.
+  cost = cost + (XX[N_] - x_desired[N_]).transpose() * Q_eff.at(N_) *
+                    (XX[N_] - x_desired[N_]);
+
+  error_contrib_ee_pos +=
+      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
+      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+  for (int j = 0; j < num_objects; j++) {
+    obj_orientation_index = 7 * j + 3;
+    obj_pos_index = 7 * j + 7;
+    error_contrib_obj_orientation +=
+        (XX[N_].segment(obj_orientation_index, 4) -
+         x_desired[N_].segment(obj_orientation_index, 4))
+            .transpose() *
+        (XX[N_].segment(obj_orientation_index, 4) -
+         x_desired[N_].segment(obj_orientation_index, 4));
+    error_contrib_obj_pos += (XX[N_].segment(obj_pos_index, 3) -
+                              x_desired[N_].segment(obj_pos_index, 3))
+                                 .transpose() *
+                             (XX[N_].segment(obj_pos_index, 3) -
+                              x_desired[N_].segment(obj_pos_index, 3));
+  }
+  error_contrib_ee_vel +=
+      (XX[N_].segment(ee_vel_index, 3) - x_desired[N_].segment(ee_vel_index, 3))
+          .transpose() *
+      (XX[N_].segment(ee_vel_index, 3) -
+       x_desired[N_].segment(ee_vel_index, 3));
+
+  for (int j = 0; j < num_objects; j++) {
+    obj_ang_vel_index = 6 * j + 6 + 7 * num_objects;
+    obj_vel_index = 6 * j + 9 + 7 * num_objects;
+    error_contrib_obj_ang_vel += (XX[N_].segment(obj_ang_vel_index, 3) -
+                                  x_desired[N_].segment(obj_ang_vel_index, 3))
+                                     .transpose() *
+                                 (XX[N_].segment(obj_ang_vel_index, 3) -
+                                  x_desired[N_].segment(obj_ang_vel_index, 3));
+    error_contrib_obj_vel += (XX[N_].segment(obj_vel_index, 3) -
+                              x_desired[N_].segment(obj_vel_index, 3))
+                                 .transpose() *
+                             (XX[N_].segment(obj_vel_index, 3) -
+                              x_desired[N_].segment(obj_vel_index, 3));
+  }
+
+  cost_contrib_ee_pos +=
+      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
+      Q_eff.at(N_).block(0, 0, 3, 3) *
+      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+  for (int j = 0; j < num_objects; j++) {
+    obj_orientation_index = 7 * j + 3;
+    obj_pos_index = 7 * j + 7;
+    cost_contrib_obj_orientation +=
+        (XX[N_].segment(obj_orientation_index, 4) -
+         x_desired[N_].segment(obj_orientation_index, 4))
+            .transpose() *
+        Q_eff.at(N_).block(obj_orientation_index, obj_orientation_index, 4, 4) *
+        (XX[N_].segment(obj_orientation_index, 4) -
+         x_desired[N_].segment(obj_orientation_index, 4));
+    cost_contrib_obj_pos +=
+        (XX[N_].segment(obj_pos_index, 3) -
+         x_desired[N_].segment(obj_pos_index, 3))
+            .transpose() *
+        Q_eff.at(N_).block(obj_pos_index, obj_pos_index, 3, 3) *
+        (XX[N_].segment(obj_pos_index, 3) -
+         x_desired[N_].segment(obj_pos_index, 3));
+  }
+  cost_contrib_ee_vel +=
+      (XX[N_].segment(ee_vel_index, 3) - x_desired[N_].segment(ee_vel_index, 3))
+          .transpose() *
+      Q_eff.at(N_).block(ee_vel_index, ee_vel_index, 3, 3) *
+      (XX[N_].segment(ee_vel_index, 3) -
+       x_desired[N_].segment(ee_vel_index, 3));
+  for (int j = 0; j < num_objects; j++) {
+    obj_ang_vel_index = 6 * j + 6 + 7 * num_objects;
+    obj_vel_index = 6 * j + 9 + 7 * num_objects;
+    cost_contrib_obj_ang_vel +=
+        (XX[N_].segment(obj_ang_vel_index, 3) -
+         x_desired[N_].segment(obj_ang_vel_index, 3))
+            .transpose() *
+        Q_eff.at(N_).block(obj_ang_vel_index, obj_ang_vel_index, 3, 3) *
+        (XX[N_].segment(obj_ang_vel_index, 3) -
+         x_desired[N_].segment(obj_ang_vel_index, 3));
+    cost_contrib_obj_vel +=
+        (XX[N_].segment(obj_vel_index, 3) -
+         x_desired[N_].segment(obj_vel_index, 3))
+            .transpose() *
+        Q_eff.at(N_).block(obj_vel_index, obj_vel_index, 3, 3) *
+        (XX[N_].segment(obj_vel_index, 3) -
+         x_desired[N_].segment(obj_vel_index, 3));
+  }
+
+  if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
+    cost = cost_contrib_obj_pos + cost_contrib_obj_orientation +
+           cost_contrib_obj_vel + cost_contrib_obj_ang_vel;
+  }
+
+  if (verbose || print_cost_breakdown) {
+    std::cout << "Error breakdown" << std::endl;
+    std::cout << "\t total error contribution from x_ee: "
+              << error_contrib_ee_pos << std::endl;
+    std::cout << "\t total error contribution from q_obj: "
+              << error_contrib_obj_orientation << std::endl;
+    std::cout << "\t total error contribution from x_obj: "
+              << error_contrib_obj_pos << std::endl;
+    std::cout << "\t total error contribution from v_ee: "
+              << error_contrib_ee_vel << std::endl;
+    std::cout << "\t total error contribution from w_obj: "
+              << error_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total error contribution from v_obj: "
+              << error_contrib_obj_vel << std::endl;
+
+    std::cout << "\nCOST BREAKDOWN" << std::endl;
+    std::cout << "\t total cost contribution from x_ee: " << cost_contrib_ee_pos
+              << std::endl;
+    std::cout << "\t total cost contribution from q_obj: "
+              << cost_contrib_obj_orientation << std::endl;
+    std::cout << "\t total cost contribution from x_obj: "
+              << cost_contrib_obj_pos << std::endl;
+    std::cout << "\t total cost contribution from v_ee: " << cost_contrib_ee_vel
+              << std::endl;
+    std::cout << "\t total cost contribution from w_obj: "
+              << cost_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total cost contribution from v_obj: "
+              << cost_contrib_obj_vel << std::endl;
+    std::cout << "\t total cost contribution from u: " << cost_contrib_u
+              << std::endl;
+
+    std::cout << "\t total cost is: " << cost << std::endl;
+    std::cout << "\t total cost object terms only is : "
+              << cost_contrib_obj_pos + cost_contrib_obj_orientation +
+                     cost_contrib_obj_vel + cost_contrib_obj_ang_vel
+              << std::endl;
+    std::cout << "\n\n";
+  }
+
+  std::vector<VectorXd> XX_downsampled(N_ + 1, VectorXd::Zero(n_x_));
+
+  for (int i = 0; i < N_ * resolution; i += resolution) {
+    XX_downsampled[i / resolution] = XX[i];
+  }
+  XX_downsampled[N_] = XX[N_ * resolution];
+
+  // for (int i = 0; i < XX_downsampled.size(); i++) {
+  //   std::cout << XX_downsampled[i].transpose() << std::endl;
+  // }
+  // std::cout << "\n\n" << std::endl;
+
+  std::pair<double, std::vector<VectorXd>> ret(cost, XX_downsampled);
+  // for (int j =0; j <= N_; j++) {
+  //   std::cout << XX[j].transpose() << std::endl;
+  // }
+  // std::cout << "\n\n" << std::endl;
+  return ret;
+}
+
+std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+SamplingC3Controller::SimulatePDControl(
+    const LCS& lcs_for_cost, const std::vector<Eigen::VectorXd> z_fin,
+    int num_objects, bool force_tracking_disabled, bool verbose) const {
+  if (verbose) {
+    std::cout << "\nSIMULATING PD CONTROL" << std::endl;
+  }
+
+  const int ee_vel_index = 7 * num_objects + 3;
+  int resolution = sampling_c3_options_.lcs_dt_resolution;
+
+  // Obtain the solutions from C3.
+  vector<VectorXd> UU(N_ * resolution, VectorXd::Zero(n_u_));
+  std::vector<Eigen::VectorXd> XX(N_ * resolution + 1, VectorXd::Zero(n_x_));
+  for (int i = 0; i < N_ * resolution; i++) {
+    UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
+    XX[i] = z_fin[i / resolution].segment(0, n_x_);
+    if (i == N_ * resolution - 1) {
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+    }
+  }
+
+  // Set the PD gains for the emulated tracking controller.
+  Eigen::VectorXd Kp_vector = Eigen::Map<const VectorXd, Eigen::Unaligned>(
+      sampling_c3_options_.Kp_for_ee_pd_rollout.data(),
+      sampling_c3_options_.Kp_for_ee_pd_rollout.size());
+  Eigen::VectorXd Kd_vector = Eigen::Map<const VectorXd, Eigen::Unaligned>(
+      sampling_c3_options_.Kd_for_ee_pd_rollout.data(),
+      sampling_c3_options_.Kd_for_ee_pd_rollout.size());
+
+  Eigen::MatrixXd Kp = Kp_vector.asDiagonal();
+  Eigen::MatrixXd Kd = Kd_vector.asDiagonal();
+
+  // Obtain modified solutions for the PD controller.
+  std::vector<Eigen::VectorXd> UU_new(N_ * resolution, VectorXd::Zero(n_u_));
+  std::vector<Eigen::VectorXd> XX_new(N_ * resolution + 1, VectorXd::Zero(n_x_));
+
+  XX_new[0] = z_fin[0].segment(0, n_x_);
+  // This will just be the original u from z_fin[0] for the first time step.
+  // if the radio input is true, then the u will only emulate position
+  // tracking using the PD controller.
+  for (int i = 0; i < N_ * resolution; i++) {
+    if (force_tracking_disabled) {
+      UU_new[i] = Kp * (XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
+                  Kd * (XX[i].segment(ee_vel_index, 3) -
+                        XX_new[i].segment(ee_vel_index, 3));
+    } else {
+      UU_new[i] = UU[i] + Kp * (XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) +
+                  Kd * (XX[i].segment(ee_vel_index, 3) -
+                        XX_new[i].segment(ee_vel_index, 3));
+    }
+    if (verbose) {
+      std::cout << "simulated step " << i + 1 << std::endl;
+    }
+    XX_new[i + 1] = lcs_for_cost.Simulate(XX_new[i], UU_new[i]);
+  }
+  return {XX_new, UU_new};
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -677,6 +1089,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // crossed_cost_switching_threshold_ flag.
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
@@ -768,9 +1183,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
   // Make LCS objects for each sample.
   auto lcs_pair = SamplingC3Controller::CreateLCSObjectsForSamples(
-      candidate_states, x_lcs_curr, c3_options, c3_options);
-  std::vector<solvers::LCS> lcs_candidates = lcs_pair.first;
-  std::vector<solvers::LCS> lcs_candidates_for_cost = lcs_pair.second;
+      candidate_states, x_lcs_curr, lcs_factory_options);
+  std::vector<LCS> lcs_candidates = lcs_pair.first;
+  std::vector<LCS> lcs_candidates_for_cost = lcs_pair.second;
 
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
@@ -778,8 +1193,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<std::vector<Eigen::VectorXd>>(
           num_total_samples,
           std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
-  std::vector<std::shared_ptr<solvers::C3Base>> c3_objects(num_total_samples,
-                                                           nullptr);
+  std::vector<std::shared_ptr<C3>> c3_objects(num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
   C3CostComputationType cost_type = progress_params_.cost_type;
   if (!crossed_cost_switching_threshold_) {
@@ -798,21 +1212,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
-    std::shared_ptr<solvers::C3Base> test_c3_object;
-    std::vector<VectorXd> x_desired =
-        std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
-    if (c3_options.projection_type == "MIQP") {
-      test_c3_object = std::make_shared<C3MIQP>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
-    } else if (c3_options.projection_type == "QP") {
-      test_c3_object = std::make_shared<C3QP>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
-    } else if (c3_options.projection_type == "C3+") {
-      test_c3_object = std::make_shared<C3Plus>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
+    std::shared_ptr<C3> test_c3_object;
+    std::vector<VectorXd> x_desired(N_ + 1, x_lcs_des.value());
+
+    C3::CostMatrices c3_costmat(Q_, R_, G_, U_);
+    if (sampling_c3_options_.projection_type == "MIQP") {
+      test_c3_object = std::make_shared<C3MIQP>(test_system, c3_costmat,
+                                                x_desired, c3_options);
+    } else if (sampling_c3_options_.projection_type == "QP") {
+      test_c3_object = std::make_shared<C3QP>(test_system, c3_costmat,
+                                              x_desired, c3_options);
+    } else if (sampling_c3_options_.projection_type == "C3+") {
+      test_c3_object = std::make_shared<C3Plus>(test_system, c3_costmat,
+                                                x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
 
     if (!sampling_c3_options_.include_walls) {
@@ -823,11 +1235,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             sampling_c3_options_.workspace_limits[i].segment(0, 3);
         test_c3_object->AddLinearConstraint(
             A,
-            c3_options.workspace_limits[i][3] -
+            sampling_c3_options_.workspace_limits[i][3] -
                 sampling_c3_options_.workspace_margins,
-            c3_options.workspace_limits[i][4] +
+            sampling_c3_options_.workspace_limits[i][4] +
                 sampling_c3_options_.workspace_margins,
-            1);
+            c3::ConstraintVariable::STATE);
       }
       // Set object bounds
       for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -837,11 +1249,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
               sampling_c3_options_.workspace_limits[i].segment(0, 3);
           test_c3_object->AddLinearConstraint(
               A,
-              c3_options.workspace_limits[i][3] -
+              sampling_c3_options_.workspace_limits[i][3] -
                   sampling_c3_options_.workspace_margins,
-              c3_options.workspace_limits[i][4] +
+              sampling_c3_options_.workspace_limits[i][4] +
                   sampling_c3_options_.workspace_margins,
-              1);
+              c3::ConstraintVariable::STATE);
         }
       }
     }
@@ -850,24 +1262,27 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     for (int i : vector<int>({0, 1, 2})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, -0.14, 0.14, 1);
+      test_c3_object->AddLinearConstraint(A, -0.14, 0.14,
+                                          c3::ConstraintVariable::STATE);
     }
 
     // Add force constraints
     for (int i : vector<int>({0, 1})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
       A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                          c3_options.u_horizontal_limits[1], 2);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.u_horizontal_limits[0],
+          sampling_c3_options_.u_horizontal_limits[1],
+          c3::ConstraintVariable::INPUT);
     }
     for (int i : vector<int>({2})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
       A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                          c3_options.u_vertical_limits[1], 2);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.u_vertical_limits[0],
+          sampling_c3_options_.u_vertical_limits[1],
+          c3::ConstraintVariable::INPUT);
     }
-
-    test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
@@ -875,10 +1290,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     auto cc_start = std::chrono::high_resolution_clock::now();
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
-        test_c3_object->CalcCost(
-            cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
-            sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-            controller_params_.num_objects, print_cost_breakdown, verbose_);
+        CalcCost(cost_type, lcs_candidates_for_cost.at(i), c3_costmat,
+                 x_desired, test_c3_object->GetFullSolution(),
+                 force_tracking_disabled, controller_params_.num_objects,
+                 print_cost_breakdown, verbose_);
     auto cc_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
 
@@ -1454,36 +1869,39 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
-        LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                                 sampling_c3_options_.resolve_contacts_to,
-                                 c3_options.num_friction_directions, verbose_);
-
-    solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
-        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-        c3_options.mu, dt_, N_, sampling_c3_options_.n_lambda_with_tangential,
-        sampling_c3_options_.num_friction_directions_per_contact,
-        sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-        contact_model_);
-
+        GetResolvedContactPairs(
+            plant_, *context_, contact_pairs_,
+            sampling_c3_options_.resolve_contacts_to,
+            sampling_c3_options_.num_friction_directions_per_contact, verbose_);
+    LCS lcs_object_sample =
+        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                   resolved_contact_pairs, lcs_factory_options)
+            .GenerateLCS();
     lcs_candidates.push_back(lcs_object_sample);
 
     // Create different LCS objects for cost calculation.
     vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
-    resolved_contact_pairs_for_cost_simulation = LCSFactory::PreProcessor(
+    resolved_contact_pairs_for_cost_simulation = GetResolvedContactPairs(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to_for_cost,
-        sampling_c3_options_.num_friction_directions, verbose_);
-    solvers::LCS lcs_object_sample_for_cost_simulation =
-        solvers::LCSFactory::LinearizePlantToLCS(
-            plant_, *context_, plant_ad_, *context_ad_,
-            resolved_contact_pairs_for_cost_simulation,
-            sampling_c3_options_.mu_for_cost, dt_cost_,
-            N_ * sampling_c3_options_.lcs_dt_resolution,
-            sampling_c3_options_.n_lambda_with_tangential_cost,
-            sampling_c3_options_.num_friction_directions_per_contact_cost,
-            sampling_c3_options_
-                .starting_index_per_contact_in_lambda_t_vector_cost,
-            contact_model_);
+        sampling_c3_options_.num_friction_directions_per_contact_for_cost,
+        verbose_);
+    LCSFactoryOptions lcs_factory_options_for_cost = {
+        .contact_model = controller_params_.sampling_c3_options.contact_model,
+        .num_contacts = resolved_contact_pairs_for_cost_simulation.size(),
+        .spring_stiffness = 0.0,
+        .num_friction_directions = std::nullopt,
+        .num_friction_directions_per_contact =
+            sampling_c3_options_.num_friction_directions_per_contact_for_cost,
+        .mu = sampling_c3_options_.mu_for_cost,
+        .contact_pair_configs = std::nullopt,
+        .N = N_ * sampling_c3_options_.lcs_dt_resolution,
+        .dt = dt_ / sampling_c3_options_.lcs_dt_resolution};
+    LCS lcs_object_sample_for_cost_simulation =
+        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                   resolved_contact_pairs_for_cost_simulation,
+                   lcs_factory_options_for_cost)
+            .GenerateLCS();
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -1493,7 +1911,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
 
   if (verbose_) {
     // Print the LCS matrices for verbose inspection.
-    solvers::LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
+    LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
     std::cout << "A: " << std::endl;
     std::cout << verbose_lcs.A()[0] << std::endl;
     std::cout << "B: " << std::endl;
@@ -2345,23 +2763,22 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 lcs_x->get_data());
 
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs =
-      LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                               sampling_c3_options_.resolve_contacts_to,
-                               c3_options.num_friction_directions, verbose_);
+  resolved_contact_pairs = GetResolvedContactPairs(
+      plant_, *context_, contact_pairs_,
+      sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.num_friction_directions_per_contact, verbose_);
 
   // print size of resolved_contact_pairs
-  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, resolved_contact_pairs, c3_options.mu,
-      sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.num_friction_directions_per_contact,
-      sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+  *lcs_contact_jacobian =
+      LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                 resolved_contact_pairs, lcs_factory_options)
+          .GetContactJacobianAndPoints();
 }
 
 // Output port handlers for best sample location
@@ -2586,22 +3003,20 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 x_sample);
 
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Preprocess the contact pairs.
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs =
-      LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                               sampling_c3_options_.resolve_contacts_to,
-                               c3_options.num_friction_directions, verbose_);
-
-  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, resolved_contact_pairs, c3_options.mu,
-      sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.num_friction_directions_per_contact,
-      sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+  resolved_contact_pairs = GetResolvedContactPairs(
+      plant_, *context_, contact_pairs_,
+      sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.num_friction_directions_per_contact, verbose_);
+  *lcs_contact_jacobian =
+      LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                 resolved_contact_pairs, lcs_factory_options)
+          .GetContactJacobianAndPoints();
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

@@ -26,9 +26,6 @@
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3_output.h"
-#include "solvers/lcs.h"
-#include "solvers/lcs_factory.h"
-#include "solvers/solver_options_io.h"
 #include "systems/controllers/face.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -236,8 +233,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
   CreateLCSObjectsForSamples(
       const std::vector<Eigen::VectorXd>& candidate_states,
-      const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
-      const C3Options& c3_options_curr_location) const;
+      const drake::VectorX<double>& x_lcs_curr,
+      const LCSFactoryOptions& lcs_factory_options) const;
 
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;
@@ -254,7 +251,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 
   void AugmentSamplesWithBuffer(
-      std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const;
+      std::vector<std::shared_ptr<c3::C3>>& c3_objects) const;
 
   void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
 
@@ -267,8 +264,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void ResetProgressMetrics() const;
 
   /// Output port functions
-  void OutputC3SolutionCurrPlan(const drake::systems::Context<double>& context,
-                                C3Output::C3Solution* c3_solution) const;
+  void OutputC3SolutionCurrPlan(
+      const drake::systems::Context<double>& context,
+      dairlib::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -282,8 +280,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
           lcs_contact_jacobian) const;
-  void OutputC3SolutionBestPlan(const drake::systems::Context<double>& context,
-                                C3Output::C3Solution* c3_solution) const;
+  void OutputC3SolutionBestPlan(
+      const drake::systems::Context<double>& context,
+      dairlib::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionBestPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;

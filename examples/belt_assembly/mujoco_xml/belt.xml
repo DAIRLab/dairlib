@@ -1,0 +1,97 @@
+<!-- Copyright 2021 DeepMind Technologies Limited
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+
+<mujoco model="Belt">
+  <include file="scene.xml"/>
+
+  <extension>
+    <plugin plugin="mujoco.elasticity.cable"/>
+  </extension>
+
+  <statistic center="0 0 .2" extent="1"/>
+
+  <visual>
+    <global elevation="-30"/>
+  </visual>
+
+  <option timestep="0.001">
+    <flag gravity="disable"/>
+  </option>
+  <compiler autolimits="true"/>
+
+  <worldbody>
+    <composite type="cable" offset="-.5 0 .05" initial="none"
+      vertex="
+      0.12 0.0 0.
+0.11852260087141653 0.008760330042252929 0.
+0.11412678195541842 0.017304951684997055 0.
+0.10692078290260415 0.02542346798541462 0.
+0.0970820393249937 0.032915974128378496 0.
+0.08485281374238571 0.03959797974644666 0.
+0.07053423027509677 0.045304951684997055 0.
+0.054478859968745616 0.0498963653545486 0.
+0.037082039324993696 0.0532591649125286 0.
+0.01877213580482771 0.055310547073327714 0.
+7.347880794884118e-18 0.056 0.
+-0.018772135804827696 0.055310547073327714 0.
+-0.03708203932499368 0.053259164912528606 0.
+-0.0544788599687456 0.049896365354548604 0.
+-0.07053423027509675 0.045304951684997055 0.
+-0.0848528137423857 0.03959797974644667 0.
+-0.09708203932499368 0.0329159741283785 0.
+-0.10692078290260414 0.025423467985414623 0.
+-0.11412678195541842 0.01730495168499706 0.
+-0.11852260087141651 0.008760330042252936 0.
+-0.12 6.858022075225178e-18 0.
+-0.11852260087141653 -0.008760330042252922 0.
+-0.11412678195541844 -0.017304951684997048 0.
+-0.10692078290260415 -0.025423467985414616 0.
+-0.09708203932499371 -0.03291597412837849 0.
+-0.08485281374238572 -0.03959797974644666 0.
+-0.07053423027509678 -0.045304951684997055 0.
+-0.05447885996874563 -0.0498963653545486 0.
+-0.0370820393249937 -0.0532591649125286 0.
+-0.018772135804827724 -0.055310547073327714 0.
+-2.2043642384652355e-17 -0.056 0.
+0.01877213580482768 -0.055310547073327714 0.
+0.03708203932499367 -0.053259164912528606 0.
+0.054478859968745595 -0.04989636535454861 0.
+0.07053423027509674 -0.04530495168499706 0.
+0.08485281374238568 -0.039597979746446674 0.
+0.09708203932499368 -0.03291597412837851 0.
+0.10692078290260414 -0.02542346798541463 0.
+0.11412678195541842 -0.01730495168499707 0.
+0.11852260087141651 -0.008760330042252943 0.
+0.12 0. 0.">
+      <plugin plugin="mujoco.elasticity.cable">
+        <!--Units are in Pa (SI)-->
+        <config key="twist" value="1e8"/>
+        <config key="bend" value="1e7"/>
+        <config key="vmax" value="0.2"/>
+      </plugin>
+      <joint kind="main" damping="0.1"/>
+      <geom type="box" size="0.002 0.002 0.0015" rgba=".8 .2 .1 1" group="3"/>
+      <skin subgrid="3"/>
+    </composite>
+  </worldbody>
+
+  <equality>
+    <connect name="right_boundary" body1="B_last" body2="B_0"/>
+  </equality>
+
+  <actuator>
+    <motor site="S_last" gear="0 0 0 1 0 0" ctrlrange="-.2 .2"/>
+  </actuator>
+</mujoco>

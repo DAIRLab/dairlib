@@ -1,0 +1,20 @@
+filegroup(
+    name = "models",
+    srcs = glob(["model/**/*"]),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "mujoco",
+    hdrs = glob(["include/mujoco/**/*.h"]),
+    srcs = ["lib/libmujoco.so", "lib/libmujoco.so.3.3.6"],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    data = [":models"],
+)
+
+sh_binary(
+    name = "simulate",
+    srcs = ["bin/simulate"],
+    visibility = ["//visibility:public"],
+)

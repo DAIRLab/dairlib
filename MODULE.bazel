@@ -15,8 +15,9 @@ bazel_dep(name = "apple_support", version = "1.17.1")
 
 # Add the Bazel rules we need.
 bazel_dep(name = "rules_cc", version = "0.1.1")
-bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "rules_python", version = "1.2.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
 
 use_repo(
     drake_dep_repositories,
@@ -120,3 +121,19 @@ python_repository(
 )
 
 register_toolchains("@python//:all")
+
+# Build mujoco
+mujoco_extension = use_extension("@dairlib//tools/workspace/mujoco:repository.bzl", "mujoco_extension")
+use_repo(mujoco_extension, "mujoco")
+
+# glfw dependency for mujoco
+bazel_dep(name = "glfw", version = "3.3.9.bcr.1")
+
+# Hedron's Compile Commands Extractor for Bazel
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/mikael-s-persson/bazel-compile-commands-extractor",
+    commit = "f5fbd4cee671d8d908f37c83abaf70fba5928fc7"
+)

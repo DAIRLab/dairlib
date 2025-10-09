@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="large_pulley">
+    <link name="large_pulley">
+      <inertial>
+        <mass>0.1</mass>
+        <inertia>
+          <ixx>0.16</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.16</iyy>
+          <iyz>0</iyz>
+          <izz>0.16</izz>
+        </inertia>
+      </inertial>
+      <visual name="visual">
+        <geometry>
+            <cylinder>
+                <radius>0.03</radius>
+                <length>0.05</length>
+            </cylinder>
+        </geometry>
+        <material>
+          <diffuse>0.3 0.3 0.3 0.9</diffuse>
+        </material>
+      </visual>
+      <collision name="collision">
+        <geometry>
+            <cylinder>
+                <radius>0.03</radius>
+                <length>0.05</length>
+            </cylinder>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

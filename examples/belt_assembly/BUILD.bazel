@@ -1,0 +1,72 @@
+package(default_visibility = ["//visibility:private"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_library(
+    name = "mujoco_xml",
+    data = glob([
+        "mujoco_xml/**/*",
+    ]),
+)
+
+cc_library(
+    name = "parallel_gripper_controller",
+    srcs = [
+        "parallel_gripper_controller.cc",
+    ],
+    hdrs = [
+        "parallel_gripper_controller.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "deformable_common",
+    srcs = [
+        "deformable_common.cc",
+    ],
+    hdrs = [
+        "deformable_common.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "pick_up_round_belt",
+    srcs = [
+        "pick_up_round_belt.cc",
+    ],
+    data = [
+        "@drake_models//:wsg_50_description",
+    ],
+    deps = [
+        ":deformable_common",
+        ":parallel_gripper_controller",
+        "//common:find_resource",
+        "@mujoco//:mujoco",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "test_mujoco",
+    srcs = [
+        "test_mujoco.cc",
+    ],
+    deps = [
+        "@mujoco//:mujoco",
+        "@glfw//:glfw",
+        ":mujoco_xml",
+    ],
+)

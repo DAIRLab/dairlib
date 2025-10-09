@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="large_pulley">
+    <pose>-0.3 0 0 0 0 0</pose>
+    <link name="link">
+      <inertial><mass>0.1</mass></inertial>
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+        <material><diffuse>0.8 0.2 0.2 1</diffuse></material>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="joint" type="revolute">
+      <parent>world</parent>
+      <child>link</child>
+      <axis><xyz>0 1 0</xyz></axis>
+    </joint>
+  </model>
+
+  <model name="belt_link_template">
+    <link name="link">
+      <inertial><mass>0.01</mass></inertial>
+      <visual name="visual">
+        <geometry>
+          <capsule>
+            <radius>0.01</radius>
+            <length>0.08</length>
+          </capsule>
+        </geometry>
+        <material><diffuse>0.9 0.6 0.2 1</diffuse></material>
+      </visual>
+      <collision name="collision">
+        <geometry><capsule><radius>0.01</radius><length>0.08</length></capsule></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

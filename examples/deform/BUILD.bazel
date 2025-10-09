@@ -1,0 +1,37 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "params_yamls",
+    visibility = ["//visibility:public"],
+    data = ["//examples/deform:parameters"],
+)
+
+cc_binary(
+    name = "hand_visualizer",
+    srcs = ["hand_visualizer.cc"],
+    data = [
+        "//examples/deform:params_yamls",
+        "@drake_models//:allegro_hand_description",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:lcm_channels",
+        "//examples/deform/parameter_headers:visualizer_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "deform_utils",
+    srcs = ["deform_utils.cc"],
+    hdrs = ["deform_utils.h"],
+    deps = [
+        "//common",
+        "//common:math_utils",
+        "@drake//:drake_shared_library",
+    ],
+)

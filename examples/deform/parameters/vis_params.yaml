@@ -1,0 +1,18 @@
+visualizer_publish_rate: 30
+
+camera_pose: [0.29, 0.48, 0.35]
+camera_target: [0, 0.35, 0.2]
+
+visualize_c3_workspace: false
+visualize_c3_state: true
+
+visualize_center_of_mass_plan: false
+visualize_c3_forces: false
+
+# Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
+# empty, the colors defined in the URDF/SDF files will be used.
+visualize_c3_plan: false
+c3_object_color: []
+c3_ee_color: [0.8, 0.8, 0.8]
+df_object_color: []
+df_ee_color: [0.5, 1.0, 0.5]

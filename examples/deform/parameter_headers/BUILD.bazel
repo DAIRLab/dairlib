@@ -1,0 +1,11 @@
+cc_library(
+    name = "visualizer_params",
+    hdrs = ["visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "lcm_channels",
+    hdrs = ["lcm_channels.h"],
+    visibility = ["//visibility:public"],
+)

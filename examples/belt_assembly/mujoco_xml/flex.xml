@@ -1,0 +1,27 @@
+<mujoco model="handkerchief">
+    <worldbody>
+        <body name="v1" pos="0 0 0.005">
+            <inertial pos="0 0 0" mass="0.01" diaginertia="1.66667e-05 1.66667e-05 1.66667e-05" />
+        </body>
+        <body name="v2" pos="0.1 0 0.005">
+            <inertial pos="0 0 0" mass="0.01" diaginertia="1.66667e-05 1.66667e-05 1.66667e-05" />
+            <freejoint />
+        </body>
+        <body name="v3" pos="0 0.1 0.005">
+            <inertial pos="0 0 0" mass="0.01" diaginertia="1.66667e-05 1.66667e-05 1.66667e-05" />
+            <freejoint />
+        </body>
+        <body name="v4" pos="0.1 0.1 0.005">
+            <inertial pos="0 0 0" mass="0.01" diaginertia="1.66667e-05 1.66667e-05 1.66667e-05" />
+            <freejoint />
+        </body>
+    </worldbody>
+    <deformable>
+        <flex name="FL1" dim="1" body="v1 v2" vertex="0 0 0  0 0 0  0 0 0" element="0 1 2" rgba="1 0 0 0.9" />
+        <flex name="FL2" dim="1" body="v2 v3" vertex="0 0 0  0 0 0  0 0 0" element="2 1 0" rgba="0 1 0 0.9" />
+    </deformable>
+    <equality>
+        <flex flex="FL1" />
+        <flex flex="FL2" />
+    </equality>
+</mujoco>

@@ -58,15 +58,3 @@ cc_binary(
         "@gflags",
     ],
 )
-
-cc_binary(
-    name = "test_mujoco",
-    srcs = [
-        "test_mujoco.cc",
-    ],
-    deps = [
-        "@mujoco//:mujoco",
-        "@glfw//:glfw",
-        ":mujoco_xml",
-    ],
-)

@@ -58,6 +58,14 @@ override_repo(
     gurobi = "my_gurobi",
 )
 
+drake_models_extension = use_extension("@dairlib//tools/workspace/drake_models:repository.bzl", "drake_models_extension")
+use_repo(drake_models_extension, "my_drake_models")
+
+override_repo(
+    drake_dep_repositories,
+    drake_models = "my_drake_models",
+)
+
 # Here we introduce Drake as a module dependency, but note that Drake is not
 # published to any Bazel registry. Below, we'll override it with a github
 # source archive.

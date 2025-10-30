@@ -1,0 +1,18 @@
+#pragma once
+
+#include <Eigen/Dense>
+
+#include "drake/common/yaml/yaml_read_archive.h"
+
+struct BeltAssemblyVisualizerParams {
+  double visualizer_publish_rate;
+  Eigen::VectorXd camera_pose;
+  Eigen::VectorXd camera_target;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(visualizer_publish_rate));
+    a->Visit(DRAKE_NVP(camera_pose));
+    a->Visit(DRAKE_NVP(camera_target));
+  }
+};

@@ -14,6 +14,12 @@ cc_library(
     ]),
 )
 
+filegroup(
+    name = "all_parameter_yamls",
+    visibility = ["//visibility:public"],
+    data = glob(["parameters/*.yaml"]),
+)
+
 cc_library(
     name = "parallel_gripper_controller",
     srcs = [
@@ -54,6 +60,50 @@ cc_binary(
         ":parallel_gripper_controller",
         "//common:find_resource",
         "@mujoco//:mujoco",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "round_belt_sim",
+    srcs = [
+        "round_belt_sim.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//examples/belt_assembly/parameter_headers:lcm_channel_params",
+        "//examples/belt_assembly/parameter_headers:round_belt_sim_params",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "round_belt_visualizer",
+    srcs = [
+        "round_belt_visualizer.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//common:eigen_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//examples/belt_assembly/parameter_headers:lcm_channel_params",
+        "//examples/belt_assembly/parameter_headers:visualizer_params",
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

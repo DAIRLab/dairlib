@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="round_belt_task_scene">
+    <link name="round_belt_task_scene">
+        <visual>
+            <origin rpy="-1.57079 0 1.57079" xyz="0.23008 0 -0.02858"/>
+            <geometry>
+                <mesh filename="table/table.gltf" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <visual>
+            <origin rpy="-1.57079 0 1.57079" xyz="-0.07669 0 -0.00953"/>
+            <geometry>
+                <mesh filename="franka_mount/wooden_plate.gltf" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <visual>
+            <origin rpy="0 0 -1.57079" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="franka_mount/base_plate.obj"/>
+            </geometry>
+        </visual>
+    </link>
+</robot>

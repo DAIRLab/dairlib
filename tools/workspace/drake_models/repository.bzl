@@ -1,16 +1,14 @@
-load("@drake//tools/workspace:github.bzl", "github_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def drake_models_repository(
-        name,
-        mirrors = {"github": [
-            "https://github.com/{repository}/archive/refs/tags/{tag_name}.tar.gz",  # noqa
-            "https://github.com/{repository}/archive/{commit_sha}.tar.gz",
-        ]}):
-    github_archive(
-        name = name,
-        repository = "RobotLocomotion/models",
-        commit = "c81f2458cf6d19a20a27e1495e7f07202536e845",
-        sha256 = "1107e8314e49102a247f2e87666cba8bd1e76527112ce01d849e299cf8010d94",  # noqa
+def _drake_models_extension_impl(module_ctx):
+    http_archive(
+        name = "my_drake_models",
         build_file = ":package.BUILD.bazel",
-        mirrors = mirrors,
+        urls = ["https://github.com/xuanhien070594/models/archive/297a2ee67900e278077c467a9ed60bc7bea664cd.tar.gz"],
+        sha256 = "c754210bf0d63238049c97260af0f4f0c23cb3b96755df98f7d5474f55416fc1",  # noqa
+        strip_prefix = "models-297a2ee67900e278077c467a9ed60bc7bea664cd",
     )
+
+drake_models_extension = module_extension(
+    implementation = _drake_models_extension_impl,
+)

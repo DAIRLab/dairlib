@@ -1,0 +1,17 @@
+cc_library(
+    name = "round_belt_sim_params",
+    hdrs = ["round_belt_sim_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "lcm_channel_params",
+    hdrs = ["lcm_channel_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "visualizer_params",
+    hdrs = ["visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)

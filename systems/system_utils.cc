@@ -1,6 +1,7 @@
 #include "systems/system_utils.h"
 
 #include <fstream>
+#include <iostream>
 #include <regex>
 
 namespace dairlib {
@@ -10,6 +11,11 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   // Default path
   if (path.empty()) {
     path = "../diagrams/" + diagram.get_name();
+    if (diagram.get_name().empty()) {
+      std::cout << "Diagram name is empty, using 'default_name' as default"
+                << std::endl;
+      path = "../diagrams/diagram_name";
+    }
   }
 
   // Create the directory if it does not exist
@@ -25,11 +31,11 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   std::regex r(" ");
   path = std::regex_replace(path, r, "\\ ");
   std::string cmd = "dot -Tsvg " + path + " -o " + path + ".svg";
-  (void) std::system(cmd.c_str());
+  (void)std::system(cmd.c_str());
 
   // Remove Graphviz string file
   cmd = "rm " + path;
-  (void) std::system(cmd.c_str());
+  (void)std::system(cmd.c_str());
 }
 
 }  // namespace dairlib

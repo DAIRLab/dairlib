@@ -1,0 +1,54 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_library(
+    name = "parameters",
+    data = glob([
+        "*.yaml",
+    ]),
+)
+
+cc_binary(
+    name = "plate_visualizer",
+    srcs = ["plate_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "//examples/cube_flip:parameters",
+    ],
+    deps = [
+        "//examples/cube_flip/parameter_headers:visualizer_params",
+        "//examples/cube_flip:trajectory_lcm_parser",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
+cc_library(
+    name = "trajectory_lcm_parser",
+    srcs = ["trajectory_lcm_parser.cc"],
+    hdrs = ["trajectory_lcm_parser.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)

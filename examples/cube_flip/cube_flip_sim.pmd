@@ -1,0 +1,14 @@
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/cube_flip/plate_visualizer";
+        host = "localhost";
+    }
+   
+}

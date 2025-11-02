@@ -1,0 +1,5 @@
+cc_library(
+    name = "visualizer_params",
+    hdrs = ["visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)

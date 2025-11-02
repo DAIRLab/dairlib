@@ -75,6 +75,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
     } 
     return output;
   }
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
   const drake::systems::OutputPort<double>&
   get_output_port_end_effector_target() const {

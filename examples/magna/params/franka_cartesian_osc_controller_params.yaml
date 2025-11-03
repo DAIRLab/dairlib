@@ -1,0 +1,59 @@
+osc_gains:
+  controller_frequency: 1000
+  w_input: 0.00
+  w_input_reg: 0.0
+  w_accel: 0.00001
+  w_soft_constraint: 0.0
+  w_lambda: 0.0
+  impact_threshold: 0.000
+  impact_tau: 0.000
+  mu: 0.4615
+
+  W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+  W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
+  W_lambda_c_reg: [ 0.001, 0.001, 0.01,
+                    0.001, 0.001, 0.01,
+                    0.001, 0.001, 0.01,
+                    0.001, 0.001, 0.01 ]
+  W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                    0.001, 0.001, 0.001 ]
+
+osc_qp_settings_file: examples/magna/params/franka_osc_qp_settings.yaml
+franka_state_channel: FRANKA_STATE
+franka_input_channel: FRANKA_INPUT
+target_cartesian_pose_channel: TARGET_CARTESIAN_POSE
+target_cartesian_pose_trajectory_channel: TARGET_CARTESIAN_POSE_TRAJECTORY
+
+end_effector_name: end_effector_frame
+
+EndEffectorTransW:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+EndEffectorTransKp:
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
+EndEffectorTransKd:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+EndEffectorRotW:
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
+EndEffectorRotKp:
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0,  800]
+EndEffectorRotKd:
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40]
+MidLinkW: 0.1
+MidLinkKp: 10
+MidLinkKd: 1
+
+end_effector_acceleration: 10
+enforce_acceleration_constraints: false
+cancel_gravity_compensation: false

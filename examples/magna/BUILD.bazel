@@ -1,0 +1,94 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "parameters",
+    visibility = ["//visibility:public"],
+    data = glob(["params/*.yaml"]),
+)
+
+cc_library(
+    name = "franka_cartesian_osc_controller_params",
+    hdrs = ["systems/controllers/franka_cartesian_osc_controller_params.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common:file_utils",
+    ],
+)
+
+cc_library(
+    name = "cartesian_pose_utils",
+    hdrs = [
+        "systems/cartesian_pose_trajectory_generator.h", 
+        "systems/franka_target_cartesian_pose_receiver.h"
+    ],
+    srcs = [
+        "systems/cartesian_pose_trajectory_generator.cc", 
+        "systems/franka_target_cartesian_pose_receiver.cc"
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library"
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "franka_cartesian_osc_controller",
+    srcs = ["systems/controllers/franka_cartesian_osc_controller.cc"],
+    data = [
+        ":parameters",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":franka_cartesian_osc_controller_params",
+        ":cartesian_pose_utils",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:franka_target_joint_position_receiver",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_simulation",
+    srcs = ["systems/franka_simulation.cc"],
+    data = [
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_visualizer",
+    srcs = ["systems/franka_visualizer.cc"],
+    data = [
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

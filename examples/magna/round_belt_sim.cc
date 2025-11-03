@@ -13,14 +13,14 @@
 
 #include "common/find_resource.h"
 #include "parameter_headers/lcm_channel_params.h"
-#include "parameter_headers/round_belt_sim_params.h"
+#include "parameter_headers/sim_params.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-namespace assembly {
+namespace magna {
 
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
@@ -39,11 +39,11 @@ DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
 DEFINE_double(timestep, 5e-3, "Desired duration of the simulation [s].");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  RoundBeltSimParams sim_params = drake::yaml::LoadYamlFile<RoundBeltSimParams>(
-      "examples/belt_assembly/parameters/round_belt_sim_params.yaml");
-  RoundBeltLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<RoundBeltLcmChannels>(
-          "examples/belt_assembly/parameters/lcm_channels_simulation.yaml");
+  MagnaSimParams sim_params = drake::yaml::LoadYamlFile<MagnaSimParams>(
+      "examples/magna/parameters/sim_params.yaml");
+  MagnaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<MagnaLcmChannels>(
+          "examples/magna/parameters/lcm_channels_simulation.yaml");
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] =
@@ -58,7 +58,7 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   ModelInstanceIndex round_belt_task_scene_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/"
+          "examples/magna/urdf/round_belt_task/"
           "round_belt_task_scene.urdf"))[0];
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("round_belt_task_scene",
@@ -67,7 +67,7 @@ int DoMain(int argc, char* argv[]) {
   // Add pulley models
   ModelInstanceIndex task_board_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/"
+          "examples/magna/urdf/round_belt_task/"
           "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
@@ -121,5 +121,5 @@ int DoMain(int argc, char* argv[]) {
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
   return 0;
 }
-}  // namespace assembly
-int main(int argc, char* argv[]) { assembly::DoMain(argc, argv); }
+}  // namespace magna
+int main(int argc, char* argv[]) { magna::DoMain(argc, argv); }

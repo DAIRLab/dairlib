@@ -3,7 +3,7 @@
 #include <Eigen/Dense>
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct RoundBeltSimParams {
+struct MagnaSimParams {
   double dt;
   double realtime_rate;
   double actuator_delay;

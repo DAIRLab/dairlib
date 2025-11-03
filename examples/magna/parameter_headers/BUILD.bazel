@@ -1,6 +1,6 @@
 cc_library(
-    name = "round_belt_sim_params",
-    hdrs = ["round_belt_sim_params.h"],
+    name = "sim_params",
+    hdrs = ["sim_params.h"],
     visibility = ["//visibility:public"],
 )
 
@@ -13,5 +13,11 @@ cc_library(
 cc_library(
     name = "visualizer_params",
     hdrs = ["visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "osc_params",
+    hdrs = ["osc_params.h"],
     visibility = ["//visibility:public"],
 )

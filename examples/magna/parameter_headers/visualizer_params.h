@@ -4,7 +4,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct BeltAssemblyVisualizerParams {
+struct MagnaVisualizerParams {
   double visualizer_publish_rate;
   Eigen::VectorXd camera_pose;
   Eigen::VectorXd camera_target;

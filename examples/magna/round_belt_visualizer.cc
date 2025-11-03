@@ -23,7 +23,7 @@
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
-namespace assembly {
+namespace magna {
 
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
@@ -51,12 +51,12 @@ using drake::systems::rendering::MultibodyPositionToGeometryPose;
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  BeltAssemblyVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<BeltAssemblyVisualizerParams>(
-          "examples/belt_assembly/parameters/visualizer_params.yaml");
-  RoundBeltLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<RoundBeltLcmChannels>(
-          "examples/belt_assembly/parameters/lcm_channels_simulation.yaml");
+  MagnaVisualizerParams vis_params =
+      drake::yaml::LoadYamlFile<MagnaVisualizerParams>(
+          "examples/magna/parameters/visualizer_params.yaml");
+  MagnaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<MagnaLcmChannels>(
+          "examples/magna/parameters/lcm_channels_simulation.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -76,7 +76,7 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   ModelInstanceIndex round_belt_task_scene_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/"
+          "examples/magna/urdf/round_belt_task/"
           "round_belt_task_scene.urdf"))[0];
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("round_belt_task_scene",
@@ -85,7 +85,7 @@ int DoMain(int argc, char* argv[]) {
   // Add pulley models
   ModelInstanceIndex task_board_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/"
+          "examples/magna/urdf/round_belt_task/"
           "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
@@ -165,6 +165,6 @@ int DoMain(int argc, char* argv[]) {
 
   return 0;
 }
-}  // namespace assembly
+}  // namespace magna
 
-int main(int argc, char* argv[]) { return assembly::DoMain(argc, argv); }
+int main(int argc, char* argv[]) { return magna::DoMain(argc, argv); }

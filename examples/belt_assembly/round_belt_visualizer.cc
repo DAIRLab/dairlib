@@ -26,7 +26,8 @@
 namespace assembly {
 
 static constexpr const char* kFrankaModel =
-    "package://drake_models/franka_description/urdf/panda_arm_hand.urdf";
+    "package://drake_models/franka_description/urdf/"
+    "panda_arm_hand_with_long_fingers.urdf";
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -84,7 +85,7 @@ int DoMain(int argc, char* argv[]) {
   // Add pulley models
   ModelInstanceIndex task_board_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/round_belt_task_board/"
+          "examples/belt_assembly/urdf/round_belt_task/"
           "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
@@ -126,7 +127,7 @@ int DoMain(int argc, char* argv[]) {
   proximity_params.prefix = "proximity";
   proximity_params.visible_by_default = false;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
+  //   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
   builder.Connect(franka_passthrough->get_output_port(),
                   to_pose->get_input_port());

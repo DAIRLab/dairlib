@@ -6,10 +6,18 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>round_belt_task_board.obj</uri>
+            <uri>round_belt_task_board/round_belt_task_board.obj</uri>
           </mesh>
         </geometry>
       </visual>
+      <collision name="board_collision">
+        <pose>0.192 0.192 -0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.384 0.384 0.01</size>
+          </box>
+        </geometry>
+      </collision>
     </link>
     <link name="small_round_pulley">
       <inertial>
@@ -28,7 +36,7 @@
         <pose>0.355 0.196 0.0248 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>small_round_pulley/small_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -40,7 +48,7 @@
         <pose>0.355 0.196 0.0248 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>small_round_pulley/small_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -56,7 +64,7 @@
         <pose>0.355 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
           <mesh>
-            <uri>small_round_pulley/small_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -68,7 +76,7 @@
         <pose>0.355 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
           <mesh>
-            <uri>small_round_pulley/small_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -98,7 +106,7 @@
         <pose>0.140 0.196 0.0248 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>large_round_pulley/large_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/large_round_pulley/large_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -110,7 +118,7 @@
         <pose>0.140 0.196 0.0248 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>large_round_pulley/large_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/large_round_pulley/large_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -126,7 +134,7 @@
         <pose>0.140 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
           <mesh>
-            <uri>large_round_pulley/large_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/large_round_pulley/large_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
@@ -138,7 +146,7 @@
         <pose>0.140 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
           <mesh>
-            <uri>large_round_pulley/large_round_pulley_half.obj</uri>
+            <uri>round_belt_task_board/large_round_pulley/large_round_pulley_half.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>

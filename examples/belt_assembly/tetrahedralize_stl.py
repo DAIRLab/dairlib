@@ -1,9 +1,9 @@
 import pyvista
 import tetgen
 
-name = 'round_belt_300'
+name = 'round_belt'
 
-filename = f'urdf/{name}.stl'
+filename = f'urdf/round_belt_task/{name}.obj'
 reader = pyvista.get_reader(filename)
 mesh = reader.read()
 mesh.save(f'{name}.ply', binary=False)

@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/meshcat_visualizer.h>
 #include <drake/lcm/drake_lcm.h>
@@ -21,7 +23,8 @@
 namespace assembly {
 
 static constexpr const char* kFrankaModel =
-    "package://drake_models/franka_description/urdf/panda_arm.urdf";
+    "package://drake_models/franka_description/urdf/"
+    "panda_arm_hand_with_long_fingers.urdf";
 
 using dairlib::systems::AddActuationRecieverAndStateSenderLcm;
 using drake::math::RigidTransform;
@@ -64,7 +67,7 @@ int DoMain(int argc, char* argv[]) {
   // Add pulley models
   ModelInstanceIndex task_board_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/round_belt_task/round_belt_task_board/"
+          "examples/belt_assembly/urdf/round_belt_task/"
           "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),

@@ -3,4 +3,4 @@ actuator_delay: 0.000
 publish_efforts: true
 dt: 0.005
 realtime_rate: 1
-q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
+q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08, 0, 0]

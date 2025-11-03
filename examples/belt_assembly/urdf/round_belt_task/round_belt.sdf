@@ -2,15 +2,11 @@
 <sdf xmlns:drake="http://drake.mit.edu" version="1.8">
   <model name='round_belt'>
     <link name='round_belt'>
-      <!-- <pose>-0.1 -0.1 0.003 0 0 0</pose> -->
-      <pose>-0.00 -0.09 0.24 0 1.57 0</pose>
-      <!-- <pose>0.2 0 0.2 0 0 0</pose> -->
+      <pose>0 0 0 0 0 0</pose>
       <collision name='collision'>
         <geometry>
           <mesh>
-            <!-- <uri>torus.vtk</uri> -->
-            <uri>round_belt_400.vtk</uri>
-            <!-- <scale>0.65 0.65 0.65</scale> -->
+            <uri>round_belt/round_belt.vtk</uri>
           </mesh>
         </geometry>
         <drake:proximity_properties>

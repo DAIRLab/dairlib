@@ -56,12 +56,12 @@ CartesianPoseTrajectoryGenerator::CartesianPoseTrajectoryGenerator(
       this->DeclareVectorInputPort("franka_target_cartesian_pose",
                                    BasicVector<double>(6))
           .get_index();
-  target_cartesian_pose_index_ = this->DeclareDiscreteState(VectorXd::Zero(6));
+  target_cartesian_pose_index_ = this->DeclareDiscreteState(VectorXd::Zero(7));
 
   // Get current cartesian pose and time
   current_joint_position_index_ =
       this->DeclareDiscreteState(VectorXd::Zero(plant.num_positions()));
-  current_cartesian_pose_index_ = this->DeclareDiscreteState(VectorXd::Zero(6));
+  current_cartesian_pose_index_ = this->DeclareDiscreteState(VectorXd::Zero(7));
   current_time_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
 
   DeclareForcedDiscreteUpdateEvent(
@@ -113,10 +113,12 @@ CartesianPoseTrajectoryGenerator::DiscreteVariableUpdate(
                              plant_context_);
   auto ee_pose =
       plant_.CalcRelativeTransform(*plant_context_, plant_.world_frame(),
-                                   plant_.GetFrameByName("panda_link7"));
+                                   plant_.GetFrameByName("end_effector_frame"));
 
   if (current_time[0] == 0.0) {  // first iteration, initialize
-    current_pose << ee_pose.translation(), ee_pose.rotation().ToQuaternion();
+    auto current_rotation = ee_pose.rotation().ToQuaternion();
+    current_pose << ee_pose.translation(), current_rotation.x(),
+        current_rotation.y(), current_rotation.z(), current_rotation.w();
     target_pose = current_pose;
     current_time[0] = context.get_time();
   }
@@ -128,9 +130,31 @@ CartesianPoseTrajectoryGenerator::DiscreteVariableUpdate(
   VectorXd target = target_cartesian_pose->get_value();
 
   if (!target.isZero() && (target - target_pose).norm() > 1e-6) {
-    current_pose << ee_pose.translation(), ee_pose.rotation().ToQuaternion();
+    auto current_rotation = ee_pose.rotation().ToQuaternion();
+    current_pose << ee_pose.translation(), current_rotation.x(),
+        current_rotation.y(), current_rotation.z(), current_rotation.w();
+    // drake::log()->trace(
+    //     "Target pose ({}, {}, {}, {}, {}, {}) differs from current target
+    //     ({}, "
+    //     "{})",
+    //     target[0], target[1], target[2], target[3], target[4], target[5],
+    //     target_pose[0], target_pose[1], target_pose[2], target_pose[3],
+    //     target_pose[4], target_pose[5]);
     auto target_rotation = RollPitchYaw<double>(target.tail<3>());
-    target_pose << target.head<3>(), target_rotation.ToQuaternion();
+    // drake::log()->trace("Target rotation from RPY angles: ({}, {}, {})",
+    //                     target_rotation.roll_angle(),
+    //                     target_rotation.pitch_angle(),
+    //                     target_rotation.yaw_angle());
+    auto target_quat = target_rotation.ToQuaternion();
+    // drake::log()->trace("Target orientation as quaternion: ({}, {}, {}, {})",
+    // target_quat.w(),
+    //                     target_quat.x(), target_quat.y(), target_quat.z());
+    target_pose << target.head<3>(), target_quat.x(), target_quat.y(),
+        target_quat.z(), target_quat.w();
+    // drake::log()->trace(
+    //     "New target received: position ({}, {}, {}), orientation ({}, {},
+    //     {})", target_pose[0], target_pose[1], target_pose[2], target_pose[3],
+    //     target_pose[4], target_pose[5]);
     current_time[0] = context.get_time();
   }
   return drake::systems::EventStatus::Succeeded();
@@ -158,7 +182,7 @@ void CartesianPoseTrajectoryGenerator::CalcTranslationTrajectory(
   }
 
   // Create a cubic trajectory from current to target pose
-  std::vector<double> breaks = {current_time[0] + 1.0, current_time[0] + 10.0};
+  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
   std::vector<MatrixXd> samples(2);
   samples[0] = MatrixXd::Zero(3, 1);
   samples[0] << current_cartesian_pose.head<3>();
@@ -190,7 +214,7 @@ void CartesianPoseTrajectoryGenerator::CalcRotationTrajectory(
   }
 
   // Create a cubic trajectory from current to target pose
-  std::vector<double> breaks = {current_time[0] + 1.0, current_time[0] + 10.0};
+  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
   std::vector<Eigen::Quaternion<double>> samples(2);
   samples[0] = Eigen::Quaternion<double>(current_cartesian_pose.tail<4>());
   samples[1] = Eigen::Quaternion<double>(target_cartesian_pose.tail<4>());
@@ -213,7 +237,7 @@ void CartesianPoseTrajectoryGenerator::CalcJointTrajectory(
   auto target_joint_positions = current_joint_positions;
 
   // Create a cubic trajectory from current to target joint positions
-  std::vector<double> breaks = {current_time[0] + 1.0, current_time[0] + 10.0};
+  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
   std::vector<MatrixXd> samples(2);
   samples[0] = MatrixXd::Zero(plant_.num_positions(), 1);
   samples[0] << current_joint_positions;

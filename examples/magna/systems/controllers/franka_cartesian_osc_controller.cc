@@ -6,6 +6,7 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_franka_cartesian_pose.hpp"
+#include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/systems/cartesian_pose_trajectory_generator.h"
 #include "examples/magna/systems/franka_target_cartesian_pose_receiver.h"
@@ -68,7 +69,7 @@ inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
 inline const drake::math::RigidTransform<double> T_EE_L7 =
     drake::math::RigidTransform<double>(
         drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 0)),
+            drake::math::RollPitchYaw<double>(M_PI, 0, 0)),
         TOOL_ATTACHMENT_FRAME);
 
 drake::multibody::ModelInstanceIndex AddFrankaToPlant(
@@ -85,7 +86,7 @@ drake::multibody::ModelInstanceIndex AddFrankaToPlant(
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
                     X_WI);
   plant->AddFrame(std::make_unique<drake::multibody::FixedOffsetFrame<double>>(
-      "end_effector_frame", plant->GetFrameByName("panda_link7"), T_EE_L7));
+      "end_effector_frame", plant->GetBodyByName("panda_link7"), T_EE_L7));
   if (end_effector_model_path.has_value()) {
     parser.AddModels(FindResourceOrThrow(end_effector_model_path.value()));
     plant->WeldFrames(plant->GetFrameByName("end_effector_frame"),
@@ -125,6 +126,9 @@ int RunFrankaCartesianOscController() {
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
             controller_params.franka_input_channel, &lcm,
             TriggerTypeSet({TriggerType::kForced})));
+    auto osc_debug_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+            "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
     // start [OSC controller]
     // Create a Franka-only plant for OSC
@@ -145,7 +149,7 @@ int RunFrankaCartesianOscController() {
             controller_params.Kp_ee_translation,
             controller_params.Kd_ee_translation,
             controller_params.W_ee_translation, osc_plant, osc_plant);
-    end_effector_position_tracking_data->AddPointToTrack("panda_link7");
+    end_effector_position_tracking_data->AddPointToTrack("panda_link7", T_EE_L7.translation());
     const VectorXd& end_effector_acceleration_limits =
         controller_params.end_effector_acceleration * Eigen::Vector3d::Ones();
     end_effector_position_tracking_data->SetCmdAccelerationBounds(
@@ -159,7 +163,8 @@ int RunFrankaCartesianOscController() {
             "end_effector_orientation_target", controller_params.Kp_ee_rotation,
             controller_params.Kd_ee_rotation, controller_params.W_ee_rotation,
             osc_plant, osc_plant);
-    end_effector_orientation_tracking_data->AddFrameToTrack("panda_link7");
+    end_effector_orientation_tracking_data->AddFrameToTrack(
+        "panda_link7", T_EE_L7.GetAsIsometry3());
     osc_controller->AddTrackingData(
         std::move(end_effector_orientation_tracking_data));
 
@@ -223,6 +228,8 @@ int RunFrankaCartesianOscController() {
     }
     builder.Connect(franka_command_sender->get_output_port(),
                     franka_command_pub->get_input_port());
+    builder.Connect(osc_controller->get_output_port_osc_debug(),
+                    osc_debug_pub->get_input_port());
 
     // Connect inputs to OSC controller
     builder.Connect(state_receiver->get_output_port(),

@@ -18,6 +18,7 @@
 #include <optional>
 
 #include "common/find_resource.h"
+#include "examples/magna/systems/franka_common.h"
 #include "systems/robot_lcm_systems.h"
 
 using drake::geometry::SceneGraph;
@@ -31,8 +32,6 @@ using drake::systems::lcm::LcmInterfaceSystem;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-
-inline const double PI = 3.14159265358979323846;
 
 DEFINE_string(franka_input_channel, "FRANKA_INPUT",
               "LCM channel for receiving Franka input");
@@ -53,37 +52,6 @@ namespace examples {
 namespace magna {
 namespace systems {
 
-/// This is the offset from the Panda's link7 frame to its flange where an end
-/// effector can be attached.
-inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
-inline const drake::math::RigidTransform<double> T_EE_L7 =
-    drake::math::RigidTransform<double>(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        TOOL_ATTACHMENT_FRAME);
-
-drake::multibody::ModelInstanceIndex AddFrankaToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph,
-    std::optional<std::string> end_effector_model_path) {
-  drake::multibody::Parser parser(plant, scene_graph);
-  parser.SetAutoRenaming(true);
-
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelsFromUrl(
-      "package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
-  drake::math::RigidTransform<double> X_WI =
-      drake::math::RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
-                    X_WI);
-  if (end_effector_model_path.has_value()) {
-    parser.AddModels(FindResourceOrThrow(end_effector_model_path.value()));
-    plant->WeldFrames(plant->GetFrameByName("panda_link7"),
-                      plant->GetFrameByName("end_effector_flange"), T_EE_L7);
-  }
-
-  return franka_index;
-}
-
 int RunFrankaSimulation() {
   // load urdf and sphere
   DiagramBuilder<double> builder;
@@ -101,7 +69,7 @@ int RunFrankaSimulation() {
   AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, FLAGS_franka_input_channel,
       FLAGS_franka_state_channel, FLAGS_franka_state_publish_rate,
-      franka_index);
+      franka_index, true, 0.0, true);
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -119,7 +87,7 @@ int RunFrankaSimulation() {
 
   VectorXd q = VectorXd::Zero(nq);
 
-  q << 0, PI / 8, 0, -3 * PI / 4, 0, 7 * PI / 8, -PI / 4;
+  q << 0, M_PI / 8, 0, -3 * M_PI / 4, 0, 7 * M_PI / 8, 0;
   plant.SetPositions(&plant_context, q);
 
   VectorXd v = VectorXd::Zero(nv);

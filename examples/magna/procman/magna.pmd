@@ -29,14 +29,14 @@ group "hardware" {
 
 group "controller (spacemouse)" {
     cmd "franka_cartesian_osc" {
-        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller --is_simulation=true --is_spacemouse=true";
+        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller --is_spacemouse=true";
         host = "localhost";
     }
 }
 
 group "controller (trajectory)" {
     cmd "franka_cartesian_osc" {
-        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller --is_simulation=true ";
+        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller";
         host = "localhost";
     }
 }

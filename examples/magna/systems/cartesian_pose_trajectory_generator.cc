@@ -130,31 +130,15 @@ CartesianPoseTrajectoryGenerator::DiscreteVariableUpdate(
   VectorXd target = target_cartesian_pose->get_value();
 
   if (!target.isZero() && (target - target_pose).norm() > 1e-6) {
+    // Update current pose
     auto current_rotation = ee_pose.rotation().ToQuaternion();
     current_pose << ee_pose.translation(), current_rotation.x(),
         current_rotation.y(), current_rotation.z(), current_rotation.w();
-    // drake::log()->trace(
-    //     "Target pose ({}, {}, {}, {}, {}, {}) differs from current target
-    //     ({}, "
-    //     "{})",
-    //     target[0], target[1], target[2], target[3], target[4], target[5],
-    //     target_pose[0], target_pose[1], target_pose[2], target_pose[3],
-    //     target_pose[4], target_pose[5]);
     auto target_rotation = RollPitchYaw<double>(target.tail<3>());
-    // drake::log()->trace("Target rotation from RPY angles: ({}, {}, {})",
-    //                     target_rotation.roll_angle(),
-    //                     target_rotation.pitch_angle(),
-    //                     target_rotation.yaw_angle());
+    // Create target pose
     auto target_quat = target_rotation.ToQuaternion();
-    // drake::log()->trace("Target orientation as quaternion: ({}, {}, {}, {})",
-    // target_quat.w(),
-    //                     target_quat.x(), target_quat.y(), target_quat.z());
     target_pose << target.head<3>(), target_quat.x(), target_quat.y(),
         target_quat.z(), target_quat.w();
-    // drake::log()->trace(
-    //     "New target received: position ({}, {}, {}), orientation ({}, {},
-    //     {})", target_pose[0], target_pose[1], target_pose[2], target_pose[3],
-    //     target_pose[4], target_pose[5]);
     current_time[0] = context.get_time();
   }
   return drake::systems::EventStatus::Succeeded();

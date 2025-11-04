@@ -145,9 +145,10 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      bool publish_velocities = true,
       drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+          drake::multibody::default_model_instance());
 
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant);
@@ -206,6 +207,20 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
+class GravityCompensator : public drake::systems::LeafSystem<double> {
+ public:
+  GravityCompensator(const drake::multibody::MultibodyPlant<double>& plant,
+                     drake::systems::Context<double>& context);
+
+ private:
+  void AddGravityCompensation(const drake::systems::Context<double>& context,
+                              TimestampedVector<double>* output) const;
+  // constructor variables
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
+  int num_actuators_;
+};
+
 ///
 /// Convenience method to add and connect leaf systems for controlling
 /// a MultibodyPlant via LCM. Makes two primary connections:
@@ -228,13 +243,16 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 ///        actuator efforts.
 /// @param actuator_delay The delay, in seconds, will be discretized according
 ///        to publish_rate
+/// @param gravity_compensation If true, adds gravity compensation to the
+///        actuator efforts sent to the robot
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
     std::string state_channel, double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts = true, double actuator_delay = 0);
+    bool publish_efforts = true, double actuator_delay = 0,
+    bool add_gravity_compensation = false);
 
 }  // namespace systems
 }  // namespace dairlib

@@ -9,6 +9,7 @@
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/systems/cartesian_pose_trajectory_generator.h"
+#include "examples/magna/systems/franka_common.h"
 #include "examples/magna/systems/franka_target_cartesian_pose_receiver.h"
 #include "franka_cartesian_osc_controller_params.h"
 #include "systems/controllers/gravity_compensator.h"
@@ -29,7 +30,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
-DEFINE_bool(is_simulation, false, "True for simulation, false for hardware");
 DEFINE_bool(
     is_spacemouse, false,
     "True for spacemouse (expecting single target cartesian pose), false "
@@ -62,40 +62,6 @@ namespace examples {
 namespace magna {
 namespace systems {
 namespace controllers {
-
-/// This is the offset from the Panda's link7 frame to its flange where an end
-/// effector can be attached.
-inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
-inline const drake::math::RigidTransform<double> T_EE_L7 =
-    drake::math::RigidTransform<double>(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(M_PI, 0, 0)),
-        TOOL_ATTACHMENT_FRAME);
-
-drake::multibody::ModelInstanceIndex AddFrankaToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph,
-    std::optional<std::string> end_effector_model_path) {
-  drake::multibody::Parser parser(plant, scene_graph);
-  parser.SetAutoRenaming(true);
-
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelsFromUrl(
-      "package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
-  drake::math::RigidTransform<double> X_WI =
-      drake::math::RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
-                    X_WI);
-  plant->AddFrame(std::make_unique<drake::multibody::FixedOffsetFrame<double>>(
-      "end_effector_frame", plant->GetBodyByName("panda_link7"), T_EE_L7));
-  if (end_effector_model_path.has_value()) {
-    parser.AddModels(FindResourceOrThrow(end_effector_model_path.value()));
-    plant->WeldFrames(plant->GetFrameByName("end_effector_frame"),
-                      plant->GetFrameByName("end_effector_flange"),
-                      drake::math::RigidTransform<double>::Identity());
-  }
-
-  return franka_index;
-}
 
 int RunFrankaCartesianOscController() {
   try {
@@ -149,7 +115,8 @@ int RunFrankaCartesianOscController() {
             controller_params.Kp_ee_translation,
             controller_params.Kd_ee_translation,
             controller_params.W_ee_translation, osc_plant, osc_plant);
-    end_effector_position_tracking_data->AddPointToTrack("panda_link7", T_EE_L7.translation());
+    end_effector_position_tracking_data->AddPointToTrack("panda_link7",
+                                                         T_EE_L7.translation());
     const VectorXd& end_effector_acceleration_limits =
         controller_params.end_effector_acceleration * Eigen::Vector3d::Ones();
     end_effector_position_tracking_data->SetCmdAccelerationBounds(
@@ -203,29 +170,16 @@ int RunFrankaCartesianOscController() {
     drake::log()->info("Finished building OSC controller.");
     // end [OSC controller]
 
-    // Perform gravity compensation if using a real robot and send output of OSC
+    // Perform gravity compensation and send output of OSC
     // controller to command sender
     drake::log()->info("Cancel gravity compensation: {}",
                        controller_params.cancel_gravity_compensation);
-    if (controller_params.cancel_gravity_compensation) {
-      auto gravity_compensator = builder.AddSystem<GravityCompensationRemover>(
-          osc_plant, *osc_context);
-      builder.Connect(osc_controller->get_output_port_osc_command(),
-                      gravity_compensator->get_input_port());
-      builder.Connect(gravity_compensator->get_output_port(),
-                      franka_command_sender->get_input_port());
-    } else {
-      if (!FLAGS_is_simulation) {
-        drake::log()->error(
-            "Error: Not cancelling gravity compensation from OSC controller "
-            "on real robot.");
-        return -1;
-      }
-      drake::log()->warn(
-          "Warning: Not cancelling gravity compensation from OSC controller.");
-      builder.Connect(osc_controller->get_output_port_osc_command(),
-                      franka_command_sender->get_input_port());
-    }
+    auto gravity_compensator =
+        builder.AddSystem<GravityCompensationRemover>(osc_plant, *osc_context);
+    builder.Connect(osc_controller->get_output_port_osc_command(),
+                    gravity_compensator->get_input_port());
+    builder.Connect(gravity_compensator->get_output_port(),
+                    franka_command_sender->get_input_port());
     builder.Connect(franka_command_sender->get_output_port(),
                     franka_command_pub->get_input_port());
     builder.Connect(osc_controller->get_output_port_osc_debug(),

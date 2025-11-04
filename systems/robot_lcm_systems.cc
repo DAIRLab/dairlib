@@ -1,4 +1,5 @@
 #include "robot_lcm_systems.h"
+
 #include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -34,7 +35,8 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -307,7 +309,8 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -330,10 +333,10 @@ ObjectStateReceiver::ObjectStateReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;
@@ -364,7 +367,6 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
     int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
-
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);
@@ -428,7 +430,8 @@ ObjectStateSender::ObjectStateSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 
@@ -459,10 +462,10 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;
@@ -582,23 +585,61 @@ void RobotCommandSender::OutputCommand(
   }
 }
 
+GravityCompensator::GravityCompensator(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>& context)
+    : plant_(plant), context_(context) {
+  num_actuators_ = plant_.num_actuators();
+  this->DeclareVectorInputPort("u, t",
+                               TimestampedVector<double>(num_actuators_));
+  this->DeclareVectorOutputPort("u, t",
+                                TimestampedVector<double>(num_actuators_),
+                                &GravityCompensator::AddGravityCompensation);
+}
+
+void GravityCompensator::AddGravityCompensation(
+    const drake::systems::Context<double>& context,
+    TimestampedVector<double>* output) const {
+  const TimestampedVector<double>* tau =
+      (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_);
+
+  VectorXd compensated_tau = VectorXd::Zero(num_actuators_);
+  for (int i = 0; i < num_actuators_; i++){
+    compensated_tau(i) = tau->GetAtIndex(i) - tau_g(i);
+  }
+
+  output->SetDataVector(compensated_tau);
+  output->set_timestamp(tau->get_timestamp());
+}
+
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
     std::string state_channel, double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts, double actuator_delay) {
+    bool publish_efforts, double actuator_delay,
+    bool add_gravity_compensation) {
   // Create LCM input for actuators
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           actuator_channel, lcm));
   auto input_receiver = builder->AddSystem<RobotInputReceiver>(plant);
+  builder->Connect(*input_sub, *input_receiver);
   auto passthrough = builder->AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
-  builder->Connect(*input_sub, *input_receiver);
-  builder->Connect(*input_receiver, *passthrough);
+
+  if (add_gravity_compensation) {
+    auto plant_context = plant.CreateDefaultContext();
+    auto gravity_compensator =
+        builder->AddSystem<GravityCompensator>(plant, *plant_context);
+    builder->Connect(*input_receiver, *gravity_compensator);
+    builder->Connect(*gravity_compensator, *passthrough);
+  } else {
+    builder->Connect(*input_receiver, *passthrough);
+  }
 
   // Create LCM output for state and efforts
   auto state_pub =

@@ -3,6 +3,7 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/magna/systems/franka_common.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -47,37 +48,6 @@ namespace examples {
 namespace magna {
 namespace systems {
 
-/// This is the offset from the Panda's link7 frame to its flange where an end
-/// effector can be attached.
-inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
-inline const drake::math::RigidTransform<double> T_EE_L7 =
-    drake::math::RigidTransform<double>(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        TOOL_ATTACHMENT_FRAME);
-
-drake::multibody::ModelInstanceIndex AddFrankaToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph,
-    std::optional<std::string> end_effector_model_path) {
-  drake::multibody::Parser parser(plant, scene_graph);
-  parser.SetAutoRenaming(true);
-
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelsFromUrl(
-      "package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
-  drake::math::RigidTransform<double> X_WI =
-      drake::math::RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
-                    X_WI);
-  if (end_effector_model_path.has_value()) {
-    parser.AddModels(FindResourceOrThrow(end_effector_model_path.value()));
-    plant->WeldFrames(plant->GetFrameByName("panda_link7"),
-                      plant->GetFrameByName("end_effector_flange"), T_EE_L7);
-  }
-
-  return franka_index;
-}
-
 int RunFrankaVisualizer() {
   // setup lcm
 
@@ -90,8 +60,8 @@ int RunFrankaVisualizer() {
       AddFrankaToPlant(&plant, &scene_graph, std::nullopt);
   plant.Finalize();
 
-    auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-    
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+
   // Create state receiver.
   auto franka_state_subscriber =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(

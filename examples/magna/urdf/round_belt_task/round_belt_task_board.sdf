@@ -17,6 +17,13 @@
             <size>0.384 0.384 0.01</size>
           </box>
         </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+        </drake:proximity_properties>
       </collision>
     </link>
     <link name="small_round_pulley">
@@ -54,7 +61,7 @@
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:hydroelastic_modulus> 1e6 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
           <drake:mu_dynamic>0.3</drake:mu_dynamic>
@@ -82,7 +89,7 @@
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:hydroelastic_modulus> 1e6 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
           <drake:mu_dynamic>0.3</drake:mu_dynamic>

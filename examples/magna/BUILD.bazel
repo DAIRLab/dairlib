@@ -99,6 +99,7 @@ cc_binary(
     deps = [
         "//common:find_resource",
         "//common:eigen_utils",
+        ":deformable_drawer",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//examples/magna/parameter_headers:lcm_channel_params",
@@ -140,5 +141,18 @@ cc_binary(
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
         "-lopenblas",
+    ],
+)
+
+cc_library(
+    name = "deformable_drawer",
+    srcs = [
+        "deformable_drawer.cc",
+    ],
+    hdrs = [
+        "deformable_drawer.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
     ],
 )

@@ -62,7 +62,7 @@ ModelInstanceIndex AddParallelGripper(MultibodyPlant<double>* plant) {
   Parser parser(plant);
   ModelInstanceIndex model_instance =
       parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/belt_assembly/urdf/simple_gripper.sdf"))[0];
+          "examples/magna/urdf/simple_gripper.sdf"))[0];
   /* Get joints so that we can set initial conditions. */
   PrismaticJoint<double>& left_slider =
       plant->GetMutableJointByName<PrismaticJoint>("left_slider");
@@ -105,10 +105,10 @@ int do_main() {
   /* Set up a deformable torus. */
   Parser parser(&plant);
   parser.AddModels(dairlib::FindResourceOrThrow(
-      "examples/belt_assembly/urdf/round_belt.sdf"));
+      "examples/magna/urdf/round_belt_task/round_belt.sdf"));
 
   parser.AddModels(dairlib::FindResourceOrThrow(
-      "examples/belt_assembly/urdf/large_pulley.sdf"));
+      "examples/magna/urdf/large_pulley.sdf"));
   drake::math::RigidTransform<double> X_WI =
       drake::math::RigidTransform<double>(
           drake::math::RollPitchYaw<double>(0, 1.57, 0),

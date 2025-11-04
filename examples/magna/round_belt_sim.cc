@@ -1,6 +1,5 @@
-#include <iostream>
-
 #include <drake/common/yaml/yaml_io.h>
+#include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
@@ -20,6 +19,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 
+namespace dairlib {
 namespace magna {
 
 static constexpr const char* kFrankaModel =
@@ -31,7 +31,6 @@ using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::Parser;
-using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using Eigen::VectorXd;
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
@@ -78,6 +77,11 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
+
+  // Add round belt model
+  ModelInstanceIndex round_belt_index = parser.AddModels(
+      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
+                                   "round_belt.sdf"))[0];
   plant.Finalize();
 
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
@@ -87,6 +91,13 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
+
+  /* Add a visualizer that emits LCM messages for visualization. */
+  drake::geometry::DrakeVisualizerParams params;
+  params.publish_period = 1.0 / sim_params.object_publish_rate;
+  params.show_hydroelastic = true;
+  auto& drake_visualizer = drake::geometry::DrakeVisualizerd::AddToBuilder(
+      &builder, scene_graph, nullptr, params);
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -120,4 +131,5 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 }  // namespace magna
-int main(int argc, char* argv[]) { magna::DoMain(argc, argv); }
+}  // namespace dairlib
+int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }

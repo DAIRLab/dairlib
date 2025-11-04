@@ -29,6 +29,7 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
+namespace dairlib {
 namespace magna {
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
@@ -151,10 +152,6 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::string> joint_position_names = {
       "panda_joint1", "panda_joint2", "panda_joint3", "panda_joint4",
       "panda_joint5", "panda_joint6", "panda_joint7"};
-  std::vector<std::string> joint_velocity_names = {
-      "panda_joint1dot", "panda_joint2dot", "panda_joint3dot",
-      "panda_joint4dot", "panda_joint5dot", "panda_joint6dot",
-      "panda_joint7dot"};
   for (int joint_idx = 0; joint_idx < joint_position_names.size();
        ++joint_idx) {
     joint_position_tracking_data_vec.push_back(
@@ -162,15 +159,16 @@ int DoMain(int argc, char* argv[]) {
             joint_position_names[joint_idx] + "_traj", osc_params.K_p_mid_link,
             osc_params.K_d_mid_link, osc_params.W_mid_link, plant, plant));
     joint_position_tracking_data_vec[joint_idx]->AddJointToTrack(
-        joint_position_names[joint_idx], joint_velocity_names[joint_idx]);
+        joint_position_names[joint_idx],
+        joint_position_names[joint_idx] + "dot");
     osc->AddConstTrackingData(
         std::move(joint_position_tracking_data_vec[joint_idx]),
         joint_position_target[joint_idx] * VectorXd::Ones(1));
   }
 
-  // In real hardware, command positions can be sent directly to the Franka gripper.
-  // In simulation, we need a PD controller. Within the OSC framework, we add costs
-  // to track the gripper finger positions.
+  // In real hardware, command positions can be sent directly to the Franka
+  // gripper. In simulation, we need a PD controller. Within the OSC framework,
+  // we add costs to track the gripper finger positions.
   if (FLAGS_is_simulation) {
     auto franka_hand_target_position_receiver =
         builder.AddSystem<dairlib::systems::FrankaHandTargetPositionReceiver>();
@@ -313,5 +311,6 @@ int DoMain(int argc, char* argv[]) {
 }
 
 }  // namespace magna
+}  // namespace dairlib
 
-int main(int argc, char* argv[]) { return magna::DoMain(argc, argv); }
+int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }

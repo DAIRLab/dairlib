@@ -5,6 +5,7 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "deformable_drawer.h"
 #include "parameter_headers/lcm_channel_params.h"
 #include "parameter_headers/visualizer_params.h"
 #include "systems/robot_lcm_systems.h"
@@ -15,6 +16,7 @@
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
+#include "drake/lcmt_viewer_link_data.hpp"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -23,6 +25,7 @@
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
+namespace dairlib {
 namespace magna {
 
 static constexpr const char* kFrankaModel =
@@ -139,6 +142,15 @@ int DoMain(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(illustration_params));
   drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(proximity_params));
+
+  // Add deformable drawer
+  auto deformable_drawer_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_viewer_link_data>(
+          lcm_channel_params.deformable_geometry_channel, lcm));
+  auto deformable_drawer =
+      builder.AddSystem<DeformableDrawer>(meshcat, "deformable");
+  builder.Connect(*deformable_drawer_sub, *deformable_drawer);
+
   auto diagram = builder.Build();
   diagram->set_name("round_belt_visualizer");
   dairlib::DrawAndSaveDiagramGraph(*diagram);
@@ -163,6 +175,7 @@ int DoMain(int argc, char* argv[]) {
 
   return 0;
 }
-}  // namespace magna
 
-int main(int argc, char* argv[]) { return magna::DoMain(argc, argv); }
+}  // namespace magna
+}  // namespace dairlib
+int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }

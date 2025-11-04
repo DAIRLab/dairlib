@@ -1,8 +1,8 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def _drake_models_extension_impl(module_ctx):
-    commit = "f1be4aae99d702170ea5ddbaa7286baabbde25fe"
-    sha256 = "ac9b60b79be73fd454f203ccd64d67fcbab165e28a1a2e41d153d9f4a97696df"
+    commit = "c246859157feed71279fcfc232b4b874391f6494"
+    sha256 = "e0b9b8203feff96b0ba6b3b9106138590c849289b0ab1dd520573c3f7ca5cbbc"
     http_archive(
         name = "my_drake_models",
         build_file = ":package.BUILD.bazel",

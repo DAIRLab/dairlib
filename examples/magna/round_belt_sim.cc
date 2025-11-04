@@ -56,19 +56,17 @@ int DoMain(int argc, char* argv[]) {
   // Note: the task scene model has no collision geometry; only the pulley
   // models include it.
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  ModelInstanceIndex round_belt_task_scene_index =
-      parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/magna/urdf/round_belt_task/"
-          "round_belt_task_scene.urdf"))[0];
+  ModelInstanceIndex round_belt_task_scene_index = parser.AddModels(
+      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
+                                   "round_belt_task_scene.urdf"))[0];
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("round_belt_task_scene",
                                         round_belt_task_scene_index),
                    X_WI);
   // Add pulley models
-  ModelInstanceIndex task_board_index =
-      parser.AddModels(dairlib::FindResourceOrThrow(
-          "examples/magna/urdf/round_belt_task/"
-          "round_belt_task_board.sdf"))[0];
+  ModelInstanceIndex task_board_index = parser.AddModels(
+      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
+                                   "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
                              drake::Vector3<double>(0.68585, -0.192, 0.00543));

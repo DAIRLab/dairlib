@@ -1,3 +1,4 @@
+#include <dairlib/lcmt_franka_hand_target_position.hpp>
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
@@ -12,10 +13,12 @@
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
+#include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/franka_hand_target_position_receiver.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
@@ -49,6 +52,7 @@ using dairlib::EndEffectorForceTrajectoryGenerator;
 using dairlib::EndEffectorOrientationTrajectoryGenerator;
 using dairlib::EndEffectorPositionTrajectoryGenerator;
 using dairlib::systems::controllers::ExternalForceTrackingData;
+using dairlib::systems::controllers::JointSpaceTrackingData;
 using dairlib::systems::controllers::OperationalSpaceControl;
 using dairlib::systems::controllers::RotTaskSpaceTrackingData;
 using dairlib::systems::controllers::TransTaskSpaceTrackingData;
@@ -65,7 +69,7 @@ int DoMain(int argc, char* argv[]) {
       "examples/magna/parameters/osc_params.yaml");
   MagnaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels.yaml");
+          "examples/magna/parameters/lcm_channels_simulation.yaml");
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<dairlib::solvers::SolverOptionsFromYaml>(
           dairlib::FindResourceOrThrow(
@@ -74,7 +78,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create a Franka-only plant (including gripper).
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, nullptr);
+  Parser parser(&plant);
   parser.SetAutoRenaming(true);
   ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
@@ -136,6 +140,65 @@ int DoMain(int argc, char* argv[]) {
             TriggerTypeSet({TriggerType::kForced})));
     builder.Connect(osc->get_output_port_osc_debug(),
                     osc_debug_pub->get_input_port());
+  }
+
+  // Add regularization cost to maintain joint positions (except for the gripper
+  // fingers) as much as possible
+  VectorXd joint_position_target = VectorXd::Zero(9);
+  joint_position_target << 0, 0.29, 0, -2.1, 0, 2.39, 0, 0, 0;
+  std::vector<std::unique_ptr<JointSpaceTrackingData>>
+      joint_position_tracking_data_vec;
+  std::vector<std::string> joint_position_names = {
+      "panda_joint1", "panda_joint2", "panda_joint3", "panda_joint4",
+      "panda_joint5", "panda_joint6", "panda_joint7"};
+  std::vector<std::string> joint_velocity_names = {
+      "panda_joint1dot", "panda_joint2dot", "panda_joint3dot",
+      "panda_joint4dot", "panda_joint5dot", "panda_joint6dot",
+      "panda_joint7dot"};
+  for (int joint_idx = 0; joint_idx < joint_position_names.size();
+       ++joint_idx) {
+    joint_position_tracking_data_vec.push_back(
+        std::make_unique<JointSpaceTrackingData>(
+            joint_position_names[joint_idx] + "_traj", osc_params.K_p_mid_link,
+            osc_params.K_d_mid_link, osc_params.W_mid_link, plant, plant));
+    joint_position_tracking_data_vec[joint_idx]->AddJointToTrack(
+        joint_position_names[joint_idx], joint_velocity_names[joint_idx]);
+    osc->AddConstTrackingData(
+        std::move(joint_position_tracking_data_vec[joint_idx]),
+        joint_position_target[joint_idx] * VectorXd::Ones(1));
+  }
+
+  // In real hardware, command positions can be sent directly to the Franka gripper.
+  // In simulation, we need a PD controller. Within the OSC framework, we add costs
+  // to track the gripper finger positions.
+  if (FLAGS_is_simulation) {
+    auto franka_hand_target_position_receiver =
+        builder.AddSystem<dairlib::systems::FrankaHandTargetPositionReceiver>();
+    auto franka_hand_target_position_subscriber = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_franka_hand_target_position>(
+            lcm_channel_params.franka_hand_target_position_channel, &lcm));
+    builder.Connect(franka_hand_target_position_subscriber->get_output_port(),
+                    franka_hand_target_position_receiver->get_input_port());
+    std::vector<std::unique_ptr<JointSpaceTrackingData>>
+        finger_position_tracking_data_vec;
+    std::vector<std::string> finger_position_names = {"panda_finger_joint1",
+                                                      "panda_finger_joint2"};
+    for (int finger_idx = 0; finger_idx < finger_position_names.size();
+         ++finger_idx) {
+      finger_position_tracking_data_vec.push_back(
+          std::make_unique<JointSpaceTrackingData>(
+              finger_position_names[finger_idx] + "_traj",
+              osc_params.K_p_mid_link, osc_params.K_d_mid_link,
+              osc_params.W_mid_link, plant, plant));
+      finger_position_tracking_data_vec[finger_idx]->AddJointToTrack(
+          finger_position_names[finger_idx],
+          finger_position_names[finger_idx] + "dot");
+      osc->AddTrackingData(
+          std::move(finger_position_tracking_data_vec[finger_idx]));
+      builder.Connect(franka_hand_target_position_receiver->get_output_port(0),
+                      osc->get_input_port_tracking_data(
+                          finger_position_names[finger_idx] + "_traj"));
+    }
   }
 
   auto end_effector_position_tracking_data =

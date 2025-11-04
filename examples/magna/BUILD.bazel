@@ -133,6 +133,7 @@ cc_binary(
         "//systems/controllers/osc:end_effector_force",
         "//systems/framework:lcm_driven_loop",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems:franka_hand_target_position_receiver",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

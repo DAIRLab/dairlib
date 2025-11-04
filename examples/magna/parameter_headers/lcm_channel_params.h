@@ -9,6 +9,7 @@ struct MagnaLcmChannels {
   std::string osc_channel;
   std::string osc_debug_channel;
   std::string radio_channel;
+  std::string franka_hand_target_position_channel;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -18,5 +19,6 @@ struct MagnaLcmChannels {
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(radio_channel));
+    a->Visit(DRAKE_NVP(franka_hand_target_position_channel));
   }
 };

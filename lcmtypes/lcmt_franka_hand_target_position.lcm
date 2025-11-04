@@ -1,0 +1,7 @@
+package dairlib;
+
+struct lcmt_franka_hand_target_position
+{
+  int64_t utime;
+  double hand_target_position [1];
+}

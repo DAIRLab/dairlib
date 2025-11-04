@@ -87,3 +87,14 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "franka_hand_target_position_receiver",
+    srcs = ["franka_hand_target_position_receiver.cc"],
+    hdrs = ["franka_hand_target_position_receiver.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

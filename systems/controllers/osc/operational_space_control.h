@@ -371,7 +371,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_revolute_joints_;
+  int n_revolute_prismatic_joints_;
 
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;

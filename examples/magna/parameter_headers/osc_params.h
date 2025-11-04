@@ -24,12 +24,10 @@ struct MagnaOSCParams : OSCGains {
   bool enforce_acceleration_constraints;
   bool publish_debug_info;
 
-  /// Joint 2 position tracking weight values.  It is helpful to introduce a
-  /// target position for the elbow joint to avoid singularities.  NOTE:  the
-  /// target value is currently hardcoded in franka_osc_controller.cc.
-  double w_elbow;
-  double elbow_kp;
-  double elbow_kd;
+  /// Joint position tracking weight values.
+  double w_joint_tracking;
+  double joint_tracking_kp;
+  double joint_tracking_kd;
   /// End effector position tracking weight matrix values.
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
@@ -65,9 +63,9 @@ struct MagnaOSCParams : OSCGains {
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));
     a->Visit(DRAKE_NVP(enforce_acceleration_constraints));
     a->Visit(DRAKE_NVP(publish_debug_info));
-    a->Visit(DRAKE_NVP(w_elbow));
-    a->Visit(DRAKE_NVP(elbow_kp));
-    a->Visit(DRAKE_NVP(elbow_kd));
+    a->Visit(DRAKE_NVP(w_joint_tracking));
+    a->Visit(DRAKE_NVP(joint_tracking_kp));
+    a->Visit(DRAKE_NVP(joint_tracking_kd));
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));
     a->Visit(DRAKE_NVP(EndEffectorKd));
@@ -86,9 +84,9 @@ struct MagnaOSCParams : OSCGains {
     K_d_end_effector = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorKd.data(), 3, 3);
-    W_mid_link = this->w_elbow * MatrixXd::Identity(1, 1);
-    K_p_mid_link = this->elbow_kp * MatrixXd::Identity(1, 1);
-    K_d_mid_link = this->elbow_kd * MatrixXd::Identity(1, 1);
+    W_mid_link = this->w_joint_tracking * MatrixXd::Identity(1, 1);
+    K_p_mid_link = this->joint_tracking_kp * MatrixXd::Identity(1, 1);
+    K_d_mid_link = this->joint_tracking_kd * MatrixXd::Identity(1, 1);
     W_end_effector_rot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorRotW.data(), 3, 3);

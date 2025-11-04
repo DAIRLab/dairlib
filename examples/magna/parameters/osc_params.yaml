@@ -9,8 +9,8 @@ impact_threshold: 0.000
 impact_tau: 0.000
 mu: 0.4615
 
-W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 1, 1, 1]
 W_lambda_c_reg: [ 0.001, 0.001, 0.01,
                   0.001, 0.001, 0.01,
                   0.001, 0.001, 0.01,
@@ -23,7 +23,7 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 
 # Two teleoperation modes:  1) locked EE neutral position, where xbox controls
 # perturb the EE; and 2) xbox controls move the EE to a new neutral position.
-neutral_position: [0.4276197, 0.19295175, 0.12756625]
+neutral_position: [0.57987, 0, 0.280994]
 teleop_neutral_position: true
 
 # If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be
@@ -39,9 +39,9 @@ cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
 publish_debug_info: true
 
-w_elbow: 1
-elbow_kp: 200
-elbow_kd: 10
+w_joint_tracking: 0.1
+joint_tracking_kp: 10
+joint_tracking_kd: 1
 
 # This is the weight matrix for the end effector position tracking.
 EndEffectorW:

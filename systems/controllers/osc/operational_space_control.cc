@@ -136,32 +136,23 @@ OperationalSpaceControl::OperationalSpaceControl(
   ddq_min_ = ddq_min;
   ddq_max_ = ddq_max;
 
-  n_revolute_joints_ = 0;
+  n_revolute_prismatic_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
-    if (joint.type_name() == "revolute") {
-      n_revolute_joints_ += 1;
+    if (joint.type_name() == "revolute" || joint.type_name() == "prismatic") {
+      n_revolute_prismatic_joints_ += 1;
     }
   }
-  VectorXd q_min(n_revolute_joints_);
-  VectorXd q_max(n_revolute_joints_);
-  int floating_base_offset = n_v_ - n_revolute_joints_;
+  VectorXd q_min(n_revolute_prismatic_joints_);
+  VectorXd q_max(n_revolute_prismatic_joints_);
+  int floating_base_offset = n_v_ - n_revolute_prismatic_joints_;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
-    if (joint.type_name() == "revolute") {
+    if (joint.type_name() == "revolute" || joint.type_name() == "prismatic") {
       q_min(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_lower_limits()[0];
       q_max(vel_map_wo_spr.at(joint.name() + "dot") - floating_base_offset) =
           plant_wo_spr.get_joint(i).position_upper_limits()[0];
-    }
-    if (joint.type_name() == "prismatic" &&
-        (joint.position_lower_limits()[0] !=
-             -std::numeric_limits<double>::infinity() ||
-         (joint.position_upper_limits()[0] !=
-          std::numeric_limits<double>::infinity()))) {
-      std::cerr << "Warning: joint limits have not been implemented for "
-                   "prismatic joints: "
-                << std::endl;
     }
   }
   q_min_ = q_min;
@@ -506,12 +497,14 @@ void OperationalSpaceControl::Build() {
   // TODO(yangwill) discuss best way to implement joint limit cost
   if (w_joint_limit_ > 0) {
     K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
-                                        n_revolute_joints_, n_revolute_joints_);
-    joint_limit_cost_ = prog_
-                            ->AddLinearCost(VectorXd::Zero(n_revolute_joints_),
-                                            0, dv_.tail(n_revolute_joints_))
-                            .evaluator()
-                            .get();
+                                        n_revolute_prismatic_joints_,
+                                        n_revolute_prismatic_joints_);
+    joint_limit_cost_ =
+        prog_
+            ->AddLinearCost(VectorXd::Zero(n_revolute_prismatic_joints_), 0,
+                            dv_.tail(n_revolute_prismatic_joints_))
+            .evaluator()
+            .get();
   }
 
   // (Testing) 6. contact force blending
@@ -577,13 +570,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (map_iterator != contact_indices_map_.end()) {
       active_contact_set = map_iterator->second;
     }
-//    else {
-//      static const drake::logging::Warn log_once(const_cast<char*>(
-//          (std::to_string(fsm_state) +
-//           " is not a valid finite state machine state in OSC. This can happen "
-//           "if there are modes with no active contacts.")
-//              .c_str()));
-//    }
+    //    else {
+    //      static const drake::logging::Warn log_once(const_cast<char*>(
+    //          (std::to_string(fsm_state) +
+    //           " is not a valid finite state machine state in OSC. This can
+    //           happen " "if there are modes with no active contacts.")
+    //              .c_str()));
+    //    }
   }
 
   // Update context
@@ -676,7 +669,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
   for (auto& force_tracking_data : *force_tracking_data_vec_) {
-    if (!force_tracking_data->GetWeight().isZero()){
+    if (!force_tracking_data->GetWeight().isZero()) {
       MatrixXd J_ee = force_tracking_data->GetJ();
       A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_lambda_ext_) =
           J_ee.transpose();
@@ -798,11 +791,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
         K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-                            .tail(n_revolute_joints_) -
+                            .tail(n_revolute_prismatic_joints_) -
                         q_max_)
                            .cwiseMax(0) +
         K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
-                            .tail(n_revolute_joints_) -
+                            .tail(n_revolute_prismatic_joints_) -
                         q_min_)
                            .cwiseMin(0);
     joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
@@ -1091,10 +1084,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
   // Only copy lambda solutions if a force tracking vector is provided.  E.g.,
   // one is not provided in the Franka joint OSC.
-  if (!force_tracking_data_vec_->empty()){
+  if (!force_tracking_data_vec_->empty()) {
     qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
     qp_output.lambda_h_sol = CopyVectorXdToStdVector(
-      force_tracking_data_vec_->at(0)->GetLambdaDes());
+        force_tracking_data_vec_->at(0)->GetLambdaDes());
   }
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);

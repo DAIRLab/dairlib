@@ -75,7 +75,7 @@ ee_pose = plant.CalcRelativeTransform(
     plant.GetFrameByName("end_effector_frame"),
 )
 J0 = np.concatenate([ee_pose.translation(), ee_pose.rotation().ToRollPitchYaw().vector()]).reshape(-1, 1)
-J1 = J0 + np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.5]).reshape(-1, 1)
+J1 = J0 + np.array([0.1, 0.1, 0.1, 0.0, 0.0, 0.0]).reshape(-1, 1)
 
 
 control_points = np.hstack((J0, J1, J0))

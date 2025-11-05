@@ -15,7 +15,8 @@ class CartesianPoseTrajectoryGenerator
  public:
   CartesianPoseTrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, std::string end_effector_name);
+      drake::systems::Context<double>* context, std::string end_effector_name,
+      bool trajectory_passthrough = false);
 
   const drake::systems::InputPort<double>& get_input_port_robot_state() const {
     return this->get_input_port(state_port_);
@@ -23,6 +24,14 @@ class CartesianPoseTrajectoryGenerator
   const drake::systems::InputPort<double>&
   get_input_port_target_cartesian_pose() const {
     return this->get_input_port(target_cartesian_pose_port_);
+  }
+  const drake::systems::InputPort<double>&
+  get_input_port_target_cartesian_translation_trajectory() const {
+    return this->get_input_port(target_cartesian_translation_trajectory_port_);
+  }
+  const drake::systems::InputPort<double>&
+  get_input_port_target_cartesian_rotation_trajectory() const {
+    return this->get_input_port(target_cartesian_rotation_trajectory_port_);
   }
   const drake::systems::OutputPort<double>&
   get_output_port_translation_trajectory() const {
@@ -32,8 +41,8 @@ class CartesianPoseTrajectoryGenerator
   get_output_port_rotation_trajectory() const {
     return this->get_output_port(rotation_trajectory_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_joint_trajectory() const {
+  const drake::systems::OutputPort<double>& get_output_port_joint_trajectory()
+      const {
     return this->get_output_port(joint_trajectory_port_);
   }
 
@@ -54,6 +63,8 @@ class CartesianPoseTrajectoryGenerator
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex target_cartesian_pose_port_;
+  drake::systems::InputPortIndex target_cartesian_translation_trajectory_port_;
+  drake::systems::InputPortIndex target_cartesian_rotation_trajectory_port_;
   drake::systems::OutputPortIndex translation_trajectory_port_;
   drake::systems::OutputPortIndex rotation_trajectory_port_;
   drake::systems::OutputPortIndex joint_trajectory_port_;
@@ -67,6 +78,7 @@ class CartesianPoseTrajectoryGenerator
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* plant_context_;
   std::string end_effector_name_;
+  bool is_passthrough_{false};
 };
 }  // namespace systems
 }  // namespace magna

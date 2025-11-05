@@ -172,8 +172,6 @@ int RunFrankaCartesianOscController() {
 
     // Perform gravity compensation and send output of OSC
     // controller to command sender
-    drake::log()->info("Cancel gravity compensation: {}",
-                       controller_params.cancel_gravity_compensation);
     auto gravity_compensator =
         builder.AddSystem<GravityCompensationRemover>(osc_plant, *osc_context);
     builder.Connect(osc_controller->get_output_port_osc_command(),
@@ -231,16 +229,29 @@ int RunFrankaCartesianOscController() {
           LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
               controller_params.target_cartesian_pose_trajectory_channel,
               &lcm));
+
+      auto cartesian_pose_trajectory_generator =
+          builder.AddSystem<CartesianPoseTrajectoryGenerator>(
+              plant, context.get(), controller_params.end_effector_name, true);
+      builder.Connect(
+          state_receiver->get_output_port(),
+          cartesian_pose_trajectory_generator->get_input_port_robot_state());
+
       // Send translation trajectory to OSC controller
-      auto end_effector_position_receiver =
-          builder.AddSystem<LcmTrajectoryReceiver>(
-              "end_effector_translation_target");
+      auto end_effector_position_receiver = builder.AddSystem<
+          LcmTrajectoryReceiver>("end_effector_translation_target");
       builder.Connect(
           end_effector_trajectory_subscriber->get_output_port(),
           end_effector_position_receiver->get_input_port_trajectory());
-      builder.Connect(end_effector_position_receiver->get_output_port(),
+      builder.Connect(
+          end_effector_position_receiver->get_output_port(),
+          cartesian_pose_trajectory_generator
+              ->get_input_port_target_cartesian_translation_trajectory());
+      builder.Connect(cartesian_pose_trajectory_generator
+                          ->get_output_port_translation_trajectory(),
                       osc_controller->get_input_port_tracking_data(
                           "end_effector_translation_target"));
+
       // Send orientation trajectory to OSC controller
       auto end_effector_orientation_receiver =
           builder.AddSystem<LcmOrientationTrajectoryReceiver>(
@@ -248,9 +259,19 @@ int RunFrankaCartesianOscController() {
       builder.Connect(
           end_effector_trajectory_subscriber->get_output_port(),
           end_effector_orientation_receiver->get_input_port_trajectory());
-      builder.Connect(end_effector_orientation_receiver->get_output_port(),
+      builder.Connect(
+          end_effector_orientation_receiver->get_output_port(),
+          cartesian_pose_trajectory_generator
+              ->get_input_port_target_cartesian_rotation_trajectory());
+      builder.Connect(cartesian_pose_trajectory_generator
+                          ->get_output_port_rotation_trajectory(),
                       osc_controller->get_input_port_tracking_data(
                           "end_effector_orientation_target"));
+
+      builder.Connect(cartesian_pose_trajectory_generator
+                          ->get_output_port_joint_trajectory(),
+                      osc_controller->get_input_port_tracking_data(
+                          "joint_position_target"));
     }
 
     auto owned_diagram = builder.Build();

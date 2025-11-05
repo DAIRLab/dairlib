@@ -38,10 +38,11 @@ namespace systems {
 CartesianPoseTrajectoryGenerator::CartesianPoseTrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* plant_context,
-    std::string end_effector_name)
+    std::string end_effector_name, bool trajectory_passthrough)
     : plant_(plant),
       plant_context_(plant_context),
-      end_effector_name_(end_effector_name) {
+      end_effector_name_(end_effector_name),
+      is_passthrough_(trajectory_passthrough) {
   // Input/Output Setup
   // Get current state of the robot
   state_port_ = this->DeclareVectorInputPort(
@@ -50,12 +51,35 @@ CartesianPoseTrajectoryGenerator::CartesianPoseTrajectoryGenerator(
                                                          plant.num_actuators()))
                     .get_index();
 
-  // Update current and target pose in discrete forced update events
-  // Get target cartesian pose
-  target_cartesian_pose_port_ =
-      this->DeclareVectorInputPort("franka_target_cartesian_pose",
-                                   BasicVector<double>(6))
-          .get_index();
+  if (is_passthrough_) {
+    drake::log()->info(
+        "Using trajectory inputs for CartesianPoseTrajectoryGenerator");
+    // If using trajectory inputs, the input port is a trajectory
+
+    auto empty_translation_trajectory =
+        drake::trajectories::PiecewisePolynomial<double>();
+    target_cartesian_translation_trajectory_port_ =
+        this->DeclareAbstractInputPort(
+                "franka_target_cartesian_translation_trajectory",
+                drake::Value<drake::trajectories::Trajectory<double>>(
+                    empty_translation_trajectory))
+            .get_index();
+    auto empty_rotation_trajectory =
+        drake::trajectories::PiecewiseQuaternionSlerp<double>();
+    target_cartesian_rotation_trajectory_port_ =
+        this->DeclareAbstractInputPort(
+                "franka_target_cartesian_rotation_trajectory",
+                drake::Value<drake::trajectories::Trajectory<double>>(
+                    empty_rotation_trajectory))
+            .get_index();
+  } else {
+    // Update current and target pose in discrete forced update events
+    // Get target cartesian pose
+    target_cartesian_pose_port_ =
+        this->DeclareVectorInputPort("franka_target_cartesian_pose",
+                                     BasicVector<double>(6))
+            .get_index();
+  }
   target_cartesian_pose_index_ = this->DeclareDiscreteState(VectorXd::Zero(7));
 
   // Get current cartesian pose and time
@@ -123,6 +147,16 @@ CartesianPoseTrajectoryGenerator::DiscreteVariableUpdate(
     current_time[0] = context.get_time();
   }
 
+  // If in passthrough mode, set target to current
+  if (is_passthrough_) {
+    auto current_rotation = ee_pose.rotation().ToQuaternion();
+    current_pose << ee_pose.translation(), current_rotation.x(),
+        current_rotation.y(), current_rotation.z(), current_rotation.w();
+    target_pose = current_pose;
+    current_time[0] = context.get_time();
+    return drake::systems::EventStatus::Succeeded();
+  }
+
   // Check if target has changed, if so, update and reset the current positions
   // and time
   const auto& target_cartesian_pose =
@@ -156,6 +190,21 @@ void CartesianPoseTrajectoryGenerator::CalcTranslationTrajectory(
   auto current_cartesian_pose =
       context.get_discrete_state(current_cartesian_pose_index_).value();
   auto current_time = context.get_discrete_state(current_time_index_).value();
+
+  if (is_passthrough_) {
+    const auto& trajectory_input =
+        this->EvalAbstractInput(context,
+                                target_cartesian_translation_trajectory_port_)
+            ->get_value<drake::trajectories::Trajectory<double>>();
+    *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
+        const PiecewisePolynomial<double>*>(&trajectory_input);
+    if (casted_traj->get_number_of_segments() == 0) {
+      MatrixXd current_translation(3, 1);
+      current_translation << current_cartesian_pose.head<3>();
+      *casted_traj = PiecewisePolynomial<double>(current_translation);
+    }
+    return;
+  }
 
   auto target_cartesian_pose =
       context.get_discrete_state(target_cartesian_pose_index_).value();
@@ -197,6 +246,19 @@ void CartesianPoseTrajectoryGenerator::CalcRotationTrajectory(
     target_cartesian_pose = current_cartesian_pose;
   }
 
+  if (is_passthrough_) {
+    const auto& trajectory_input =
+        this->EvalAbstractInput(context,
+                                target_cartesian_rotation_trajectory_port_)
+            ->get_value<drake::trajectories::Trajectory<double>>();
+    *casted_traj = *(PiecewiseQuaternionSlerp<double>*)dynamic_cast<
+        const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
+    if (casted_traj->get_number_of_segments() != 0)
+      return;
+    else  // If no segments, create a constant trajectory at current orientation
+      target_cartesian_pose = current_cartesian_pose;
+  }
+
   // Create a cubic trajectory from current to target pose
   std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
   std::vector<Eigen::Quaternion<double>> samples(2);
@@ -218,19 +280,13 @@ void CartesianPoseTrajectoryGenerator::CalcJointTrajectory(
   auto current_joint_positions =
       context.get_discrete_state(current_joint_position_index_).value();
   auto current_time = context.get_discrete_state(current_time_index_).value();
+
   auto target_joint_positions = current_joint_positions;
 
   // Create a cubic trajectory from current to target joint positions
-  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
-  std::vector<MatrixXd> samples(2);
-  samples[0] = MatrixXd::Zero(plant_.num_positions(), 1);
-  samples[0] << current_joint_positions;
-  samples[1] = MatrixXd::Zero(plant_.num_positions(), 1);
-  samples[1] << target_joint_positions;
-  *casted_traj =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          breaks, samples, MatrixXd::Zero(plant_.num_positions(), 1),
-          MatrixXd::Zero(plant_.num_positions(), 1));
+  MatrixXd constant_joint_position(plant_.num_positions(), 1);
+  constant_joint_position << current_joint_positions;
+  *casted_traj = PiecewisePolynomial<double>(constant_joint_position);
 }
 }  // namespace systems
 }  // namespace magna

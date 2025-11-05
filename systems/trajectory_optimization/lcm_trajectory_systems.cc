@@ -70,7 +70,7 @@ void LcmTrajectoryReceiver::OutputTrajectory(
 //          trajectory_block.datapoints.bottomRows(3));
     }
   } else {
-    *casted_traj = PiecewisePolynomial<double>(Vector3d::Zero());
+    *casted_traj = PiecewisePolynomial<double>();
   }
 }
 
@@ -116,7 +116,6 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
     //std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
-    std::cout << "traj data: " << trajectory_block.datapoints << std::endl;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {
       Eigen::Vector4d quat_vec = trajectory_block.datapoints.col(i);
       quaternion_datapoints.push_back(
@@ -126,9 +125,7 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
         CopyVectorXdToStdVector(trajectory_block.time_vector),
         quaternion_datapoints);
   } else {
-    *casted_traj = drake::trajectories::PiecewiseQuaternionSlerp<double>(
-        {0, 1},
-        {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
+    *casted_traj = drake::trajectories::PiecewiseQuaternionSlerp<double>();
   }
 }
 

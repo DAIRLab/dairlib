@@ -39,7 +39,7 @@ cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
 publish_debug_info: true
 
-w_joint_tracking: 0.1
+w_joint_tracking: 0.0001
 joint_tracking_kp: 10
 joint_tracking_kd: 1
 

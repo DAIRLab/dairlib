@@ -156,3 +156,43 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "assembly_controller",
+    srcs = [
+        "assembly_controller.cc",
+    ],
+    hdrs = [
+        "assembly_controller.h",
+    ],
+    deps = [
+        "//common:update_context",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:c3",
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "run_assembly_controller",
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    srcs = [
+        "run_assembly_controller.cc",
+    ],
+    deps = [
+        "//systems/framework:lcm_driven_loop",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//common:find_resource",
+        ":assembly_controller",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "@gflags//:gflags",
+    ],
+)

@@ -187,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
           std::make_unique<JointSpaceTrackingData>(
               finger_position_names[finger_idx] + "_traj",
               osc_params.K_p_mid_link, osc_params.K_d_mid_link,
-              osc_params.W_mid_link, plant, plant));
+              MatrixXd::Identity(1, 1) * 10.0, plant, plant));
       finger_position_tracking_data_vec[finger_idx]->AddJointToTrack(
           finger_position_names[finger_idx],
           finger_position_names[finger_idx] + "dot");

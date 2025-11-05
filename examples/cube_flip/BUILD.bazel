@@ -50,5 +50,6 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:visualizer_params",
     ],
 )

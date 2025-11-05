@@ -4,12 +4,25 @@ cube_file: "examples/cube_flip/urdf/cube.sdf"
 visualizer_publish_rate: 30
 
 # match with iC3 params
-ic3_num_iters: 50
+ic3_num_iters: 10
 trajectory_length: 80
+
+iter_downsampling_factor: 1
+downsampling_factor: 10
 
 trajectory_lcm_channel: "iC3_TRAJECTORY"
 
-# Just draws the target, no effect on trajectory
+# Just for drawing the init/target pose, no effect on trajectory
+x_init: [0, 0, -0.2,
+        0, 0,    
+        1, 0, 0, 0, 
+        -0.3, 0, -0.1,
+        #-0.2, 0.2, -0.8, 
+        0, 0, 0,
+        0, 0,  
+        0, 0, 0, 
+        0, 0, 0]
+
 x_des: [0, 0, 0,
         0, 0,
         #1, 0, 0, 0, 

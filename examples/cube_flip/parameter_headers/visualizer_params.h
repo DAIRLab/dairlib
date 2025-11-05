@@ -12,9 +12,14 @@ struct CubeFlipVisualizerParams {
   int ic3_num_iters;
   int trajectory_length;
 
+  int downsampling_factor;
+  int iter_downsampling_factor;
+
   std::string trajectory_lcm_channel;
 
   std::vector<double> x_des;
+  std::vector<double> x_init;
+
   Eigen::VectorXd trace_color;
 
   template <typename Archive>
@@ -23,9 +28,12 @@ struct CubeFlipVisualizerParams {
     a->Visit(DRAKE_NVP(cube_file));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
     a->Visit(DRAKE_NVP(ic3_num_iters));
+    a->Visit(DRAKE_NVP(downsampling_factor));
+    a->Visit(DRAKE_NVP(iter_downsampling_factor));
     a->Visit(DRAKE_NVP(trajectory_length));
     a->Visit(DRAKE_NVP(trajectory_lcm_channel));
     a->Visit(DRAKE_NVP(x_des));
+    a->Visit(DRAKE_NVP(x_init));
     a->Visit(DRAKE_NVP(trace_color));
 }
 };

@@ -1,4 +1,5 @@
 #include "lcm_visualization_systems.h"
+#include <iostream>
 
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
@@ -169,23 +170,37 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
 
+  std::cout << "rows: " << lcm_translation_traj.datapoints.rows() << 
+        ", cols: " << lcm_translation_traj.datapoints.cols() << std::endl;
+
   Eigen::VectorXd translation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
-  auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
-      translation_time_vector,
-      lcm_translation_traj.datapoints.topRows(3),
-      lcm_translation_traj.datapoints.bottomRows(3));
+  // auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
+  //     translation_time_vector,
+  //     lcm_translation_traj.datapoints.topRows(3),
+  //     lcm_translation_traj.datapoints.bottomRows(3));
+
+  // Ignore velocities to just see iC3 trajectory
+  auto translation_trajectory =
+    drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+        translation_time_vector,
+        lcm_translation_traj.datapoints.topRows(3));  
   auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
       {0, 1}, {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
 
   if (lcm_traj.HasTrajectory(orientation_trajectory_name_)) {
     const auto& lcm_orientation_traj =
         lcm_traj.GetTrajectory(orientation_trajectory_name_);
+    
+    std::cout << "orientation rows: " << lcm_orientation_traj.datapoints.rows() << 
+        ", orientation cols: " << lcm_orientation_traj.datapoints.cols() << std::endl;
+
     Eigen::VectorXd orientation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_orientation_traj.time_vector);    
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     for (int i = 0; i < lcm_orientation_traj.datapoints.cols(); ++i) {
       VectorXd orientation_sample = lcm_orientation_traj.datapoints.col(i);
       if (orientation_sample.isZero()) {
         quaternion_datapoints.push_back(Quaterniond(1, 0, 0, 0));
+        //std::cout << "0 QUATERNION FALLBACK!!!" << std::endl;
       } else {
         quaternion_datapoints.push_back(
             Quaterniond(orientation_sample[0], orientation_sample[1],

@@ -3,6 +3,7 @@
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/common/trajectories/piecewise_quaternion.h>
 #include <drake/math/rigid_transform.h>
+#include <drake/math/rotation_matrix.h>
 
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -16,6 +17,7 @@ using std::string;
 
 using drake::math::RigidTransform;
 using drake::math::RollPitchYaw;
+using drake::math::RotationMatrixd;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -34,6 +36,10 @@ using systems::OutputVector;
 namespace examples {
 namespace magna {
 namespace systems {
+
+#define TIME_STEP 1                        // seconds
+#define MAX_TRANSLATION_DEVIATION 2e-1     // 20 cm
+#define MAX_ROTATION_DEVIATION 1e-1
 
 CartesianPoseTrajectoryGenerator::CartesianPoseTrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -165,13 +171,30 @@ CartesianPoseTrajectoryGenerator::DiscreteVariableUpdate(
 
   if (!target.isZero() && (target - target_pose).norm() > 1e-6) {
     // Update current pose
-    auto current_rotation = ee_pose.rotation().ToQuaternion();
-    current_pose << ee_pose.translation(), current_rotation.x(),
-        current_rotation.y(), current_rotation.z(), current_rotation.w();
-    auto target_rotation = RollPitchYaw<double>(target.tail<3>());
+    auto current_translation = ee_pose.translation();
+    auto current_rotation = ee_pose.rotation();
+    auto target_translation = target.head<3>();
+    auto target_rotation =
+        RollPitchYaw<double>(target.tail<3>()).ToRotationMatrix();
+
+    if ((target_translation - current_translation).norm() >
+            MAX_TRANSLATION_DEVIATION ||
+        (target_rotation.IsNearlyEqualTo(current_rotation,
+                                         MAX_ROTATION_DEVIATION) == false)) {
+      drake::log()->warn(
+          "Large translation change detected in "
+          "CartesianPoseTrajectoryGenerator, ignoring new target.");
+      target_translation = current_translation;
+      target_rotation = current_rotation;
+    }
+
     // Create target pose
+    auto current_rotation_quat = current_rotation.ToQuaternion();
+    current_pose << current_translation, current_rotation_quat.x(),
+        current_rotation_quat.y(), current_rotation_quat.z(),
+        current_rotation_quat.w();
     auto target_quat = target_rotation.ToQuaternion();
-    target_pose << target.head<3>(), target_quat.x(), target_quat.y(),
+    target_pose << target_translation, target_quat.x(), target_quat.y(),
         target_quat.z(), target_quat.w();
     current_time[0] = context.get_time();
   }
@@ -215,12 +238,15 @@ void CartesianPoseTrajectoryGenerator::CalcTranslationTrajectory(
   }
 
   // Create a cubic trajectory from current to target pose
-  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
-  std::vector<MatrixXd> samples(2);
+  std::vector<double> breaks = {current_time[0], current_time[0] + TIME_STEP,
+                                current_time[0] + 10.0};
+  std::vector<MatrixXd> samples(3);
   samples[0] = MatrixXd::Zero(3, 1);
   samples[0] << current_cartesian_pose.head<3>();
   samples[1] = MatrixXd::Zero(3, 1);
   samples[1] << target_cartesian_pose.head<3>();
+  samples[2] = MatrixXd::Zero(3, 1);
+  samples[2] << target_cartesian_pose.head<3>();
   *casted_traj =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           breaks, samples, MatrixXd::Zero(3, 1), MatrixXd::Zero(3, 1));
@@ -260,10 +286,12 @@ void CartesianPoseTrajectoryGenerator::CalcRotationTrajectory(
   }
 
   // Create a cubic trajectory from current to target pose
-  std::vector<double> breaks = {current_time[0], current_time[0] + 1.0};
-  std::vector<Eigen::Quaternion<double>> samples(2);
+  std::vector<double> breaks = {current_time[0], current_time[0] + TIME_STEP,
+                                current_time[0] + 10.0};
+  std::vector<Eigen::Quaternion<double>> samples(3);
   samples[0] = Eigen::Quaternion<double>(current_cartesian_pose.tail<4>());
   samples[1] = Eigen::Quaternion<double>(target_cartesian_pose.tail<4>());
+  samples[2] = Eigen::Quaternion<double>(target_cartesian_pose.tail<4>());
   *casted_traj = PiecewiseQuaternionSlerp<double>(breaks, samples);
 }
 
@@ -280,8 +308,6 @@ void CartesianPoseTrajectoryGenerator::CalcJointTrajectory(
   auto current_joint_positions =
       context.get_discrete_state(current_joint_position_index_).value();
   auto current_time = context.get_discrete_state(current_time_index_).value();
-
-  auto target_joint_positions = current_joint_positions;
 
   // Create a cubic trajectory from current to target joint positions
   MatrixXd constant_joint_position(plant_.num_positions(), 1);

@@ -64,20 +64,19 @@ namespace systems {
 namespace controllers {
 
 int RunFrankaCartesianOscController() {
+  // setup lcm
+  drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
+
+  // Load controller parameters
+  FrankaCartesianOSCControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaCartesianOSCControllerParams>(
+          FindResourceOrThrow("examples/magna/params/"
+                              "franka_cartesian_osc_controller_params.yaml"));
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(controller_params.osc_qp_settings_file))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   try {
-    // setup lcm
-    drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
-
-    // Load controller parameters
-    FrankaCartesianOSCControllerParams controller_params =
-        drake::yaml::LoadYamlFile<FrankaCartesianOSCControllerParams>(
-            FindResourceOrThrow("examples/magna/params/"
-                                "franka_cartesian_osc_controller_params.yaml"));
-    drake::solvers::SolverOptions solver_options =
-        drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-            FindResourceOrThrow(controller_params.osc_qp_settings_file))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-
     // Piece together the diagram.
     drake::systems::DiagramBuilder<double> builder;
 
@@ -238,8 +237,9 @@ int RunFrankaCartesianOscController() {
           cartesian_pose_trajectory_generator->get_input_port_robot_state());
 
       // Send translation trajectory to OSC controller
-      auto end_effector_position_receiver = builder.AddSystem<
-          LcmTrajectoryReceiver>("end_effector_translation_target");
+      auto end_effector_position_receiver =
+          builder.AddSystem<LcmTrajectoryReceiver>(
+              "end_effector_translation_target");
       builder.Connect(
           end_effector_trajectory_subscriber->get_output_port(),
           end_effector_position_receiver->get_input_port_trajectory());
@@ -289,7 +289,6 @@ int RunFrankaCartesianOscController() {
   } catch (const std::exception& e) {
     drake::log()->error(
         "Exception caught in RunFrankaCartesianOscController: {}", e.what());
-    return -1;
   }
   return 0;
 }

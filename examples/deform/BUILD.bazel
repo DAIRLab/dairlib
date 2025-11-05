@@ -35,3 +35,24 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "elastic_sim",
+    srcs = ["elastic_sim.cc"],
+    data = [
+        "//examples/deform:params_yamls",
+        "@drake_models//:allegro_hand_description",
+        ":models",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:lcm_channels",
+        "//examples/deform/parameter_headers:elastic_sim_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

@@ -9,3 +9,9 @@ cc_library(
     hdrs = ["lcm_channels.h"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "elastic_sim_params",
+    hdrs = ["elastic_sim_params.h"],
+    visibility = ["//visibility:public"],
+)

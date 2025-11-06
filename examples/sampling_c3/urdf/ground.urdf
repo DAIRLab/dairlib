@@ -11,8 +11,11 @@
     <visual>
       <origin xyz="0 0 -0.05" />
       <geometry>
-        <box size="5 0.91 0.1"/>
+        <box size="2 0.91 0.1"/>
       </geometry>
+      <material>
+        <color rgba="0.5 0.5 0.5 0.9"/>
+      </material>
     </visual>
     <!--<collision name="ground">
     <origin xyz="0 0 -0.05" />

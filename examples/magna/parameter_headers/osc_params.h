@@ -28,6 +28,12 @@ struct MagnaOSCParams : OSCGains {
   double w_joint_tracking;
   double joint_tracking_kp;
   double joint_tracking_kd;
+
+  /// Gripper position tracking weight values.
+  double w_gripper;
+  double gripper_kp;
+  double gripper_kd;
+
   /// End effector position tracking weight matrix values.
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
@@ -42,6 +48,9 @@ struct MagnaOSCParams : OSCGains {
   Eigen::MatrixXd W_mid_link;
   Eigen::MatrixXd K_p_mid_link;
   Eigen::MatrixXd K_d_mid_link;
+  Eigen::MatrixXd W_gripper;
+  Eigen::MatrixXd K_p_gripper;
+  Eigen::MatrixXd K_d_gripper;
   Eigen::MatrixXd W_end_effector;
   Eigen::MatrixXd K_p_end_effector;
   Eigen::MatrixXd K_d_end_effector;
@@ -73,6 +82,9 @@ struct MagnaOSCParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
     a->Visit(DRAKE_NVP(LambdaEndEffectorW));
+    a->Visit(DRAKE_NVP(w_gripper));
+    a->Visit(DRAKE_NVP(gripper_kp));
+    a->Visit(DRAKE_NVP(gripper_kd));
 
     // Weight matrix for end effector position tracking.
     W_end_effector = Eigen::Map<
@@ -87,6 +99,9 @@ struct MagnaOSCParams : OSCGains {
     W_mid_link = this->w_joint_tracking * MatrixXd::Identity(1, 1);
     K_p_mid_link = this->joint_tracking_kp * MatrixXd::Identity(1, 1);
     K_d_mid_link = this->joint_tracking_kd * MatrixXd::Identity(1, 1);
+    W_gripper = this->w_gripper * MatrixXd::Identity(1, 1);
+    K_p_gripper = this->gripper_kp * MatrixXd::Identity(1, 1);
+    K_d_gripper = this->gripper_kd * MatrixXd::Identity(1, 1);
     W_end_effector_rot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorRotW.data(), 3, 3);

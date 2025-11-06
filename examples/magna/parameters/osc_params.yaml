@@ -43,6 +43,10 @@ w_joint_tracking: 0.0001
 joint_tracking_kp: 10
 joint_tracking_kd: 1
 
+w_gripper: 1
+gripper_kp: 200
+gripper_kd: 10
+
 # This is the weight matrix for the end effector position tracking.
 EndEffectorW:
   [1, 0, 0,

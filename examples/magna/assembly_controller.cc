@@ -5,6 +5,8 @@
 #include "common/update_context.h"
 #include "systems/framework/timestamped_vector.h"
 
+#define POSITION_TOLERANCE 0.005
+
 namespace dairlib {
 namespace magna {
 
@@ -128,8 +130,32 @@ AssemblyController::AssemblyController(
   // Discrete state for phase tracking
   phase_index_ = this->DeclareDiscreteState(1);
   plan_start_time_index_ = this->DeclareDiscreteState(1);
+  current_target_index_ = this->DeclareDiscreteState(1);
+  // Initialize target_reached_time to -1 (not reached yet) - negative means not
+  // reached
+  target_reached_time_index_ =
+      this->DeclareDiscreteState(Eigen::VectorXd::Constant(1, -1.0));
 
   this->DeclareForcedDiscreteUpdateEvent(&AssemblyController::ComputePlan);
+
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.27, -0.01),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     2.0});
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.15, 0.25),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     0.0});
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.047, 0.25),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     0.0});
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.047, 0.198),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     0.5});
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.12, 0.15),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     0.0});
+  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.16, 0.05),
+                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
+                                     0.0});
 }
 
 drake::systems::EventStatus AssemblyController::ComputePlan(
@@ -139,9 +165,6 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   const TimestampedVector<double>* lcs_x_curr =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
-  // const BasicVector<double>& x_lcs_des =
-  //     *this->template EvalVectorInput<BasicVector>(context,
-  //     target_input_port_);
 
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_value();
   double t_context = lcs_x_curr->get_timestamp();
@@ -152,19 +175,83 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   int phase_int = static_cast<int>(discrete_state->get_value(phase_index_)[0]);
   current_phase_ = static_cast<AssemblyPhase>(phase_int);
 
+  // Get current target index
+  int current_target_idx =
+      static_cast<int>(discrete_state->get_value(current_target_index_)[0]);
+
+  // Safety check: ensure target index is valid
+  if (!target_poses_.empty()) {
+    if (current_target_idx < 0 ||
+        current_target_idx >= static_cast<int>(target_poses_.size())) {
+      // Reset to first target if invalid
+      current_target_idx = 0;
+      discrete_state->get_mutable_value(current_target_index_)[0] = 0.0;
+    }
+  }
+
+  // Check if we have targets and if current target is valid
+  if (!target_poses_.empty() && current_target_idx >= 0 &&
+      current_target_idx < static_cast<int>(target_poses_.size())) {
+    const TargetPose& current_target_pose = target_poses_[current_target_idx];
+    double target_reached_time =
+        discrete_state->get_value(target_reached_time_index_)[0];
+
+    // Check if current target is reached
+    if (IsTargetReached(x_lcs_curr, current_target_idx)) {
+      // If this is the first time we've reached the target, record the time
+      if (target_reached_time < 0.0) {
+        target_reached_time = t_context;
+        discrete_state->get_mutable_value(target_reached_time_index_)[0] =
+            target_reached_time;
+        std::cout << "Target " << current_target_idx
+                  << " reached at t=" << target_reached_time << std::endl;
+      }
+
+      // Check if dwell time has elapsed (if dwell is specified)
+      double time_at_target = t_context - target_reached_time;
+      if (current_target_pose.dwell_seconds > 0.0 &&
+          time_at_target < current_target_pose.dwell_seconds) {
+        // Still dwelling - don't advance yet
+        // Will generate constant trajectory at target in
+        // GenerateMoveToTargetTrajectory
+      } else {
+        // Dwell complete (or no dwell required), move to next target
+        current_target_idx++;
+        discrete_state->get_mutable_value(current_target_index_)[0] =
+            static_cast<double>(current_target_idx);
+        // Reset target reached time for next target
+        discrete_state->get_mutable_value(target_reached_time_index_)[0] = -1.0;
+
+        // Check if we've completed all targets
+        if (current_target_idx >= static_cast<int>(target_poses_.size())) {
+          std::cout << "All targets completed!" << std::endl;
+          // Could transition to a completion phase here if needed
+          // For now, just stay at the last target
+          current_target_idx = static_cast<int>(target_poses_.size()) - 1;
+          discrete_state->get_mutable_value(current_target_index_)[0] =
+              static_cast<double>(current_target_idx);
+        } else {
+          std::cout << "Moving to target " << current_target_idx << std::endl;
+        }
+      }
+    } else {
+      // Not at target yet - reset target reached time
+      if (target_reached_time >= 0.0) {
+        discrete_state->get_mutable_value(target_reached_time_index_)[0] = -1.0;
+      }
+    }
+  }
+
   // Generate trajectory based on current phase
   execution_lcm_traj_.ClearTrajectories();
 
   switch (current_phase_) {
-    case AssemblyPhase::kPreGraspingMotion:
-      GeneratePreGraspingTrajectory(x_lcs_curr, t_context, &execution_lcm_traj_);
-      break;
-    case AssemblyPhase::kMovingUpAndLeft:
-      GenerateMovingUpAndLeftTrajectory(x_lcs_curr, t_context,
-                                        &execution_lcm_traj_);
-      break;
-    case AssemblyPhase::kMovingDown:
-      GenerateMovingDownTrajectory(x_lcs_curr, t_context, &execution_lcm_traj_);
+    case AssemblyPhase::kMoveToTarget:
+      if (!target_poses_.empty() && current_target_idx >= 0 &&
+          current_target_idx < static_cast<int>(target_poses_.size())) {
+        GenerateMoveToTargetTrajectory(
+            x_lcs_curr, t_context, &execution_lcm_traj_, current_target_idx);
+      }
       break;
       // case AssemblyPhase::kMPC:
       //   GenerateMPCTrajectory(x_lcs_curr, x_lcs_des.get_value(), t_context,
@@ -175,159 +262,147 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void AssemblyController::GeneratePreGraspingTrajectory(
-    const Eigen::VectorXd& x_lcs_curr, double t_context,
-    LcmTrajectory* traj) const {
-  // Simple trajectory: move end effector straight down
-  gripper_pos_command_ = 0.03;
-  double traj_length = 2.0;
-  int n_knots = traj_length / dt_;
+bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
+                                         int target_index) const {
+  if (target_index < 0 ||
+      target_index >= static_cast<int>(target_poses_.size())) {
+    return false;
+  }
+
+  const TargetPose& target_pose = target_poses_[target_index];
   Eigen::Vector3d current_pos = x_lcs_curr.head(3);
-  Eigen::Vector3d target_pos{0.5, 0.27, 0.0};
+  Eigen::Vector3d target_pos = target_pose.position;
+  double distance = (current_pos - target_pos).norm();
+
+  return distance < POSITION_TOLERANCE;
+}
+
+void AssemblyController::AddEETrajectoriesToLcm(
+    const Eigen::MatrixXd& position_knots,
+    const Eigen::MatrixXd& orientation_knots,
+    const Eigen::MatrixXd& force_knots, const Eigen::VectorXd& timestamps,
+    LcmTrajectory* traj) const {
+  // Add end effector position trajectory
+  LcmTrajectory::Trajectory ee_traj;
+  ee_traj.traj_name = "end_effector_position_target";
+  ee_traj.datatypes = std::vector<std::string>(position_knots.rows(), "double");
+  ee_traj.datapoints = position_knots;
+  ee_traj.time_vector = timestamps;
+  traj->AddTrajectory(ee_traj.traj_name, ee_traj);
+
+  // Add end effector orientation trajectory
+  LcmTrajectory::Trajectory ee_orientation_traj;
+  ee_orientation_traj.traj_name = "end_effector_orientation_target";
+  ee_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_knots.rows(), "double");
+  ee_orientation_traj.datapoints = orientation_knots;
+  ee_orientation_traj.time_vector = timestamps;
+  traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+
+  // Add end effector force trajectory
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes = std::vector<std::string>(force_knots.rows(), "double");
+  force_traj.datapoints = force_knots;
+  force_traj.time_vector = timestamps;
+  traj->AddTrajectory(force_traj.traj_name, force_traj);
+}
+
+void AssemblyController::GenerateMoveToTargetTrajectory(
+    const Eigen::VectorXd& x_lcs_curr, double t_context, LcmTrajectory* traj,
+    int target_index) const {
+  // Validate target index
+  if (target_index < 0 ||
+      target_index >= static_cast<int>(target_poses_.size())) {
+    std::cerr << "Warning: Invalid target index: " << target_index << std::endl;
+    return;
+  }
+
+  // Get target pose from target_poses_ vector
+  const TargetPose& target_pose = target_poses_[target_index];
+  Eigen::Vector3d target_pos = target_pose.position;
+  Eigen::Vector4d target_orientation = target_pose.orientation;
+
+  // Get current position
+  Eigen::Vector3d current_pos = x_lcs_curr.head(3);
+  Eigen::Vector3d displacement = target_pos - current_pos;
+  double distance = displacement.norm();
+
   std::cout << "current_pos: " << current_pos.transpose() << std::endl;
   std::cout << "target_pos: " << target_pos.transpose() << std::endl;
+  std::cout << "distance: " << distance << std::endl;
 
+  // Check if already at target (within tolerance)
+  // NOTE: Since this function is called every control loop, we generate a
+  // trajectory from the current position. If we're at the target, we generate a
+  // constant trajectory that holds the target position. The dwell time is
+  // handled by ComputePlan() which delays advancing to the next target.
+  if (distance < POSITION_TOLERANCE) {
+    gripper_pos_command_ = target_pose.gripper_pos_command;
+    // Already at target, create a single-point trajectory at target position
+    Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
+    Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(2);
+    knots.col(0) = target_pos;
+    knots.col(1) = target_pos;
+    timestamps[0] = t_context;
+    timestamps[1] = t_context + dt_;
+
+    // Create minimal trajectory
+    Eigen::MatrixXd orientation_single = Eigen::MatrixXd::Zero(4, 2);
+    orientation_single.col(0) = target_orientation;
+    orientation_single.col(1) = target_orientation;
+    Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, 2);
+    force_samples.col(0) = Eigen::Vector3d::Zero();
+    force_samples.col(1) = Eigen::Vector3d::Zero();
+
+    AddEETrajectoriesToLcm(knots, orientation_single, force_samples, timestamps,
+                           traj);
+    return;
+  }
+
+  // We generate a straight line trajectory from current position to target
+  const double avg_speed = 0.1;
+  double step_size = avg_speed * dt_;
+
+  int n_knots = N_;
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, n_knots);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(n_knots);
 
+  // Generate movement trajectory with smooth interpolation
   for (int i = 0; i < n_knots; i++) {
-    double alpha = static_cast<double>(i) / (n_knots - 1);
-    knots.col(i) = (1 - alpha) * current_pos + alpha * target_pos;
+    knots.col(i) = current_pos + i * step_size * displacement.normalized();
     timestamps[i] = t_context + i * dt_;
   }
 
-  // End effector orientation (keep vertical)
+  // Interpolate orientation from current to target using spherical linear
+  // interpolation (Slerp) For simplicity, we'll use linear interpolation for
+  // quaternion components (For production code, proper quaternion slerp would
+  // be better)
+  Eigen::Vector4d current_orientation(1.0, 0.0, 0.0,
+                                      0.0);  // Default to identity
+  // If x_lcs_curr has orientation information, extract it (assuming it's in
+  // positions) For now, we'll interpolate from identity to target
+
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, n_knots);
-  Eigen::Vector4d q_vertical(1.0, 0.0, 0.0, 0.0);  // Identity quaternion
+
+  // Interpolate orientation during movement phase
   for (int i = 0; i < n_knots; i++) {
-    ee_orientations.col(i) = q_vertical;
+    // double t_normalized = static_cast<double>(i) / (n_move_knots - 1);
+    // double smooth_alpha =
+    //     t_normalized * t_normalized * (3.0 - 2.0 * t_normalized);
+
+    // Simple linear interpolation for quaternion (normalized)
+    Eigen::Vector4d q_interp = target_orientation;
+    q_interp.normalize();
+    ee_orientations.col(i) = q_interp;
   }
 
-  // Create trajectory
-  LcmTrajectory::Trajectory ee_traj;
-  ee_traj.traj_name = "end_effector_position_target";
-  ee_traj.datatypes = std::vector<std::string>(3, "double");
-  ee_traj.datapoints = knots;
-  ee_traj.time_vector = timestamps;
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes = std::vector<std::string>(4, "double");
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps;
-
-  traj->AddTrajectory(ee_traj.traj_name, ee_traj);
-  traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
-
-  // Zero forces
+  // Zero forces (or could be set based on target pose requirements)
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, n_knots);
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes = std::vector<std::string>(3, "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps;
-  traj->AddTrajectory(force_traj.traj_name, force_traj);
 
-  // check if the current position is close to the target position
-  if ((current_pos - target_pos).norm() < 0.005) {
-    gripper_pos_command_ = 0.0;
-    current_phase_ = AssemblyPhase::kClosingGripper;
-  }
-}
-
-void AssemblyController::GenerateMovingUpAndLeftTrajectory(
-    const Eigen::VectorXd& x_lcs_curr, double t_context,
-    LcmTrajectory* traj) const {
-  // Move up and to the left
-  Eigen::Vector3d current_pos = x_lcs_curr.head(3);
-  Eigen::Vector3d target_pos = current_pos;
-  target_pos[2] += 0.15;  // Move up
-  target_pos[0] -= 0.1;   // Move left (assuming x-axis is left-right)
-
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, N_);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
-
-  for (int i = 0; i < N_; i++) {
-    double alpha = static_cast<double>(i) / (N_ - 1);
-    knots.col(i) = (1 - alpha) * current_pos + alpha * target_pos;
-    timestamps[i] = t_context + i * dt_;
-  }
-
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-  Eigen::Vector4d q_vertical(1.0, 0.0, 0.0, 0.0);
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vertical;
-  }
-
-  LcmTrajectory::Trajectory ee_traj;
-  ee_traj.traj_name = "end_effector_position_target";
-  ee_traj.datatypes = std::vector<std::string>(3, "double");
-  ee_traj.datapoints = knots;
-  ee_traj.time_vector = timestamps;
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes = std::vector<std::string>(4, "double");
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps;
-
-  traj->AddTrajectory(ee_traj.traj_name, ee_traj);
-  traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
-
-  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes = std::vector<std::string>(3, "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps;
-  traj->AddTrajectory(force_traj.traj_name, force_traj);
-}
-
-void AssemblyController::GenerateMovingDownTrajectory(
-    const Eigen::VectorXd& x_lcs_curr, double t_context,
-    LcmTrajectory* traj) const {
-  // Move down
-  Eigen::Vector3d current_pos = x_lcs_curr.head(3);
-  Eigen::Vector3d target_pos = current_pos;
-  target_pos[2] -= 0.1;  // Move down
-
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, N_);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
-
-  for (int i = 0; i < N_; i++) {
-    double alpha = static_cast<double>(i) / (N_ - 1);
-    knots.col(i) = (1 - alpha) * current_pos + alpha * target_pos;
-    timestamps[i] = t_context + i * dt_;
-  }
-
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-  Eigen::Vector4d q_vertical(1.0, 0.0, 0.0, 0.0);
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vertical;
-  }
-
-  LcmTrajectory::Trajectory ee_traj;
-  ee_traj.traj_name = "end_effector_position_target";
-  ee_traj.datatypes = std::vector<std::string>(3, "double");
-  ee_traj.datapoints = knots;
-  ee_traj.time_vector = timestamps;
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes = std::vector<std::string>(4, "double");
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps;
-
-  traj->AddTrajectory(ee_traj.traj_name, ee_traj);
-  traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
-
-  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes = std::vector<std::string>(3, "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps;
-  traj->AddTrajectory(force_traj.traj_name, force_traj);
+  // Add all trajectories to LCM
+  AddEETrajectoriesToLcm(knots, ee_orientations, force_samples, timestamps,
+                         traj);
 }
 
 // void AssemblyController::GenerateMPCTrajectory(

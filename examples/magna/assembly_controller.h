@@ -6,8 +6,8 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/systems/framework/leaf_system.h>
 
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_franka_hand_target_position.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3_options.h"
 #include "solvers/c3_plus.h"
@@ -18,12 +18,13 @@
 namespace dairlib {
 namespace magna {
 
-enum class AssemblyPhase {
-  kPreGraspingMotion,
-  kClosingGripper,
-  kMovingUpAndLeft,
-  kMovingDown,
-  kMPC
+enum class AssemblyPhase { kMoveToTarget, kGripperControl, kMPC };
+
+struct TargetPose {
+  Eigen::Vector3d position;
+  Eigen::Vector4d orientation;  // quaternion w,x,y,z
+  double gripper_pos_command = 0.0;
+  double dwell_seconds = 0.0;  // how long to wait at this target before moving
 };
 
 class AssemblyController : public drake::systems::LeafSystem<double> {
@@ -64,14 +65,25 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   /// Helper functions for different phases
-  void GeneratePreGraspingTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                   double t_context, LcmTrajectory* traj) const;
-  void GenerateMovingUpAndLeftTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                         double t_context,
-                                         LcmTrajectory* traj) const;
-  void GenerateMovingDownTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                    double t_context,
-                                    LcmTrajectory* traj) const;
+  void GenerateMoveToTargetTrajectory(const Eigen::VectorXd& x_lcs_curr,
+                                      double t_context,
+                                      LcmTrajectory* traj,
+                                      int target_index) const;
+  
+  /// Check if target is reached and return true if so
+  bool IsTargetReached(const Eigen::VectorXd& x_lcs_curr, int target_index) const;
+  
+  /// Helper function to add position, orientation, and force trajectories to LcmTrajectory
+  void AddEETrajectoriesToLcm(
+      const Eigen::MatrixXd& position_knots,
+      const Eigen::MatrixXd& orientation_knots,
+      const Eigen::MatrixXd& force_knots,
+      const Eigen::VectorXd& timestamps,
+      LcmTrajectory* traj) const;
+  void GenerateGripperControlTrajectory(const Eigen::VectorXd& x_lcs_curr,
+                                        double t_context, LcmTrajectory* traj,
+                                        double gripper_pos_command,
+                                        double dwell_time) const;
   //   void GenerateMPCTrajectory(
   //       const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
   //       double t_context, LcmTrajectory* traj) const;
@@ -79,8 +91,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   /// Output port function
   void OutputTrajExecute(const drake::systems::Context<double>& context,
                          dairlib::lcmt_timestamped_saved_traj* output) const;
-  void OutputGripperPosCommand(const drake::systems::Context<double>& context,
-                               dairlib::lcmt_franka_hand_target_position* output) const;
+  void OutputGripperPosCommand(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_franka_hand_target_position* output) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
@@ -117,16 +130,20 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> U_;
 
   // Phase management
-  mutable AssemblyPhase current_phase_ = AssemblyPhase::kPreGraspingMotion;
+  mutable AssemblyPhase current_phase_ = AssemblyPhase::kMoveToTarget;
   drake::systems::DiscreteStateIndex phase_index_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
+  drake::systems::DiscreteStateIndex current_target_index_;
+  drake::systems::DiscreteStateIndex target_reached_time_index_;  // Time when target was first reached (for dwell)
 
   // MPC solver
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;
 
   // Execution trajectory
   mutable LcmTrajectory execution_lcm_traj_;
-  mutable double gripper_pos_command_ = 0.0;
+  mutable double gripper_pos_command_ = 0.03;
+
+  mutable std::vector<TargetPose> target_poses_;
 };
 
 }  // namespace magna

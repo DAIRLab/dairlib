@@ -12,14 +12,12 @@
 #include "parameter_headers/assembly_c3_options.h"
 #include "parameter_headers/target_poses.h"
 #include "solvers/c3_plus.h"
-#include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
-#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace magna {
 
-enum class AssemblyPhase { kMoveToTarget, kGripperControl, kMPC };
+enum class AssemblyPhase { kMoveToTarget, kMPC };
 
 class AssemblyController : public drake::systems::LeafSystem<double> {
  public:
@@ -32,8 +30,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
       const AssemblyC3Options& c3_options,
-      const TargetPosesParams& target_poses_params,
-      bool verbose = false);
+      const TargetPosesParams& target_poses_params, bool verbose = false);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -80,9 +77,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                         double t_context, LcmTrajectory* traj,
                                         double gripper_pos_command,
                                         double dwell_time) const;
-  //   void GenerateMPCTrajectory(
-  //       const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
-  //       double t_context, LcmTrajectory* traj) const;
+    void GenerateMPCTrajectory(
+        const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
+        double t_context, LcmTrajectory* traj) const;
 
   /// Output port function
   void OutputTrajExecute(const drake::systems::Context<double>& context,

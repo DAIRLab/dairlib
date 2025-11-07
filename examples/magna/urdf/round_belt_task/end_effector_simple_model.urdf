@@ -20,7 +20,7 @@
       </geometry>
       <material name="end_effector_simple_material" />
     </visual>
-    <collision>
+    <collision name="end_effector_simple_collision">
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
         <cylinder radius="0.003" length="0.006" />
@@ -115,9 +115,4 @@
     <joint name="end_effector_simple_yaw" />
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
-
-  <drake:collision_filter_group name="end_effector_simple_group">
-    <drake:member link="end_effector_simple" />
-    <drake:ignored_collision_filter_group name="end_effector_simple_group" />
-  </drake:collision_filter_group>
 </robot>

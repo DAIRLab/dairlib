@@ -323,11 +323,9 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     for (int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta[i];
       verbose_w.col(i) = w[i];
-      verbose_zfin.col(i) = zfin_[i];
-      verbose_zsol.col(i) = z_sol_->at(i);
+      verbose_zfin.col(i) = zfin[i];
     }
     std::cout << "zfin: \n" << verbose_zfin << std::endl;
-    std::cout << "zsol: \n" << verbose_zsol << std::endl;
     std::cout << "delta: \n" << verbose_delta << std::endl;
     std::cout << "w: \n" << verbose_w << std::endl;
   }

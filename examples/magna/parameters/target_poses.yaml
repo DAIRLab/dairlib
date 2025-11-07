@@ -1,6 +1,6 @@
 target_poses:
   # Move from initial position to pre-grasp position, grasp the belt, and wait for 0.5 seconds
-  - position: [0.5, 0.27, -0.01]
+  - position: [0.5, 0.27, 0.00]
     orientation: [1.0, 0.0, 0.0, 0.0]
     gripper_pos_command: -0.1
     dwell_seconds: 0.5

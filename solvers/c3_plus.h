@@ -51,9 +51,9 @@ class C3Plus final : public C3Base {
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
+  void UpdateLCS(const LCS& lcs) override;
 
  private:
-  void UpdateLCS(const LCS& lcs) override;
   void AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
                                const std::vector<Eigen::VectorXd>& WD,
                                const std::vector<Eigen::VectorXd>& delta,

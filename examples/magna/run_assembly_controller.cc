@@ -29,9 +29,9 @@ static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
     "panda_arm_hand_with_long_fingers.urdf";
 
+using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
@@ -62,44 +62,80 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<TargetPosesParams>(
           "examples/magna/parameters/target_poses.yaml");
 
-  // Create plant for AssemblyController
   DiagramBuilder<double> builder;
 
   // Create LCS plant
-  MultibodyPlant<double> plant(0.0);
-  Parser parser(&plant, nullptr);
+  DiagramBuilder<double> plant_lcs_builder;
+  auto [plant_lcs, scene_graph] =
+      AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+  Parser parser(&plant_lcs, &scene_graph);
   parser.AddModels(dairlib::FindResourceOrThrow(
       "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"));
   parser.AddModels(dairlib::FindResourceOrThrow(
       "examples/magna/urdf/round_belt_task/belt_element.urdf"));
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
-                   RigidTransform<double>::Identity());
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("belt_element_base_link"),
-                   RigidTransform<double>::Identity());
-  plant.AddForceElement<drake::multibody::LinearSpringDamper>(
-      plant.GetBodyByName("end_effector_simple"),
-      drake::Vector3<double>(0, 0, 0), plant.GetBodyByName("belt_element"),
+  parser.AddModels(dairlib::FindResourceOrThrow(
+      "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"));
+
+  plant_lcs.WeldFrames(plant_lcs.world_frame(),
+                       plant_lcs.GetFrameByName("base_link"),
+                       RigidTransform<double>::Identity());
+  plant_lcs.WeldFrames(plant_lcs.world_frame(),
+                       plant_lcs.GetFrameByName("belt_element_base_link"),
+                       RigidTransform<double>::Identity());
+  RigidTransform<double> task_board_pose =
+      RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
+                             drake::Vector3<double>(0.68585, -0.192, 0.00543));
+  plant_lcs.WeldFrames(plant_lcs.world_frame(),
+                       plant_lcs.GetFrameByName("board"), task_board_pose);
+  plant_lcs.AddForceElement<drake::multibody::LinearSpringDamper>(
+      plant_lcs.GetBodyByName("end_effector_simple"),
+      drake::Vector3<double>(0, 0, 0), plant_lcs.GetBodyByName("belt_element"),
       drake::Vector3<double>(0, 0, 0), 0.24, 1000, 0.1);
-  plant.Finalize();
-  std::cout << "plant.num_positions(): " << plant.num_positions() << std::endl;
-  std::cout << "plant.num_velocities(): " << plant.num_velocities()
-            << std::endl;
-  auto plant_context = plant.CreateDefaultContext();
+  plant_lcs.Finalize();
 
-  // Create AutoDiff plant
-  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_ad =
-      drake::systems::System<double>::ToAutoDiffXd(plant);
-  auto plant_ad_context = plant_ad->CreateDefaultContext();
+  // Create AutoDiff version of LCS plant
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_ad =
+      drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
+  auto plant_lcs_ad_context = plant_lcs_ad->CreateDefaultContext();
 
-  // Contact geometry pairs - empty for now
+  auto plant_lcs_diagram = plant_lcs_builder.Build();
+  std::unique_ptr<drake::systems::Context<double>> diagram_context =
+      plant_lcs_diagram->CreateDefaultContext();
+  auto& plant_lcs_context = plant_lcs_diagram->GetMutableSubsystemContext(
+      plant_lcs, diagram_context.get());
+
+  // contact_pairs variable holds the list of groups, each group is a list of
+  // contact pairs we currently consider two groups of contact pairs:
+  // belt-large-pulley and belt-small-pulley.
   std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>
-      contact_geoms;
+      contact_pairs;
+  std::vector<SortedPair<GeometryId>> belt_large_pulley_contact_pairs;
+  std::vector<SortedPair<GeometryId>> belt_small_pulley_contact_pairs;
+
+  auto& ee_geom = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("end_effector_simple"))[0];
+  auto belt_large_pulley_geoms = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("large_round_pulley"));
+  auto belt_small_pulley_geoms = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("small_round_pulley"));
+  for (auto geom_id : belt_large_pulley_geoms) {
+    belt_large_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
+  }
+  for (auto geom_id : belt_small_pulley_geoms) {
+    belt_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
+  }
+  contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
+  contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
+  std::cout << "belt_large_pulley_contact_pairs.size(): "
+            << belt_large_pulley_contact_pairs.size() << std::endl;
+  std::cout << "belt_small_pulley_contact_pairs.size(): "
+            << belt_small_pulley_contact_pairs.size() << std::endl;
+  std::cout << "contact_pairs.size(): " << contact_pairs.size() << std::endl;
 
   // Create AssemblyController
   auto assembly_controller = builder.AddSystem<AssemblyController>(
-      plant, plant_context.get(), *plant_ad, plant_ad_context.get(),
-      contact_geoms, assembly_c3_options, target_poses_params);
+      plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
+      contact_pairs, assembly_c3_options, target_poses_params);
 
   // ----- Construct plants for FrankaKinematics ----- //
 
@@ -172,6 +208,16 @@ int DoMain(int argc, char* argv[]) {
   // AssemblyController -> Publisher (trajectory output)
   builder.Connect(assembly_controller->get_output_port_traj_execute(),
                   traj_pub->get_input_port(0));
+
+  // Constant source for x_lcs_des
+  VectorXd x_lcs_des =
+      VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
+  VectorXd x_lcs_des_positions = VectorXd::Zero(plant_lcs.num_positions());
+  x_lcs_des_positions << 0.5, 0.2, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  x_lcs_des.segment(0, plant_lcs.num_positions()) = x_lcs_des_positions;
+  auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(x_lcs_des);
+  builder.Connect(x_lcs_des_source->get_output_port(),
+                  assembly_controller->get_input_port_target());
 
   auto gripper_pos_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_franka_hand_target_position>(

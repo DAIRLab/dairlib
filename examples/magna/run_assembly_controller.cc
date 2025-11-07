@@ -2,20 +2,18 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_franka_hand_target_position.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
+#include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/lcm_channel_params.h"
-#include "solvers/c3_options.h"
+#include "examples/magna/parameter_headers/target_poses.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/state_vector.h"
-#include "systems/framework/timestamped_vector.h"
 #include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "drake/common/value.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
@@ -56,9 +54,13 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
           "examples/magna/parameters/lcm_channels_simulation.yaml");
 
-  // Create minimal C3Options for AssemblyController constructor
-  // (Required by constructor but not actively used)
-  C3Options c3_options;
+  AssemblyC3Options assembly_c3_options =
+      drake::yaml::LoadYamlFile<AssemblyC3Options>(
+          "examples/magna/parameters/assembly_c3_options.yaml");
+
+  TargetPosesParams target_poses_params =
+      drake::yaml::LoadYamlFile<TargetPosesParams>(
+          "examples/magna/parameters/target_poses.yaml");
 
   // Create plant for AssemblyController
   DiagramBuilder<double> builder;
@@ -71,6 +73,9 @@ int DoMain(int argc, char* argv[]) {
   parser.AddModels(dairlib::FindResourceOrThrow(
       "examples/magna/urdf/round_belt_task/belt_element.urdf"));
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
+                   RigidTransform<double>::Identity());
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("belt_element_base_link"),
                    RigidTransform<double>::Identity());
   plant.AddForceElement<drake::multibody::LinearSpringDamper>(
       plant.GetBodyByName("end_effector_simple"),
@@ -94,14 +99,14 @@ int DoMain(int argc, char* argv[]) {
   // Create AssemblyController
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant, plant_context.get(), *plant_ad, plant_ad_context.get(),
-      contact_geoms, c3_options);
+      contact_geoms, assembly_c3_options, target_poses_params);
 
   // ----- Construct plants for FrankaKinematics ----- //
 
   // Create a Franka-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka);
-  ModelInstanceIndex franka_index =
+  [[maybe_unused]] ModelInstanceIndex franka_index =
       parser_franka.AddModelsFromUrl(kFrankaModel)[0];
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"),
@@ -114,6 +119,9 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_object(&plant_object, nullptr);
   parser_object.AddModels(dairlib::FindResourceOrThrow(
       "examples/magna/urdf/round_belt_task/belt_element.urdf"));
+  plant_object.WeldFrames(plant_object.world_frame(),
+                          plant_object.GetFrameByName("belt_element_base_link"),
+                          RigidTransform<double>::Identity());
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
   std::vector<std::string> object_names = {"belt_element"};
@@ -149,11 +157,11 @@ int DoMain(int argc, char* argv[]) {
                   assembly_controller->get_input_port_lcs_state());
 
   // TODO: Currently, I don't how to get state of a particular vertex of a
-  // deformable object
-  auto constant_object_state_vector = StateVector<double>(7, 6);
-  VectorXd constant_positions(7);
-  constant_positions << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-  VectorXd constant_velocities = VectorXd::Zero(6);
+  // deformable object yet.
+  auto constant_object_state_vector = StateVector<double>(3, 3);
+  VectorXd constant_positions(3);
+  constant_positions << 0.0, 0.0, 0.0;
+  VectorXd constant_velocities = VectorXd::Zero(3);
   constant_object_state_vector.SetPositions(constant_positions);
   constant_object_state_vector.SetVelocities(constant_velocities);
   auto constant_source =

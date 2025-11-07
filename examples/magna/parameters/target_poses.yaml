@@ -1,0 +1,30 @@
+target_poses:
+  - position: [0.5, 0.27, -0.01]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.5
+  - position: [0.5, 0.15, 0.25]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.0
+  - position: [0.5, 0.047, 0.25]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.0
+  - position: [0.5, 0.047, 0.197]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.5
+  - position: [0.5, 0.12, 0.15]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.0
+  - position: [0.5, 0.16, 0.05]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.0
+  - position: [0.5, 0.19, 0.0]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.0
+

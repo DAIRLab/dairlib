@@ -3,6 +3,8 @@
 #include <Eigen/Dense>
 
 #include "common/update_context.h"
+#include "examples/magna/parameter_headers/assembly_c3_options.h"
+#include "examples/magna/parameter_headers/target_poses.h"
 #include "systems/framework/timestamped_vector.h"
 
 #define POSITION_TOLERANCE 0.005
@@ -33,15 +35,18 @@ AssemblyController::AssemblyController(
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
-    const C3Options& c3_options)
+    const AssemblyC3Options& c3_options,
+    const TargetPosesParams& target_poses_params,
+    bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
-      c3_options_(c3_options),
+      assembly_c3_options_(c3_options),
       N_(c3_options.N),
-      dt_(c3_options.dt) {
+      dt_(c3_options.dt),
+      verbose_(verbose) {
   this->set_name("assembly_controller");
 
   n_q_ = plant_.num_positions();
@@ -49,62 +54,60 @@ AssemblyController::AssemblyController(
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
 
-  N_ = 10;
-  dt_ = 0.01;
-
   // Determine contact model and n_lambda_
-  // if (c3_options_.contact_model == "stewart_and_trinkle") {
-  //   contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-  //   n_lambda_ =
-  //       2 * c3_options_.num_contacts +
-  //       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  // } else if (c3_options_.contact_model == "anitescu") {
-  //   contact_model_ = solvers::ContactModel::kAnitescu;
-  //   n_lambda_ =
-  //       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  // } else {
-  //   std::cerr << "Unknown or unsupported contact model: "
-  //             << c3_options_.contact_model << std::endl;
-  //   DRAKE_THROW_UNLESS(false);
-  // }
-  // if (c3_options_.contact_model == "stewart_and_trinkle") {
-  //   contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-  //   n_lambda_ =
-  //       2 * c3_options_.num_contacts +
-  //       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  // } else {
-  //   contact_model_ = solvers::ContactModel::kAnitescu;
-  //   n_lambda_ =
-  //       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  // }
-  // // Initialize cost matrices
-  // double discount_factor = 1;
-  // for (int i = 0; i < N_ + 1; ++i) {
-  //   Q_.push_back(discount_factor * c3_options_.Q);
-  //   discount_factor *= c3_options_.gamma;
-  //   if (i < N_) {
-  //     R_.push_back(discount_factor * c3_options_.R);
-  //     G_.push_back(c3_options_.G);
-  //     U_.push_back(c3_options_.U);
-  //   }
-  // }
+  if (assembly_c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
+    n_lambda_ =
+        2 * assembly_c3_options_.num_contacts +
+        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+  } else if (assembly_c3_options_.contact_model == "anitescu") {
+    contact_model_ = solvers::ContactModel::kAnitescu;
+    n_lambda_ =
+        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+  } else {
+    std::cerr << "Unknown or unsupported contact model: "
+              << assembly_c3_options_.contact_model << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
+  if (assembly_c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
+    n_lambda_ =
+        2 * assembly_c3_options_.num_contacts +
+        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+  } else {
+    contact_model_ = solvers::ContactModel::kAnitescu;
+    n_lambda_ =
+        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+  }
+  // Initialize cost matrices
+  double discount_factor = 1;
+  for (int i = 0; i < N_ + 1; ++i) {
+    Q_.push_back(discount_factor * assembly_c3_options_.Q);
+    discount_factor *= assembly_c3_options_.gamma;
+    if (i < N_) {
+      R_.push_back(discount_factor * assembly_c3_options_.R);
+      G_.push_back(assembly_c3_options_.G);
+      U_.push_back(assembly_c3_options_.U);
+    }
+  }
+  std::cout << "Number of contacts: " << assembly_c3_options_.num_contacts << std::endl;
 
-  // // Create placeholder LCS for initializing C3Plus
-  // MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
-  // MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  // VectorXd d = VectorXd::Zero(n_x_);
-  // MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
-  // MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  // MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  // MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  // VectorXd c = VectorXd::Zero(n_lambda_);
-  // LCS lcs_placeholder(A, B, D, d, E, F, H, c, N_, dt_);
+  // Create placeholder LCS for initializing C3Plus
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  LCS lcs_placeholder(A, B, D, d, E, F, H, c, N_, dt_);
 
-  // auto x_desired_placeholder =
-  //     std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
-  // c3_mpc_ = std::make_shared<C3Plus>(
-  //     lcs_placeholder, solvers::C3Base::CostMatrices(Q_, R_, G_, U_),
-  //     x_desired_placeholder, c3_options_);
+  auto x_desired_placeholder =
+      std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  c3_mpc_ = std::make_shared<C3Plus>(
+      lcs_placeholder, solvers::C3Base::CostMatrices(Q_, R_, G_, U_),
+      x_desired_placeholder, assembly_c3_options_.GetC3Options());
 
   // Input ports
   lcs_state_input_port_ =
@@ -138,24 +141,8 @@ AssemblyController::AssemblyController(
 
   this->DeclareForcedDiscreteUpdateEvent(&AssemblyController::ComputePlan);
 
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.27, -0.01),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     2.0});
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.15, 0.25),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     0.0});
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.047, 0.25),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     0.0});
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.047, 0.198),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     0.5});
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.12, 0.15),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     0.0});
-  target_poses_.push_back(TargetPose{Eigen::Vector3d(0.5, 0.16, 0.05),
-                                     Eigen::Vector4d(1.0, 0.0, 0.0, 0.0), -0.1,
-                                     0.0});
+  // Load target poses from YAML parameters
+  target_poses_ = target_poses_params.ToTargetPoses();
 }
 
 drake::systems::EventStatus AssemblyController::ComputePlan(
@@ -224,12 +211,16 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
 
         // Check if we've completed all targets
         if (current_target_idx >= static_cast<int>(target_poses_.size())) {
-          std::cout << "All targets completed!" << std::endl;
+          std::cout << "All targets completed! Now switching to MPC phase."
+                    << std::endl;
           // Could transition to a completion phase here if needed
           // For now, just stay at the last target
-          current_target_idx = static_cast<int>(target_poses_.size()) - 1;
-          discrete_state->get_mutable_value(current_target_index_)[0] =
-              static_cast<double>(current_target_idx);
+          // current_target_idx = static_cast<int>(target_poses_.size()) - 1;
+          // discrete_state->get_mutable_value(current_target_index_)[0] =
+          //     static_cast<double>(current_target_idx);
+          current_phase_ = AssemblyPhase::kMPC;
+          discrete_state->get_mutable_value(phase_index_)[0] =
+              static_cast<double>(current_phase_);
         } else {
           std::cout << "Moving to target " << current_target_idx << std::endl;
         }
@@ -241,10 +232,6 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       }
     }
   }
-
-  // Generate trajectory based on current phase
-  execution_lcm_traj_.ClearTrajectories();
-
   switch (current_phase_) {
     case AssemblyPhase::kMoveToTarget:
       if (!target_poses_.empty() && current_target_idx >= 0 &&
@@ -253,10 +240,11 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
             x_lcs_curr, t_context, &execution_lcm_traj_, current_target_idx);
       }
       break;
-      // case AssemblyPhase::kMPC:
-      //   GenerateMPCTrajectory(x_lcs_curr, x_lcs_des.get_value(), t_context,
-      //                         &execution_lcm_traj_);
-      //   break;
+    case AssemblyPhase::kMPC:
+      // GenerateMPCTrajectory(x_lcs_curr, x_lcs_des.get_value(), t_context,
+      //                       &execution_lcm_traj_);
+      std::cout << "MPC phase" << std::endl;
+      break;
   }
 
   return drake::systems::EventStatus::Succeeded();
@@ -282,6 +270,8 @@ void AssemblyController::AddEETrajectoriesToLcm(
     const Eigen::MatrixXd& orientation_knots,
     const Eigen::MatrixXd& force_knots, const Eigen::VectorXd& timestamps,
     LcmTrajectory* traj) const {
+  traj->ClearTrajectories();
+
   // Add end effector position trajectory
   LcmTrajectory::Trajectory ee_traj;
   ee_traj.traj_name = "end_effector_position_target";
@@ -311,7 +301,6 @@ void AssemblyController::AddEETrajectoriesToLcm(
 void AssemblyController::GenerateMoveToTargetTrajectory(
     const Eigen::VectorXd& x_lcs_curr, double t_context, LcmTrajectory* traj,
     int target_index) const {
-  // Validate target index
   if (target_index < 0 ||
       target_index >= static_cast<int>(target_poses_.size())) {
     std::cerr << "Warning: Invalid target index: " << target_index << std::endl;
@@ -328,9 +317,12 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
   Eigen::Vector3d displacement = target_pos - current_pos;
   double distance = displacement.norm();
 
-  std::cout << "current_pos: " << current_pos.transpose() << std::endl;
-  std::cout << "target_pos: " << target_pos.transpose() << std::endl;
-  std::cout << "distance: " << distance << std::endl;
+  if (verbose_) {
+    std::cout << "Current EE position: " << current_pos.transpose()
+              << std::endl;
+    std::cout << "Target EE position: " << target_pos.transpose() << std::endl;
+    std::cout << "Distance to target: " << distance << std::endl;
+  }
 
   // Check if already at target (within tolerance)
   // NOTE: Since this function is called every control loop, we generate a
@@ -380,18 +372,11 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
   // be better)
   Eigen::Vector4d current_orientation(1.0, 0.0, 0.0,
                                       0.0);  // Default to identity
-  // If x_lcs_curr has orientation information, extract it (assuming it's in
-  // positions) For now, we'll interpolate from identity to target
-
+  // TODO: convert roll, pitch, yaw of x_lcs_currto quaternion
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, n_knots);
 
   // Interpolate orientation during movement phase
   for (int i = 0; i < n_knots; i++) {
-    // double t_normalized = static_cast<double>(i) / (n_move_knots - 1);
-    // double smooth_alpha =
-    //     t_normalized * t_normalized * (3.0 - 2.0 * t_normalized);
-
-    // Simple linear interpolation for quaternion (normalized)
     Eigen::Vector4d q_interp = target_orientation;
     q_interp.normalize();
     ee_orientations.col(i) = q_interp;

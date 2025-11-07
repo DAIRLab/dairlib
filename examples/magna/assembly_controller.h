@@ -9,7 +9,8 @@
 #include "dairlib/lcmt_franka_hand_target_position.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/c3_options.h"
+#include "parameter_headers/assembly_c3_options.h"
+#include "parameter_headers/target_poses.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
@@ -19,13 +20,6 @@ namespace dairlib {
 namespace magna {
 
 enum class AssemblyPhase { kMoveToTarget, kGripperControl, kMPC };
-
-struct TargetPose {
-  Eigen::Vector3d position;
-  Eigen::Vector4d orientation;  // quaternion w,x,y,z
-  double gripper_pos_command = 0.0;
-  double dwell_seconds = 0.0;  // how long to wait at this target before moving
-};
 
 class AssemblyController : public drake::systems::LeafSystem<double> {
  public:
@@ -37,7 +31,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      const C3Options& c3_options);
+      const AssemblyC3Options& c3_options,
+      const TargetPosesParams& target_poses_params,
+      bool verbose = false);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -66,20 +62,20 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   /// Helper functions for different phases
   void GenerateMoveToTargetTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                      double t_context,
-                                      LcmTrajectory* traj,
+                                      double t_context, LcmTrajectory* traj,
                                       int target_index) const;
-  
+
   /// Check if target is reached and return true if so
-  bool IsTargetReached(const Eigen::VectorXd& x_lcs_curr, int target_index) const;
-  
-  /// Helper function to add position, orientation, and force trajectories to LcmTrajectory
-  void AddEETrajectoriesToLcm(
-      const Eigen::MatrixXd& position_knots,
-      const Eigen::MatrixXd& orientation_knots,
-      const Eigen::MatrixXd& force_knots,
-      const Eigen::VectorXd& timestamps,
-      LcmTrajectory* traj) const;
+  bool IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
+                       int target_index) const;
+
+  /// Helper function to add position, orientation, and force trajectories to
+  /// LcmTrajectory
+  void AddEETrajectoriesToLcm(const Eigen::MatrixXd& position_knots,
+                              const Eigen::MatrixXd& orientation_knots,
+                              const Eigen::MatrixXd& force_knots,
+                              const Eigen::VectorXd& timestamps,
+                              LcmTrajectory* traj) const;
   void GenerateGripperControlTrajectory(const Eigen::VectorXd& x_lcs_curr,
                                         double t_context, LcmTrajectory* traj,
                                         double gripper_pos_command,
@@ -111,7 +107,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       contact_pairs_;
 
   // C3 options
-  C3Options c3_options_;
+  AssemblyC3Options assembly_c3_options_;
   solvers::ContactModel contact_model_;
 
   // System dimensions
@@ -134,7 +130,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex phase_index_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   drake::systems::DiscreteStateIndex current_target_index_;
-  drake::systems::DiscreteStateIndex target_reached_time_index_;  // Time when target was first reached (for dwell)
+  drake::systems::DiscreteStateIndex
+      target_reached_time_index_;  // Time when target was first reached (for
+                                   // dwell)
 
   // MPC solver
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;
@@ -144,6 +142,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable double gripper_pos_command_ = 0.03;
 
   mutable std::vector<TargetPose> target_poses_;
+
+  bool verbose_;
 };
 
 }  // namespace magna

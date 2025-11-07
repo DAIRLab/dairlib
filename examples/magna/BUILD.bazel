@@ -172,6 +172,8 @@ cc_library(
         "//solvers:c3",
         "//solvers:lcs",
         "@drake//:drake_shared_library",
+        "//examples/magna/parameter_headers:assembly_c3_options",
+        "//examples/magna/parameter_headers:target_poses",
     ],
 )
 

@@ -21,3 +21,17 @@ cc_library(
     hdrs = ["osc_params.h"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "assembly_c3_options",
+    hdrs = ["assembly_c3_options.h"],
+    visibility = ["//visibility:public"],
+    deps = ["//solvers:c3"],
+)
+
+cc_library(
+    name = "target_poses",
+    hdrs = ["target_poses.h"],
+    visibility = ["//visibility:public"],
+    deps = ["@drake//:drake_shared_library"],
+)

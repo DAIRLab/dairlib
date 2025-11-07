@@ -6,6 +6,8 @@
   <material name="belt_element_material">
     <color rgba="0.0 0.6 0.0 1.0" />
   </material>
+  <link name="belt_element_base_link" />
+
   <link name="belt_element">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0" />
@@ -29,4 +31,23 @@
       </drake:proximity_properties>
     </collision>
   </link>
+  <link name="belt_element_fake_x" />
+
+  <link name="belt_element_fake_y" />
+
+  <joint name="belt_element_to_base_x" type="prismatic">
+    <parent link="belt_element_base_link" />
+    <child link="belt_element_fake_x" />
+    <axis xyz="1 0 0" />
+  </joint>
+  <joint name="belt_element_to_base_y" type="prismatic">
+    <parent link="belt_element_fake_x" />
+    <child link="belt_element_fake_y" />
+    <axis xyz="0 1 0" />
+  </joint>
+  <joint name="belt_element_to_base_z" type="prismatic">
+    <parent link="belt_element_fake_y" />
+    <child link="belt_element" />
+    <axis xyz="0 0 1" />
+  </joint>
 </robot>

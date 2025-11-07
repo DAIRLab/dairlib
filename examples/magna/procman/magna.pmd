@@ -1,5 +1,9 @@
 group "simulations" {
-    cmd "simulation" {
+    cmd "franka_hand_simulation" {
+        exec = "bazel-bin/examples/magna/franka_hand_simulation";
+        host = "localhost";
+    }
+    cmd "franka_simulation" {
         exec = "bazel-bin/examples/magna/franka_simulation";
         host = "localhost";
     }

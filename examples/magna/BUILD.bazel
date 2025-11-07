@@ -72,17 +72,31 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "franka_simulation_utils",
+    hdrs = ["systems/franka_simulation_utils.h"],
+    srcs = ["systems/franka_simulation_utils.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems:system_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "franka_simulation",
     srcs = [
         "systems/franka_simulation.cc",
-        "systems/franka_simulation_utils.cc",
-        "systems/franka_simulation_utils.h"
     ],
     data = [
         "@drake_models//:franka_description",
     ],
     deps = [
+        ":franka_simulation_utils",
         ":franka_cartesian_osc_controller_params",
         ":franka_common",
         "//common",
@@ -90,7 +104,27 @@ cc_binary(
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/controllers/osc:operational_space_control",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_hand_simulation",
+    srcs = [
+        "systems/franka_hand_simulation.cc",
+    ],
+    data = [
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":franka_common",
+        ":franka_simulation_utils",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

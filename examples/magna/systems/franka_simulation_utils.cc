@@ -2,10 +2,8 @@
 
 #include <Eigen/Dense>
 #include <drake/lcmt_schunk_wsg_command.hpp>
-#include <gflags/gflags.h>
 
 #include "common/find_resource.h"
-#include "examples/magna/systems/controllers/franka_cartesian_osc_controller_params.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
@@ -41,9 +39,6 @@ using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-
-// Declare the gflags variable that's defined elsewhere
-DECLARE_string(gripper_command_channel);
 
 namespace dairlib {
 namespace examples {
@@ -152,12 +147,13 @@ const OutputPort<double>& SimulatePandaHand(
     DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& hand_mbplant,
     drake::systems::Context<double>* hand_mbplant_context,
-    drake::systems::lcm::LcmInterfaceSystem* lcm,
+    drake::lcm::DrakeLcmInterface* lcm,
+    std::string gripper_command_channel,
     const drake::systems::OutputPort<double>& gripper_state_input_port,
     std::string osc_qp_settings_file) {
   auto command_subscriber = builder->AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<
-          drake::lcmt_schunk_wsg_command>(FLAGS_gripper_command_channel, lcm));
+          drake::lcmt_schunk_wsg_command>(gripper_command_channel, lcm));
 
   auto schunk_cmd_to_trajectory =
       builder->AddSystem<ShunkCommandToTrajectory>();
@@ -206,13 +202,7 @@ const OutputPort<double>& SimulatePandaHand(
       hand_osc_controller->get_input_port_tracking_data(
           "joint_position_target"));
 
-  auto passthrough = builder->AddSystem<dairlib::systems::SubvectorPassThrough>(
-      hand_osc_controller->get_output_port_osc_command().size(), 0,
-      hand_mbplant.get_actuation_input_port().size());
-  builder->Connect(hand_osc_controller->get_output_port_osc_command(),
-                   passthrough->get_input_port());
-
-  return (passthrough->get_output_port());
+  return (hand_osc_controller->get_output_port_osc_command());
 }
 
 }  // namespace systems

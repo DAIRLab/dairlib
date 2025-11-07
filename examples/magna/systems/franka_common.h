@@ -54,6 +54,19 @@ drake::multibody::ModelInstanceIndex AddFrankaToPlant(
   return franka_index;
 }
 
+drake::multibody::ModelInstanceIndex AddFrankaHandToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph) {
+  drake::multibody::Parser parser(plant, scene_graph);
+  auto hand_index = parser.AddModelsFromUrl(
+      "package://drake_models/franka_description/urdf/panda_hand.urdf")[0];
+  drake::math::RigidTransform<double> X_WI =
+      drake::math::RigidTransform<double>::Identity();
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetBodyByName("panda_hand").body_frame(), X_WI);
+  return hand_index;
+}
+
 }  // namespace systems
 }  // namespace magna
 }  // namespace examples

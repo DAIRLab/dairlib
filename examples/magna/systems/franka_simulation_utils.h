@@ -96,7 +96,8 @@ const drake::systems::OutputPort<double>& SimulatePandaHand(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& hand_mbplant,
     drake::systems::Context<double>* hand_mbplant_context,
-    drake::systems::lcm::LcmInterfaceSystem* lcm,
+    drake::lcm::DrakeLcmInterface* lcm,
+    std::string gripper_command_channel,
     const drake::systems::OutputPort<double>& gripper_state_input_port,
     std::string osc_qp_settings_file);
 

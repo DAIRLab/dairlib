@@ -55,12 +55,12 @@ DEFINE_string(franka_input_channel, "FRANKA_INPUT",
               "LCM channel for receiving Franka input");
 DEFINE_string(franka_state_channel, "FRANKA_STATE",
               "LCM channel for sending Franka state");
-DEFINE_string(gripper_command_channel, "GRIPPER_COMMAND",
-              "LCM channel for sending Gripper command");
-DEFINE_string(gripper_state_channel, "GRIPPER_STATE",
-              "LCM channel for sending Gripper state");
 DEFINE_string(franka_with_hand_state_channel, "FRANKA_WITH_HAND_STATE",
               "LCM channel for sending Franka with hand state");
+DEFINE_string(gripper_state_channel, "GRIPPER_STATE",
+              "LCM channel for sending Gripper state");
+DEFINE_string(gripper_input_channel, "GRIPPER_INPUT",
+              "LCM channel for receiving Gripper actuation command");
 DEFINE_double(franka_state_publish_rate, 1000.0,
               "Rate (in Hz) at which to publish Franka state over LCM");
 DEFINE_double(simulation_dt, 0.0001, "Simulation time step");
@@ -95,14 +95,7 @@ int RunFrankaSimulation() {
 
   // Separate plant containing only panda hand for state publishing
   drake::multibody::MultibodyPlant<double> hand_mbplant(0.0);
-  drake::multibody::Parser parser(&hand_mbplant, nullptr);
-  auto hand_index = parser.AddModelsFromUrl(
-      "package://drake_models/franka_description/urdf/panda_hand.urdf")[0];
-  drake::math::RigidTransform<double> X_WI =
-      drake::math::RigidTransform<double>::Identity();
-  hand_mbplant.WeldFrames(hand_mbplant.world_frame(),
-                          hand_mbplant.GetBodyByName("panda_hand").body_frame(),
-                          X_WI);
+  auto hand_index = AddFrankaHandToPlant(&hand_mbplant, nullptr);
   hand_mbplant.Finalize();
 
   /* -------------------------------------------------------------------------------------------*/
@@ -113,19 +106,34 @@ int RunFrankaSimulation() {
 
   /* -------------------------------------------------------------------------------------------*/
   // Set up Franka simulation
-  // Create LCM input for actuators
-  auto input_sub = builder.AddSystem(
+  // Create LCM input for franka actuators
+  auto franka_input_sub = builder.AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_franka_input_channel, lcm));
-  auto input_receiver =
+  auto franka_input_receiver =
       builder.AddSystem<dairlib::systems::RobotInputReceiver>(franka_mbplant);
-  builder.Connect(*input_sub, *input_receiver);
+  builder.Connect(*franka_input_sub, *franka_input_receiver);
 
   // Get only inputs for Franka
-  auto passthrough = builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
-      input_receiver->get_output_port(0).size(), 0,
-      franka_mbplant.num_actuators());
-  builder.Connect(*input_receiver, *passthrough);
+  auto franka_passthrough =
+      builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
+          franka_input_receiver->get_output_port(0).size(), 0,
+          franka_mbplant.num_actuators());
+  builder.Connect(*franka_input_receiver, *franka_passthrough);
+
+  // Create LCM input for gripper actuators
+  auto hand_input_sub = builder.AddSystem(
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+          FLAGS_gripper_input_channel, lcm));
+  auto hand_input_receiver =
+      builder.AddSystem<dairlib::systems::RobotInputReceiver>(hand_mbplant);
+  builder.Connect(*hand_input_sub, *hand_input_receiver);
+
+  auto hand_passthrough =
+      builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
+          hand_input_receiver->get_output_port(0).size(), 0,
+          hand_mbplant.num_actuators());
+  builder.Connect(*hand_input_receiver, *hand_passthrough);
 
   /* -------------------------------------------------------------------------------------------*/
   // Create LCM output for state and efforts
@@ -188,30 +196,6 @@ int RunFrankaSimulation() {
           1.0 / FLAGS_franka_state_publish_rate));
   builder.Connect(*hand_state_sender, *hand_state_pub);
   /* -------------------------------------------------------------------------------------------*/
-  // Set up Panda Hand simulation
-
-  auto hand_mbplant_context = hand_mbplant.CreateDefaultContext();
-
-  auto hand_state_to_robot_output =
-      builder.AddSystem<StatusToRobotOutput>(hand_mbplant, hand_index);
-  builder.Connect(state_demux->get_output_port(1) /* effort port */,
-                  hand_state_to_robot_output->get_input_port_position());
-  builder.Connect(state_demux->get_output_port(3) /* velocity port */,
-                  hand_state_to_robot_output->get_input_port_velocity());
-
-  const auto& gripper_actuation_input_port = SimulatePandaHand(
-      &builder, hand_mbplant, hand_mbplant_context.get(), lcm,
-      hand_state_to_robot_output->get_output_port() /* effort port */,
-      "examples/magna/params/franka_osc_qp_settings.yaml");
-
-  // To avoid direct feedthrough, add a zero order hold
-  auto hold = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-      1 / FLAGS_franka_state_publish_rate, 2);
-  builder.Connect(gripper_actuation_input_port, hold->get_input_port());
-  builder.Connect(hold->get_output_port(),
-                  hand_state_to_robot_output->get_input_port_effort());
-
-  /* -------------------------------------------------------------------------------------------*/
   // Setup Actuation with Gravity Compensation
   drake::log()->info("Setting up gravity compensation...");
 
@@ -221,8 +205,10 @@ int RunFrankaSimulation() {
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(actuation_sizes);
 
-  builder.Connect(passthrough->get_output_port(), mux->get_input_port(0));
-  builder.Connect(gripper_actuation_input_port, mux->get_input_port(1));
+  builder.Connect(franka_passthrough->get_output_port(),
+                  mux->get_input_port(0));
+  builder.Connect(hand_passthrough->get_output_port(),
+                  mux->get_input_port(1));
 
   auto gravity_context = plant.CreateDefaultContext();
   auto gravity_compensator =
@@ -236,12 +222,12 @@ int RunFrankaSimulation() {
                   plant.get_actuation_input_port());
 
   // Connect gravity compensated efforts to state sender for franka arm
-  builder.Connect(passthrough->get_output_port(),
+  builder.Connect(franka_passthrough->get_output_port(),
                   franka_state_sender->get_input_port_effort());
+  builder.Connect(hand_passthrough->get_output_port(),
+                  hand_state_sender->get_input_port_effort());
   builder.Connect(gravity_compensator->get_output_port_compensated_actuation(),
                   plant_state_sender->get_input_port_effort());
-  builder.Connect(gripper_actuation_input_port,
-                  hand_state_sender->get_input_port_effort());
   /* -------------------------------------------------------------------------------------------*/
   drake::log()->info("Building simulation diagram...");
   int nq = plant.num_positions();

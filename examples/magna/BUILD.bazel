@@ -74,17 +74,23 @@ cc_binary(
 
 cc_binary(
     name = "franka_simulation",
-    srcs = ["systems/franka_simulation.cc"],
+    srcs = [
+        "systems/franka_simulation.cc",
+        "systems/franka_simulation_utils.cc",
+        "systems/franka_simulation_utils.h"
+    ],
     data = [
         "@drake_models//:franka_description",
     ],
     deps = [
+        ":franka_cartesian_osc_controller_params",
         ":franka_common",
         "//common",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/controllers/osc:operational_space_control",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

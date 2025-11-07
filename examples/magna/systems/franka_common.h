@@ -8,6 +8,11 @@ namespace examples {
 namespace magna {
 namespace systems {
 
+#define FRANKA_MODEL \
+  "package://drake_models/franka_description/urdf/panda_arm.urdf"
+#define FRANKA_HAND_MODEL \
+  "package://drake_models/franka_description/urdf/panda_arm_hand.urdf"
+
 /// This is the offset from the Panda's link7 frame to its flange where an end
 /// effector can be attached.
 inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
@@ -20,12 +25,19 @@ inline const drake::math::RigidTransform<double> T_EE_L7 =
 drake::multibody::ModelInstanceIndex AddFrankaToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
-    std::optional<std::string> end_effector_model_path) {
+    std::optional<std::string> end_effector_model_path,
+    bool with_hand = false) {
   drake::multibody::Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
-
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelsFromUrl(
-      "package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
+  drake::multibody::ModelInstanceIndex franka_index;
+  if (with_hand) {
+    franka_index = parser.AddModelsFromUrl(
+        "package://drake_models/franka_description/urdf/panda_arm_hand.urdf")
+                       [0];
+  } else {
+    franka_index = parser.AddModelsFromUrl(
+        "package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
+  }
   drake::math::RigidTransform<double> X_WI =
       drake::math::RigidTransform<double>::Identity();
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),

@@ -96,6 +96,7 @@ int RunFrankaCartesianOscController() {
             "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
 
     // start [OSC controller]
+    drake::log()->debug("Building OSC controller...");
     // Create a Franka-only plant for OSC
     drake::multibody::MultibodyPlant<double> osc_plant(0.0);
     AddFrankaToPlant(&osc_plant, nullptr,
@@ -166,7 +167,7 @@ int RunFrankaCartesianOscController() {
 
     // Build the OSC controller
     osc_controller->Build();
-    drake::log()->info("Finished building OSC controller.");
+    drake::log()->debug("Finished building OSC controller.");
     // end [OSC controller]
 
     // Perform gravity compensation and send output of OSC

@@ -31,7 +31,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
-DEFINE_string(franka_state_channel, "FRANKA_STATE",
+DEFINE_string(franka_state_channel, "FRANKA_WITH_HAND_STATE",
               "LCM channel for receiving Franka state");
 DEFINE_uint32(franka_visualizer_publish_rate, 30,
               "Publish rate for the Franka visualizer in Hz");
@@ -56,8 +56,8 @@ int RunFrankaVisualizer() {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant(0.0);
-  drake::multibody::ModelInstanceIndex franka_index =
-      AddFrankaToPlant(&plant, &scene_graph, std::nullopt);
+  drake::multibody::ModelInstanceIndex franka_index = AddFrankaToPlant(
+      &plant, &scene_graph, std::nullopt, true /* with hand */);
   plant.Finalize();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();

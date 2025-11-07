@@ -1,6 +1,9 @@
 #include "assembly_controller.h"
 
+#include <cmath>
+
 #include <Eigen/Dense>
+#include <drake/math/roll_pitch_yaw.h>
 
 #include "common/update_context.h"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
@@ -8,18 +11,22 @@
 #include "systems/framework/timestamped_vector.h"
 
 #define POSITION_TOLERANCE 0.005
+#define ORIENTATION_TOLERANCE 0.1  // radians (approximately 5.7 degrees)
 
 namespace dairlib {
 namespace magna {
 
 using drake::SortedPair;
 using drake::geometry::GeometryId;
+using drake::math::RollPitchYaw;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using solvers::C3Plus;
 using solvers::LCS;
@@ -36,8 +43,7 @@ AssemblyController::AssemblyController(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     const AssemblyC3Options& c3_options,
-    const TargetPosesParams& target_poses_params,
-    bool verbose)
+    const TargetPosesParams& target_poses_params, bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
@@ -57,13 +63,13 @@ AssemblyController::AssemblyController(
   // Determine contact model and n_lambda_
   if (assembly_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ =
-        2 * assembly_c3_options_.num_contacts +
-        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+    n_lambda_ = 2 * assembly_c3_options_.num_contacts +
+                2 * assembly_c3_options_.num_friction_directions *
+                    assembly_c3_options_.num_contacts;
   } else if (assembly_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ =
-        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+    n_lambda_ = 2 * assembly_c3_options_.num_friction_directions *
+                assembly_c3_options_.num_contacts;
   } else {
     std::cerr << "Unknown or unsupported contact model: "
               << assembly_c3_options_.contact_model << std::endl;
@@ -71,13 +77,13 @@ AssemblyController::AssemblyController(
   }
   if (assembly_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ =
-        2 * assembly_c3_options_.num_contacts +
-        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+    n_lambda_ = 2 * assembly_c3_options_.num_contacts +
+                2 * assembly_c3_options_.num_friction_directions *
+                    assembly_c3_options_.num_contacts;
   } else {
     contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ =
-        2 * assembly_c3_options_.num_friction_directions * assembly_c3_options_.num_contacts;
+    n_lambda_ = 2 * assembly_c3_options_.num_friction_directions *
+                assembly_c3_options_.num_contacts;
   }
   // Initialize cost matrices
   double discount_factor = 1;
@@ -90,7 +96,8 @@ AssemblyController::AssemblyController(
       U_.push_back(assembly_c3_options_.U);
     }
   }
-  std::cout << "Number of contacts: " << assembly_c3_options_.num_contacts << std::endl;
+  std::cout << "Number of contacts: " << assembly_c3_options_.num_contacts
+            << std::endl;
 
   // Create placeholder LCS for initializing C3Plus
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
@@ -258,11 +265,36 @@ bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
   }
 
   const TargetPose& target_pose = target_poses_[target_index];
+
+  // Check position
   Eigen::Vector3d current_pos = x_lcs_curr.head(3);
   Eigen::Vector3d target_pos = target_pose.position;
   double distance = (current_pos - target_pos).norm();
+  bool position_reached = distance < POSITION_TOLERANCE;
 
-  return distance < POSITION_TOLERANCE;
+  // Check orientation
+  // Extract current orientation from x_lcs_curr (RPY at indices 3, 4, 5)
+  Eigen::Vector3d rpy = x_lcs_curr.segment(3, 3);
+  RollPitchYaw<double> rpy_obj(rpy);
+  Quaterniond current_quat = rpy_obj.ToQuaternion();
+  current_quat.normalize();
+
+  // Get target orientation
+  Eigen::Vector4d target_orientation_normalized = target_pose.orientation;
+  target_orientation_normalized.normalize();
+  Quaterniond target_quat(
+      target_orientation_normalized(0), target_orientation_normalized(1),
+      target_orientation_normalized(2), target_orientation_normalized(3));
+  target_quat.normalize();
+
+  // Compute angle between quaternions (taking shorter path)
+  double dot_product = std::abs(current_quat.dot(target_quat));
+  // Clamp to [-1, 1] to avoid numerical issues with acos
+  dot_product = std::min(1.0, std::max(-1.0, dot_product));
+  double angle = 2.0 * std::acos(dot_product);
+  bool orientation_reached = angle < ORIENTATION_TOLERANCE;
+
+  return position_reached && orientation_reached;
 }
 
 void AssemblyController::AddEETrajectoriesToLcm(
@@ -324,14 +356,10 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     std::cout << "Distance to target: " << distance << std::endl;
   }
 
-  // Check if already at target (within tolerance)
-  // NOTE: Since this function is called every control loop, we generate a
-  // trajectory from the current position. If we're at the target, we generate a
-  // constant trajectory that holds the target position. The dwell time is
-  // handled by ComputePlan() which delays advancing to the next target.
-  if (distance < POSITION_TOLERANCE) {
+  // Already at target, create a two-point trajectory at target position (OSC
+  // requires at least two points)
+  if (IsTargetReached(x_lcs_curr, target_index)) {
     gripper_pos_command_ = target_pose.gripper_pos_command;
-    // Already at target, create a single-point trajectory at target position
     Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
     Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(2);
     knots.col(0) = target_pos;
@@ -352,7 +380,7 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     return;
   }
 
-  // We generate a straight line trajectory from current position to target
+  // Generate trajectory - handle both position and orientation interpolation
   const double avg_speed = 0.1;
   double step_size = avg_speed * dt_;
 
@@ -360,26 +388,51 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, n_knots);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(n_knots);
 
-  // Generate movement trajectory with smooth interpolation
-  for (int i = 0; i < n_knots; i++) {
-    knots.col(i) = current_pos + i * step_size * displacement.normalized();
-    timestamps[i] = t_context + i * dt_;
+  bool position_reached = distance < POSITION_TOLERANCE;
+  if (position_reached) {
+    for (int i = 0; i < n_knots; i++) {
+      knots.col(i) = target_pos;
+      timestamps[i] = t_context + i * dt_;
+    }
+  } else {
+    for (int i = 0; i < n_knots; i++) {
+      knots.col(i) = current_pos + i * step_size * displacement.normalized();
+      timestamps[i] = t_context + i * dt_;
+    }
   }
 
   // Interpolate orientation from current to target using spherical linear
-  // interpolation (Slerp) For simplicity, we'll use linear interpolation for
-  // quaternion components (For production code, proper quaternion slerp would
-  // be better)
-  Eigen::Vector4d current_orientation(1.0, 0.0, 0.0,
-                                      0.0);  // Default to identity
-  // TODO: convert roll, pitch, yaw of x_lcs_currto quaternion
+  // interpolation (Slerp)
+  // Extract current orientation from x_lcs_curr (RPY at indices 3, 4, 5)
+  Eigen::Vector3d rpy = x_lcs_curr.segment(3, 3);
+  RollPitchYaw<double> rpy_obj(rpy);
+  Quaterniond q_current = rpy_obj.ToQuaternion();
+  q_current.normalize();
+
+  // Get target orientation
+  Eigen::Vector4d target_orientation_normalized = target_orientation;
+  target_orientation_normalized.normalize();
+  Quaterniond q_target(
+      target_orientation_normalized(0), target_orientation_normalized(1),
+      target_orientation_normalized(2), target_orientation_normalized(3));
+  q_target.normalize();
+
+  // Ensure we take the shorter path (if dot product is negative, negate one
+  // quaternion)
+  if (q_current.dot(q_target) < 0.0) {
+    q_target =
+        Quaterniond(-q_target.w(), -q_target.x(), -q_target.y(), -q_target.z());
+  }
+
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, n_knots);
 
-  // Interpolate orientation during movement phase
+  // Interpolate orientation during movement phase using Slerp
   for (int i = 0; i < n_knots; i++) {
-    Eigen::Vector4d q_interp = target_orientation;
+    double t = static_cast<double>(i) / static_cast<double>(n_knots - 1);
+    Quaterniond q_interp = q_current.slerp(t, q_target);
     q_interp.normalize();
-    ee_orientations.col(i) = q_interp;
+    ee_orientations.col(i) =
+        Eigen::Vector4d(q_interp.w(), q_interp.x(), q_interp.y(), q_interp.z());
   }
 
   // Zero forces (or could be set based on target pose requirements)

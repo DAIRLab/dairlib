@@ -219,8 +219,6 @@ int DoMain(int argc, char* argv[]) {
           osc_params.K_d_end_effector_rot, osc_params.W_end_effector_rot, plant,
           plant);
   end_effector_orientation_tracking_data->AddFrameToTrack(kEndEffectorName);
-  Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
-  orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));

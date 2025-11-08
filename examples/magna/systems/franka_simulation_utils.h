@@ -92,12 +92,32 @@ class GravityCompensator : public drake::systems::LeafSystem<double> {
   int num_actuators_;
 };
 
+class RobotInputSubvector : public drake::systems::LeafSystem<double> {
+ public:
+  RobotInputSubvector(int num_actuators,
+                      double max_time_difference_seconds = 0.1);
+
+  const drake::systems::InputPort<double>& get_input_port_robot_input() const {
+    return this->get_input_port(input_robot_input_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_robot_input()
+      const {
+    return this->get_output_port(output_robot_input_port_);
+  }
+
+ private:
+  void PassThrough(const drake::systems::Context<double>& context,
+                   drake::systems::BasicVector<double>* output) const;
+  double max_time_difference_seconds_;
+  drake::systems::InputPortIndex input_robot_input_port_;
+  drake::systems::OutputPortIndex output_robot_input_port_;
+};
+
 const drake::systems::OutputPort<double>& SimulatePandaHand(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& hand_mbplant,
     drake::systems::Context<double>* hand_mbplant_context,
-    drake::lcm::DrakeLcmInterface* lcm,
-    std::string gripper_command_channel,
+    drake::lcm::DrakeLcmInterface* lcm, std::string gripper_command_channel,
     const drake::systems::OutputPort<double>& gripper_state_input_port,
     std::string osc_qp_settings_file);
 

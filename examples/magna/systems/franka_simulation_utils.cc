@@ -13,6 +13,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/system_utils.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/solvers/osqp_solver.h"
@@ -143,12 +144,40 @@ void GravityCompensator::AddGravityCompensation(
   }
 }
 
+RobotInputSubvector::RobotInputSubvector(int num_actuators,
+                                         double max_time_difference_seconds)
+    : max_time_difference_seconds_(max_time_difference_seconds) {
+  input_robot_input_port_ =
+      this->DeclareVectorInputPort("u, t",
+                                   TimestampedVector<double>(num_actuators))
+          .get_index();
+  output_robot_input_port_ =
+      this->DeclareVectorOutputPort(
+              "u", drake::systems::BasicVector<double>(num_actuators),
+              &RobotInputSubvector::PassThrough)
+          .get_index();
+}
+void RobotInputSubvector::PassThrough(
+    const drake::systems::Context<double>& context,
+    drake::systems::BasicVector<double>* output) const {
+  const TimestampedVector<double>* ts_vector =
+      (TimestampedVector<double>*)this->EvalVectorInput(
+          context, input_robot_input_port_);
+  double time_difference = context.get_time() - ts_vector->get_timestamp();
+  if (std::abs(time_difference) > max_time_difference_seconds_) {
+    drake::log()->warn("Robot input time difference is too large: {} seconds",
+                       time_difference);
+    output->SetZero();
+    return;
+  }
+  output->SetFromVector(ts_vector->get_data());
+}
+
 const OutputPort<double>& SimulatePandaHand(
     DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& hand_mbplant,
     drake::systems::Context<double>* hand_mbplant_context,
-    drake::lcm::DrakeLcmInterface* lcm,
-    std::string gripper_command_channel,
+    drake::lcm::DrakeLcmInterface* lcm, std::string gripper_command_channel,
     const drake::systems::OutputPort<double>& gripper_state_input_port,
     std::string osc_qp_settings_file) {
   auto command_subscriber = builder->AddSystem(

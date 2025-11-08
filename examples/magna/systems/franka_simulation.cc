@@ -116,9 +116,7 @@ int RunFrankaSimulation() {
 
   // Get only inputs for Franka
   auto franka_passthrough =
-      builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
-          franka_input_receiver->get_output_port(0).size(), 0,
-          franka_mbplant.num_actuators());
+      builder.AddSystem<RobotInputSubvector>(franka_mbplant.num_actuators());
   builder.Connect(*franka_input_receiver, *franka_passthrough);
 
   // Create LCM input for gripper actuators
@@ -130,9 +128,7 @@ int RunFrankaSimulation() {
   builder.Connect(*hand_input_sub, *hand_input_receiver);
 
   auto hand_passthrough =
-      builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
-          hand_input_receiver->get_output_port(0).size(), 0,
-          hand_mbplant.num_actuators());
+      builder.AddSystem<RobotInputSubvector>(hand_mbplant.num_actuators());
   builder.Connect(*hand_input_receiver, *hand_passthrough);
 
   /* -------------------------------------------------------------------------------------------*/
@@ -207,8 +203,7 @@ int RunFrankaSimulation() {
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
-  builder.Connect(hand_passthrough->get_output_port(),
-                  mux->get_input_port(1));
+  builder.Connect(hand_passthrough->get_output_port(), mux->get_input_port(1));
 
   auto gravity_context = plant.CreateDefaultContext();
   auto gravity_compensator =

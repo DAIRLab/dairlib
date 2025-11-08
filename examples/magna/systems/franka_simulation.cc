@@ -250,7 +250,7 @@ int RunFrankaSimulation() {
 
   VectorXd q = VectorXd::Zero(nq);
 
-  q << 0, M_PI / 8, 0, -3 * M_PI / 4, 0, 7 * M_PI / 8, 0;
+  q << 0, M_PI / 8, 0, -3 * M_PI / 4, 0, 7 * M_PI / 8, M_PI / 4, 0.04, 0.04;
   plant.SetPositions(&plant_context, q);
 
   VectorXd v = VectorXd::Zero(nv);

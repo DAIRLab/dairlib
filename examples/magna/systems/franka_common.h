@@ -19,7 +19,7 @@ inline const Eigen::Vector3d TOOL_ATTACHMENT_FRAME = {0, 0, 0.107};
 inline const drake::math::RigidTransform<double> T_EE_L7 =
     drake::math::RigidTransform<double>(
         drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(M_PI, 0, 0)),
+            drake::math::RollPitchYaw<double>(M_PI, 0, -M_PI/4)),
         TOOL_ATTACHMENT_FRAME);
 
 drake::multibody::ModelInstanceIndex AddFrankaToPlant(

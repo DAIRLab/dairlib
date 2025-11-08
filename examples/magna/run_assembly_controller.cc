@@ -126,11 +126,6 @@ int DoMain(int argc, char* argv[]) {
   }
   contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
   contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
-  std::cout << "belt_large_pulley_contact_pairs.size(): "
-            << belt_large_pulley_contact_pairs.size() << std::endl;
-  std::cout << "belt_small_pulley_contact_pairs.size(): "
-            << belt_small_pulley_contact_pairs.size() << std::endl;
-  std::cout << "contact_pairs.size(): " << contact_pairs.size() << std::endl;
 
   // Create AssemblyController
   auto assembly_controller = builder.AddSystem<AssemblyController>(

@@ -1,3 +1,7 @@
+#include <cmath>
+#include <iostream>
+#include <limits>
+
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
@@ -16,6 +20,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
+#include "drake/multibody/plant/deformable_model.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 
@@ -29,10 +34,60 @@ static constexpr const char* kFrankaModel =
 using dairlib::systems::AddActuationRecieverAndStateSenderLcm;
 using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::multibody::DeformableBody;
+using drake::multibody::DeformableModel;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using Eigen::VectorXd;
+
+// Below is a hacky function to find the indices of two end points of the round
+// belt. Note: This function only works when the initial round belt pose aligns
+// with the world frame, and the order of the vertices won't change after the
+// simulation starts.
+void FindKeyVertices(const drake::multibody::MultibodyPlant<double>& plant,
+                     double y_value = 0.0, double y_tolerance = 1e-3) {
+  // Get the reference to the deformable body to extract the vertices'
+  // positions.
+  const DeformableModel<double>& deformable_model = plant.deformable_model();
+  const DeformableBody<double>& deform_body =
+      deformable_model.GetBodyByName("round_belt");
+  VectorXd reference_positions =
+      deformable_model.GetReferencePositions(deform_body.body_id());
+
+  int min_idx = -1, max_idx = -1;
+  double min_x = std::numeric_limits<double>::max();
+  double max_x = std::numeric_limits<double>::lowest();
+
+  for (int i = 0; i < reference_positions.size() / 3; ++i) {
+    double x = reference_positions(3 * i);
+    double y = reference_positions(3 * i + 1);
+    if (std::abs(y - y_value) < y_tolerance) {
+      if (x < min_x) {
+        min_x = x;
+        min_idx = i;
+      }
+      if (x > max_x) {
+        max_x = x;
+        max_idx = i;
+      }
+    }
+  }
+
+  if (min_idx != -1) {
+    std::cout << "Index with minimum x (y=0): " << min_idx << std::endl;
+    std::cout << reference_positions.segment(3 * min_idx, 3).transpose()
+              << std::endl;
+  } else {
+    std::cout << "No point found with y=0" << std::endl;
+  }
+  if (max_idx != -1) {
+    std::cout << "Index with maximum x (y=0): " << max_idx << std::endl;
+    std::cout << reference_positions.segment(3 * max_idx, 3).transpose()
+              << std::endl;
+  }
+}
+
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_double(timestep, 5e-3, "Desired duration of the simulation [s].");

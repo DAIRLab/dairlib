@@ -77,9 +77,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                         double t_context, LcmTrajectory* traj,
                                         double gripper_pos_command,
                                         double dwell_time) const;
-    void GenerateMPCTrajectory(
-        const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
-        double t_context, LcmTrajectory* traj) const;
+  void GenerateMPCTrajectory(const Eigen::VectorXd& x_lcs_curr,
+                             const Eigen::VectorXd& x_lcs_des, double t_context,
+                             LcmTrajectory* traj) const;
 
   /// Output port function
   void OutputTrajExecute(const drake::systems::Context<double>& context,

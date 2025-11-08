@@ -1,14 +1,18 @@
 #include "deformable_drawer.h"
 
-#include <iostream>
-
 namespace dairlib {
 namespace magna {
 
 DeformableDrawer::DeformableDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    const std::string& path)
-    : meshcat_(meshcat), path_(path) {
+    const std::string& path, const std::string& keypoint_path,
+    const std::vector<int>& vertex_indices,
+    const std::vector<std::pair<size_t, size_t>>& sphere_connections)
+    : meshcat_(meshcat),
+      path_(path),
+      keypoint_path_(keypoint_path),
+      vertex_indices_(vertex_indices),
+      sphere_connections_(sphere_connections) {
   this->set_name("DeformableDrawer");
   drake::lcmt_viewer_link_data default_data;
   default_data.name = "default";
@@ -48,6 +52,66 @@ drake::systems::EventStatus DeformableDrawer::DrawDeformableGeometry(
   std::tie(vertices, faces, rgba, pose) = ConvertDeformableGeom(geom);
   meshcat_->SetTriangleMesh(geom_path, vertices, faces, rgba);
   meshcat_->SetTransform(link_path, pose);
+
+  // Draw keypoints if provided
+  if (!vertex_indices_.empty()) {
+    const int num_verts = vertices.cols();
+
+    // Place keypoints as children of link_path so they inherit the same
+    // transform as the mesh Use geometry-local vertices (same frame as mesh
+    // vertices) so they appear at the correct positions after the link_path
+    // transform is applied
+    const std::string keypoint_path = link_path + "/keypoints";
+
+    for (size_t i = 0; i < vertex_indices_.size(); ++i) {
+      const int vert_idx = vertex_indices_[i];
+      if (vert_idx >= 0 && vert_idx < num_verts) {
+        // Use geometry-local vertices (same frame as mesh vertices)
+        // They will be transformed by the link_path transform, same as the mesh
+        const Vector3d vertex_pos = vertices.col(vert_idx);
+        const std::string sphere_path =
+            keypoint_path + "/sphere_" + std::to_string(i);
+
+        // Create and set sphere at vertex position
+        Sphere sphere(0.005);
+        meshcat_->SetObject(sphere_path, sphere, Rgba(0.0, 1.0, 0.0, 1.0));
+        meshcat_->SetTransform(sphere_path, RigidTransformd(vertex_pos));
+      }
+    }
+
+    // Draw purple lines connecting specified sphere pairs
+    for (const auto& connection : sphere_connections_) {
+      const size_t sphere_idx0 = connection.first;
+      const size_t sphere_idx1 = connection.second;
+
+      // Validate sphere indices
+      if (sphere_idx0 >= vertex_indices_.size() ||
+          sphere_idx1 >= vertex_indices_.size()) {
+        continue;
+      }
+
+      const int vert_idx0 = vertex_indices_[sphere_idx0];
+      const int vert_idx1 = vertex_indices_[sphere_idx1];
+
+      if (vert_idx0 >= 0 && vert_idx0 < num_verts && vert_idx1 >= 0 &&
+          vert_idx1 < num_verts) {
+        // Use geometry-local vertices (same frame as mesh vertices)
+        const Vector3d pos0 = vertices.col(vert_idx0);
+        const Vector3d pos1 = vertices.col(vert_idx1);
+
+        // SetLine expects a 3xN matrix where each column is a point
+        Matrix3Xd line_points(3, 2);
+        line_points.col(0) = pos0;
+        line_points.col(1) = pos1;
+
+        const std::string line_path = keypoint_path + "/line_" +
+                                      std::to_string(sphere_idx0) + "_" +
+                                      std::to_string(sphere_idx1);
+        meshcat_->SetLine(line_path, line_points, 5.0, purple_color_);
+      }
+    }
+  }
+
   return drake::systems::EventStatus::Succeeded();
 }
 

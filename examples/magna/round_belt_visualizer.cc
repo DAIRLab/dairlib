@@ -147,8 +147,9 @@ int DoMain(int argc, char* argv[]) {
   auto deformable_drawer_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_viewer_link_data>(
           lcm_channel_params.deformable_geometry_channel, lcm));
-  auto deformable_drawer =
-      builder.AddSystem<DeformableDrawer>(meshcat, "deformable");
+  auto deformable_drawer = builder.AddSystem<DeformableDrawer>(
+      meshcat, "deformable", "keypoints", std::vector<int>{104, 74},
+      std::vector<std::pair<size_t, size_t>>{{0, 1}});
   builder.Connect(*deformable_drawer_sub, *deformable_drawer);
 
   auto diagram = builder.Build();

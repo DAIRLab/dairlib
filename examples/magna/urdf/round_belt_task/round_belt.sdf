@@ -2,7 +2,7 @@
 <sdf xmlns:drake="http://drake.mit.edu" version="1.8">
   <model name='round_belt'>
     <link name='round_belt'>
-      <pose>0.6 -0.044 0.02 0 0 0</pose>
+      <pose>0.6 -0.052 0.02 0 0 0</pose>
       <visual name='visual'>
         <geometry>
           <empty/>

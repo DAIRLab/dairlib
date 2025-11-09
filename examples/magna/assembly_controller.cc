@@ -382,9 +382,6 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
   }
 
   // Generate trajectory - handle both position and orientation interpolation
-  const double avg_speed = 0.1;
-  double step_size = avg_speed * dt_;
-
   int n_knots = N_;
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, n_knots);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(n_knots);
@@ -396,9 +393,111 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
       timestamps[i] = t_context + i * dt_;
     }
   } else {
-    for (int i = 0; i < n_knots; i++) {
-      knots.col(i) = current_pos + i * step_size * displacement.normalized();
-      timestamps[i] = t_context + i * dt_;
+    // Check if circular arc interpolation should be used
+    bool use_circular_arc = (target_pose.radius > 0.0);
+    
+    if (use_circular_arc) {
+      // Circular arc interpolation using center and radius
+      Eigen::Vector3d center = target_pose.center;
+      double radius = target_pose.radius;
+      
+      // Compute vectors from center to current and target positions
+      Eigen::Vector3d vec_current = current_pos - center;
+      Eigen::Vector3d vec_target = target_pos - center;
+      double dist_current = vec_current.norm();
+      double dist_target = vec_target.norm();
+      
+      // Tolerance for checking if points are on the circle
+      const double radius_tolerance = 0.01;
+      
+      // Verify that both points are approximately on the circle
+      if (std::abs(dist_current - radius) > radius_tolerance ||
+          std::abs(dist_target - radius) > radius_tolerance) {
+        if (verbose_) {
+          std::cout << "Warning: Current or target position not on circle. "
+                    << "dist_current: " << dist_current << ", dist_target: " << dist_target
+                    << ", radius: " << radius << ". Falling back to linear interpolation."
+                    << std::endl;
+        }
+        use_circular_arc = false;
+      }
+      
+      if (use_circular_arc) {
+        // Normalize the vectors
+        Eigen::Vector3d u_current = vec_current / dist_current;
+        Eigen::Vector3d u_target = vec_target / dist_target;
+        
+        // Compute the plane normal (normalized cross product)
+        Eigen::Vector3d normal = u_current.cross(u_target);
+        double normal_norm = normal.norm();
+        
+        // Check if vectors are collinear (would make cross product zero)
+        if (normal_norm < 1e-6) {
+          if (verbose_) {
+            std::cout << "Warning: Current and target positions are collinear with center. "
+                      << "Falling back to linear interpolation." << std::endl;
+          }
+          use_circular_arc = false;
+        } else {
+          normal /= normal_norm;
+          
+          // Compute the angle between the two vectors
+          double dot_product = u_current.dot(u_target);
+          // Clamp to [-1, 1] to avoid numerical issues
+          dot_product = std::min(1.0, std::max(-1.0, dot_product));
+          double angle = std::acos(dot_product);
+          double sin_angle = std::sin(angle);
+          
+          // Handle the case when angle is very small (near 0 or π)
+          if (sin_angle < 1e-6) {
+            // Vectors are nearly parallel, use linear interpolation as fallback
+            if (verbose_) {
+              std::cout << "Warning: Angle between vectors is too small for circular interpolation. "
+                        << "Falling back to linear interpolation." << std::endl;
+            }
+            use_circular_arc = false;
+          } else {
+            // Compute a vector perpendicular to u_current that points towards u_target
+            // u_target = u_current * cos(angle) + u_perp * sin(angle)
+            // Therefore: u_perp = (u_target - u_current * cos(angle)) / sin(angle)
+            Eigen::Vector3d u_perp = (u_target - u_current * dot_product) / sin_angle;
+            // u_perp should be approximately unit length (within numerical precision)
+            
+            // Interpolate along the circular arc
+            for (int i = 0; i < n_knots; i++) {
+              double t = static_cast<double>(i) / static_cast<double>(n_knots - 1);
+              double interp_angle = t * angle;
+              double cos_interp = std::cos(interp_angle);
+              double sin_interp = std::sin(interp_angle);
+              
+              // Rotate u_current towards u_target by interp_angle
+              // rotated_vec = u_current * cos(interp_angle) + u_perp * sin(interp_angle)
+              Eigen::Vector3d rotated_vec = u_current * cos_interp + u_perp * sin_interp;
+              
+              // Scale to radius and add center
+              knots.col(i) = center + radius * rotated_vec;
+              timestamps[i] = t_context + i * dt_;
+            }
+            
+            if (verbose_) {
+              const double pi = 3.14159265358979323846;
+              std::cout << "Using circular arc interpolation. Center: " << center.transpose()
+                        << ", Radius: " << radius << ", Angle: " << angle << " radians ("
+                        << angle * 180.0 / pi << " degrees)" << std::endl;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fall back to linear interpolation if circular arc is not used
+    if (!use_circular_arc) {
+      const double avg_speed = 0.1;
+      double step_size = avg_speed * dt_;
+      for (int i = 0; i < n_knots; i++) {
+        knots.col(i) = current_pos + i * step_size * displacement.normalized();
+        timestamps[i] = t_context + i * dt_;
+      }
     }
   }
 

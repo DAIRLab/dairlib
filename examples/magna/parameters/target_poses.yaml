@@ -4,23 +4,40 @@ target_poses:
     orientation: [0.7071068, 0, 0, 0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
   # Move back along negative x axis
   - position: [0.58, -0.052, 0.01]
     orientation: [0.7071068, 0, 0, 0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.0
+    center: [0, 0, 0]
+    radius: -1
   # Move straight up along positive z axis
   - position: [0.58, -0.052, 0.21]
     orientation: [0.7071068, 0, 0, 0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 2.0
+    center: [0, 0, 0]
+    radius: -1
   # Start engaging the belt into the large pulley
   - position: [0.62, -0.052, 0.19]
     orientation: [0.7071068, 0, 0, 0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.0
+    center: [0, 0, 0]
+    radius: -1
   # Pulling the belt and lower down the end effector
   - position: [0.74, -0.052, 0.03]
     orientation: [0.7071068, 0, 0, 0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.61485, 0.1645, 0.03]
+    orientation: [0.5, 0, 0, 0.8660254]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.5
+    center: [0.48985, -0.052, 0.03]
+    radius: 0.25
+  

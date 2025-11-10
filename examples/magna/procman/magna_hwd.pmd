@@ -1,0 +1,84 @@
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "franka driver (status only)" {
+    cmd "franka_status_only" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=status_only";
+        host = "drake_franka_driver";
+    }
+
+    cmd "franka_hand_status_only" {
+        exec = "bazel-bin/franka-driver/franka_hand_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=status_only";
+        host = "drake_franka_driver";
+    }
+}
+
+group "franka driver (control)" {
+    cmd "franka_torque" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4  --use_mbp --expire_sec=0.05  --robot_ip_address=172.16.0.2 --control_mode=torque";
+        host = "drake_franka_driver";
+    }
+
+    cmd "franka_hand_position" {
+        exec = "bazel-bin/franka-driver/franka_hand_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=position";
+        host = "drake_franka_driver";
+    }
+}
+
+
+group "driver interface" {
+    cmd "franka_driver_out" {
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_out";
+        host = "franka_control";
+    }
+    cmd "franka_driver_in" {
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_in";
+        host = "franka_control";
+    }
+}
+
+group "controller (spacemouse)" {
+    cmd "franka_spacemouse_cartesian_osc" {
+        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller --is_spacemouse=true";
+        host = "franka_control";
+    }
+}
+
+group "controller (trajectory)" {
+    cmd "franka_trajectory_cartesian_osc" {
+        exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller";
+        host = "franka_control";
+    }
+}
+
+script "start_spacemouse_control" {
+    stop group "franka driver (status only)";
+    stop group "franka driver (control)";
+    stop group "driver interface";
+    stop group "controller (spacemouse)";
+    stop group "controller (trajectory)";
+    wait ms 1000;
+    start group "franka driver (control)";
+    wait ms 500;
+    start group "driver interface";
+    wait ms 500;
+    start group "controller (spacemouse)";
+}
+
+script "start_trajectory_control" {
+    stop group "franka driver (status only)";
+    stop group "franka driver (control)";
+    stop group "driver interface";
+    stop group "controller (spacemouse)";
+    stop group "controller (trajectory)";
+    wait ms 1000;
+    start group "franka driver (control)";
+    wait ms 500;
+    start group "driver interface";
+    wait ms 500;
+    start group "controller (trajectory)";
+}

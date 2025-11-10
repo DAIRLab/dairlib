@@ -1,3 +1,8 @@
+// Add this at the top of your .pmd file
+mutex "controller_mutex" {
+    groups = ["controller (spacemouse)", "controller (trajectory)"];
+}
+
 group "simulations" {
     cmd "franka_hand_simulation" {
         exec = "bazel-bin/examples/magna/franka_hand_simulation";
@@ -16,17 +21,6 @@ group "simulations" {
 group "debug" {
     cmd "lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
-    }
-}
-
-group "hardware" {
-    cmd "franka_driver_out" {
-        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_out";
-        host = "localhost";
-    }
-    cmd "franka_driver_in" {
-        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_in";
         host = "localhost";
     }
 }

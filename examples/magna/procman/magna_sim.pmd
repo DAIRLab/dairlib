@@ -1,8 +1,3 @@
-// Add this at the top of your .pmd file
-mutex "controller_mutex" {
-    groups = ["controller (spacemouse)", "controller (trajectory)"];
-}
-
 group "simulations" {
     cmd "franka_hand_simulation" {
         exec = "bazel-bin/examples/magna/franka_hand_simulation";

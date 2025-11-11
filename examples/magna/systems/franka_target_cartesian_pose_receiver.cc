@@ -28,8 +28,9 @@ void FrankaTargetCartesianPoseReceiver::CopyInputOut(
   const auto& input_msg =
       input->get_value<dairlib::lcmt_franka_cartesian_pose>();
 
-  DRAKE_THROW_UNLESS(context.get_time() - input_msg.utime * 1e-6 <
-                     expire_time_);
+  if (input_msg.utime != 0)
+    DRAKE_THROW_UNLESS(context.get_time() - input_msg.utime * 1e-6 <
+                       expire_time_);
 
   VectorXd input_vector = VectorXd::Zero(6);
 

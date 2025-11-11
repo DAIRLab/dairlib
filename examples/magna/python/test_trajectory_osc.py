@@ -48,7 +48,7 @@ plant.WeldFrames(
 )
 plant.AddFrame(
     FixedOffsetFrame(
-        "end_effector_frame", plant.GetBodyByName("panda_link7"), RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, 0)), np.array([0, 0, 0.107]))
+        "end_effector_frame", plant.GetBodyByName("panda_link7"), RigidTransform(RotationMatrix(RollPitchYaw(np.pi, 0, -np.pi/4)), np.array([0, 0, 0.107]))
     )
 )
 plant.Finalize()

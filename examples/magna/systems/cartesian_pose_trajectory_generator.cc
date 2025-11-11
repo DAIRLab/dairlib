@@ -37,7 +37,7 @@ namespace examples {
 namespace magna {
 namespace systems {
 
-#define TIME_STEP 1                        // seconds
+#define TIME_STEP 0.3                        // seconds
 #define MAX_TRANSLATION_DEVIATION 2e-1     // 20 cm
 #define MAX_ROTATION_DEVIATION 1e-1
 

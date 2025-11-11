@@ -32,11 +32,11 @@ group "franka driver (control)" {
 
 group "driver interface" {
     cmd "franka_driver_out" {
-        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_out";
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_out --demo_name=anything";
         host = "franka_control";
     }
     cmd "franka_driver_in" {
-        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_in";
+        exec = "bazel-bin/examples/sampling_c3/franka_bridge_driver_in --demo_name=anything";
         host = "franka_control";
     }
 }
@@ -45,6 +45,11 @@ group "controller (spacemouse)" {
     cmd "franka_spacemouse_cartesian_osc" {
         exec = "bazel-bin/examples/magna/franka_cartesian_osc_controller --is_spacemouse=true";
         host = "franka_control";
+    }
+
+    cmd "franka_spacemouse_driver" {
+        exec = "bazel-bin/core/run_franka_driver";
+        host = "spacemouse_control";
     }
 }
 

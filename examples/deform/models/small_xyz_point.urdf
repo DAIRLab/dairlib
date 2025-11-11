@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<!-- Represents a single point in a simple spring-damper network. -->
+<robot name="pt">
+  <material name="point_material">
+    <color rgba="0.0 0.6 0.6 1.0"/>
+  </material>
+
+  <link name="base_link" />
+
+  <link name="pt">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="4e-7" ixy="0.0" ixz="0.0" iyy="4e-7" iyz="0.0" izz="4e-7"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <material name="point_material"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+  </link>
+  
+  <link name="pt_fake_x" />
+  
+  <link name="pt_fake_y" />
+  
+  <joint name="x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="pt_fake_x"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="y" type="prismatic">
+    <parent link="pt_fake_x"/>
+    <child link="pt_fake_y"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+    <joint name="z" type="prismatic">
+    <parent link="pt_fake_y"/>
+    <child link="pt"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+</robot>

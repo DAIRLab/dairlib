@@ -136,7 +136,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   // Execution trajectory
   mutable LcmTrajectory execution_lcm_traj_;
-  mutable double gripper_pos_command_ = 0.03;
+  mutable double gripper_pos_command_ = 0.025;
 
   mutable std::vector<TargetPose> target_poses_;
 

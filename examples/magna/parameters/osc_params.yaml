@@ -40,8 +40,8 @@ enforce_acceleration_constraints: false
 publish_debug_info: true
 
 w_joint_tracking: 0.0001
-joint_tracking_kp: 10
-joint_tracking_kd: 1
+joint_tracking_kp: 200
+joint_tracking_kd: 10
 
 w_gripper: 1
 gripper_kp: 200
@@ -61,17 +61,17 @@ EndEffectorKd:
     0, 20, 0,
     0, 0, 20 ]
 EndEffectorRotW:
-  [ 10, 0, 0,
-    0, 10, 0,
-    0, 0, 10 ]
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]
 EndEffectorRotKp:
-  [ 800, 0, 0,
-    0, 800, 0,
-    0, 0,  800]
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0,  200]
 EndEffectorRotKd:
-  [ 40, 0, 0,
-    0, 40, 0,
-    0, 0, 40]
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20]
 # This is the weight matrix for the end effector force tracking. 
 # The end effector forces in the OSC are called lambdas but are really tracking
 # the forces at the end effector or the u_sol we get in c3.

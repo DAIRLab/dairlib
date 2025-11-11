@@ -32,6 +32,7 @@ cc_library(
     deps = [
         "//common",
         "//common:math_utils",
+        "//examples/deform/parameter_headers:spring_damper_model_params",
         "@drake//:drake_shared_library",
     ],
 )
@@ -48,6 +49,7 @@ cc_binary(
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:lcm_channels",
         "//examples/deform/parameter_headers:elastic_sim_params",
+        "//examples/deform/parameter_headers:spring_damper_model_params",
         "//common",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",

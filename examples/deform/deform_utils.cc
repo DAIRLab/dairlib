@@ -13,64 +13,149 @@ using drake::geometry::GeometryInstance;
 using drake::geometry::Mesh;
 using drake::geometry::ProximityProperties;
 using drake::geometry::SceneGraph;
+using drake::geometry::Shape;
+using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
-using drake::multibody::CoulombFriction;
 using drake::multibody::DeformableModel;
+using drake::multibody::LinearSpringDamper;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::multibody::RigidBody;
 using drake::multibody::fem::DeformableBodyConfig;
 using Eigen::Vector3d;
 
 ModelInstanceIndex AddRobotHandToPlant(MultibodyPlant<double>* plant,
-                                       SceneGraph<double>* scene_graph) {
+                                       SceneGraph<double>* scene_graph,
+                                       const bool& include_ground) {
   Parser parser(plant, scene_graph);
   ModelInstanceIndex hand_index = parser.AddModelsFromUrl(kHandModel)[0];
   RigidTransformd X_WH = RigidTransformd(kRobotRotOffset, kRobotPosOffset);
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("hand_root"),
                     X_WH);
 
+  if (include_ground) {
+    parser.AddModels(FindResourceOrThrow(kGroundModel));
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                      RigidTransformd::Identity());
+  }
+
   return hand_index;
 }
 
-void AddElasticObjectToPlant(MultibodyPlant<double>* plant,
-                             SceneGraph<double>* scene_graph,
-                             const std::string& object_mesh_file,
-                             const double& mesh_scale,
-                             const Eigen::VectorXd& q_init_object) {
+static void AddElasticObjectToPlant(MultibodyPlant<double>* plant,
+                                    SceneGraph<double>* scene_graph,
+                                    std::unique_ptr<Shape> shape,
+                                    const double& resolution_hint,
+                                    const Eigen::VectorXd& q_init_object) {
   // Set up a deformable object.
   DeformableBodyConfig<double> deformable_config;
-  deformable_config.set_youngs_modulus(3e4);
-  deformable_config.set_poissons_ratio(0.4);
-  deformable_config.set_mass_density(1e3);
-  deformable_config.set_stiffness_damping_coefficient(0.01);
+  deformable_config.set_youngs_modulus(kYoungsModulus);
+  deformable_config.set_poissons_ratio(kPoissonsRatio);
+  deformable_config.set_mass_density(kMassDensity);
+  deformable_config.set_stiffness_damping_coefficient(
+      kStiffnessDampingCoefficient);
 
-  auto elastic_mesh = std::make_unique<Mesh>(object_mesh_file, mesh_scale);
   Eigen::Quaterniond quat_init{q_init_object(0), q_init_object(1),
                                q_init_object(2), q_init_object(3)};
   Vector3d pos_init = q_init_object.tail<3>();
   RigidTransformd X_WO = RigidTransformd(quat_init, pos_init);
   auto elastic_instance = std::make_unique<GeometryInstance>(
-      X_WO, std::move(elastic_mesh), "deformable_elastic");
+      X_WO, std::move(shape), "deformable_elastic");
 
   // Minimally required proximity properties for deformable bodies: A valid
   // Coulomb friction coefficient.
   ProximityProperties deformable_proximity_props;
-  const CoulombFriction<double> surface_friction(1.15, 1.15);
-  AddContactMaterial(10.0, {}, surface_friction, &deformable_proximity_props);
+  AddContactMaterial(kDissipation, {}, kSurfaceFriction,
+                     &deformable_proximity_props);
   elastic_instance->set_proximity_properties(deformable_proximity_props);
+
+  // Register the deformable body.
+  DeformableModel<double>& deformable_model = plant->mutable_deformable_model();
+  deformable_model.RegisterDeformableBody(std::move(elastic_instance),
+                                          deformable_config, resolution_hint);
+
+  // Ensure the plant uses SAP for discrete contact approximation.
+  plant->set_discrete_contact_approximation(
+      drake::multibody::DiscreteContactApproximation::kSap);
+}
+
+void AddElasticMeshToPlant(MultibodyPlant<double>* plant,
+                           SceneGraph<double>* scene_graph,
+                           const std::string& object_mesh_file,
+                           const double& mesh_scale,
+                           const Eigen::VectorXd& q_init_object) {
+  auto elastic_mesh = std::make_unique<Mesh>(object_mesh_file, mesh_scale);
 
   /* Registration of all deformable geometries ostensibly requires a
   resolution hint parameter that dictates how the shape is tessellated. In the
   case of a `Mesh` shape, the resolution hint is unused because the shape is
   already tessellated. */
-  // TODO(xuchenhan-tri): Though unused, we still asserts the resolution hint
-  // is positive. Remove the requirement of a resolution hint for meshed
-  // shapes.
   const double unused_resolution_hint = 1.0;
-  DeformableModel<double>& deformable_model = plant->mutable_deformable_model();
-  deformable_model.RegisterDeformableBody(
-      std::move(elastic_instance), deformable_config, unused_resolution_hint);
+  AddElasticObjectToPlant(plant, scene_graph, std::move(elastic_mesh),
+                          unused_resolution_hint, q_init_object);
+}
+
+void AddElasticSphereToPlant(MultibodyPlant<double>* plant,
+                             SceneGraph<double>* scene_graph,
+                             const double& radius,
+                             const double& resolution_hint,
+                             const Eigen::VectorXd& q_init_object) {
+  auto elastic_sphere = std::make_unique<Sphere>(radius);
+  AddElasticObjectToPlant(plant, scene_graph, std::move(elastic_sphere),
+                          resolution_hint, q_init_object);
+}
+
+std::vector<ModelInstanceIndex> AddSpringDamperModelToPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    const SpringDamperModelParams& spring_damper_params) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+  std::vector<ModelInstanceIndex> point_indices;
+
+  int n_vertices = spring_damper_params.vertex_positions.size();
+  int n_springs = spring_damper_params.vertex_connections.size();
+
+  // Instantiate vertex positions.
+  for (size_t i = 0; i < n_vertices; ++i) {
+    const Vector3d& vertex_pos = spring_damper_params.vertex_positions[i];
+    ModelInstanceIndex point_index = parser.AddModels(kPointModel)[0];
+    point_indices.push_back(point_index);
+    plant->WeldFrames(plant->world_frame(),
+                      plant->GetFrameByName("base_link", point_index),
+                      RigidTransformd());
+  }
+
+  // Instantiate springs and dampers between connected vertices.
+  for (size_t i = 0; i < n_springs; ++i) {
+    int vi_1 = spring_damper_params.vertex_connections[i][0];
+    int vi_2 = spring_damper_params.vertex_connections[i][1];
+    Eigen::Vector3d p1 = spring_damper_params.vertex_positions[vi_1];
+    Eigen::Vector3d p2 = spring_damper_params.vertex_positions[vi_2];
+    double free_length =
+        (spring_damper_params.vertex_scaling * (p2 - p1).norm());
+    ModelInstanceIndex body_i = point_indices[vi_1];
+    ModelInstanceIndex body_j = point_indices[vi_2];
+    plant->AddForceElement<LinearSpringDamper>(
+        plant->GetBodyByName("pt", body_i), drake::Vector3<double>(0, 0, 0),
+        plant->GetBodyByName("pt", body_j), drake::Vector3<double>(0, 0, 0),
+        free_length, spring_damper_params.spring_stiffness,
+        spring_damper_params.damping_coefficient);
+  }
+  return point_indices;
+}
+
+void SetDefaultSpringDamperPositions(
+    MultibodyPlant<double>* plant,
+    const std::vector<ModelInstanceIndex>& point_indices,
+    const SpringDamperModelParams& spring_damper_params) {
+  int n_vertices = spring_damper_params.vertex_positions.size();
+  for (size_t i = 0; i < n_vertices; ++i) {
+    const Vector3d& vertex_pos = spring_damper_params.vertex_scaling *
+                                     spring_damper_params.vertex_positions[i] +
+                                 spring_damper_params.initial_offset;
+    plant->SetDefaultPositions(point_indices[i], vertex_pos);
+  }
 }
 
 }  // namespace dairlib

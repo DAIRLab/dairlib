@@ -16,6 +16,7 @@ struct ElasticSimParams {
   double realtime_rate;
   Eigen::VectorXd q_init_robot;
   Eigen::VectorXd q_init_object;
+  bool include_spring_damper_model;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -30,5 +31,6 @@ struct ElasticSimParams {
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(q_init_robot));
     a->Visit(DRAKE_NVP(q_init_object));
+    a->Visit(DRAKE_NVP(include_spring_damper_model));
   }
 };

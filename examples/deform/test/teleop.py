@@ -147,7 +147,7 @@ plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("ground"))
 ee_index = parser.AddModels(kSimpleEEModel)[0]
 plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"))
 
-# Step 3:  Add a deformable body to the model.
+# Step 3:  Add a deformable body to the system.
 dut = plant.mutable_deformable_model()
 deformable_body_config = DeformableBodyConfig()
 deformable_body_config.set_youngs_modulus(kYoungsModulus)

@@ -24,6 +24,7 @@
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/parameter_headers/elastic_sim_params.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
+#include "examples/deform/parameter_headers/spring_damper_model_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -58,26 +59,43 @@ int DoMain(int argc, char* argv[]) {
   // Load parameters.
   ElasticSimParams sim_params = drake::yaml::LoadYamlFile<ElasticSimParams>(
       "examples/deform/parameters/elastic_sim_params.yaml");
-  std::string lcm_channels_file =
-      "examples/deform/parameters/lcm_channels_sim.yaml";
   DeformLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
+      drake::yaml::LoadYamlFile<DeformLcmChannels>(
+          "examples/deform/parameters/lcm_channels_sim.yaml");
+  SpringDamperModelParams spring_damper_params =
+      drake::yaml::LoadYamlFile<SpringDamperModelParams>(
+          "examples/deform/parameters/spring_damper_model_params.yaml");
 
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
   ModelInstanceIndex hand_index = AddRobotHandToPlant(&plant, &scene_graph);
-  AddElasticObjectToPlant(&plant, &scene_graph, sim_params.object_mesh,
-                          sim_params.object_mesh_scale,
+  AddElasticSphereToPlant(&plant, &scene_graph, 0.05, 0.05,
+                          //   sim_params.object_mesh_scale,
                           sim_params.q_init_object);
-  plant.Finalize();
+  //   AddElasticMeshToPlant(&plant, &scene_graph, sim_params.object_mesh,
+  //                         sim_params.object_mesh_scale,
+  //                         sim_params.q_init_object);
+  std::cout << "About to add spring damper..." << std::endl;
+  if (sim_params.include_spring_damper_model) {
+    std::vector<ModelInstanceIndex> spring_damper_indices =
+        AddSpringDamperModelToPlant(&plant, &scene_graph, spring_damper_params);
+    plant.Finalize();
+    SetDefaultSpringDamperPositions(&plant, spring_damper_indices,
+                                    spring_damper_params);
+
+  } else {
+    plant.Finalize();
+  }
+
   /* -------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-  // TODO:  Unclear how to access the deformable object states.
+  // TODO:  Deformable state information is accessed in a different way, if we
+  // ever need to publish over LCM.
   // AddActuationRecieverAndStateSenderLcm(
   //     &builder, plant, lcm, lcm_channel_params.franka_input_channel,
   //     lcm_channel_params.franka_state_channel, sim_params.robot_publish_rate,
@@ -118,15 +136,17 @@ int DoMain(int argc, char* argv[]) {
   auto& plant_context = diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context());
 
-  VectorXd q = VectorXd::Zero(nq);
-
-  q.head(plant.num_positions(hand_index)) = sim_params.q_init_robot;
-  std::cout << "q: " << q.transpose() << std::endl;
-
-  plant.SetPositions(&plant_context, q);
-
+  plant.SetPositions(&plant_context, hand_index, sim_params.q_init_robot);
   VectorXd v = VectorXd::Zero(nv);
   plant.SetVelocities(&plant_context, v);
+
+  std::vector<std::string> position_names = plant.GetPositionNames();
+  Eigen::VectorXd q = plant.GetPositions(plant_context);
+
+  std::cout << "Plant positions: " << std::endl;
+  for (int i = 0; i < position_names.size(); ++i) {
+    std::cout << position_names[i] << " = " << q[i] << std::endl;
+  }
 
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());

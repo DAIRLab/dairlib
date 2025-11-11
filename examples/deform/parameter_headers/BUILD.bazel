@@ -15,3 +15,9 @@ cc_library(
     hdrs = ["elastic_sim_params.h"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "spring_damper_model_params",
+    hdrs = ["spring_damper_model_params.h"],
+    visibility = ["//visibility:public"],
+)

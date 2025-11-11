@@ -30,6 +30,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
@@ -146,7 +147,8 @@ int DoMain(int argc, char* argv[]) {
   // Add regularization cost to maintain joint positions (except for the gripper
   // fingers) as much as possible
   VectorXd joint_position_target = VectorXd::Zero(9);
-  joint_position_target << 1.2822, 0.29, -1.40629, -1.8419, 0.30038, 2.39, 0.57512, 0, 0;
+  joint_position_target << 1.2822, 0.29, -1.40629, -1.8419, 0.30038, 2.39,
+      0.57512, 0, 0;
   std::vector<std::unique_ptr<JointSpaceTrackingData>>
       joint_position_tracking_data_vec;
   std::vector<std::string> joint_position_names = {
@@ -309,6 +311,9 @@ int DoMain(int argc, char* argv[]) {
 }
 
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::magna::DoMain(argc, argv);
+}

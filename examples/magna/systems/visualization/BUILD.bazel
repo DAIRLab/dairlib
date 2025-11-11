@@ -1,0 +1,30 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "c3_belt_target_state_drawer",
+    srcs = [
+        "c3_belt_target_state_drawer.cc",
+    ],
+    hdrs = [
+        "c3_belt_target_state_drawer.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "deformable_drawer",
+    srcs = [
+        "deformable_drawer.cc",
+    ],
+    hdrs = [
+        "deformable_drawer.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

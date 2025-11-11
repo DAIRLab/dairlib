@@ -1,37 +1,35 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
 cc_library(
     name = "sim_params",
     hdrs = ["sim_params.h"],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "lcm_channel_params",
     hdrs = ["lcm_channel_params.h"],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "visualizer_params",
     hdrs = ["visualizer_params.h"],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "osc_params",
     hdrs = ["osc_params.h"],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "assembly_c3_options",
     hdrs = ["assembly_c3_options.h"],
-    visibility = ["//visibility:public"],
     deps = ["//solvers:c3"],
 )
 
 cc_library(
     name = "target_poses",
     hdrs = ["target_poses.h"],
-    visibility = ["//visibility:public"],
     deps = ["@drake//:drake_shared_library"],
 )

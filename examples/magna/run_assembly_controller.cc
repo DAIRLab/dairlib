@@ -2,6 +2,7 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_franka_hand_target_position.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
@@ -20,9 +21,11 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/constant_value_source.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 
 static constexpr const char* kFrankaModel =
@@ -32,6 +35,7 @@ static constexpr const char* kFrankaModel =
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::ConstantValueSource;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
@@ -208,11 +212,31 @@ int DoMain(int argc, char* argv[]) {
   VectorXd x_lcs_des =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
   VectorXd x_lcs_des_positions = VectorXd::Zero(plant_lcs.num_positions());
-  x_lcs_des_positions << 0.46, 0.198, 0.031, 0.5236, 0.0, 2.094, 0.48985, -0.1, 0.03;
+  x_lcs_des_positions << 0.46, 0.198, 0.031, 0.5236, 0.0, 2.094, 0.48985, -0.1,
+      0.03;
   x_lcs_des.segment(0, plant_lcs.num_positions()) = x_lcs_des_positions;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(x_lcs_des);
   builder.Connect(x_lcs_des_source->get_output_port(),
                   assembly_controller->get_input_port_target());
+
+  // Publish C3+ target state
+  auto lcmt_c3_state = dairlib::lcmt_c3_state();
+  lcmt_c3_state.utime = 0;
+  lcmt_c3_state.num_states = x_lcs_des.size();
+  lcmt_c3_state.state = std::vector<float>(x_lcs_des.size());
+  lcmt_c3_state.state_names = std::vector<std::string>(x_lcs_des.size());
+  for (int i = 0; i < x_lcs_des.size(); i++) {
+    lcmt_c3_state.state[i] = static_cast<float>(x_lcs_des(i));
+    lcmt_c3_state.state_names[i] = "x_lcs_des[" + std::to_string(i) + "]";
+  }
+  auto x_lcs_des_abs_source = builder.AddSystem<ConstantValueSource<double>>(
+      drake::Value<dairlib::lcmt_c3_state>(lcmt_c3_state));
+  auto c3_state_target_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(x_lcs_des_abs_source->get_output_port(),
+                  c3_state_target_pub->get_input_port(0));
 
   auto gripper_pos_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_franka_hand_target_position>(
@@ -237,6 +261,9 @@ int DoMain(int argc, char* argv[]) {
 }
 
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::magna::DoMain(argc, argv);
+}

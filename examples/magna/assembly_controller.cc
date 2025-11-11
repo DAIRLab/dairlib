@@ -15,6 +15,7 @@
 #define ORIENTATION_TOLERANCE 0.1  // radians (approximately 5.7 degrees)
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 
 using drake::SortedPair;
@@ -251,8 +252,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       }
       break;
     case AssemblyPhase::kMPC:
-      // GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
-      //                       &execution_lcm_traj_);
+      GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
+                            &execution_lcm_traj_);
       break;
   }
 
@@ -653,4 +654,5 @@ void AssemblyController::OutputGripperPosCommand(
 }
 
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib

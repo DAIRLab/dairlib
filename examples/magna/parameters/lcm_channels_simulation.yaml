@@ -9,3 +9,4 @@ radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
 
 franka_hand_target_position_channel: FRANKA_HAND_TARGET_POSITION  # lcmt_franka_hand_target_position
 deformable_geometry_channel: DRAKE_VIEWER_DEFORMABLE
+c3_target_state_channel: C3_TARGET

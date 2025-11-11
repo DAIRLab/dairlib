@@ -15,6 +15,7 @@
 #include "solvers/lcs_factory.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 
 enum class AssemblyPhase { kMoveToTarget, kMPC };
@@ -144,4 +145,5 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 };
 
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib

@@ -25,6 +25,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 
 static constexpr const char* kFrankaModel =
@@ -186,5 +187,8 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib
-int main(int argc, char* argv[]) { return dairlib::magna::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::magna::DoMain(argc, argv);
+}

@@ -11,7 +11,7 @@
   <link name="belt_element">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0" />
-      <mass value="0.001" />
+      <mass value="0.054" />
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />

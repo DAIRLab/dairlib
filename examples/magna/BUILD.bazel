@@ -1,3 +1,6 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
@@ -16,8 +19,8 @@ cc_library(
 
 filegroup(
     name = "all_parameter_yamls",
-    visibility = ["//visibility:public"],
     data = glob(["parameters/*.yaml"]),
+    visibility = ["//visibility:public"],
 )
 
 cc_binary(
@@ -32,10 +35,10 @@ cc_binary(
     ],
     deps = [
         "//common:find_resource",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
         "//examples/magna/parameter_headers:lcm_channel_params",
         "//examples/magna/parameter_headers:sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -52,14 +55,16 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
-        "//common:find_resource",
         "//common:eigen_utils",
-        ":deformable_drawer",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
+        "//common:find_resource",
         "//examples/magna/parameter_headers:lcm_channel_params",
         "//examples/magna/parameter_headers:visualizer_params",
+        "//examples/magna/systems/visualization:c3_belt_target_state_drawer",
+        "//examples/magna/systems/visualization:deformable_drawer",
         "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -75,40 +80,27 @@ cc_binary(
         ":urdfs",
         "@drake_models//:franka_description",
     ],
-    deps = [
-        "//examples/magna/parameter_headers:lcm_channel_params",
-        "//examples/magna/parameter_headers:osc_params",
-        "//common",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:gravity_compensator",
-        "//systems/controllers/osc:operational_space_control",
-        "//systems/controllers/osc:end_effector_position",
-        "//systems/controllers/osc:end_effector_orientation",
-        "//systems/controllers/osc:end_effector_force",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/trajectory_optimization:lcm_trajectory_systems",
-        "//systems:franka_hand_target_position_receiver",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
         "-lopenblas",
     ],
-)
-
-cc_library(
-    name = "deformable_drawer",
-    srcs = [
-        "deformable_drawer.cc",
-    ],
-    hdrs = [
-        "deformable_drawer.h",
-    ],
     deps = [
+        "//common",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:osc_params",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:franka_hand_target_position_receiver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:end_effector_force",
+        "//systems/controllers/osc:end_effector_orientation",
+        "//systems/controllers/osc:end_effector_position",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -122,34 +114,34 @@ cc_library(
     ],
     deps = [
         "//common:update_context",
+        "//examples/magna/parameter_headers:assembly_c3_options",
+        "//examples/magna/parameter_headers:target_poses",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",
         "//solvers:lcs",
         "@drake//:drake_shared_library",
-        "//examples/magna/parameter_headers:assembly_c3_options",
-        "//examples/magna/parameter_headers:target_poses",
     ],
 )
 
 cc_binary(
     name = "run_assembly_controller",
+    srcs = [
+        "run_assembly_controller.cc",
+    ],
     data = [
         ":all_parameter_yamls",
         ":urdfs",
         "@drake_models//:franka_description",
     ],
-    srcs = [
-        "run_assembly_controller.cc",
-    ],
     deps = [
-        "//systems/framework:lcm_driven_loop",
+        ":assembly_controller",
+        "//common:find_resource",
+        "//examples/magna/parameter_headers:lcm_channel_params",
         "//systems:franka_kinematics",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//common:find_resource",
-        ":assembly_controller",
-        "//examples/magna/parameter_headers:lcm_channel_params",
-        "@gflags//:gflags",
+        "//systems/framework:lcm_driven_loop",
+        "@gflags",
     ],
 )

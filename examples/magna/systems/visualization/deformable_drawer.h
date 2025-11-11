@@ -13,7 +13,10 @@
 #include <drake/systems/framework/leaf_system.h>
 
 namespace dairlib {
+namespace examples {
 namespace magna {
+namespace systems {
+namespace visualization {
 
 using drake::geometry::Rgba;
 using drake::geometry::Sphere;
@@ -31,12 +34,11 @@ using Eigen::Vector3d;
 // vertex_indices vector, e.g., {0,1} connects the first two spheres).
 class DeformableDrawer : public drake::systems::LeafSystem<double> {
  public:
-  explicit DeformableDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                            const std::string& path,
-                            const std::string& keypoint_path,
-                            const std::vector<int>& vertex_indices = {},
-                            const std::vector<std::pair<size_t, size_t>>&
-                                sphere_connections = {});
+  explicit DeformableDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>&, const std::string& path,
+      const std::string& keypoint_path,
+      const std::vector<int>& vertex_indices = {},
+      const std::vector<std::pair<size_t, size_t>>& sphere_connections = {});
 
  private:
   drake::systems::EventStatus DrawDeformableGeometry(
@@ -63,5 +65,8 @@ class DeformableDrawer : public drake::systems::LeafSystem<double> {
   const Rgba purple_color_ = Rgba(0.5, 0.0, 0.5, 1.0);  // Purple color
 };
 
+}  // namespace visualization
+}  // namespace systems
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib

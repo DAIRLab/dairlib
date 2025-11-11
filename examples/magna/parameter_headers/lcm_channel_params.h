@@ -11,6 +11,7 @@ struct MagnaLcmChannels {
   std::string radio_channel;
   std::string franka_hand_target_position_channel;
   std::string deformable_geometry_channel;
+  std::string c3_target_state_channel;
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
@@ -21,5 +22,6 @@ struct MagnaLcmChannels {
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(franka_hand_target_position_channel));
     a->Visit(DRAKE_NVP(deformable_geometry_channel));
+    a->Visit(DRAKE_NVP(c3_target_state_channel));
   }
 };

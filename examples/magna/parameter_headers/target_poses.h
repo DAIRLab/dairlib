@@ -5,6 +5,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
 
 struct TargetPose {
@@ -69,5 +70,5 @@ struct TargetPosesParams {
 };
 
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib
-

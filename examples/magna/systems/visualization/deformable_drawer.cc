@@ -1,7 +1,10 @@
 #include "deformable_drawer.h"
 
 namespace dairlib {
+namespace examples {
 namespace magna {
+namespace systems {
+namespace visualization {
 
 DeformableDrawer::DeformableDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
@@ -148,5 +151,8 @@ DeformableDrawer::ConvertDeformableGeom(
   return std::make_tuple(vertices, faces, rgba, pose);
 }
 
+}  // namespace visualization
+}  // namespace systems
 }  // namespace magna
+}  // namespace examples
 }  // namespace dairlib

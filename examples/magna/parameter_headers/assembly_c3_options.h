@@ -1,11 +1,7 @@
 #pragma once
-#include <iostream>
 #include <numeric>
-#include <stdexcept>
 
 #include "solvers/c3_options.h"
-
-#include "drake/common/yaml/yaml_read_archive.h"
 
 struct AssemblyC3Options : C3Options {
   /// Additional radius-based workspace limit.
@@ -184,9 +180,6 @@ struct AssemblyC3Options : C3Options {
                         options->u_eta.end());
       }
     }
-    std::cout << "g_vector size: " << g_vector.size() << std::endl;
-    std::cout << "u_vector size: " << u_vector.size() << std::endl;
-
     options->g_vector = g_vector;
     options->u_vector = u_vector;
 
@@ -198,25 +191,10 @@ struct AssemblyC3Options : C3Options {
         options->g_vector.data(), options->g_vector.size());
     Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
         options->u_vector.data(), options->u_vector.size());
-    std::cout << "q size: " << q.size() << std::endl;
-    std::cout << "r size: " << r.size() << std::endl;
-    std::cout << "g size: " << g.size() << std::endl;
-    std::cout << "u size: " << u.size() << std::endl;
-    std::cout << "g_vector size: " << options->g_vector.size() << std::endl;
-    std::cout << "u_vector size: " << options->u_vector.size() << std::endl;
-
     options->Q = options->w_Q * q.asDiagonal();
     options->R = options->w_R * r.asDiagonal();
     options->G = options->w_G * g.asDiagonal();
     options->U = options->w_U * u.asDiagonal();
-    std::cout << "Q size: " << options->Q.rows() << std::endl;
-    std::cout << "Q cols: " << options->Q.cols() << std::endl;
-    std::cout << "R size: " << options->R.rows() << std::endl;
-    std::cout << "R cols: " << options->R.cols() << std::endl;
-    std::cout << "G size: " << options->G.rows() << std::endl;
-    std::cout << "G cols: " << options->G.cols() << std::endl;
-    std::cout << "U size: " << options->U.rows() << std::endl;
-    std::cout << "U cols: " << options->U.cols() << std::endl;
   }
 
   void SetCommonC3Options(C3Options* options) const {

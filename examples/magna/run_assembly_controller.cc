@@ -208,7 +208,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd x_lcs_des =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
   VectorXd x_lcs_des_positions = VectorXd::Zero(plant_lcs.num_positions());
-  x_lcs_des_positions << 0.5, 0.2, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  x_lcs_des_positions << 0.46, 0.198, 0.031, 0.5236, 0.0, 2.094, 0.48985, -0.1, 0.03;
   x_lcs_des.segment(0, plant_lcs.num_positions()) = x_lcs_des_positions;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(x_lcs_des);
   builder.Connect(x_lcs_des_source->get_output_port(),

@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "solvers",
+    data = [
+        ":default_osc_options",
+    ],
     deps = [
         ":c3",
         ":c3_output",
@@ -28,6 +31,14 @@ cc_library(
         ":constraint_factory",
         ":nonlinear_constraint",
     ],
+)
+
+filegroup(
+    name = "default_osc_options",
+    srcs = [
+        "default_osc_osqp_settings.yaml",
+        "osqp_options_default.yaml",
+    ]
 )
 
 cc_library(

@@ -2,6 +2,25 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+)
+
+cc_library(
+    name = "osc",
+    deps = [
+        ":operational_space_control",
+        ":osc_tracking_datas",
+        ":osc_tracking_data",
+        ":options_tracking_data",
+        ":com_tracking_data",
+    ],
+)
+
 cc_library(
     name = "operational_space_control",
     srcs = [

@@ -11,6 +11,7 @@ cc_library(
         ":vector_scope",
         ":system_utils",
         "//systems/controllers:controllers",
+        "//systems/controllers/osc:osc",
         "//systems/filters:filters",
         "//systems/framework:framework",
         "//systems/primitives:primitives",

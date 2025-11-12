@@ -7,6 +7,7 @@
 #include "third_party/spruce/spruce.hh"
 
 #include "drake/common/drake_throw.h"
+#include "drake/common/find_runfiles.h"
 #include "drake/common/never_destroyed.h"
 
 using std::string;
@@ -14,19 +15,17 @@ using std::string;
 namespace dairlib {
 
 using Result = FindResourceResult;
-using std::optional;
 using std::nullopt;
+using std::optional;
 
-optional<string>
-Result::get_absolute_path() const {
-  return absolute_path_;
-}
+optional<string> Result::get_absolute_path() const { return absolute_path_; }
 
-string
-Result::get_absolute_path_or_throw() const {
+string Result::get_absolute_path_or_throw() const {
   // If we have a path, return it.
   const auto& optional_path = get_absolute_path();
-  if (optional_path) { return *optional_path; }
+  if (optional_path) {
+    return *optional_path;
+  }
 
   // Otherwise, throw the error message.
   const auto& optional_error = get_error_message();
@@ -34,8 +33,7 @@ Result::get_absolute_path_or_throw() const {
   throw std::runtime_error(*optional_error);
 }
 
-optional<string>
-Result::get_error_message() const {
+optional<string> Result::get_error_message() const {
   // If an error has been set, return it.
   if (error_message_ != nullopt) {
     DRAKE_ASSERT(absolute_path_ == nullopt);
@@ -52,9 +50,7 @@ Result::get_error_message() const {
   return string("No resource was requested (empty result)");
 }
 
-string Result::get_resource_path() const {
-  return resource_path_;
-}
+string Result::get_resource_path() const { return resource_path_; }
 
 Result Result::make_success(string resource_path, string absolute_path) {
   DRAKE_THROW_UNLESS(!resource_path.empty());
@@ -109,14 +105,20 @@ bool IsRelativePath(const string& path) {
 // Returns the absolute_path iff the `$dirpath/$relpath` exists, else nullopt.
 // As a convenience to callers, if `dirpath` is nullopt, the result is nullopt.
 // (To inquire about an empty `dirpath`, pass the empty string, not nullopt.)
-optional<string> FileExists(
-    const optional<string>& dirpath, const string& relpath) {
+optional<string> FileExists(const optional<string>& dirpath,
+                            const string& relpath) {
   DRAKE_ASSERT(IsRelativePath(relpath));
-  if (!dirpath) { return nullopt; }
+  if (!dirpath) {
+    return nullopt;
+  }
   const spruce::path dir_query(*dirpath);
-  if (!dir_query.isDir()) { return nullopt; }
+  if (!dir_query.isDir()) {
+    return nullopt;
+  }
   const spruce::path file_query(dir_query.getStr() + '/' + relpath);
-  if (!file_query.exists()) { return nullopt; }
+  if (!file_query.exists()) {
+    return nullopt;
+  }
   return file_query.getStr();
 }
 
@@ -224,9 +226,8 @@ Result FindResource(string resource_path) {
   // compatibility with the original semantics of this function; if we want to
   // offer a function that takes paths without "drake", we can use a new name.
   if (!IsRelativePath(resource_path)) {
-    return Result::make_error(
-        std::move(resource_path),
-        "resource_path is not a relative path");
+    return Result::make_error(std::move(resource_path),
+                              "resource_path is not a relative path");
   }
 
   // Collect a list of (priority-ordered) directories to check.  Candidate
@@ -257,16 +258,16 @@ Result FindResource(string resource_path) {
   // guard against it.
   for (const auto& candidate_dir : candidate_dirs) {
     if (candidate_dir && IsRelativePath(candidate_dir.value())) {
-        string error_message = "path is not absolute: " + candidate_dir.value();
-        return Result::make_error(std::move(resource_path), error_message);
-      }
+      string error_message = "path is not absolute: " + candidate_dir.value();
+      return Result::make_error(std::move(resource_path), error_message);
     }
+  }
 
   // See which (if any) candidate contains the requested resource.
   for (const auto& candidate_dir : candidate_dirs) {
     if (auto absolute_path = FileExists(candidate_dir, resource_path)) {
-      return Result::make_success(
-          std::move(resource_path), std::move(*absolute_path));
+      return Result::make_success(std::move(resource_path),
+                                  std::move(*absolute_path));
     }
   }
 
@@ -279,4 +280,19 @@ std::string FindResourceOrThrow(std::string resource_path) {
   return FindResource(std::move(resource_path)).get_absolute_path_or_throw();
 }
 
+Result FindRunfile(std::string resource_path) {
+  // Set default solver options
+  auto main_runfile = drake::FindRunfile("_main/" + resource_path);
+  auto external_runfile = drake::FindRunfile("dairlib/" + resource_path);
+  if (main_runfile.abspath.empty() && external_runfile.abspath.empty()) {
+    string error_msg = "Could not find the default solver options YAML file. " +
+                       main_runfile.error + ", " + external_runfile.error;
+    return Result::make_error(std::move(resource_path), error_msg);
+  }
+  std::string absolute_path =
+      (main_runfile.abspath.empty() ? external_runfile.abspath
+                                    : main_runfile.abspath);
+  return Result::make_success(std::move(resource_path),
+                              std::move(absolute_path));
+}
 }  // namespace dairlib

@@ -16,6 +16,12 @@ filegroup(
         "//lcm:headers",
         "//multibody:headers", 
         "//systems:headers",
+        "//systems/controllers:headers",
+        "//systems/framework:headers",
+        "//systems/primitives:headers",
+        "//systems/trajectory_optimization:headers",
+        "//systems/filters:headers",
+        "//systems/controllers/osc:headers",
         "//solvers:headers",
     ],
 )

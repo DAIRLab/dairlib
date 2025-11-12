@@ -101,4 +101,6 @@ FindResourceResult FindResource(std::string resource_path);
 /// FindResourceResult::get_absolute_path_or_throw().
 std::string FindResourceOrThrow(std::string resource_path);
 
+FindResourceResult FindRunfile(std::string resource_path);
+
 }  // namespace dairlib

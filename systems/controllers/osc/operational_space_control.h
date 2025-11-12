@@ -411,7 +411,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          dairlib::FindRunfile("solvers/osqp_options_default.yaml")
+              .get_absolute_path_or_throw())
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // MathematicalProgram

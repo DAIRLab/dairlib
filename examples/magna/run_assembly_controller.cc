@@ -13,6 +13,7 @@
 #include "systems/framework/state_vector.h"
 #include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/senders/c3_state_sender.h"
 #include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
@@ -21,7 +22,6 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/primitives/constant_value_source.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
@@ -35,7 +35,6 @@ static constexpr const char* kFrankaModel =
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using drake::systems::ConstantValueSource;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
@@ -53,7 +52,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
-  // Load LCM channel parameters
+  // --------------------- Load parameters ---------------------- //
   MagnaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
           "examples/magna/parameters/lcm_channels_simulation.yaml");
@@ -65,10 +64,11 @@ int DoMain(int argc, char* argv[]) {
   TargetPosesParams target_poses_params =
       drake::yaml::LoadYamlFile<TargetPosesParams>(
           "examples/magna/parameters/target_poses.yaml");
+  // ------------------------------------------------------------- //
 
   DiagramBuilder<double> builder;
 
-  // Create LCS plant
+  // --------------------- Create LCS plant ---------------------- //
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
@@ -131,12 +131,16 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
   contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
 
-  // Create AssemblyController
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
       contact_pairs, assembly_c3_options, target_poses_params);
+  // ------------------------------------------------------------- //
 
   // ----- Construct plants for FrankaKinematics ----- //
+  // FrankaKinematics is a LeafSystem that computes the LCS state from the
+  // current states of the Franka robot and all associated objects.
+  // The LCS state represents a simplified model in which the entire Franka arm
+  // is abstracted by its end effector.
 
   // Create a Franka-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_franka(0.0);
@@ -166,21 +170,12 @@ int DoMain(int argc, char* argv[]) {
           plant_franka, franka_context.get(), plant_object,
           object_context.get(), "finger_tip", "belt_element", true,
           object_names);
-  // ---------------------------------------------------  //
 
-  // LCM subscriber and receiver for target state
-  // LCM subscriber for robot state (to get LCS state via kinematics)
   auto robot_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, &lcm));
   auto robot_state_receiver =
       builder.AddSystem<dairlib::systems::RobotOutputReceiver>(plant_franka);
-
-  // LCM publisher for trajectory output
-  auto traj_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   // Wire up connections
   // Robot state -> Receiver -> Kinematics -> AssemblyController (LCS state)
@@ -190,9 +185,36 @@ int DoMain(int argc, char* argv[]) {
                   franka_kinematics->get_input_port_franka_state());
   builder.Connect(franka_kinematics->get_output_port_lcs_state(),
                   assembly_controller->get_input_port_lcs_state());
+  // ---------------------------------------------------  //
 
-  // TODO: Currently, I don't how to get state of a particular vertex of a
-  // deformable object yet.
+  // ----- Publish current/target LCS state via LCM messages ----- //
+
+  // C3StateSender is a LeafSystem that converts the LCS state to a LCM message.
+  int lcs_state_size = plant_lcs.num_positions() + plant_lcs.num_velocities();
+  std::vector<std::string> lcs_state_names;
+  for (int i = 0; i < lcs_state_size; i++) {
+    lcs_state_names.push_back("x_lcs[" + std::to_string(i) + "]");
+  }
+  auto c3_state_sender = builder.AddSystem<dairlib::systems::C3StateSender>(
+      lcs_state_size, lcs_state_names);
+  auto lcs_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto target_lcs_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(franka_kinematics->get_output_port_lcs_state(),
+                  c3_state_sender->get_input_port_actual_state());
+  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+                  lcs_state_pub->get_input_port(0));
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  target_lcs_state_pub->get_input_port(0));
+
+  // Crreate a constant source for the object state
+  // `object` in this case is one keypoint on the belt.
+  // TODO: we should subscribe and obtain state from a LCM channel.
   auto constant_object_state_vector = StateVector<double>(3, 3);
   VectorXd constant_positions(3);
   constant_positions << 0.0, 0.0, 0.0;
@@ -204,46 +226,44 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(constant_source->get_output_port(),
                   *(franka_kinematics->get_input_ports_object_state()[0]));
-  // AssemblyController -> Publisher (trajectory output)
-  builder.Connect(assembly_controller->get_output_port_traj_execute(),
-                  traj_pub->get_input_port(0));
 
-  // Constant source for x_lcs_des
-  VectorXd x_lcs_des =
+  // Create a constant source for target LCS state
+  VectorXd target_x_lcs =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
-  VectorXd x_lcs_des_positions = VectorXd::Zero(plant_lcs.num_positions());
-  x_lcs_des_positions << 0.46, 0.198, 0.031, 0.5236, 0.0, 2.094, 0.48985, -0.1,
-      0.03;
-  x_lcs_des.segment(0, plant_lcs.num_positions()) = x_lcs_des_positions;
-  auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(x_lcs_des);
+  VectorXd target_x_lcs_positions = VectorXd::Zero(plant_lcs.num_positions());
+  target_x_lcs_positions << 0.47, 0.198, 0.03, 0.349, 0.0, 2.967, 0.48985,
+      -0.1, 0.03;
+  target_x_lcs.segment(0, plant_lcs.num_positions()) = target_x_lcs_positions;
+  auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(target_x_lcs);
   builder.Connect(x_lcs_des_source->get_output_port(),
                   assembly_controller->get_input_port_target());
+  builder.Connect(x_lcs_des_source->get_output_port(),
+                  c3_state_sender->get_input_port_target_state());
+  // ------------------------------------------------------------ //
 
-  // Publish C3+ target state
-  auto lcmt_c3_state = dairlib::lcmt_c3_state();
-  lcmt_c3_state.utime = 0;
-  lcmt_c3_state.num_states = x_lcs_des.size();
-  lcmt_c3_state.state = std::vector<float>(x_lcs_des.size());
-  lcmt_c3_state.state_names = std::vector<std::string>(x_lcs_des.size());
-  for (int i = 0; i < x_lcs_des.size(); i++) {
-    lcmt_c3_state.state[i] = static_cast<float>(x_lcs_des(i));
-    lcmt_c3_state.state_names[i] = "x_lcs_des[" + std::to_string(i) + "]";
-  }
-  auto x_lcs_des_abs_source = builder.AddSystem<ConstantValueSource<double>>(
-      drake::Value<dairlib::lcmt_c3_state>(lcmt_c3_state));
-  auto c3_state_target_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_target_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  builder.Connect(x_lcs_des_abs_source->get_output_port(),
-                  c3_state_target_pub->get_input_port(0));
-
+  // ----- Publish gripper position command via LCM messages ----- //
   auto gripper_pos_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_franka_hand_target_position>(
           lcm_channel_params.franka_hand_target_position_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_gripper_pos_command(),
                   gripper_pos_command_pub->get_input_port(0));
+  // ------------------------------------------------------------- //
+
+  // ----- Publish trajectory output via LCM messages ----- //
+  auto traj_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto traj_planned_keypoints_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.planned_keypoints_trajectory_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(assembly_controller->get_output_port_traj_execute(),
+                  traj_pub->get_input_port(0));
+  builder.Connect(assembly_controller->get_output_port_traj_planned_keypoints(),
+                  traj_planned_keypoints_pub->get_input_port(0));
+  // ------------------------------------------------------------- //
 
   // Build diagram
   auto owned_diagram = builder.Build();

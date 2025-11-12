@@ -132,6 +132,12 @@ AssemblyController::AssemblyController(
                                       &AssemblyController::OutputTrajExecute)
           .get_index();
 
+  traj_planned_keypoints_port_ =
+      this->DeclareAbstractOutputPort(
+              "traj_planned_keypoints", dairlib::lcmt_timestamped_saved_traj(),
+              &AssemblyController::OutputTrajPlannedKeypoints)
+          .get_index();
+
   gripper_pos_command_port_ =
       this->DeclareAbstractOutputPort(
               "gripper_pos_command",
@@ -189,7 +195,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
 
   // Check if we have targets and if current target is valid
   if (!target_poses_.empty() && current_target_idx >= 0 &&
-      current_target_idx < static_cast<int>(target_poses_.size())) {
+      current_target_idx < static_cast<int>(target_poses_.size()) &&
+      current_phase_ == AssemblyPhase::kMoveToTarget) {
     const TargetPose& current_target_pose = target_poses_[current_target_idx];
     double target_reached_time =
         discrete_state->get_value(target_reached_time_index_)[0];
@@ -253,7 +260,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       break;
     case AssemblyPhase::kMPC:
       GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
-                            &execution_lcm_traj_);
+                            &execution_lcm_traj_, &planned_keypoints_lcm_traj_);
       break;
   }
 
@@ -561,7 +568,12 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
 
 void AssemblyController::GenerateMPCTrajectory(
     const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
-    double t_context, LcmTrajectory* traj) const {
+    double t_context, LcmTrajectory* traj,
+    LcmTrajectory* planned_keypoints_traj) const {
+  if (abs(x_lcs_curr.head(3).norm() - x_lcs_des.head(3).norm()) < 0.001) {
+    gripper_pos_command_ = 0.04;
+    return;
+  }
   // Update context to current state
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 x_lcs_curr);
@@ -603,14 +615,20 @@ void AssemblyController::GenerateMPCTrajectory(
     timestamps[i] = t_context + i * dt_;
   }
 
-  // End effector orientation (keep vertical)
+  // End effector orientation (from RPY in x_sol)
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-  Eigen::Vector4d q_vertical(1.0, 0.0, 0.0, 0.0);
   for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vertical;
+    Eigen::Vector3d rpy = x_sol[i].segment(3, 3);
+    RollPitchYaw<double> rpy_obj(rpy);
+    Quaterniond quat = rpy_obj.ToQuaternion();
+    quat.normalize();
+    Eigen::Vector4d q_vec;
+    q_vec << quat.w(), quat.x(), quat.y(), quat.z();
+    ee_orientations.col(i) = q_vec;
   }
 
   // Create trajectory
+  traj->ClearTrajectories();
   LcmTrajectory::Trajectory ee_traj;
   ee_traj.traj_name = "end_effector_position_target";
   ee_traj.datatypes = std::vector<std::string>(3, "double");
@@ -637,12 +655,33 @@ void AssemblyController::GenerateMPCTrajectory(
   force_traj.datapoints = force_samples;
   force_traj.time_vector = timestamps;
   traj->AddTrajectory(force_traj.traj_name, force_traj);
+
+  // Add planned keypoints trajectory
+  planned_keypoints_traj->ClearTrajectories();
+  LcmTrajectory::Trajectory keypoints_traj;
+  keypoints_traj.traj_name = "planned_keypoints";
+  keypoints_traj.datatypes = std::vector<std::string>(3, "double");
+  Eigen::MatrixXd keypoint_knots = Eigen::MatrixXd::Zero(3, N_);
+  for (int i = 0; i < N_; i++) {
+    keypoint_knots.col(i) = x_sol[i].segment(6, 3);
+  }
+  keypoints_traj.datapoints = keypoint_knots;
+  keypoints_traj.time_vector = timestamps;
+  planned_keypoints_traj->AddTrajectory(keypoints_traj.traj_name,
+                                        keypoints_traj);
 }
 
 void AssemblyController::OutputTrajExecute(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
   output->saved_traj = execution_lcm_traj_.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
+void AssemblyController::OutputTrajPlannedKeypoints(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const {
+  output->saved_traj = planned_keypoints_lcm_traj_.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
 }
 

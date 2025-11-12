@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/geometry/meshcat.h"
+#include "drake/geometry/rgba.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/discrete_values.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -11,17 +12,17 @@ namespace magna {
 namespace systems {
 namespace visualization {
 
-class C3BeltTargetStateDrawer : public drake::systems::LeafSystem<double> {
+class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
  public:
-  explicit C3BeltTargetStateDrawer(
+  explicit C3BeltStateDrawer(
       const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-      int num_keypoints, const int end_effector_state_size = 6,
+      int num_keypoints, bool is_target_state = false,
+      const int end_effector_state_size = 6,
       const int keypoint_state_size = 3,
-      const std::string& c3_state_path = "visualization/c3_state");
+      const std::string& c3_state_path = "c3_state");
 
-  const drake::systems::InputPort<double>& get_input_port_c3_state_target()
-      const {
-    return this->get_input_port(c3_state_target_input_port_);
+  const drake::systems::InputPort<double>& get_input_port_c3_state() const {
+    return this->get_input_port(c3_state_input_port_);
   }
 
  private:
@@ -31,9 +32,10 @@ class C3BeltTargetStateDrawer : public drake::systems::LeafSystem<double> {
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
-  drake::systems::InputPortIndex c3_state_target_input_port_;
+  drake::systems::InputPortIndex c3_state_input_port_;
 
   int num_keypoints_;
+  bool is_target_state_;
   int end_effector_state_size_;
   int keypoint_state_size_;
 
@@ -44,6 +46,15 @@ class C3BeltTargetStateDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Sphere sphere_for_keypoint_ =
       drake::geometry::Sphere(0.01);
   const std::string c3_state_path_ = "c3_belt_state";
+  
+  // Helper struct for color sets
+  struct ColorSet {
+    drake::geometry::Rgba ee_color;
+    drake::geometry::Rgba keypoint_color;
+  };
+  
+  // Get color set based on whether this is target state
+  static ColorSet GetColorSet(bool is_target_state);
 };
 }  // namespace visualization
 }  // namespace systems

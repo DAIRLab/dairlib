@@ -5,8 +5,10 @@ osc_channel: OSC_FRANKA                         # lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA             # lcmt_osc_output
 
 tracking_trajectory_actor_channel: TRACKING_TRAJECTORY_ACTOR
-radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
+radio_channel: MAGNA_RADIO                # lcmt_radio_out
 
 franka_hand_target_position_channel: FRANKA_HAND_TARGET_POSITION  # lcmt_franka_hand_target_position
 deformable_geometry_channel: DRAKE_VIEWER_DEFORMABLE
 c3_target_state_channel: C3_TARGET
+c3_actual_state_channel: C3_ACTUAL
+planned_keypoints_trajectory_channel: PLANNED_KEYPOINTS_TRAJECTORY

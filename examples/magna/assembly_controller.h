@@ -46,6 +46,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(traj_execute_port_);
   }
+  const drake::systems::OutputPort<double>&
+  get_output_port_traj_planned_keypoints() const {
+    return this->get_output_port(traj_planned_keypoints_port_);
+  }
 
   const drake::systems::OutputPort<double>&
   get_output_port_gripper_pos_command() const {
@@ -80,11 +84,15 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                         double dwell_time) const;
   void GenerateMPCTrajectory(const Eigen::VectorXd& x_lcs_curr,
                              const Eigen::VectorXd& x_lcs_des, double t_context,
-                             LcmTrajectory* traj) const;
+                             LcmTrajectory* traj,
+                             LcmTrajectory* planned_keypoints_traj) const;
 
   /// Output port function
   void OutputTrajExecute(const drake::systems::Context<double>& context,
                          dairlib::lcmt_timestamped_saved_traj* output) const;
+  void OutputTrajPlannedKeypoints(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputGripperPosCommand(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_franka_hand_target_position* output) const;
@@ -93,6 +101,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::OutputPortIndex traj_execute_port_;
+  drake::systems::OutputPortIndex traj_planned_keypoints_port_;
   drake::systems::OutputPortIndex gripper_pos_command_port_;
 
   // Plant references
@@ -138,6 +147,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   // Execution trajectory
   mutable LcmTrajectory execution_lcm_traj_;
   mutable double gripper_pos_command_ = 0.025;
+
+  // Planned keypoints trajectory
+  mutable LcmTrajectory planned_keypoints_lcm_traj_;
 
   mutable std::vector<TargetPose> target_poses_;
 

@@ -1,4 +1,4 @@
-#include "examples/magna/systems/visualization/c3_belt_target_state_drawer.h"
+#include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
 
 #include "dairlib/lcmt_c3_state.hpp"
 
@@ -22,23 +22,46 @@ using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::Vector3d;
 
-C3BeltTargetStateDrawer::C3BeltTargetStateDrawer(
+// Color sets for normal and target state
+C3BeltStateDrawer::ColorSet C3BeltStateDrawer::GetColorSet(
+    bool is_target_state) {
+  if (is_target_state) {
+    return {
+        Rgba(1.0, 0.0, 0.0, 0.3),  // Red (semi-transparent) for end-effector
+        Rgba(0.0, 1.0, 0.0, 0.3)   // Green (semi-transparent) for keypoints
+    };
+  } else {
+    return {
+        Rgba(0.0, 0.0, 1.0, 0.7),  // Blue for end-effector
+        Rgba(0.0, 0.8, 1.0, 0.7)   // Cyan for keypoints
+    };
+  }
+}
+
+C3BeltStateDrawer::C3BeltStateDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat, int num_keypoints,
-    const int end_effector_state_size, const int keypoint_state_size,
-    const std::string& c3_state_path)
+    bool is_target_state, const int end_effector_state_size,
+    const int keypoint_state_size, const std::string& c3_state_path)
     : meshcat_(meshcat),
       num_keypoints_(num_keypoints),
+      is_target_state_(is_target_state),
       end_effector_state_size_(end_effector_state_size),
       keypoint_state_size_(keypoint_state_size),
       c3_state_path_(c3_state_path) {
-  this->set_name("C3BeltTargetStateDrawer");
-  c3_state_target_input_port_ =
-      this->DeclareAbstractInputPort("lcmt_c3_state: target",
+  this->set_name(is_target_state_ ? "C3BeltStateDrawer (target)"
+                                  : "C3BeltStateDrawer");
+  std::string port_name =
+      is_target_state_ ? "lcmt_c3_state: target" : "lcmt_c3_state";
+  c3_state_input_port_ =
+      this->DeclareAbstractInputPort(port_name,
                                      drake::Value<dairlib::lcmt_c3_state>{})
           .get_index();
   last_update_time_index_ = this->DeclareDiscreteState(1);
 
   meshcat_->SetProperty(c3_state_path_, "visible", true, 0);
+
+  // Select color set based on whether this is target state or normal state
+  ColorSet colors = GetColorSet(is_target_state_);
 
   // Set up visualization objects for end-effector coordinate frames
   auto x_axis_transform_ee =
@@ -66,24 +89,27 @@ C3BeltTargetStateDrawer::C3BeltTargetStateDrawer(
     meshcat_->SetTransform(ee_path + "/z-axis", z_axis_transform_ee);
   };
 
-  // Target end-effector (semi-transparent)
-  setup_ee_visualization("c3_target_ee", {1, 0, 0, 0.3});
+  // Set up end-effector visualization with appropriate colors
+  std::string ee_suffix = is_target_state_ ? "c3_target_ee" : "c3_state_ee";
+  setup_ee_visualization(ee_suffix, colors.ee_color);
 
   // Set up visualization objects for keypoints (spheres)
+  std::string keypoint_prefix =
+      is_target_state_ ? "c3_target_material" : "c3_state_material";
   for (int i = 0; i < num_keypoints_; ++i) {
     std::string point_suffix = "/point_" + std::to_string(i);
-    meshcat_->SetObject(c3_state_path_ + "/c3_target_material" + point_suffix,
-                        sphere_for_keypoint_, {0, 1, 0, 0.3});
+    meshcat_->SetObject(c3_state_path_ + "/" + keypoint_prefix + point_suffix,
+                        sphere_for_keypoint_, colors.keypoint_color);
   }
 
-  DeclarePerStepDiscreteUpdateEvent(&C3BeltTargetStateDrawer::DrawC3State);
+  DeclarePerStepDiscreteUpdateEvent(&C3BeltStateDrawer::DrawC3State);
 }
 
-drake::systems::EventStatus C3BeltTargetStateDrawer::DrawC3State(
+drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
-  //                                                  c3_state_target_input_port_)
+  //                                                  c3_state_input_port_)
   //         ->utime < 1e-3) {
   //   return drake::systems::EventStatus::Succeeded();
   // }
@@ -95,12 +121,12 @@ drake::systems::EventStatus C3BeltTargetStateDrawer::DrawC3State(
 
   discrete_state->get_mutable_value(last_update_time_index_)[0] =
       context.get_time();
-  const auto& c3_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
-      context, c3_state_target_input_port_);
+  const auto& c3_state = this->EvalInputValue<dairlib::lcmt_c3_state>(
+      context, c3_state_input_port_);
 
-  // If no target state is provided, return success immediately to avoid
+  // If no state is provided, return success immediately to avoid
   // accessing undefined memory.
-  if (c3_target->num_states == 0) {
+  if (c3_state->num_states == 0) {
     return drake::systems::EventStatus::Succeeded();
   }
 
@@ -108,6 +134,11 @@ drake::systems::EventStatus C3BeltTargetStateDrawer::DrawC3State(
   // [0-2]: end-effector xyz position
   // [3-5]: roll-pitch-yaw angles
   // [6-8], [9-11], ...: xyz positions of keypoints (3 per point)
+
+  // Determine paths based on whether this is target state or normal state
+  std::string ee_suffix = is_target_state_ ? "c3_target_ee" : "c3_state_ee";
+  std::string keypoint_prefix =
+      is_target_state_ ? "c3_target_material" : "c3_state_material";
 
   // Draw end-effector with orientation
   auto draw_ee = [&](const std::string& suffix,
@@ -123,16 +154,16 @@ drake::systems::EventStatus C3BeltTargetStateDrawer::DrawC3State(
                              RigidTransformd(rpy.ToRotationMatrix(), ee_pos));
     }
   };
-  draw_ee("c3_target_ee", *c3_target, context.get_time());
+  draw_ee(ee_suffix, *c3_state, context.get_time());
 
   // Draw keypoints
   for (int i = 0; i < num_keypoints_; ++i) {
     int base_idx = end_effector_state_size_ + keypoint_state_size_ * i;
     std::string point_suffix = "/point_" + std::to_string(i);
-    std::string path = c3_state_path_ + "/c3_target_material" + point_suffix;
-    Vector3d kp_pos(c3_target->state.at(base_idx),
-                    c3_target->state.at(base_idx + 1),
-                    c3_target->state.at(base_idx + 2));
+    std::string path = c3_state_path_ + "/" + keypoint_prefix + point_suffix;
+    Vector3d kp_pos(c3_state->state.at(base_idx),
+                    c3_state->state.at(base_idx + 1),
+                    c3_state->state.at(base_idx + 2));
     meshcat_->SetTransform(path, RigidTransformd(kp_pos), context.get_time());
   }
 

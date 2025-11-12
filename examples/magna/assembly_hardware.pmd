@@ -1,10 +1,3 @@
-group "simulations" {
-    cmd "sim" {
-        exec = "bazel-bin/examples/magna/round_belt_sim";
-        host = "localhost";
-    }
-}
-
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer";
@@ -34,15 +27,15 @@ group "debug" {
     }
 }
 
-script "prepare"{
-    restart cmd "sim";
-    restart cmd "franka_osc";
-    wait ms 50;
+script "start_experiment"{
+    stop cmd "assembly";
+    stop cmd "franka_osc";
+    wait 100ms
+    start cmd "franka_osc";
+    start cmd "assembly";
 }
-
 
 script "end_experiment"{
     stop cmd "assembly";
     stop cmd "franka_osc";
-    stop cmd "sim";
 }

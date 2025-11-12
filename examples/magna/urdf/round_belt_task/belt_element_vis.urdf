@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot name="belt_element_vis">
+  <material name="belt_element_material">
+    <color rgba="0.0 0.6 0.0 1.0" />
+  </material>
+  <link name="belt_element_vis">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+      <material name="belt_element_material" />
+    </visual>
+  </link>
+</robot>

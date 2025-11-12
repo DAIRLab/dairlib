@@ -4,12 +4,14 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/magna/systems/visualization/c3_belt_target_state_drawer.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
 #include "examples/magna/systems/visualization/deformable_drawer.h"
 #include "parameter_headers/lcm_channel_params.h"
 #include "parameter_headers/visualizer_params.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/visualization/lcm_visualization_systems.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
@@ -30,6 +32,8 @@ namespace magna {
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
     "panda_arm_hand_with_long_fingers.urdf";
+static constexpr const char* kKeypointsVisModel =
+    "examples/magna/urdf/round_belt_task/belt_element_vis.urdf";
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -152,14 +156,48 @@ int DoMain(int argc, char* argv[]) {
       std::vector<std::pair<size_t, size_t>>{{0, 1}});
   builder.Connect(*deformable_drawer_sub, *deformable_drawer);
 
-  // Add visualization of C3+ target state
+  // Add visualization of LCS actual state
+  auto c3_state_actual_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, lcm));
+  auto c3_actual_drawer = builder.AddSystem<
+      dairlib::examples::magna::systems::visualization::C3BeltStateDrawer>(
+      meshcat, 1, false);
+  builder.Connect(c3_state_actual_sub->get_output_port(),
+                  c3_actual_drawer->get_input_port_c3_state());
+
+  // Add visualization of LCS target state
   auto c3_state_target_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, lcm));
-  auto c3_target_drawer =
-      builder.AddSystem<dairlib::examples::magna::systems::visualization::
-                            C3BeltTargetStateDrawer>(meshcat, 1);
-  builder.Connect(*c3_state_target_sub, *c3_target_drawer);
+  auto c3_target_drawer = builder.AddSystem<
+      dairlib::examples::magna::systems::visualization::C3BeltStateDrawer>(
+      meshcat, 1, true);
+  builder.Connect(c3_state_target_sub->get_output_port(),
+                  c3_target_drawer->get_input_port_c3_state());
+
+  // Add visualization of the planned MPC trajectory
+  auto planned_ee_traj_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.tracking_trajectory_actor_channel, lcm));
+  auto planned_obj_traj_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.planned_keypoints_trajectory_channel, lcm));
+  Eigen::VectorXd color(3);
+  color << 1, 0, 0;
+  auto planned_keypoints_pose_drawer =
+      builder.AddSystem<dairlib::systems::LcmPoseDrawer>(
+          meshcat, kKeypointsVisModel, "planned_keypoints", "",
+          "plans/keypoints_", 7, true, color);
+  auto planned_ee_pose_drawer =
+      builder.AddSystem<dairlib::systems::LcmPoseDrawer>(
+          meshcat, kKeypointsVisModel, "end_effector_position_target",
+          "end_effector_orientation_target", "plans/ee_", 7, true,
+          color);
+  builder.Connect(planned_obj_traj_sub->get_output_port(),
+                  planned_keypoints_pose_drawer->get_input_port_trajectory());
+  builder.Connect(planned_ee_traj_sub->get_output_port(),
+                  planned_ee_pose_drawer->get_input_port_trajectory());
 
   // Build the diagram
   auto diagram = builder.Build();

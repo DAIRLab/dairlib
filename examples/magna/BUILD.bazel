@@ -1,5 +1,6 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -59,7 +60,7 @@ cc_binary(
         "//common:find_resource",
         "//examples/magna/parameter_headers:lcm_channel_params",
         "//examples/magna/parameter_headers:visualizer_params",
-        "//examples/magna/systems/visualization:c3_belt_target_state_drawer",
+        "//examples/magna/systems/visualization:c3_belt_state_drawer",
         "//examples/magna/systems/visualization:deformable_drawer",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
@@ -142,6 +143,19 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
+        "//systems/senders:c3_state_sender",
         "@gflags",
+    ],
+)
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )

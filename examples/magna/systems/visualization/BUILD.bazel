@@ -3,12 +3,12 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "c3_belt_target_state_drawer",
+    name = "c3_belt_state_drawer",
     srcs = [
-        "c3_belt_target_state_drawer.cc",
+        "c3_belt_state_drawer.cc",
     ],
     hdrs = [
-        "c3_belt_target_state_drawer.h",
+        "c3_belt_state_drawer.h",
     ],
     deps = [
         "//lcmtypes:lcmt_robot",

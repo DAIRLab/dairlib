@@ -5,7 +5,7 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "kinematic",
+    name = "evaluators",
     srcs = [
         "distance_evaluator.cc",
         "fixed_joint_evaluator.cc",
@@ -36,10 +36,18 @@ cc_library(
         "kinematic_constraints.h",
     ],
     deps = [
-        ":kinematic",
+        ":evaluators",
         "//multibody:utils",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "kinematic",
+    deps = [
+        ":evaluators",
+        ":constraints",
     ],
 )
 
@@ -69,4 +77,12 @@ cc_test(
         "@drake//common/test_utilities",
         "@gtest//:main",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

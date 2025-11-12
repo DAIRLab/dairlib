@@ -46,6 +46,13 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "lcm",
+    deps = [
+        ":trajectory_saver",
+    ],
+)
+
 cc_test(
     name = "lcm_trajectory_saver_test",
     size = "small",
@@ -55,4 +62,12 @@ cc_test(
         "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

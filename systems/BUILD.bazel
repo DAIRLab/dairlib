@@ -1,6 +1,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "systems",
+    deps = [
+        ":franka_kinematics",
+        ":franka_kinematics_vector",
+        ":franka_state_translator",
+        ":franka_target_joint_position_receiver",
+        ":robot_lcm_systems",
+        ":vector_scope",
+        ":system_utils",
+        "//systems/controllers:controllers",
+        "//systems/filters:filters",
+        "//systems/framework:framework",
+        "//systems/primitives:primitives",
+        "//systems/trajectory_optimization:trajectory_optimization",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "robot_lcm_systems",
     srcs = ["robot_lcm_systems.cc"],
     hdrs = [
@@ -86,4 +105,12 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

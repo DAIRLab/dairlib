@@ -3,6 +3,30 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "controllers",
+    deps = [
+        ":controllers_all",
+        ":c3_systems",
+        ":sampling_c3_controller",
+        ":pd_config_lcm",
+        ":lipm_traj_gen",
+        ":alip_traj_gen",
+        ":swing_ft_traj_gen",
+        ":alip_swing_ft_traj_gen",
+        ":safe_velocity_controller",
+        ":endeffector_position_controller",
+        ":endeffector_velocity_controller",
+        ":affine_controller",
+        ":constrained_lqr_controller",
+        ":gravity_compensator",
+        ":linear_controller",
+        ":time_based_fsm",
+        ":controller_failure_aggregator",
+        ":fsm_event_time",
+    ],
+)
+
+cc_library(
     name = "controllers_all",
     srcs = [],
     deps = [
@@ -39,7 +63,7 @@ cc_library(
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
     deps = [
-        ":controllers",
+        ":linear_controller",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
@@ -184,15 +208,7 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "controllers",
-    deps = [
-        ":affine_controller",
-        ":constrained_lqr_controller",
-        ":gravity_compensator",
-        ":linear_controller",
-    ],
-)
+
 
 cc_test(
     name = "affine_controller_test",
@@ -318,4 +334,12 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

@@ -8,6 +8,8 @@ cc_library(
         ":eigen_utils",
         ":file_utils",
         ":find_resource",
+        ":quaternion_error_hessian",
+        ":update_context",
         "@drake//:drake_shared_library",
     ],
 )
@@ -99,4 +101,13 @@ cc_library(
         "@drake//:drake_shared_library",
         "//multibody:utils",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

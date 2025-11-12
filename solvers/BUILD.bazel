@@ -4,6 +4,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "solvers",
+    deps = [
+        ":c3",
+        ":c3_output",
+        ":lcs",
+        ":constraints",
+        ":solver_options_io",
+        ":fast_osqp_solver",
+        ":nonlinear_constraint",
+        ":nonlinear_cost",
+        ":optimization_utils",
+        ":cost_function_utils",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "constraints",
     deps = [
         ":constraint_factory",
@@ -171,4 +190,13 @@ cc_test(
         "@drake//common/test_utilities:eigen_matrix_compare",
         "@gtest//:main",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

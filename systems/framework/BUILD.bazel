@@ -75,3 +75,20 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "framework",
+    deps = [
+        ":vector",
+        ":geared_motor",
+        ":lcm_driven_loop",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+)

@@ -5,6 +5,22 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "multibody",
+    deps = [
+        ":multibody_solvers",
+        ":utils",
+        ":visualization_utils",
+        ":multipose_visualizer",
+        ":view_frame",
+        ":ball_urdf",
+        ":geom_geom_collider",
+        ":hydroelastic_geom_collider",
+        "//multibody/kinematic:kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "multibody_solvers",
     srcs = [
         "multibody_solvers.cc",
@@ -135,4 +151,13 @@ cc_library(
         "//common",
         "@drake//:drake_shared_library",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

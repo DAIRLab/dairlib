@@ -78,6 +78,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "trajectory_optimization",
+    deps = [
+        ":dircon",
+        ":dircon_kinematic_data",
+        ":lcm_trajectory_systems",
+        ":c3_output_systems",
+    ],
+)
+
 cc_binary(
     name = "passive_constrained_pendulum_dircon",
     srcs = ["test/passive_constrained_pendulum_dircon.cc"],
@@ -90,4 +100,12 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

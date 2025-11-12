@@ -36,3 +36,21 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "filters",
+    deps = [
+        ":output_vector_filter",
+        ":floating_base_velocity_filter",
+        ":s2s_kalman_filter",
+        ":linear_kalman_filter",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+)

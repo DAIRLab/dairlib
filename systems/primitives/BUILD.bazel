@@ -8,7 +8,7 @@ load(
 )
 
 cc_library(
-    name = "primitives",
+    name = "pass_throughs",
     srcs = [
         "subvector_pass_through.cc",
         "timestamped_subvector_pass_through.cc",
@@ -22,6 +22,16 @@ cc_library(
     deps = [
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "primitives",
+    deps = [
+        ":pass_throughs",
+        ":vector_aggregator",
+        ":radio_parser",
+        ":gaussian_noise_pass_through",
     ],
 )
 
@@ -92,4 +102,12 @@ cc_test(
         "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

@@ -1,0 +1,18 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "fake_belt_state_estimator",
+    srcs = [
+        "fake_belt_state_estimator.cc",
+    ],
+    hdrs = [
+        "fake_belt_state_estimator.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

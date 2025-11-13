@@ -55,7 +55,7 @@ int DoMain(int argc, char* argv[]) {
   // --------------------- Load parameters ---------------------- //
   MagnaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels_simulation.yaml");
+          "examples/magna/parameters/lcm_channels.yaml");
 
   AssemblyC3Options assembly_c3_options =
       drake::yaml::LoadYamlFile<AssemblyC3Options>(

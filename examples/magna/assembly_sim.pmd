@@ -35,8 +35,14 @@ group "debug" {
 }
 
 script "prepare"{
-    restart cmd "sim";
-    restart cmd "franka_osc";
+    stop cmd "sim";
+    stop cmd "franka_osc";
+    stop cmd "assembly";
+    stop cmd "visualizer";
+    wait ms 50;
+    start cmd "sim";
+    start cmd "franka_osc";
+    start cmd "visualizer";
     wait ms 50;
 }
 

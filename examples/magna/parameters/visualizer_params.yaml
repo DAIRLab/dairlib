@@ -1,3 +1,4 @@
+belt_keypoint_model: "examples/magna/urdf/round_belt_task/belt_element_vis.urdf"
 visualizer_publish_rate: 30
-camera_pose: [1.5, 0, 0.6]
-camera_target: [0.5, 0, 0.5]
+camera_pose: [1.06637, 0.370232, 0.532658]
+camera_target: [0.675983, 0.179862, 0.284954]

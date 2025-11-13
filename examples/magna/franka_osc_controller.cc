@@ -71,7 +71,7 @@ int DoMain(int argc, char* argv[]) {
       "examples/magna/parameters/osc_params.yaml");
   MagnaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels_simulation.yaml");
+          "examples/magna/parameters/lcm_channels.yaml");
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<dairlib::solvers::SolverOptionsFromYaml>(
           dairlib::FindResourceOrThrow(

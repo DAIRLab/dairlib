@@ -4,5 +4,4 @@ publish_efforts: true
 object_publish_rate: 20
 dt: 0.005
 realtime_rate: 1
-# q_init_franka: [1.2822, 0.29, -1.40629, -1.8419, 0.30038, 2.39, 0.57512, 0, 0]
 q_init_franka: [1.26586, 0.26177, -1.37662, -1.84435, 0.270286, 1.885057, 0.595887, 0, 0]

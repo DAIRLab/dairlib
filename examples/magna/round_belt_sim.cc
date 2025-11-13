@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
       "examples/magna/parameters/sim_params.yaml");
   MagnaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels_simulation.yaml");
+          "examples/magna/parameters/lcm_channels.yaml");
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] =

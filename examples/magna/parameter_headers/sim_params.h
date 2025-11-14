@@ -11,6 +11,7 @@ struct MagnaSimParams {
   double object_publish_rate;
   bool publish_efforts;
   Eigen::VectorXd q_init_franka;
+  Eigen::VectorXd q_init_franka_hand;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -21,5 +22,6 @@ struct MagnaSimParams {
     a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(q_init_franka));
+    a->Visit(DRAKE_NVP(q_init_franka_hand));
   }
 };

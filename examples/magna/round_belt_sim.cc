@@ -12,6 +12,7 @@
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
@@ -30,7 +31,10 @@ namespace magna {
 
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
-    "panda_arm_hand_with_long_fingers.urdf";
+    "panda_arm.urdf";
+static constexpr const char* kFrankaHand =
+    "package://drake_models/franka_description/urdf/"
+    "panda_hand_with_long_fingers.urdf";
 
 using dairlib::systems::AddActuationRecieverAndStateSenderLcm;
 using drake::math::RigidTransform;
@@ -91,7 +95,7 @@ void FindKeyVertices(const drake::multibody::MultibodyPlant<double>& plant,
 
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_double(timestep, 5e-3, "Desired duration of the simulation [s].");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   MagnaSimParams sim_params = drake::yaml::LoadYamlFile<MagnaSimParams>(
@@ -102,7 +106,7 @@ int DoMain(int argc, char* argv[]) {
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] =
-      AddMultibodyPlantSceneGraph(&builder, FLAGS_timestep);
+      AddMultibodyPlantSceneGraph(&builder, sim_params.dt);
 
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
@@ -133,6 +137,16 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
+  // Add franka hand model and attach it to the franka arm
+  RigidTransform<double> franka_hand_pose_wrt_panda_link8 =
+      RigidTransform<double>(
+          drake::math::RollPitchYaw<double>(0, 0, -0.785398163397),
+          drake::Vector3<double>(0.0, 0.0, 0.0));
+  ModelInstanceIndex franka_hand_index =
+      parser.AddModelsFromUrl(kFrankaHand)[0];
+  plant.WeldFrames(plant.GetFrameByName("panda_link8"),
+                   plant.GetFrameByName("panda_hand", franka_hand_index),
+                   franka_hand_pose_wrt_panda_link8);
 
   // Add round belt model
   ModelInstanceIndex round_belt_index = parser.AddModels(
@@ -147,6 +161,12 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
+
+  AddActuationRecieverAndStateSenderLcm(
+      &builder, plant, lcm, lcm_channel_params.franka_hand_input_channel,
+      lcm_channel_params.franka_hand_state_channel,
+      sim_params.franka_publish_rate, franka_hand_index,
+      sim_params.publish_efforts, sim_params.actuator_delay);
 
   /* Add a visualizer that emits LCM messages for visualization. */
   drake::geometry::DrakeVisualizerParams params;

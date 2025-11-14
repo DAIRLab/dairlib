@@ -145,9 +145,10 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      bool publish_velocities = true,
       drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+          drake::multibody::default_model_instance());
 
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant);
@@ -180,6 +181,9 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
+  explicit RobotInputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance);
 
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,

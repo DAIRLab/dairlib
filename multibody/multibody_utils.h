@@ -103,6 +103,12 @@ template <typename T>
 std::map<std::string, int> MakeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+// Given a MultiBodyPlant and a model instance index, builds a map from actuator name to actuator index
+template <typename T>
+std::map<std::string, int> MakeNameToActuatorsMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
+
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
 template <typename T>

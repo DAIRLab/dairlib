@@ -101,7 +101,7 @@ cc_library(
     }),
     linkopts = select({
         "@platforms//os:macos": ["-lomp"],
-        "//conditions:default": [],
+        "//conditions:default": ["-lgomp"],
     }),
     deps = [
         ":face",

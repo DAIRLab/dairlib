@@ -1,6 +1,6 @@
 #pragma once
 
-#include "drake/systems/framework/basic_vector.h"
+#include "dairlib/lcmt_robot_output.hpp"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -9,13 +9,13 @@ namespace magna {
 namespace systems {
 namespace franka_hand {
 
-class FrankaHandStateReceiver : public drake::systems::LeafSystem<double> {
+class FrankaHandStatusBridgeOut : public drake::systems::LeafSystem<double> {
  public:
-  explicit FrankaHandStateReceiver();
+  explicit FrankaHandStatusBridgeOut();
 
  private:
   void OutputFrankaHandState(const drake::systems::Context<double>& context,
-                             drake::systems::BasicVector<double>* output) const;
+                             dairlib::lcmt_robot_output* output) const;
 
   drake::systems::InputPortIndex franka_hand_state_input_port_;
   drake::systems::OutputPortIndex franka_hand_state_output_port_;

@@ -3,15 +3,14 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "franka_hand_status_bridge_out",
+    name = "simulation_utils",
     srcs = [
-        "franka_hand_status_bridge_out.cc",
+        "simulation_utils.cc",
     ],
     hdrs = [
-        "franka_hand_status_bridge_out.h",
+        "simulation_utils.h",
     ],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )

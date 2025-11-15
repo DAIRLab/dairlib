@@ -6,13 +6,14 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/systems/framework/leaf_system.h>
 
-#include "dairlib/lcmt_franka_hand_target_position.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
 #include "parameter_headers/target_poses.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
+
+#include "drake/lcmt_schunk_wsg_command.hpp"
 
 namespace dairlib {
 namespace examples {
@@ -93,9 +94,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   void OutputTrajPlannedKeypoints(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
-  void OutputGripperPosCommand(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_franka_hand_target_position* output) const;
+  void OutputGripperPosCommand(const drake::systems::Context<double>& context,
+                               drake::lcmt_schunk_wsg_command* output) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;

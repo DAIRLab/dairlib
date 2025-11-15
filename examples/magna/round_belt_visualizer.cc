@@ -5,7 +5,7 @@
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/magna/systems/franka_hand/franka_hand_state_receiver.h"
+#include "examples/magna/systems/franka_hand/franka_hand_status_bridge_out.h"
 #include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
 #include "examples/magna/systems/visualization/deformable_drawer.h"
 #include "parameter_headers/lcm_channel_params.h"
@@ -31,17 +31,17 @@ namespace dairlib {
 namespace examples {
 namespace magna {
 
-static constexpr const char* kFrankaModelWithHandActuation =
+static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
-    "panda_arm_hand_with_long_fingers.urdf";
-static constexpr const char* kFrankaModelWithoutHandActuation =
+    "panda_arm.urdf";
+static constexpr const char* kFrankaHand =
     "package://drake_models/franka_description/urdf/"
-    "panda_arm_hand_with_fixed_long_fingers.urdf";
+    "panda_hand_with_long_fingers.urdf";
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::examples::magna::systems::franka_hand::FrankaHandStateReceiver;
+using dairlib::examples::magna::systems::franka_hand::FrankaHandStatusBridgeOut;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
@@ -107,27 +107,22 @@ int DoMain(int argc, char* argv[]) {
                        task_board_pose);
 
   // Add franka arm model
-  ModelInstanceIndex franka_index =
-      parser.AddModelsFromUrl(kFrankaModelWithHandActuation)[0];
+  ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
   plant_vis.WeldFrames(plant_vis.world_frame(),
                        plant_vis.GetFrameByName("panda_link0"), X_WI);
-  plant_vis.Finalize();
 
-  // ----- Create plant for receiving state -----
-  // - Simulation: state includes arm + hand (dim 9), use plant with hand
-  // - Hardware: arm state (dim 7) and hand state (dim 2) are separate, use
-  // plant without hand
-  MultibodyPlant<double> plant_for_state_receiving(0.0);
-  Parser parser_for_state_receiving(&plant_for_state_receiving, nullptr);
-  parser_for_state_receiving.SetAutoRenaming(true);
-  ModelInstanceIndex franka_state_receiving_index;
-  franka_state_receiving_index = parser_for_state_receiving.AddModelsFromUrl(
-      FLAGS_is_simulation ? kFrankaModelWithHandActuation
-                          : kFrankaModelWithoutHandActuation)[0];
-  plant_for_state_receiving.WeldFrames(
-      plant_for_state_receiving.world_frame(),
-      plant_for_state_receiving.GetFrameByName("panda_link0"), X_WI);
-  plant_for_state_receiving.Finalize();
+  // Add franka hand model and attach it to the franka arm
+  RigidTransform<double> franka_hand_pose_wrt_panda_link8 =
+      RigidTransform<double>(
+          drake::math::RollPitchYaw<double>(0, 0, -0.785398163397),
+          drake::Vector3<double>(0.0, 0.0, 0.0));
+  ModelInstanceIndex franka_hand_index =
+      parser.AddModelsFromUrl(kFrankaHand)[0];
+  plant_vis.WeldFrames(
+      plant_vis.GetFrameByName("panda_link8"),
+      plant_vis.GetFrameByName("panda_hand", franka_hand_index),
+      franka_hand_pose_wrt_panda_link8);
+  plant_vis.Finalize();
 
   // ----- Construct LCM subscriber to the franka state -----
   auto lcm =
@@ -135,55 +130,51 @@ int DoMain(int argc, char* argv[]) {
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, lcm));
-  auto franka_state_receiver = builder.AddSystem<RobotOutputReceiver>(
-      plant_for_state_receiving, franka_state_receiving_index);
+  auto franka_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant_vis, franka_index);
   builder.Connect(*franka_state_sub, *franka_state_receiver);
 
-  // ----- Only for Hardware -----
-  // Combine arm state (7 dims) and hand state (2 dims) for visualization
-  SubvectorPassThrough<double>* franka_passthrough_for_vis = nullptr;
-  if (!FLAGS_is_simulation) {
+  auto franka_hand_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant_vis, franka_hand_index);
+  if (FLAGS_is_simulation) {
+    auto franka_hand_state_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+            lcm_channel_params.franka_hand_state_channel, lcm));
+    builder.Connect(franka_hand_state_sub->get_output_port(),
+                    franka_hand_state_receiver->get_input_port());
+  } else {
     auto franka_hand_state_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_schunk_wsg_status>(
             lcm_channel_params.franka_hand_state_channel, lcm));
-    auto franka_hand_state_receiver =
-        builder.AddSystem<FrankaHandStateReceiver>();
-
-    // Combine arm (7) + hand (2) = 9 for visualization
-    auto franka_combined_mux =
-        builder.AddSystem<Multiplexer<double>>(std::vector<int>{
-            plant_for_state_receiving.num_positions(
-                franka_state_receiving_index),
-            franka_hand_state_receiver->get_output_port(0).size()});
-
-    // Extract only positions from arm state for visualization (7 positions)
-    auto franka_arm_positions_passthrough =
-        builder.AddSystem<SubvectorPassThrough>(
-            franka_state_receiver->get_output_port(0).size(), 0,
-            plant_for_state_receiving.num_positions(
-                franka_state_receiving_index));
-
+    auto franka_hand_status_bridge_out =
+        builder.AddSystem<FrankaHandStatusBridgeOut>();
     builder.Connect(franka_hand_state_sub->get_output_port(),
+                    franka_hand_status_bridge_out->get_input_port());
+    builder.Connect(franka_hand_status_bridge_out->get_output_port(),
                     franka_hand_state_receiver->get_input_port());
-    builder.Connect(*franka_state_receiver, *franka_arm_positions_passthrough);
-    builder.Connect(franka_arm_positions_passthrough->get_output_port(),
-                    franka_combined_mux->get_input_port(0));
-    builder.Connect(franka_hand_state_receiver->get_output_port(),
-                    franka_combined_mux->get_input_port(1));
-
-    // Create passthrough for combined state to visualization
-    franka_passthrough_for_vis =
-        builder.AddSystem<SubvectorPassThrough<double>>(
-            franka_combined_mux->get_output_port(0).size(), 0,
-            plant_vis.num_positions(franka_index));
-    builder.Connect(franka_combined_mux->get_output_port(),
-                    franka_passthrough_for_vis->get_input_port());
-  } else {
-    franka_passthrough_for_vis = builder.AddSystem<SubvectorPassThrough>(
-        franka_state_receiver->get_output_port(0).size(), 0,
-        plant_vis.num_positions(franka_index));
-    builder.Connect(*franka_state_receiver, *franka_passthrough_for_vis);
   }
+
+  // Extract arm and hand positions for visualization (7 dims for arm, 2 dims
+  // for hand), then combine them and send to the visualization system.
+  auto franka_combined_mux = builder.AddSystem<Multiplexer<double>>(
+      std::vector<int>{plant_vis.num_positions(franka_index),
+                       plant_vis.num_positions(franka_hand_index)});
+  auto franka_arm_positions_passthrough =
+      builder.AddSystem<SubvectorPassThrough>(
+          franka_state_receiver->get_output_port(0).size(), 0,
+          plant_vis.num_positions(franka_index));
+  auto franka_hand_positions_passthrough =
+      builder.AddSystem<SubvectorPassThrough>(
+          franka_hand_state_receiver->get_output_port(0).size(), 0,
+          plant_vis.num_positions(franka_hand_index));
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  franka_arm_positions_passthrough->get_input_port());
+  builder.Connect(franka_hand_state_receiver->get_output_port(),
+                  franka_hand_positions_passthrough->get_input_port());
+  builder.Connect(franka_arm_positions_passthrough->get_output_port(),
+                  franka_combined_mux->get_input_port(0));
+  builder.Connect(franka_hand_positions_passthrough->get_output_port(),
+                  franka_combined_mux->get_input_port(1));
 
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant_vis);
@@ -201,7 +192,7 @@ int DoMain(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
-  builder.Connect(franka_passthrough_for_vis->get_output_port(),
+  builder.Connect(franka_combined_mux->get_output_port(),
                   to_pose->get_input_port());
   builder.Connect(
       to_pose->get_output_port(),
@@ -270,11 +261,17 @@ int DoMain(int argc, char* argv[]) {
   dairlib::DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
 
-  auto& franka_state_sub_context =
-      diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
-
+  // Initialize the franka state receiver
+  auto& franka_state_sub_context = diagram->GetMutableSubsystemContext(
+      *franka_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
-      plant_for_state_receiving, franka_state_sub_context);
+      plant_vis, franka_state_sub_context);
+
+//   auto& franka_hand_state_receiver_context =
+//       diagram->GetMutableSubsystemContext(*franka_hand_state_receiver,
+//                                           context.get());
+//   franka_hand_state_receiver->InitializeSubscriberPositions(
+//       plant_vis, franka_hand_state_receiver_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
@@ -284,8 +281,7 @@ int DoMain(int argc, char* argv[]) {
   simulator->set_publish_at_initialization(false);
   simulator->set_target_realtime_rate(1.0);
   simulator->Initialize();
-  drake::log()->info("Visualizer for {} setting started",
-                     FLAGS_is_simulation ? "simulation" : "hardware");
+  drake::log()->info("Visualizer started");
   simulator->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;

@@ -21,6 +21,10 @@ group "controllers" {
         exec = "bazel-bin/examples/magna/franka_osc_controller";
         host = "localhost";
     }
+    cmd "hand_osc" {
+        exec = "bazel-bin/examples/magna/franka_hand_osc_controller";
+        host = "localhost";
+    }
     cmd "assembly" {
         exec = "bazel-bin/examples/magna/run_assembly_controller";
         host = "localhost";
@@ -37,11 +41,13 @@ group "debug" {
 script "prepare"{
     stop cmd "sim";
     stop cmd "franka_osc";
+    stop cmd "hand_osc";
     stop cmd "assembly";
     stop cmd "visualizer";
     wait ms 50;
-    start cmd "sim";
     start cmd "franka_osc";
+    start cmd "hand_osc";
+    start cmd "sim";
     start cmd "visualizer";
     wait ms 50;
 }
@@ -50,5 +56,6 @@ script "prepare"{
 script "end_experiment"{
     stop cmd "assembly";
     stop cmd "franka_osc";
+    stop cmd "hand_osc";
     stop cmd "sim";
 }

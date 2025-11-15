@@ -10,6 +10,8 @@
 #include "examples/magna/parameter_headers/target_poses.h"
 #include "systems/framework/timestamped_vector.h"
 
+#include "drake/lcmt_schunk_wsg_command.hpp"
+
 #define POSITION_TOLERANCE 0.005
 #define POSITION_TOLERANCE_CIRCULAR_ARC 0.01
 #define ORIENTATION_TOLERANCE 0.1  // radians (approximately 5.7 degrees)
@@ -140,8 +142,7 @@ AssemblyController::AssemblyController(
 
   gripper_pos_command_port_ =
       this->DeclareAbstractOutputPort(
-              "gripper_pos_command",
-              dairlib::lcmt_franka_hand_target_position(),
+              "gripper_pos_command", drake::lcmt_schunk_wsg_command(),
               &AssemblyController::OutputGripperPosCommand)
           .get_index();
 
@@ -687,9 +688,9 @@ void AssemblyController::OutputTrajPlannedKeypoints(
 
 void AssemblyController::OutputGripperPosCommand(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_franka_hand_target_position* output) const {
+    drake::lcmt_schunk_wsg_command* output) const {
   output->utime = context.get_time() * 1e6;
-  output->hand_target_position[0] = gripper_pos_command_;
+  output->target_position_mm = gripper_pos_command_ * 1000.0;
 }
 
 }  // namespace magna

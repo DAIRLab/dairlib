@@ -60,7 +60,7 @@ cc_binary(
         "//common:find_resource",
         "//examples/magna/parameter_headers:lcm_channel_params",
         "//examples/magna/parameter_headers:visualizer_params",
-        "//examples/magna/systems/franka_hand:franka_hand_state_receiver",
+        "//examples/magna/systems/franka_hand:franka_hand_status_bridge_out",
         "//examples/magna/systems/visualization:c3_belt_state_drawer",
         "//examples/magna/systems/visualization:deformable_drawer",
         "//lcmtypes:lcmt_robot",
@@ -101,6 +101,30 @@ cc_binary(
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_hand_osc_controller",
+    srcs = [
+        "franka_hand_osc_controller.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:osc_params",
+        "//examples/magna/systems/utils:simulation_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

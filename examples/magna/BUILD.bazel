@@ -82,10 +82,14 @@ cc_binary(
         ":urdfs",
         "@drake_models//:franka_description",
     ],
-    linkopts = [
-        "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
-    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
     deps = [
         "//common",
         "//examples/magna/parameter_headers:lcm_channel_params",

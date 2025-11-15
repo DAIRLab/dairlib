@@ -1,6 +1,9 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -24,28 +27,36 @@ cc_library(
     srcs = [
         "base_c3.cc",
         "c3_miqp.cc",
-        "c3_qp.cc",
         "c3_plus.cc",
+        "c3_qp.cc",
     ],
     hdrs = [
         "base_c3.h",
         "c3_miqp.h",
         "c3_options.h",
-        "c3_qp.h",
         "c3_plus.h",
+        "c3_qp.h",
     ],
-    copts = [
-        "-fopenmp",
-    ],
-    linkopts = [
-        "-fopenmp",
-    ],
+    copts = select({
+        "@platforms//os:macos": [
+            "-Xclang",
+            "-fopenmp",
+        ],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    linkopts = select({
+        "@platforms//os:macos": ["-lomp"],
+        "//conditions:default": [],
+    }),
     deps = [
         ":lcs",
         "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
-    ],
+    ] + select({
+        "@platforms//os:macos": ["@libomp"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

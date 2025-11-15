@@ -11,13 +11,14 @@ drake_dep_repositories = use_extension(
 # If you don't want to support building on macOS, you may remove the next line.
 # Note that it must appear prior to loading "rules_cc", per the documentation:
 #  https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
-bazel_dep(name = "apple_support", version = "1.17.1")
+bazel_dep(name = "apple_support", version = "1.23.1")
 
 # Add the Bazel rules we need.
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "rules_python", version = "1.2.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "platforms", version = "1.0.0")
 
 use_repo(
     drake_dep_repositories,
@@ -136,6 +137,10 @@ use_repo(mujoco_extension, "mujoco")
 
 # glfw dependency for mujoco
 bazel_dep(name = "glfw", version = "3.3.9.bcr.1")
+
+# libomp for OpenMP on macOS
+libomp_extension = use_extension("@dairlib//tools/workspace/libomp:repository.bzl", "libomp_extension")
+use_repo(libomp_extension, "libomp")
 
 # Hedron's Compile Commands Extractor for Bazel
 # https://github.com/hedronvision/bazel-compile-commands-extractor

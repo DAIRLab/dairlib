@@ -59,6 +59,14 @@ build:omp --copt=-DEIGEN_DONT_PARALLELIZE
 build:omp --copt=-fopenmp
 build:omp --linkopt=-fopenmp
 
+# macOS-specific OpenMP configuration (use libomp from Homebrew)
+build:omp_macos --copt=-DEIGEN_DONT_PARALLELIZE
+build:omp_macos --copt=-Xclang
+build:omp_macos --copt=-fopenmp
+build:omp_macos --action_env=CPATH=/opt/homebrew/opt/libomp/include
+build:omp_macos --action_env=LIBRARY_PATH=/opt/homebrew/opt/libomp/lib
+build --java_runtime_version=remotejdk_11
+
 # use python3 by default
 build --python_path=python3
 

@@ -39,10 +39,14 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    linkopts = [
-        "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
-    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(
@@ -69,10 +73,14 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    linkopts = [
-        "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
-    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(
@@ -141,10 +149,14 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    linkopts = [
-        "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
-    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(
@@ -225,10 +237,15 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    linkopts = [
-        "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
-    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
+
 )
 
 cc_library(

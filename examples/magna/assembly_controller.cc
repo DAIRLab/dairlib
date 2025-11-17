@@ -690,7 +690,7 @@ void AssemblyController::OutputGripperPosCommand(
     const drake::systems::Context<double>& context,
     drake::lcmt_schunk_wsg_command* output) const {
   output->utime = context.get_time() * 1e6;
-  output->target_position_mm = gripper_pos_command_ * 1000.0;
+  output->target_position_mm = gripper_pos_command_ * 2000.0;
 }
 
 }  // namespace magna

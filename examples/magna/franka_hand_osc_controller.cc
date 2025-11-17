@@ -100,8 +100,8 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.osc_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto joint_position_tracking_data = std::make_unique<JointSpaceTrackingData>(
-      "hand_joint_position_target", Eigen::MatrixXd::Identity(2, 2) * 500,
-      Eigen::MatrixXd::Identity(2, 2) * 20, Eigen::MatrixXd::Identity(2, 2),
+      "hand_joint_position_target", Eigen::MatrixXd::Identity(2, 2) * 215,
+      Eigen::MatrixXd::Identity(2, 2) * 10, Eigen::MatrixXd::Identity(2, 2),
       plant, plant);
   std::vector<std::string> finger_position_names = {"panda_finger_joint1",
                                                     "panda_finger_joint2"};

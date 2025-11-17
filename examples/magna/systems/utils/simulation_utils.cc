@@ -2,7 +2,6 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/lcmt_schunk_wsg_command.hpp"
-#include "drake/lcmt_schunk_wsg_status.hpp"
 
 namespace dairlib {
 namespace examples {
@@ -10,7 +9,6 @@ namespace magna {
 namespace systems {
 namespace simulation_utils {
 
-using drake::lcmt_schunk_wsg_status;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using drake::trajectories::PiecewisePolynomial;
@@ -44,7 +42,7 @@ void FrankaHandCommandToTrajectory::CalcHandPositionTrajectory(
       input->get_value<drake::lcmt_schunk_wsg_command>();
   MatrixXd finger_offsets(2, 1);
   // Convert from mm to m and from gripper width to finger offsets
-  finger_offsets << franka_hand_command.target_position_mm / 2000.0,
+  finger_offsets << -franka_hand_command.target_position_mm / 2000.0,
       franka_hand_command.target_position_mm / 2000.0;
   *casted_traj = PiecewisePolynomial<double>(finger_offsets);
 }

@@ -1,4 +1,6 @@
-"""Teleop test to interact with a Drake FEM model."""
+"""Teleop test to interact with 1) a Drake FEM model, 2) a manually-constructed
+spring-damper system, and 3) a manually-constructed 1D elastoplastic made out of
+a frictional slider and spring-damper."""
 
 import numpy as np
 import os.path as op
@@ -41,6 +43,8 @@ import dairlib
 # Constants.
 EXAMPLE_DIR = "/mnt/data0/bibit/dairlib/examples/deform"
 POINT_MODEL = op.join(EXAMPLE_DIR, "models", "small_xyz_point.urdf")
+PLANAR_BLOCK_MODEL = op.join(EXAMPLE_DIR, "models", "planar_block.urdf")
+ONE_D_BLOCK_MODEL = op.join(EXAMPLE_DIR, "models", "one_d_block.urdf")
 kSimpleEEModel = op.join(EXAMPLE_DIR, "models", "ee_flat.urdf")
 # kSimpleEEModel = (
 #     "/mnt/data0/bibit/dairlib/examples/sampling_c3/urdf/"
@@ -68,7 +72,7 @@ VERTEX_POSITIONS = RADIUS * np.array(
         [0, 0, -1],
     ]
 )
-VERTEX_POSITIONS[:, 2] += RADIUS * 1.5
+VERTEX_POSITIONS[:] += np.array([0, -0.2, RADIUS * 1.5])
 VERTEX_CONNECTIONS = [
     (5, 1),
     (5, 2),
@@ -91,6 +95,9 @@ VERTEX_CONNECTIONS = [
 ]
 SPRING_STIFFNESS = 1e2
 DAMPING_COEFFICIENT = 1e0
+ELASTOPLASTIC_FREE_LENGTH = 0.1
+ELASTOPLASTIC_STIFFNESS = 1e2
+ELASTOPLASTIC_DAMPING = 1e0
 
 
 # Function definitions.
@@ -180,7 +187,6 @@ for i, _ in enumerate(VERTEX_POSITIONS):
     )
 for i, j in VERTEX_CONNECTIONS:
     free_length = np.linalg.norm(VERTEX_POSITIONS[i] - VERTEX_POSITIONS[j])
-    print(free_length)
     body_i = plant.GetBodyByName("pt", body_idxs[i])
     body_j = plant.GetBodyByName("pt", body_idxs[j])
     plant.AddForceElement(
@@ -195,7 +201,32 @@ for i, j in VERTEX_CONNECTIONS:
         )
     )
 
-# Step 5:  Add PD controllers to the EE actuators so teleop is simple.
+# Step 5:  Add a one-dimensional "elasto-plastic" object.
+frictional_slider = parser.AddModels(PLANAR_BLOCK_MODEL)[0]
+springy_contact = parser.AddModels(ONE_D_BLOCK_MODEL)[0]
+plant.WeldFrames(
+    plant.world_frame(),
+    plant.GetFrameByName("base_link", frictional_slider),
+    RigidTransform(),
+)
+plant.WeldFrames(
+    plant.world_frame(),
+    plant.GetFrameByName("base_link", springy_contact),
+    RigidTransform(),
+)
+plant.AddForceElement(
+    LinearSpringDamper(
+        bodyA=plant.GetBodyByName("planar_block", frictional_slider),
+        p_AP=np.zeros(3),
+        bodyB=plant.GetBodyByName("one_d_block", springy_contact),
+        p_BQ=np.zeros(3),
+        free_length=ELASTOPLASTIC_FREE_LENGTH,
+        stiffness=ELASTOPLASTIC_STIFFNESS,
+        damping=ELASTOPLASTIC_DAMPING,
+    )
+)
+
+# Step 6:  Add PD controllers to the EE actuators so teleop is simple.
 Kp = 1e3
 Kd = 5.0 * np.sqrt(Kp)
 gain = PdControllerGains(p=Kp, d=Kd)
@@ -204,18 +235,24 @@ for i in range(plant.num_actuators()):
         JointActuatorIndex(i)
     ).set_controller_gains(gain)
 
-# Step 6:  Finalize the plant.
+# Step 7:  Finalize the plant.
 plant.set_discrete_contact_approximation(DiscreteContactApproximation.kSap)
 plant.Finalize()
 plant.SetDefaultPositions(ee_index, kEEInitPos)
 for i, pos in enumerate(VERTEX_POSITIONS):
     plant.SetDefaultPositions(body_idxs[i], pos)
+plant.SetDefaultPositions(
+    frictional_slider, np.array([ELASTOPLASTIC_FREE_LENGTH, 0.05])
+)
+plant.SetDefaultPositions(
+    springy_contact, np.array([2 * ELASTOPLASTIC_FREE_LENGTH])
+)
 
-# Step 7:  Add visualization capabilities:  need to run separate process:
+# Step 8:  Add visualization capabilities:  need to run separate process:
 # `python -m pydrake.visualization.meldis`
 DrakeVisualizer.AddToBuilder(builder=builder, scene_graph=scene_graph)
 
-# Step 8:  Add a radio subscriber.
+# Step 9:  Add a radio subscriber.
 drake_lcm = DrakeLcm(lcm_url="udpm://239.255.76.67:7667?ttl=0")
 lcm = builder.AddSystem(LcmInterfaceSystem(drake_lcm))
 radio_sub = builder.AddSystem(

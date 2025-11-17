@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<robot name="one_d_block">
+
+  <material name="block_material">
+    <color rgba="0.6 0.6 0.6 0.5"/>
+  </material>
+
+  <link name="base_link" />
+
+  <link name="one_d_block">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.5"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.09"/>
+      </geometry>
+      <material name="block_material"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.09"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+
+  </link>
+  
+  <joint name="x_motion" type="prismatic">
+    <parent link="base_link"/>
+    <child link="one_d_block"/>
+    <axis xyz="1 0 0"/>
+    <origin rpy="0 0 0" xyz="0 0 0.05"/>
+  </joint>
+</robot>

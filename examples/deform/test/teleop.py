@@ -43,8 +43,7 @@ import dairlib
 # Constants.
 EXAMPLE_DIR = "/mnt/data0/bibit/dairlib/examples/deform"
 POINT_MODEL = op.join(EXAMPLE_DIR, "models", "small_xyz_point.urdf")
-PLANAR_BLOCK_MODEL = op.join(EXAMPLE_DIR, "models", "planar_block.urdf")
-ONE_D_BLOCK_MODEL = op.join(EXAMPLE_DIR, "models", "one_d_block.urdf")
+ELASTOPLASTIC_MODEL = op.join(EXAMPLE_DIR, "models", "elastoplastic_1d.urdf")
 kSimpleEEModel = op.join(EXAMPLE_DIR, "models", "ee_flat.urdf")
 # kSimpleEEModel = (
 #     "/mnt/data0/bibit/dairlib/examples/sampling_c3/urdf/"
@@ -96,8 +95,8 @@ VERTEX_CONNECTIONS = [
 SPRING_STIFFNESS = 1e2
 DAMPING_COEFFICIENT = 1e0
 ELASTOPLASTIC_FREE_LENGTH = 0.1
-ELASTOPLASTIC_STIFFNESS = 1e2
-ELASTOPLASTIC_DAMPING = 1e0
+ELASTOPLASTIC_STIFFNESS = 2e2
+ELASTOPLASTIC_DAMPING = 2e0
 
 
 # Function definitions.
@@ -201,24 +200,20 @@ for i, j in VERTEX_CONNECTIONS:
         )
     )
 
-# Step 5:  Add a one-dimensional "elasto-plastic" object.
-frictional_slider = parser.AddModels(PLANAR_BLOCK_MODEL)[0]
-springy_contact = parser.AddModels(ONE_D_BLOCK_MODEL)[0]
+# Step 5:  Add a one-dimensional "elasto-plastic" object.  This is mostly
+# defined in one URDF, except a spring-damper force needs to be added manually
+# between the two links.
+elastoplastic = parser.AddModels(ELASTOPLASTIC_MODEL)[0]
 plant.WeldFrames(
     plant.world_frame(),
-    plant.GetFrameByName("base_link", frictional_slider),
-    RigidTransform(),
-)
-plant.WeldFrames(
-    plant.world_frame(),
-    plant.GetFrameByName("base_link", springy_contact),
-    RigidTransform(),
+    plant.GetFrameByName("base_link", elastoplastic),
+    RigidTransform(p=[0, 0, 0.05]),
 )
 plant.AddForceElement(
     LinearSpringDamper(
-        bodyA=plant.GetBodyByName("planar_block", frictional_slider),
+        bodyA=plant.GetBodyByName("frictional_slider", elastoplastic),
         p_AP=np.zeros(3),
-        bodyB=plant.GetBodyByName("one_d_block", springy_contact),
+        bodyB=plant.GetBodyByName("springed", elastoplastic),
         p_BQ=np.zeros(3),
         free_length=ELASTOPLASTIC_FREE_LENGTH,
         stiffness=ELASTOPLASTIC_STIFFNESS,
@@ -242,10 +237,8 @@ plant.SetDefaultPositions(ee_index, kEEInitPos)
 for i, pos in enumerate(VERTEX_POSITIONS):
     plant.SetDefaultPositions(body_idxs[i], pos)
 plant.SetDefaultPositions(
-    frictional_slider, np.array([ELASTOPLASTIC_FREE_LENGTH, 0.05])
-)
-plant.SetDefaultPositions(
-    springy_contact, np.array([2 * ELASTOPLASTIC_FREE_LENGTH])
+    elastoplastic,
+    np.array([0.05, 2 * ELASTOPLASTIC_FREE_LENGTH, ELASTOPLASTIC_FREE_LENGTH]),
 )
 
 # Step 8:  Add visualization capabilities:  need to run separate process:

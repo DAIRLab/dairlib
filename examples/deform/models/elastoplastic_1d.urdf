@@ -1,0 +1,105 @@
+<?xml version="1.0" ?>
+<!-- State vector is [z, x, d] where:
+  /|
+  /|________[slider]________(frictional_slider)_________[spring]__________(springed)
+  /|                                                                                     ^
+  /|________________________d                                                            | z
+  /|______________________________________________________________________x              |
+ -->
+<robot name="elastoplastic_1d">
+
+  <material name="block_material">
+    <color rgba="0.6 0.6 0.6 0.5"/>
+  </material>
+  <material name="lcs_material">
+    <color rgba="0.0 0.6 0.6 1.0"/>
+  </material>
+
+  <link name="base_link" />
+
+  <link name="frictional_slider">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.5"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.1"/>
+      </geometry>
+      <material name="block_material"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.1"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+
+    <!-- Geometry for LCS contact pairs -->
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+      <geometry>
+        <sphere radius="0.003"/>
+      </geometry>
+      <material name="lcs_material"/>
+    </visual>
+    <collision name="frictional_slider_lcs_sphere">
+      <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+      <geometry>
+        <sphere radius="0.003"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+  </link>
+
+  <link name="springed">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.5"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.09"/>
+      </geometry>
+      <material name="block_material"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.1 0.09"/>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+    </collision>
+
+  </link>
+  
+  <link name="frictional_slider_fake_z" />
+  
+  <joint name="z_motion" type="prismatic">
+    <parent link="base_link"/>
+    <child link="frictional_slider_fake_z"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <joint name="x_motion" type="prismatic">
+    <parent link="frictional_slider_fake_z"/>
+    <child link="springed"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="d_motion" type="prismatic">
+    <parent link="frictional_slider_fake_z"/>
+    <child link="frictional_slider"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+</robot>

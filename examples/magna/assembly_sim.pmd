@@ -8,7 +8,7 @@ group "simulations" {
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer";
-        host = "localhost";
+        host = "control_pc";
     }
     cmd "xbox" {
         exec = "bazel-bin/examples/magna/xbox_script";
@@ -27,14 +27,14 @@ group "controllers" {
     }
     cmd "assembly" {
         exec = "bazel-bin/examples/magna/run_assembly_controller";
-        host = "localhost";
+        host = "control_pc";
     }
 }
 
 group "debug" {
     cmd "lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
+        host = "control_pc";
     }
 }
 

@@ -6,6 +6,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/systems/framework/leaf_system.h>
 
+#include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
@@ -57,6 +58,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(gripper_pos_command_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_c3_forces() const {
+    return this->get_output_port(c3_forces_port_);
+  }
+
  private:
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
@@ -88,6 +93,11 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                              LcmTrajectory* traj,
                              LcmTrajectory* planned_keypoints_traj) const;
 
+  void ConvertForcesToWorldFrame(
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          resolved_contact_pairs,
+      const Eigen::VectorXd& lcs_forces) const;
+
   /// Output port function
   void OutputTrajExecute(const drake::systems::Context<double>& context,
                          dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -96,6 +106,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputGripperPosCommand(const drake::systems::Context<double>& context,
                                drake::lcmt_schunk_wsg_command* output) const;
+  void OutputC3Forces(const drake::systems::Context<double>& context,
+                      dairlib::lcmt_c3_forces* output) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
@@ -103,6 +115,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex traj_planned_keypoints_port_;
   drake::systems::OutputPortIndex gripper_pos_command_port_;
+  drake::systems::OutputPortIndex c3_forces_port_;
 
   // Plant references
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -150,6 +163,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   // Planned keypoints trajectory
   mutable LcmTrajectory planned_keypoints_lcm_traj_;
+
+  // C3 forces output
+  mutable dairlib::lcmt_c3_forces c3_forces_output_;
 
   mutable std::vector<TargetPose> target_poses_;
 

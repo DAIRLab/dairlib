@@ -2,6 +2,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
+#include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -133,6 +134,11 @@ int DoMain(int argc, char* argv[]) {
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant_vis, franka_index);
   builder.Connect(*franka_state_sub, *franka_state_receiver);
+  auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      franka_state_receiver->get_output_port(0).size(),
+      franka_state_receiver->get_output_port(0).size() - 1, 1);
+  builder.Connect(franka_state_receiver->get_output_port(0),
+                  robot_time_passthrough->get_input_port());
 
   auto franka_hand_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant_vis, franka_hand_index);
@@ -255,6 +261,20 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(planned_ee_traj_sub->get_output_port(),
                   planned_ee_pose_drawer->get_input_port_trajectory());
 
+  // Add visualization of C3 forces
+  auto c3_forces_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
+          lcm_channel_params.c3_force_channel, lcm));
+  auto c3_forces_drawer = builder.AddSystem<dairlib::systems::LcmForceDrawer>(
+      meshcat, "end_effector_position_target", "end_effector_force_target",
+      "lcs_force_trajectory");
+  builder.Connect(planned_ee_traj_sub->get_output_port(),
+                  c3_forces_drawer->get_input_port_actor_trajectory());
+  builder.Connect(robot_time_passthrough->get_output_port(),
+                  c3_forces_drawer->get_input_port_robot_time());
+  builder.Connect(c3_forces_sub->get_output_port(),
+                  c3_forces_drawer->get_input_port_force_trajectory());
+
   // Build the diagram
   auto diagram = builder.Build();
   diagram->set_name("round_belt_visualizer");
@@ -262,16 +282,10 @@ int DoMain(int argc, char* argv[]) {
   auto context = diagram->CreateDefaultContext();
 
   // Initialize the franka state receiver
-  auto& franka_state_sub_context = diagram->GetMutableSubsystemContext(
-      *franka_state_sub, context.get());
+  auto& franka_state_sub_context =
+      diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant_vis, franka_state_sub_context);
-
-//   auto& franka_hand_state_receiver_context =
-//       diagram->GetMutableSubsystemContext(*franka_hand_state_receiver,
-//                                           context.get());
-//   franka_hand_state_receiver->InitializeSubscriberPositions(
-//       plant_vis, franka_hand_state_receiver_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

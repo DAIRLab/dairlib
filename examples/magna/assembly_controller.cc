@@ -6,6 +6,8 @@
 #include <drake/math/roll_pitch_yaw.h>
 
 #include "common/update_context.h"
+#include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_force.hpp"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/target_poses.h"
 #include "systems/framework/timestamped_vector.h"
@@ -144,6 +146,11 @@ AssemblyController::AssemblyController(
       this->DeclareAbstractOutputPort(
               "gripper_pos_command", drake::lcmt_schunk_wsg_command(),
               &AssemblyController::OutputGripperPosCommand)
+          .get_index();
+
+  c3_forces_port_ =
+      this->DeclareAbstractOutputPort("c3_forces", dairlib::lcmt_c3_forces(),
+                                      &AssemblyController::OutputC3Forces)
           .get_index();
 
   // Discrete state for phase tracking
@@ -670,8 +677,58 @@ void AssemblyController::GenerateMPCTrajectory(
   keypoints_traj.time_vector = timestamps;
   planned_keypoints_traj->AddTrajectory(keypoints_traj.traj_name,
                                         keypoints_traj);
+
+  // Convert C3 planned forces from contact frame to world frame
+  ConvertForcesToWorldFrame(resolved_contact_pairs,
+                            x_sol[0].segment(n_x_, n_lambda_));
 }
 
+void AssemblyController::ConvertForcesToWorldFrame(
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+        resolved_contact_pairs,
+    const Eigen::VectorXd& lcs_forces) const {
+  int num_contacts = resolved_contact_pairs.size();
+  int cur_lambda_index = 0;
+
+  c3_forces_output_ = dairlib::lcmt_c3_forces();
+  c3_forces_output_.num_forces = num_contacts;
+  c3_forces_output_.forces.resize(num_contacts);
+
+  DRAKE_DEMAND(contact_model_ == solvers::ContactModel::kAnitescu);
+
+  for (int i = 0; i < num_contacts; i++) {
+    multibody::GeomGeomCollider collider(plant_, resolved_contact_pairs[i]);
+    int num_force_basis =
+        2 * assembly_c3_options_.num_friction_directions_per_contact[i];
+    bool is_planar_contact = num_force_basis == 2;
+    auto [p_WCa, force_basis] =
+        collider.CalcWitnessPointsAndForceBasisInWorldFrame(*context_,
+                                                            is_planar_contact);
+    // reduce force_basis to Anitescu force basis
+    Eigen::Matrix<double, 4, 3> anitescu_force_basis;
+    for (int j = 1; j < 5; j++) {
+      anitescu_force_basis.row(j - 1) =
+          force_basis.row(0) + assembly_c3_options_.mu[i] * force_basis.row(j);
+    }
+
+    auto force_in_world_frame =
+        anitescu_force_basis.transpose() *
+        lcs_forces.segment(cur_lambda_index, num_force_basis);
+
+    auto net_force = force_in_world_frame.rowwise().sum();
+
+    cur_lambda_index += num_force_basis;
+
+    auto force = dairlib::lcmt_force();
+    force.contact_point[0] = p_WCa[0];
+    force.contact_point[1] = p_WCa[1];
+    force.contact_point[2] = p_WCa[2];
+    force.contact_force[0] = net_force[0];
+    force.contact_force[1] = net_force[1];
+    force.contact_force[2] = net_force[2];
+    c3_forces_output_.forces[i] = force;
+  }
+}
 void AssemblyController::OutputTrajExecute(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
@@ -693,6 +750,12 @@ void AssemblyController::OutputGripperPosCommand(
   output->target_position_mm = gripper_pos_command_ * 2000.0;
 }
 
+void AssemblyController::OutputC3Forces(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_c3_forces* output) const {
+  *output = c3_forces_output_;
+  output->utime = context.get_time() * 1e6;
+}
 }  // namespace magna
 }  // namespace examples
 }  // namespace dairlib

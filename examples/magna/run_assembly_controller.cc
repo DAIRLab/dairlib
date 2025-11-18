@@ -122,8 +122,10 @@ int DoMain(int argc, char* argv[]) {
       plant_lcs.GetBodyByName("large_round_pulley"));
   auto belt_small_pulley_geoms = plant_lcs.GetCollisionGeometriesForBody(
       plant_lcs.GetBodyByName("small_round_pulley"));
+  auto belt_element_geom = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("belt_element"))[0];
   for (auto geom_id : belt_large_pulley_geoms) {
-    belt_large_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
+    belt_large_pulley_contact_pairs.emplace_back(belt_element_geom, geom_id);
   }
   for (auto geom_id : belt_small_pulley_geoms) {
     belt_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
@@ -217,7 +219,7 @@ int DoMain(int argc, char* argv[]) {
   // TODO: we should subscribe and obtain state from a LCM channel.
   auto constant_object_state_vector = StateVector<double>(3, 3);
   VectorXd constant_positions(3);
-  constant_positions << 0.0, 0.0, 0.0;
+  constant_positions << 0.48985, -0.1, 0.03;
   VectorXd constant_velocities = VectorXd::Zero(3);
   constant_object_state_vector.SetPositions(constant_positions);
   constant_object_state_vector.SetVelocities(constant_velocities);
@@ -263,6 +265,15 @@ int DoMain(int argc, char* argv[]) {
                   traj_pub->get_input_port(0));
   builder.Connect(assembly_controller->get_output_port_traj_planned_keypoints(),
                   traj_planned_keypoints_pub->get_input_port(0));
+  // ------------------------------------------------------------- //
+
+  // ----- Publish C3 forces via LCM messages ----- //
+  auto c3_forces_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
+          lcm_channel_params.c3_force_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(assembly_controller->get_output_port_c3_forces(),
+                  c3_forces_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // Build diagram

@@ -14,3 +14,4 @@ deformable_geometry_channel: DRAKE_VIEWER_DEFORMABLE
 c3_target_state_channel: C3_TARGET
 c3_actual_state_channel: C3_ACTUAL
 planned_keypoints_trajectory_channel: PLANNED_KEYPOINTS_TRAJECTORY
+c3_force_channel: C3_FORCES

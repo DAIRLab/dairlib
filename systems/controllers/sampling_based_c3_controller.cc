@@ -450,7 +450,8 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Set parallelization settings.
   omp_set_dynamic(0);  // Explicitly disable dynamic teams.
-  omp_set_nested(1);   // Enable nested threading.
+  omp_set_max_active_levels(2); // Enable nested parallelism (important for
+                                  // sampling_c3_controller)
   if (sampling_c3_options_.num_outer_threads == 0) {
     // Interpret setting number of threads to zero as a request to use all
     // machine's threads.

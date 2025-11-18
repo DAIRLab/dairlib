@@ -16,6 +16,7 @@ struct MagnaLcmChannels {
   std::string c3_target_state_channel;
   std::string c3_actual_state_channel;
   std::string planned_keypoints_trajectory_channel;
+  std::string c3_force_channel;
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
@@ -31,5 +32,6 @@ struct MagnaLcmChannels {
     a->Visit(DRAKE_NVP(c3_target_state_channel));
     a->Visit(DRAKE_NVP(c3_actual_state_channel));
     a->Visit(DRAKE_NVP(planned_keypoints_trajectory_channel));
+    a->Visit(DRAKE_NVP(c3_force_channel));
   }
 };

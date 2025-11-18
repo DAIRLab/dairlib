@@ -977,10 +977,8 @@ vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    // TODO: A newer version of OpenMP likely uses omp_set_max_active_levels
-    // instead of omp_set_nested. Consider updating this after testing.
-    omp_set_nested(1);  // Enable nested parallelism (important for
-                        // sampling_c3_controller)
+    omp_set_max_active_levels(2); // Enable nested parallelism (important for
+                                  // sampling_c3_controller)
   }
 
 #pragma omp parallel for num_threads( \

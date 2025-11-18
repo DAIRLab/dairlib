@@ -166,6 +166,11 @@ AssemblyController::AssemblyController(
 
   // Load target poses from YAML parameters
   target_poses_ = target_poses_params.ToTargetPoses();
+
+  // Initialize values of output ports
+  execution_lcm_traj_ = dairlib::LcmTrajectory();
+  planned_keypoints_lcm_traj_ = dairlib::LcmTrajectory();
+  c3_forces_output_ = dairlib::lcmt_c3_forces();
 }
 
 drake::systems::EventStatus AssemblyController::ComputePlan(
@@ -613,6 +618,7 @@ void AssemblyController::GenerateMPCTrajectory(
   // Get solution
   vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
   vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
+  vector<VectorXd> lambda_sol = c3_mpc_->GetForceSolution();
 
   // Set up trajectory
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, N_);
@@ -679,8 +685,7 @@ void AssemblyController::GenerateMPCTrajectory(
                                         keypoints_traj);
 
   // Convert C3 planned forces from contact frame to world frame
-  ConvertForcesToWorldFrame(resolved_contact_pairs,
-                            x_sol[0].segment(n_x_, n_lambda_));
+  ConvertForcesToWorldFrame(resolved_contact_pairs, lambda_sol[0]);
 }
 
 void AssemblyController::ConvertForcesToWorldFrame(

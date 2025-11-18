@@ -117,7 +117,8 @@ int DoMain(int argc, char* argv[]) {
   // WARNING:  Hard-coded initial joint configurations for the robot in the
   // sampling c3 experiments.
   VectorXd target_position = VectorXd::Zero(7);
-  target_position << 2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08;
+  target_position << 1.2822, 0.29, -1.40629, -1.8419, 0.30038, 2.39,
+        0.57512;
   auto joint_traj_generator =
       builder.AddSystem<JointTrajectoryGenerator>(plant, target_position);
   std::vector<std::unique_ptr<JointSpaceTrackingData>> joint_tracking_data_vec;

@@ -10,7 +10,10 @@ cc_library(
 filegroup(
     name = "all_example_params_yamls",
     visibility = ["//visibility:public"],
-    data = ["//examples/sampling_c3/jacktoy:parameters"],
+    data = [
+        "//examples/sampling_c3/anything:parameters",
+        "//examples/sampling_c3/jacktoy:parameters"
+    ],
 )
 
 filegroup(
@@ -81,6 +84,8 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+        "//solvers:default_osc_options",
         "@drake_models//:franka_description",
     ],
     deps = [

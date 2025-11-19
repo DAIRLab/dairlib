@@ -347,7 +347,7 @@ class LcmDrivenLoop {
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
       }
-
+        
       // Update the name of the active channel if there are multiple inputs and
       // there is new switch message
       if (is_new_switch_message) {

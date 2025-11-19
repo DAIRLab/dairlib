@@ -10,19 +10,19 @@ cc_library(
 cc_library(
     name = "parameters",
     data = glob([
-        "*.yaml",
+        "parameters/*.yaml",
     ]),
 )
 
 cc_binary(
-    name = "plate_visualizer",
-    srcs = ["plate_visualizer.cc"],
+    name = "trajectory_visualizer",
+    srcs = ["trajectory_visualizer.cc"],
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
     ],
     deps = [
-        "//examples/cube_flip/parameter_headers:visualizer_params",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
         "//examples/cube_flip:trajectory_lcm_parser",
         "//common",
         "//multibody:utils",
@@ -50,6 +50,80 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
-        "//examples/cube_flip/parameter_headers:visualizer_params",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_sim",
+    srcs = ["franka_plate_sim.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//examples/cube_flip/parameter_headers:franka_plate_lcm_channels",
+        "//examples/cube_flip/parameter_headers:franka_plate_sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_osc_controller",
+    srcs = ["franka_plate_osc_controller.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//examples/cube_flip/parameter_headers:franka_plate_osc_controller_params",
+        "//examples/cube_flip/parameter_headers:franka_plate_lcm_channels",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_visualizer",
+    srcs = ["franka_plate_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//examples/cube_flip/parameter_headers:franka_plate_lcm_channels",
+        "//examples/cube_flip/parameter_headers:franka_plate_sim_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

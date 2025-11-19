@@ -6,7 +6,7 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 
-#include "examples/cube_flip/parameter_headers/visualizer_params.h"
+#include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
 #include "examples/cube_flip/trajectory_lcm_parser.h"
 
 
@@ -53,7 +53,7 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/vis_params.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/vis_params.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 

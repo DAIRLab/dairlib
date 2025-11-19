@@ -5,7 +5,7 @@
 
 #include "lcm/lcm_trajectory.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/cube_flip/parameter_headers/visualizer_params.h"
+#include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include "drake/systems/framework/leaf_system.h"

@@ -1,5 +1,24 @@
 cc_library(
-    name = "visualizer_params",
-    hdrs = ["visualizer_params.h"],
+    name = "trajectory_visualizer_params",
+    hdrs = ["trajectory_visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "franka_plate_osc_controller_params",
+    hdrs = ["franka_plate_osc_controller_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "franka_plate_lcm_channels",
+    hdrs = ["franka_plate_lcm_channels.h"],
+    visibility = ["//visibility:public"],
+)
+
+
+cc_library(
+    name = "franka_plate_sim_params",
+    hdrs = ["franka_plate_sim_params.h"],
     visibility = ["//visibility:public"],
 )

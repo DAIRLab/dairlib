@@ -68,6 +68,26 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  /// Helper methods for state management
+  struct DiscreteStateData {
+    double plan_start_time;
+    AssemblyPhase current_phase;
+    int current_target_idx;
+    double target_reached_time;
+  };
+
+  DiscreteStateData ExtractDiscreteState(
+      const drake::systems::DiscreteValues<double>& discrete_state) const;
+
+  void UpdateDiscreteState(
+      const DiscreteStateData& data,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  /// Check if we need to advance to the next target
+  bool ShouldAdvanceToNextTarget(const Eigen::VectorXd& x_lcs_curr,
+                                 double current_time, int target_index,
+                                 double target_reached_time) const;
+
   /// Helper functions for different phases
   void GenerateMoveToTargetTrajectory(const Eigen::VectorXd& x_lcs_curr,
                                       double t_context, LcmTrajectory* traj,
@@ -146,7 +166,6 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> U_;
 
   // Phase management
-  mutable AssemblyPhase current_phase_ = AssemblyPhase::kMoveToTarget;
   drake::systems::DiscreteStateIndex phase_index_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   drake::systems::DiscreteStateIndex current_target_index_;

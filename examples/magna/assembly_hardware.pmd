@@ -1,41 +1,20 @@
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer";
-        host = "localhost";
-    }
-    cmd "xbox" {
-        exec = "bazel-bin/examples/magna/xbox_script";
-        host = "localhost";
+        host = "control_pc";
     }
 }
 
 group "controllers" {    
-    cmd "franka_osc" {
-        exec = "bazel-bin/examples/magna/franka_osc_controller";
-        host = "localhost";
-    }
     cmd "assembly" {
         exec = "bazel-bin/examples/magna/run_assembly_controller";
-        host = "localhost";
+        host = "control_pc";
     }
 }
 
 group "debug" {
     cmd "lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
+        host = "control_pc";
     }
-}
-
-script "start_experiment"{
-    stop cmd "assembly";
-    stop cmd "franka_osc";
-    wait 100ms
-    start cmd "franka_osc";
-    start cmd "assembly";
-}
-
-script "end_experiment"{
-    stop cmd "assembly";
-    stop cmd "franka_osc";
 }

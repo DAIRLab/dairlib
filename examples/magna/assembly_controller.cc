@@ -83,16 +83,6 @@ AssemblyController::AssemblyController(
               << assembly_c3_options_.contact_model << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
-  if (assembly_c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ = 2 * assembly_c3_options_.num_contacts +
-                2 * assembly_c3_options_.num_friction_directions *
-                    assembly_c3_options_.num_contacts;
-  } else {
-    contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ = 2 * assembly_c3_options_.num_friction_directions *
-                assembly_c3_options_.num_contacts;
-  }
   // Initialize cost matrices
   double discount_factor = 1;
   for (int i = 0; i < N_ + 1; ++i) {
@@ -153,8 +143,16 @@ AssemblyController::AssemblyController(
                                       &AssemblyController::OutputC3Forces)
           .get_index();
 
+  // Load target poses from YAML parameters (need to load before discrete state)
+  target_poses_ = target_poses_params.ToTargetPoses();
+
   // Discrete state for phase tracking
-  phase_index_ = this->DeclareDiscreteState(1);
+  // Initialize phase based on whether we have targets
+  AssemblyPhase initial_phase = target_poses_.empty()
+                                    ? AssemblyPhase::kMPC
+                                    : AssemblyPhase::kMoveToTarget;
+  phase_index_ = this->DeclareDiscreteState(
+      Eigen::VectorXd::Constant(1, static_cast<double>(initial_phase)));
   plan_start_time_index_ = this->DeclareDiscreteState(1);
   current_target_index_ = this->DeclareDiscreteState(1);
   // Initialize target_reached_time to -1 (not reached yet) - negative means not
@@ -164,118 +162,173 @@ AssemblyController::AssemblyController(
 
   this->DeclareForcedDiscreteUpdateEvent(&AssemblyController::ComputePlan);
 
-  // Load target poses from YAML parameters
-  target_poses_ = target_poses_params.ToTargetPoses();
-
   // Initialize values of output ports
   execution_lcm_traj_ = dairlib::LcmTrajectory();
   planned_keypoints_lcm_traj_ = dairlib::LcmTrajectory();
   c3_forces_output_ = dairlib::lcmt_c3_forces();
+
+  if (target_poses_.empty()) {
+    std::cout << "No targets found. Initial phase set to MPC." << std::endl;
+  } else {
+    std::cout << "Found " << target_poses_.size()
+              << " target(s). Initial phase set to MoveToTarget." << std::endl;
+  }
+}
+
+AssemblyController::DiscreteStateData AssemblyController::ExtractDiscreteState(
+    const drake::systems::DiscreteValues<double>& discrete_state) const {
+  DiscreteStateData data;
+  data.plan_start_time = discrete_state.get_value(plan_start_time_index_)[0];
+  data.current_phase = static_cast<AssemblyPhase>(
+      static_cast<int>(discrete_state.get_value(phase_index_)[0]));
+  data.current_target_idx =
+      static_cast<int>(discrete_state.get_value(current_target_index_)[0]);
+  data.target_reached_time =
+      discrete_state.get_value(target_reached_time_index_)[0];
+  return data;
+}
+
+void AssemblyController::UpdateDiscreteState(
+    const DiscreteStateData& data,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
+      data.plan_start_time;
+  discrete_state->get_mutable_value(phase_index_)[0] =
+      static_cast<double>(data.current_phase);
+  discrete_state->get_mutable_value(current_target_index_)[0] =
+      static_cast<double>(data.current_target_idx);
+  discrete_state->get_mutable_value(target_reached_time_index_)[0] =
+      data.target_reached_time;
+}
+
+bool AssemblyController::ShouldAdvanceToNextTarget(
+    const Eigen::VectorXd& x_lcs_curr, double current_time, int target_index,
+    double target_reached_time) const {
+  // Validate target index
+  if (target_index < 0 ||
+      target_index >= static_cast<int>(target_poses_.size())) {
+    return false;
+  }
+
+  // Check if target is reached
+  if (!IsTargetReached(x_lcs_curr, target_index)) {
+    return false;
+  }
+
+  // Target is reached - check dwell time
+  const TargetPose& target_pose = target_poses_[target_index];
+
+  // If no dwell time required, can advance immediately
+  if (target_pose.dwell_seconds <= 0.0) {
+    return true;
+  }
+
+  // If dwell time required but we just reached it, don't advance yet
+  if (target_reached_time < 0.0) {
+    return false;
+  }
+
+  // Check if dwell time has elapsed
+  double time_at_target = current_time - target_reached_time;
+  return time_at_target >= target_pose.dwell_seconds;
 }
 
 drake::systems::EventStatus AssemblyController::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  // Evaluate input ports
+  // Extract input data
   const TimestampedVector<double>* lcs_x_curr =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
+      static_cast<const TimestampedVector<double>*>(
+          this->EvalVectorInput(context, lcs_state_input_port_));
   const BasicVector<double>& lcs_x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  drake::VectorX<double> x_lcs_des = lcs_x_des.get_value();
-  drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
-  double t_context = lcs_x_curr->get_timestamp();
 
-  discrete_state->get_mutable_value(plan_start_time_index_)[0] = t_context;
+  const drake::VectorX<double> x_lcs_des = lcs_x_des.get_value();
+  const drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+  const double t_context = lcs_x_curr->get_timestamp();
 
-  // Get current phase (could be updated based on conditions)
-  int phase_int = static_cast<int>(discrete_state->get_value(phase_index_)[0]);
-  current_phase_ = static_cast<AssemblyPhase>(phase_int);
+  // Extract and validate discrete state
+  DiscreteStateData state_data = ExtractDiscreteState(*discrete_state);
+  state_data.plan_start_time = t_context;
 
-  // Get current target index
-  int current_target_idx =
-      static_cast<int>(discrete_state->get_value(current_target_index_)[0]);
-
-  // Safety check: ensure target index is valid
-  if (!target_poses_.empty()) {
-    if (current_target_idx < 0 ||
-        current_target_idx >= static_cast<int>(target_poses_.size())) {
-      // Reset to first target if invalid
-      current_target_idx = 0;
-      discrete_state->get_mutable_value(current_target_index_)[0] = 0.0;
+  // If no targets exist, ensure we're in MPC phase
+  if (target_poses_.empty()) {
+    if (state_data.current_phase != AssemblyPhase::kMPC) {
+      std::cout << "No targets available. Switching to MPC phase." << std::endl;
+      state_data.current_phase = AssemblyPhase::kMPC;
+    }
+    // No need to check target index - will use MPC
+  } else {
+    // Validate and correct target index if we have targets
+    if (state_data.current_target_idx < 0 ||
+        state_data.current_target_idx >=
+            static_cast<int>(target_poses_.size())) {
+      state_data.current_target_idx = 0;
+      state_data.target_reached_time = -1.0;
     }
   }
 
-  // Check if we have targets and if current target is valid
-  if (!target_poses_.empty() && current_target_idx >= 0 &&
-      current_target_idx < static_cast<int>(target_poses_.size()) &&
-      current_phase_ == AssemblyPhase::kMoveToTarget) {
-    const TargetPose& current_target_pose = target_poses_[current_target_idx];
-    double target_reached_time =
-        discrete_state->get_value(target_reached_time_index_)[0];
-
-    // Check if current target is reached
-    if (IsTargetReached(x_lcs_curr, current_target_idx)) {
-      // If this is the first time we've reached the target, record the time
-      if (target_reached_time < 0.0) {
-        target_reached_time = t_context;
-        discrete_state->get_mutable_value(target_reached_time_index_)[0] =
-            target_reached_time;
-        std::cout << "Target " << current_target_idx
-                  << " reached at t=" << target_reached_time << std::endl;
+  // Handle target progression in kMoveToTarget phase
+  if (!target_poses_.empty() &&
+      state_data.current_phase == AssemblyPhase::kMoveToTarget &&
+      state_data.current_target_idx >= 0 &&
+      state_data.current_target_idx < static_cast<int>(target_poses_.size())) {
+    // Check if we just reached the target
+    if (IsTargetReached(x_lcs_curr, state_data.current_target_idx)) {
+      // Record the time when target was first reached
+      if (state_data.target_reached_time < 0.0) {
+        state_data.target_reached_time = t_context;
+        std::cout << "Target " << state_data.current_target_idx
+                  << " reached at t=" << state_data.target_reached_time
+                  << std::endl;
       }
 
-      // Check if dwell time has elapsed (if dwell is specified)
-      double time_at_target = t_context - target_reached_time;
-      if (current_target_pose.dwell_seconds > 0.0 &&
-          time_at_target < current_target_pose.dwell_seconds) {
-        // Still dwelling - don't advance yet
-        // Will generate constant trajectory at target in
-        // GenerateMoveToTargetTrajectory
-      } else {
-        // Dwell complete (or no dwell required), move to next target
-        current_target_idx++;
-        discrete_state->get_mutable_value(current_target_index_)[0] =
-            static_cast<double>(current_target_idx);
-        // Reset target reached time for next target
-        discrete_state->get_mutable_value(target_reached_time_index_)[0] = -1.0;
+      // Check if we should advance to the next target
+      if (ShouldAdvanceToNextTarget(x_lcs_curr, t_context,
+                                    state_data.current_target_idx,
+                                    state_data.target_reached_time)) {
+        state_data.current_target_idx++;
+        state_data.target_reached_time = -1.0;
 
-        // Check if we've completed all targets
-        if (current_target_idx >= static_cast<int>(target_poses_.size())) {
-          std::cout << "All targets completed! Now switching to MPC phase."
+        // Check if all targets are completed
+        if (state_data.current_target_idx >=
+            static_cast<int>(target_poses_.size())) {
+          std::cout << "All targets completed! Switching to MPC phase."
                     << std::endl;
-          // Could transition to a completion phase here if needed
-          // For now, just stay at the last target
-          // current_target_idx = static_cast<int>(target_poses_.size()) - 1;
-          // discrete_state->get_mutable_value(current_target_index_)[0] =
-          //     static_cast<double>(current_target_idx);
-          current_phase_ = AssemblyPhase::kMPC;
-          discrete_state->get_mutable_value(phase_index_)[0] =
-              static_cast<double>(current_phase_);
+          state_data.current_phase = AssemblyPhase::kMPC;
         } else {
-          std::cout << "Moving to target " << current_target_idx << std::endl;
+          std::cout << "Moving to target " << state_data.current_target_idx
+                    << std::endl;
         }
       }
     } else {
-      // Not at target yet - reset target reached time
-      if (target_reached_time >= 0.0) {
-        discrete_state->get_mutable_value(target_reached_time_index_)[0] = -1.0;
+      // Not at target yet - reset target reached time if it was set
+      if (state_data.target_reached_time >= 0.0) {
+        state_data.target_reached_time = -1.0;
       }
     }
   }
-  switch (current_phase_) {
+
+  // Generate trajectory based on current phase
+  switch (state_data.current_phase) {
     case AssemblyPhase::kMoveToTarget:
-      if (!target_poses_.empty() && current_target_idx >= 0 &&
-          current_target_idx < static_cast<int>(target_poses_.size())) {
-        GenerateMoveToTargetTrajectory(
-            x_lcs_curr, t_context, &execution_lcm_traj_, current_target_idx);
+      if (!target_poses_.empty() && state_data.current_target_idx >= 0 &&
+          state_data.current_target_idx <
+              static_cast<int>(target_poses_.size())) {
+        GenerateMoveToTargetTrajectory(x_lcs_curr, t_context,
+                                       &execution_lcm_traj_,
+                                       state_data.current_target_idx);
       }
       break;
+
     case AssemblyPhase::kMPC:
       GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
                             &execution_lcm_traj_, &planned_keypoints_lcm_traj_);
       break;
   }
+
+  // Update discrete state
+  UpdateDiscreteState(state_data, discrete_state);
 
   return drake::systems::EventStatus::Succeeded();
 }

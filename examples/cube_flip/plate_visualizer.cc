@@ -73,12 +73,22 @@ int do_main(int argc, char* argv[]) {
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
-  auto trajectory_sub = builder.AddSystem(
+  auto trajectory_sub_x = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          vis_params.trajectory_lcm_channel, lcm));
+          vis_params.trajectory_lcm_channel_x, lcm));
+
+  auto trajectory_sub_c3 = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          vis_params.trajectory_lcm_channel_c3, lcm));
 
   auto trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params);
+      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "cube_trajectory_splitter");
+
+  auto plate_trajectory_splitter = 
+      builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "plate_trajectory_splitter");
+
+  auto c3_trajectory_splitter =
+      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "c3_trajectory_splitter");
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
@@ -89,7 +99,10 @@ int do_main(int argc, char* argv[]) {
   // Draw trajectory
   int skip_factor = vis_params.iter_downsampling_factor;
   std::vector<systems::LcmPoseDrawer*> trajectory_drawers;
-  for (int i = 0; i < vis_params.ic3_num_iters; i += skip_factor) {
+  std::vector<systems::LcmPoseDrawer*> plate_trajectory_drawers;
+  std::vector<systems::LcmPoseDrawer*> c3_trajectory_drawers;
+
+  for (int i = skip_factor - 1; i < vis_params.ic3_num_iters; i += skip_factor) {
     std::cout << "pose drawer " << i << std::endl;
    
     auto* drawer = builder.AddSystem<systems::LcmPoseDrawer>(
@@ -98,19 +111,45 @@ int do_main(int argc, char* argv[]) {
             "positions_" + std::to_string(i), 
             "orientations_" + std::to_string(i),
             "iteration_" + std::to_string(i), 
-            vis_params.trajectory_length, true,
+            vis_params.trajectory_length / vis_params.downsampling_factor, true,
             vis_params.trace_color);
 
+   auto* c3_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.cube_file),
+            "positions_" + std::to_string(i), 
+            "orientations_" + std::to_string(i),
+            "c3_iteration_" + std::to_string(i), 
+            vis_params.trajectory_length / vis_params.downsampling_factor, true,
+            vis_params.trace_color);
+
+
+    auto* plate_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.plate_file),
+            "positions_" + std::to_string(i), 
+            "orientations_" + std::to_string(i),
+            "plate_iteration_" + std::to_string(i), 
+            vis_params.trajectory_length / vis_params.downsampling_factor, true,
+            vis_params.plate_trace_color);
+
     trajectory_drawers.push_back(drawer);
+    plate_trajectory_drawers.push_back(plate_drawer);
+    c3_trajectory_drawers.push_back(c3_drawer);
+
   }
 
-  builder.Connect(trajectory_sub->get_output_port(), trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_x->get_output_port(), trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_x->get_output_port(), plate_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
 
   for (int i = 0; i < vis_params.ic3_num_iters / skip_factor; i++) {
-    std::cout << "splitter-drawer " << i << std::endl;
-    auto& out = trajectory_splitter->get_output_port(i);
-    auto& in = trajectory_drawers.at(i)->get_input_port_trajectory();
-    builder.Connect(out, in);
+    builder.Connect(trajectory_splitter->get_output_port(i), 
+        trajectory_drawers.at(i)->get_input_port_trajectory());
+    builder.Connect(plate_trajectory_splitter->get_output_port(i), 
+        plate_trajectory_drawers.at(i)->get_input_port_trajectory());
+    builder.Connect(c3_trajectory_splitter->get_output_port(i), 
+        c3_trajectory_drawers.at(i)->get_input_port_trajectory());
   }
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(

@@ -9,9 +9,13 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include "drake/systems/framework/leaf_system.h"
+#include <Eigen/Geometry>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::AngleAxisd;
+using Eigen::Vector3d;
+using Eigen::Quaterniond;
 
 using drake::systems::InputPort;
 using drake::systems::OutputPort; 
@@ -26,7 +30,8 @@ namespace dairlib {
 
 class TrajectoryLcmParser : public drake::systems::LeafSystem<double> {
   public:
-    explicit TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params);
+    // object: 0 = cube, 1 = plate
+    explicit TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, int object, std::string name);
 
     const InputPort<double>& get_input_port_trajectory() const {
       return this->get_input_port(trajectory_input_port_);
@@ -48,7 +53,7 @@ class TrajectoryLcmParser : public drake::systems::LeafSystem<double> {
     // Parse raw iC3 output into cube position/orientation trajectories
     void GetTrajectory(
       const drake::systems::Context<double>& context, 
-      lcmt_timestamped_saved_traj* traj, int i, int step) const;
+      lcmt_timestamped_saved_traj* traj, int i, int step, int object) const;
 };
 
 } // namespace dairlib

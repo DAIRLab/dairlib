@@ -112,8 +112,13 @@ LcmPoseDrawer::LcmPoseDrawer(
               "lcmt_timestamped_saved_traj",
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
-
-  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
+  
+  // TODO make this not terrible
+  if (model_file.find("plate.sdf") != std::string::npos) {
+    DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPlate);
+  } else {
+    DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
+  }
 }
 
 LcmPoseDrawer::LcmPoseDrawer(
@@ -170,10 +175,11 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
 
-  std::cout << "rows: " << lcm_translation_traj.datapoints.rows() << 
-        ", cols: " << lcm_translation_traj.datapoints.cols() << std::endl;
+  // std::cout << "rows: " << lcm_translation_traj.datapoints.rows() << 
+  //       ", cols: " << lcm_translation_traj.datapoints.cols() << std::endl;
 
   Eigen::VectorXd translation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
+
   // auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
   //     translation_time_vector,
   //     lcm_translation_traj.datapoints.topRows(3),
@@ -191,8 +197,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
     const auto& lcm_orientation_traj =
         lcm_traj.GetTrajectory(orientation_trajectory_name_);
     
-    std::cout << "orientation rows: " << lcm_orientation_traj.datapoints.rows() << 
-        ", orientation cols: " << lcm_orientation_traj.datapoints.cols() << std::endl;
+    // std::cout << "orientation rows: " << lcm_orientation_traj.datapoints.rows() << 
+    //     ", orientation cols: " << lcm_orientation_traj.datapoints.cols() << std::endl;
 
     Eigen::VectorXd orientation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_orientation_traj.time_vector);    
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
@@ -224,8 +230,85 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         translation_breaks(i)),
         translation_trajectory.value(translation_breaks(i));
   }
+  //std::cout << "object poses cols: " << object_poses.cols() << std::endl;
 
+  multipose_visualizers_.at(0)->DrawPoses(object_poses);
 
+  return drake::systems::EventStatus::Succeeded();
+}
+
+drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryPlate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, trajectory_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  const auto& lcmt_traj =
+      this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+          context, trajectory_input_port_);
+  auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+  MatrixXd object_poses = MatrixXd::Zero(5, N_);
+
+  const auto& lcm_translation_traj =
+      lcm_traj.GetTrajectory(translation_trajectory_name_);
+
+  Eigen::VectorXd translation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
+
+  // Ignore velocities to just see iC3 trajectory
+  auto translation_trajectory =
+    drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+        translation_time_vector,
+        lcm_translation_traj.datapoints.topRows(3));  
+  auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
+      {0, 1}, {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
+
+  if (lcm_traj.HasTrajectory(orientation_trajectory_name_)) {
+    const auto& lcm_orientation_traj =
+        lcm_traj.GetTrajectory(orientation_trajectory_name_);
+    
+    // std::cout << "orientation rows: " << lcm_orientation_traj.datapoints.rows() << 
+    //     ", orientation cols: " << lcm_orientation_traj.datapoints.cols() << std::endl;
+
+    Eigen::VectorXd orientation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_orientation_traj.time_vector);    
+    std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
+    for (int i = 0; i < lcm_orientation_traj.datapoints.cols(); ++i) {
+      VectorXd orientation_sample = lcm_orientation_traj.datapoints.col(i);
+      if (orientation_sample.isZero()) {
+        quaternion_datapoints.push_back(Quaterniond(1, 0, 0, 0));
+      } else {
+        quaternion_datapoints.push_back(
+            Quaterniond(orientation_sample[0], orientation_sample[1],
+                        orientation_sample[2], orientation_sample[3]));
+      }
+    }
+    orientation_trajectory = PiecewiseQuaternionSlerp(
+        CopyVectorXdToStdVector(orientation_time_vector),
+        quaternion_datapoints);
+  }
+  // ASSUMING orientation and translation trajectories have the same breaks.
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points.
+  VectorXd translation_breaks =
+      VectorXd::LinSpaced(N_, translation_time_vector[0],
+                          translation_time_vector.tail(1)[0]);
+  for (int i = 0; i < object_poses.cols(); ++i) {
+
+    Eigen::Vector4d quat_vec = orientation_trajectory.value(translation_breaks(i));
+    Eigen::Quaterniond q(quat_vec(0), quat_vec(1), quat_vec(2), quat_vec(3));
+    Eigen::Matrix3d R = q.toRotationMatrix();
+    double roll  = std::atan2(R(2,1), R(2,2));
+    double pitch = std::asin(-R(2,0));
+
+    object_poses.col(i) << translation_trajectory.value(translation_breaks(i)),
+                            roll, pitch;
+                            
+  }
+  //std::cout << "object poses cols: " << object_poses.cols() << std::endl;
+  
   multipose_visualizers_.at(0)->DrawPoses(object_poses);
 
   return drake::systems::EventStatus::Succeeded();

@@ -15,12 +15,15 @@ struct CubeFlipVisualizerParams {
   int downsampling_factor;
   int iter_downsampling_factor;
 
-  std::string trajectory_lcm_channel;
+  std::string trajectory_lcm_channel_x;
+  std::string trajectory_lcm_channel_u;
+  std::string trajectory_lcm_channel_c3;
 
   std::vector<double> x_des;
   std::vector<double> x_init;
 
   Eigen::VectorXd trace_color;
+  Eigen::VectorXd plate_trace_color;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -31,9 +34,13 @@ struct CubeFlipVisualizerParams {
     a->Visit(DRAKE_NVP(downsampling_factor));
     a->Visit(DRAKE_NVP(iter_downsampling_factor));
     a->Visit(DRAKE_NVP(trajectory_length));
-    a->Visit(DRAKE_NVP(trajectory_lcm_channel));
+    a->Visit(DRAKE_NVP(trajectory_lcm_channel_x));
+    a->Visit(DRAKE_NVP(trajectory_lcm_channel_u));
+    a->Visit(DRAKE_NVP(trajectory_lcm_channel_c3));
     a->Visit(DRAKE_NVP(x_des));
     a->Visit(DRAKE_NVP(x_init));
     a->Visit(DRAKE_NVP(trace_color));
+    a->Visit(DRAKE_NVP(plate_trace_color));
+
 }
 };

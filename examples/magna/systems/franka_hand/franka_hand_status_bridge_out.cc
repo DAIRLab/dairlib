@@ -55,8 +55,8 @@ void FrankaHandStatusBridgeOut::OutputFrankaHandState(
   output->velocity[1] = input_msg.actual_speed_mm_per_s / 2000.0;
 
   output->effort_names.resize(2);
-  output->effort_names[0] = "panda_finger_joint1";
-  output->effort_names[1] = "panda_finger_joint2";
+  output->effort_names[0] = "panda_finger_motor1";
+  output->effort_names[1] = "panda_finger_motor2";
   
   output->effort.resize(2);
   output->effort[0] = input_msg.actual_force / 2.0;  // Divide force by 2 for each finger

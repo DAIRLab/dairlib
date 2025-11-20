@@ -34,7 +34,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   model_instance_ =
-      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
+      drake::multibody::ModelInstanceIndex(111111);  // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -54,7 +54,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
-  num_efforts_ = plant.num_actuators();
+  num_efforts_ = plant.num_actuators(model_instance);
   position_index_map_ =
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
@@ -65,14 +65,14 @@ RobotOutputReceiver::RobotOutputReceiver(
   velocities_start_idx_ =
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .velocity_start();
-  effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+  effort_index_map_ = multibody::MakeNameToActuatorsMap(plant, model_instance);
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
       "x, u, t",
       OutputVector<double>(plant.num_positions(model_instance),
                            plant.num_velocities(model_instance),
-                           plant.num_actuators()),
+                           plant.num_actuators(model_instance)),
       &RobotOutputReceiver::CopyOutput);
 }
 
@@ -131,10 +131,13 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
 
   state_msg.num_positions = num_positions_;
   state_msg.num_velocities = num_velocities_;
+  state_msg.num_efforts = num_efforts_;
   state_msg.position_names.resize(num_positions_);
   state_msg.velocity_names.resize(num_velocities_);
+  state_msg.effort_names.resize(num_efforts_);
   state_msg.position.resize(num_positions_);
   state_msg.velocity.resize(num_positions_);
+  state_msg.effort.resize(num_efforts_);
 
   for (int i = 0; i < num_positions_; i++) {
     state_msg.position_names[i] = ordered_position_names[i];
@@ -142,7 +145,7 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ != drake::multibody::ModelInstanceIndex(111111)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -158,6 +161,11 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   for (int i = 0; i < num_velocities_; i++) {
     state_msg.velocity[i] = 0;
     state_msg.velocity_names[i] = ordered_velocity_names[i];
+  }
+
+  for (int i = 0; i < num_efforts_; i++) {
+    state_msg.effort[i] = 0;
+    state_msg.effort_names[i] = ordered_effort_names[i];
   }
 }
 

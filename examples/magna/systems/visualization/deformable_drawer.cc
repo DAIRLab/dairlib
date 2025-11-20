@@ -121,7 +121,7 @@ drake::systems::EventStatus DeformableDrawer::DrawDeformableGeometry(
 std::tuple<Matrix3Xd, Matrix3Xi, Rgba, RigidTransformd>
 DeformableDrawer::ConvertDeformableGeom(
     const drake::lcmt_viewer_geometry_data& geom) const {
-  assert(geom.type == lcmt_viewer_geometry_data::MESH);
+  assert(geom.type == drake::lcmt_viewer_geometry_data::MESH);
 
   const int num_verts = static_cast<int>(geom.float_data[0]);
   const int num_faces = static_cast<int>(geom.float_data[1]);

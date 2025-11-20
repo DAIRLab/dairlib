@@ -1,23 +1,13 @@
 cc_library(
-    name = "visualizer_params",
-    hdrs = ["visualizer_params.h"],
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "lcm_channels",
-    hdrs = ["lcm_channels.h"],
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "elastic_sim_params",
-    hdrs = ["elastic_sim_params.h"],
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "spring_damper_model_params",
-    hdrs = ["spring_damper_model_params.h"],
+    name = "deform_params",
+    hdrs = [
+        "visualizer_params.h",
+        "lcm_channels.h",
+        "elastic_sim_params.h",
+        "elastoplastic_sim_params.h",
+        "elastoplastic_c3_options.h",
+        "spring_damper_model_params.h",
+    ],
+    deps = ["//solvers:c3"],
     visibility = ["//visibility:public"],
 )

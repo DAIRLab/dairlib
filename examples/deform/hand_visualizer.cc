@@ -1,6 +1,7 @@
+#include <iostream>
+
 #include <dairlib/lcmt_robot_output.hpp>
 #include <gflags/gflags.h>
-#include <iostream>
 
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
@@ -26,11 +27,10 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
+using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using drake::systems::DiagramBuilder;
-
 
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 
@@ -39,11 +39,12 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   DeformVisualizerParams vis_params =
-    drake::yaml::LoadYamlFile<DeformVisualizerParams>(
-      "examples/deform/parameters/vis_params.yaml");
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      "examples/deform/parameters/lcm_channels_sim.yaml" :
-      "examples/deform/parameters/lcm_channels_hardware.yaml";
+      drake::yaml::LoadYamlFile<DeformVisualizerParams>(
+          "examples/deform/parameters/vis_params.yaml");
+  std::string lcm_channels_file =
+      FLAGS_is_simulation
+          ? "examples/deform/parameters/lcm_channels_sim.yaml"
+          : "examples/deform/parameters/lcm_channels_hardware.yaml";
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
 
@@ -61,7 +62,7 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto hand_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.allegro_state_channel, lcm));
+          lcm_channel_params.robot_state_channel, lcm));
   auto hand_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, hand_index);
   auto hand_q_passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -96,8 +97,8 @@ int do_main(int argc, char* argv[]) {
   // Set the initial configuration of the hand.
   auto& hand_state_sub_context =
       diagram->GetMutableSubsystemContext(*hand_state_sub, context.get());
-  hand_state_receiver->InitializeSubscriberPositions(
-      plant, hand_state_sub_context);
+  hand_state_receiver->InitializeSubscriberPositions(plant,
+                                                     hand_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
@@ -116,6 +117,4 @@ int do_main(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
-  return dairlib::do_main(argc, argv);
-}
+int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

@@ -158,4 +158,47 @@ void SetDefaultSpringDamperPositions(
   }
 }
 
+std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph, const std::string& demo) {
+  Parser parser_lcs(plant, scene_graph);
+  parser_lcs.SetAutoRenaming(true);
+  std::vector<ModelInstanceIndex> model_indices;
+
+  if (demo == "1d" || demo == "1d_rigid") {
+    ModelInstanceIndex robot_idx = parser_lcs.AddModels(kEndEffector1DModel)[0];
+    parser_lcs.AddModels(kGroundModel);
+    ModelInstanceIndex obj_idx;
+    if (demo == "1d") {
+      obj_idx = parser_lcs.AddModels(kElastoPlastic1DModel)[0];
+      // Add a spring-damper force element between the two object links.
+      const RigidBody<double>& slider_body =
+          plant->GetBodyByName("frictional_slider");
+      const RigidBody<double>& springed_body = plant->GetBodyByName("springed");
+      plant->AddForceElement<LinearSpringDamper>(
+          slider_body, drake::Vector3<double>(0, 0, 0), springed_body,
+          drake::Vector3<double>(0, 0, 0), k1DElastoPlasticFreeLength,
+          k1DElastoPlasticStiffness, k1DElastoPlasticDamping);
+    } else if (demo == "1d_rigid") {
+      obj_idx = parser_lcs.AddModels(kRigid1DModel)[0];
+    }
+
+    RigidTransformd X_WI = RigidTransformd::Identity();
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                      X_WI);
+    plant->WeldFrames(plant->world_frame(),
+                      plant->GetFrameByName("base_link", obj_idx), X_WI);
+
+    RigidTransformd X_WEE = RigidTransformd(k1DRobotPosOffset);
+    plant->WeldFrames(plant->world_frame(),
+                      plant->GetFrameByName("base_link", robot_idx), X_WEE);
+
+    model_indices.push_back(robot_idx);
+    model_indices.push_back(obj_idx);
+  } else {
+    throw std::runtime_error("Demo " + demo + " not recognized.");
+  }
+  return model_indices;
+}
+
 }  // namespace dairlib

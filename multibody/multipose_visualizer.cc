@@ -5,6 +5,7 @@
 
 using drake::geometry::Meshcat;
 using drake::geometry::SceneGraph;
+using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
@@ -14,25 +15,25 @@ using std::string;
 namespace dairlib {
 namespace multibody {
 
-MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
-                                         string weld_frame_to_world)
+MultiposeVisualizer::MultiposeVisualizer(
+    string model_file, int num_poses, string weld_frame_to_world,
+    const RigidTransformd& world_frame_offset)
     : MultiposeVisualizer(model_file, num_poses,
                           Eigen::VectorXd::Constant(num_poses, 1.0),
-                          weld_frame_to_world) {}
+                          weld_frame_to_world, world_frame_offset) {}
 
-MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
-                                         double alpha_scale,
-                                         string weld_frame_to_world)
+MultiposeVisualizer::MultiposeVisualizer(
+    string model_file, int num_poses, double alpha_scale,
+    string weld_frame_to_world, const RigidTransformd& world_frame_offset)
     : MultiposeVisualizer(model_file, num_poses,
                           Eigen::VectorXd::Constant(num_poses, alpha_scale),
-                          weld_frame_to_world) {}
+                          weld_frame_to_world, world_frame_offset) {}
 
-MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
-                                         const Eigen::VectorXd& alpha_scale,
-                                         string weld_frame_to_world,
-                                         std::shared_ptr<Meshcat> meshcat,
-                                         const std::string& pose_trace_name,
-                                         const Eigen::VectorXd& rgb)
+MultiposeVisualizer::MultiposeVisualizer(
+    string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
+    string weld_frame_to_world, const RigidTransformd& world_frame_offset,
+    std::shared_ptr<Meshcat> meshcat, const std::string& pose_trace_name,
+    const Eigen::VectorXd& rgb)
     : num_poses_(num_poses) {
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
@@ -51,11 +52,13 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
       plant_->WeldFrames(
           plant_->world_frame(),
           plant_->GetFrameByName(weld_frame_to_world, model_indices_.at(i)),
-          drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()));
+          world_frame_offset);
     }
   }
 
   plant_->Finalize();
+  num_config_ = plant_->num_positions(model_indices_.at(0));
+  num_vel_ = plant_->num_velocities(model_indices_.at(0));
 
   // Adjust transparency alpha values
   const auto& inspector = scene_graph->model_inspector();
@@ -80,8 +83,7 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
           new_alpha = std::min(new_alpha, 1.0);
           if (rgb.size() == 3) {
             phong.set(rgb(0), rgb(1), rgb(2), new_alpha);
-          }
-          else {
+          } else {
             phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
           }
 
@@ -107,7 +109,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   diagram_context_ = diagram_->CreateDefaultContext();
 }
 
-void MultiposeVisualizer::DrawPoses(MatrixXd poses, std::optional<double> time_in_recording) {
+void MultiposeVisualizer::DrawPoses(MatrixXd poses,
+                                    std::optional<double> time_in_recording) {
   // Set positions for individual instances
   auto& plant_context =
       diagram_->GetMutableSubsystemContext(*plant_, diagram_context_.get());
@@ -117,7 +120,7 @@ void MultiposeVisualizer::DrawPoses(MatrixXd poses, std::optional<double> time_i
         &plant_context, model_indices_.at(i),
         poses.block(0, i, plant_->num_positions(model_indices_.at(i)), 1));
   }
-  if (time_in_recording){
+  if (time_in_recording) {
     diagram_context_->SetTime(time_in_recording.value());
   }
 

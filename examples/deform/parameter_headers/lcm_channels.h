@@ -3,8 +3,9 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct DeformLcmChannels {
-  std::string allegro_state_channel;
-  std::string allegro_input_channel;
+  std::string object_state_channel;
+  std::string robot_state_channel;
+  std::string robot_input_channel;
 
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -26,8 +27,9 @@ struct DeformLcmChannels {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(allegro_state_channel));
-    a->Visit(DRAKE_NVP(allegro_input_channel));
+    a->Visit(DRAKE_NVP(object_state_channel));
+    a->Visit(DRAKE_NVP(robot_state_channel));
+    a->Visit(DRAKE_NVP(robot_input_channel));
 
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
@@ -40,7 +42,7 @@ struct DeformLcmChannels {
     a->Visit(DRAKE_NVP(c3_final_target_state_channel));
     a->Visit(DRAKE_NVP(c3_target_state_channel));
     a->Visit(DRAKE_NVP(c3_actual_state_channel));
-    
+
     a->Visit(DRAKE_NVP(dynamically_feasible_actor_plan_channel));
     a->Visit(DRAKE_NVP(dynamically_feasible_plan_channel));
 

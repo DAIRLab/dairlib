@@ -1,10 +1,11 @@
 # All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
 
-allegro_state_channel: ALLEGRO_STATE_SIMULATION           # lcmt_robot_output
-allegro_input_channel: ALLEGRO_INPUT                      # lcmt_robot_input
+object_state_channel: OBJ_STATE_SIMULATION                # lcmt_object_state
+robot_state_channel: ROBOT_STATE_SIMULATION               # lcmt_robot_output
+robot_input_channel: ROBOT_INPUT                          # lcmt_robot_input
 
-osc_channel: OSC_ALLEGRO                                  # lcmt_robot_input
-osc_debug_channel: OSC_DEBUG_ALLEGRO                      # lcmt_osc_output
+osc_channel: OSC_ROBOT                                    # lcmt_robot_input
+osc_debug_channel: OSC_DEBUG_ROBOT                        # lcmt_osc_output
 
 c3_actor_plan_channel: C3_TRAJECTORY_ACTOR_PLAN
 c3_object_plan_channel: C3_TRAJECTORY_OBJECT_PLAN
@@ -20,4 +21,4 @@ dynamically_feasible_plan_channel: DYNAMICALLY_FEASIBLE_PLAN
 
 target_generator_info_channel: TARGET_GEN_INFO
 
-radio_channel: SAMPLING_C3_RADIO                          # lcmt_radio_out
+radio_channel: DEFORM_RADIO                               # lcmt_radio_out

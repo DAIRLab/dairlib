@@ -15,12 +15,30 @@ cc_binary(
     ],
     deps = [
         "//examples/deform:deform_utils",
-        "//examples/deform/parameter_headers:lcm_channels",
-        "//examples/deform/parameter_headers:visualizer_params",
+        "//examples/deform/parameter_headers:deform_params",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "elastoplastic_visualizer",
+    srcs = ["elastoplastic_visualizer.cc"],
+    data = [
+        "//examples/deform:params_yamls",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:deform_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
         "@gflags",
     ],
 )
@@ -32,7 +50,7 @@ cc_library(
     deps = [
         "//common",
         "//common:math_utils",
-        "//examples/deform/parameter_headers:spring_damper_model_params",
+        "//examples/deform/parameter_headers:deform_params",
         "@drake//:drake_shared_library",
     ],
 )
@@ -47,14 +65,73 @@ cc_binary(
     ],
     deps = [
         "//examples/deform:deform_utils",
-        "//examples/deform/parameter_headers:lcm_channels",
-        "//examples/deform/parameter_headers:elastic_sim_params",
-        "//examples/deform/parameter_headers:spring_damper_model_params",
+        "//examples/deform/parameter_headers:deform_params",
         "//common",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+cc_binary(
+    name = "elastoplastic_sim",
+    srcs = ["elastoplastic_sim.cc"],
+    data = [
+        "//examples/deform:params_yamls",
+        ":models",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:deform_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_elastoplastic_control",
+    srcs = ["run_elastoplastic_control.cc"],
+    data = [
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:deform_params",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:franka_kinematics",
+        "//examples/deform:elastoplastic_controller",
+        "//systems/senders:sample_buffer_sender",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems:system_utils",
+        "//systems:simple_robot_object_kinematics",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "elastoplastic_controller",
+    srcs = ["elastoplastic_controller.cc"],
+    hdrs = ["elastoplastic_controller.h"],
+    deps = [
+        "//common:update_context",
+        "//examples/deform/parameter_headers:deform_params",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )

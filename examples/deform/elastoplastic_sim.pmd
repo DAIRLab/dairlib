@@ -1,0 +1,27 @@
+group "simulations" {
+    cmd "sim" {
+        exec = "bazel-bin/examples/deform/elastoplastic_sim";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/deform/elastoplastic_visualizer";
+        host = "localhost";
+    }
+}
+
+group "controllers" {
+    cmd "elastoplastic" {
+        exec = "bazel-bin/examples/deform/run_elastoplastic_control";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}

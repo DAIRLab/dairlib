@@ -28,16 +28,24 @@ class MultiposeVisualizer {
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
   /// @param num_poses The number of simultaneous poses to draw (fixed)
   /// @param weld_frame_to_world Welds the frame of the given name to the world
+  /// @param world_frame_offset An optional offset to apply when welding to
+  /// world
   MultiposeVisualizer(std::string model_file, int num_poses,
-                      std::string weld_frame_to_world = "");
+                      std::string weld_frame_to_world = "",
+                      const drake::math::RigidTransformd& world_frame_offset =
+                          drake::math::RigidTransformd());
 
   /// Constructor, scales all alpha transparencies by a constant
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
   /// @param num_poses The number of simultaneous poses to draw (fixed)
   /// @param alpha_scale Scales the transparency alpha field of all bodies
   /// @param weld_frame_to_world Welds the frame of the given name to the world
+  /// @param world_frame_offset An optional offset to apply when welding to
+  /// world
   MultiposeVisualizer(std::string model_file, int num_poses, double alpha_scale,
-                      std::string weld_frame_to_world = "");
+                      std::string weld_frame_to_world = "",
+                      const drake::math::RigidTransformd& world_frame_offset =
+                          drake::math::RigidTransformd());
 
   /// Constructor, scales all alpha transparencies by a constant
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
@@ -45,29 +53,39 @@ class MultiposeVisualizer {
   /// @param alpha_scale Vector, of same length as num_poses. Provideas variable
   /// scaling of the transparency alpha field of all bodies, indexed by pose
   /// @param weld_frame_to_world Welds the frame of the given name to the world
+  /// @param world_frame_offset An optional offset to apply when welding to
+  /// world
   /// @param meshcat Pointer to meshcat visualizer for option to attach to an
   /// existing meshcat instance
   /// @param pose_trace_name Name of the pose trace to use in meshcat
   /// @param rgb the RGB color to use for all bodies.  If not provided, the
   /// color will default to what is defined in the model file.
   MultiposeVisualizer(
-    std::string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
-    std::string weld_frame_to_world = "",
-    std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr,
-    const std::string& pose_trace_name = "",
-    const Eigen::VectorXd& rgb = Eigen::VectorXd());
+      std::string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
+      std::string weld_frame_to_world = "",
+      const drake::math::RigidTransformd& world_frame_offset =
+          drake::math::RigidTransformd(),
+      std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr,
+      const std::string& pose_trace_name = "",
+      const Eigen::VectorXd& rgb = Eigen::VectorXd());
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be
   /// ignored.
-  void DrawPoses(Eigen::MatrixXd poses, std::optional<double> time_in_recording = std::nullopt);
+  void DrawPoses(Eigen::MatrixXd poses,
+                 std::optional<double> time_in_recording = std::nullopt);
 
   const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
     return meshcat_;
   }
 
+  const int GetNumConfig() { return num_config_; }
+  const int GetNumVel() { return num_vel_; }
+
  private:
   int num_poses_;
+  int num_config_;
+  int num_vel_;
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;

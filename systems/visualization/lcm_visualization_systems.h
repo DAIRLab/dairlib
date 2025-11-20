@@ -13,16 +13,19 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include "drake/math/rigid_transform.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
 
-// If the user does not provide a time vector, the default fallback is the epoch timestamp (seconds since 1970).
-// However, using these large absolute times with Drake's cubic spline constructor will throw an exception.
-// To avoid this, we generate a synthetic time vector with values spaced 1 second apart.
+// If the user does not provide a time vector, the default fallback is the epoch
+// timestamp (seconds since 1970). However, using these large absolute times
+// with Drake's cubic spline constructor will throw an exception. To avoid this,
+// we generate a synthetic time vector with values spaced 1 second apart.
 inline Eigen::VectorXd PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
-  const Eigen::VectorXd& time_vector){
+    const Eigen::VectorXd& time_vector) {
   Eigen::VectorXd new_time_vector = time_vector;
   if (time_vector[0] > 1e9) {
     for (int i = 0; i < time_vector.size(); ++i) {
@@ -78,19 +81,17 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& model_file,
                          const std::string& translation_trajectory_name,
                          const std::string& orientation_trajectory_name,
-                         const std::string& system_name = "",
-                         int num_poses = 5,
+                         const std::string& system_name = "", int num_poses = 5,
                          bool add_transparency = true,
                          const Eigen::VectorXd& rgb = Eigen::VectorXd());
-            
+
   explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                        std::vector<std::string> model_files,
-                        std::vector<std::string> translation_trajectory_names,
-                        std::vector<std::string> orientation_trajectory_names,
-                        const std::string& system_name = "",
-                        int num_poses = 5,
-                        bool add_transparency = true,
-                        const Eigen::VectorXd& rgb = Eigen::VectorXd());
+                         std::vector<std::string> model_files,
+                         std::vector<std::string> translation_trajectory_names,
+                         std::vector<std::string> orientation_trajectory_names,
+                         const std::string& system_name = "", int num_poses = 5,
+                         bool add_transparency = true,
+                         const Eigen::VectorXd& rgb = Eigen::VectorXd());
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -115,7 +116,8 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
 
   std::vector<std::string> translation_trajectory_names_;
   std::vector<std::string> orientation_trajectory_names_;
-  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>> multipose_visualizers_;
+  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>>
+      multipose_visualizers_;
   const int N_;
 };
 
@@ -166,23 +168,44 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   const std::string actor_trajectory_name_;
   const std::string force_trajectory_name_;
   const std::string lcs_force_trajectory_name_;
-  drake::geometry::Rgba actor_force_color_ = drake::geometry::Rgba(1, 0, 1, 1.0);
-  drake::geometry::Rgba contact_force_color_ = drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
+  drake::geometry::Rgba actor_force_color_ =
+      drake::geometry::Rgba(1, 0, 1, 1.0);
+  drake::geometry::Rgba contact_force_color_ =
+      drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
   const double radius_ = 0.002;
   const double newtons_per_meter_ = 40;
 };
 
-/// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
-/// and draws it through meshcat.
+/// Receives the target (and optionally actual and final target) C3 states via
+/// LCM and draws them through meshcat.
 class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
  public:
+  /// Constructor that assumes the robot is a 3 DoF end effector and there is
+  /// one floating base (7 DoF) object.
   explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                              bool draw_tray = true, bool draw_ee = false);
-  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&, int num_objects,
-                             bool draw_tray = true, bool draw_ee = false);
+  /// Constructor that assumes the robot is a 3 DoF end effector and there are
+  /// multiple floating base (7 DoF) objects.
+  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                             int num_objects, bool draw_tray = true,
+                             bool draw_ee = false);
+  /// Constructor that loads the (1) robot and (1) object models from files,
+  /// which determine the number of robot and object DoFs automatically.
+  explicit LcmC3TargetDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>&,
+      const std::string& object_model_file, const std::string& robot_model_file,
+      const std::string& weld_frame_to_world = "",
+      const drake::math::RigidTransformd& object_world_offset =
+          drake::math::RigidTransformd(),
+      const drake::math::RigidTransformd& robot_world_offset =
+          drake::math::RigidTransformd(),
+      const Eigen::VectorXd& object_rgb = Eigen::VectorXd(),
+      const Eigen::VectorXd& robot_rgb = Eigen::VectorXd(),
+      const bool& include_actual = false,
+      const bool& include_final_target = false);
 
-  const drake::systems::InputPort<double>& get_input_port_c3_state_final_target()
-      const {
+  const drake::systems::InputPort<double>&
+  get_input_port_c3_state_final_target() const {
     return this->get_input_port(c3_state_final_target_input_port_);
   }
 
@@ -202,8 +225,13 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   drake::systems::EventStatus DrawC3StateMulti(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  drake::systems::EventStatus DrawC3StateGeneric(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
   drake::systems::InputPortIndex c3_state_final_target_input_port_;
@@ -221,18 +249,66 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
   const std::string c3_state_path_ = "c3_state";
-  const std::string c3_final_target_object_path_ = "c3_state/c3_final_target_object";
+  const std::string c3_final_target_object_path_ =
+      "c3_state/c3_final_target_object";
   const std::string c3_target_object_path_ = "c3_state/c3_target_object";
   const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
   const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
-  
+
   std::vector<std::string> c3_state_paths_;
   std::vector<std::string> c3_final_target_object_paths_;
   std::vector<std::string> c3_target_object_paths_;
   std::vector<std::string> c3_actual_object_paths_;
   std::vector<std::string> c3_target_ee_paths_;
   std::vector<std::string> c3_actual_ee_paths_;
+
+  // Optionally used only if using constructor with model files:
+  std::unique_ptr<multibody::MultiposeVisualizer>
+      object_pose_actual_visualizer_ = nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer>
+      robot_pose_actual_visualizer_ = nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer>
+      object_pose_target_visualizer_ = nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer>
+      robot_pose_target_visualizer_ = nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer>
+      object_pose_final_visualizer_ = nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer> robot_pose_final_visualizer_ =
+      nullptr;
 };
+
+/// Receives a C3 plan via LCM and draws the planned trajectory through meshcat.
+class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  explicit LcmC3PlanDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
+      const std::string& object_model_file, const std::string& robot_model_file,
+      const std::string& weld_frame_to_world = "",
+      const drake::math::RigidTransformd& object_world_offset =
+          drake::math::RigidTransformd(),
+      const drake::math::RigidTransformd& robot_world_offset =
+          drake::math::RigidTransformd(),
+      const Eigen::VectorXd& object_rgb = Eigen::VectorXd(),
+      const Eigen::VectorXd& robot_rgb = Eigen::VectorXd(),
+      const bool& show_object = true, const bool& show_robot = true);
+
+  const drake::systems::InputPort<double>& get_input_port_c3_plan() const {
+    return this->get_input_port(c3_plan_input_port_);
+  }
+
+ private:
+  drake::systems::EventStatus DrawC3Plan(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  const int N_;
+  drake::systems::InputPortIndex c3_plan_input_port_;
+  std::unique_ptr<multibody::MultiposeVisualizer> object_plan_visualizer_ =
+      nullptr;
+  std::unique_ptr<multibody::MultiposeVisualizer> robot_plan_visualizer_ =
+      nullptr;
+};
+
 }  // namespace systems
 }  // namespace dairlib

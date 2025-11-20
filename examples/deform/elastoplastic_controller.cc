@@ -1,0 +1,318 @@
+#include "examples/deform/elastoplastic_controller.h"
+
+#include <Eigen/Dense>
+
+#include "common/update_context.h"
+#include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_force.hpp"
+#include "systems/framework/timestamped_vector.h"
+
+namespace dairlib {
+namespace examples {
+namespace deform {
+
+using dairlib::solvers::LCS;
+using drake::SortedPair;
+using drake::geometry::GeometryId;
+using drake::multibody::JointActuatorIndex;
+using drake::systems::BasicVector;
+using Eigen::MatrixXd;
+using Eigen::MatrixXf;
+using Eigen::VectorXd;
+using Eigen::VectorXf;
+using solvers::C3Plus;
+using solvers::LCS;
+using solvers::LCSFactory;
+using std::vector;
+using systems::TimestampedVector;
+
+ElastoPlasticController::ElastoPlasticController(
+    drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context,
+    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+    const ElastoPlasticC3Options& elastoplastic_c3_options)
+    : plant_(plant),
+      context_(context),
+      plant_ad_(plant_ad),
+      context_ad_(context_ad),
+      contact_pairs_(contact_geoms),
+      elastoplastic_c3_options_(std::move(elastoplastic_c3_options)),
+      N_(elastoplastic_c3_options.N),
+      dt_(elastoplastic_c3_options.dt),
+      solve_time_filter_alpha_(
+          elastoplastic_c3_options.solve_time_filter_alpha) {
+  this->set_name("elastoplastic_controller");
+
+  n_q_ = plant_.num_positions();
+  n_v_ = plant_.num_velocities();
+  n_u_ = plant_.num_actuators();
+  n_x_ = n_q_ + n_v_;
+
+  // Determine n_lambda_ from the contact model.
+  if (elastoplastic_c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
+    n_lambda_ = 2 * elastoplastic_c3_options_.num_contacts +
+                2 * elastoplastic_c3_options_.num_friction_directions *
+                    elastoplastic_c3_options_.num_contacts;
+  } else if (elastoplastic_c3_options_.contact_model == "anitescu") {
+    contact_model_ = solvers::ContactModel::kAnitescu;
+    n_lambda_ = 2 * elastoplastic_c3_options_.num_friction_directions *
+                elastoplastic_c3_options_.num_contacts;
+  } else {
+    std::cerr << "Unknown or unsupported contact model: "
+              << elastoplastic_c3_options_.contact_model << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
+
+  // Initialize cost matrices.
+  double discount_factor = 1;
+  C3Options c3_options = elastoplastic_c3_options_.GetC3Options();
+  for (int i = 0; i < N_ + 1; ++i) {
+    Q_.push_back(discount_factor * c3_options.Q);
+    discount_factor *= c3_options.gamma;
+    if (i < N_) {
+      R_.push_back(discount_factor * c3_options.R);
+      G_.push_back(c3_options.G);
+      U_.push_back(c3_options.U);
+    }
+  }
+
+  // Create placeholder LCS for initializing C3Plus.
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  LCS lcs_placeholder(A, B, D, d, E, F, H, c, N_, dt_);
+
+  auto x_desired_placeholder =
+      std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  c3_mpc_ = std::make_shared<C3Plus>(
+      lcs_placeholder, solvers::C3Base::CostMatrices(Q_, R_, G_, U_),
+      x_desired_placeholder, c3_options);
+
+  // Input ports
+  x_lcs_input_port_ =
+      this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
+          .get_index();
+  x_lcs_target_input_port_ =
+      this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+
+  // Output ports
+  auto c3_solution = C3Output::C3Solution();
+  c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution.time_vector_ = VectorXf::Zero(N_);
+  auto c3_intermediates = C3Output::C3Intermediates();
+  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
+  auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
+                                        std::vector<Eigen::VectorXd>());
+  c3_solution_port_ = this->DeclareAbstractOutputPort(
+                              "c3_solution", c3_solution,
+                              &ElastoPlasticController::OutputC3Solution)
+                          .get_index();
+  c3_intermediates_port_ =
+      this->DeclareAbstractOutputPort(
+              "c3_intermediates", c3_intermediates,
+              &ElastoPlasticController::OutputC3Intermediates)
+          .get_index();
+  lcs_contact_jacobian_port_ =
+      this->DeclareAbstractOutputPort(
+              "J_lcs, p_lcs", lcs_contact_jacobian,
+              &ElastoPlasticController::OutputLCSContactJacobian)
+          .get_index();
+  efforts_port_ = this->DeclareAbstractOutputPort(
+                          "efforts", dairlib::lcmt_robot_input(),
+                          &ElastoPlasticController::OutputRobotEfforts)
+                      .get_index();
+
+  // Discrete state indices
+  plan_start_time_index_ = DeclareDiscreteState(1);
+  x_pred_index_ = DeclareDiscreteState(n_x_);
+  filtered_solve_time_index_ = DeclareDiscreteState(1);
+
+  this->DeclareForcedDiscreteUpdateEvent(&ElastoPlasticController::ComputePlan);
+}
+
+drake::systems::EventStatus ElastoPlasticController::ComputePlan(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  auto start = std::chrono::high_resolution_clock::now();
+
+  // Evaluate input ports.
+  const TimestampedVector<double>* lcs_x_curr =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        x_lcs_input_port_);
+  const BasicVector<double>& lcs_x_des =
+      *this->template EvalVectorInput<BasicVector>(context,
+                                                   x_lcs_target_input_port_);
+  drake::VectorX<double> x_lcs_des = lcs_x_des.get_value();
+  drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+  double t_context = lcs_x_curr->get_timestamp();
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] = t_context;
+
+  // Resolve contact pairs and create LCS.
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                x_lcs_curr);
+  vector<SortedPair<GeometryId>> resolved_contact_pairs =
+      LCSFactory::PreProcessor(
+          plant_, *context_, contact_pairs_,
+          elastoplastic_c3_options_.resolve_contacts_to,
+          elastoplastic_c3_options_.num_friction_directions, false);
+  LCS lcs_object = LCSFactory::LinearizePlantToLCS(
+      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
+      elastoplastic_c3_options_.mu, dt_, N_,
+      elastoplastic_c3_options_.n_lambda_with_tangential,
+      elastoplastic_c3_options_.num_friction_directions_per_contact,
+      elastoplastic_c3_options_.starting_index_per_contact_in_lambda_t_vector,
+      contact_model_);
+
+  // Solve C3.
+  std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_lcs_des);
+  c3_mpc_->UpdateLCS(lcs_object);
+  c3_mpc_->UpdateTarget(x_desired);
+  c3_mpc_->Solve(x_lcs_curr, false);  // verbose off
+
+  // End of control loop cleanup:  update filtered solve time.
+  double old_solve_time =
+      discrete_state->get_value(filtered_solve_time_index_)[0];
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto elapsed = finish - start;
+  double solve_time =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+      1e6;
+
+  double new_solve_time = (1 - solve_time_filter_alpha_) * solve_time +
+                          (solve_time_filter_alpha_)*old_solve_time;
+  discrete_state->get_mutable_value(filtered_solve_time_index_)[0] =
+      new_solve_time;
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+// Output port functions
+void ElastoPlasticController::OutputC3Solution(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double plan_start_time =
+      context.get_discrete_state(plan_start_time_index_)[0];
+  double filtered_solve_time =
+      context.get_discrete_state(filtered_solve_time_index_)[0];
+  double t0 = plan_start_time + filtered_solve_time;
+
+  auto z_sol = c3_mpc_->GetFullSolution();
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t0 + i * dt_;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+}
+
+void ElastoPlasticController::OutputC3Intermediates(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Intermediates* c3_intermediates) const {
+  double plan_start_time =
+      context.get_discrete_state(plan_start_time_index_)[0];
+  double filtered_solve_time =
+      context.get_discrete_state(filtered_solve_time_index_)[0];
+  double t0 = plan_start_time + filtered_solve_time;
+
+  auto z_sol = c3_mpc_->GetFullSolution();
+  auto delta = c3_mpc_->GetDualDeltaSolution();
+  auto w = c3_mpc_->GetDualWSolution();
+
+  for (int i = 0; i < N_; i++) {
+    c3_intermediates->time_vector_(i) = t0 + i * dt_;
+    c3_intermediates->z_.col(i) = z_sol[i].cast<float>();
+    c3_intermediates->w_.col(i) = w[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta[i].cast<float>();
+  }
+}
+
+void ElastoPlasticController::OutputLCSContactJacobian(
+    const drake::systems::Context<double>& context,
+    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
+        lcs_contact_jacobian) const {
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        x_lcs_input_port_);
+
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                lcs_x->get_data());
+
+  // Preprocessing the contact pairs
+  vector<SortedPair<GeometryId>> resolved_contact_pairs;
+  resolved_contact_pairs = LCSFactory::PreProcessor(
+      plant_, *context_, contact_pairs_,
+      elastoplastic_c3_options_.resolve_contacts_to,
+      elastoplastic_c3_options_.num_friction_directions);
+  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
+      plant_, *context_, resolved_contact_pairs, elastoplastic_c3_options_.mu,
+      elastoplastic_c3_options_.n_lambda_with_tangential,
+      elastoplastic_c3_options_.num_friction_directions_per_contact,
+      elastoplastic_c3_options_.starting_index_per_contact_in_lambda_t_vector,
+      contact_model_);
+}
+
+void ElastoPlasticController::OutputRobotEfforts(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_robot_input* lcmt_efforts) const {
+  // Perform closed-loop feedback on the EE state:  the current EE state.
+  // TODO @bibit:  Would be better to do feedback on predicted x into the future
+  // according to filtered solve time.  Also make Kp/Kd parameters.
+  const TimestampedVector<double>* lcs_x_curr =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        x_lcs_input_port_);
+  drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+
+  // Get the C3 plan.
+  std::vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
+  std::vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
+  std::cout << "u_sol size: " << u_sol.size() << std::endl;
+  std::cout << "u_sol[0] size: " << u_sol[0].size() << std::endl;
+  std::cout << "u_sol: " << std::endl;
+  for (int i = 0; i < u_sol.size(); i++) {
+    std::cout << "  " << u_sol[i].transpose() << std::endl;
+  }
+  std::cout << "time: " << context.get_time() << std::endl;
+
+  lcmt_efforts->utime = context.get_time() * 1e6;
+  lcmt_efforts->num_efforts = n_u_;
+
+  std::vector<std::string> actuator_names;
+  for (JointActuatorIndex i(0); i < n_u_; ++i) {
+    const drake::multibody::JointActuator<double>& actuator =
+        plant_.get_joint_actuator(i);
+    actuator_names.push_back(actuator.name());
+  }
+  lcmt_efforts->effort_names = actuator_names;
+
+  std::vector<double> efforts_vector(n_u_);
+  double Kp = 10;
+  double Kd = 2 * sqrt(Kp);
+  for (int i = 0; i < n_u_; i++) {
+    double u_feed_forward = u_sol[0](i);
+    double u_feedback = Kp * (x_sol[1](i) - x_lcs_curr(i)) +
+                        Kd * (x_sol[0](i + n_q_) - x_lcs_curr(i + n_q_));
+    efforts_vector[i] = u_feed_forward + u_feedback;
+    std::cout << "Feedforward = " << u_feed_forward
+              << ", Feedback = " << u_feedback << std::endl;
+  }
+  lcmt_efforts->efforts = efforts_vector;
+}
+
+}  // namespace deform
+}  // namespace examples
+}  // namespace dairlib

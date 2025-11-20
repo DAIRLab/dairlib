@@ -318,15 +318,12 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
     // Make matrix versions of variables for more compact printing.
     Eigen::MatrixXd verbose_delta = Eigen::MatrixXd::Zero(z_size_, N_);
     Eigen::MatrixXd verbose_w = Eigen::MatrixXd::Zero(z_size_, N_);
-    Eigen::MatrixXd verbose_zfin = Eigen::MatrixXd::Zero(z_size_, N_);
     Eigen::MatrixXd verbose_zsol = Eigen::MatrixXd::Zero(z_size_, N_);
     for (int i = 0; i < N_; i++) {
       verbose_delta.col(i) = delta[i];
       verbose_w.col(i) = w[i];
-      verbose_zfin.col(i) = zfin_[i];
       verbose_zsol.col(i) = z_sol_->at(i);
     }
-    std::cout << "zfin: \n" << verbose_zfin << std::endl;
     std::cout << "zsol: \n" << verbose_zsol << std::endl;
     std::cout << "delta: \n" << verbose_delta << std::endl;
     std::cout << "w: \n" << verbose_w << std::endl;

@@ -1,12 +1,5 @@
 <?xml version="1.0" ?>
-<!-- State vector is [z, x, d] where:
-  /|
-  /|________[slider]________(frictional_slider)_________[spring]__________(springed)
-  /|                                                                                     ^
-  /|________________________d                                                            | z
-  /|______________________________________________________________________x              |
- -->
-<robot name="elastoplastic_1d">
+<robot name="rigid_1d">
 
   <material name="block_material">
     <color rgba="0.6 0.6 0.6 1.0"/>
@@ -59,31 +52,6 @@
       </drake:proximity_properties>
     </collision>
   </link>
-
-  <link name="springed">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.5"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.570796 0" xyz="0 0 0"/>
-      <geometry>
-        <cylinder radius="0.045" length="0.01"/>
-      </geometry>
-      <material name="block_material"/>
-    </visual>
-    <collision>
-      <origin rpy="0 1.570796 0" xyz="0 0 0"/>
-      <geometry>
-        <cylinder radius="0.045" length="0.01"/>
-      </geometry>
-      <drake:proximity_properties>
-        <drake:mu_static value="1"/>
-        <drake:mu_dynamic value="1"/>
-      </drake:proximity_properties>
-    </collision>
-
-  </link>
   
   <link name="frictional_slider_fake_z" />
   
@@ -91,11 +59,6 @@
     <parent link="base_link"/>
     <child link="frictional_slider_fake_z"/>
     <axis xyz="0 0 1"/>
-  </joint>
-  <joint name="x_motion" type="prismatic">
-    <parent link="frictional_slider_fake_z"/>
-    <child link="springed"/>
-    <axis xyz="1 0 0"/>
   </joint>
   <joint name="d_motion" type="prismatic">
     <parent link="frictional_slider_fake_z"/>

@@ -1,0 +1,105 @@
+### C3 options
+admm_iter: 3      # total number of ADMM iterations
+rho: 0            # initial value of the rho parameter
+rho_scale: 3      # scaling of rho parameter (/rho = rho_scale * /rho)
+num_threads: 5    # 0 is dynamic, greater than 0 for a fixed count
+delta_option: 1
+projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
+contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
+warm_start: false
+use_predicted_x0: false
+end_on_qp_step: false
+solve_time_filter_alpha: 0.95
+publish_frequency: 0
+penalize_changes_in_u_across_solves: false  # Penalize (u-u_prev) instead of u.
+num_friction_directions: 2
+
+dt: 0.1
+N: 5
+gamma: 1.0  # discount factor on MPC costs
+
+# As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
+qp_projection_alpha: 0.01
+qp_projection_scaling: 1
+
+### Some things that could eventually be moved elsewhere for better organizing.
+q_target: [0.3, 0.05, 0.15, 0.05]  # [EEx, objz, objx, objd]
+state_names: ["ee_x", "obj_z", "obj_x", "obj_d", "ee_vx", "obj_vz", "obj_vx", "obj_vd"]
+
+### Limits
+# Workspace limits in format [x y z lb ub]
+workspace_limits: [[1, 0, 0, 0, 0.5]]
+workspace_margins: 0.03
+u_horizontal_limits: [-10, 10]
+u_vertical_limits: [-3, 3]
+
+### Contacts
+mu_per_pair_type: [1.0, 1.0]   # object-ground, EE-object
+resolve_contacts_to_lists: [[1, 1]]
+resolve_as_planar_contacts_list: [0, 0]
+num_contacts_index: 0
+
+### Cost parameters
+# Set 4x4 portion of Q for quaternion based on current and desired quaternion.
+use_quaternion_dependent_cost: false  # 1D example has no quaternions
+q_quaternion_dependent_weight: 1000
+q_quaternion_dependent_regularizer_fraction: 0
+
+w_Q: 45
+w_R: 1
+w_G: 0.25
+w_U: 0.26
+
+q_vector: [1, 1, 1, 0.001, 0.01, 0.01, 0.01, 0.01]   # EEx, objz, objx, objd, velocities in same order
+r_vector: [0.01]
+
+# Penalty on matching projected variables
+# C3+ with Anitescu contact model only g_lambda and g_eta used.
+g_x: [0, 0, 0, 0, 0, 0, 0, 0]
+g_u: [0]
+g_lambda_list: [[10, 10, 10, 10, 1, 1, 1, 1]]
+g_eta_list: [[10, 10, 10, 10, 1, 1, 1, 1]]
+g_gamma_list: [[]]
+g_lambda_n_list: [[]]
+g_lambda_t_list: [[]]
+g_eta_slack_list: [[]]
+g_eta_n_list: [[]]
+g_eta_t_list: [[]]
+
+# Penalty on matching QP variables
+# C3+ with Anitescu contact model only u_lambda and u_eta used.
+u_x: [0, 0, 0, 0, 0, 0, 0, 0]
+u_u: [0]
+u_lambda_list: [[10000, 10000, 10000, 10000, 10, 10, 10, 10]]
+u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1]]
+u_gamma_list: [[]]
+u_lambda_n_list: [[]]
+u_lambda_t_list: [[]]
+u_eta_slack_list: [[]]
+u_eta_n_list: [[]]
+u_eta_t_list: [[]]
+
+### CAN IGNORE THE BELOW
+solve_dt: 0       # unused
+lcs_dt_resolution: 1
+dt_cost: 0
+num_contacts: 0
+mu: []
+# Instead for the below, index into their _list versions.
+g_gamma: []
+g_lambda_n: []
+g_lambda_t: []
+g_lambda: []
+u_gamma: []
+u_lambda_n: []
+u_lambda_t: []
+u_lambda: []
+
+g_eta_slack: []
+g_eta_n: []
+g_eta_t: []
+g_eta: []
+u_eta_slack: []
+u_eta_n: []
+u_eta_t: []
+u_eta: []

@@ -371,22 +371,17 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       lcm_traj.GetTrajectory(force_trajectory_name_);
   const auto& actor_trajectory_block =
       lcm_traj.GetTrajectory(actor_trajectory_name_);
-  Eigen::VectorXd force_time_vector =
-      PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
-          force_trajectory_block.time_vector);
   auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      force_time_vector, force_trajectory_block.datapoints);
+      force_trajectory_block.time_vector, force_trajectory_block.datapoints);
   VectorXd pose;
-  Eigen::VectorXd actor_time_vector =
-      PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
-          actor_trajectory_block.time_vector);
   if (actor_trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-        actor_time_vector, actor_trajectory_block.datapoints);
+        actor_trajectory_block.time_vector, actor_trajectory_block.datapoints);
     pose = trajectory.value(robot_time);
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
-        actor_time_vector, actor_trajectory_block.datapoints.topRows(3),
+        actor_trajectory_block.time_vector,
+        actor_trajectory_block.datapoints.topRows(3),
         actor_trajectory_block.datapoints.bottomRows(3));
     pose = trajectory.value(robot_time);
   }

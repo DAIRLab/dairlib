@@ -1,13 +1,13 @@
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/magna/round_belt_visualizer";
+        exec = "bazel-bin/examples/magna/round_belt_visualizer --is_simulation=false udpm://239.255.76.67:7667?ttl=1";
         host = "control_pc";
     }
 }
 
 group "controllers" {    
     cmd "assembly" {
-        exec = "bazel-bin/examples/magna/run_assembly_controller";
+        exec = "bazel-bin/examples/magna/run_assembly_controller udpm://239.255.76.67:7667?ttl=1";
         host = "control_pc";
     }
 }

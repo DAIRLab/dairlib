@@ -1,7 +1,8 @@
 franka_state_channel: FRANKA_STATE              # dairlib::lcmt_robot_output
 franka_input_channel: FRANKA_INPUT              # dairlib::lcmt_robot_input
-franka_hand_state_channel: GRIPPER_STATE    # drake::lcmt_schunk_wsg_status 
-franka_hand_input_channel: FRANKA_HAND_INPUT    # drake::lcmt_schunk_wsg_command
+franka_hand_state_channel: PANDA_HAND_STATUS    # in hardware: drake::lcmt_schunk_wsg_status
+                                                # in simulation: dairlib::lcmt_robot_output
+franka_hand_input_channel: PANDA_HAND_COMMAND    # drake::lcmt_schunk_wsg_command
 
 osc_channel: OSC_FRANKA                         # dairlib::lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA             # dairlib::lcmt_osc_output

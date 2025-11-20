@@ -42,8 +42,8 @@ target_poses:
     center: [0.48985, -0.052, 0.03]
     radius: 0.25
   # Tilt the end-effector to avoid collision of the belt with the small pulley
-  - position: [0.61485, 0.1645, 0.03]
-    orientation: [0.0858317, 0.0151344, -0.1729874, 0.9810603]
+  - position: [0.61485, 0.1645, 0.025]
+    orientation: [0.0868241, 0.0868241, 0.0075961, 0.9924039]
     gripper_pos_command: -0.5
     dwell_seconds: 0
     center: [0, 0, 0]

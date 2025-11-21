@@ -10,6 +10,10 @@ group "operator" {
         exec = "bazel-bin/examples/deform/elastoplastic_visualizer";
         host = "localhost";
     }
+    cmd "radio" {
+        exec = "python examples/deform/test/radio.py";
+        host = "localhost";
+    }
 }
 
 group "controllers" {

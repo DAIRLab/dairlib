@@ -1,5 +1,5 @@
 ### C3 options
-admm_iter: 8      # total number of ADMM iterations
+admm_iter: 4      # total number of ADMM iterations
 rho: 0            # initial value of the rho parameter
 rho_scale: 3      # scaling of rho parameter (/rho = rho_scale * /rho)
 num_threads: 5    # 0 is dynamic, greater than 0 for a fixed count
@@ -16,7 +16,7 @@ num_friction_directions: 2
 
 dt: 0.1
 N: 8
-gamma: 1.0  # discount factor on MPC costs
+gamma: 1.2  # discount factor on MPC costs
 
 # As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
 qp_projection_alpha: 0.01
@@ -25,8 +25,9 @@ qp_projection_scaling: 1
 ### Some things that could eventually be moved elsewhere for better organizing.
 q_target: [0.3, 0.05, 0.05]  # [EEx, objz, objd]
 state_names: ["ee_x", "obj_z", "obj_d", "ee_vx", "obj_vz", "obj_vd"]
-Kp: [2000]
-Kd: [50]
+Kp: [100]
+Kd: [10]
+w_Q_final: 10
 
 ### Limits
 # Workspace limits in format [x y z lb ub]
@@ -49,10 +50,10 @@ q_quaternion_dependent_regularizer_fraction: 0
 
 w_Q: 45
 w_R: 1
-w_G: 0.25
+w_G: 1
 w_U: 0.26
 
-q_vector: [800, 10, 10, 0.01, 0.01, 0.01]   # EEx, objz, objd, velocities in same order
+q_vector: [1000, 10, 1000, 100, 0.01, 1]   # EEx, objz, objd, velocities in same order
 r_vector: [0.01]
 
 # Penalty on matching projected variables
@@ -72,8 +73,8 @@ g_eta_t_list: [[]]
 # C3+ with Anitescu contact model only u_lambda and u_eta used.
 u_x: [0, 0, 0, 0, 0, 0]
 u_u: [0]
-u_lambda_list: [[1000, 1000, 1000, 1000, 1, 1, 1, 1]]
-u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda_list: [[1000000, 1000000, 1000000, 1000000, 1, 1, 1, 1]]
+u_eta_list: [[1, 1, 1, 1, 1000000, 1000000, 1000000, 1000000]]
 u_gamma_list: [[]]
 u_lambda_n_list: [[]]
 u_lambda_t_list: [[]]

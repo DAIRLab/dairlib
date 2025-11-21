@@ -70,7 +70,7 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
   if (is_final_solve) {
     std::vector<Eigen::MatrixXd> last_qp_G = G;
     for (int i = 0; i < N_; ++i) {
-      for (int j = 0; j < 4; ++j) {
+      for (int j = 4; j < 8; ++j) {  // TODO @bibit don't hardcode this
         if (delta.at(i)[n_ + j] == 0) {
           last_qp_G.at(i).block(n_ + j, n_ + j, 1, 1) *= large_coeff;
         } else {
@@ -81,11 +81,11 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
     }
 
     for (int i = 0; i < N_; i++) {
-      costs_.push_back(prog_.AddQuadraticCost(
-          2 * last_qp_G.at(i).block(n_, n_, m_, m_),
-          -2 * last_qp_G.at(i).block(n_, n_, m_, m_) *
-              delta.at(i).segment(n_, m_),
-          lambda_.at(i), 1));
+      costs_.push_back(
+          prog_.AddQuadraticCost(2 * last_qp_G.at(i).block(n_, n_, m_, m_),
+                                 -2 * last_qp_G.at(i).block(n_, n_, m_, m_) *
+                                     delta.at(i).segment(n_, m_),
+                                 lambda_.at(i), 1));
       costs_.push_back(prog_.AddQuadraticCost(
           2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_),
           -2 * last_qp_G.at(i).block(n_ + m_ + k_, n_ + m_ + k_, m_, m_) *

@@ -51,6 +51,9 @@ ElastoPlasticController::ElastoPlasticController(
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
 
+  // TODO @bibit change this size based on robot model
+  teleop_target_.resize(n_u_);
+
   // Determine n_lambda_ from the contact model.
   if (elastoplastic_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
@@ -72,15 +75,17 @@ ElastoPlasticController::ElastoPlasticController(
   C3Options c3_options = elastoplastic_c3_options_.GetC3Options();
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
-    discount_factor *= c3_options.gamma;
     if (i < N_) {
       R_.push_back(discount_factor * c3_options.R);
       G_.push_back(c3_options.G);
       U_.push_back(c3_options.U);
+    } else {
+      Q_.back() *= elastoplastic_c3_options_.w_Q_final;
     }
+    discount_factor *= c3_options.gamma;
   }
 
-  // Create placeholder LCS for initializing C3Plus.
+  // Create placeholder LCS for initializing C3+.
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
@@ -103,6 +108,9 @@ ElastoPlasticController::ElastoPlasticController(
           .get_index();
   x_lcs_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+  radio_input_port_ = this->DeclareAbstractInputPort(
+                              "radio", drake::Value<dairlib::lcmt_radio_out>{})
+                          .get_index();
 
   // Output ports
   auto c3_solution = C3Output::C3Solution();
@@ -310,28 +318,12 @@ void ElastoPlasticController::OutputC3Forces(
 void ElastoPlasticController::OutputRobotEfforts(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_robot_input* lcmt_efforts) const {
-  // Perform closed-loop feedback on the EE state with C3 feed-forward term.
   const TimestampedVector<double>* lcs_x_curr =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         x_lcs_input_port_);
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
 
-  // Get the C3 plan.
-  std::vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
-  std::vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
-
-  // Define a state trajectory so we can interpolate it for the feedback term.
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
-  for (int i = 0; i < N_; i++) {
-    knots.col(i) = x_sol[i];
-    timestamps[i] = context.get_time() + i * dt_;
-  }
-  auto x_trajectory =
-      PiecewisePolynomial<double>::FirstOrderHold(timestamps, knots);
-  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
-  VectorXd x_des = x_trajectory.value(context.get_time() + solve_time);
-
+  // Begin constructing the efforts message.
   lcmt_efforts->utime = context.get_time() * 1e6;
   lcmt_efforts->num_efforts = n_u_;
 
@@ -344,19 +336,62 @@ void ElastoPlasticController::OutputRobotEfforts(
   }
   lcmt_efforts->effort_names = actuator_names;
 
+  // Begin determining the desired location to track.
+  VectorXd q_des = VectorXd::Zero(n_u_);
+  VectorXd v_des = VectorXd::Zero(n_u_);
+  VectorXd u_feedforward = VectorXd::Zero(n_u_);
+
+  // If in teleop mode, keep the robot in place.
+  const auto& lcmt_radio =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_input_port_);
+  if (lcmt_radio->channel[kTeleopRadioChannel] == 1) {
+    if (!was_teleop_last_step_) {
+      std::cout << "Newly entering teleop!" << std::endl;
+      teleop_target_.head(n_u_) = x_lcs_curr.head(n_u_);
+      was_teleop_last_step_ = true;
+    }
+    q_des = teleop_target_;
+  }
+  // If not in teleop mode, track the C3 plan.
+  else {
+    was_teleop_last_step_ = false;
+
+    // Perform closed-loop feedback on the EE state with C3 feed-forward term.
+    // Get the C3 plan.
+    std::vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
+    std::vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
+    u_feedforward = u_sol[0];
+
+    // Define a state trajectory so we can interpolate it for the feedback term.
+    Eigen::MatrixXd x_knots = Eigen::MatrixXd::Zero(n_x_, N_);
+    Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
+    for (int i = 0; i < N_; i++) {
+      x_knots.col(i) = x_sol[i];
+      timestamps[i] = context.get_time() + i * dt_;
+    }
+    auto x_trajectory =
+        PiecewisePolynomial<double>::FirstOrderHold(timestamps, x_knots);
+    double solve_time =
+        context.get_discrete_state(filtered_solve_time_index_)[0];
+    VectorXd x_des = x_trajectory.value(context.get_time() + solve_time);
+    q_des = x_des.head(n_u_);
+    v_des = x_des.segment(n_q_, n_u_);
+  }
+
   // Set the efforts according to feedforward + feedback.  Use a predicted next
   // state for feedback.
   std::vector<double> efforts_vector(n_u_);
   for (int i = 0; i < n_u_; i++) {
-    double q_des = x_des(i);
-    double v_des = x_des(n_q_ + i);
-    double u_feed_forward = u_sol[0](i);
     double u_feedback =
-        elastoplastic_c3_options_.Kp[i] * (q_des - x_lcs_curr(i)) +
-        elastoplastic_c3_options_.Kd[i] * (v_des - x_lcs_curr(i + n_q_));
-    efforts_vector[i] = u_feed_forward + u_feedback;
-    std::cout << "Feedforward = " << u_feed_forward
-              << ", Feedback = " << u_feedback << std::endl;
+        elastoplastic_c3_options_.Kp[i] * (q_des[i] - x_lcs_curr(i)) +
+        elastoplastic_c3_options_.Kd[i] * (v_des[i] - x_lcs_curr(i + n_q_));
+    efforts_vector[i] = u_feedforward[i] + u_feedback;
+    // std::clamp(u_feedforward + u_feedback,
+    //            elastoplastic_c3_options_.u_horizontal_limits[0],
+    //            elastoplastic_c3_options_.u_horizontal_limits[1]);
+    std::cout << "Feedforward = " << u_feedforward[i]
+              << ", Feedback = " << u_feedback
+              << ", Total = " << efforts_vector[i] << std::endl;
   }
   lcmt_efforts->efforts = efforts_vector;
 }

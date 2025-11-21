@@ -20,6 +20,7 @@ struct ElastoPlasticC3Options : C3Options {
   std::vector<std::string> state_names;
   Eigen::VectorXd Kp;
   Eigen::VectorXd Kd;
+  double w_Q_final;
 
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
@@ -61,6 +62,7 @@ struct ElastoPlasticC3Options : C3Options {
     a->Visit(DRAKE_NVP(state_names));
     a->Visit(DRAKE_NVP(Kp));
     a->Visit(DRAKE_NVP(Kd));
+    a->Visit(DRAKE_NVP(w_Q_final));
 
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));

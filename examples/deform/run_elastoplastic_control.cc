@@ -146,6 +146,8 @@ int DoMain(int argc, char* argv[]) {
   auto robot_state_receiver =
       builder.AddSystem<dairlib::systems::RobotOutputReceiver>(plant_lcs,
                                                                robot_idx);
+  builder.Connect(radio_sub->get_output_port(),
+                  controller->get_input_port_radio());
   builder.Connect(*object_state_sub, *object_state_receiver);
   builder.Connect(*robot_state_sub, *robot_state_receiver);
 

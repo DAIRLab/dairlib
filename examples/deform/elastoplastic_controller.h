@@ -9,6 +9,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_costs.hpp"
 #include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -28,6 +29,9 @@ namespace dairlib {
 namespace examples {
 namespace deform {
 
+/// Miscellaneous.
+static const int kTeleopRadioChannel = 14;
+
 class ElastoPlasticController : public drake::systems::LeafSystem<double> {
  public:
   ElastoPlasticController(
@@ -46,6 +50,9 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(x_lcs_target_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_input_port_);
   }
 
   // Output ports
@@ -88,6 +95,7 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
   // Input/output port indices
   drake::systems::InputPortIndex x_lcs_input_port_;
   drake::systems::InputPortIndex x_lcs_target_input_port_;
+  drake::systems::InputPortIndex radio_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
   drake::systems::OutputPortIndex c3_forces_port_;
@@ -128,8 +136,10 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex x_pred_index_;
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
 
-  // Timing
+  // Timing/teleop
   const double solve_time_filter_alpha_;
+  mutable bool was_teleop_last_step_ = false;
+  mutable Eigen::VectorXd teleop_target_;
 };
 
 }  // namespace deform

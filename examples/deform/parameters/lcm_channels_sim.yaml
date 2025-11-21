@@ -11,6 +11,7 @@ c3_actor_plan_channel: C3_TRAJECTORY_ACTOR_PLAN
 c3_object_plan_channel: C3_TRAJECTORY_OBJECT_PLAN
 c3_force_channel: C3_FORCES                               # lcmt_c3_forces
 c3_debug_output_channel: C3_DEBUG                         # lcmt_c3_output
+c3_costs_channel: C3_COSTS                                # lcmt_c3_costs
 
 c3_final_target_state_channel: C3_FINAL_TARGET            # lcmt_c3_state
 c3_target_state_channel: C3_TARGET                        # lcmt_c3_state

@@ -7,6 +7,8 @@
 #include <drake/common/yaml/yaml_io.h>
 
 #include "common/find_resource.h"
+#include "dairlib/lcmt_c3_costs.hpp"
+#include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -55,12 +57,14 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(c3_intermediates_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_lcs_contact_jacobian() const {
-    return this->get_output_port(lcs_contact_jacobian_port_);
+  const drake::systems::OutputPort<double>& get_output_port_c3_forces() const {
+    return this->get_output_port(c3_forces_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_efforts() const {
     return this->get_output_port(efforts_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_costs() const {
+    return this->get_output_port(c3_costs_port_);
   }
 
  private:
@@ -74,20 +78,21 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
                         C3Output::C3Solution* c3_solution) const;
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
-  void OutputLCSContactJacobian(
-      const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-          lcs_contact_jacobian) const;
+  void OutputC3Forces(const drake::systems::Context<double>& context,
+                      dairlib::lcmt_c3_forces* output) const;
   void OutputRobotEfforts(const drake::systems::Context<double>& context,
                           dairlib::lcmt_robot_input* lcmt_efforts) const;
+  void OutputC3Costs(const drake::systems::Context<double>& context,
+                     dairlib::lcmt_c3_costs* lcmt_c3_costs) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex x_lcs_input_port_;
   drake::systems::InputPortIndex x_lcs_target_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
-  drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
+  drake::systems::OutputPortIndex c3_forces_port_;
   drake::systems::OutputPortIndex efforts_port_;
+  drake::systems::OutputPortIndex c3_costs_port_;
 
   // Plant, options, and controller
   drake::multibody::MultibodyPlant<double>& plant_;

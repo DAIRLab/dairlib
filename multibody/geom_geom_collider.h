@@ -66,6 +66,10 @@ class GeomGeomCollider {
   std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
       const drake::systems::Context<double>& context);
 
+  std::pair<drake::VectorX<double>, Eigen::Matrix<double, Eigen::Dynamic, 3>>
+  CalcWitnessPointsAndForceBasisInWorldFrame(
+      const drake::systems::Context<double>& context, bool planar);
+
  private:
   std::pair<T, drake::MatrixX<T>> DoEval(
       const drake::systems::Context<T>& context,
@@ -86,9 +90,8 @@ class GeomGeomCollider {
   /// can compute signed distance to a non-convex mesh.
   /// @return <p_ACa, p_BCb, nhat_BA_W, distance>
   std::tuple<Eigen::Vector3d, Eigen::Vector3d, Eigen::Vector3d, T>
-      DoSphereMeshCollision(
-          const drake::systems::Context<T>& context,
-          const bool& is_A_mesh) const;
+  DoSphereMeshCollision(const drake::systems::Context<T>& context,
+                        const bool& is_A_mesh) const;
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::geometry::GeometryId geometry_id_A_;

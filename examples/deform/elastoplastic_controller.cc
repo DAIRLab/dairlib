@@ -1,9 +1,9 @@
 #include "examples/deform/elastoplastic_controller.h"
 
 #include <Eigen/Dense>
+#include <drake/common/trajectories/piecewise_polynomial.h>
 
 #include "common/update_context.h"
-#include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_force.hpp"
 #include "systems/framework/timestamped_vector.h"
 
@@ -16,6 +16,7 @@ using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::JointActuatorIndex;
 using drake::systems::BasicVector;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
@@ -125,15 +126,18 @@ ElastoPlasticController::ElastoPlasticController(
               "c3_intermediates", c3_intermediates,
               &ElastoPlasticController::OutputC3Intermediates)
           .get_index();
-  lcs_contact_jacobian_port_ =
-      this->DeclareAbstractOutputPort(
-              "J_lcs, p_lcs", lcs_contact_jacobian,
-              &ElastoPlasticController::OutputLCSContactJacobian)
+  c3_forces_port_ =
+      this->DeclareAbstractOutputPort("c3_forces", dairlib::lcmt_c3_forces(),
+                                      &ElastoPlasticController::OutputC3Forces)
           .get_index();
   efforts_port_ = this->DeclareAbstractOutputPort(
                           "efforts", dairlib::lcmt_robot_input(),
                           &ElastoPlasticController::OutputRobotEfforts)
                       .get_index();
+  c3_costs_port_ =
+      this->DeclareAbstractOutputPort("c3_costs", dairlib::lcmt_c3_costs(),
+                                      &ElastoPlasticController::OutputC3Costs)
+          .get_index();
 
   // Discrete state indices
   plan_start_time_index_ = DeclareDiscreteState(1);
@@ -241,37 +245,72 @@ void ElastoPlasticController::OutputC3Intermediates(
   }
 }
 
-void ElastoPlasticController::OutputLCSContactJacobian(
+void ElastoPlasticController::OutputC3Forces(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    dairlib::lcmt_c3_forces* lcmt_c3_forces) const {
+  // Preprocess the contact pairs.
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         x_lcs_input_port_);
-
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 lcs_x->get_data());
-
-  // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
       plant_, *context_, contact_pairs_,
       elastoplastic_c3_options_.resolve_contacts_to,
       elastoplastic_c3_options_.num_friction_directions);
-  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, resolved_contact_pairs, elastoplastic_c3_options_.mu,
-      elastoplastic_c3_options_.n_lambda_with_tangential,
-      elastoplastic_c3_options_.num_friction_directions_per_contact,
-      elastoplastic_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+
+  // Grab the latest solve's contact forces.
+  std::vector<VectorXd> lambda_sol = c3_mpc_->GetForceSolution();
+  VectorXd lcs_forces = lambda_sol[0];
+
+  // Start constructing the world frame contact forces.
+  int num_contacts = resolved_contact_pairs.size();
+  int cur_lambda_index = 0;
+
+  lcmt_c3_forces->num_forces = num_contacts;
+  lcmt_c3_forces->forces.resize(num_contacts);
+
+  DRAKE_DEMAND(contact_model_ == solvers::ContactModel::kAnitescu);
+
+  for (int i = 0; i < num_contacts; i++) {
+    multibody::GeomGeomCollider collider(plant_, resolved_contact_pairs[i]);
+    int num_force_basis =
+        2 * elastoplastic_c3_options_.num_friction_directions_per_contact[i];
+    bool is_planar_contact = num_force_basis == 2;
+    auto [p_WCa, force_basis] =
+        collider.CalcWitnessPointsAndForceBasisInWorldFrame(*context_,
+                                                            is_planar_contact);
+    // Reduce force_basis to Anitescu force basis.
+    Eigen::Matrix<double, 4, 3> anitescu_force_basis;
+    for (int j = 1; j < 5; j++) {
+      anitescu_force_basis.row(j - 1) =
+          force_basis.row(0) +
+          elastoplastic_c3_options_.mu[i] * force_basis.row(j);
+    }
+
+    auto force_in_world_frame =
+        anitescu_force_basis.transpose() *
+        lcs_forces.segment(cur_lambda_index, num_force_basis);
+    auto net_force = force_in_world_frame.rowwise().sum();
+
+    cur_lambda_index += num_force_basis;
+
+    auto force = dairlib::lcmt_force();
+    force.contact_point[0] = p_WCa[0];
+    force.contact_point[1] = p_WCa[1];
+    force.contact_point[2] = p_WCa[2];
+    force.contact_force[0] = net_force[0];
+    force.contact_force[1] = net_force[1];
+    force.contact_force[2] = net_force[2];
+    lcmt_c3_forces->forces[i] = force;
+  }
 }
 
 void ElastoPlasticController::OutputRobotEfforts(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_robot_input* lcmt_efforts) const {
-  // Perform closed-loop feedback on the EE state:  the current EE state.
-  // TODO @bibit:  Would be better to do feedback on predicted x into the future
-  // according to filtered solve time.  Also make Kp/Kd parameters.
+  // Perform closed-loop feedback on the EE state with C3 feed-forward term.
   const TimestampedVector<double>* lcs_x_curr =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         x_lcs_input_port_);
@@ -280,17 +319,23 @@ void ElastoPlasticController::OutputRobotEfforts(
   // Get the C3 plan.
   std::vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
   std::vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
-  std::cout << "u_sol size: " << u_sol.size() << std::endl;
-  std::cout << "u_sol[0] size: " << u_sol[0].size() << std::endl;
-  std::cout << "u_sol: " << std::endl;
-  for (int i = 0; i < u_sol.size(); i++) {
-    std::cout << "  " << u_sol[i].transpose() << std::endl;
+
+  // Define a state trajectory so we can interpolate it for the feedback term.
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
+  for (int i = 0; i < N_; i++) {
+    knots.col(i) = x_sol[i];
+    timestamps[i] = context.get_time() + i * dt_;
   }
-  std::cout << "time: " << context.get_time() << std::endl;
+  auto x_trajectory =
+      PiecewisePolynomial<double>::FirstOrderHold(timestamps, knots);
+  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
+  VectorXd x_des = x_trajectory.value(context.get_time() + solve_time);
 
   lcmt_efforts->utime = context.get_time() * 1e6;
   lcmt_efforts->num_efforts = n_u_;
 
+  // Set the actuator names according to the plant.
   std::vector<std::string> actuator_names;
   for (JointActuatorIndex i(0); i < n_u_; ++i) {
     const drake::multibody::JointActuator<double>& actuator =
@@ -299,18 +344,77 @@ void ElastoPlasticController::OutputRobotEfforts(
   }
   lcmt_efforts->effort_names = actuator_names;
 
+  // Set the efforts according to feedforward + feedback.  Use a predicted next
+  // state for feedback.
   std::vector<double> efforts_vector(n_u_);
-  double Kp = 10;
-  double Kd = 2 * sqrt(Kp);
   for (int i = 0; i < n_u_; i++) {
+    double q_des = x_des(i);
+    double v_des = x_des(n_q_ + i);
     double u_feed_forward = u_sol[0](i);
-    double u_feedback = Kp * (x_sol[1](i) - x_lcs_curr(i)) +
-                        Kd * (x_sol[0](i + n_q_) - x_lcs_curr(i + n_q_));
+    double u_feedback =
+        elastoplastic_c3_options_.Kp[i] * (q_des - x_lcs_curr(i)) +
+        elastoplastic_c3_options_.Kd[i] * (v_des - x_lcs_curr(i + n_q_));
     efforts_vector[i] = u_feed_forward + u_feedback;
     std::cout << "Feedforward = " << u_feed_forward
               << ", Feedback = " << u_feedback << std::endl;
   }
   lcmt_efforts->efforts = efforts_vector;
+}
+
+void ElastoPlasticController::OutputC3Costs(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_c3_costs* lcmt_c3_costs) const {
+  const BasicVector<double>& lcs_x_des =
+      *this->template EvalVectorInput<BasicVector>(context,
+                                                   x_lcs_target_input_port_);
+  drake::VectorX<double> x_lcs_des = lcs_x_des.get_value();
+  std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_lcs_des);
+
+  // Get the C3 plan.
+  std::vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
+  std::vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
+
+  lcmt_c3_costs->utime = context.get_time() * 1e6;
+  lcmt_c3_costs->num_cost_chunks = 7;
+  lcmt_c3_costs->cost_names = std::vector<std::string>{
+      "all",           "state",     "inputs",    "robot_config",
+      "object_config", "robot_vel", "object_vel"};
+
+  double state_cost = 0.0;
+  double input_cost = 0.0;
+  double robot_config_cost = 0.0;
+  double object_config_cost = 0.0;
+  double robot_vel_cost = 0.0;
+  double object_vel_cost = 0.0;
+
+  for (int i = 0; i < N_; i++) {
+    VectorXd x_err = x_sol[i] - x_desired[i];
+    state_cost += x_err.transpose() * Q_[i] * x_err;
+    input_cost += u_sol[i].transpose() * R_[i] * u_sol[i];
+
+    // TODO @bibit:  this hard-coded indexing assumes robot has 1 DoF.
+    robot_config_cost += x_err.segment(0, 1).transpose() *
+                         Q_[i].block(0, 0, 1, 1) * x_err.segment(0, 1);
+    object_config_cost += x_err.segment(1, n_q_ - 1).transpose() *
+                          Q_[i].block(1, 1, n_q_ - 1, n_q_ - 1) *
+                          x_err.segment(1, n_q_ - 1);
+    robot_vel_cost += x_err.segment(n_q_, 1).transpose() *
+                      Q_[i].block(n_q_, n_q_, 1, 1) * x_err.segment(n_q_, 1);
+    object_vel_cost +=
+        x_err.segment(n_q_ + n_v_ - 1, n_v_ - 1).transpose() *
+        Q_[i].block(n_q_ + n_v_ - 1, n_q_ + n_v_ - 1, n_v_ - 1, n_v_ - 1) *
+        x_err.segment(n_q_ + n_v_ - 1, n_v_ - 1);
+  }
+
+  lcmt_c3_costs->total_costs = std::vector<float>{
+      static_cast<float>(state_cost + input_cost),
+      static_cast<float>(state_cost),
+      static_cast<float>(input_cost),
+      static_cast<float>(robot_config_cost),
+      static_cast<float>(object_config_cost),
+      static_cast<float>(robot_vel_cost),
+      static_cast<float>(object_vel_cost),
+  };
 }
 
 }  // namespace deform

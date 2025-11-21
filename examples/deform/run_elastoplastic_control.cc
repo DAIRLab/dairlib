@@ -184,10 +184,9 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_sender->get_input_port_c3_solution());
   builder.Connect(controller->get_output_port_c3_intermediates(),
                   c3_output_sender->get_input_port_c3_intermediates());
-  builder.Connect(controller->get_output_port_lcs_contact_jacobian(),
-                  c3_output_sender->get_input_port_lcs_contact_info());
 
-  // (6/6) Publishers:  current/desired LCS states, C3 output/forces, efforts.
+  // (6/6) Publishers:  current/desired LCS states, C3 output/forces, efforts,
+  // costs.
   auto c3_target_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_target_state_channel, &lcm_network,
@@ -210,7 +209,7 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
                   c3_output_publisher->get_input_port());
-  builder.Connect(c3_output_sender->get_output_port_c3_force(),
+  builder.Connect(controller->get_output_port_c3_forces(),
                   c3_forces_publisher->get_input_port());
   auto efforts_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -218,6 +217,12 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(controller->get_output_port_efforts(),
                   efforts_publisher->get_input_port());
+  auto c3_costs_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_costs>(
+          lcm_channel_params.c3_costs_channel, &lcm_network,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(controller->get_output_port_c3_costs(),
+                  c3_costs_publisher->get_input_port());
 
   // Build diagram.
   auto owned_diagram = builder.Build();

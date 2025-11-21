@@ -86,8 +86,9 @@ int DoMain(int argc, char* argv[]) {
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, "EE_FAKE_INPUT",
-      //   lcm_channel_params.robot_input_channel,
+      &builder, plant, lcm,
+      //"EE_FAKE_INPUT",
+      lcm_channel_params.robot_input_channel,
       lcm_channel_params.robot_state_channel, sim_params.robot_publish_rate,
       robot_index, sim_params.publish_efforts, sim_params.actuator_delay);
 

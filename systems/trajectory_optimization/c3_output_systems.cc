@@ -23,7 +23,10 @@ C3OutputSender::C3OutputSender() {
                                      drake::Value<C3Output::C3Intermediates>{})
           .get_index();
   lcs_contact_info_port_ =
-      this->DeclareAbstractInputPort("J_lcs, p_lcs", drake::Value<std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>())
+      this->DeclareAbstractInputPort(
+              "J_lcs, p_lcs",
+              drake::Value<
+                  std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>())
           .get_index();
 
   this->set_name("c3_output_sender");
@@ -49,13 +52,22 @@ void C3OutputSender::OutputC3Lcm(const drake::systems::Context<double>& context,
   *output = c3_output.GenerateLcmObject(context.get_time());
 }
 
+// WARNING:  With Anitescu contact model, these world frame forces are
+// incorrect.
 void C3OutputSender::OutputC3Forces(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_c3_forces* c3_forces_output) const {
   const auto& c3_solution =
       this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
-  const auto& contact_info =
-      this->EvalInputValue<std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>(context, lcs_contact_info_port_);
+  const auto& contact_info = this->EvalInputValue<
+      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>(
+      context, lcs_contact_info_port_);
+
+  // Skip if contact info port is not connected.
+  if (!contact_info) {
+    return;
+  }
+
   MatrixXd J_c = contact_info->first;
   int contact_force_start = c3_solution->lambda_sol_.rows() - J_c.rows();
   bool using_stewart_and_trinkle_model = contact_force_start > 0;
@@ -70,18 +82,23 @@ void C3OutputSender::OutputC3Forces(
   int force_index;
   for (int contact_index = 0; contact_index < contact_points.size();
        ++contact_index) {
-    contact_var_start = contact_force_start + forces_per_contact * contact_index;
+    contact_var_start =
+        contact_force_start + forces_per_contact * contact_index;
     force_index = forces_per_contact * contact_index;
     for (int i = 0; i < forces_per_contact; ++i) {
-      int contact_jacobian_row = force_index + i; // index for anitescu model
+      int contact_jacobian_row = force_index + i;  // index for anitescu model
       int contact_var_index = contact_var_start + i;
-      if (using_stewart_and_trinkle_model){ // index for stweart and trinkle model
-        if (i == 0){
+      if (using_stewart_and_trinkle_model) {  // index for stweart and trinkle
+                                              // model
+        if (i == 0) {
           contact_jacobian_row = contact_index;
           contact_var_index = contact_force_start + contact_index;
         } else {
-          contact_jacobian_row = contact_points.size() + (forces_per_contact - 1) * contact_index + i - 1;
-          contact_var_index = contact_force_start + contact_points.size() + (forces_per_contact - 1) * contact_index + i - 1;
+          contact_jacobian_row = contact_points.size() +
+                                 (forces_per_contact - 1) * contact_index + i -
+                                 1;
+          contact_var_index = contact_force_start + contact_points.size() +
+                              (forces_per_contact - 1) * contact_index + i - 1;
         }
       }
       auto force = lcmt_force();
@@ -92,15 +109,12 @@ void C3OutputSender::OutputC3Forces(
       // VISUALIZING FORCES FOR THE FIRST KNOT POINT
       // 6, 7, 8 are the indices for the x,y,z components of the tray
       // expressed in the world frame
-      force.contact_force[0] =
-          c3_solution->lambda_sol_(contact_var_index, 0) *
-          J_c.row(contact_jacobian_row)(6);
-      force.contact_force[1] =
-          c3_solution->lambda_sol_(contact_var_index, 0) *
-          J_c.row(contact_jacobian_row)(7);
-      force.contact_force[2] =
-          c3_solution->lambda_sol_(contact_var_index, 0) *
-          J_c.row(contact_jacobian_row)(8);
+      force.contact_force[0] = c3_solution->lambda_sol_(contact_var_index, 0) *
+                               J_c.row(contact_jacobian_row)(6);
+      force.contact_force[1] = c3_solution->lambda_sol_(contact_var_index, 0) *
+                               J_c.row(contact_jacobian_row)(7);
+      force.contact_force[2] = c3_solution->lambda_sol_(contact_var_index, 0) *
+                               J_c.row(contact_jacobian_row)(8);
       c3_forces_output->forces[force_index + i] = force;
     }
   }

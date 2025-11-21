@@ -1,0 +1,13 @@
+package dairlib;
+
+/*  lcmtype containing cost information of a C3 solve
+ */
+struct lcmt_c3_costs {
+  int64_t utime;
+
+  int32_t num_cost_chunks;
+  string cost_names[num_cost_chunks];
+  float total_costs[num_cost_chunks];
+
+  // lcmt_cost_details cost_details[num_cost_chunks];
+}

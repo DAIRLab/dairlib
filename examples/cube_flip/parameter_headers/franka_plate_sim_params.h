@@ -2,7 +2,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaSimParams {
+struct FrankaPlateSimParams {
   std::string franka_model;
   std::string end_effector_model;
   std::string object_model;

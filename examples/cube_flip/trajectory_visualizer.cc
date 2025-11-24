@@ -53,7 +53,7 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/vis_params.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 

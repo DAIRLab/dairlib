@@ -46,6 +46,8 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
         const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
 
   } else {
+    std::cout << "0 orientation traj" << std::endl;
+
     PiecewiseQuaternionSlerp<double> result;
     Eigen::VectorXd neutral_quaternion = VectorXd::Zero(4);
     neutral_quaternion(0) = 1;

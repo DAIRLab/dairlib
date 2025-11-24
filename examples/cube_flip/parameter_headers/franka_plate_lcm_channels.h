@@ -3,9 +3,8 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
-struct FrankaLcmChannels {
+struct FrankaPlateLcmChannels {
   std::string franka_state_channel;
-  std::string tray_state_channel;
   std::string object_state_channel;
   std::string franka_input_channel;
   std::string franka_input_echo;
@@ -19,10 +18,12 @@ struct FrankaLcmChannels {
   std::string c3_actual_state_channel;
   std::string radio_channel;
 
+  std::string ic3_positions_channel;
+  std::string ic3_inputs_channel;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
-    a->Visit(DRAKE_NVP(tray_state_channel));
     a->Visit(DRAKE_NVP(object_state_channel));
     a->Visit(DRAKE_NVP(franka_input_channel));
     a->Visit(DRAKE_NVP(franka_input_echo));
@@ -35,5 +36,8 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(c3_target_state_channel));
     a->Visit(DRAKE_NVP(c3_actual_state_channel));
     a->Visit(DRAKE_NVP(radio_channel));
+    a->Visit(DRAKE_NVP(ic3_positions_channel));
+    a->Visit(DRAKE_NVP(ic3_inputs_channel));
+
   }
 };

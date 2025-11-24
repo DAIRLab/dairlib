@@ -16,9 +16,21 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-
 cc_library(
     name = "franka_plate_sim_params",
     hdrs = ["franka_plate_sim_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "iC3_options",
+    hdrs = ["iC3_options.h"],
+    visibility = ["//visibility:public"],
+)
+
+
+cc_library(
+    name = "franka_plate_controller_params",
+    hdrs = ["franka_plate_controller_params.h"],
     visibility = ["//visibility:public"],
 )

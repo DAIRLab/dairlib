@@ -74,12 +74,12 @@ int DoMain(int argc, char* argv[]) {
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaControllerParams>(
+  FrankaPlateControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaPlateControllerParams>(
           FLAGS_controller_parameters);
 
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  FrankaPlateLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
@@ -290,9 +290,6 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  std::cout << "Before draw diagram" << std::endl;
-  //DrawAndSaveDiagramGraph(*loop.get_diagram());
-  std::cout << "before loop.sim()" << std::endl;
   loop.Simulate();
   return 0;
 }

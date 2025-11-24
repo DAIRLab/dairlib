@@ -60,10 +60,10 @@ DEFINE_string(lcm_channels,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   // load parameters
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+  FrankaPlateSimParams sim_params = drake::yaml::LoadYamlFile<FrankaPlateSimParams>(
       "examples/cube_flip/parameters/franka_plate_sim_params.yaml");
-  FrankaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  FrankaPlateLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
 
 
   // load urdf and sphere

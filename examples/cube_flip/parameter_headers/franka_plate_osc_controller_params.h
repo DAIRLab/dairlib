@@ -4,7 +4,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaControllerParams : OSCGains {
+struct FrankaPlateControllerParams : OSCGains {
   std::string franka_model;
   std::string end_effector_model;
   std::string end_effector_name;

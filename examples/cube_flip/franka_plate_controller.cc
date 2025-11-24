@@ -1,0 +1,226 @@
+
+#include <dairlib/lcmt_radio_out.hpp>
+#include <drake/common/find_resource.h>
+#include <drake/common/yaml/yaml_io.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
+#include <drake/systems/primitives/constant_vector_source.h>
+#include <drake/systems/primitives/multiplexer.h>
+#include <gflags/gflags.h>
+
+#include "examples/cube_flip/parameter_headers/franka_plate_controller_params.h"
+#include "examples/cube_flip/parameter_headers/franka_plate_lcm_channels.h"
+#include "examples/cube_flip/parameter_headers/iC3_options.h"
+#include "examples/cube_flip/systems/iC3_trajectory_generator.h"
+
+
+#include "multibody/multibody_utils.h"
+#include "solvers/lcs_factory.h"
+#include "systems/controllers/c3/lcs_factory_system.h"
+#include "systems/controllers/c3/c3_controller.h"
+
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+#include "systems/trajectory_optimization/c3_output_systems.h"
+
+namespace dairlib {
+
+using dairlib::solvers::LCSFactory;
+using drake::SortedPair;
+using drake::geometry::GeometryId;
+using drake::math::RigidTransform;
+using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
+using drake::systems::Diagram;
+using drake::systems::DiagramBuilder;
+using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
+using Eigen::MatrixXd;
+
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
+
+DEFINE_string(controller_settings,
+              "examples/cube_flip/parameters/franka_plate_controller_params.yaml",
+              "Controller settings such as channels. Attempting to minimize "
+              "number of gflags");
+DEFINE_string(lcm_channels,
+              "examples/cube_flip/parameters/plate_lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
+
+int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
+
+  // load parameters
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+
+  FrankaPlateLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
+
+  FrankaPlateC3ControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaPlateC3ControllerParams>(
+          FLAGS_controller_settings);
+
+  iC3Options ic3_options =
+      drake::yaml::LoadYamlFile<iC3Options>(
+          controller_params.ic3_options_file);
+
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(controller_params.osqp_settings_file))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+
+  MultibodyPlant<double> plant_franka(0.0);
+  Parser parser_franka(&plant_franka, nullptr);
+  parser_franka.AddModelsFromUrl(controller_params.franka_model);
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser_franka.AddModels(
+          FindResourceOrThrow(controller_params.end_effector_model))[0];
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant_franka.WeldFrames(plant_franka.world_frame(),
+                          plant_franka.GetFrameByName("panda_link0"), X_WI);
+
+  RigidTransform<double> T_EE_W =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             controller_params.tool_attachment_frame);
+  plant_franka.WeldFrames(
+      plant_franka.GetFrameByName("panda_link7"),
+      plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+
+  plant_franka.Finalize();
+  auto franka_context = plant_franka.CreateDefaultContext();
+
+  // Dummty plant for ic3 
+  DiagramBuilder<double> plant_ic3_builder;
+  auto [plant_ic3, ic3_scene_graph] =
+      AddMultibodyPlantSceneGraph(&plant_ic3_builder, 0.0);
+  Parser ic3_parser(&plant_ic3);
+  ic3_parser.SetAutoRenaming(true);
+  ic3_parser.AddModels(controller_params.end_effector_lcs_model);
+  ic3_parser.AddModels(controller_params.object_model);
+
+  // plant_ic3.WeldFrames(plant_ic3.world_frame(),
+  //                       plant_ic3.GetFrameByName("plate"), X_WI);
+
+  plant_ic3.Finalize();
+
+
+  // Plant for c3 mpc
+  DiagramBuilder<double> plant_builder;
+  auto [plant_for_lcs, scene_graph] =
+      AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  Parser lcs_parser(&plant_for_lcs);
+  lcs_parser.SetAutoRenaming(true);
+  lcs_parser.AddModels(controller_params.end_effector_lcs_model);
+
+  lcs_parser.AddModels(controller_params.object_model);
+  
+  // plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
+  //                          plant_for_lcs.GetFrameByName("plate"), X_WI);
+  plant_for_lcs.Finalize();
+
+
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
+      drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
+
+  auto plant_diagram = plant_builder.Build();
+  std::unique_ptr<drake::systems::Context<double>> diagram_context =
+      plant_diagram->CreateDefaultContext();
+  auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
+      plant_for_lcs, diagram_context.get());
+  auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+
+  ///
+  std::vector<drake::geometry::GeometryId> end_effector_contact_points =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("plate"));
+  
+  std::vector<drake::geometry::GeometryId> cube_geoms_full =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("cube"));
+
+  std::vector<drake::geometry::GeometryId> cube_geoms(cube_geoms_full.begin()+1, cube_geoms_full.end());
+
+  std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
+      contact_geoms;
+  contact_geoms["PLATE"] = end_effector_contact_points;
+  contact_geoms["CUBE"] = cube_geoms;
+
+  std::vector<SortedPair<GeometryId>> contact_pairs;
+  for (auto geom_id : contact_geoms["CUBE"]) {
+    contact_pairs.emplace_back(geom_id, contact_geoms["PLATE"][0]);
+  }
+
+  DiagramBuilder<double> builder;
+  auto franka_state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+
+  auto nominal_position =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(controller_params.ee_init_position);
+
+  auto ic3_x_trajectory_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.ic3_positions_channel, &lcm));
+
+  auto ic3_u_trajectory_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.ic3_inputs_channel, &lcm));
+
+  auto ic3_trajectory_generator =
+      builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
+
+  auto ic3_actor_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_actor_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));   
+          
+  auto ic3_object_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_object_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));   
+
+  builder.Connect(nominal_position->get_output_port(),
+                  ic3_trajectory_generator->get_input_port_nominal_trajectory());
+  builder.Connect(ic3_x_trajectory_sub->get_output_port(),
+                  ic3_trajectory_generator->get_input_port_iC3_x_trajectory());
+  builder.Connect(ic3_u_trajectory_sub->get_output_port(),
+                  ic3_trajectory_generator->get_input_port_iC3_u_trajectory());
+
+  builder.Connect(ic3_trajectory_generator->get_output_port_actor_trajectory(),
+                  ic3_actor_trajectory_sender->get_input_port());  
+  builder.Connect(ic3_trajectory_generator->get_output_port_object_trajectory(),
+                  ic3_object_trajectory_sender->get_input_port()); 
+  
+  auto owned_diagram = builder.Build();
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("franka_plate_controller"));
+  DrawAndSaveDiagramGraph(*shared_diagram);
+
+  std::cout << "Before lcm driven loop" << std::endl;
+  // Run lcm-driven simulation
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm, shared_diagram, franka_state_receiver,
+      lcm_channel_params.franka_state_channel, true);
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
+
+  LcmHandleSubscriptionsUntil(
+      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 1; });
+  loop.Simulate();
+  return 0;
+}
+
+}  // namespace dairlib
+
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

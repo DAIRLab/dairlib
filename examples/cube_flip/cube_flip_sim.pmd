@@ -1,4 +1,8 @@
 group "controllers" {
+    cmd "plate_controller" {
+        exec = "bazel-bin/examples/cube_flip/franka_plate_controller";
+        host = "localhost";
+    }
     cmd "franka_osc" {
         exec = "bazel-bin/examples/cube_flip/franka_plate_osc_controller";
         host = "localhost";
@@ -29,4 +33,10 @@ group "simulations" {
         exec = "bazel-bin/examples/cube_flip/franka_plate_sim";
         host = "localhost";
     }
+}
+
+
+script "setup"{
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
 }

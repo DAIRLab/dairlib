@@ -1,5 +1,5 @@
 #include "end_effector_force.h"
-
+#include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
@@ -74,6 +74,7 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
           traj);
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
+    std::cout << "0 force traj" << std::endl;
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {

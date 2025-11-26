@@ -13,10 +13,15 @@
 #include "examples/cube_flip/parameter_headers/franka_plate_lcm_channels.h"
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
 #include "examples/cube_flip/systems/iC3_trajectory_generator.h"
+#include "examples/cube_flip/systems/c3_tracking_system.h"
+#include "examples/cube_flip/systems/c3_trajectory_generator.h"
+#include "systems/franka_kinematics.h"
 
 
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
+#include "solvers/c3_options.h"
+
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3/c3_controller.h"
 
@@ -75,6 +80,10 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<iC3Options>(
           controller_params.ic3_options_file);
 
+  C3Options c3_options =
+      drake::yaml::LoadYamlFile<C3Options>(
+          controller_params.c3_options_file);
+
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
@@ -102,7 +111,15 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  // Dummty plant for ic3 
+  // Object plant
+  MultibodyPlant<double> plant_object(0.0);
+  Parser parser_object(&plant_object, nullptr);
+  parser_object.AddModels(controller_params.object_model);
+  plant_object.Finalize();
+  auto object_context = plant_object.CreateDefaultContext();
+
+
+  // Dummy plant for ic3 
   DiagramBuilder<double> plant_ic3_builder;
   auto [plant_ic3, ic3_scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_ic3_builder, 0.0);
@@ -138,11 +155,10 @@ int DoMain(int argc, char* argv[]) {
   auto plant_diagram = plant_builder.Build();
   std::unique_ptr<drake::systems::Context<double>> diagram_context =
       plant_diagram->CreateDefaultContext();
-  auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
+  auto& plant_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
-  auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+  auto plant_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-  ///
   std::vector<drake::geometry::GeometryId> end_effector_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"));
@@ -167,6 +183,9 @@ int DoMain(int argc, char* argv[]) {
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
+  auto object_state_receiver =
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
+
   auto nominal_position =
       builder.AddSystem<drake::systems::ConstantVectorSource<double>>(controller_params.ee_init_position);
 
@@ -181,28 +200,71 @@ int DoMain(int argc, char* argv[]) {
   auto ic3_trajectory_generator =
       builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
 
-  auto ic3_actor_trajectory_sender = builder.AddSystem(
+  auto c3_tracking_system = 
+      builder.AddSystem<C3TrackingSystem>(plant_for_lcs, &plant_lcs_context, 
+        *plant_for_lcs_autodiff, plant_lcs_context_ad.get(), contact_pairs, c3_options); 
+
+
+  auto controller = 
+      builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options); 
+
+  auto c3_trajectory_generator =
+      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options); 
+
+  auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));   
           
-  auto ic3_object_trajectory_sender = builder.AddSystem(
+  auto c3_object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));   
 
+  auto reduced_order_model_receiver =
+    builder.AddSystem<systems::FrankaKinematics>(
+        plant_franka, franka_context.get(), plant_object, object_context.get(),
+        controller_params.end_effector_name, "cube",
+        controller_params.include_end_effector_orientation);
+
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_franka_state());  
+  builder.Connect(object_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_object_state());
+
   builder.Connect(nominal_position->get_output_port(),
                   ic3_trajectory_generator->get_input_port_nominal_trajectory());
+
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),
                   ic3_trajectory_generator->get_input_port_iC3_x_trajectory());
   builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                   ic3_trajectory_generator->get_input_port_iC3_u_trajectory());
+  // builder.Connect(ic3_trajectory_generator->get_output_port_actor_trajectory(),
+  //                 ic3_actor_trajectory_sender->get_input_port());  
+  // builder.Connect(ic3_trajectory_generator->get_output_port_object_trajectory(),
+  //                 ic3_object_trajectory_sender->get_input_port()); 
 
-  builder.Connect(ic3_trajectory_generator->get_output_port_actor_trajectory(),
-                  ic3_actor_trajectory_sender->get_input_port());  
-  builder.Connect(ic3_trajectory_generator->get_output_port_object_trajectory(),
-                  ic3_object_trajectory_sender->get_input_port()); 
-  
+  builder.Connect(ic3_trajectory_generator->get_output_port_curr_x(),
+                c3_tracking_system->get_input_port_curr_x_trajectory());
+  builder.Connect(ic3_trajectory_generator->get_output_port_curr_u(),
+                c3_tracking_system->get_input_port_curr_u_trajectory());
+
+
+  builder.Connect(c3_tracking_system->get_output_port_target(),
+                  controller->get_input_port_target());
+  builder.Connect(c3_tracking_system->get_output_port_lcs(),
+                  controller->get_input_port_lcs());
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
+                  controller->get_input_port_lcs_state());
+
+  builder.Connect(controller->get_output_port_c3_solution(),
+                  c3_trajectory_generator->get_input_port_c3_solution());
+
+  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+                  c3_actor_trajectory_sender->get_input_port());
+  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+                  c3_object_trajectory_sender->get_input_port());
+
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   shared_diagram->set_name(("franka_plate_controller"));

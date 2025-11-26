@@ -68,8 +68,8 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
       MatrixXd orientations = MatrixXd::Zero(4, N_+1);
       MatrixXd positions = MatrixXd::Zero(3, N_+1);
       if (object == 0) {
-        int cube_orientation_index = 5;
-        int cube_position_index = 9;
+        int cube_orientation_index = 6;
+        int cube_position_index = 10;
 
         orientations = data.middleRows(cube_orientation_index, 4);
         positions = data.middleRows(cube_position_index, 3);
@@ -79,7 +79,7 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
         int plate_position_index = 0;
         int plate_orientation_index = 3;
 
-        MatrixXd raw_orientations = data.middleRows(plate_orientation_index, 2);
+        MatrixXd raw_orientations = data.middleRows(plate_orientation_index, 3);
         positions = data.middleRows(plate_position_index, 3);
 
         //std::cout << positions << std::endl;
@@ -120,6 +120,10 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
       orientation_traj.datatypes = std::vector<std::string>(orientations_downsampled.rows(), "double"); 
       orientation_traj.datapoints = orientations_downsampled;
       orientation_traj.time_vector = timestamps;
+
+      std::cout << i << std::endl;
+      std::cout << "o rows " <<  orientations_downsampled.cols() << std::endl;
+      std::cout << "p rows " << positions_downsampled.cols() << std::endl << std::endl;
 
       LcmTrajectory::Trajectory position_traj;
       position_traj.traj_name = position_trajectory_name;

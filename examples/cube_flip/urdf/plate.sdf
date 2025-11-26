@@ -84,16 +84,27 @@
         <child>link_roll</child>
         <axis>
           <xyz>1 0 0</xyz>
-          <limit><lower>-0.3</lower><upper>0.3</upper></limit>
+          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
         </axis>
       </joint>
 
+      <link name="link_pitch"/>
       <joint name="plate_pitch" type="revolute">
         <parent>link_roll</parent>
-        <child>plate</child>
+        <child>link_pitch</child>
         <axis>
           <xyz>0 1 0</xyz>
-          <limit><lower>-0.3</lower><upper>0.3</upper></limit>
+          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
+        </axis>
+      </joint>
+
+
+      <joint name="plate_yaw" type="revolute">
+        <parent>link_pitch</parent>
+        <child>plate</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
         </axis>
       </joint>
 

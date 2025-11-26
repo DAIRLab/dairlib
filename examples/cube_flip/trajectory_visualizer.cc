@@ -161,11 +161,11 @@ int do_main(int argc, char* argv[]) {
   std::vector<double> x_des = vis_params.x_des;
   VectorXd xd = Eigen::Map<Eigen::VectorXd>(x_des.data(), x_des.size()); 
 
-  Eigen::Vector4d q_vec = xd.segment(5, 4);
+  Eigen::Vector4d q_vec = xd.segment(6, 4);
 	Eigen::Quaterniond q(q_vec(0), q_vec(1), q_vec(2), q_vec(3));
 	q.normalize();
   RotationMatrixd R_target(q);
-	RigidTransformd X_WF(R_target, xd.segment(9, 3));
+	RigidTransformd X_WF(R_target, xd.segment(10, 3));
 
 	const double axis_len = 0.2;
 	const double radius = 0.01;

@@ -48,6 +48,16 @@ class iC3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
     return this->get_output_port(object_trajectory_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_curr_x()
+      const {
+    return this->get_output_port(curr_x_target_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_curr_u()
+      const {
+    return this->get_output_port(curr_u_target_port_);
+  }
+
+
   void SetPublishEndEffectorOrientation(bool publish_end_effector_orientation) {
     publish_end_effector_orientation_ = publish_end_effector_orientation;
   }
@@ -61,6 +71,14 @@ class iC3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
+  void OutputCurrXTrajectory(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_timestamped_saved_traj* output_traj) const;
+
+  void OutputCurrUTrajectory(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_timestamped_saved_traj* output_traj) const;
+
   drake::systems::EventStatus SetFirstCallTime(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -71,6 +89,9 @@ class iC3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   drake::systems::OutputPortIndex actor_trajectory_port_;
   drake::systems::OutputPortIndex object_trajectory_port_;
+  drake::systems::OutputPortIndex curr_x_target_port_;
+  drake::systems::OutputPortIndex curr_u_target_port_;
+
   const drake::multibody::MultibodyPlant<double>& plant_;
   iC3Options ic3_options_;
 

@@ -3,6 +3,7 @@
 
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
+#include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
 
 namespace dairlib {
@@ -18,6 +19,7 @@ using Eigen::VectorXf;
 using solvers::C3Base;
 using solvers::C3MIQP;
 using solvers::C3QP;
+using solvers::C3Plus;
 using solvers::LCS;
 using solvers::LCSFactory;
 using std::vector;
@@ -75,6 +77,11 @@ C3Controller::C3Controller(
 
   } else if (c3_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder,
+                                 C3Base::CostMatrices(Q_, R_, G_, U_),
+                                 x_desired_placeholder, c3_options_);
+
+  } else if (c3_options_.projection_type == "C3+") {
+    c3_ = std::make_unique<C3Plus>(lcs_placeholder,
                                  C3Base::CostMatrices(Q_, R_, G_, U_),
                                  x_desired_placeholder, c3_options_);
 

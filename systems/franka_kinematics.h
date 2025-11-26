@@ -63,6 +63,10 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
     return this->get_input_port(franka_state_port_);
   }
 
+  const InputPort<double>& get_input_port_object_state() const {
+    return this->get_input_port(object_state_port_);
+  }
+
   const OutputPort<double>& get_output_port_lcs_state() const {
     return this->get_output_port(lcs_state_port_);
   }

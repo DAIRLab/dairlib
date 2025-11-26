@@ -6,7 +6,6 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_output.h"
 #include "solvers/lcs.h"
 
 namespace dairlib {
@@ -63,6 +62,21 @@ iC3TrajectoryGenerator::iC3TrajectoryGenerator(
               &iC3TrajectoryGenerator::OutputObjectTrajectory)
           .get_index();
 
+
+  curr_x_target_port_ =
+      this->DeclareAbstractOutputPort(
+              "iC3_curr_x_target_",
+              dairlib::lcmt_timestamped_saved_traj(),
+              &iC3TrajectoryGenerator::OutputCurrXTrajectory)
+          .get_index();
+
+  curr_u_target_port_ =
+      this->DeclareAbstractOutputPort(
+              "iC3_curr_u_target_",
+              dairlib::lcmt_timestamped_saved_traj(),
+              &iC3TrajectoryGenerator::OutputCurrUTrajectory)
+          .get_index();
+
 	this->DeclarePerStepDiscreteUpdateEvent(
 			&iC3TrajectoryGenerator::SetFirstCallTime);
 
@@ -114,7 +128,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
       timestamps(t) = t * dt_;
     }
-
+		
 		LcmTrajectory::Trajectory position_traj;
     position_traj.traj_name = position_trajectory_name;
     position_traj.datatypes = std::vector<std::string>(positions.rows(), "double"); 
@@ -157,9 +171,9 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     int ee_pos_idx = 0;
     int ee_rot_idx = 3; 
 
-    MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 2);
+    MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 3);
     MatrixXd full_positions = data.middleRows(ee_pos_idx, 3);
-		MatrixXd full_forces = force_data.middleRows(0, 3);
+		MatrixXd full_forces = force_data.middleRows(0, 6);
 
     // std::cout << "raw orientation size: " << raw_orientations.rows() << " x " << raw_orientations.cols() << std::endl;
     // std::cout << "full position size: " << full_positions.rows() << " x " << full_positions.cols() << std::endl;
@@ -253,8 +267,8 @@ void iC3TrajectoryGenerator::OutputObjectTrajectory(
 			LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
       MatrixXd data = trajectory.datapoints;
 
-			int pos_idx = 9;
-			int rot_idx = 5; 
+			int pos_idx = 10;
+			int rot_idx = 6; 
 
       MatrixXd orientations = data.middleRows(rot_idx, 4);
       MatrixXd positions = data.middleRows(pos_idx, 3);
@@ -279,6 +293,111 @@ void iC3TrajectoryGenerator::OutputObjectTrajectory(
       LcmTrajectory lcm_trajectory({orientation_traj}, {orientation_trajectory_name},
                                   orientation_trajectory_name, orientation_trajectory_name, false);
       lcm_trajectory.AddTrajectory(position_trajectory_name, position_traj);   
+
+			output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
+			output_traj->utime = context.get_time() * 1e6;
+	}
+}
+
+void iC3TrajectoryGenerator::OutputCurrXTrajectory(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+
+	const auto* x_input = this->EvalAbstractInput(context, ic3_x_trajectory_port_);
+  if (x_input == nullptr) return;
+
+	// Extract trajectories from lcm
+	const auto& lcm_all_x_trajectories = x_input->get_value<lcmt_timestamped_saved_traj>();
+	LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
+
+	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+
+	double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
+	int segment_idx = (int) std::max(((context.get_time() - t0) - 3) / (dt_ * 1), 0.0);
+
+	if (x_trajectory.HasTrajectory(final_trajectory_name)) {
+
+		  const std::string trajectory_name = "current_x_trajectory";
+
+			LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
+
+			MatrixXd data;
+			if (segment_idx < N_ - 4) {
+				data = trajectory.datapoints.middleCols(segment_idx, 5);
+			} else {
+				MatrixXd raw_data = trajectory.datapoints;
+				data = MatrixXd::Zero(raw_data.rows(), 5);
+
+				for (int i = segment_idx; i < segment_idx + 5; i++) {
+					data.col(i - segment_idx) = raw_data.col(std::min(i, N_));
+				}
+			}
+      VectorXd timestamps(5);
+      for (int t = 0; t < 5; t++) {
+        timestamps(t) = t * dt_;
+      }
+
+			LcmTrajectory::Trajectory x_traj;
+      x_traj.traj_name = trajectory_name;
+      x_traj.datatypes = std::vector<std::string>(data.rows(), "double"); 
+      x_traj.datapoints = data;
+      x_traj.time_vector = timestamps;
+
+      LcmTrajectory lcm_trajectory({x_traj}, {trajectory_name},
+                                  trajectory_name, trajectory_name, false);
+
+			output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
+			output_traj->utime = context.get_time() * 1e6;
+	}
+}
+
+void iC3TrajectoryGenerator::OutputCurrUTrajectory(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+
+	const auto* u_input = this->EvalAbstractInput(context, ic3_u_trajectory_port_);
+  if (u_input == nullptr) return;
+
+	// Extract trajectories from lcm
+	const auto& lcm_all_u_trajectories = u_input->get_value<lcmt_timestamped_saved_traj>();
+	LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
+
+	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+
+	double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
+	int segment_idx = (int) std::max(((context.get_time() - t0) - 3) / (dt_ * 1), 0.0);
+
+	if (u_trajectory.HasTrajectory(final_trajectory_name)) {
+
+		  const std::string trajectory_name = "current_u_trajectory";
+
+			LcmTrajectory::Trajectory trajectory = u_trajectory.GetTrajectory(final_trajectory_name);
+
+			MatrixXd data;
+			if (segment_idx < N_ - 5) {
+				data = trajectory.datapoints.middleCols(segment_idx, 5);
+			} else {
+				MatrixXd raw_data = trajectory.datapoints;
+				data = MatrixXd::Zero(raw_data.rows(), 5);
+
+				for (int i = segment_idx; i < segment_idx + 5; i++) {
+					data.col(i - segment_idx) = raw_data.col(std::min(i, N_-1));
+				}
+			}
+
+      VectorXd timestamps(5);
+      for (int t = 0; t < 5; t++) {
+        timestamps(t) = t * dt_;
+      }
+
+			LcmTrajectory::Trajectory u_traj;
+      u_traj.traj_name = trajectory_name;
+      u_traj.datatypes = std::vector<std::string>(data.rows(), "double"); 
+      u_traj.datapoints = data;
+      u_traj.time_vector = timestamps;
+
+      LcmTrajectory lcm_trajectory({u_traj}, {trajectory_name},
+                                  trajectory_name, trajectory_name, false);
 
 			output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
 			output_traj->utime = context.get_time() * 1e6;

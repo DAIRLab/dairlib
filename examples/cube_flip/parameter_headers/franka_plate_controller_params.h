@@ -14,6 +14,7 @@ struct FrankaPlateC3ControllerParams {
 
   std::string osqp_settings_file;
   std::string ic3_options_file;
+  std::string c3_options_file;
 
   bool include_end_effector_orientation;
 
@@ -30,6 +31,7 @@ struct FrankaPlateC3ControllerParams {
 
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(ic3_options_file));
+    a->Visit(DRAKE_NVP(c3_options_file));
 
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(tool_attachment_frame));

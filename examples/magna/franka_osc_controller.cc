@@ -142,27 +142,19 @@ int DoMain(int argc, char* argv[]) {
 
   // Add regularization cost to maintain joint positions (except for the gripper
   // fingers) as much as possible
-  VectorXd joint_position_target = VectorXd::Zero(7);
-  joint_position_target << 1.2822, 0.29, -1.40629, -1.8419, 0.30038, 2.39,
-      0.57512;
-  std::vector<std::unique_ptr<JointSpaceTrackingData>>
-      joint_position_tracking_data_vec;
-  std::vector<std::string> joint_position_names = {
-      "panda_joint1", "panda_joint2", "panda_joint3", "panda_joint4",
-      "panda_joint5", "panda_joint6", "panda_joint7"};
-  for (int joint_idx = 0; joint_idx < joint_position_names.size();
-       ++joint_idx) {
-    joint_position_tracking_data_vec.push_back(
-        std::make_unique<JointSpaceTrackingData>(
-            joint_position_names[joint_idx] + "_traj", osc_params.K_p_mid_link,
-            osc_params.K_d_mid_link, osc_params.W_mid_link, plant, plant));
-    joint_position_tracking_data_vec[joint_idx]->AddJointToTrack(
-        joint_position_names[joint_idx],
-        joint_position_names[joint_idx] + "dot");
-    osc->AddConstTrackingData(
-        std::move(joint_position_tracking_data_vec[joint_idx]),
-        joint_position_target[joint_idx] * VectorXd::Ones(1));
-  }
+  VectorXd joint_position_target = VectorXd::Zero(1);
+  joint_position_target << 1.1;
+  auto joint_position_tracking_data = std::make_unique<JointSpaceTrackingData>(
+      "joint_position_target", osc_params.K_p_mid_link, osc_params.K_d_mid_link,
+      osc_params.W_mid_link, plant, plant);
+  std::vector<std::string> joint_position_names = {"panda_joint2"};
+  std::vector<std::string> joint_velocity_names = {"panda_joint2dot"};
+  joint_position_tracking_data->AddJointsToTrack(joint_position_names,
+                                                 joint_velocity_names);
+  VectorXd joint_tracking_bias = VectorXd::Zero(1);
+  joint_tracking_bias << 1.1;
+  osc->AddConstTrackingData(std::move(joint_position_tracking_data),
+                            joint_tracking_bias);
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", osc_params.K_p_end_effector,

@@ -1,53 +1,59 @@
 target_poses:
   # Move from initial position to pre-grasp position, grasp the belt, and wait for 0.5 seconds
-  - position: [0.72, -0.054, 0.00]
-    orientation: [0.7071068, 0, 0, 0.7071068]
+  - position: [0.72, -0.053, 0.00]
+    orientation: [0.7071068, 0, 0, -0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
   # Move back along negative x axis
   - position: [0.58, -0.052, 0.01]
-    orientation: [0.7071068, 0, 0, 0.7071068]
+    orientation: [0.7071068, 0, 0, -0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.0
     center: [0, 0, 0]
     radius: -1
   # Move straight up along positive z axis
   - position: [0.58, -0.052, 0.21]
-    orientation: [0.7071068, 0, 0, 0.7071068]
+    orientation: [0.7071068, 0, 0, -0.7071068]
     gripper_pos_command: -0.1
-    dwell_seconds: 2.0
+    dwell_seconds: 1.8
     center: [0, 0, 0]
     radius: -1
   # Start engaging the belt into the large pulley
   - position: [0.62, -0.052, 0.19]
-    orientation: [0.7071068, 0, 0, 0.7071068]
+    orientation: [0.7071068, 0, 0, -0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.0
     center: [0, 0, 0]
     radius: -1
   # Pulling the belt and lower down the end effector
   - position: [0.74, -0.052, 0.03]
-    orientation: [0.7071068, 0, 0, 0.7071068]
+    orientation: [0.7071068, 0, 0, -0.7071068]
+    gripper_pos_command: -0.1
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.72, -0.052, 0.04]
+    orientation: [0.7071068, 0, 0, -0.7071068]
     gripper_pos_command: -0.1
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
   # Rotate the belt around the large pulley and approach the small pulley
-  - position: [0.61485, 0.1645, 0.03]
-    orientation: [0.0871557, 0, 0, 0.9961947]
-    gripper_pos_command: -0.5
+  - position: [0.48985, 0.168, 0.04]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: -0.1
     dwell_seconds: 0.5
-    center: [0.48985, -0.052, 0.03]
-    radius: 0.25
+    center: [0.48985, -0.052, 0.04]
+    radius: 0.22
   # Tilt the end-effector to avoid collision of the belt with the small pulley
-  - position: [0.61485, 0.1645, 0.025]
-    orientation: [0.0868241, 0.0868241, 0.0075961, 0.9924039]
-    gripper_pos_command: -0.5
-    dwell_seconds: 0
-    center: [0, 0, 0]
-    radius: -1
+  # - position: [0.61485, 0.1645, 0.025]
+  #   orientation: [0.0868241, 0.0868241, 0.0075961, 0.9924039]
+  #   gripper_pos_command: -0.5
+  #   dwell_seconds: 0
+  #   center: [0, 0, 0]
+  #   radius: -1
   # # (not used if C3+ is used) Wrap the belt around the small pulley
   # - position: [0.47, 0.198, 0.025]
   #   orientation: [0.0858317, 0.0151344, -0.1729874, 0.9810603]

@@ -189,6 +189,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable std::vector<TargetPose> target_poses_;
 
   bool verbose_;
+
+  mutable bool is_solve_succeeded_ = true;
+  mutable bool mpc_reached_target_ = false;
 };
 
 }  // namespace magna

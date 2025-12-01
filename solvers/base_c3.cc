@@ -935,31 +935,11 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   SetInitialGuessQPStep(x0, admm_iteration);
 
-  // for (const auto& binding : prog_.GetAllConstraints()) {
-  //     std::cout << "Constraint type: "
-  //               << binding.evaluator()->get_description() << "\n";
-  //     try {
-  //         // Try to cast to a LinearConstraint to get A, l, u
-  //         auto lc = dynamic_cast<const drake::solvers::LinearConstraint*>(
-  //             binding.evaluator().get());
-  //         if (lc) {
-  //             std::cout << "A =\n" << lc->GetDenseA() << "\n";
-  //             std::cout << "Lower bound = " << lc->lower_bound().transpose() << "\n";
-  //             std::cout << "Upper bound = " << lc->upper_bound().transpose() << "\n";
-  //         }
-  //     } catch (...) {
-  //         std::cout << "  (not a LinearConstraint)\n";
-  //     }
-
-  //     std::cout << "Variables: " << binding.variables() << "\n";
-  //     std::cout << "-----------------------------\n";
-  // }
-
-
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (!result.is_success()) {
-    std::cout << "CAUTION: QP Step in C3 did not succeed" << std::endl;
+    // std::cout << "CAUTION: QP Step in C3 did not succeed" << std::endl;
+    throw std::runtime_error("QP Step in C3 did not succeed");
   }
   if (warm_start_) {
     UpdateWarmStarts(result, admm_iteration);

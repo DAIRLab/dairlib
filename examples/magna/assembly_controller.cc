@@ -112,6 +112,20 @@ AssemblyController::AssemblyController(
       lcs_placeholder, solvers::C3Base::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
 
+  // Add linear constraints for horizontal force components (x, y)
+  for (int i = 0; i < 2; ++i) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_mpc_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
+                                 c3_options.u_horizontal_limits[1], 2);
+  }
+
+  // Add linear constraint for vertical force component (z)
+  Eigen::RowVectorXd A_vertical = VectorXd::Zero(n_u_);
+  A_vertical(2) = 1.0;
+  c3_mpc_->AddLinearConstraint(A_vertical, c3_options.u_vertical_limits[0],
+                               c3_options.u_vertical_limits[1], 2);
+
   // Input ports
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -636,9 +650,13 @@ void AssemblyController::GenerateMPCTrajectory(
     const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
     double t_context, LcmTrajectory* traj,
     LcmTrajectory* planned_keypoints_traj) const {
-  if (abs(x_lcs_curr.head(3).norm() - x_lcs_des.head(3).norm()) < 0.001) {
+  if (mpc_reached_target_) {
     gripper_pos_command_ = 0.04;
     return;
+  }
+  if ((x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.003) {
+    std::cout << "MPC reached target" << std::endl;
+    mpc_reached_target_ = true;
   }
   // Update context to current state
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
@@ -666,7 +684,13 @@ void AssemblyController::GenerateMPCTrajectory(
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_lcs_des);
   c3_mpc_->UpdateLCS(lcs_object);
   c3_mpc_->UpdateTarget(x_desired);
-  c3_mpc_->Solve(x_lcs_curr, false);
+
+  try {
+    c3_mpc_->Solve(x_lcs_curr, false);
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    is_solve_succeeded_ = false;
+  }
 
   // Get solution
   vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
@@ -678,14 +702,33 @@ void AssemblyController::GenerateMPCTrajectory(
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
   for (int i = 0; i < N_; i++) {
-    knots.col(i) = x_sol[i].head(3);
+    if (is_solve_succeeded_) {
+      knots.col(i) = x_sol[i].segment(0, 3);
+    } else {
+      knots.col(i) = x_desired[i].segment(0, 3);
+    }
     timestamps[i] = t_context + i * dt_;
   }
 
   // End effector orientation (from RPY in x_sol)
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
+  std::cout << "target rpy: " << x_desired[0].segment(3, 3).transpose()
+            << std::endl;
+  for (int i = 0; i < N_; i++) {
+    std::cout << "rpy timestep " << i << ": "
+              << x_sol[i].segment(3, 3).transpose() << std::endl;
+  }
+  std::cout << "--------------------------------" << std::endl;
+  double step_x_angle = (x_desired[0].segment(3, 3)[0] - x_lcs_curr[3]) / N_;
   for (int i = 0; i < N_; i++) {
     Eigen::Vector3d rpy = x_sol[i].segment(3, 3);
+    if (!is_solve_succeeded_) {
+      rpy = x_desired[i].segment(3, 3);
+    }
+    // rpy = x_desired[i].segment(3, 3);
+    rpy[0] = x_lcs_curr[3] + i * step_x_angle;
+    rpy[1] = 0;
+    rpy[2] = 0;
     RollPitchYaw<double> rpy_obj(rpy);
     Quaterniond quat = rpy_obj.ToQuaternion();
     quat.normalize();
@@ -713,8 +756,11 @@ void AssemblyController::GenerateMPCTrajectory(
 
   // Add force trajectory from C3 solution
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
-  for (int i = 0; i < N_; i++) {
-    force_samples.col(i) = u_sol[i];
+
+  if (!mpc_reached_target_ && is_solve_succeeded_) {
+    for (int i = 0; i < N_; i++) {
+      force_samples.col(i) = u_sol[i].segment(0, 3);
+    }
   }
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
@@ -749,8 +795,13 @@ void AssemblyController::ConvertForcesToWorldFrame(
   int cur_lambda_index = 0;
 
   c3_forces_output_ = dairlib::lcmt_c3_forces();
-  c3_forces_output_.num_forces = num_contacts;
-  c3_forces_output_.forces.resize(num_contacts);
+
+  c3_forces_output_.num_forces =
+      std::accumulate(
+          assembly_c3_options_.num_friction_directions_per_contact.begin(),
+          assembly_c3_options_.num_friction_directions_per_contact.end(), 0) *
+      2;
+  c3_forces_output_.forces.resize(c3_forces_output_.num_forces);
 
   DRAKE_DEMAND(contact_model_ == solvers::ContactModel::kAnitescu);
 
@@ -768,23 +819,18 @@ void AssemblyController::ConvertForcesToWorldFrame(
       anitescu_force_basis.row(j - 1) =
           force_basis.row(0) + assembly_c3_options_.mu[i] * force_basis.row(j);
     }
-
-    auto force_in_world_frame =
-        anitescu_force_basis.transpose() *
-        lcs_forces.segment(cur_lambda_index, num_force_basis);
-
-    auto net_force = force_in_world_frame.rowwise().sum();
-
-    cur_lambda_index += num_force_basis;
-
-    auto force = dairlib::lcmt_force();
-    force.contact_point[0] = p_WCa[0];
-    force.contact_point[1] = p_WCa[1];
-    force.contact_point[2] = p_WCa[2];
-    force.contact_force[0] = net_force[0];
-    force.contact_force[1] = net_force[1];
-    force.contact_force[2] = net_force[2];
-    c3_forces_output_.forces[i] = force;
+    for (int j = 0; j < 4; j++) {
+      auto lcm_force = dairlib::lcmt_force();
+      auto force = anitescu_force_basis.row(j) * lcs_forces[cur_lambda_index];
+      lcm_force.contact_point[0] = p_WCa[0];
+      lcm_force.contact_point[1] = p_WCa[1];
+      lcm_force.contact_point[2] = p_WCa[2];
+      lcm_force.contact_force[0] = force[0];
+      lcm_force.contact_force[1] = force[1];
+      lcm_force.contact_force[2] = force[2];
+      c3_forces_output_.forces[i * 4 + j] = lcm_force;
+      cur_lambda_index += 1;
+    }
   }
 }
 void AssemblyController::OutputTrajExecute(

@@ -76,6 +76,6 @@ EndEffectorRotKd:
 # The end effector forces in the OSC are called lambdas but are really tracking
 # the forces at the end effector or the u_sol we get in c3.
 LambdaEndEffectorW:
-  [ 1, 0, 0,
-    0, 1, 0,
-    0, 0, 1 ]
+  [ 0.001, 0, 0,
+    0, 0.001, 0,
+    0, 0, 0.001 ]

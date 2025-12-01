@@ -66,7 +66,7 @@ void C3Plus::AddAugmentedCostsQPStep(const std::vector<Eigen::MatrixXd>& G,
                                      const std::vector<Eigen::VectorXd>& WD,
                                      const std::vector<Eigen::VectorXd>& delta,
                                      bool is_final_solve) {
-  int large_coeff = 1000;
+  int large_coeff = 1;
   if (is_final_solve) {
     std::vector<Eigen::MatrixXd> last_qp_G = G;
     for (int i = 0; i < N_; ++i) {

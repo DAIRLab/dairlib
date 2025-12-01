@@ -63,7 +63,7 @@ int DoMain(int argc, char* argv[]) {
 
   TargetPosesParams target_poses_params =
       drake::yaml::LoadYamlFile<TargetPosesParams>(
-          "examples/magna/parameters/target_poses_hardware.yaml");
+          "examples/magna/parameters/target_poses.yaml");
   // ------------------------------------------------------------- //
 
   DiagramBuilder<double> builder;
@@ -94,7 +94,7 @@ int DoMain(int argc, char* argv[]) {
   plant_lcs.AddForceElement<drake::multibody::LinearSpringDamper>(
       plant_lcs.GetBodyByName("end_effector_simple"),
       drake::Vector3<double>(0, 0, 0), plant_lcs.GetBodyByName("belt_element"),
-      drake::Vector3<double>(0, 0, 0), 0.24, 1000, 0.1);
+      drake::Vector3<double>(0, 0, 0), 0.27, 100, 1);
   plant_lcs.Finalize();
 
   // Create AutoDiff version of LCS plant
@@ -131,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
     belt_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
   }
   contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
-  contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
+  //   contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
 
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
@@ -219,7 +219,7 @@ int DoMain(int argc, char* argv[]) {
   // TODO: we should subscribe and obtain state from a LCM channel.
   auto constant_object_state_vector = StateVector<double>(3, 3);
   VectorXd constant_positions(3);
-  constant_positions << 0.48985, -0.1, 0.03;
+  constant_positions << 0.48985, -0.103, 0.03;
   VectorXd constant_velocities = VectorXd::Zero(3);
   constant_object_state_vector.SetPositions(constant_positions);
   constant_object_state_vector.SetVelocities(constant_velocities);
@@ -233,7 +233,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd target_x_lcs =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
   VectorXd target_x_lcs_positions = VectorXd::Zero(plant_lcs.num_positions());
-  target_x_lcs_positions << 0.464, 0.198, 0.035, 0, -0.1745, 2.967, 0.48985, -0.1,
+  target_x_lcs_positions << 0.48985, 0.19, 0.028, -1.22, 0, 0, 0.48985, -0.1,
       0.03;
   target_x_lcs.segment(0, plant_lcs.num_positions()) = target_x_lcs_positions;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(target_x_lcs);

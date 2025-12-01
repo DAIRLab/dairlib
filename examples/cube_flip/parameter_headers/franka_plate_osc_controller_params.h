@@ -32,6 +32,7 @@ struct FrankaPlateControllerParams : OSCGains {
   std::vector<double> EndEffectorRotKp;
   std::vector<double> EndEffectorRotKd;
   std::vector<double> LambdaEndEffectorW;
+  std::vector<double> LambdaEndEffectorTauW;
 
   Eigen::MatrixXd W_end_effector;
   Eigen::MatrixXd K_p_end_effector;
@@ -43,6 +44,7 @@ struct FrankaPlateControllerParams : OSCGains {
   Eigen::MatrixXd K_p_end_effector_rot;
   Eigen::MatrixXd K_d_end_effector_rot;
   Eigen::MatrixXd W_ee_lambda;
+  Eigen::MatrixXd W_ee_lambda_tau;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -63,6 +65,7 @@ struct FrankaPlateControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
     a->Visit(DRAKE_NVP(LambdaEndEffectorW));
+    a->Visit(DRAKE_NVP(LambdaEndEffectorTauW));
     a->Visit(DRAKE_NVP(w_elbow));
     a->Visit(DRAKE_NVP(elbow_kp));
     a->Visit(DRAKE_NVP(elbow_kd));
@@ -96,5 +99,8 @@ struct FrankaPlateControllerParams : OSCGains {
     W_ee_lambda = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->LambdaEndEffectorW.data(), 3, 3);
+    W_ee_lambda_tau = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->LambdaEndEffectorTauW.data(), 3, 3);
   }
 };

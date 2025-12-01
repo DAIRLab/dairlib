@@ -9,12 +9,14 @@
 #include "examples/cube_flip/parameter_headers/franka_plate_osc_controller_params.h"
 
 #include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_torque.h"
 #include "systems/controllers/osc/end_effector_orientation.h"
 #include "systems/controllers/osc/end_effector_position.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
+#include "systems/controllers/osc/external_torque_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
@@ -51,6 +53,7 @@ using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
+using systems::controllers::ExternalTorqueTrackingData;
 using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
@@ -132,7 +135,10 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_position_target");
   auto end_effector_force_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_force_target");
+          "end_effector_force_target"); 
+  auto end_effector_torque_receiver =
+      builder.AddSystem<systems::LcmTrajectoryReceiver>(
+          "end_effector_torque_target");
   auto end_effector_orientation_receiver =
       builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
           "end_effector_orientation_target");
@@ -161,6 +167,8 @@ int DoMain(int argc, char* argv[]) {
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
       builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
+  auto end_effector_torque_trajectory =
+      builder.AddSystem<EndEffectorTorqueTrajectoryGenerator>();
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -200,6 +208,11 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
           controller_params.end_effector_name, Vector3d::Zero());
 
+  auto end_effector_torque_tracking_data =
+      std::make_unique<ExternalTorqueTrackingData>(
+          "end_effector_torque", controller_params.W_ee_lambda_tau, plant, plant,
+          controller_params.end_effector_name, Vector3d::Zero());
+
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
           "end_effector_orientation_target",
@@ -215,6 +228,7 @@ int DoMain(int argc, char* argv[]) {
                             1.6 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
+  osc->AddTorqueTrackingData(std::move(end_effector_torque_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
@@ -252,6 +266,8 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_orientation_trajectory->get_input_port_radio());
   builder.Connect(radio_sub->get_output_port(),
                   end_effector_force_trajectory->get_input_port_radio());
+  builder.Connect(radio_sub->get_output_port(),
+                  end_effector_torque_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
@@ -265,6 +281,8 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_position_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
                   end_effector_force_receiver->get_input_port_trajectory());
+  builder.Connect(end_effector_trajectory_sub->get_output_port(),
+                  end_effector_torque_receiver->get_input_port_trajectory());
   builder.Connect(
       end_effector_trajectory_sub->get_output_port(),
       end_effector_orientation_receiver->get_input_port_trajectory());
@@ -282,7 +300,10 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_force_trajectory->get_input_port_trajectory());
   builder.Connect(end_effector_force_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_force"));
-
+  builder.Connect(end_effector_torque_receiver->get_output_port(0),
+                  end_effector_torque_trajectory->get_input_port_trajectory());
+  builder.Connect(end_effector_torque_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("end_effector_torque"));
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   shared_diagram->set_name(("franka_osc_controller"));

@@ -77,7 +77,6 @@ void LcmTrajectoryReceiver::OutputTrajectory(
 LcmOrientationTrajectoryReceiver::LcmOrientationTrajectoryReceiver(
     std::string trajectory_name)
     : trajectory_name_(std::move(trajectory_name)) {
-  std::cout << "trajectory_name: " << trajectory_name_ << std::endl;
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",

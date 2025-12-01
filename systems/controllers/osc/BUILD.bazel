@@ -25,6 +25,7 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         ":end_effector_force",
+        ":end_effector_torque",
         ":end_effector_orientation",
         ":end_effector_position",
     ],
@@ -35,6 +36,7 @@ cc_library(
     deps = [
         ":com_tracking_data",
         ":external_force_tracking_data",
+        ":external_torque_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",
         ":relative_transform_tracking_data",
@@ -142,6 +144,18 @@ cc_library(
 )
 
 cc_library(
+    name = "external_torque_tracking_data",
+    srcs = ["external_torque_tracking_data.cc"],
+    hdrs = ["external_torque_tracking_data.h"],
+    deps = [
+        ":osc_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "osc_gains",
     hdrs = ["osc_gains.h"],
     deps = [
@@ -166,6 +180,19 @@ cc_library(
     name = "end_effector_force",
     srcs = ["end_effector_force.cc"],
     hdrs = ["end_effector_force.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_torque",
+    srcs = ["end_effector_torque.cc"],
+    hdrs = ["end_effector_torque.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

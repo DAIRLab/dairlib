@@ -17,6 +17,7 @@ struct FrankaPlateC3ControllerParams {
   std::string c3_options_file;
 
   bool include_end_effector_orientation;
+  bool run_open_loop;
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d ee_init_position;
@@ -34,6 +35,8 @@ struct FrankaPlateC3ControllerParams {
     a->Visit(DRAKE_NVP(c3_options_file));
 
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
+    a->Visit(DRAKE_NVP(run_open_loop));
+
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ee_init_position));
 

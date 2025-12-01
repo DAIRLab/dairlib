@@ -197,7 +197,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.ic3_inputs_channel, &lcm));
 
-  auto ic3_trajectory_generator =
+  auto ic3_target_generator =
       builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
 
   auto c3_tracking_system = 
@@ -227,43 +227,48 @@ int DoMain(int argc, char* argv[]) {
         controller_params.end_effector_name, "cube",
         controller_params.include_end_effector_orientation);
 
-  builder.Connect(franka_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_franka_state());  
-  builder.Connect(object_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
-
   builder.Connect(nominal_position->get_output_port(),
-                  ic3_trajectory_generator->get_input_port_nominal_trajectory());
+                  ic3_target_generator->get_input_port_nominal_trajectory());
 
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),
-                  ic3_trajectory_generator->get_input_port_iC3_x_trajectory());
+                  ic3_target_generator->get_input_port_iC3_x_trajectory());
   builder.Connect(ic3_u_trajectory_sub->get_output_port(),
-                  ic3_trajectory_generator->get_input_port_iC3_u_trajectory());
-  // builder.Connect(ic3_trajectory_generator->get_output_port_actor_trajectory(),
-  //                 ic3_actor_trajectory_sender->get_input_port());  
-  // builder.Connect(ic3_trajectory_generator->get_output_port_object_trajectory(),
-  //                 ic3_object_trajectory_sender->get_input_port()); 
+                  ic3_target_generator->get_input_port_iC3_u_trajectory());
 
-  builder.Connect(ic3_trajectory_generator->get_output_port_curr_x(),
-                c3_tracking_system->get_input_port_curr_x_trajectory());
-  builder.Connect(ic3_trajectory_generator->get_output_port_curr_u(),
-                c3_tracking_system->get_input_port_curr_u_trajectory());
+  if (controller_params.run_open_loop) {
+    builder.Connect(ic3_target_generator->get_output_port_actor_trajectory(),
+                    c3_actor_trajectory_sender->get_input_port());  
+    builder.Connect(ic3_target_generator->get_output_port_object_trajectory(),
+                    c3_object_trajectory_sender->get_input_port()); 
+  } else {
+    builder.Connect(franka_state_receiver->get_output_port(),
+                    reduced_order_model_receiver->get_input_port_franka_state());  
+    builder.Connect(object_state_receiver->get_output_port(),
+                    reduced_order_model_receiver->get_input_port_object_state());
+
+    builder.Connect(ic3_target_generator->get_output_port_curr_x(),
+                  c3_tracking_system->get_input_port_curr_x_trajectory());
+    builder.Connect(ic3_target_generator->get_output_port_curr_u(),
+                  c3_tracking_system->get_input_port_curr_u_trajectory());
 
 
-  builder.Connect(c3_tracking_system->get_output_port_target(),
-                  controller->get_input_port_target());
-  builder.Connect(c3_tracking_system->get_output_port_lcs(),
-                  controller->get_input_port_lcs());
-  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
-                  controller->get_input_port_lcs_state());
+    builder.Connect(c3_tracking_system->get_output_port_target(),
+                    controller->get_input_port_target());
+    builder.Connect(c3_tracking_system->get_output_port_lcs(),
+                    controller->get_input_port_lcs());
+    builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
+                    controller->get_input_port_lcs_state());
 
-  builder.Connect(controller->get_output_port_c3_solution(),
-                  c3_trajectory_generator->get_input_port_c3_solution());
+    builder.Connect(controller->get_output_port_c3_solution(),
+                    c3_trajectory_generator->get_input_port_c3_solution());
 
-  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
-                  c3_actor_trajectory_sender->get_input_port());
-  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
-                  c3_object_trajectory_sender->get_input_port());
+    builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+                    c3_actor_trajectory_sender->get_input_port());
+    builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+                    c3_object_trajectory_sender->get_input_port());
+  }
+
+
 
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);

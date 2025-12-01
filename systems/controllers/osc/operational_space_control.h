@@ -18,6 +18,7 @@
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
+#include "systems/controllers/osc/external_torque_tracking_data.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
@@ -256,6 +257,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddForceTrackingData(
       std::unique_ptr<ExternalForceTrackingData> tracking_data);
+  void AddTorqueTrackingData(
+      std::unique_ptr<ExternalTorqueTrackingData> tracking_data);
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
@@ -377,6 +380,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_h_;
   int n_c_;
   int n_lambda_ext_;
+  int n_lambda_ext_tau_;
   int n_c_active_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
@@ -423,6 +427,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable lambda_c_;
   drake::solvers::VectorXDecisionVariable lambda_h_;
   drake::solvers::VectorXDecisionVariable lambda_ext_;
+  drake::solvers::VectorXDecisionVariable lambda_ext_tau_;
   drake::solvers::VectorXDecisionVariable epsilon_;
   // Cost and constraints
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
@@ -438,6 +443,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* lambda_c_cost_ = nullptr;
   drake::solvers::QuadraticCost* lambda_h_cost_ = nullptr;
   drake::solvers::QuadraticCost* lambda_ext_cost_ = nullptr;
+  drake::solvers::QuadraticCost* lambda_ext_tau_cost_ = nullptr;
   drake::solvers::QuadraticCost* soft_constraint_cost_ = nullptr;
 
   // OSC solution
@@ -446,6 +452,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_ext_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_ext_tau_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_;
@@ -490,6 +497,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<std::vector<std::unique_ptr<ExternalForceTrackingData>>>
       force_tracking_data_vec_ = std::make_unique<
           std::vector<std::unique_ptr<ExternalForceTrackingData>>>();
+
+  std::unique_ptr<std::vector<std::unique_ptr<ExternalTorqueTrackingData>>>
+      torque_tracking_data_vec_ = std::make_unique<
+          std::vector<std::unique_ptr<ExternalTorqueTrackingData>>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

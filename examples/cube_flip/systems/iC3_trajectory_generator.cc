@@ -111,6 +111,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 	const std::string orientation_trajectory_name = "end_effector_orientation_target";
 	const std::string position_trajectory_name = "end_effector_position_target";
 	const std::string force_trajectory_name = "end_effector_force_target";
+	const std::string torque_trajectory_name = "end_effector_torque_target";
 
   if ((context.get_time() - t0) <= 3 || (context.get_time() - t0) - 3 > N_ * dt_ * 1) {
 
@@ -118,6 +119,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 	
 		MatrixXd orientations = MatrixXd::Zero(4, 5);
 		MatrixXd forces = MatrixXd::Zero(3, 5);
+		MatrixXd torques = MatrixXd::Zero(3, 5);
 
 		VectorXd timestamps(5);
     for (int t = 0; t < 5; t++) {
@@ -147,10 +149,17 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     force_traj.datapoints = forces;
     force_traj.time_vector = timestamps;
 
+    LcmTrajectory::Trajectory torque_traj;
+    torque_traj.traj_name = torque_trajectory_name;
+    torque_traj.datatypes = std::vector<std::string>(torques.rows(), "double"); 
+    torque_traj.datapoints = torques;
+    torque_traj.time_vector = timestamps;
+
     LcmTrajectory lcm_trajectory({position_traj}, {position_trajectory_name},
                                 position_trajectory_name, position_trajectory_name, false);
 		lcm_trajectory.AddTrajectory(orientation_trajectory_name, orientation_traj);   
 	  lcm_trajectory.AddTrajectory(force_trajectory_name, force_traj);   
+	  lcm_trajectory.AddTrajectory(torque_trajectory_name, torque_traj);   
 
 		output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
     output_traj->utime = context.get_time() * 1e6;
@@ -170,6 +179,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     int ee_pos_idx = 0;
     int ee_rot_idx = 3; 
+    int ee_force_idx = 0; 
+    int ee_torque_idx = 3; 
 
     MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 3);
     MatrixXd full_positions = data.middleRows(ee_pos_idx, 3);
@@ -181,6 +192,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     MatrixXd orientations = MatrixXd::Zero(4, 5);
     MatrixXd positions = MatrixXd::Zero(3, 5);
     MatrixXd forces = MatrixXd::Zero(3, 5);
+    MatrixXd torques = MatrixXd::Zero(3, 5);
+
     for (int i = segment_idx; i < segment_idx + 5; ++i) {
 				int idx;	
 				if (i > N_) {
@@ -203,7 +216,10 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
 				// iC3 solves about origin so add offset
         positions.col(idx - segment_idx) = full_positions.col(idx) + nominal_position;
-				forces.col(idx - segment_idx) = full_forces.col(idx);
+
+				forces.col(idx - segment_idx) = full_forces.col(idx).segment(ee_force_idx, 3);
+        torques.col(idx - segment_idx) = full_forces.col(idx).segment(ee_torque_idx, 3);
+
     }
 
     VectorXd timestamps(5);
@@ -232,11 +248,17 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     force_traj.datapoints = forces;
     force_traj.time_vector = timestamps;
 
+    LcmTrajectory::Trajectory torque_traj;
+    torque_traj.traj_name = torque_trajectory_name;
+    torque_traj.datatypes = std::vector<std::string>(torques.rows(), "double"); 
+    torque_traj.datapoints = torques;
+    torque_traj.time_vector = timestamps;
 
     LcmTrajectory lcm_trajectory({orientation_traj}, {orientation_trajectory_name},
                                 orientation_trajectory_name, orientation_trajectory_name, false);
     lcm_trajectory.AddTrajectory(position_trajectory_name, position_traj);   
     lcm_trajectory.AddTrajectory(force_trajectory_name, force_traj);   
+	  lcm_trajectory.AddTrajectory(torque_trajectory_name, torque_traj);   
 
     output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
     output_traj->utime = context.get_time() * 1e6;

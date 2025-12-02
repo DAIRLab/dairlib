@@ -9,6 +9,7 @@
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/lcm_channel_params.h"
 #include "examples/magna/parameter_headers/target_poses.h"
+#include "examples/magna/systems/force_elements/linear_spring_damper_no_compression.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/state_vector.h"
 #include "systems/franka_kinematics.h"
@@ -32,6 +33,7 @@ static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/"
     "panda_arm_hand_with_long_fingers.urdf";
 
+using dairlib::systems::StateVector;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -43,7 +45,6 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::VectorXd;
-using systems::StateVector;
 
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
@@ -91,7 +92,8 @@ int DoMain(int argc, char* argv[]) {
                              drake::Vector3<double>(0.68585, -0.192, 0.00543));
   plant_lcs.WeldFrames(plant_lcs.world_frame(),
                        plant_lcs.GetFrameByName("board"), task_board_pose);
-  plant_lcs.AddForceElement<drake::multibody::LinearSpringDamper>(
+  plant_lcs.AddForceElement<
+      magna::systems::force_elements::LinearSpringDamperNoCompression>(
       plant_lcs.GetBodyByName("end_effector_simple"),
       drake::Vector3<double>(0, 0, 0), plant_lcs.GetBodyByName("belt_element"),
       drake::Vector3<double>(0, 0, 0), 0.27, 100, 1);
@@ -233,7 +235,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd target_x_lcs =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
   VectorXd target_x_lcs_positions = VectorXd::Zero(plant_lcs.num_positions());
-  target_x_lcs_positions << 0.48985, 0.19, 0.028, -1.22, 0, 0, 0.48985, -0.1,
+  target_x_lcs_positions << 0.48985, 0.187, 0.032, -1.22, 0, 0, 0.48985, -0.1,
       0.03;
   target_x_lcs.segment(0, plant_lcs.num_positions()) = target_x_lcs_positions;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(target_x_lcs);

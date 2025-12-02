@@ -1,0 +1,16 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "linear_spring_damper_no_compression",
+    srcs = [
+        "linear_spring_damper_no_compression.cc",
+    ],
+    hdrs = [
+        "linear_spring_damper_no_compression.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

@@ -40,7 +40,7 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 # Contact pairs include a number of
 #   1. belt-large pulley
 #   2. belt-small pulley
-mu_per_pair_type: [0.823, 0.42]                          # match URDFs with (2mu1*mu2)/(mu1+mu2)
+mu_per_pair_type: [0.823]                          # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
 resolve_contacts_to_lists: [[2]]
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):

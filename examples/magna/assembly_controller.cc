@@ -712,13 +712,15 @@ void AssemblyController::GenerateMPCTrajectory(
 
   // End effector orientation (from RPY in x_sol)
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-  std::cout << "target rpy: " << x_desired[0].segment(3, 3).transpose()
-            << std::endl;
-  for (int i = 0; i < N_; i++) {
-    std::cout << "rpy timestep " << i << ": "
-              << x_sol[i].segment(3, 3).transpose() << std::endl;
+  if (verbose_) {
+    std::cout << "target rpy: " << x_desired[0].segment(3, 3).transpose()
+              << std::endl;
+    for (int i = 0; i < N_; i++) {
+      std::cout << "rpy timestep " << i << ": "
+                << x_sol[i].segment(3, 3).transpose() << std::endl;
+    }
+    std::cout << "--------------------------------" << std::endl;
   }
-  std::cout << "--------------------------------" << std::endl;
   double step_x_angle = (x_desired[0].segment(3, 3)[0] - x_lcs_curr[3]) / N_;
   for (int i = 0; i < N_; i++) {
     Eigen::Vector3d rpy = x_sol[i].segment(3, 3);

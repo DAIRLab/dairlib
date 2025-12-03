@@ -33,3 +33,8 @@ cc_library(
     hdrs = ["target_poses.h"],
     deps = ["@drake//:drake_shared_library"],
 )
+
+cc_library(
+    name = "round_belt_controller_params",
+    hdrs = ["round_belt_controller_params.h"],
+)

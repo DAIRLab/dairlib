@@ -1,0 +1,11 @@
+franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm_hand_with_long_fingers.urdf"
+ee_model: "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"
+belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
+task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
+spring_stiffness: 100
+spring_rest_length: 0.27
+spring_damping: 1 
+task_board_position: [0.68585, -0.192, 0.00543]
+task_board_orientation: [0.0, 0.0, 1.57079]
+target_lcs_position: [0.48985, 0.187, 0.032, -1.22, 0, 0, 0.48985, -0.1, 0.03]
+fixed_keypoint_position: [0.48985, -0.103, 0.03]

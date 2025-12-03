@@ -168,6 +168,7 @@ cc_binary(
         ":assembly_controller",
         "//common:find_resource",
         "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:round_belt_controller_params",
         "//examples/magna/systems/force_elements:linear_spring_damper_no_compression",
         "//systems:franka_kinematics",
         "//systems:robot_lcm_systems",

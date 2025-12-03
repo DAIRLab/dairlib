@@ -8,6 +8,7 @@
 #include "examples/magna/assembly_controller.h"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/lcm_channel_params.h"
+#include "examples/magna/parameter_headers/round_belt_controller_params.h"
 #include "examples/magna/parameter_headers/target_poses.h"
 #include "examples/magna/systems/force_elements/linear_spring_damper_no_compression.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -65,6 +66,10 @@ int DoMain(int argc, char* argv[]) {
   TargetPosesParams target_poses_params =
       drake::yaml::LoadYamlFile<TargetPosesParams>(
           "examples/magna/parameters/target_poses.yaml");
+
+  RoundBeltControllerParams round_belt_controller_params =
+      drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
+          "examples/magna/parameters/round_belt_controller_params.yaml");
   // ------------------------------------------------------------- //
 
   DiagramBuilder<double> builder;
@@ -74,12 +79,12 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   Parser parser(&plant_lcs, &scene_graph);
+  parser.AddModels(
+      dairlib::FindResourceOrThrow(round_belt_controller_params.ee_model));
   parser.AddModels(dairlib::FindResourceOrThrow(
-      "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"));
+      round_belt_controller_params.belt_element_model));
   parser.AddModels(dairlib::FindResourceOrThrow(
-      "examples/magna/urdf/round_belt_task/belt_element.urdf"));
-  parser.AddModels(dairlib::FindResourceOrThrow(
-      "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"));
+      round_belt_controller_params.task_board_model));
 
   plant_lcs.WeldFrames(plant_lcs.world_frame(),
                        plant_lcs.GetFrameByName("base_link"),
@@ -87,16 +92,25 @@ int DoMain(int argc, char* argv[]) {
   plant_lcs.WeldFrames(plant_lcs.world_frame(),
                        plant_lcs.GetFrameByName("belt_element_base_link"),
                        RigidTransform<double>::Identity());
-  RigidTransform<double> task_board_pose =
-      RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
-                             drake::Vector3<double>(0.68585, -0.192, 0.00543));
+  RigidTransform<double> task_board_pose = RigidTransform<double>(
+      drake::math::RollPitchYaw<double>(
+          round_belt_controller_params.task_board_orientation[0],
+          round_belt_controller_params.task_board_orientation[1],
+          round_belt_controller_params.task_board_orientation[2]),
+      drake::Vector3<double>(
+          round_belt_controller_params.task_board_position[0],
+          round_belt_controller_params.task_board_position[1],
+          round_belt_controller_params.task_board_position[2]));
   plant_lcs.WeldFrames(plant_lcs.world_frame(),
                        plant_lcs.GetFrameByName("board"), task_board_pose);
   plant_lcs.AddForceElement<
       magna::systems::force_elements::LinearSpringDamperNoCompression>(
       plant_lcs.GetBodyByName("end_effector_simple"),
       drake::Vector3<double>(0, 0, 0), plant_lcs.GetBodyByName("belt_element"),
-      drake::Vector3<double>(0, 0, 0), 0.27, 100, 1);
+      drake::Vector3<double>(0, 0, 0),
+      round_belt_controller_params.spring_rest_length,
+      round_belt_controller_params.spring_stiffness,
+      round_belt_controller_params.spring_damping);
   plant_lcs.Finalize();
 
   // Create AutoDiff version of LCS plant
@@ -220,8 +234,9 @@ int DoMain(int argc, char* argv[]) {
   // `object` in this case is one keypoint on the belt.
   // TODO: we should subscribe and obtain state from a LCM channel.
   auto constant_object_state_vector = StateVector<double>(3, 3);
-  VectorXd constant_positions(3);
-  constant_positions << 0.48985, -0.103, 0.03;
+  VectorXd constant_positions = Eigen::Map<VectorXd>(
+      round_belt_controller_params.fixed_keypoint_position.data(),
+      round_belt_controller_params.fixed_keypoint_position.size());
   VectorXd constant_velocities = VectorXd::Zero(3);
   constant_object_state_vector.SetPositions(constant_positions);
   constant_object_state_vector.SetVelocities(constant_velocities);
@@ -234,9 +249,9 @@ int DoMain(int argc, char* argv[]) {
   // Create a constant source for target LCS state
   VectorXd target_x_lcs =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
-  VectorXd target_x_lcs_positions = VectorXd::Zero(plant_lcs.num_positions());
-  target_x_lcs_positions << 0.48985, 0.187, 0.032, -1.22, 0, 0, 0.48985, -0.1,
-      0.03;
+  VectorXd target_x_lcs_positions = Eigen::Map<VectorXd>(
+      round_belt_controller_params.target_lcs_position.data(),
+      round_belt_controller_params.target_lcs_position.size());
   target_x_lcs.segment(0, plant_lcs.num_positions()) = target_x_lcs_positions;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(target_x_lcs);
   builder.Connect(x_lcs_des_source->get_output_port(),

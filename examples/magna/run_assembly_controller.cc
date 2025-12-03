@@ -3,7 +3,6 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_state.hpp"
-#include "dairlib/lcmt_franka_hand_target_position.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
@@ -20,7 +19,6 @@
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/tree/linear_spring_damper.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -29,10 +27,6 @@
 namespace dairlib {
 namespace examples {
 namespace magna {
-
-static constexpr const char* kFrankaModel =
-    "package://drake_models/franka_description/urdf/"
-    "panda_arm_hand_with_long_fingers.urdf";
 
 using dairlib::systems::StateVector;
 using drake::multibody::AddMultibodyPlantSceneGraph;
@@ -164,7 +158,8 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka);
   [[maybe_unused]] ModelInstanceIndex franka_index =
-      parser_franka.AddModelsFromUrl(kFrankaModel)[0];
+      parser_franka.AddModelsFromUrl(
+          round_belt_controller_params.franka_arm_hand_model)[0];
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"),
                           RigidTransform<double>::Identity());

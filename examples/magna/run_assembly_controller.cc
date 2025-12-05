@@ -145,7 +145,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
-      contact_pairs, assembly_c3_options, target_poses_params);
+      contact_pairs, assembly_c3_options, target_poses_params,
+      round_belt_controller_params.GetTargetLcsStates());
   // ------------------------------------------------------------- //
 
   // ----- Construct plants for FrankaKinematics ----- //
@@ -241,18 +242,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(constant_source->get_output_port(),
                   *(franka_kinematics->get_input_ports_object_state()[0]));
 
-  // Create a constant source for target LCS state
-  VectorXd target_x_lcs =
-      VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
-  VectorXd target_x_lcs_positions = Eigen::Map<VectorXd>(
-      round_belt_controller_params.target_lcs_position.data(),
-      round_belt_controller_params.target_lcs_position.size());
-  target_x_lcs.segment(0, plant_lcs.num_positions()) = target_x_lcs_positions;
-  auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(target_x_lcs);
-  builder.Connect(x_lcs_des_source->get_output_port(),
-                  assembly_controller->get_input_port_target());
-  builder.Connect(x_lcs_des_source->get_output_port(),
-                  c3_state_sender->get_input_port_target_state());
+  // Connect current target LCS state from assembly controller to
+  // c3_state_sender
+  builder.Connect(
+      assembly_controller->get_output_port_current_target_lcs_state(),
+      c3_state_sender->get_input_port_target_state());
   // ------------------------------------------------------------ //
 
   // ----- Publish gripper position command via LCM messages ----- //

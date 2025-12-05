@@ -33,14 +33,13 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
       const AssemblyC3Options& c3_options,
-      const TargetPosesParams& target_poses_params, bool verbose = false);
+      const TargetPosesParams& target_poses_params,
+      const std::vector<Eigen::VectorXd>& mpc_target_lcs_states,
+      bool verbose = false);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
-  }
-  const drake::systems::InputPort<double>& get_input_port_target() const {
-    return this->get_input_port(target_input_port_);
   }
 
   // Output ports
@@ -62,6 +61,11 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(c3_forces_port_);
   }
 
+  const drake::systems::OutputPort<double>&
+  get_output_port_current_target_lcs_state() const {
+    return this->get_output_port(current_target_lcs_state_port_);
+  }
+
  private:
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
@@ -74,6 +78,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
     AssemblyPhase current_phase;
     int current_target_idx;
     double target_reached_time;
+    int mpc_current_target_idx;
   };
 
   DiscreteStateData ExtractDiscreteState(
@@ -93,9 +98,13 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                       double t_context, LcmTrajectory* traj,
                                       int target_index) const;
 
-  /// Check if target is reached and return true if so
+  /// Check if target is reached and return true if so (for kMoveToTarget phase)
   bool IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
                        int target_index) const;
+
+  /// Check if MPC target is reached (for kMPC phase)
+  bool IsMpcTargetReached(const Eigen::VectorXd& x_lcs_curr,
+                          const Eigen::VectorXd& x_lcs_des) const;
 
   /// Helper function to add position, orientation, and force trajectories to
   /// LcmTrajectory
@@ -111,7 +120,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   void GenerateMPCTrajectory(const Eigen::VectorXd& x_lcs_curr,
                              const Eigen::VectorXd& x_lcs_des, double t_context,
                              LcmTrajectory* traj,
-                             LcmTrajectory* planned_keypoints_traj) const;
+                             LcmTrajectory* planned_keypoints_traj,
+                             DiscreteStateData* state_data) const;
 
   void ConvertForcesToWorldFrame(
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
@@ -128,14 +138,17 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                drake::lcmt_schunk_wsg_command* output) const;
   void OutputC3Forces(const drake::systems::Context<double>& context,
                       dairlib::lcmt_c3_forces* output) const;
+  void OutputCurrentTargetLcsState(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* output) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
-  drake::systems::InputPortIndex target_input_port_;
   drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex traj_planned_keypoints_port_;
   drake::systems::OutputPortIndex gripper_pos_command_port_;
   drake::systems::OutputPortIndex c3_forces_port_;
+  drake::systems::OutputPortIndex current_target_lcs_state_port_;
 
   // Plant references
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -172,6 +185,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex
       target_reached_time_index_;  // Time when target was first reached (for
                                    // dwell)
+  // MPC target management
+  drake::systems::DiscreteStateIndex mpc_current_target_index_;
+  std::vector<Eigen::VectorXd> mpc_target_lcs_states_;
 
   // MPC solver
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;

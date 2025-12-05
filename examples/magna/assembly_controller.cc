@@ -49,7 +49,8 @@ AssemblyController::AssemblyController(
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     const AssemblyC3Options& assembly_c3_options,
-    const TargetPosesParams& target_poses_params, bool verbose)
+    const TargetPosesParams& target_poses_params,
+    const std::vector<Eigen::VectorXd>& mpc_target_lcs_states, bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
@@ -58,6 +59,7 @@ AssemblyController::AssemblyController(
       assembly_c3_options_(assembly_c3_options),
       N_(assembly_c3_options.N),
       dt_(assembly_c3_options.dt),
+      mpc_target_lcs_states_(mpc_target_lcs_states),
       verbose_(verbose) {
   this->set_name("assembly_controller");
 
@@ -130,8 +132,6 @@ AssemblyController::AssemblyController(
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
-  target_input_port_ =
-      this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
 
   // Output ports
   traj_execute_port_ =
@@ -157,6 +157,12 @@ AssemblyController::AssemblyController(
                                       &AssemblyController::OutputC3Forces)
           .get_index();
 
+  current_target_lcs_state_port_ =
+      this->DeclareVectorOutputPort(
+              "current_target_lcs_state", n_x_,
+              &AssemblyController::OutputCurrentTargetLcsState)
+          .get_index();
+
   // Load target poses from YAML parameters (need to load before discrete state)
   target_poses_ = target_poses_params.ToTargetPoses();
 
@@ -173,6 +179,8 @@ AssemblyController::AssemblyController(
   // reached
   target_reached_time_index_ =
       this->DeclareDiscreteState(Eigen::VectorXd::Constant(1, -1.0));
+  // Initialize MPC target index to 0
+  mpc_current_target_index_ = this->DeclareDiscreteState(1);
 
   this->DeclareForcedDiscreteUpdateEvent(&AssemblyController::ComputePlan);
 
@@ -199,6 +207,8 @@ AssemblyController::DiscreteStateData AssemblyController::ExtractDiscreteState(
       static_cast<int>(discrete_state.get_value(current_target_index_)[0]);
   data.target_reached_time =
       discrete_state.get_value(target_reached_time_index_)[0];
+  data.mpc_current_target_idx =
+      static_cast<int>(discrete_state.get_value(mpc_current_target_index_)[0]);
   return data;
 }
 
@@ -213,6 +223,8 @@ void AssemblyController::UpdateDiscreteState(
       static_cast<double>(data.current_target_idx);
   discrete_state->get_mutable_value(target_reached_time_index_)[0] =
       data.target_reached_time;
+  discrete_state->get_mutable_value(mpc_current_target_index_)[0] =
+      static_cast<double>(data.mpc_current_target_idx);
 }
 
 bool AssemblyController::ShouldAdvanceToNextTarget(
@@ -254,10 +266,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   const TimestampedVector<double>* lcs_x_curr =
       static_cast<const TimestampedVector<double>*>(
           this->EvalVectorInput(context, lcs_state_input_port_));
-  const BasicVector<double>& lcs_x_des =
-      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
 
-  const drake::VectorX<double> x_lcs_des = lcs_x_des.get_value();
   const drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
   const double t_context = lcs_x_curr->get_timestamp();
 
@@ -336,8 +345,16 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       break;
 
     case AssemblyPhase::kMPC:
-      GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
-                            &execution_lcm_traj_, &planned_keypoints_lcm_traj_);
+      if (!mpc_target_lcs_states_.empty() &&
+          state_data.mpc_current_target_idx >= 0 &&
+          state_data.mpc_current_target_idx <
+              static_cast<int>(mpc_target_lcs_states_.size())) {
+        const VectorXd& x_lcs_des =
+            mpc_target_lcs_states_[state_data.mpc_current_target_idx];
+        GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
+                              &execution_lcm_traj_,
+                              &planned_keypoints_lcm_traj_, &state_data);
+      }
       break;
   }
 
@@ -382,6 +399,31 @@ bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
   // Compute angle between quaternions (taking shorter path)
   double dot_product = std::abs(current_quat.dot(target_quat));
   // Clamp to [-1, 1] to avoid numerical issues with acos
+  dot_product = std::min(1.0, std::max(-1.0, dot_product));
+  double angle = 2.0 * std::acos(dot_product);
+  bool orientation_reached = angle < ORIENTATION_TOLERANCE;
+
+  return position_reached && orientation_reached;
+}
+
+bool AssemblyController::IsMpcTargetReached(
+    const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des) const {
+  // Check position
+  bool position_reached =
+      (x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.003;
+
+  // Check orientation (RPY at indices 3, 4, 5)
+  Eigen::Vector3d current_rpy = x_lcs_curr.segment(3, 3);
+  Eigen::Vector3d target_rpy = x_lcs_des.segment(3, 3);
+  RollPitchYaw<double> current_rpy_obj(current_rpy);
+  RollPitchYaw<double> target_rpy_obj(target_rpy);
+  Quaterniond current_quat = current_rpy_obj.ToQuaternion();
+  Quaterniond target_quat = target_rpy_obj.ToQuaternion();
+  current_quat.normalize();
+  target_quat.normalize();
+
+  // Compute angle between quaternions (taking shorter path)
+  double dot_product = std::abs(current_quat.dot(target_quat));
   dot_product = std::min(1.0, std::max(-1.0, dot_product));
   double angle = 2.0 * std::acos(dot_product);
   bool orientation_reached = angle < ORIENTATION_TOLERANCE;
@@ -649,14 +691,30 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
 void AssemblyController::GenerateMPCTrajectory(
     const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
     double t_context, LcmTrajectory* traj,
-    LcmTrajectory* planned_keypoints_traj) const {
+    LcmTrajectory* planned_keypoints_traj,
+    DiscreteStateData* state_data) const {
+  // Check if current MPC target is reached (both position and orientation)
+  if (IsMpcTargetReached(x_lcs_curr, x_lcs_des)) {
+    std::cout << "MPC reached target " << state_data->mpc_current_target_idx
+              << std::endl;
+    // Advance to next MPC target
+    state_data->mpc_current_target_idx++;
+    if (state_data->mpc_current_target_idx >=
+        static_cast<int>(mpc_target_lcs_states_.size())) {
+      std::cout << "All MPC targets completed!" << std::endl;
+      mpc_reached_target_ = true;
+      gripper_pos_command_ = 0.04;
+      return;
+    }
+    std::cout << "Moving to MPC target " << state_data->mpc_current_target_idx
+              << std::endl;
+    // Return early - will use the new target in next iteration
+    return;
+  }
+
   if (mpc_reached_target_) {
     gripper_pos_command_ = 0.04;
     return;
-  }
-  if ((x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.003) {
-    std::cout << "MPC reached target" << std::endl;
-    mpc_reached_target_ = true;
   }
   // Update context to current state
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
@@ -712,25 +770,11 @@ void AssemblyController::GenerateMPCTrajectory(
 
   // End effector orientation (from RPY in x_sol)
   Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-  if (verbose_) {
-    std::cout << "target rpy: " << x_desired[0].segment(3, 3).transpose()
-              << std::endl;
-    for (int i = 0; i < N_; i++) {
-      std::cout << "rpy timestep " << i << ": "
-                << x_sol[i].segment(3, 3).transpose() << std::endl;
-    }
-    std::cout << "--------------------------------" << std::endl;
-  }
-  double step_x_angle = (x_desired[0].segment(3, 3)[0] - x_lcs_curr[3]) / N_;
+  Eigen::Vector3d rpy_curr = x_lcs_curr.segment(3, 3);
+  Eigen::Vector3d rpy_desired = x_desired[0].segment(3, 3);
+  Eigen::Vector3d step_angle = (rpy_desired - rpy_curr) / N_;
   for (int i = 0; i < N_; i++) {
-    Eigen::Vector3d rpy = x_sol[i].segment(3, 3);
-    if (!is_solve_succeeded_) {
-      rpy = x_desired[i].segment(3, 3);
-    }
-    // rpy = x_desired[i].segment(3, 3);
-    rpy[0] = x_lcs_curr[3] + i * step_x_angle;
-    rpy[1] = 0;
-    rpy[2] = 0;
+    Eigen::Vector3d rpy = rpy_curr + i * step_angle;
     RollPitchYaw<double> rpy_obj(rpy);
     Quaterniond quat = rpy_obj.ToQuaternion();
     quat.normalize();
@@ -861,6 +905,29 @@ void AssemblyController::OutputC3Forces(
     dairlib::lcmt_c3_forces* output) const {
   *output = c3_forces_output_;
   output->utime = context.get_time() * 1e6;
+}
+
+void AssemblyController::OutputCurrentTargetLcsState(
+    const drake::systems::Context<double>& context,
+    drake::systems::BasicVector<double>* output) const {
+  // Get current MPC target index from discrete state
+  int mpc_target_idx = static_cast<int>(
+      context.get_discrete_state(mpc_current_target_index_).get_value()[0]);
+
+  // Clamp index to valid range
+  if (mpc_target_idx < 0) {
+    mpc_target_idx = 0;
+  } else if (mpc_target_idx >=
+             static_cast<int>(mpc_target_lcs_states_.size())) {
+    mpc_target_idx = static_cast<int>(mpc_target_lcs_states_.size()) - 1;
+  }
+
+  // Output the current target LCS state
+  if (!mpc_target_lcs_states_.empty()) {
+    output->set_value(mpc_target_lcs_states_[mpc_target_idx]);
+  } else {
+    output->set_value(VectorXd::Zero(n_x_));
+  }
 }
 }  // namespace magna
 }  // namespace examples

@@ -2,27 +2,22 @@ franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm
 ee_model: "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"
 belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
 task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
-spring_stiffness: 1000 #100 
-spring_rest_length: 0.26 #0.27 
+spring_stiffness: 100 
+spring_rest_length: 0.27 
 spring_damping: 1 
 task_board_position: [0.67826, -0.192, 0.00543]
 task_board_orientation: [0.0, 0.0, 1.57079]
 target_lcs_positions:
-  # simulation
-  # - [0.48185, 0.2, 0.028, 0, 0, 0, 0.48185, -0.1, 0.025]
-  # - [0.45185, 0.137, 0.028, 0, 0, 1.3, 0.48185, -0.1, 0.025]
-
-  # hardware
-  - [0.48185, 0.192, 0.02, 0, 0, 0, 0.48185, -0.1, 0.025]
-  - [0.46185, 0.137, 0.02, 0, 0, 1.3, 0.48185, -0.1, 0.025]
+  - [0.48185, 0.2, 0.028, 0, 0, 0, 0.48185, -0.1, 0.025]
+  - [0.45185, 0.137, 0.028, 0, 0, 1.3, 0.48185, -0.1, 0.025]
 fixed_keypoint_position: [0.48185, -0.103, 0.03]
 
 # Tolerances for reaching targets in predefined motion and MPC.
 predefined_motion_position_tolerance: 0.005 # m
 predefined_motion_orientation_tolerance: 0.1 # rad
-mpc_position_tolerance: 0.017
-mpc_orientation_tolerance: 0.5 # rad (0.2 radians = 11.5 degrees)
+mpc_position_tolerance: 0.005
+mpc_orientation_tolerance: 0.2 # rad (0.2 radians = 11.5 degrees)
 
 assembly_c3_options_file: "examples/magna/parameters/assembly_c3_options.yaml"
 lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"
-target_poses_file: "examples/magna/parameters/target_poses_hardware.yaml"
+target_poses_file: "examples/magna/parameters/target_poses.yaml"

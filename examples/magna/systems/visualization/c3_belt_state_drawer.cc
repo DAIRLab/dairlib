@@ -206,7 +206,7 @@ drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(
     // Spring force direction depends on whether spring is in tension or compression
     // Tension (stretched): distance > rest_length, force pulls back toward keypoint
     // Compression: distance < rest_length is not allowed, the spring force will be set to 0.
-    Vector3d force_direction = distance_vec.normalized();
+    Vector3d force_direction = -distance_vec.normalized();
     
     // Scale the arrow length (e.g., 0.01 meter per Newton for visualization)
     double newtons_per_meter = 100.0;  // Adjust this value to scale arrow length

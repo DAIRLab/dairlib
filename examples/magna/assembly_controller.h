@@ -158,7 +158,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_pairs_;
 
-  RoundBeltControllerParams round_belt_controller_params_;
+  mutable RoundBeltControllerParams round_belt_controller_params_;
 
   // C3 options
   AssemblyC3Options assembly_c3_options_;

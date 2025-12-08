@@ -701,11 +701,13 @@ void AssemblyController::GenerateMPCTrajectory(
               << std::endl;
     // Advance to next MPC target
     state_data->mpc_current_target_idx++;
+    // round_belt_controller_params_.mpc_orientation_tolerance = 0.3;
+    // round_belt_controller_params_.mpc_position_tolerance = 0.02;
     if (state_data->mpc_current_target_idx >=
         static_cast<int>(mpc_target_lcs_states_.size())) {
       std::cout << "All MPC targets completed!" << std::endl;
       mpc_reached_target_ = true;
-      gripper_pos_command_ = 0.001;
+      gripper_pos_command_ = 0.003;
       return;
     }
     std::cout << "Moving to MPC target " << state_data->mpc_current_target_idx

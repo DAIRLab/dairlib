@@ -14,10 +14,6 @@
 
 #include "drake/lcmt_schunk_wsg_command.hpp"
 
-#define POSITION_TOLERANCE 0.005
-#define POSITION_TOLERANCE_CIRCULAR_ARC 0.01
-#define ORIENTATION_TOLERANCE 0.2  // radians (approximately 5.7 degrees)
-
 namespace dairlib {
 namespace examples {
 namespace magna {
@@ -50,16 +46,17 @@ AssemblyController::AssemblyController(
         contact_geoms,
     const AssemblyC3Options& assembly_c3_options,
     const TargetPosesParams& target_poses_params,
-    const std::vector<Eigen::VectorXd>& mpc_target_lcs_states, bool verbose)
+    const RoundBeltControllerParams& round_belt_controller_params, bool verbose)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
+      round_belt_controller_params_(round_belt_controller_params),
       assembly_c3_options_(assembly_c3_options),
       N_(assembly_c3_options.N),
       dt_(assembly_c3_options.dt),
-      mpc_target_lcs_states_(mpc_target_lcs_states),
+      mpc_target_lcs_states_(round_belt_controller_params.GetTargetLcsStates()),
       verbose_(verbose) {
   this->set_name("assembly_controller");
 
@@ -378,8 +375,11 @@ bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
   Eigen::Vector3d target_pos = target_pose.position;
   double distance = (current_pos - target_pos).norm();
   bool position_reached =
-      distance < (target_pose.radius > 0.0 ? POSITION_TOLERANCE_CIRCULAR_ARC
-                                           : POSITION_TOLERANCE);
+      distance <
+      (target_pose.radius > 0.0
+           ? round_belt_controller_params_.predefined_motion_position_tolerance
+           : round_belt_controller_params_
+                 .predefined_motion_position_tolerance);
 
   // Check orientation
   // Extract current orientation from x_lcs_curr (RPY at indices 3, 4, 5)
@@ -401,7 +401,9 @@ bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
   // Clamp to [-1, 1] to avoid numerical issues with acos
   dot_product = std::min(1.0, std::max(-1.0, dot_product));
   double angle = 2.0 * std::acos(dot_product);
-  bool orientation_reached = angle < ORIENTATION_TOLERANCE;
+  bool orientation_reached =
+      angle <
+      round_belt_controller_params_.predefined_motion_orientation_tolerance;
 
   return position_reached && orientation_reached;
 }
@@ -409,8 +411,8 @@ bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
 bool AssemblyController::IsMpcTargetReached(
     const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des) const {
   // Check position
-  bool position_reached =
-      (x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.006;
+  bool position_reached = (x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() <
+                          round_belt_controller_params_.mpc_position_tolerance;
 
   // Check orientation (RPY at indices 3, 4, 5)
   Eigen::Vector3d current_rpy = x_lcs_curr.segment(3, 3);
@@ -426,7 +428,8 @@ bool AssemblyController::IsMpcTargetReached(
   double dot_product = std::abs(current_quat.dot(target_quat));
   dot_product = std::min(1.0, std::max(-1.0, dot_product));
   double angle = 2.0 * std::acos(dot_product);
-  bool orientation_reached = angle < ORIENTATION_TOLERANCE;
+  bool orientation_reached =
+      angle < round_belt_controller_params_.mpc_orientation_tolerance;
 
   return position_reached && orientation_reached;
 }
@@ -520,8 +523,11 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(n_knots);
 
   bool position_reached =
-      distance < (target_pose.radius > 0.0 ? POSITION_TOLERANCE_CIRCULAR_ARC
-                                           : POSITION_TOLERANCE);
+      distance <
+      (target_pose.radius > 0.0
+           ? round_belt_controller_params_.predefined_motion_position_tolerance
+           : round_belt_controller_params_
+                 .predefined_motion_position_tolerance);
   if (position_reached) {
     for (int i = 0; i < n_knots; i++) {
       knots.col(i) = target_pos;

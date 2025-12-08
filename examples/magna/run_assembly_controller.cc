@@ -59,7 +59,7 @@ int DoMain(int argc, char* argv[]) {
 
   TargetPosesParams target_poses_params =
       drake::yaml::LoadYamlFile<TargetPosesParams>(
-          "examples/magna/parameters/target_poses_hardware.yaml");
+          "examples/magna/parameters/target_poses.yaml");
 
   RoundBeltControllerParams round_belt_controller_params =
       drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
@@ -146,7 +146,7 @@ int DoMain(int argc, char* argv[]) {
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
       contact_pairs, assembly_c3_options, target_poses_params,
-      round_belt_controller_params.GetTargetLcsStates());
+      round_belt_controller_params);
   // ------------------------------------------------------------- //
 
   // ----- Construct plants for FrankaKinematics ----- //

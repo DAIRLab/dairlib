@@ -128,7 +128,7 @@ int DoMain(int argc, char* argv[]) {
                                    "round_belt_task_board.sdf"))[0];
   RigidTransform<double> task_board_pose =
       RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
-                             drake::Vector3<double>(0.68585, -0.192, 0.00543));
+                             drake::Vector3<double>(0.67826, -0.192, 0.00543));
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("board", task_board_index),
                    task_board_pose);

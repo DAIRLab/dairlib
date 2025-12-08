@@ -10,6 +10,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
+#include "parameter_headers/round_belt_controller_params.h"
 #include "parameter_headers/target_poses.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
@@ -34,7 +35,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
           contact_geoms,
       const AssemblyC3Options& c3_options,
       const TargetPosesParams& target_poses_params,
-      const std::vector<Eigen::VectorXd>& mpc_target_lcs_states,
+      const RoundBeltControllerParams& round_belt_controller_params,
       bool verbose = false);
 
   // Input ports
@@ -158,6 +159,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   const std::vector<
       std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_pairs_;
+
+  RoundBeltControllerParams round_belt_controller_params_;
 
   // C3 options
   AssemblyC3Options assembly_c3_options_;

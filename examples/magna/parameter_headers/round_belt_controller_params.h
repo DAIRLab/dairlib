@@ -4,8 +4,12 @@
 
 #include <Eigen/Dense>
 
-#include "drake/common/yaml/yaml_read_archive.h"
+#include "assembly_c3_options.h"
+#include "lcm_channel_params.h"
+#include "target_poses.h"
 
+#include "drake/common/yaml/yaml_io.h"
+#include "drake/common/yaml/yaml_read_archive.h"
 struct RoundBeltControllerParams {
   std::string franka_arm_hand_model;
   std::string ee_model;
@@ -21,10 +25,17 @@ struct RoundBeltControllerParams {
                              // x, y, z, roll, pitch, yaw, x_keypoint,
                              // y_keypoint, z_keypoint
   std::vector<double> fixed_keypoint_position;
-  double predefined_motion_position_tolerance; // m
-  double predefined_motion_orientation_tolerance; // rad
-  double mpc_position_tolerance; // m
-  double mpc_orientation_tolerance; // rad
+  double predefined_motion_position_tolerance;     // m
+  double predefined_motion_orientation_tolerance;  // rad
+  double mpc_position_tolerance;                   // m
+  double mpc_orientation_tolerance;                // rad
+
+  std::string assembly_c3_options_file;
+  std::string lcm_channels_file;
+  std::string target_poses_file;
+  AssemblyC3Options assembly_c3_options;
+  MagnaLcmChannels lcm_channels;
+  dairlib::examples::magna::TargetPosesParams target_poses;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -43,8 +54,20 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(predefined_motion_orientation_tolerance));
     a->Visit(DRAKE_NVP(mpc_position_tolerance));
     a->Visit(DRAKE_NVP(mpc_orientation_tolerance));
+    a->Visit(DRAKE_NVP(assembly_c3_options_file));
+    a->Visit(DRAKE_NVP(lcm_channels_file));
+    a->Visit(DRAKE_NVP(target_poses_file));
+
     // Initialize target_lcs_states after loading from YAML
     InitTargetLcsStates();
+
+    assembly_c3_options =
+        drake::yaml::LoadYamlFile<AssemblyC3Options>(assembly_c3_options_file);
+    lcm_channels =
+        drake::yaml::LoadYamlFile<MagnaLcmChannels>(lcm_channels_file);
+    target_poses =
+        drake::yaml::LoadYamlFile<dairlib::examples::magna::TargetPosesParams>(
+            target_poses_file);
   }
 
   /// Get target LCS states as Eigen vectors (positions + zero velocities).

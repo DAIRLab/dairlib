@@ -37,4 +37,10 @@ cc_library(
 cc_library(
     name = "round_belt_controller_params",
     hdrs = ["round_belt_controller_params.h"],
+    deps = [
+        "//examples/magna/parameter_headers:assembly_c3_options",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:target_poses",
+        "@drake//:drake_shared_library",
+    ],
 )

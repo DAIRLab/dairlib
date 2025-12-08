@@ -20,3 +20,7 @@ predefined_motion_position_tolerance: 0.005 # m
 predefined_motion_orientation_tolerance: 0.1 # rad
 mpc_position_tolerance: 0.006
 mpc_orientation_tolerance: 0.2 # rad (0.2 radians = 11.5 degrees)
+
+assembly_c3_options_file: "examples/magna/parameters/assembly_c3_options.yaml"
+lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"
+target_poses_file: "examples/magna/parameters/target_poses_hardware.yaml"

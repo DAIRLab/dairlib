@@ -49,18 +49,6 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // --------------------- Load parameters ---------------------- //
-  MagnaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels.yaml");
-
-  AssemblyC3Options assembly_c3_options =
-      drake::yaml::LoadYamlFile<AssemblyC3Options>(
-          "examples/magna/parameters/assembly_c3_options.yaml");
-
-  TargetPosesParams target_poses_params =
-      drake::yaml::LoadYamlFile<TargetPosesParams>(
-          "examples/magna/parameters/target_poses.yaml");
-
   RoundBeltControllerParams round_belt_controller_params =
       drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
           "examples/magna/parameters/round_belt_controller_params.yaml");
@@ -145,8 +133,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
-      contact_pairs, assembly_c3_options, target_poses_params,
-      round_belt_controller_params);
+      contact_pairs, round_belt_controller_params);
   // ------------------------------------------------------------- //
 
   // ----- Construct plants for FrankaKinematics ----- //
@@ -187,7 +174,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto robot_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, &lcm));
+          round_belt_controller_params.lcm_channels.franka_state_channel,
+          &lcm));
   auto robot_state_receiver =
       builder.AddSystem<dairlib::systems::RobotOutputReceiver>(plant_franka);
 
@@ -213,12 +201,12 @@ int DoMain(int argc, char* argv[]) {
       lcs_state_size, lcs_state_names);
   auto lcs_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_actual_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels.c3_actual_state_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto target_lcs_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_target_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels.c3_target_state_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(franka_kinematics->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
@@ -252,8 +240,9 @@ int DoMain(int argc, char* argv[]) {
   // ----- Publish gripper position command via LCM messages ----- //
   auto gripper_pos_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_schunk_wsg_command>(
-          lcm_channel_params.franka_hand_target_position_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels
+              .franka_hand_target_position_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_gripper_pos_command(),
                   gripper_pos_command_pub->get_input_port(0));
   // ------------------------------------------------------------- //
@@ -261,12 +250,14 @@ int DoMain(int argc, char* argv[]) {
   // ----- Publish trajectory output via LCM messages ----- //
   auto traj_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels
+              .tracking_trajectory_actor_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto traj_planned_keypoints_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.planned_keypoints_trajectory_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels
+              .planned_keypoints_trajectory_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_traj_execute(),
                   traj_pub->get_input_port(0));
   builder.Connect(assembly_controller->get_output_port_traj_planned_keypoints(),
@@ -276,7 +267,7 @@ int DoMain(int argc, char* argv[]) {
   // ----- Publish C3 forces via LCM messages ----- //
   auto c3_forces_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-          lcm_channel_params.c3_force_channel, &lcm,
+          round_belt_controller_params.lcm_channels.c3_force_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_c3_forces(),
                   c3_forces_pub->get_input_port(0));
@@ -290,7 +281,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   dairlib::systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, robot_state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+      round_belt_controller_params.lcm_channels.franka_state_channel, true);
   drake::log()->info("Assembly controller started");
   loop.Simulate(std::numeric_limits<double>::infinity());
 

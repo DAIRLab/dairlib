@@ -44,8 +44,6 @@ AssemblyController::AssemblyController(
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
-    const AssemblyC3Options& assembly_c3_options,
-    const TargetPosesParams& target_poses_params,
     const RoundBeltControllerParams& round_belt_controller_params, bool verbose)
     : plant_(plant),
       context_(context),
@@ -53,10 +51,11 @@ AssemblyController::AssemblyController(
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
       round_belt_controller_params_(round_belt_controller_params),
-      assembly_c3_options_(assembly_c3_options),
-      N_(assembly_c3_options.N),
-      dt_(assembly_c3_options.dt),
+      assembly_c3_options_(round_belt_controller_params.assembly_c3_options),
+      N_(round_belt_controller_params.assembly_c3_options.N),
+      dt_(round_belt_controller_params.assembly_c3_options.dt),
       mpc_target_lcs_states_(round_belt_controller_params.GetTargetLcsStates()),
+      target_poses_(round_belt_controller_params.target_poses.ToTargetPoses()),
       verbose_(verbose) {
   this->set_name("assembly_controller");
 
@@ -159,9 +158,6 @@ AssemblyController::AssemblyController(
               "current_target_lcs_state", n_x_,
               &AssemblyController::OutputCurrentTargetLcsState)
           .get_index();
-
-  // Load target poses from YAML parameters (need to load before discrete state)
-  target_poses_ = target_poses_params.ToTargetPoses();
 
   // Discrete state for phase tracking
   // Initialize phase based on whether we have targets

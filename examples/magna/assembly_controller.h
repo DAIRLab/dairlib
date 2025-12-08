@@ -33,8 +33,6 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      const AssemblyC3Options& c3_options,
-      const TargetPosesParams& target_poses_params,
       const RoundBeltControllerParams& round_belt_controller_params,
       bool verbose = false);
 

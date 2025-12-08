@@ -59,7 +59,7 @@ int DoMain(int argc, char* argv[]) {
 
   TargetPosesParams target_poses_params =
       drake::yaml::LoadYamlFile<TargetPosesParams>(
-          "examples/magna/parameters/target_poses.yaml");
+          "examples/magna/parameters/target_poses_hardware.yaml");
 
   RoundBeltControllerParams round_belt_controller_params =
       drake::yaml::LoadYamlFile<RoundBeltControllerParams>(

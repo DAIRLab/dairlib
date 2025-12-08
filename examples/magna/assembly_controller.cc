@@ -16,7 +16,7 @@
 
 #define POSITION_TOLERANCE 0.005
 #define POSITION_TOLERANCE_CIRCULAR_ARC 0.01
-#define ORIENTATION_TOLERANCE 0.1  // radians (approximately 5.7 degrees)
+#define ORIENTATION_TOLERANCE 0.2  // radians (approximately 5.7 degrees)
 
 namespace dairlib {
 namespace examples {
@@ -410,7 +410,7 @@ bool AssemblyController::IsMpcTargetReached(
     const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des) const {
   // Check position
   bool position_reached =
-      (x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.003;
+      (x_lcs_curr.head(3) - x_lcs_des.head(3)).norm() < 0.006;
 
   // Check orientation (RPY at indices 3, 4, 5)
   Eigen::Vector3d current_rpy = x_lcs_curr.segment(3, 3);
@@ -703,7 +703,7 @@ void AssemblyController::GenerateMPCTrajectory(
         static_cast<int>(mpc_target_lcs_states_.size())) {
       std::cout << "All MPC targets completed!" << std::endl;
       mpc_reached_target_ = true;
-      gripper_pos_command_ = 0.04;
+      gripper_pos_command_ = 0.001;
       return;
     }
     std::cout << "Moving to MPC target " << state_data->mpc_current_target_idx
@@ -712,10 +712,6 @@ void AssemblyController::GenerateMPCTrajectory(
     return;
   }
 
-  if (mpc_reached_target_) {
-    gripper_pos_command_ = 0.04;
-    return;
-  }
   // Update context to current state
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 x_lcs_curr);

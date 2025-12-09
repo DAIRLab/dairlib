@@ -195,10 +195,18 @@ int DoMain(int argc, char* argv[]) {
   // Set the initial state of the plant
   VectorXd q = VectorXd::Zero(nq);
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
+  q.segment(plant.num_positions(franka_index), 2) =
+      sim_params.q_init_franka_hand;
+
   plant.SetPositions(&plant_context, q);
 
   VectorXd v = VectorXd::Zero(nv);
   plant.SetVelocities(&plant_context, v);
+
+  // Set the initial state of the belt
+  const drake::multibody::DeformableBody<double>& belt_body =
+      plant.deformable_model().GetBodyByName("round_belt");
+  belt_body.SetPositions(&plant_context, sim_params.q_init_belt);
 
   // Initialize and run the simulation indefinitely
   simulator.Initialize();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Dense>
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct MagnaSimParams {
@@ -12,6 +13,8 @@ struct MagnaSimParams {
   bool publish_efforts;
   Eigen::VectorXd q_init_franka;
   Eigen::VectorXd q_init_franka_hand;
+  std::vector<Eigen::VectorXd> init_belt_vertices;
+  Eigen::Matrix3Xd q_init_belt;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -23,5 +26,14 @@ struct MagnaSimParams {
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_franka_hand));
+    a->Visit(DRAKE_NVP(init_belt_vertices));
+    ComputeBeltVerticesMatrix();
+  }
+
+  void ComputeBeltVerticesMatrix() {
+    q_init_belt = Eigen::Matrix3Xd::Zero(3, init_belt_vertices.size());
+    for (int i = 0; i < init_belt_vertices.size(); ++i) {
+      q_init_belt.col(i) = init_belt_vertices[i];
+    }
   }
 };

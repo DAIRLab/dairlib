@@ -23,7 +23,7 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 
 # Two teleoperation modes:  1) locked EE neutral position, where xbox controls
 # perturb the EE; and 2) xbox controls move the EE to a new neutral position.
-neutral_position: [0.57987, 0, 0.280994]
+neutral_position: [0.48224, 0.16633, 0.04]
 teleop_neutral_position: true
 
 # If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be

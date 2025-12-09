@@ -43,6 +43,7 @@ using Eigen::VectorXd;
 
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
+DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -51,7 +52,10 @@ int DoMain(int argc, char* argv[]) {
   // --------------------- Load parameters ---------------------- //
   RoundBeltControllerParams round_belt_controller_params =
       drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
-          "examples/magna/parameters/round_belt_controller_params.yaml");
+          FLAGS_is_simulation ? "examples/magna/parameters/"
+                                "round_belt_controller_params_sim.yaml"
+                              : "examples/magna/parameters/"
+                                "round_belt_controller_params_hw.yaml");
   // ------------------------------------------------------------- //
 
   DiagramBuilder<double> builder;
@@ -129,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
     belt_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
   }
   contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
-  //   contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
+  contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
 
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),

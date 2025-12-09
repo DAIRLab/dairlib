@@ -26,7 +26,7 @@ group "controllers" {
         host = "localhost";
     }
     cmd "assembly" {
-        exec = "bazel-bin/examples/magna/run_assembly_controller";
+        exec = "bazel-bin/examples/magna/run_assembly_controller --is_simulation=true";
         host = "localhost";
     }
 }

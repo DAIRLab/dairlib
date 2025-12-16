@@ -2,13 +2,12 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "dairlib/lcmt_c3_output.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
-#include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/lcm_channel_params.h"
 #include "examples/magna/parameter_headers/round_belt_controller_params.h"
-#include "examples/magna/parameter_headers/target_poses.h"
 #include "examples/magna/systems/force_elements/linear_spring_damper_no_compression.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/state_vector.h"
@@ -16,6 +15,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/c3_state_sender.h"
 #include "systems/system_utils.h"
+#include "systems/trajectory_optimization/c3_output_systems.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
@@ -275,6 +275,19 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_c3_forces(),
                   c3_forces_pub->get_input_port(0));
+  // ------------------------------------------------------------- //
+
+  // ----- Publish C3 output (solution + intermediates) via LCM ----- //
+  auto c3_output_sender = builder.AddSystem<dairlib::systems::C3OutputSender>();
+  auto c3_output_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+          "C3_OUTPUT", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(assembly_controller->get_output_port_c3_solution(),
+                  c3_output_sender->get_input_port_c3_solution());
+  builder.Connect(assembly_controller->get_output_port_c3_intermediates(),
+                  c3_output_sender->get_input_port_c3_intermediates());
+  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
+                  c3_output_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // Build diagram

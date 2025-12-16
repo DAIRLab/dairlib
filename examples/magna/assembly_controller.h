@@ -12,6 +12,7 @@
 #include "parameter_headers/assembly_c3_options.h"
 #include "parameter_headers/round_belt_controller_params.h"
 #include "parameter_headers/target_poses.h"
+#include "solvers/c3_output.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
 
@@ -63,6 +64,16 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>&
   get_output_port_current_target_lcs_state() const {
     return this->get_output_port(current_target_lcs_state_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
+      const {
+    return this->get_output_port(c3_intermediates_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution()
+      const {
+    return this->get_output_port(c3_solution_port_);
   }
 
  private:
@@ -140,6 +151,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   void OutputCurrentTargetLcsState(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* output) const;
+  void OutputC3Intermediates(const drake::systems::Context<double>& context,
+                             C3Output::C3Intermediates* c3_intermediates) const;
+  void OutputC3Solution(const drake::systems::Context<double>& context,
+                        C3Output::C3Solution* c3_solution) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
@@ -148,6 +163,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex gripper_pos_command_port_;
   drake::systems::OutputPortIndex c3_forces_port_;
   drake::systems::OutputPortIndex current_target_lcs_state_port_;
+  drake::systems::OutputPortIndex c3_intermediates_port_;
+  drake::systems::OutputPortIndex c3_solution_port_;
 
   // Plant references
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -170,6 +187,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   int n_u_;
   int n_x_;
   int n_lambda_;
+  int n_z_;
   int N_;
   double dt_;
 

@@ -10,6 +10,7 @@
 #include "dairlib/lcmt_force.hpp"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/target_poses.h"
+#include "solvers/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/lcmt_schunk_wsg_command.hpp"
@@ -18,6 +19,7 @@ namespace dairlib {
 namespace examples {
 namespace magna {
 
+using dairlib::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RollPitchYaw;
@@ -26,10 +28,12 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
+using Eigen::MatrixXf;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
+using Eigen::VectorXf;
 using solvers::C3Plus;
 using solvers::LCS;
 using solvers::LCSFactory;
@@ -109,6 +113,7 @@ AssemblyController::AssemblyController(
   c3_mpc_ = std::make_shared<C3Plus>(
       lcs_placeholder, solvers::C3Base::CostMatrices(Q_, R_, G_, U_),
       x_desired_placeholder, c3_options);
+  n_z_ = c3_mpc_->GetZSize();
 
   // Add linear constraints for horizontal force components (x, y)
   for (int i = 0; i < 2; ++i) {
@@ -157,6 +162,28 @@ AssemblyController::AssemblyController(
       this->DeclareVectorOutputPort(
               "current_target_lcs_state", n_x_,
               &AssemblyController::OutputCurrentTargetLcsState)
+          .get_index();
+
+  // C3 intermediates output port
+  auto c3_intermediates = C3Output::C3Intermediates();
+  c3_intermediates.z_ = MatrixXf::Zero(n_z_, N_);
+  c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
+  c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
+  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
+  c3_intermediates_port_ = this->DeclareAbstractOutputPort(
+                                   "c3_intermediates", c3_intermediates,
+                                   &AssemblyController::OutputC3Intermediates)
+                               .get_index();
+
+  // C3 solution output port
+  auto c3_solution = C3Output::C3Solution();
+  c3_solution.x_sol_ = MatrixXf::Zero(n_x_, N_);
+  c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution.time_vector_ = VectorXf::Zero(N_);
+  c3_solution_port_ =
+      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
+                                      &AssemblyController::OutputC3Solution)
           .get_index();
 
   // Discrete state for phase tracking
@@ -927,6 +954,38 @@ void AssemblyController::OutputCurrentTargetLcsState(
     output->set_value(mpc_target_lcs_states_[mpc_target_idx]);
   } else {
     output->set_value(VectorXd::Zero(n_x_));
+  }
+}
+
+void AssemblyController::OutputC3Intermediates(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Intermediates* c3_intermediates) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+  auto z_sol = c3_mpc_->GetFullSolution();
+  auto delta_sol = c3_mpc_->GetDualDeltaSolution();
+  auto w_sol = c3_mpc_->GetDualWSolution();
+
+  for (int i = 0; i < N_; i++) {
+    c3_intermediates->time_vector_(i) = t + i * dt_;
+    c3_intermediates->z_.col(i) = z_sol[i].cast<float>();
+    c3_intermediates->w_.col(i) = w_sol[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_sol[i].cast<float>();
+  }
+}
+
+void AssemblyController::OutputC3Solution(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+  auto x_sol = c3_mpc_->GetStateSolution();
+  auto lambda_sol = c3_mpc_->GetForceSolution();
+  auto u_sol = c3_mpc_->GetInputSolution();
+
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t + i * dt_;
+    c3_solution->x_sol_.col(i) = x_sol[i].cast<float>();
+    c3_solution->lambda_sol_.col(i) = lambda_sol[i].cast<float>();
+    c3_solution->u_sol_.col(i) = u_sol[i].cast<float>();
   }
 }
 }  // namespace magna

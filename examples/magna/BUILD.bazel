@@ -145,12 +145,14 @@ cc_library(
     deps = [
         "//common:update_context",
         "//examples/magna/parameter_headers:assembly_c3_options",
-        "//examples/magna/parameter_headers:target_poses",
         "//examples/magna/parameter_headers:round_belt_controller_params",
+        "//examples/magna/parameter_headers:target_poses",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",
+        "//solvers:c3_output",
         "//solvers:lcs",
+        "//systems/trajectory_optimization:c3_output_systems",
         "@drake//:drake_shared_library",
     ],
 )

@@ -402,7 +402,10 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     c3_options->M = M;
     c3_options->qp_projection_alpha = qp_projection_alpha;
     c3_options->qp_projection_scaling = qp_projection_scaling;
-    c3_options->final_augmented_cost_scaling = final_augmented_cost_scaling;
+    c3_options->final_augmented_cost_contact_scaling =
+        final_augmented_cost_contact_scaling;
+    c3_options->final_augmented_cost_contact_indices =
+        final_augmented_cost_contact_indices;
 
     lcs_factory_options->contact_model = contact_model;
     lcs_factory_options->num_contacts = num_contacts;

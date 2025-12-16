@@ -17,10 +17,10 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/sampling_c3/sampling_c3_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -70,16 +70,15 @@ using solvers::LCSFactory;
 
 // Declare function that will generate samples around T location.
 std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
-    const Eigen::VectorXd& x_lcs,
-    const SamplingParams& sampling_params, const int& num_vertical,
-    const int& num_horizontal);
+    const Eigen::VectorXd& x_lcs, const SamplingParams& sampling_params,
+    const int& num_vertical, const int& num_horizontal);
 
 // Declare function that will generate samples around jack location.
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>>
-GenerateEvenlySpacedSamplesAroundJack(
-    const Eigen::VectorXd& x_lcs,
-    const SamplingParams& sampling_params, const int& num_vertical,
-    const int& num_horizontal);
+GenerateEvenlySpacedSamplesAroundJack(const Eigen::VectorXd& x_lcs,
+                                      const SamplingParams& sampling_params,
+                                      const int& num_vertical,
+                                      const int& num_horizontal);
 
 // Declare helper function that will print a vector of Eigen::VectorXd in a
 // Python-friendly format to define a numpy array.
@@ -184,8 +183,8 @@ int DoMain(int argc, char* argv[]) {
   sampling_params_path.replace(sampling_params_path.find(to_replace),
                                to_replace.length(),
                                sampling_params_path_replacement);
-  SamplingParams sampling_params = drake::yaml::LoadYamlFile<SamplingParams>(
-    sampling_params_path + ".yaml");
+  SamplingParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingParams>(sampling_params_path + ".yaml");
   // NOTE:  hard code the number of additional samples to be 0, since this
   // script is just to debug a single C3 solve.
   sampling_params.num_additional_samples_c3 = 0;
@@ -198,8 +197,8 @@ int DoMain(int argc, char* argv[]) {
                                to_replace.length(),
                                progress_params_path_replacement);
   SamplingC3ProgressParams progress_params =
-    drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
-      progress_params_path + ".yaml");
+      drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(progress_params_path +
+                                                          ".yaml");
 
   // (6/6) dummy reposition parameters (should not matter).
   SamplingC3RepositionParams reposition_params;
@@ -630,7 +629,8 @@ int DoMain(int argc, char* argv[]) {
 
     std::vector<SortedPair<GeometryId>> ee_contact_pairs;
 
-    // TODO @bibit contact pair ordering needs to be (ee-ground, ee-jack, jack-ground)
+    // TODO @bibit contact pair ordering needs to be (ee-ground, ee-jack,
+    // jack-ground)
     //   Creating a list of contact pairs for the end effector and the object to
     //   hand over to lcs factory in the controller to resolve
     ee_contact_pairs.push_back(
@@ -1005,8 +1005,8 @@ int DoMain(int argc, char* argv[]) {
   PythonFriendlyVectorOfVectorXdToFile("p_franka_to_ground",
                                        {kFrankaToGroundOffset});
 
-  std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '"
-            << kEndEffectorSimpleModel << "')" << std::endl;
+  std::cout << "\nee_urdf = op.join(DAIRLIB_DIR, '" << kEndEffectorSimpleModel
+            << "')" << std::endl;
   std::cout << "jack_urdf = op.join(DAIRLIB_DIR, '" << sim_params.object_model
             << "')" << std::endl;
 #endif
@@ -1040,9 +1040,8 @@ int DoMain(int argc, char* argv[]) {
       samples were derived.
 */
 std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
-    const Eigen::VectorXd& x_lcs,
-    const SamplingParams& sampling_params, const int& num_vertical,
-    const int& num_horizontal) {
+    const Eigen::VectorXd& x_lcs, const SamplingParams& sampling_params,
+    const int& num_vertical, const int& num_horizontal) {
   // Extract sampling parameters.
   double sampling_height = 0.00;
 
@@ -1122,10 +1121,10 @@ std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
       samples were derived.
 */
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::Vector2d>>
-GenerateEvenlySpacedSamplesAroundJack(
-    const Eigen::VectorXd& x_lcs,
-    const SamplingParams& sampling_params, const int& num_vertical,
-    const int& num_horizontal) {
+GenerateEvenlySpacedSamplesAroundJack(const Eigen::VectorXd& x_lcs,
+                                      const SamplingParams& sampling_params,
+                                      const int& num_vertical,
+                                      const int& num_horizontal) {
   // Grab sampling parameters.
   double sampling_radius = sampling_params.sampling_radius;
   double min_angle_from_vertical = sampling_params.min_angle_from_vertical;

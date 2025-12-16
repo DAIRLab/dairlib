@@ -1,6 +1,6 @@
 #pragma once
-#include <numeric>
 #include <iostream>
+#include <numeric>
 #include <stdexcept>
 
 #include "solvers/c3_options.h"
@@ -91,7 +91,6 @@ struct SamplingC3Options : C3Options {
   std::vector<std::vector<double>> g_lambda_t_position_list;
   std::vector<std::vector<double>> g_lambda_position_list;
   std::vector<double> g_u_position;
-
 
   std::vector<double> u_x_position;
   std::vector<std::vector<double>> u_gamma_position_list;
@@ -197,20 +196,22 @@ struct SamplingC3Options : C3Options {
     // for C3 solve and for C3 cost computation.
     resolve_contacts_to = resolve_contacts_to_lists[num_contacts_index];
     resolve_contacts_to_for_cost =
-      resolve_contacts_to_lists[num_contacts_index_for_cost];
+        resolve_contacts_to_lists[num_contacts_index_for_cost];
 
-    if (!include_walls){
-      if (resolve_contacts_to.back() != 0 || resolve_contacts_to_for_cost.back() != 0){
+    if (!include_walls) {
+      if (resolve_contacts_to.back() != 0 ||
+          resolve_contacts_to_for_cost.back() != 0) {
         throw std::runtime_error(
-          "Walls are not included, the number of contacts between object and wall must be 0.");
+            "Walls are not included, the number of contacts between object and "
+            "wall must be 0.");
       }
     }
 
-    num_contacts = std::accumulate(
-      resolve_contacts_to.begin(), resolve_contacts_to.end(), 0);
-    num_contacts_for_cost = std::accumulate(
-      resolve_contacts_to_for_cost.begin(), resolve_contacts_to_for_cost.end(),
-      0);
+    num_contacts = std::accumulate(resolve_contacts_to.begin(),
+                                   resolve_contacts_to.end(), 0);
+    num_contacts_for_cost =
+        std::accumulate(resolve_contacts_to_for_cost.begin(),
+                        resolve_contacts_to_for_cost.end(), 0);
     mu.clear();
     for (size_t i = 0; i < mu_per_pair_type.size(); ++i) {
       int repeat = resolve_contacts_to_lists[num_contacts_index][i];
@@ -224,28 +225,34 @@ struct SamplingC3Options : C3Options {
 
     // Process planar contact info
     std::tie(num_planar_contacts, num_friction_directions_per_contact) =
-      ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
-        resolve_contacts_to, num_friction_directions);
-    std::tie(num_planar_contacts_cost, num_friction_directions_per_contact_cost) =
-      ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
-        resolve_contacts_to_for_cost, num_friction_directions);
+        ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
+                                        resolve_contacts_to,
+                                        num_friction_directions);
+    std::tie(num_planar_contacts_cost,
+             num_friction_directions_per_contact_cost) =
+        ProcessPlanarContactInformation(resolve_as_planar_contacts_list,
+                                        resolve_contacts_to_for_cost,
+                                        num_friction_directions);
 
     for (size_t i = 0; i < num_contacts; ++i) {
       starting_index_per_contact_in_lambda_t_vector.push_back(
-        2 * std::accumulate(num_friction_directions_per_contact.begin(),
-          num_friction_directions_per_contact.begin()+i,0));
+          2 * std::accumulate(num_friction_directions_per_contact.begin(),
+                              num_friction_directions_per_contact.begin() + i,
+                              0));
     }
     for (size_t i = 0; i < num_contacts_for_cost; ++i) {
       starting_index_per_contact_in_lambda_t_vector_cost.push_back(
-        2 * std::accumulate(num_friction_directions_per_contact_cost.begin(),
-          num_friction_directions_per_contact_cost.begin()+i,0));
+          2 * std::accumulate(
+                  num_friction_directions_per_contact_cost.begin(),
+                  num_friction_directions_per_contact_cost.begin() + i, 0));
     }
 
     n_lambda_with_tangential =
-      2 * num_friction_directions * (num_contacts - num_planar_contacts) +
+        2 * num_friction_directions * (num_contacts - num_planar_contacts) +
         2 * num_planar_contacts;
     n_lambda_with_tangential_cost =
-      2 * num_friction_directions * (num_contacts_for_cost - num_planar_contacts_cost) +
+        2 * num_friction_directions *
+            (num_contacts_for_cost - num_planar_contacts_cost) +
         2 * num_planar_contacts_cost;
 
     // Create C3 options for both pose and position tracking.
@@ -256,263 +263,272 @@ struct SamplingC3Options : C3Options {
   }
 
   C3Options GetC3Options(const bool& is_pose_tracking) const {
-    if (is_pose_tracking) { return c3_options_pose; }
+    if (is_pose_tracking) {
+      return c3_options_pose;
+    }
     return c3_options_position;
   }
 
-  private:
-    void PopulateCostMatricesFromVectors(C3Options* options) const {
-      std::vector<double> g_vector = std::vector<double>();
-      g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
+ private:
+  void PopulateCostMatricesFromVectors(C3Options* options) const {
+    std::vector<double> g_vector = std::vector<double>();
+    g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
+    if (options->contact_model == "stewart_and_trinkle") {
+      g_vector.insert(g_vector.end(), options->g_gamma.begin(),
+                      options->g_gamma.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_n.begin(),
+                      options->g_lambda_n.end());
+      g_vector.insert(g_vector.end(), options->g_lambda_t.begin(),
+                      options->g_lambda_t.end());
+    } else {
+      g_vector.insert(g_vector.end(), options->g_lambda.begin(),
+                      options->g_lambda.end());
+    }
+    g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
+
+    if (options->projection_type == "C3+") {
       if (options->contact_model == "stewart_and_trinkle") {
-        g_vector.insert(g_vector.end(), options->g_gamma.begin(),
-                        options->g_gamma.end());
-        g_vector.insert(g_vector.end(), options->g_lambda_n.begin(),
-                        options->g_lambda_n.end());
-        g_vector.insert(g_vector.end(), options->g_lambda_t.begin(),
-                        options->g_lambda_t.end());
+        g_vector.insert(g_vector.end(), options->g_eta_slack.begin(),
+                        options->g_eta_slack.end());
+        g_vector.insert(g_vector.end(), options->g_eta_n.begin(),
+                        options->g_eta_n.end());
+        g_vector.insert(g_vector.end(), options->g_eta_t.begin(),
+                        options->g_eta_t.end());
       } else {
-        g_vector.insert(g_vector.end(), options->g_lambda.begin(),
-                        options->g_lambda.end());
+        g_vector.insert(g_vector.end(), options->g_eta.begin(),
+                        options->g_eta.end());
       }
-      g_vector.insert(g_vector.end(), options->g_u.begin(), options->g_u.end());
+    }
 
-      if (options->projection_type == "C3+") {
-          if (options->contact_model == "stewart_and_trinkle") {
-          g_vector.insert(g_vector.end(), options->g_eta_slack.begin(),
-                          options->g_eta_slack.end());
-          g_vector.insert(g_vector.end(), options->g_eta_n.begin(),
-                          options->g_eta_n.end());
-          g_vector.insert(g_vector.end(), options->g_eta_t.begin(),
-                          options->g_eta_t.end());
-        } else {
-          g_vector.insert(g_vector.end(), options->g_eta.begin(),
-                          options->g_eta.end());
-        }
-      }
+    std::vector<double> u_vector = std::vector<double>();
+    u_vector.insert(u_vector.end(), options->u_x.begin(), options->u_x.end());
+    if (options->contact_model == "stewart_and_trinkle") {
+      u_vector.insert(u_vector.end(), options->u_gamma.begin(),
+                      options->u_gamma.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_n.begin(),
+                      options->u_lambda_n.end());
+      u_vector.insert(u_vector.end(), options->u_lambda_t.begin(),
+                      options->u_lambda_t.end());
+    } else {
+      u_vector.insert(u_vector.end(), options->u_lambda.begin(),
+                      options->u_lambda.end());
+    }
+    u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
 
-      std::vector<double> u_vector = std::vector<double>();
-      u_vector.insert(u_vector.end(), options->u_x.begin(), options->u_x.end());
+    if (options->projection_type == "C3+") {
       if (options->contact_model == "stewart_and_trinkle") {
-        u_vector.insert(u_vector.end(), options->u_gamma.begin(),
-                        options->u_gamma.end());
-        u_vector.insert(u_vector.end(), options->u_lambda_n.begin(),
-                        options->u_lambda_n.end());
-        u_vector.insert(u_vector.end(), options->u_lambda_t.begin(),
-                        options->u_lambda_t.end());
+        u_vector.insert(u_vector.end(), options->u_eta_slack.begin(),
+                        options->u_eta_slack.end());
+        u_vector.insert(u_vector.end(), options->u_eta_n.begin(),
+                        options->u_eta_n.end());
+        u_vector.insert(u_vector.end(), options->u_eta_t.begin(),
+                        options->u_eta_t.end());
       } else {
-        u_vector.insert(u_vector.end(), options->u_lambda.begin(),
-                        options->u_lambda.end());
+        u_vector.insert(u_vector.end(), options->u_eta.begin(),
+                        options->u_eta.end());
       }
-      u_vector.insert(u_vector.end(), options->u_u.begin(), options->u_u.end());
-
-      if (options->projection_type == "C3+") {
-        if (options->contact_model == "stewart_and_trinkle") {
-          u_vector.insert(u_vector.end(), options->u_eta_slack.begin(),
-                          options->u_eta_slack.end());
-          u_vector.insert(u_vector.end(), options->u_eta_n.begin(),
-                          options->u_eta_n.end());
-          u_vector.insert(u_vector.end(), options->u_eta_t.begin(),
-                          options->u_eta_t.end());
-        } else {
-          u_vector.insert(u_vector.end(), options->u_eta.begin(),
-                          options->u_eta.end());
-        }
-      }
-
-      options->g_vector = g_vector;
-      options->u_vector = u_vector;
-
-      Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
-          options->q_vector.data(), options->q_vector.size());
-      Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
-          options->r_vector.data(), options->r_vector.size());
-      Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
-          options->g_vector.data(), options->g_vector.size());
-      Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
-          options->u_vector.data(), options->u_vector.size());
-
-      options->Q = options->w_Q * q.asDiagonal();
-      options->R = options->w_R * r.asDiagonal();
-      options->G = options->w_G * g.asDiagonal();
-      options->U = options->w_U * u.asDiagonal();
     }
 
-    void SetCommonC3Options(C3Options* options) const {
-      options->admm_iter = admm_iter;
-      options->rho = rho;
-      options->rho_scale = rho_scale;
-      options->num_threads = num_threads;
-      options->delta_option = delta_option;
-      options->contact_model = contact_model;
-      options->projection_type = projection_type;
-      options->warm_start = warm_start;
-      options->use_predicted_x0 = false;  // unused by sampling C3
-      options->end_on_qp_step = end_on_qp_step;
-      options->solve_time_filter_alpha = solve_time_filter_alpha;
-      options->publish_frequency = publish_frequency;
+    options->g_vector = g_vector;
+    options->u_vector = u_vector;
 
-      options->workspace_limits = workspace_limits;
-      options->workspace_margins = workspace_margins;
-      options->u_horizontal_limits = u_horizontal_limits;
-      options->u_vertical_limits = u_vertical_limits;
+    Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
+        options->q_vector.data(), options->q_vector.size());
+    Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
+        options->r_vector.data(), options->r_vector.size());
+    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
+        options->g_vector.data(), options->g_vector.size());
+    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
+        options->u_vector.data(), options->u_vector.size());
 
-      options->N = N;
-      options->gamma = gamma;
+    options->Q = options->w_Q * q.asDiagonal();
+    options->R = options->w_R * r.asDiagonal();
+    options->G = options->w_G * g.asDiagonal();
+    options->U = options->w_U * u.asDiagonal();
+  }
 
-      options->solve_dt = 0;  // unused in all of C3
-      options-> lcs_dt_resolution = lcs_dt_resolution;
-      options->num_friction_directions = num_friction_directions;
+  void SetCommonC3Options(C3Options* options) const {
+    options->admm_iter = admm_iter;
+    options->rho = rho;
+    options->rho_scale = rho_scale;
+    options->num_threads = num_threads;
+    options->delta_option = delta_option;
+    options->contact_model = contact_model;
+    options->projection_type = projection_type;
+    options->warm_start = warm_start;
+    options->use_predicted_x0 = false;  // unused by sampling C3
+    options->end_on_qp_step = end_on_qp_step;
+    options->solve_time_filter_alpha = solve_time_filter_alpha;
+    options->publish_frequency = publish_frequency;
 
-      options->qp_projection_alpha = qp_projection_alpha;
-      options->qp_projection_scaling = qp_projection_scaling;
-      options->penalize_changes_in_u_across_solves =
-          penalize_changes_in_u_across_solves;
+    options->workspace_limits = workspace_limits;
+    options->workspace_margins = workspace_margins;
+    options->u_horizontal_limits = u_horizontal_limits;
+    options->u_vertical_limits = u_vertical_limits;
 
-      options->mu = mu;
-      options->num_contacts = num_contacts;
+    options->N = N;
+    options->gamma = gamma;
+
+    options->solve_dt = 0;  // unused in all of C3
+    options->lcs_dt_resolution = lcs_dt_resolution;
+    options->num_friction_directions = num_friction_directions;
+
+    options->qp_projection_alpha = qp_projection_alpha;
+    options->qp_projection_scaling = qp_projection_scaling;
+    options->penalize_changes_in_u_across_solves =
+        penalize_changes_in_u_across_solves;
+
+    options->mu = mu;
+    options->num_contacts = num_contacts;
+  }
+
+  void SetPositionTrackingOptions(C3Options* options) const {
+    options->dt = planning_dt_position;
+    options->dt_cost = planning_dt_position / lcs_dt_resolution;
+    options->w_Q = w_Q_position;
+    options->w_R = w_R_position;
+    options->w_G = w_G_position;
+    options->w_U = w_U_position;
+    options->q_vector = q_vector_position;
+    options->r_vector = r_vector_position;
+
+    options->g_x = g_x_position;
+    options->g_gamma = g_gamma_position_list[num_contacts_index];
+    options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
+    options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
+    options->g_lambda = g_lambda_position_list[num_contacts_index];
+    options->g_u = g_u_position;
+
+    options->u_x = u_x_position;
+    options->u_gamma = u_gamma_position_list[num_contacts_index];
+    options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
+    options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
+    options->u_lambda = u_lambda_position_list[num_contacts_index];
+    options->u_u = u_u_position;
+
+    // Only applicable for C3+
+    if (options->projection_type == "C3+") {
+      options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
+      options->g_eta_n = g_eta_n_position_list[num_contacts_index];
+      options->g_eta_t = g_eta_t_position_list[num_contacts_index];
+      options->g_eta = g_eta_position_list[num_contacts_index];
+      options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
+      options->u_eta_n = u_eta_n_position_list[num_contacts_index];
+      options->u_eta_t = u_eta_t_position_list[num_contacts_index];
+      options->u_eta = u_eta_position_list[num_contacts_index];
     }
+    MakePlanarLambdaCost(options);
+    PopulateCostMatricesFromVectors(options);
+  }
 
-    void SetPositionTrackingOptions(C3Options* options) const {
-      options->dt = planning_dt_position;
-      options->dt_cost = planning_dt_position / lcs_dt_resolution;
-      options->w_Q = w_Q_position;
-      options->w_R = w_R_position;
-      options->w_G = w_G_position;
-      options->w_U = w_U_position;
-      options->q_vector = q_vector_position;
-      options->r_vector = r_vector_position;
+  void SetPoseTrackingOptions(C3Options* options) const {
+    options->dt = planning_dt_pose;
+    options->dt_cost = planning_dt_pose / lcs_dt_resolution;
+    options->w_Q = w_Q;
+    options->w_R = w_R;
+    options->w_G = w_G;
+    options->w_U = w_U;
+    options->q_vector = q_vector;
+    options->r_vector = r_vector;
 
-      options->g_x = g_x_position;
-      options->g_gamma = g_gamma_position_list[num_contacts_index];
-      options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
-      options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
-      options->g_lambda = g_lambda_position_list[num_contacts_index];
-      options->g_u = g_u_position;
+    options->g_x = g_x;
+    options->g_gamma = g_gamma_list[num_contacts_index];
+    options->g_lambda_n = g_lambda_n_list[num_contacts_index];
+    options->g_lambda_t = g_lambda_t_list[num_contacts_index];
+    options->g_lambda = g_lambda_list[num_contacts_index];
+    options->g_u = g_u;
 
+    options->u_x = u_x;
+    options->u_gamma = u_gamma_list[num_contacts_index];
+    options->u_lambda_n = u_lambda_n_list[num_contacts_index];
+    options->u_lambda_t = u_lambda_t_list[num_contacts_index];
+    options->u_lambda = u_lambda_list[num_contacts_index];
+    options->u_u = u_u;
 
-      options->u_x = u_x_position;
-      options->u_gamma = u_gamma_position_list[num_contacts_index];
-      options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
-      options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
-      options->u_lambda = u_lambda_position_list[num_contacts_index];
-      options->u_u = u_u_position;
-
-      // Only applicable for C3+
-      if (options->projection_type == "C3+") {
-        options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
-        options->g_eta_n = g_eta_n_position_list[num_contacts_index];
-        options->g_eta_t = g_eta_t_position_list[num_contacts_index];
-        options->g_eta = g_eta_position_list[num_contacts_index];
-        options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
-        options->u_eta_n = u_eta_n_position_list[num_contacts_index];
-        options->u_eta_t = u_eta_t_position_list[num_contacts_index];
-        options->u_eta = u_eta_position_list[num_contacts_index];
-      }
-      MakePlanarLambdaCost(options);
-      PopulateCostMatricesFromVectors(options);
+    if (options->projection_type == "C3+") {
+      options->g_eta_slack = g_eta_slack_list[num_contacts_index];
+      options->g_eta_n = g_eta_n_list[num_contacts_index];
+      options->g_eta_t = g_eta_t_list[num_contacts_index];
+      options->g_eta = g_eta_list[num_contacts_index];
+      options->u_eta_slack = u_eta_slack_list[num_contacts_index];
+      options->u_eta_n = u_eta_n_list[num_contacts_index];
+      options->u_eta_t = u_eta_t_list[num_contacts_index];
+      options->u_eta = u_eta_list[num_contacts_index];
     }
-
-    void SetPoseTrackingOptions(C3Options* options) const {
-      options->dt = planning_dt_pose;
-      options->dt_cost = planning_dt_pose / lcs_dt_resolution;
-      options->w_Q = w_Q;
-      options->w_R = w_R;
-      options->w_G = w_G;
-      options->w_U = w_U;
-      options->q_vector = q_vector;
-      options->r_vector = r_vector;
-
-      options->g_x = g_x;
-      options->g_gamma = g_gamma_list[num_contacts_index];
-      options->g_lambda_n = g_lambda_n_list[num_contacts_index];
-      options->g_lambda_t = g_lambda_t_list[num_contacts_index];
-      options->g_lambda = g_lambda_list[num_contacts_index];
-      options->g_u = g_u;
-
-      options->u_x = u_x;
-      options->u_gamma = u_gamma_list[num_contacts_index];
-      options->u_lambda_n = u_lambda_n_list[num_contacts_index];
-      options->u_lambda_t = u_lambda_t_list[num_contacts_index];
-      options->u_lambda = u_lambda_list[num_contacts_index];
-      options->u_u = u_u;
-
-      if (options->projection_type == "C3+") {
-        options->g_eta_slack = g_eta_slack_list[num_contacts_index];
-        options->g_eta_n = g_eta_n_list[num_contacts_index];
-        options->g_eta_t = g_eta_t_list[num_contacts_index];
-        options->g_eta = g_eta_list[num_contacts_index];
-        options->u_eta_slack = u_eta_slack_list[num_contacts_index];
-        options->u_eta_n = u_eta_n_list[num_contacts_index];
-        options->u_eta_t = u_eta_t_list[num_contacts_index];
-        options->u_eta = u_eta_list[num_contacts_index];
-      }
-      MakePlanarLambdaCost(options);
-      PopulateCostMatricesFromVectors(options);
-    }
+    MakePlanarLambdaCost(options);
+    PopulateCostMatricesFromVectors(options);
+  }
 
   // Convert lambda weights to the planar form:
-  void MakePlanarLambdaCost(C3Options* options) const{
-      int offset = 0;
-      for (size_t i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();++i) {
-        if (resolve_as_planar_contacts_list[i]) {
-          int erase_start_index_for_lambda =
-            2 * num_friction_directions * std::accumulate(
-              resolve_contacts_to_lists[num_contacts_index].begin(),
-              resolve_contacts_to_lists[num_contacts_index].begin() + i, 0) - offset;
-          int erase_end_index_for_lambda =
-            erase_start_index_for_lambda + 2 * (num_friction_directions - 1) *
-              resolve_contacts_to_lists[num_contacts_index][i];
+  void MakePlanarLambdaCost(C3Options* options) const {
+    int offset = 0;
+    for (size_t i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();
+         ++i) {
+      if (resolve_as_planar_contacts_list[i]) {
+        int erase_start_index_for_lambda =
+            2 * num_friction_directions *
+                std::accumulate(
+                    resolve_contacts_to_lists[num_contacts_index].begin(),
+                    resolve_contacts_to_lists[num_contacts_index].begin() + i,
+                    0) -
+            offset;
+        int erase_end_index_for_lambda =
+            erase_start_index_for_lambda +
+            2 * (num_friction_directions - 1) *
+                resolve_contacts_to_lists[num_contacts_index][i];
 
-          options->g_lambda.erase(
-            options->g_lambda.begin()+ erase_start_index_for_lambda,
-            options->g_lambda.begin()+ erase_end_index_for_lambda);
-          options->u_lambda.erase(
+        options->g_lambda.erase(
+            options->g_lambda.begin() + erase_start_index_for_lambda,
+            options->g_lambda.begin() + erase_end_index_for_lambda);
+        options->u_lambda.erase(
             options->u_lambda.begin() + erase_start_index_for_lambda,
             options->u_lambda.begin() + erase_end_index_for_lambda);
-          options->g_lambda_t.erase(
+        options->g_lambda_t.erase(
             options->g_lambda_t.begin() + erase_start_index_for_lambda,
             options->g_lambda_t.begin() + erase_end_index_for_lambda);
-          options->u_lambda_t.erase(
+        options->u_lambda_t.erase(
             options->u_lambda_t.begin() + erase_start_index_for_lambda,
             options->u_lambda_t.begin() + erase_end_index_for_lambda);
 
-          if (options->projection_type == "C3+") {
-            options->g_eta.erase(
+        if (options->projection_type == "C3+") {
+          options->g_eta.erase(
               options->g_eta.begin() + erase_start_index_for_lambda,
               options->g_eta.begin() + erase_end_index_for_lambda);
-            options->u_eta.erase(
+          options->u_eta.erase(
               options->u_eta.begin() + erase_start_index_for_lambda,
               options->u_eta.begin() + erase_end_index_for_lambda);
-            options->g_eta_t.erase(
+          options->g_eta_t.erase(
               options->g_eta_t.begin() + erase_start_index_for_lambda,
               options->g_eta_t.begin() + erase_end_index_for_lambda);
-            options->u_eta_t.erase(
+          options->u_eta_t.erase(
               options->u_eta_t.begin() + erase_start_index_for_lambda,
               options->u_eta_t.begin() + erase_end_index_for_lambda);
-          }
-          offset += 2 * (num_friction_directions - 1) *
-            resolve_contacts_to_lists[num_contacts_index][i];
         }
+        offset += 2 * (num_friction_directions - 1) *
+                  resolve_contacts_to_lists[num_contacts_index][i];
       }
     }
+  }
 
-  //Compute total number of planar friction directions
-  //and create a vector that contains the number of friction directions for each contact point
+  // Compute total number of planar friction directions
+  // and create a vector that contains the number of friction directions for
+  // each contact point
   std::pair<int, std::vector<int>> ProcessPlanarContactInformation(
-  const std::vector<int>& resolve_as_planar_contacts_list,
-  const std::vector<int>& resolve_contacts_to_list,int num_friction_directions) {
-      int num_planar_contacts = 0;
-      int planar_contact = 1;
-      std::vector<int> num_friction_directions_per_contact;
-      for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
-        for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
-          num_planar_contacts += (resolve_as_planar_contacts_list[i] ? 1 : 0);
-          num_friction_directions_per_contact.push_back(resolve_as_planar_contacts_list[i] ?
-            planar_contact : num_friction_directions);
-        }
+      const std::vector<int>& resolve_as_planar_contacts_list,
+      const std::vector<int>& resolve_contacts_to_list,
+      int num_friction_directions) {
+    int num_planar_contacts = 0;
+    int planar_contact = 1;
+    std::vector<int> num_friction_directions_per_contact;
+    for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
+      for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
+        num_planar_contacts += (resolve_as_planar_contacts_list[i] ? 1 : 0);
+        num_friction_directions_per_contact.push_back(
+            resolve_as_planar_contacts_list[i] ? planar_contact
+                                               : num_friction_directions);
       }
-      return std::pair<int, std::vector<int>>(num_planar_contacts, num_friction_directions_per_contact);
     }
-
+    return std::pair<int, std::vector<int>>(
+        num_planar_contacts, num_friction_directions_per_contact);
+  }
 };

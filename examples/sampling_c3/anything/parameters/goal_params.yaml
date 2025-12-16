@@ -12,7 +12,7 @@ orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 only_use_xy_position: true
 
 resting_object_height: -0.004                # in world frame
-resting_object_heights: [-0.002685910000000003, -0.0024437, -0.001956050000000001, 0.0001434999999999978, -0.002515980000000001]                        # in world frame
+resting_object_heights: [-0.002685910000000003, -0.0024437, -0.001956050000000001, 0.0001434999999999978]                                               # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
 # Lookahead parameters to define a sub-goal for C3.
@@ -32,8 +32,8 @@ angle_err_to_vel_factor: 0
 fixed_target_position: [0.65, 0.18745379, -0.004]
 fixed_target_orientation: [-0.9327733, 0, 0, 0.36046353]
 
-fixed_target_positions: [[0.51, -0.4, -0.002685910000000003], [0.5, -0.2, -0.0024437], [0.51, 0.0, -0.001956050000000001], [0.5, 0.20000000000000007, 0.0001434999999999978], [0.49, 0.4, -0.002515980000000001]]
-fixed_target_orientations: [[0.71, 0, 0, 0.71], [1, 0, 0, 0.05], [0.71, 0, 0, -0.73], [1, 0, 0, 0.02], [1, 0, 0, 0]]
+fixed_target_positions: [[0.51, -0.30000000000000004, -0.002685910000000003], [0.5, -0.10000000000000003, -0.0024437], [0.51, 0.09999999999999998, -0.001956050000000001], [0.5, 0.30000000000000004, 0.0001434999999999978]]
+fixed_target_orientations: [[0.71, 0, 0, 0.71], [1, 0, 0, 0.05], [0.71, 0, 0, -0.73], [1, 0, 0, 0.02]]
 
 
 # Random-specific parameters.

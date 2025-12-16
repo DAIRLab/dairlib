@@ -1,13 +1,7 @@
 target_poses:
   - position: [0.48226, 0.168, 0.04]
     orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.1
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.48226, 0.188, 0.04]
-    orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.1
+    gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1

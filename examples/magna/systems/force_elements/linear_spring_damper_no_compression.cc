@@ -1,7 +1,6 @@
 #include "examples/magna/systems/force_elements/linear_spring_damper_no_compression.h"
 
 #include <limits>
-#include <utility>
 #include <vector>
 
 #include "drake/multibody/tree/multibody_tree.h"

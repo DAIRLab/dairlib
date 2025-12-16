@@ -51,22 +51,6 @@
           <diffuse>0.0 0.0 0.0 1</diffuse>
         </material>
       </visual>
-      <collision name="first_half_volume">
-        <pose>0.355 0.196 0.0248 0 0 0</pose>
-        <geometry>
-          <mesh>
-            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-          </mesh>
-        </geometry>
-        <drake:proximity_properties xmlns:drake="uri:drake">
-          <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus> 1e6 </drake:hydroelastic_modulus>
-          <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
-          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
-        </drake:proximity_properties>
-      </collision>
       <visual name="second_half">
         <pose>0.355 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
@@ -79,13 +63,13 @@
           <diffuse>0.0 0.0 0.0 1</diffuse>
         </material>
       </visual>
-      <collision name="second_half_volume">
+      <collision name="small_pulley_collision">
         <pose>0.355 0.196 0.0248 3.14159 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>round_belt_task_board/small_round_pulley/small_round_pulley_half.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-          </mesh>
+          <cylinder>
+            <length>0.01</length>
+            <radius>0.015</radius>
+          </cylinder>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
           <drake:compliant_hydroelastic/>

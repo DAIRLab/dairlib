@@ -218,7 +218,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   target_lcs_state_pub->get_input_port(0));
 
-  // Crreate a constant source for the object state
+  // Create a constant source for the object state
   // `object` in this case is one keypoint on the belt.
   // TODO: we should subscribe and obtain state from a LCM channel.
   auto constant_object_state_vector = StateVector<double>(3, 3);

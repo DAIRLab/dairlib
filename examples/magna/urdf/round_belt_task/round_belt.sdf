@@ -23,7 +23,7 @@
         </drake:proximity_properties>
       </collision>
       <drake:deformable_properties>
-        <drake:youngs_modulus>1e6</drake:youngs_modulus>
+        <drake:youngs_modulus>3e5</drake:youngs_modulus>
         <drake:poissons_ratio>0.3</drake:poissons_ratio>
         <drake:stiffness_damping>0.01</drake:stiffness_damping>
         <drake:mass_density>1000.0</drake:mass_density>

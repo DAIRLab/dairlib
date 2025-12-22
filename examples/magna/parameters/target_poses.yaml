@@ -5,3 +5,15 @@ target_poses:
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
+  - position: [0.5204, 0.164, 0.04]
+    orientation: [0.9659258, 0, 0, -0.258819]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0.48985, -0.052, 0.04]
+    radius: 0.22
+  - position: [0.49, 0.187, 0.035]
+    orientation: [0.9924039, 0.0868241, 0.0868241, 0.0075961]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1

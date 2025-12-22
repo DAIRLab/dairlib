@@ -196,7 +196,7 @@ int DoMain(int argc, char* argv[]) {
   proximity_params.prefix = "proximity";
   proximity_params.visible_by_default = false;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
+//   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
   builder.Connect(franka_combined_mux->get_output_port(),
                   to_pose->get_input_port());

@@ -23,7 +23,7 @@
     <collision name="end_effector_simple_collision">
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <cylinder radius="0.003" length="0.006" />
+        <box size="0.01 0.015 0.01" />
       </geometry>
       <drake:proximity_properties>
         <drake:mu_static value="1" />

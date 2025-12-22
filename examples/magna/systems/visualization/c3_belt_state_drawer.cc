@@ -89,6 +89,8 @@ C3BeltStateDrawer::C3BeltStateDrawer(
                         {0, 1, 0, color.a()});
     meshcat_->SetObject(ee_path + "/z-axis", cylinder_for_ee_,
                         {0, 0, 1, color.a()});
+    meshcat_->SetObject(ee_path + "/box", box_for_ee_,
+                        {1, 1, 1, color.a()});
     meshcat_->SetTransform(ee_path + "/x-axis", x_axis_transform_ee);
     meshcat_->SetTransform(ee_path + "/y-axis", y_axis_transform_ee);
     meshcat_->SetTransform(ee_path + "/z-axis", z_axis_transform_ee);

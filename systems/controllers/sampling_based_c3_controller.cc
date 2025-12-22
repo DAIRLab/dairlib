@@ -11,6 +11,7 @@
 #include "c3/core/c3_miqp.h"
 #include "c3/core/c3_plus.h"
 #include "c3/core/c3_qp.h"
+#include "c3/core/lcs.h"
 #include "c3/multibody/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
@@ -544,12 +545,16 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
 
   const int ee_vel_index = 7 * num_objects + 3;
 
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
+
   // Simulate the dynamics from the planned inputs.
   if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = z_fin[0].segment(0, n_x_);
     for (int i = 0; i < N_ * resolution; i++) {
       UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
-      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
     }
   }
 
@@ -559,7 +564,7 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
       UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
       XX[i] = z_fin[i / resolution].segment(0, n_x_);
       if (i == N_ - 1) {
-        XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+        XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
       }
     }
   }
@@ -571,14 +576,14 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     XX[0] = z_fin[0].segment(0, n_x_);
     for (int i = 0; i < N_ * resolution; i++) {
       UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
-      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
     }
     // Replace ee traj with those from z_fin.
     for (int i = 0; i < N_; i++) {
       XX[i].segment(0, 3) = z_fin[i / resolution].segment(0, 3);
       if (i == N_ - 1) {
         XX[i + 1].segment(0, 3) =
-            lcs_for_cost.Simulate(XX[i], UU[i]).segment(0, 3);
+            lcs_for_cost.Simulate(XX[i], UU[i], simulate_config).segment(0, 3);
       }
     }
   }
@@ -913,6 +918,10 @@ SamplingC3Controller::SimulatePDControl(
   const int ee_vel_index = 7 * num_objects + 3;
   int resolution = sampling_c3_options_.lcs_dt_resolution;
 
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
+
   // Obtain the solutions from C3.
   vector<VectorXd> UU(N_ * resolution, VectorXd::Zero(n_u_));
   std::vector<Eigen::VectorXd> XX(N_ * resolution + 1, VectorXd::Zero(n_x_));
@@ -920,7 +929,7 @@ SamplingC3Controller::SimulatePDControl(
     UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
     XX[i] = z_fin[i / resolution].segment(0, n_x_);
     if (i == N_ * resolution - 1) {
-      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i]);
+      XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
     }
   }
 
@@ -937,7 +946,8 @@ SamplingC3Controller::SimulatePDControl(
 
   // Obtain modified solutions for the PD controller.
   std::vector<Eigen::VectorXd> UU_new(N_ * resolution, VectorXd::Zero(n_u_));
-  std::vector<Eigen::VectorXd> XX_new(N_ * resolution + 1, VectorXd::Zero(n_x_));
+  std::vector<Eigen::VectorXd> XX_new(N_ * resolution + 1,
+                                      VectorXd::Zero(n_x_));
 
   XX_new[0] = z_fin[0].segment(0, n_x_);
   // This will just be the original u from z_fin[0] for the first time step.
@@ -956,7 +966,8 @@ SamplingC3Controller::SimulatePDControl(
     if (verbose) {
       std::cout << "simulated step " << i + 1 << std::endl;
     }
-    XX_new[i + 1] = lcs_for_cost.Simulate(XX_new[i], UU_new[i]);
+    XX_new[i + 1] =
+        lcs_for_cost.Simulate(XX_new[i], UU_new[i], simulate_config);
   }
   return {XX_new, UU_new};
 }

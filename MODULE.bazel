@@ -90,14 +90,10 @@ archive_override(
 )
 
 bazel_dep(name = "c3")
-# git_override(
-#     module_name = "c3",
-#     remote = "https://github.com/DAIRLab/c3.git",
-#     commit = "2bd13495c3306cf7d53992e2495774d1ad454cca"
-# )
-local_path_override(
+git_override(
     module_name = "c3",
-    path = "/home/stephen/Workspace/DAIR/c3"
+    remote = "https://github.com/DAIRLab/c3.git",
+    commit = "ab5618775ef894725a08df5557e033b2e42583d8"
 )
 
 INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"

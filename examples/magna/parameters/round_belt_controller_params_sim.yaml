@@ -2,13 +2,17 @@ franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm
 ee_model: "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"
 belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
 task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
-spring_stiffness: 1000 
+spring_stiffness: 1000
 spring_rest_length: 0.26 
 spring_damping: 1 
 task_board_position: [0.67826, -0.192, 0.00543]
 task_board_orientation: [0.0, 0.0, 1.57079]
 target_lcs_positions:
-  - [0.48266, 0.187, 0.03, 0.174, 0, 0, 0.48185, -0.1, 0.025]
+  - [0.48266, 0.187, 0.031, 0.174, 0.174, 0, 0.48185, -0.1, 0.025]
+  - [0.4737, 0.185, 0.031, 0.174, 0.174, 0.4, 0.48185, -0.1, 0.025]
+  - [0.466, 0.18, 0.031, 0.174, 0.174, 0.8, 0.48185, -0.1, 0.025]
+  - [0.461, 0.172, 0.031, 0.174, 0.174, 1.2, 0.48185, -0.1, 0.025]
+  - [0.4596, 0.164, 0.031, 0.174, 0.174, 1.57, 0.48185, -0.1, 0.025]
 fixed_keypoint_position: [0.48185, -0.103, 0.03]
 
 # Tolerances for reaching targets in predefined motion and MPC.

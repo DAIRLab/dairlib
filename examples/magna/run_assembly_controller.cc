@@ -112,11 +112,11 @@ int DoMain(int argc, char* argv[]) {
 
   // contact_pairs variable holds the list of groups, each group is a list of
   // contact pairs we currently consider two groups of contact pairs:
-  // belt-large-pulley and belt-small-pulley.
+  // belt-large-pulley and end-effector-small-pulley.
   std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>
       contact_pairs;
   std::vector<SortedPair<GeometryId>> belt_large_pulley_contact_pairs;
-  std::vector<SortedPair<GeometryId>> belt_small_pulley_contact_pairs;
+  std::vector<SortedPair<GeometryId>> ee_small_pulley_contact_pairs;
 
   auto& ee_geom = plant_lcs.GetCollisionGeometriesForBody(
       plant_lcs.GetBodyByName("end_effector_simple"))[0];
@@ -130,10 +130,10 @@ int DoMain(int argc, char* argv[]) {
     belt_large_pulley_contact_pairs.emplace_back(belt_element_geom, geom_id);
   }
   for (auto geom_id : belt_small_pulley_geoms) {
-    belt_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
+    ee_small_pulley_contact_pairs.emplace_back(ee_geom, geom_id);
   }
   contact_pairs.emplace_back(belt_large_pulley_contact_pairs);
-  contact_pairs.emplace_back(belt_small_pulley_contact_pairs);
+  contact_pairs.emplace_back(ee_small_pulley_contact_pairs);
 
   auto assembly_controller = builder.AddSystem<AssemblyController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),

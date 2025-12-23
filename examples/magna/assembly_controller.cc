@@ -734,7 +734,7 @@ void AssemblyController::GenerateMPCTrajectory(
         static_cast<int>(mpc_target_lcs_states_.size())) {
       std::cout << "All MPC targets completed!" << std::endl;
       mpc_reached_target_ = true;
-      gripper_pos_command_ = 0.003;
+      gripper_pos_command_ = 0.01;
       return;
     }
     std::cout << "Moving to MPC target " << state_data->mpc_current_target_idx

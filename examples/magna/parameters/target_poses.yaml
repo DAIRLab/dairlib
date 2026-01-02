@@ -12,7 +12,7 @@ target_poses:
     center: [0.48985, -0.052, 0.04]
     radius: 0.22
   - position: [0.508947, 0.17354, 0.038729]
-    orientation: [0.9514457, 0.1888754, 0.2286326, 0.0824887]
+    orientation: [0.954628, 0.1614067, 0.2487864, -0.0271789]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]

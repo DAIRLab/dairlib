@@ -7,7 +7,7 @@ delta_option: 1
 projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
-end_on_qp_step: false
+end_on_qp_step: true
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
 penalize_changes_in_u_across_solves: true  # Penalize (u-u_prev) instead of u.

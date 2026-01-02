@@ -7,6 +7,7 @@
 #include "assembly_c3_options.h"
 #include "lcm_channel_params.h"
 #include "target_poses.h"
+#include "visualizer_params.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -33,9 +34,11 @@ struct RoundBeltControllerParams {
   std::string assembly_c3_options_file;
   std::string lcm_channels_file;
   std::string target_poses_file;
+  std::string visualizer_params_file;
   AssemblyC3Options assembly_c3_options;
   MagnaLcmChannels lcm_channels;
   dairlib::examples::magna::TargetPosesParams target_poses;
+  MagnaVisualizerParams visualizer_params;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -57,6 +60,7 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(assembly_c3_options_file));
     a->Visit(DRAKE_NVP(lcm_channels_file));
     a->Visit(DRAKE_NVP(target_poses_file));
+    a->Visit(DRAKE_NVP(visualizer_params_file));
 
     // Initialize target_lcs_states after loading from YAML
     InitTargetLcsStates();
@@ -65,6 +69,8 @@ struct RoundBeltControllerParams {
         drake::yaml::LoadYamlFile<AssemblyC3Options>(assembly_c3_options_file);
     lcm_channels =
         drake::yaml::LoadYamlFile<MagnaLcmChannels>(lcm_channels_file);
+    visualizer_params = drake::yaml::LoadYamlFile<MagnaVisualizerParams>(
+        visualizer_params_file);
     target_poses =
         drake::yaml::LoadYamlFile<dairlib::examples::magna::TargetPosesParams>(
             target_poses_file);

@@ -10,6 +10,7 @@
 #include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
 #include "examples/magna/systems/visualization/deformable_drawer.h"
 #include "parameter_headers/lcm_channel_params.h"
+#include "parameter_headers/round_belt_controller_params.h"
 #include "parameter_headers/visualizer_params.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -66,12 +67,17 @@ DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  RoundBeltControllerParams round_belt_controller_params =
+      drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
+          FLAGS_is_simulation ? "examples/magna/parameters/"
+                                "round_belt_controller_params_sim.yaml"
+                              : "examples/magna/parameters/"
+                                "round_belt_controller_params_hw.yaml");
+
   MagnaVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<MagnaVisualizerParams>(
-          "examples/magna/parameters/visualizer_params.yaml");
+      round_belt_controller_params.visualizer_params;
   MagnaLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<MagnaLcmChannels>(
-          "examples/magna/parameters/lcm_channels.yaml");
+      round_belt_controller_params.lcm_channels;
 
   // ----- Build the visualizer plant -----
   drake::systems::DiagramBuilder<double> builder;
@@ -100,9 +106,15 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex task_board_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
                                    "round_belt_task_board.sdf"))[0];
-  RigidTransform<double> task_board_pose =
-      RigidTransform<double>(drake::math::RollPitchYaw<double>(0, 0, 1.57079),
-                             drake::Vector3<double>(0.67826, -0.192, 0.00543));
+  RigidTransform<double> task_board_pose = RigidTransform<double>(
+      drake::math::RollPitchYaw<double>(
+          round_belt_controller_params.task_board_orientation[0],
+          round_belt_controller_params.task_board_orientation[1],
+          round_belt_controller_params.task_board_orientation[2]),
+      drake::Vector3<double>(
+          round_belt_controller_params.task_board_position[0],
+          round_belt_controller_params.task_board_position[1],
+          round_belt_controller_params.task_board_position[2]));
   plant_vis.WeldFrames(plant_vis.world_frame(),
                        plant_vis.GetFrameByName("board", task_board_index),
                        task_board_pose);
@@ -196,7 +208,7 @@ int DoMain(int argc, char* argv[]) {
   proximity_params.prefix = "proximity";
   proximity_params.visible_by_default = false;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-//   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
+  //   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
 
   builder.Connect(franka_combined_mux->get_output_port(),
                   to_pose->get_input_port());
@@ -226,7 +238,9 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_actual_state_channel, lcm));
   auto c3_actual_drawer = builder.AddSystem<
       dairlib::examples::magna::systems::visualization::C3BeltStateDrawer>(
-      meshcat, 1, false);
+      meshcat, 1, false, 6, 3, "c3_state",
+      round_belt_controller_params.spring_stiffness,
+      round_belt_controller_params.spring_rest_length);
   builder.Connect(c3_state_actual_sub->get_output_port(),
                   c3_actual_drawer->get_input_port_c3_state());
 

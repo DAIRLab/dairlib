@@ -41,6 +41,7 @@ cc_library(
         "//examples/magna/parameter_headers:assembly_c3_options",
         "//examples/magna/parameter_headers:lcm_channel_params",
         "//examples/magna/parameter_headers:target_poses",
+        "//examples/magna/parameter_headers:visualizer_params",
         "@drake//:drake_shared_library",
     ],
 )

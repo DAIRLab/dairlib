@@ -111,7 +111,7 @@ C3BeltStateDrawer::C3BeltStateDrawer(
 
   // Set up spring force arrow visualization (only for non-target state)
   if (!is_target_state_ && spring_stiffness_ > 0.0) {
-    Rgba spring_color(1.0, 1.0, 0.0, 0.8);  // Yellow
+    Rgba spring_color(0.8, 0.6, 1.0, 1.0);  // Yellow
     std::string spring_force_path = c3_state_path_ + "/spring_force/arrow";
     meshcat_->SetObject(spring_force_path + "/cylinder", spring_arrow_cylinder_,
                         spring_color);

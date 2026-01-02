@@ -19,7 +19,7 @@ class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
       int num_keypoints, bool is_target_state = false,
       const int end_effector_state_size = 6, const int keypoint_state_size = 3,
       const std::string& c3_state_path = "c3_state",
-      double spring_stiffness = 100.0, double spring_rest_length = 0.27);
+      double spring_stiffness = 100.0, double spring_rest_length = 0.26);
 
   const drake::systems::InputPort<double>& get_input_port_c3_state() const {
     return this->get_input_port(c3_state_input_port_);

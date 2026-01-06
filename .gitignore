@@ -13,3 +13,4 @@ attic/multibody/solver_log/
 /examples/Cassie/saved_trajectories/
 /MODULE.bazel.lock
 venv/
+tmp/

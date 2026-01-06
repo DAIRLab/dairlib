@@ -1,6 +1,17 @@
 """Teleop test to interact with 1) a Drake FEM model, 2) a manually-constructed
 spring-damper system, and 3) a manually-constructed 1D elastoplastic made out of
-a frictional slider and spring-damper."""
+a frictional slider and spring-damper.
+
+For visualization, run meldis in a separate terminal:
+
+    python -m pydrake.visualization.meldis
+
+For teleoperation, run a command publisher in a separate terminal (options for
+without and with a GUI):
+
+    python examples/deform/test/radio_commandline.py
+    python examples/deform/test/radio.py
+"""
 
 import numpy as np
 import os.path as op
@@ -60,38 +71,118 @@ kSurfaceFriction = CoulombFriction(1.15, 1.15)
 kDissipation = 10.0
 TELEOP_SCALE = 0.0002
 RADIUS = 0.05
-VERTEX_POSITIONS = RADIUS * np.array(
-    [
-        [0, 0, 0],
-        [1, 0, 0],
-        [0, 1, 0],
-        [-1, 0, 0],
-        [0, -1, 0],
-        [0, 0, 1],
-        [0, 0, -1],
-    ]
+
+# # Option 1:  test diamond with central vertex.
+# VERTEX_POSITIONS = RADIUS * np.array(
+#     [
+#         [0, 0, 0],
+#         [1, 0, 0],
+#         [0, 1, 0],
+#         [-1, 0, 0],
+#         [0, -1, 0],
+#         [0, 0, 1],
+#         [0, 0, -1],
+#     ]
+# )
+# VERTEX_POSITIONS[:] += np.array([0, -0.2, RADIUS * 1.5])
+# VERTEX_CONNECTIONS = [
+#     (5, 1),
+#     (5, 2),
+#     (5, 3),
+#     (5, 4),
+#     (6, 1),
+#     (6, 2),
+#     (6, 3),
+#     (6, 4),
+#     (1, 2),
+#     (2, 3),
+#     (3, 4),
+#     (4, 1),
+#     (0, 1),
+#     (0, 2),
+#     (0, 3),
+#     (0, 4),
+#     (0, 5),
+#     (0, 6),
+# ]
+# Option 2:  isotropic cube without central vertex.
+VERTEX_POSITIONS = (
+    0.8
+    * RADIUS
+    * np.array(
+        [
+            [1, 1, 1],
+            [-1, 1, 1],
+            [-1, -1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+            [-1, 1, -1],
+            [-1, -1, -1],
+            [1, -1, -1],
+        ]
+    )
 )
 VERTEX_POSITIONS[:] += np.array([0, -0.2, RADIUS * 1.5])
 VERTEX_CONNECTIONS = [
-    (5, 1),
-    (5, 2),
-    (5, 3),
-    (5, 4),
-    (6, 1),
-    (6, 2),
-    (6, 3),
-    (6, 4),
+    (0, 1),
     (1, 2),
     (2, 3),
-    (3, 4),
-    (4, 1),
-    (0, 1),
-    (0, 2),
-    (0, 3),
+    (3, 0),
+    (4, 5),
+    (5, 6),
+    (6, 7),
+    (7, 4),
     (0, 4),
-    (0, 5),
+    (1, 5),
+    (2, 6),
+    (3, 7),
     (0, 6),
+    (1, 7),
+    (2, 4),
+    (3, 5),
 ]
+# # Option 3:  isotropic cube with central vertex.
+# VERTEX_POSITIONS = (
+#     0.8
+#     * RADIUS
+#     * np.array(
+#         [
+#             [0, 0, 0],
+#             [1, 1, 1],
+#             [-1, 1, 1],
+#             [-1, -1, 1],
+#             [1, -1, 1],
+#             [1, 1, -1],
+#             [-1, 1, -1],
+#             [-1, -1, -1],
+#             [1, -1, -1],
+#         ]
+#     )
+# )
+# VERTEX_POSITIONS[:] += np.array([0, -0.2, RADIUS * 1.5])
+# VERTEX_CONNECTIONS = [
+#     (1, 2),
+#     (2, 3),
+#     (3, 4),
+#     (4, 1),
+#     (5, 6),
+#     (6, 7),
+#     (7, 8),
+#     (8, 5),
+#     (1, 5),
+#     (2, 6),
+#     (3, 7),
+#     (4, 8),
+#     (0, 1),
+#     (0, 2),
+#     (0, 3),
+#     (0, 4),
+#     (0, 5),
+#     (0, 6),
+#     (0, 7),
+#     (0, 8),
+# ]
+
 SPRING_STIFFNESS = 1e2
 DAMPING_COEFFICIENT = 1e0
 ELASTOPLASTIC_FREE_LENGTH = 0.1

@@ -17,7 +17,7 @@ namespace systems {
 /// For example, if you have objects ["obj_A", "obj_B", "obj_C"] and you want
 /// to merge them into groups [["obj_A", "obj_B"], ["obj_C"]], this system will:
 /// - Have 3 input ports (one for each object state)
-/// - Have 1 output port that outputs a vector of merged states
+/// - Have 2 output ports (one for each merged group)
 ///
 /// The merged state combines positions from all objects in a group into a
 /// single lcmt_object_state message. Velocities are not included in the output.
@@ -44,12 +44,6 @@ class MergedObjectStateSender : public drake::systems::LeafSystem<double> {
     return this->get_input_port(object_state_input_port_indices_.at(index));
   }
 
-  /// Get the output port for all merged states (as a vector)
-  const drake::systems::OutputPort<double>& get_output_port_merged_states()
-      const {
-    return this->get_output_port(merged_states_output_port_);
-  }
-
   /// Get the output port for a specific merged object by name
   const drake::systems::OutputPort<double>& get_output_port_merged_state(
       const std::string& merged_object_name) const {
@@ -74,10 +68,6 @@ class MergedObjectStateSender : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  /// Output calculation method for all merged states
-  void CalcMergedOutputs(const drake::systems::Context<double>& context,
-                         std::vector<dairlib::lcmt_object_state>* output) const;
-
   /// Output calculation method for a single merged state at given index
   void CalcSingleMergedOutput(const drake::systems::Context<double>& context,
                               size_t group_index,
@@ -93,13 +83,11 @@ class MergedObjectStateSender : public drake::systems::LeafSystem<double> {
       object_state_input_ports_;
   std::vector<drake::systems::InputPortIndex> object_state_input_port_indices_;
 
-  // Output port for all merged states (vector)
-  drake::systems::OutputPortIndex merged_states_output_port_;
-
   // Individual output ports - one per merged object
   std::map<std::string, drake::systems::OutputPortIndex>
       merged_state_output_ports_;
-  std::vector<drake::systems::OutputPortIndex> merged_state_output_port_indices_;
+  std::vector<drake::systems::OutputPortIndex>
+      merged_state_output_port_indices_;
 };
 
 }  // namespace systems

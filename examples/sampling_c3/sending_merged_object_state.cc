@@ -25,6 +25,8 @@ using drake::multibody::Parser;
 using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
@@ -36,7 +38,6 @@ DEFINE_string(demo_name, "anything",
               "Name for the demo, used when building filepaths for output.");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_double(publish_rate, 200.0, "Publish rate for merged object states");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -128,7 +129,7 @@ int DoMain(int argc, char* argv[]) {
     std::string channel_name = "MERGED_OBJECT_STATE_" + merged_object_names[i];
     merged_state_pubs.push_back(
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-            channel_name, &lcm, 1.0 / FLAGS_publish_rate)));
+            channel_name, &lcm, TriggerTypeSet({TriggerType::kForced}))));
   }
 
   // Connect MergedObjectStateSender individual outputs to publishers
@@ -183,7 +184,6 @@ int DoMain(int argc, char* argv[]) {
     std::cout << "  [" << i << "] MERGED_OBJECT_STATE_"
               << merged_object_names[i] << std::endl;
   }
-  std::cout << "\nPublish rate: " << FLAGS_publish_rate << " Hz" << std::endl;
   std::cout << "Running..." << std::endl;
 
   loop.Simulate();

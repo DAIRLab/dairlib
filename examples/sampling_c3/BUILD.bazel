@@ -1,3 +1,7 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_binary")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -9,8 +13,8 @@ cc_library(
 
 filegroup(
     name = "all_example_params_yamls",
-    visibility = ["//visibility:public"],
     data = ["//examples/sampling_c3/jacktoy:parameters"],
+    visibility = ["//visibility:public"],
 )
 
 filegroup(
@@ -27,18 +31,6 @@ cc_binary(
         "//examples/sampling_c3:all_example_params_yamls",
         "@drake_models//:franka_description",
     ],
-    deps = [
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//examples/sampling_c3/parameter_headers:franka_sim_params",
-        "//common",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/framework:lcm_driven_loop",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
     linkopts = select({
         "@platforms//os:macos": [
             "-L/opt/homebrew/opt/openblas/lib",
@@ -47,6 +39,18 @@ cc_binary(
         "@platforms//os:linux": ["-lopenblas"],
         "//conditions:default": [],
     }),
+    deps = [
+        "//common",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(
@@ -57,12 +61,20 @@ cc_binary(
         "//examples/sampling_c3:all_example_params_yamls",
         "@drake_models//:franka_description",
     ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
     deps = [
+        "//common",
         "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:osc_params",
-        "//common",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -73,14 +85,6 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    linkopts = select({
-        "@platforms//os:macos": [
-            "-L/opt/homebrew/opt/openblas/lib",
-            "-lopenblas",
-        ],
-        "@platforms//os:linux": ["-lopenblas"],
-        "//conditions:default": [],
-    }),
 )
 
 cc_binary(
@@ -92,15 +96,15 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
+        "//common",
         "//examples/sampling_c3:joint_trajectory_generator",
         "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
         "//examples/sampling_c3/parameter_headers:osc_params",
-        "//common",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//lcm:lcm_trajectory_saver",
-        "//systems:robot_lcm_systems",
         "//systems:franka_target_joint_position_receiver",
+        "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers:gravity_compensator",
         "//systems/controllers/osc:operational_space_control",
@@ -128,27 +132,6 @@ cc_binary(
         "//examples/sampling_c3:all_example_params_yamls",
         "@drake_models//:franka_description",
     ],
-    deps = [
-        ":c3_mode_visualizer",
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//examples/sampling_c3/parameter_headers:visualizer_params",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:sampling_params",
-        "//common",
-        "//multibody:utils",
-        "//multibody:visualization_utils",
-        "//systems/senders:senders",
-        "//systems:franka_kinematics",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/primitives",
-        "//systems/trajectory_optimization:lcm_trajectory_systems",
-        "//systems/visualization:lcm_visualization_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
     linkopts = select({
         "@platforms//os:macos": [
             "-L/opt/homebrew/opt/openblas/lib",
@@ -157,6 +140,27 @@ cc_binary(
         "@platforms//os:linux": ["-lopenblas"],
         "//conditions:default": [],
     }),
+    deps = [
+        ":c3_mode_visualizer",
+        "//common",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:visualizer_params",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/senders",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(
@@ -164,18 +168,18 @@ cc_binary(
     srcs = ["franka_bridge_driver_out.cc"],
     data = [
         ":urdfs",
-        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
+        "@drake_models//:franka_description",
     ],
     deps = [
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//common/parameters:franka_drake_lcm_driver_channels",
         "//common",
-        "//systems:franka_state_translator",
+        "//common/parameters:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//multibody:utils",
+        "//systems:franka_state_translator",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
@@ -190,18 +194,18 @@ cc_binary(
     srcs = ["franka_bridge_driver_in.cc"],
     data = [
         ":urdfs",
-        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
+        "@drake_models//:franka_description",
     ],
     deps = [
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//common/parameters:franka_drake_lcm_driver_channels",
         "//common",
-        "//systems:franka_state_translator",
+        "//common/parameters:franka_drake_lcm_driver_channels",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//multibody:utils",
+        "//systems:franka_state_translator",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
@@ -216,26 +220,9 @@ cc_binary(
     srcs = ["franka_sampling_c3_controller.cc"],
     data = [
         ":urdfs",
-        "@drake_models//:franka_description",
         "//examples/sampling_c3:all_example_params_yamls",
         "//examples/sampling_c3:shared_params_yamls",
-    ],
-    deps = [
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3:goal_generator",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//common",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:franka_kinematics",
-        "//systems/senders:sample_buffer_sender",
-        "//systems/senders:senders",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:sampling_c3_controller",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/trajectory_optimization:c3_output_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
+        "@drake_models//:franka_description",
     ],
     linkopts = select({
         "@platforms//os:macos": [
@@ -245,7 +232,23 @@ cc_binary(
         "@platforms//os:linux": ["-lopenblas"],
         "//conditions:default": [],
     }),
-
+    deps = [
+        "//common",
+        "//examples/sampling_c3:goal_generator",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:sampling_c3_controller",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/senders",
+        "//systems/senders:sample_buffer_sender",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_library(
@@ -253,8 +256,8 @@ cc_library(
     srcs = ["c3_mode_visualizer.cc"],
     hdrs = ["c3_mode_visualizer.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
@@ -266,11 +269,11 @@ cc_library(
     srcs = ["goal_generator.cc"],
     hdrs = ["goal_generator.h"],
     deps = [
-        "//examples/sampling_c3/parameter_headers:goal_params",
-        "//systems/framework:vector",
-        "//lcmtypes:lcmt_robot",
-        "//lcm:lcm_trajectory_saver",
         "//common:math_utils",
+        "//examples/sampling_c3/parameter_headers:goal_params",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
     ],
@@ -281,15 +284,15 @@ cc_library(
     srcs = ["generate_samples.cc"],
     hdrs = ["generate_samples.h"],
     deps = [
-        "@drake//:drake_shared_library",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
-        "//examples/sampling_c3/parameter_headers:sampling_params",
-        "//multibody:utils",
-        "//systems/controllers:face",
-        "//multibody:geom_geom_collider",
         "//common:math_utils",
         "//common:update_context",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//multibody:geom_geom_collider",
+        "//multibody:utils",
         "//solvers:c3",
+        "//systems/controllers:face",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -298,10 +301,10 @@ cc_library(
     srcs = ["reposition.cc"],
     hdrs = ["reposition.h"],
     deps = [
-        "//solvers:c3",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
-        "//examples/sampling_c3/parameter_headers:reposition_params",
         "//common:math_utils",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//solvers:c3",
         "@drake//:drake_shared_library",
     ],
 )
@@ -313,8 +316,49 @@ cc_library(
     deps = [
         "//common",
         "//common:math_utils",
-        "@drake//:drake_shared_library",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "merged_object_state_sender",
+    srcs = ["merged_object_state_sender.cc"],
+    hdrs = ["merged_object_state_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "sending_merged_object_state",
+    srcs = ["sending_merged_object_state.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    linkopts = select({
+        "@platforms//os:macos": [
+            "-L/opt/homebrew/opt/openblas/lib",
+            "-lopenblas",
+        ],
+        "@platforms//os:linux": ["-lopenblas"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//common",
+        "//examples/sampling_c3:merged_object_state_sender",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 

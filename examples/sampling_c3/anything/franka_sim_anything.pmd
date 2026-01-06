@@ -39,6 +39,10 @@ group "operator" {
         exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
         host = "localhost";
     }
+    cmd "publish_merged_object_state" {
+        exec = "bazel-bin/examples/sampling_c3/sending_merged_object_state";
+        host = "localhost";
+    }
 }
 
 group "controllers" {    

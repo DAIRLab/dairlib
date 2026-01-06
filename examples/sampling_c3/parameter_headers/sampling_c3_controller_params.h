@@ -32,6 +32,9 @@ struct SamplingC3ControllerParams {
   std::string base_name;
   std::vector<std::string> base_names;
 
+  std::vector<std::string> merged_object_names;
+  std::vector<std::vector<std::string>> object_groups_for_merging;
+
   double workspace_margin;
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
@@ -68,6 +71,8 @@ struct SamplingC3ControllerParams {
 
     a->Visit(DRAKE_NVP(base_names));
     a->Visit(DRAKE_NVP(object_models));
+    a->Visit(DRAKE_NVP(merged_object_names));
+    a->Visit(DRAKE_NVP(object_groups_for_merging));
 
     /// Store individual parameter classes internally.
     sampling_c3_options = drake::yaml::LoadYamlFile<SamplingC3Options>(

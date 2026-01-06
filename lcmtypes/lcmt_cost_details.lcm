@@ -1,0 +1,10 @@
+package dairlib;
+
+/*  lcmtype containing cost details of a portion of a C3 solve
+ */
+struct lcmt_cost_details {
+  int32_t num_horizon;
+  int32_t num_in_vector;
+  float cost_per_timestep[num_horizon];
+  float cost_matrix[num_in_vector][num_in_vector];
+}

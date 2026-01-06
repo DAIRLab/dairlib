@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_particle_states_genesis_debug
+{
+  int64_t utime;
+  int32_t num_batch;
+  int32_t num_particles;
+
+  float C[num_batch][num_particles][3][3];
+  float F[num_batch][num_particles][3][3];
+  float Jp[num_batch][num_particles];
+  boolean active[num_batch][num_particles];
+}

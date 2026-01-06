@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_particle_states
+{
+  int64_t utime;
+  int32_t num_batch;
+  int32_t num_particles;
+
+  float positions[num_batch][num_particles][3];
+  float velocities[num_batch][num_particles][3];
+}

@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_particle_positions
+{
+  int64_t utime;
+  int32_t num_particles;
+
+  float positions[num_particles][3];
+}

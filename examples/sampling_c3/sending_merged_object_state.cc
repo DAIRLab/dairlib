@@ -64,7 +64,7 @@ int DoMain(int argc, char* argv[]) {
   // Build a plant just for ObjectStateReceiver (to get object dimensions)
   MultibodyPlant<double> object_plant(0.0);
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
-      &object_plant, nullptr, controller_params.object_models);
+      &object_plant, nullptr, controller_params.original_object_models);
   object_plant.Finalize();
 
   // Get merging configuration from controller params
@@ -92,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
   for (int i = 0; i < num_objects; i++) {
     object_state_subs.push_back(
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-            lcm_channel_params.object_state_channels.at(i), &lcm)));
+            lcm_channel_params.original_object_state_channels.at(i), &lcm)));
   }
 
   // Create ObjectStateReceivers for each object (for potential internal use)
@@ -126,7 +126,7 @@ int DoMain(int argc, char* argv[]) {
   int num_merged_objects = static_cast<int>(merged_object_names.size());
   std::vector<LcmPublisherSystem*> merged_state_pubs;
   for (int i = 0; i < num_merged_objects; i++) {
-    std::string channel_name = "MERGED_OBJECT_STATE_" + merged_object_names[i];
+    std::string channel_name = lcm_channel_params.object_state_channels[i];
     merged_state_pubs.push_back(
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
             channel_name, &lcm, TriggerTypeSet({TriggerType::kForced}))));
@@ -150,7 +150,8 @@ int DoMain(int argc, char* argv[]) {
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_object_state> loop(
       &lcm, shared_diagram, object_state_receivers[0],
-      lcm_channel_params.object_state_channels[0], true, lcm_buffer_size);
+      lcm_channel_params.original_object_state_channels[0], true,
+      lcm_buffer_size);
 
   LcmHandleSubscriptionsUntil(&lcm, [&]() {
     for (const auto& sub : object_state_subs) {
@@ -167,7 +168,7 @@ int DoMain(int argc, char* argv[]) {
             << " object state channel(s):" << std::endl;
   for (int i = 0; i < num_objects; i++) {
     std::cout << "  [" << i << "] "
-              << lcm_channel_params.object_state_channels.at(i)
+              << lcm_channel_params.original_object_state_channels.at(i)
               << " -> object name: " << object_names[i] << std::endl;
   }
   std::cout << "\nMerging configuration:" << std::endl;
@@ -181,8 +182,8 @@ int DoMain(int argc, char* argv[]) {
   }
   std::cout << "\nPublishing merged states to channel(s):" << std::endl;
   for (int i = 0; i < num_merged_objects; i++) {
-    std::cout << "  [" << i << "] MERGED_OBJECT_STATE_"
-              << merged_object_names[i] << std::endl;
+    std::cout << "  [" << i << "] "
+              << lcm_channel_params.object_state_channels[i] << std::endl;
   }
   std::cout << "Running..." << std::endl;
 

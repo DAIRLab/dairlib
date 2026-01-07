@@ -14,7 +14,14 @@ lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
+
+# uncomment after running simulator
+# object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video_controller.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture_controller.sdf]
+
+# comment out after running simulator
 object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video_controller.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture_controller.sdf, examples/sampling_c3/urdf/A_shape_video/A_shape_video_controller.sdf, examples/sampling_c3/urdf/S_shape_texture/S_shape_texture_controller.sdf, examples/sampling_c3/urdf/P_shape_texture/P_shape_texture_controller.sdf]
+
+original_object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video_controller.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture_controller.sdf, examples/sampling_c3/urdf/A_shape_video/A_shape_video_controller.sdf, examples/sampling_c3/urdf/S_shape_texture/S_shape_texture_controller.sdf, examples/sampling_c3/urdf/P_shape_texture/P_shape_texture_controller.sdf]
 object_body_name: body
 base_name: lollipop
 # base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
@@ -34,10 +41,17 @@ base_name: lollipop
 # base_names: [B_shape_video, I_shape_texture, B_shape_video, I_shape_texture, T_small_video]
 # base_names: [T_small_video, H_shape_texture, I_shape_texture, N_shape_video, G_shape_video]
 # base_names: [D_shape_texture, A_shape_video, I_shape_texture, R_shape_texture]
+
+# uncomment after running simulator
+# base_names: [merged_0, merged_1]
+
+# comment out after running simulator
 base_names: [G_shape_video, R_shape_texture, A_shape_video, S_shape_texture, P_shape_texture]
 
-merged_object_names: [GRAS, P_only]
-object_groups_for_merging: [[G_shape_video, R_shape_texture, A_shape_video, S_shape_texture], [P_shape_texture]]
+original_base_names: [G_shape_video, R_shape_texture, A_shape_video, S_shape_texture, P_shape_texture]
+
+merged_object_names: [merged_0, merged_1]
+object_groups_for_merging: [[G_shape_video], [R_shape_texture, A_shape_video, S_shape_texture, P_shape_texture]]
 
 include_end_effector_orientation: false
 

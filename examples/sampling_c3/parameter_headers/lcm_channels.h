@@ -6,6 +6,7 @@ struct SamplingC3LcmChannels {
   std::string franka_state_channel;
   std::string object_state_channel;
   std::vector<std::string> object_state_channels;
+  std::vector<std::string> original_object_state_channels;
   std::string franka_input_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -48,6 +49,7 @@ struct SamplingC3LcmChannels {
     a->Visit(DRAKE_NVP(franka_state_channel));
     a->Visit(DRAKE_NVP(object_state_channel));
     a->Visit(DRAKE_NVP(object_state_channels));
+    a->Visit(DRAKE_NVP(original_object_state_channels));
     a->Visit(DRAKE_NVP(franka_input_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));

@@ -1,6 +1,6 @@
 group "operator" {
     cmd "radio_GUI" {
-        exec = "source examples/deform/test/venv/bin/activate && python examples/deform/test/radio.py";
+        exec = "python examples/deform/test/radio.py";
         host = "localhost";
     }
 }

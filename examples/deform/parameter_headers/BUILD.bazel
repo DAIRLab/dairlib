@@ -1,13 +1,18 @@
 cc_library(
     name = "deform_params",
     hdrs = [
+        "deform_settings.h",
         "visualizer_params.h",
         "lcm_channels.h",
         "elastic_sim_params.h",
         "elastoplastic_sim_params.h",
         "elastoplastic_c3_options.h",
         "spring_damper_model_params.h",
+        "osc_params.h",
     ],
-    deps = ["//solvers:c3"],
+    deps = [
+        "//solvers:c3",
+        "//examples/sampling_c3/parameter_headers:osc_params",
+    ],
     visibility = ["//visibility:public"],
 )

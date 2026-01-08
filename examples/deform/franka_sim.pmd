@@ -1,0 +1,20 @@
+group "operator" {
+    cmd "radio_GUI" {
+        exec = "source examples/deform/test/venv/bin/activate && python examples/deform/test/radio.py";
+        host = "localhost";
+    }
+}
+
+group "controllers" {
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/deform/franka_osc_controller --is_simulation=true";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}

@@ -25,6 +25,51 @@ using drake::multibody::RigidBody;
 using drake::multibody::fem::DeformableBodyConfig;
 using Eigen::Vector3d;
 
+ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
+                                    SceneGraph<double>* scene_graph,
+                                    const bool& include_ee,
+                                    const bool& include_ground_and_platform,
+                                    const bool& include_box) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+
+  ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
+  RigidTransformd X_WI = RigidTransformd::Identity();
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
+                    X_WI);
+
+  if (include_ee) {
+    parser.AddModels(FindResourceOrThrow(kEndEffectorModel));
+    RigidTransformd T_EE_W =
+        RigidTransformd(drake::math::RotationMatrix<double>(
+                            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+                        kToolAttachmentFrame);
+    plant->WeldFrames(plant->GetFrameByName("panda_link7"),
+                      plant->GetFrameByName("end_effector_flange"), T_EE_W);
+  }
+
+  if (include_ground_and_platform) {
+    parser.AddModels(FindResourceOrThrow(kGroundFrankaModel));
+    parser.AddModels(FindResourceOrThrow(kPlatformModel));
+
+    RigidTransformd X_F_P = RigidTransformd(kFrankaToPlatformOffset);
+    RigidTransformd X_F_G_franka = RigidTransformd(kFrankaToGroundOffset);
+
+    plant->WeldFrames(plant->GetFrameByName("panda_link0"),
+                      plant->GetFrameByName("ground"), X_F_G_franka);
+    plant->WeldFrames(plant->GetFrameByName("panda_link0"),
+                      plant->GetFrameByName("platform"), X_F_P);
+  }
+
+  if (include_box) {
+    parser.AddModels(FindResourceOrThrow(kBoxModel));
+    RigidTransformd X_WB = RigidTransformd(kWorldToBoxOffset);
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("box"), X_WB);
+  }
+
+  return franka_index;
+}
+
 ModelInstanceIndex AddRobotHandToPlant(MultibodyPlant<double>* plant,
                                        SceneGraph<double>* scene_graph,
                                        const bool& include_ground) {

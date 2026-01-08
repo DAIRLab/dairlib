@@ -16,6 +16,8 @@ struct DeformLcmChannels {
   std::string c3_debug_output_channel;
   std::string c3_costs_channel;
 
+  std::string actor_traj_channel;
+
   std::string c3_final_target_state_channel;
   std::string c3_target_state_channel;
   std::string c3_actual_state_channel;
@@ -40,6 +42,8 @@ struct DeformLcmChannels {
     a->Visit(DRAKE_NVP(c3_force_channel));
     a->Visit(DRAKE_NVP(c3_debug_output_channel));
     a->Visit(DRAKE_NVP(c3_costs_channel));
+
+    a->Visit(DRAKE_NVP(actor_traj_channel));
 
     a->Visit(DRAKE_NVP(c3_final_target_state_channel));
     a->Visit(DRAKE_NVP(c3_target_state_channel));

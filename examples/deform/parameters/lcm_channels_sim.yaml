@@ -1,17 +1,19 @@
 # All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
 
 object_state_channel: OBJ_STATE_SIMULATION                # lcmt_object_state
-robot_state_channel: ROBOT_STATE_SIMULATION               # lcmt_robot_output
-robot_input_channel: ROBOT_INPUT                          # lcmt_robot_input
+robot_state_channel: FRANKA_STATE_SIMULATION              # lcmt_robot_output
+robot_input_channel: FRANKA_INPUT                         # lcmt_robot_input
 
-osc_channel: OSC_ROBOT                                    # lcmt_robot_input
-osc_debug_channel: OSC_DEBUG_ROBOT                        # lcmt_osc_output
+osc_channel: OSC_FRANKA                                   # lcmt_robot_input
+osc_debug_channel: OSC_DEBUG_FRANKA                       # lcmt_osc_output
 
 c3_actor_plan_channel: C3_TRAJECTORY_ACTOR_PLAN
 c3_object_plan_channel: C3_TRAJECTORY_OBJECT_PLAN
 c3_force_channel: C3_FORCES                               # lcmt_c3_forces
 c3_debug_output_channel: C3_DEBUG                         # lcmt_c3_output
 c3_costs_channel: C3_COSTS                                # lcmt_c3_costs
+
+actor_traj_channel: ACTOR_TRAJECTORY
 
 c3_final_target_state_channel: C3_FINAL_TARGET            # lcmt_c3_state
 c3_target_state_channel: C3_TARGET                        # lcmt_c3_state

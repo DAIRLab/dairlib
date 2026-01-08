@@ -2,7 +2,6 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "params_yamls",
-    visibility = ["//visibility:public"],
     data = ["//examples/deform:parameters"],
 )
 
@@ -56,6 +55,36 @@ cc_library(
 )
 
 cc_binary(
+    name = "franka_osc_controller",
+    srcs = ["franka_osc_controller.cc"],
+    data = [
+        ":models",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/deform/parameter_headers:deform_params",
+        "//examples/deform:deform_utils",
+        #"//examples/deform/parameter_headers:sampling_c3_controller_params",
+        #"//examples/deform/parameter_headers:lcm_channels",
+        #"//examples/deform/parameter_headers:osc_params",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers:gravity_compensator",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    #linkopts = [
+    #    "-L/lib/x86_64-linux-gnu",
+    #    "-lopenblas",
+    #],
+)
+
+cc_binary(
     name = "elastic_sim",
     srcs = ["elastic_sim.cc"],
     data = [
@@ -74,6 +103,7 @@ cc_binary(
         "@gflags",
     ],
 )
+
 cc_binary(
     name = "elastoplastic_sim",
     srcs = ["elastoplastic_sim.cc"],

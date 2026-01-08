@@ -34,6 +34,30 @@ static constexpr const char* kElastoPlastic1DModel =
 static constexpr const char* kRigid1DModel =
     "examples/deform/models/rigid_1d.urdf";
 
+/// Constants for the Franka, end effector, and environment.
+static constexpr const char* kFrankaModel =
+    "package://drake_models/franka_description/urdf/panda_arm.urdf";
+static constexpr const char* kEndEffectorModel =
+    "examples/deform/models/end_effector_full.urdf";
+static constexpr const char* kEndEffectorName = "end_effector_tip";
+static constexpr const char* kGroundFrankaModel =
+    "examples/deform/models/ground_franka.urdf";
+static constexpr const char* kPlatformModel =
+    "examples/deform/models/platform.urdf";
+static constexpr const char* kBoxModel = "examples/deform/models/box.urdf";
+inline const Eigen::VectorXd kQInitFranka =
+    (Eigen::VectorXd(7) << 2.19, 0.8, -1.7, -2.4, 0.95, 2.02, 0.08).finished();
+
+/// Tool attachment frame is the offset from the Panda's link7 frame to its
+/// flange where an end effector can be attached.
+static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
+static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};
+static const Eigen::Vector3d kFrankaToPlatformOffset = {0, 0, -0.0145};
+static const Eigen::Vector3d kWorldToFrankaOffset = {0, 0, 0};
+static const Eigen::Vector3d kWorldToGroundOffset =
+    kWorldToFrankaOffset + kFrankaToGroundOffset;
+static const Eigen::Vector3d kWorldToBoxOffset = {0.4, 0.25, 0};
+
 /// 1D demo specific parameters.
 static const double k1DElastoPlasticFreeLength = 0.1;
 static const double k1DElastoPlasticStiffness = 2e2;
@@ -55,22 +79,21 @@ static const double kDissipation = 10.0;
 /// Demos.
 static const std::vector<std::string> kDemos = {"1d", "1d_rigid"};
 
+/// Add the Franka to a given multibody plant and scene graph.
+drake::multibody::ModelInstanceIndex AddFrankaToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const bool& include_ee = true,
+    const bool& include_ground_and_platform = true,
+    const bool& include_box = false);
+
 /// Add the robot hand to a given multibody plant and scene graph.
-/// @param plant a pointer to the MultibodyPlant
-/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param include_ground whether to include the ground in the plant
-/// @return the ModelInstanceIndex of the robot hand in the plant
 drake::multibody::ModelInstanceIndex AddRobotHandToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const bool& include_ground = true);
 
 /// Add a deformable elastic object to a given multibody plant and scene graph.
-/// @param plant a pointer to the MultibodyPlant
-/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param object_mesh_file the file path to the mesh of the deformable object
-/// @param q_init_object the initial pose of the deformable object as a 7D
-///        vector (qw, qx, qy, qz, x, y, z)
 void AddElasticMeshToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,

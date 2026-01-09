@@ -6,6 +6,7 @@ struct DeformLcmChannels {
   std::string object_state_channel;
   std::string robot_state_channel;
   std::string robot_input_channel;
+  std::string mpm_channel;
 
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -33,6 +34,7 @@ struct DeformLcmChannels {
     a->Visit(DRAKE_NVP(object_state_channel));
     a->Visit(DRAKE_NVP(robot_state_channel));
     a->Visit(DRAKE_NVP(robot_input_channel));
+    a->Visit(DRAKE_NVP(mpm_channel));
 
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));

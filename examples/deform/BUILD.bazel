@@ -42,6 +42,32 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "franka_visualizer",
+    srcs = ["franka_visualizer.cc"],
+    data = [
+        ":models",
+        "//examples/deform:params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:deform_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "deform_utils",
     srcs = ["deform_utils.cc"],

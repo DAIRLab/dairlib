@@ -52,7 +52,7 @@ int do_main(int argc, char* argv[]) {
   // Load parameters.
   DeformVisualizerParams vis_params =
       drake::yaml::LoadYamlFile<DeformVisualizerParams>(
-          "examples/deform/parameters/vis_params.yaml");
+          "examples/deform/parameters/demo_" + FLAGS_demo + "/vis_params.yaml");
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(
           "examples/deform/parameters/lcm_channels_sim.yaml");

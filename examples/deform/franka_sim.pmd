@@ -1,4 +1,8 @@
 group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/deform/franka_visualizer --is_simulation=true";
+        host = "localhost";
+    }
     cmd "radio_GUI" {
         exec = "python examples/deform/test/radio.py";
         host = "localhost";

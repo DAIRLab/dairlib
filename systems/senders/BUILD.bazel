@@ -7,6 +7,26 @@ cc_library(
         ":sample_buffer_sender",
         ":c3_state_sender",
         ":sample_buffer_to_point_cloud",
+        ":mpm_points_to_point_cloud",
+    ],
+)
+
+cc_library(
+    name = "mpm_points_to_point_cloud",
+    srcs = [
+        "mpm_points_to_point_cloud.cc",
+    ],
+    hdrs = [
+        "mpm_points_to_point_cloud.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//lcm:lcm_trajectory_saver",
+        "@lcm",
     ],
 )
 

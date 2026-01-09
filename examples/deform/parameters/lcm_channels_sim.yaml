@@ -3,6 +3,7 @@
 object_state_channel: OBJ_STATE_SIMULATION                # lcmt_object_state
 robot_state_channel: FRANKA_STATE_SIMULATION              # lcmt_robot_output
 robot_input_channel: FRANKA_INPUT                         # lcmt_robot_input
+mpm_channel: MPM_POINT_POSITIONS                          # lcmt_material_points
 
 osc_channel: OSC_FRANKA                                   # lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA                       # lcmt_osc_output

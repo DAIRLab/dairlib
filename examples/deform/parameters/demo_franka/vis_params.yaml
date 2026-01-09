@@ -1,19 +1,22 @@
 visualizer_publish_rate: 30
 
-camera_pose: [0.32, -0.4, 0.3]
-camera_target: [0.15, 0, 0.1]
+camera_pose: [0.6, -0.05, 0.25]
+camera_target: [0.3, 0.3, 0.1]
 
 visualize_c3_workspace: false
 visualize_c3_state: false
-visualize_c3_target_state: true
+visualize_c3_target_state: false
 
 visualize_center_of_mass_plan: false
-visualize_c3_forces: true
+visualize_c3_forces: false
+
+visualize_mpm_points: true
+mpm_point_size: 0.005
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.
-visualize_c3_plan_object: true
-visualize_c3_plan_robot: true
+visualize_c3_plan_object: false
+visualize_c3_plan_robot: false
 c3_state_object_color: [0.2, 0.8, 0.2]  # For visualizing C3 states
 c3_state_ee_color: [0.2, 0.8, 0.2]
 c3_object_color: [0.2, 0.8, 0.8]        # For visualizing C3 plans

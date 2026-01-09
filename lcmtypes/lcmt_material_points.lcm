@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_material_points
+{
+  int64_t utime;
+  int32_t num_points;
+
+  float points[num_points][3];
+}

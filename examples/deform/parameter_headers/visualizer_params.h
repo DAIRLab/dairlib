@@ -19,6 +19,10 @@ struct DeformVisualizerParams {
 
   bool visualize_c3_plan_object;
   bool visualize_c3_plan_robot;
+
+  bool visualize_mpm_points;
+  double mpm_point_size;
+
   Eigen::VectorXd c3_state_object_color;
   Eigen::VectorXd c3_state_ee_color;
   Eigen::VectorXd c3_object_color;
@@ -38,6 +42,8 @@ struct DeformVisualizerParams {
     a->Visit(DRAKE_NVP(visualize_c3_forces));
     a->Visit(DRAKE_NVP(visualize_c3_plan_object));
     a->Visit(DRAKE_NVP(visualize_c3_plan_robot));
+    a->Visit(DRAKE_NVP(visualize_mpm_points));
+    a->Visit(DRAKE_NVP(mpm_point_size));
     a->Visit(DRAKE_NVP(c3_state_object_color));
     a->Visit(DRAKE_NVP(c3_state_ee_color));
     a->Visit(DRAKE_NVP(c3_object_color));

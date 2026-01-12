@@ -227,6 +227,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   mutable bool is_solve_succeeded_ = true;
   mutable bool mpc_reached_target_ = false;
+
+  mutable bool track_ee_force_ = true;
 };
 
 }  // namespace magna

@@ -730,6 +730,9 @@ void AssemblyController::GenerateMPCTrajectory(
     state_data->mpc_current_target_idx++;
     // round_belt_controller_params_.mpc_orientation_tolerance = 0.3;
     // round_belt_controller_params_.mpc_position_tolerance = 0.02;
+    if (state_data->mpc_current_target_idx >= 2){
+      track_ee_force_ = false;
+    }
     if (state_data->mpc_current_target_idx >=
         static_cast<int>(mpc_target_lcs_states_.size())) {
       std::cout << "All MPC targets completed!" << std::endl;
@@ -830,7 +833,7 @@ void AssemblyController::GenerateMPCTrajectory(
   // Add force trajectory from C3 solution
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
 
-  if (!mpc_reached_target_ && is_solve_succeeded_) {
+  if (!mpc_reached_target_ && is_solve_succeeded_ && track_ee_force_) {
     for (int i = 0; i < N_; i++) {
       force_samples.col(i) = u_sol[i].segment(0, 3);
     }

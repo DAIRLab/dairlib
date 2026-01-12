@@ -19,12 +19,14 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.001, 0.001 ]
 
 
-### Additional parameters for SamplingC3OSCParams ###
+### Additional parameters for DeformOSCParams ###
 
 # Two teleoperation modes:  1) locked EE neutral position, where xbox controls
 # perturb the EE; and 2) xbox controls move the EE to a new neutral position.
-neutral_position: [0.4276197, 0.19295175, 0.12756625]
+neutral_position: [0.392929, 0.2502, 0.196851]
 teleop_neutral_position: true
+# Neutral position set to have EE in correct place for joint angles:
+# 2.2, 0.8, -1.7, -2.4, 0.93, 2.04, -0.09
 
 # If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be
 # relatively small, i.e. 0.0002 works well (compared to 0.2 for the locked

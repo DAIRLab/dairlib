@@ -1,0 +1,8 @@
+# Reduction type options (defined as ReducedModelTypes enum in
+# reduced_model_params.h):
+#   0. kSupportDirections:  grabs support points along specified directions.
+reduction_type: 0
+
+# Parameters for support_directions type reduction.
+support_directions_vec: [[1, 1,  1], [-1, 1,  1], [-1, -1,  1], [1, -1,  1],
+                         [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]]

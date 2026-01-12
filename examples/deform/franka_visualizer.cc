@@ -8,9 +8,13 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "common/find_resource.h"
 #include "examples/deform/deform_utils.h"
+#include "examples/deform/mpm_model_reducer.h"
+#include "examples/deform/parameter_headers/deform_settings.h"
 #include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
+#include "examples/deform/parameter_headers/reduced_model_params.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -19,6 +23,7 @@
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 #include "systems/visualization/lcm_visualization_systems.h"
 
+#include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"
@@ -57,12 +62,19 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
+  DeformSettings deform_settings = drake::yaml::LoadYamlFile<DeformSettings>(
+      "examples/deform/parameters/deform_settings.yaml");
   DeformVisualizerParams vis_params =
       drake::yaml::LoadYamlFile<DeformVisualizerParams>(
-          "examples/deform/parameters/demo_franka/vis_params.yaml");
+          deform_settings.vis_params_file);
+  std::string lcm_channels_file =
+      FLAGS_is_simulation ? deform_settings.lcm_channels_simulation_file
+                          : deform_settings.lcm_channels_hardware_file;
   DeformLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<DeformLcmChannels>(
-          "examples/deform/parameters/lcm_channels_sim.yaml");
+      drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
+  ReducedModelParams reduced_model_params =
+      drake::yaml::LoadYamlFile<ReducedModelParams>(
+          deform_settings.reduced_model_params_file);
 
   DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -129,6 +141,27 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(
         mpm_points_to_point_cloud_converter->get_output_port_mpm_point_cloud(),
         mpm_points_point_cloud_visualizer->cloud_input_port());
+  }
+
+  // Visualize the model reduction.
+  if (vis_params.visualize_model_reduction) {
+    DRAKE_ASSERT(reduced_model_params.reduction_type ==
+                 ReducedModelTypes::kSupportDirections);
+    auto mpm_reducer =
+        builder.AddSystem<dairlib::systems::MpmPointsToReducedModelPoints>(
+            reduced_model_params.support_directions);
+    auto reduced_model_points_drawer =
+        builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.model_reduction_point_model),
+            "reduced_model_points", "unused_orientation_name", "reduced",
+            reduced_model_params.support_directions.cols(), false,
+            vis_params.model_reduction_point_color);
+
+    builder.Connect(mpm_points_sub->get_output_port(),
+                    mpm_reducer->get_input_port_lcmt_material_points());
+    builder.Connect(mpm_reducer->get_output_port_lcmt_timestamped_saved_traj(),
+                    reduced_model_points_drawer->get_input_port_trajectory());
   }
 
   // Build the diagram.

@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<robot name="reduced_model_point">
+  <link name="reduced_model_point">
+   <visual>
+      <geometry>
+        <sphere radius="0.008"/>
+      </geometry>
+      <material>
+        <color rgba="1.0 1.0 1.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+</robot>

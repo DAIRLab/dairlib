@@ -9,6 +9,7 @@ cc_library(
         "elastoplastic_c3_options.h",
         "spring_damper_model_params.h",
         "osc_params.h",
+        "reduced_model_params.h",
     ],
     deps = [
         "//solvers:c3",

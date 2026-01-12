@@ -8,6 +8,7 @@
 
 struct DeformSettings {
   std::string deform_c3_options_file;
+  std::string reduced_model_params_file;
   std::string sim_params_file;
   std::string vis_params_file;
   std::string osc_params_file;
@@ -22,6 +23,7 @@ struct DeformSettings {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(deform_c3_options_file));
+    a->Visit(DRAKE_NVP(reduced_model_params_file));
     a->Visit(DRAKE_NVP(sim_params_file));
     a->Visit(DRAKE_NVP(vis_params_file));
     a->Visit(DRAKE_NVP(osc_params_file));

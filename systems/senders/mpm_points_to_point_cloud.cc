@@ -1,9 +1,6 @@
 #include "systems/senders/mpm_points_to_point_cloud.h"
 
 #include "dairlib/lcmt_material_points.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "lcm/lcm_trajectory.h"
 
 #include "drake/perception/point_cloud.h"
 #include "drake/perception/point_cloud_flags.h"

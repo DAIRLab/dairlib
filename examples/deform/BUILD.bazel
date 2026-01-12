@@ -5,6 +5,24 @@ filegroup(
     data = ["//examples/deform:parameters"],
 )
 
+cc_library(
+    name = "mpm_model_reducer",
+    srcs = [
+        "mpm_model_reducer.cc",
+    ],
+    hdrs = [
+        "mpm_model_reducer.h",
+    ],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "//common:find_resource",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "hand_visualizer",
     srcs = ["hand_visualizer.cc"],
@@ -51,6 +69,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
+        "//examples/deform:mpm_model_reducer",
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:deform_params",
         "//common",

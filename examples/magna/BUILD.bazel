@@ -194,3 +194,21 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
+cc_binary(
+    name = "output_round_belt_state_sim",
+    srcs = [
+        "output_round_belt_state_sim.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+    ],
+    deps = [
+        "//examples/magna/systems/state_estimation:drake_deformable_state_to_round_belt_state_converter",
+        "//systems/framework:lcm_driven_loop",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

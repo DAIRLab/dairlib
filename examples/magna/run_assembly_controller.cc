@@ -301,7 +301,6 @@ int DoMain(int argc, char* argv[]) {
       round_belt_controller_params.lcm_channels.franka_state_channel, true);
   drake::log()->info("Assembly controller started");
   loop.Simulate(std::numeric_limits<double>::infinity());
-
   return 0;
 }
 

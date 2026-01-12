@@ -89,8 +89,7 @@ C3BeltStateDrawer::C3BeltStateDrawer(
                         {0, 1, 0, color.a()});
     meshcat_->SetObject(ee_path + "/z-axis", cylinder_for_ee_,
                         {0, 0, 1, color.a()});
-    meshcat_->SetObject(ee_path + "/box", box_for_ee_,
-                        {1, 1, 1, color.a()});
+    meshcat_->SetObject(ee_path + "/box", box_for_ee_, {1, 1, 1, color.a()});
     meshcat_->SetTransform(ee_path + "/x-axis", x_axis_transform_ee);
     meshcat_->SetTransform(ee_path + "/y-axis", y_axis_transform_ee);
     meshcat_->SetTransform(ee_path + "/z-axis", z_axis_transform_ee);
@@ -125,17 +124,6 @@ C3BeltStateDrawer::C3BeltStateDrawer(
 drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  // if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
-  //                                                  c3_state_input_port_)
-  //         ->utime < 1e-3) {
-  //   return drake::systems::EventStatus::Succeeded();
-  // }
-  // if (discrete_state->get_value(last_update_time_index_)[0] >=
-  //     context.get_time()) {
-  //   // no need to update if simulation has not advanced
-  //   return drake::systems::EventStatus::Succeeded();
-  // }
-
   discrete_state->get_mutable_value(last_update_time_index_)[0] =
       context.get_time();
   const auto& c3_state = this->EvalInputValue<dairlib::lcmt_c3_state>(
@@ -184,58 +172,63 @@ drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(
     meshcat_->SetTransform(path, RigidTransformd(kp_pos), context.get_time());
   }
 
-  // Draw spring force arrow (only if spring_stiffness is non-zero and not target state)
+  // Draw spring force arrow (only if spring_stiffness is non-zero and not
+  // target state)
   if (spring_stiffness_ > 0.0 && num_keypoints_ > 0 && !is_target_state_) {
     // Get end-effector position
     Vector3d ee_pos(c3_state->state[0], c3_state->state[1], c3_state->state[2]);
-    
+
     // Get first keypoint position
     int first_kp_idx = end_effector_state_size_;
     Vector3d first_kp_pos(c3_state->state.at(first_kp_idx),
                           c3_state->state.at(first_kp_idx + 1),
                           c3_state->state.at(first_kp_idx + 2));
-    
+
     // Calculate distance vector and its norm
     Vector3d distance_vec = ee_pos - first_kp_pos;
     double distance_norm = distance_vec.norm();
-    
+
     // Calculate spring displacement from rest length
     double spring_displacement = distance_norm - spring_rest_length_;
-    
+
     // Calculate spring force magnitude: F = k * |displacement from rest|
-    double spring_force_magnitude = std::max(0.0, spring_stiffness_ * spring_displacement);
-    
-    // Spring force direction depends on whether spring is in tension or compression
-    // Tension (stretched): distance > rest_length, force pulls back toward keypoint
-    // Compression: distance < rest_length is not allowed, the spring force will be set to 0.
+    double spring_force_magnitude =
+        std::max(0.0, spring_stiffness_ * spring_displacement);
+
+    // Spring force direction depends on whether spring is in tension or
+    // compression Tension (stretched): distance > rest_length, force pulls back
+    // toward keypoint Compression: distance < rest_length is not allowed, the
+    // spring force will be set to 0.
     Vector3d force_direction = -distance_vec.normalized();
-    
+
     // Scale the arrow length (e.g., 0.01 meter per Newton for visualization)
-    double newtons_per_meter = 100.0;  // Adjust this value to scale arrow length
+    double newtons_per_meter =
+        100.0;  // Adjust this value to scale arrow length
     double arrow_height = spring_force_magnitude / newtons_per_meter;
-    
+
     if (arrow_height >= 0.001) {  // Only draw if force is significant
       // Set up paths
       std::string spring_force_path_root = c3_state_path_ + "/spring_force";
       std::string spring_arrow_path = spring_force_path_root + "/arrow";
-      
+
       // Position the root at the end-effector (where the force acts)
       meshcat_->SetTransform(spring_force_path_root, RigidTransformd(ee_pos),
                              context.get_time());
-      
+
       // Set arrow orientation using the force direction
-      // Drake's MakeFromOneVector aligns the specified axis (2 = Z-axis) with the given vector
-      meshcat_->SetTransform(
-          spring_arrow_path,
-          RigidTransformd(RotationMatrixd::MakeFromOneVector(force_direction, 2)),
-          context.get_time());
-      
+      // Drake's MakeFromOneVector aligns the specified axis (2 = Z-axis) with
+      // the given vector
+      meshcat_->SetTransform(spring_arrow_path,
+                             RigidTransformd(RotationMatrixd::MakeFromOneVector(
+                                 force_direction, 2)),
+                             context.get_time());
+
       // Scale and position the cylinder (stretched in Z)
       meshcat_->SetProperty(spring_arrow_path + "/cylinder", "position",
                             {0, 0, 0.5 * arrow_height}, context.get_time());
       meshcat_->SetProperty(spring_arrow_path + "/cylinder", "scale",
                             {1, 1, arrow_height}, context.get_time());
-      
+
       // Position the arrowhead at the end of the cylinder
       const double arrowhead_height = spring_arrow_radius_ * 2.0;
       meshcat_->SetTransform(
@@ -243,7 +236,7 @@ drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(
           RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                           Vector3d{0, 0, arrow_height + arrowhead_height}),
           context.get_time());
-      
+
       // Make the arrow visible
       meshcat_->SetProperty(spring_force_path_root, "visible", true,
                             context.get_time());

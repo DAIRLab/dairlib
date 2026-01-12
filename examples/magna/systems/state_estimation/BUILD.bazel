@@ -3,16 +3,30 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "fake_belt_state_estimator",
+    name = "round_belt_state_receiver",
     srcs = [
-        "fake_belt_state_estimator.cc",
+        "round_belt_state_receiver.cc",
     ],
     hdrs = [
-        "fake_belt_state_estimator.h",
+        "round_belt_state_receiver.h",
     ],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "drake_deformable_state_to_round_belt_state_converter",
+    srcs = [
+        "drake_deformable_state_to_round_belt_state_converter.cc",
+    ],
+    hdrs = [
+        "drake_deformable_state_to_round_belt_state_converter.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )

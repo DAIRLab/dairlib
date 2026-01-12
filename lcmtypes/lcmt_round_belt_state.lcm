@@ -1,0 +1,17 @@
+package dairlib;
+
+struct lcmt_round_belt_state
+{
+    int64_t utime;
+
+    // Name of the coordinate frame this data is expressed in
+    string frame_name;
+
+    int32_t num_control_points;
+    // control points of the spline
+    float control_point_positions [num_control_points][3];
+
+    int32_t num_points;
+    // xyz positions of points
+    float point_positions [num_points][3];
+}

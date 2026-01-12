@@ -6,6 +6,10 @@ group "simulations" {
 }
 
 group "operator" {
+    cmd "deformable_state_converter" {
+        exec = "bazel-bin/examples/magna/output_round_belt_state_sim";
+        host = "localhost";
+    }
     cmd "visualizer" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer";
         host = "localhost";

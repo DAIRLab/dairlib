@@ -1,3 +1,10 @@
+group "simulations" {
+    cmd "simulator" {
+        exec = "bazel run examples/multibody/deformable/elastoplastic --config=omp --";
+        host = "mpm_sim";
+    }
+}
+
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/deform/franka_visualizer --is_simulation=true";

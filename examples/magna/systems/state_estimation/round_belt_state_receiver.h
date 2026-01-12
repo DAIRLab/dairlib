@@ -41,9 +41,9 @@ class RoundBeltStateReceiver : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
   drake::multibody::MultibodyPlant<double>& franka_plant_;
   drake::systems::Context<double>* franka_context_;
-  const std::string& end_effector_name_;
-  const std::vector<double>& taskboard_position_;
-  const std::vector<double>& taskboard_orientation_;
+  const std::string end_effector_name_;
+  const std::vector<double> taskboard_position_;
+  const std::vector<double> taskboard_orientation_;
   drake::math::RigidTransform<double> taskboard_transform_;
   drake::systems::InputPortIndex round_belt_state_wrt_taskboard_input_port_;
   drake::systems::InputPortIndex franka_state_input_port_;

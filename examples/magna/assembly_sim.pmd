@@ -10,6 +10,10 @@ group "operator" {
         exec = "bazel-bin/examples/magna/output_round_belt_state_sim";
         host = "localhost";
     }
+    cmd "round_belt_state_estimator" {
+        exec = "bazel-bin/examples/magna/round_belt_state_estimation";
+        host = "localhost";
+    }
     cmd "visualizer" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer";
         host = "localhost";

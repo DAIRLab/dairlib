@@ -71,15 +71,18 @@ drake::systems::EventStatus RoundBeltStateReceiver::UpdateBeltStateWrtRobot(
   const auto& round_belt_state_wrt_taskboard_msg =
       round_belt_state_wrt_taskboard_input
           ->get_value<dairlib::lcmt_round_belt_state>();
+  keypoint_positions_wrt_robot_.clear();
+  keypoint_positions_wrt_robot_.resize(
+      round_belt_state_wrt_taskboard_msg.num_points);
   for (int i = 0; i < round_belt_state_wrt_taskboard_msg.num_points; i++) {
     Eigen::Vector3d keypoint_position_wrt_taskboard;
     keypoint_position_wrt_taskboard
         << round_belt_state_wrt_taskboard_msg.point_positions[i][0],
         round_belt_state_wrt_taskboard_msg.point_positions[i][1],
         round_belt_state_wrt_taskboard_msg.point_positions[i][2];
-    keypoint_positions_wrt_robot_.push_back(
+    keypoint_positions_wrt_robot_[i] =
         taskboard_transform_.rotation() * keypoint_position_wrt_taskboard +
-        taskboard_transform_.translation());
+        taskboard_transform_.translation();
   }
   return drake::systems::EventStatus::Succeeded();
 }

@@ -146,7 +146,6 @@ int DoMain(int argc, char* argv[]) {
   // The LCS state represents a simplified model in which the entire Franka arm
   // is abstracted by its end effector.
 
-  // Create a Franka-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka);
   [[maybe_unused]] ModelInstanceIndex franka_index =

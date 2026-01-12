@@ -3,9 +3,9 @@
 #include "dairlib/lcmt_round_belt_state.hpp"
 #include "examples/magna/systems/state_estimation/drake_deformable_state_to_round_belt_state_converter.h"
 #include "gflags/gflags.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/system_utils.h"
 
+#include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_viewer_link_data.hpp"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"

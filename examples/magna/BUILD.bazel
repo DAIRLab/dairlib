@@ -206,8 +206,29 @@ cc_binary(
     ],
     deps = [
         "//examples/magna/systems/state_estimation:drake_deformable_state_to_round_belt_state_converter",
-        "//systems/framework:lcm_driven_loop",
         "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "round_belt_state_estimation",
+    srcs = [
+        "round_belt_state_estimation.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/magna/parameter_headers:round_belt_controller_params",
+        "//examples/magna/systems/state_estimation:round_belt_state_receiver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

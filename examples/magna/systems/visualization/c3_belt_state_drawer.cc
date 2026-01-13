@@ -141,22 +141,42 @@ drake::systems::EventStatus C3BeltStateDrawer::DrawTaskRelevantKeypoints(
   const auto* task_relevant_keypoints =
       this->EvalInputValue<dairlib::lcmt_round_belt_state>(
           context, task_relevant_keypoints_input_port_);
-  if (task_relevant_keypoints != nullptr &&
-      task_relevant_keypoints->num_points > 0) {
-    ColorSet colors = GetColorSet(is_target_state_);
-    std::string task_relevant_prefix = "c3_state_task_relevant";
-    for (int i = 0; i < task_relevant_keypoints->num_points; ++i) {
+  std::string task_relevant_prefix = "c3_state_task_relevant";
+
+  int num_points = 0;
+  if (task_relevant_keypoints != nullptr) {
+    num_points = task_relevant_keypoints->num_points;
+  }
+
+  // Draw current keypoints
+  if (num_points > 0) {
+    ColorSet colors = GetColorSet(false);
+    for (int i = 0; i < num_points; ++i) {
       std::string point_suffix = "/point_" + std::to_string(i);
       std::string path =
           c3_state_path_ + "/" + task_relevant_prefix + point_suffix;
       Vector3d kp_pos(task_relevant_keypoints->point_positions[i][0],
                       task_relevant_keypoints->point_positions[i][1],
                       task_relevant_keypoints->point_positions[i][2]);
-      meshcat_->SetObject(path, sphere_for_task_relevant_keypoint_,
-                          colors.task_relevant_keypoint_color);
+
+      // Only call SetObject for newly created points
+      if (i >= prev_num_task_relevant_keypoints_) {
+        meshcat_->SetObject(path, sphere_for_task_relevant_keypoint_,
+                            colors.task_relevant_keypoint_color);
+      }
       meshcat_->SetTransform(path, RigidTransformd(kp_pos), context.get_time());
     }
   }
+
+  // Delete any extra points from the previous call
+  for (int i = num_points; i < prev_num_task_relevant_keypoints_; ++i) {
+    std::string point_suffix = "/point_" + std::to_string(i);
+    std::string path =
+        c3_state_path_ + "/" + task_relevant_prefix + point_suffix;
+    meshcat_->Delete(path);
+  }
+
+  prev_num_task_relevant_keypoints_ = num_points;
   return drake::systems::EventStatus::Succeeded();
 }
 

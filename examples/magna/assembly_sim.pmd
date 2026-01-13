@@ -56,8 +56,10 @@ script "prepare"{
     start cmd "franka_osc";
     start cmd "hand_osc";
     start cmd "sim";
-    start cmd "visualizer";
     wait ms 50;
+    start cmd "deformable_state_converter";
+    start cmd "round_belt_state_estimator";
+    start cmd "visualizer";
 }
 
 
@@ -66,4 +68,6 @@ script "end_experiment"{
     stop cmd "franka_osc";
     stop cmd "hand_osc";
     stop cmd "sim";
+    stop cmd "deformable_state_converter";
+    stop cmd "round_belt_state_estimator";
 }

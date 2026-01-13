@@ -71,6 +71,10 @@ class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
                                    spring_arrow_radius_ * 2.0);
   const std::string c3_state_path_ = "c3_belt_state";
 
+  // Track the number of task-relevant keypoints from the previous call
+  // (mutable because DrawTaskRelevantKeypoints is const)
+  mutable int prev_num_task_relevant_keypoints_ = 0;
+
   // Helper struct for color sets
   struct ColorSet {
     drake::geometry::Rgba ee_color;

@@ -6,6 +6,23 @@ filegroup(
 )
 
 cc_library(
+    name = "elastoplastic_model_interpreter",
+    srcs = [
+        "elastoplastic_model_interpreter.cc",
+    ],
+    hdrs = [
+        "elastoplastic_model_interpreter.h",
+    ],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//common",
+        "//common:find_resource",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "mpm_model_reducer",
     srcs = [
         "mpm_model_reducer.cc",
@@ -69,6 +86,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
+        "//examples/deform:elastoplastic_model_interpreter",
         "//examples/deform:mpm_model_reducer",
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:deform_params",

@@ -12,15 +12,18 @@ namespace dairlib {
 namespace systems {
 
 using drake::systems::Context;
+using Eigen::Matrix2Xi;
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-MpmPointsToReducedModelPoints::MpmPointsToReducedModelPoints(
-    Matrix3Xd support_directions)
+MpmPointsToReducedModel::MpmPointsToReducedModel(Matrix3Xd support_directions,
+                                                 Matrix2Xi connections)
     : n_support_directions_(support_directions.cols()),
-      support_directions_(support_directions) {
-  this->set_name("MpmPointsToReducedModelPoints");
+      support_directions_(support_directions),
+      n_connections_(connections.cols()),
+      connections_(connections) {
+  this->set_name("MpmPointsToReducedModel");
 
   lcmt_material_points_input_port_ =
       this->DeclareAbstractInputPort(
@@ -28,17 +31,26 @@ MpmPointsToReducedModelPoints::MpmPointsToReducedModelPoints(
               drake::Value<dairlib::lcmt_material_points>{})
           .get_index();
 
-  lcmt_timestamped_saved_traj_output_port_ =
+  lcmt_elastoplastic_network_output_port_ =
       this->DeclareAbstractOutputPort(
-              "lcmt_timestamped_saved_traj",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &MpmPointsToReducedModelPoints::OutputReducedModelPointsLcm)
+              "lcmt_elastoplastic_network",
+              dairlib::lcmt_elastoplastic_network(),
+              &MpmPointsToReducedModel::OutputReducedModelNetworkLcm)
           .get_index();
+
+  // Pre-compute connections data for LCM message.
+  connections_data_ =
+      std::vector<std::vector<int>>(n_connections_, std::vector<int>(2, 0));
+  for (int i = 0; i < n_connections_; i++) {
+    for (int j = 0; j < 2; j++) {
+      connections_data_[i][j] = connections_.col(i)(j);
+    }
+  }
 }
 
-void MpmPointsToReducedModelPoints::OutputReducedModelPointsLcm(
+void MpmPointsToReducedModel::OutputReducedModelNetworkLcm(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_timestamped_saved_traj* output) const {
+    dairlib::lcmt_elastoplastic_network* output) const {
   // Evaluate input port to get the MPM contents.
   const auto& material_points_lcmt =
       this->EvalInputValue<dairlib::lcmt_material_points>(
@@ -68,23 +80,21 @@ void MpmPointsToReducedModelPoints::OutputReducedModelPointsLcm(
     }
   }
 
-  // Use dummy timestamps (they have to be ascending).
-  VectorXd timestamps = VectorXd::Zero(n_support_directions_);
-  for (int dir_i = 0; dir_i < n_support_directions_; dir_i++) {
-    timestamps(dir_i) = dir_i;
+  // Convert the Eigen matrices to std::vectors.
+  std::vector<std::vector<float>> points_data(n_support_directions_,
+                                              std::vector<float>(3, 0));
+  for (int i = 0; i < n_support_directions_; i++) {
+    for (int j = 0; j < 3; j++) {
+      points_data[i][j] = reduced_points.col(i)(j);
+    }
   }
 
-  // Build the output type.
-  LcmTrajectory::Trajectory reduced_points_traj;
-  reduced_points_traj.traj_name = "reduced_model_points";
-  reduced_points_traj.datatypes = std::vector<std::string>(3, "double");
-  reduced_points_traj.datapoints = reduced_points;
-  reduced_points_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory sample_traj({reduced_points_traj}, {"reduced_model_points"},
-                            "reduced_model_points", "reduced_model_points",
-                            false);
-  output->saved_traj = sample_traj.GenerateLcmObject();
+  // Set the fields of the LCM message.
   output->utime = context.get_time() * 1e6;
+  output->num_points = n_support_directions_;
+  output->num_connections = n_connections_;
+  output->points = points_data;
+  output->connections = connections_data_;
 }
 
 }  // namespace systems

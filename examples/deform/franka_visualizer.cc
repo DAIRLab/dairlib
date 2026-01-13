@@ -10,6 +10,7 @@
 
 #include "common/find_resource.h"
 #include "examples/deform/deform_utils.h"
+#include "examples/deform/elastoplastic_model_interpreter.h"
 #include "examples/deform/mpm_model_reducer.h"
 #include "examples/deform/parameter_headers/deform_settings.h"
 #include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
@@ -145,22 +146,32 @@ int do_main(int argc, char* argv[]) {
 
   // Visualize the model reduction.
   if (vis_params.visualize_model_reduction) {
-    DRAKE_ASSERT(reduced_model_params.reduction_type ==
-                 ReducedModelTypes::kSupportDirections);
+    if (reduced_model_params.reduction_type !=
+        ReducedModelTypes::kSupportDirections) {
+      throw std::runtime_error("Other model reduction types not implemented.");
+    }
     auto mpm_reducer =
-        builder.AddSystem<dairlib::systems::MpmPointsToReducedModelPoints>(
-            reduced_model_params.support_directions);
+        builder.AddSystem<dairlib::systems::MpmPointsToReducedModel>(
+            reduced_model_params.support_directions,
+            reduced_model_params.connections);
+    auto reduced_model_interpreter =
+        builder.AddSystem<dairlib::systems::ElastoPlasticModelInterpreter>(
+            meshcat, reduced_model_params.support_directions.cols());
     auto reduced_model_points_drawer =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
             FindResourceOrThrow(vis_params.model_reduction_point_model),
-            "reduced_model_points", "unused_orientation_name", "reduced",
+            "network_points", "unused_orientation_name", "reduced",
             reduced_model_params.support_directions.cols(), false,
             vis_params.model_reduction_point_color);
 
     builder.Connect(mpm_points_sub->get_output_port(),
                     mpm_reducer->get_input_port_lcmt_material_points());
-    builder.Connect(mpm_reducer->get_output_port_lcmt_timestamped_saved_traj(),
+    builder.Connect(
+        mpm_reducer->get_output_port_lcmt_elastoplastic_network(),
+        reduced_model_interpreter->get_input_port_lcmt_elastoplastic_network());
+    builder.Connect(reduced_model_interpreter
+                        ->get_output_port_points_lcmt_timestamped_saved_traj(),
                     reduced_model_points_drawer->get_input_port_trajectory());
   }
 

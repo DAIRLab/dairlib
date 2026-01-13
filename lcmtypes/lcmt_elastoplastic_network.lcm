@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_elastoplastic_network {
+  int64_t utime;
+  int32_t num_points;
+  int32_t num_connections;
+
+  float points[num_points][3];
+  int32_t connections[num_connections][2];
+}

@@ -1,5 +1,7 @@
 #include "examples/magna/systems/state_estimation/round_belt_state_receiver.h"
 
+#include <iostream>
+
 #include "systems/framework/output_vector.h"
 
 #include "drake/math/rigid_transform.h"
@@ -46,6 +48,11 @@ RoundBeltStateReceiver::RoundBeltStateReceiver(
               "round_belt_state_wrt_robot",
               &RoundBeltStateReceiver::CopyRoundBeltStateWrtRobotToOutput)
           .get_index();
+  interested_keypoints_output_port_ =
+      this->DeclareAbstractOutputPort(
+              "interested_keypoints",
+              &RoundBeltStateReceiver::CopyInterestedKeypointsToOutput)
+          .get_index();
   this->DeclareForcedDiscreteUpdateEvent(
       &RoundBeltStateReceiver::UpdateBeltStateWrtRobot);
 }
@@ -84,23 +91,54 @@ drake::systems::EventStatus RoundBeltStateReceiver::UpdateBeltStateWrtRobot(
         taskboard_transform_.rotation() * keypoint_position_wrt_taskboard +
         taskboard_transform_.translation();
   }
+
+  // Extract task-relevant keypoints
+  // Keypoints lie within [min_radius, max_radius] around the end effector
+  // and the x value is larger than the end effector's x value
+  double min_radius = 0.01;
+  double max_radius = 0.05;
+
+  interested_keypoints_positions_wrt_robot_.clear();
+  for (const auto& keypoint : keypoint_positions_wrt_robot_) {
+    double distance = (keypoint - end_effector_position_wrt_robot_).norm();
+    if (distance >= min_radius && distance <= max_radius &&
+        keypoint[0] > end_effector_position_wrt_robot_[0]) {
+      interested_keypoints_positions_wrt_robot_.push_back(keypoint);
+    }
+  }
+
   return drake::systems::EventStatus::Succeeded();
+}
+
+void RoundBeltStateReceiver::CopyKeypointsToOutput(
+    const drake::systems::Context<double>& context,
+    const std::vector<Eigen::Vector3d>& positions,
+    dairlib::lcmt_round_belt_state* output) const {
+  output->utime = context.get_time() * 1e6;
+  output->frame_name = "robot";
+  output->num_points = positions.size();
+  output->point_positions.resize(output->num_points);
+  for (int i = 0; i < output->num_points; i++) {
+    output->point_positions[i].resize(3);
+    output->point_positions[i][0] = positions[i][0];
+    output->point_positions[i][1] = positions[i][1];
+    output->point_positions[i][2] = positions[i][2];
+  }
 }
 
 void RoundBeltStateReceiver::CopyRoundBeltStateWrtRobotToOutput(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_round_belt_state* output) const {
-  output->utime = context.get_time() * 1e6;
-  output->frame_name = "robot";
-  output->num_points = keypoint_positions_wrt_robot_.size();
-  output->point_positions.resize(output->num_points);
-  for (int i = 0; i < output->num_points; i++) {
-    output->point_positions[i].resize(3);
-    output->point_positions[i][0] = keypoint_positions_wrt_robot_[i][0];
-    output->point_positions[i][1] = keypoint_positions_wrt_robot_[i][1];
-    output->point_positions[i][2] = keypoint_positions_wrt_robot_[i][2];
-  }
+  CopyKeypointsToOutput(context, keypoint_positions_wrt_robot_, output);
 }
+
+void RoundBeltStateReceiver::CopyInterestedKeypointsToOutput(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_round_belt_state* output) const {
+  CopyKeypointsToOutput(context, interested_keypoints_positions_wrt_robot_,
+                        output);
+}
+
 }  // namespace state_estimation
 }  // namespace systems
 }  // namespace magna

@@ -205,6 +205,7 @@ cc_binary(
         ":urdfs",
     ],
     deps = [
+        "//examples/magna/parameter_headers:round_belt_controller_params",
         "//examples/magna/systems/state_estimation:drake_deformable_state_to_round_belt_state_converter",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dairlib/lcmt_round_belt_state.hpp"
+
 #include "drake/geometry/meshcat.h"
 #include "drake/geometry/rgba.h"
 #include "drake/systems/framework/context.h"
@@ -25,14 +27,23 @@ class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(c3_state_input_port_);
   }
 
+  const drake::systems::InputPort<double>&
+  get_input_port_task_relevant_keypoints() const {
+    return this->get_input_port(task_relevant_keypoints_input_port_);
+  }
+
  private:
   drake::systems::EventStatus DrawC3State(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  drake::systems::EventStatus DrawTaskRelevantKeypoints(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
   drake::systems::InputPortIndex c3_state_input_port_;
+  drake::systems::InputPortIndex task_relevant_keypoints_input_port_;
 
   int num_keypoints_;
   bool is_target_state_;
@@ -49,6 +60,8 @@ class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
       drake::geometry::Cylinder(0.0025, 0.05);
   const drake::geometry::Sphere sphere_for_keypoint_ =
       drake::geometry::Sphere(0.01);
+  const drake::geometry::Sphere sphere_for_task_relevant_keypoint_ =
+      drake::geometry::Sphere(0.0015);
   const double spring_arrow_radius_ = 0.0025;
   const drake::geometry::Cylinder spring_arrow_cylinder_ =
       drake::geometry::Cylinder(spring_arrow_radius_, 1.0);
@@ -62,6 +75,7 @@ class C3BeltStateDrawer : public drake::systems::LeafSystem<double> {
   struct ColorSet {
     drake::geometry::Rgba ee_color;
     drake::geometry::Rgba keypoint_color;
+    drake::geometry::Rgba task_relevant_keypoint_color;
   };
 
   // Get color set based on whether this is target state

@@ -1,7 +1,7 @@
 #include "dairlib/lcmt_round_belt_state.hpp"
 
+#include "drake/math/rigid_transform.h"
 #include "drake/systems/framework/leaf_system.h"
-
 namespace dairlib {
 namespace examples {
 namespace magna {
@@ -11,7 +11,9 @@ namespace state_estimation {
 class DrakeDeformableStateToRoundBeltStateConverter
     : public drake::systems::LeafSystem<double> {
  public:
-  explicit DrakeDeformableStateToRoundBeltStateConverter();
+  explicit DrakeDeformableStateToRoundBeltStateConverter(
+      std::vector<double> taskboard_position,
+      std::vector<double> taskboard_orientation);
 
   const drake::systems::InputPort<double>& get_input_port_deformable_state()
       const {
@@ -28,6 +30,9 @@ class DrakeDeformableStateToRoundBeltStateConverter
       dairlib::lcmt_round_belt_state* output) const;
   drake::systems::InputPortIndex deformable_state_input_port_;
   drake::systems::OutputPortIndex round_belt_state_output_port_;
+  std::vector<double> taskboard_position_;
+  std::vector<double> taskboard_orientation_;
+  drake::math::RigidTransform<double> taskboard_transform_;
 };
 
 }  // namespace state_estimation

@@ -1,6 +1,7 @@
 #include <drake/systems/analysis/simulator.h>
 
 #include "dairlib/lcmt_round_belt_state.hpp"
+#include "examples/magna/parameter_headers/round_belt_controller_params.h"
 #include "examples/magna/systems/state_estimation/drake_deformable_state_to_round_belt_state_converter.h"
 #include "gflags/gflags.h"
 #include "systems/system_utils.h"
@@ -23,11 +24,22 @@ using drake::systems::TriggerTypeSet;
 
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_int32(publish_rate, 10, "Publish rate for round belt state in Hz");
+DEFINE_int32(publish_rate, 20, "Publish rate for round belt state in Hz");
+DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::systems::DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
+
+  // --------------------- Load parameters ---------------------- //
+  RoundBeltControllerParams round_belt_controller_params =
+      drake::yaml::LoadYamlFile<RoundBeltControllerParams>(
+          FLAGS_is_simulation ? "examples/magna/parameters/"
+                                "round_belt_controller_params_sim.yaml"
+                              : "examples/magna/parameters/"
+                                "round_belt_controller_params_hw.yaml");
+  // ------------------------------------------------------------- //
+
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   auto deformable_state_sub = builder.AddSystem(
@@ -40,7 +52,9 @@ int DoMain(int argc, char* argv[]) {
           "ROUND_BELT_STATE", lcm, TriggerTypeSet({TriggerType::kPeriodic}),
           1.0 / FLAGS_publish_rate));
   auto converter =
-      builder.AddSystem<DrakeDeformableStateToRoundBeltStateConverter>();
+      builder.AddSystem<DrakeDeformableStateToRoundBeltStateConverter>(
+          round_belt_controller_params.task_board_position,
+          round_belt_controller_params.task_board_orientation);
   builder.Connect(deformable_state_sub->get_output_port(),
                   converter->get_input_port_deformable_state());
   builder.Connect(converter->get_output_port_round_belt_state(),

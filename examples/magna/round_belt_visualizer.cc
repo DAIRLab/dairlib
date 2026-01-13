@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_round_belt_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/systems/franka_hand/franka_hand_status_bridge_out.h"
 #include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
@@ -228,7 +229,7 @@ int DoMain(int argc, char* argv[]) {
             lcm_channel_params.deformable_geometry_channel, lcm));
     auto deformable_drawer = builder.AddSystem<DeformableDrawer>(
         meshcat, "deformable", "keypoints", std::vector<int>{104, 74},
-        std::vector<std::pair<size_t, size_t>>{{0, 1}});
+        std::vector<std::pair<size_t, size_t>>{});
     builder.Connect(*deformable_drawer_sub, *deformable_drawer);
   }
 
@@ -236,6 +237,9 @@ int DoMain(int argc, char* argv[]) {
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
+  auto task_relevant_keypoints_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_round_belt_state>(
+          "TASK_RELEVANT_KEYPOINTS", lcm));
   auto c3_actual_drawer = builder.AddSystem<
       dairlib::examples::magna::systems::visualization::C3BeltStateDrawer>(
       meshcat, 1, false, 6, 3, "c3_state",
@@ -243,6 +247,8 @@ int DoMain(int argc, char* argv[]) {
       round_belt_controller_params.spring_rest_length);
   builder.Connect(c3_state_actual_sub->get_output_port(),
                   c3_actual_drawer->get_input_port_c3_state());
+  builder.Connect(task_relevant_keypoints_sub->get_output_port(),
+                  c3_actual_drawer->get_input_port_task_relevant_keypoints());
 
   // Add visualization of LCS target state
   auto c3_state_target_sub =

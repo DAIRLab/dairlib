@@ -11,7 +11,17 @@ namespace systems {
 namespace state_estimation {
 
 DrakeDeformableStateToRoundBeltStateConverter::
-    DrakeDeformableStateToRoundBeltStateConverter() {
+    DrakeDeformableStateToRoundBeltStateConverter(
+        std::vector<double> taskboard_position,
+        std::vector<double> taskboard_orientation)
+    : taskboard_position_(taskboard_position),
+      taskboard_orientation_(taskboard_orientation) {
+  taskboard_transform_ = drake::math::RigidTransform<double>(
+      drake::math::RollPitchYaw<double>(taskboard_orientation_[0],
+                                        taskboard_orientation_[1],
+                                        taskboard_orientation_[2]),
+      Eigen::Vector3d(taskboard_position_[0], taskboard_position_[1],
+                      taskboard_position_[2]));
   deformable_state_input_port_ =
       this->DeclareAbstractInputPort(
               "deformable_state", drake::Value<drake::lcmt_viewer_link_data>{})
@@ -31,7 +41,7 @@ void DrakeDeformableStateToRoundBeltStateConverter::CopyRoundBeltStateToOutput(
       this->EvalInputValue<drake::lcmt_viewer_link_data>(
           context, deformable_state_input_port_);
   output->utime = context.get_time() * 1e6;
-  output->frame_name = "robot";
+  output->frame_name = "taskboard";
   if (deformable_geometries->num_geom == 0) {
     return;
   }
@@ -43,10 +53,18 @@ void DrakeDeformableStateToRoundBeltStateConverter::CopyRoundBeltStateToOutput(
   output->num_points = num_verts;
   output->point_positions.resize(output->num_points);
   for (int i = 0; i < output->num_points; i++) {
+    Eigen::Vector3d point_position_wrt_taskboard;
+    point_position_wrt_taskboard << geom.float_data[v_start + 3 * i + 0],
+        geom.float_data[v_start + 3 * i + 1],
+        geom.float_data[v_start + 3 * i + 2];
+    point_position_wrt_taskboard = taskboard_transform_.rotation().inverse() *
+                                       point_position_wrt_taskboard -
+                                   taskboard_transform_.rotation().inverse() *
+                                       taskboard_transform_.translation();
     output->point_positions[i].resize(3);
-    output->point_positions[i][0] = geom.float_data[v_start + 3 * i + 0];
-    output->point_positions[i][1] = geom.float_data[v_start + 3 * i + 1];
-    output->point_positions[i][2] = geom.float_data[v_start + 3 * i + 2];
+    output->point_positions[i][0] = point_position_wrt_taskboard[0];
+    output->point_positions[i][1] = point_position_wrt_taskboard[1];
+    output->point_positions[i][2] = point_position_wrt_taskboard[2];
   }
   output->num_control_points = 0;
 }

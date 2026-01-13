@@ -66,6 +66,12 @@ int DoMain(int argc, char* argv[]) {
           "ROUND_BELT_STATE_WRT_ROBOT", lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
+  auto task_relevant_keypoints_pub =
+      builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
+                        dairlib::lcmt_round_belt_state>(
+          "TASK_RELEVANT_KEYPOINTS", lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
   // Create Franka plant and context
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka);
@@ -93,7 +99,9 @@ int DoMain(int argc, char* argv[]) {
                   round_belt_state_receiver->get_input_port_round_belt_state());
   builder.Connect(round_belt_state_receiver->get_output_port_keypoint_state(),
                   round_belt_state_wrt_robot_pub->get_input_port());
-
+  builder.Connect(
+      round_belt_state_receiver->get_output_port_interested_keypoints(),
+      task_relevant_keypoints_pub->get_input_port());
   // Build diagram
   auto diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(diagram);

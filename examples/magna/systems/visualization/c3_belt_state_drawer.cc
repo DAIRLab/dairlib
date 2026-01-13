@@ -1,8 +1,10 @@
 #include "examples/magna/systems/visualization/c3_belt_state_drawer.h"
 
 #include <cmath>
+#include <iostream>
 
 #include "dairlib/lcmt_c3_state.hpp"
+#include "dairlib/lcmt_round_belt_state.hpp"
 
 #include "drake/common/eigen_types.h"
 #include "drake/geometry/rgba.h"
@@ -30,12 +32,14 @@ C3BeltStateDrawer::ColorSet C3BeltStateDrawer::GetColorSet(
   if (is_target_state) {
     return {
         Rgba(1.0, 0.0, 0.0, 0.3),  // Red (semi-transparent) for end-effector
-        Rgba(0.0, 1.0, 0.0, 0.3)   // Green (semi-transparent) for keypoints
+        Rgba(0.0, 1.0, 0.0, 0.3),  // Green (semi-transparent) for keypoints
+        {}  // Task-relevant keypoints not drawn for target state
     };
   } else {
     return {
         Rgba(0.0, 0.0, 1.0, 0.7),  // Blue for end-effector
-        Rgba(0.0, 0.8, 1.0, 0.7)   // Cyan for keypoints
+        Rgba(0.0, 0.8, 1.0, 0.7),  // Cyan for keypoints
+        Rgba(1.0, 0.65, 0.0, 0.9)  // Orange for task-relevant keypoints
     };
   }
 }
@@ -61,6 +65,16 @@ C3BeltStateDrawer::C3BeltStateDrawer(
       this->DeclareAbstractInputPort(port_name,
                                      drake::Value<dairlib::lcmt_c3_state>{})
           .get_index();
+  // Only declare task-relevant keypoints port for non-target state
+  if (!is_target_state_) {
+    task_relevant_keypoints_input_port_ =
+        this->DeclareAbstractInputPort(
+                "lcmt_round_belt_state: task_relevant_keypoints",
+                drake::Value<dairlib::lcmt_round_belt_state>{})
+            .get_index();
+    DeclarePerStepDiscreteUpdateEvent(
+        &C3BeltStateDrawer::DrawTaskRelevantKeypoints);
+  }
   last_update_time_index_ = this->DeclareDiscreteState(1);
 
   meshcat_->SetProperty(c3_state_path_, "visible", true, 0);
@@ -119,6 +133,31 @@ C3BeltStateDrawer::C3BeltStateDrawer(
   }
 
   DeclarePerStepDiscreteUpdateEvent(&C3BeltStateDrawer::DrawC3State);
+}
+
+drake::systems::EventStatus C3BeltStateDrawer::DrawTaskRelevantKeypoints(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  const auto* task_relevant_keypoints =
+      this->EvalInputValue<dairlib::lcmt_round_belt_state>(
+          context, task_relevant_keypoints_input_port_);
+  if (task_relevant_keypoints != nullptr &&
+      task_relevant_keypoints->num_points > 0) {
+    ColorSet colors = GetColorSet(is_target_state_);
+    std::string task_relevant_prefix = "c3_state_task_relevant";
+    for (int i = 0; i < task_relevant_keypoints->num_points; ++i) {
+      std::string point_suffix = "/point_" + std::to_string(i);
+      std::string path =
+          c3_state_path_ + "/" + task_relevant_prefix + point_suffix;
+      Vector3d kp_pos(task_relevant_keypoints->point_positions[i][0],
+                      task_relevant_keypoints->point_positions[i][1],
+                      task_relevant_keypoints->point_positions[i][2]);
+      meshcat_->SetObject(path, sphere_for_task_relevant_keypoint_,
+                          colors.task_relevant_keypoint_color);
+      meshcat_->SetTransform(path, RigidTransformd(kp_pos), context.get_time());
+    }
+  }
+  return drake::systems::EventStatus::Succeeded();
 }
 
 drake::systems::EventStatus C3BeltStateDrawer::DrawC3State(

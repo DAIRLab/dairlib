@@ -7,6 +7,7 @@
 #include <drake/systems/framework/leaf_system.h>
 
 #include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_round_belt_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
@@ -40,6 +41,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
+  }
+  const drake::systems::InputPort<double>&
+  get_input_port_task_relevant_keypoints() const {
+    return this->get_input_port(task_relevant_keypoints_input_port_);
   }
 
   // Output ports
@@ -158,6 +163,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
+  drake::systems::InputPortIndex task_relevant_keypoints_input_port_;
   drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex traj_planned_keypoints_port_;
   drake::systems::OutputPortIndex gripper_pos_command_port_;
@@ -206,7 +212,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                                    // dwell)
   // MPC target management
   drake::systems::DiscreteStateIndex mpc_current_target_index_;
-  std::vector<Eigen::VectorXd> mpc_target_lcs_states_;
+  mutable std::vector<Eigen::VectorXd> mpc_target_lcs_states_;
 
   // MPC solver
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;
@@ -229,6 +235,14 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable bool mpc_reached_target_ = false;
 
   mutable bool track_ee_force_ = true;
+
+  // Task-relevant keypoints storage
+  mutable std::vector<std::vector<double>> task_relevant_keypoints_;
+  mutable double task_relevant_keypoints_avg_z_ = 0.0;
+  mutable double target_ee_height_ =
+      0.0;  // difference between the average z and the height of the small
+            // pulley's groove
+  double groove_height_ = 0.038;
 };
 
 }  // namespace magna

@@ -8,6 +8,7 @@
 #include "common/update_context.h"
 #include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_force.hpp"
+#include "dairlib/lcmt_round_belt_state.hpp"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
 #include "examples/magna/parameter_headers/target_poses.h"
 #include "solvers/c3_output.h"
@@ -133,6 +134,11 @@ AssemblyController::AssemblyController(
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
+  task_relevant_keypoints_input_port_ =
+      this->DeclareAbstractInputPort(
+              "task_relevant_keypoints",
+              drake::Value<dairlib::lcmt_round_belt_state>{})
+          .get_index();
 
   // Output ports
   traj_execute_port_ =
@@ -215,6 +221,13 @@ AssemblyController::AssemblyController(
     std::cout << "Found " << target_poses_.size()
               << " target(s). Initial phase set to MoveToTarget." << std::endl;
   }
+
+  // Retrieve the height of the small pulley's groove
+  // TODO: Remove hardcoded value 0.0248
+  groove_height_ =
+      plant_.GetBodyByName("board").EvalPoseInWorld(*context_).translation()(
+          2) +
+      0.0248;
 }
 
 AssemblyController::DiscreteStateData AssemblyController::ExtractDiscreteState(
@@ -289,6 +302,28 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
 
   const drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
   const double t_context = lcs_x_curr->get_timestamp();
+
+  // Extract task-relevant keypoints from input port
+  const auto& task_relevant_keypoints_msg =
+      this->EvalInputValue<dairlib::lcmt_round_belt_state>(
+          context, task_relevant_keypoints_input_port_);
+  if (task_relevant_keypoints_msg != nullptr) {
+    const int num_points = task_relevant_keypoints_msg->num_points;
+    task_relevant_keypoints_.clear();
+    task_relevant_keypoints_.resize(num_points);
+    double z_sum = 0.0;
+    for (int i = 0; i < num_points; ++i) {
+      task_relevant_keypoints_[i] = {
+          task_relevant_keypoints_msg->point_positions[i][0],
+          task_relevant_keypoints_msg->point_positions[i][1],
+          task_relevant_keypoints_msg->point_positions[i][2]};
+      z_sum += task_relevant_keypoints_msg->point_positions[i][2];
+    }
+    task_relevant_keypoints_avg_z_ =
+        (num_points > 0) ? z_sum / num_points : 0.038;  // default value
+    target_ee_height_ =
+        groove_height_ + x_lcs_curr[2] - task_relevant_keypoints_avg_z_;
+  }
 
   // Extract and validate discrete state
   DiscreteStateData state_data = ExtractDiscreteState(*discrete_state);
@@ -371,6 +406,12 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               static_cast<int>(mpc_target_lcs_states_.size())) {
         const VectorXd& x_lcs_des =
             mpc_target_lcs_states_[state_data.mpc_current_target_idx];
+
+        // Adjust the MPC target z position to align the keypoints with the
+        // small pulley's groove
+        if (state_data.mpc_current_target_idx == 0) {
+          mpc_target_lcs_states_[0][2] = target_ee_height_;
+        }
         GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
                               &execution_lcm_traj_,
                               &planned_keypoints_lcm_traj_, &state_data);
@@ -730,7 +771,7 @@ void AssemblyController::GenerateMPCTrajectory(
     state_data->mpc_current_target_idx++;
     // round_belt_controller_params_.mpc_orientation_tolerance = 0.3;
     // round_belt_controller_params_.mpc_position_tolerance = 0.02;
-    if (state_data->mpc_current_target_idx >= 2){
+    if (state_data->mpc_current_target_idx >= 2) {
       track_ee_force_ = false;
     }
     if (state_data->mpc_current_target_idx >=

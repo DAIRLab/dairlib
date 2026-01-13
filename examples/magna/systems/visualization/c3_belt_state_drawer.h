@@ -1,7 +1,5 @@
 #pragma once
 
-#include "dairlib/lcmt_round_belt_state.hpp"
-
 #include "drake/geometry/meshcat.h"
 #include "drake/geometry/rgba.h"
 #include "drake/systems/framework/context.h"

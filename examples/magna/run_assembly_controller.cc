@@ -4,6 +4,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_output.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
+#include "dairlib/lcmt_round_belt_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
 #include "examples/magna/parameter_headers/lcm_channel_params.h"
@@ -182,6 +183,11 @@ int DoMain(int argc, char* argv[]) {
   auto robot_state_receiver =
       builder.AddSystem<dairlib::systems::RobotOutputReceiver>(plant_franka);
 
+  // Subscribe to TASK_RELEVANT_KEYPOINTS channel for task-relevant keypoints
+  auto task_relevant_keypoints_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_round_belt_state>(
+          "TASK_RELEVANT_KEYPOINTS", &lcm));
+
   // Wire up connections
   // Robot state -> Receiver -> Kinematics -> AssemblyController (LCS state)
   builder.Connect(robot_state_sub->get_output_port(),
@@ -190,6 +196,10 @@ int DoMain(int argc, char* argv[]) {
                   franka_kinematics->get_input_port_franka_state());
   builder.Connect(franka_kinematics->get_output_port_lcs_state(),
                   assembly_controller->get_input_port_lcs_state());
+  // Task-relevant keypoints -> AssemblyController
+  builder.Connect(
+      task_relevant_keypoints_sub->get_output_port(),
+      assembly_controller->get_input_port_task_relevant_keypoints());
   // ---------------------------------------------------  //
 
   // ----- Publish current/target LCS state via LCM messages ----- //

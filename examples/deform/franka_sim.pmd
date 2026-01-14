@@ -21,6 +21,10 @@ group "controllers" {
         exec = "bazel-bin/examples/deform/franka_osc_controller --is_simulation=true";
         host = "localhost";
     }
+    cmd "sampling_c3" {
+        exec = "bazel-bin/examples/deform/franka_deform_controller --is_simulation=true";
+        host = "localhost";
+    }
 }
 
 group "debug" {

@@ -3,6 +3,7 @@
 #include <dairlib/lcmt_c3_forces.hpp>
 #include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_elastoplastic_network.hpp>
 #include <dairlib/lcmt_material_points.hpp>
 #include <dairlib/lcmt_robot_output.hpp>
 #include <drake/systems/primitives/multiplexer.h>
@@ -11,7 +12,6 @@
 #include "common/find_resource.h"
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/elastoplastic_model_interpreter.h"
-#include "examples/deform/mpm_model_reducer.h"
 #include "examples/deform/parameter_headers/deform_settings.h"
 #include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
@@ -146,14 +146,9 @@ int do_main(int argc, char* argv[]) {
 
   // Visualize the model reduction.
   if (vis_params.visualize_model_reduction) {
-    if (reduced_model_params.reduction_type !=
-        ReducedModelTypes::kSupportDirections) {
-      throw std::runtime_error("Other model reduction types not implemented.");
-    }
-    auto mpm_reducer =
-        builder.AddSystem<dairlib::systems::MpmPointsToReducedModel>(
-            reduced_model_params.support_directions,
-            reduced_model_params.connections);
+    auto reduced_model_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_elastoplastic_network>(
+            lcm_channel_params.reduced_model_channel, lcm));
     auto reduced_model_interpreter =
         builder.AddSystem<dairlib::systems::ElastoPlasticModelInterpreter>(
             meshcat, reduced_model_params.support_directions.cols(),
@@ -166,10 +161,8 @@ int do_main(int argc, char* argv[]) {
             reduced_model_params.support_directions.cols(), false,
             vis_params.reduced_model_color);
 
-    builder.Connect(mpm_points_sub->get_output_port(),
-                    mpm_reducer->get_input_port_lcmt_material_points());
     builder.Connect(
-        mpm_reducer->get_output_port_lcmt_elastoplastic_network(),
+        reduced_model_sub->get_output_port(),
         reduced_model_interpreter->get_input_port_lcmt_elastoplastic_network());
     builder.Connect(reduced_model_interpreter
                         ->get_output_port_points_lcmt_timestamped_saved_traj(),

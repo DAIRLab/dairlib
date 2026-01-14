@@ -41,6 +41,29 @@ cc_library(
 )
 
 cc_binary(
+    name = "franka_deform_controller",
+    srcs = ["franka_deform_controller.cc"],
+    data = [
+        ":models",
+        "@drake_models//:franka_description",
+        "//examples/deform:params_yamls",
+    ],
+    deps = [
+        "//examples/deform:deform_utils",
+        "//examples/deform/parameter_headers:deform_params",
+        "//examples/deform:mpm_model_reducer",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "hand_visualizer",
     srcs = ["hand_visualizer.cc"],
     data = [
@@ -87,10 +110,10 @@ cc_binary(
     ],
     deps = [
         "//examples/deform:elastoplastic_model_interpreter",
-        "//examples/deform:mpm_model_reducer",
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:deform_params",
         "//common",
+        "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems/senders:senders",

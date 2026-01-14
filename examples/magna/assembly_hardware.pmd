@@ -3,6 +3,10 @@ group "operator" {
         exec = "bazel-bin/examples/magna/round_belt_visualizer --is_simulation=false --lcm_url=udpm://239.255.76.67:7667?ttl=1";
         host = "control_pc";
     }
+    cmd "round_belt_state_estimator" {
+        exec = "bazel-bin/examples/magna/round_belt_state_estimation --is_simulation=false --lcm_url=udpm://239.255.76.67:7667?ttl=1";
+        host = "control_pc";
+    }
 }
 
 group "controllers" {    

@@ -58,7 +58,7 @@ int DoMain(int argc, char* argv[]) {
           round_belt_controller_params.lcm_channels.franka_state_channel, lcm));
   auto round_belt_state_wrt_taskboard_sub = builder.AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<
-          dairlib::lcmt_round_belt_state>("ROUND_BELT_STATE", lcm));
+          dairlib::lcmt_round_belt_state>("RoundBeltState", lcm));
 
   auto round_belt_state_wrt_robot_pub =
       builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
@@ -110,7 +110,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   dairlib::systems::LcmDrivenLoop<dairlib::lcmt_round_belt_state> loop(
-      &drake_lcm, shared_diagram, round_belt_state_receiver, "ROUND_BELT_STATE",
+      &drake_lcm, shared_diagram, round_belt_state_receiver, "RoundBeltState",
       true);
   drake::log()->info("Round belt state estimation started");
   loop.Simulate(std::numeric_limits<double>::infinity());

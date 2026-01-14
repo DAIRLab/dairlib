@@ -15,7 +15,7 @@ mpm_point_size: 0.005
 
 visualize_model_reduction: true
 model_reduction_point_model: examples/deform/models/reduced_mpm_point.urdf
-model_reduction_point_color: [0.8, 0.8, 0.2]
+reduced_model_color: [0.8, 0.8, 0.2]
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.

@@ -24,9 +24,16 @@ using Eigen::VectorXd;
 /// of translating it into a saved traj and using LcmPoseDrawer.
 ElastoPlasticModelInterpreter::ElastoPlasticModelInterpreter(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    int n_network_points)
+    int n_network_points, VectorXd color)
     : meshcat_(meshcat), n_network_points_(n_network_points) {
   this->set_name("ElastoPlasticModelInterpreter");
+
+  if (color.size() == 3) {
+    connection_color_ =
+        drake::geometry::Rgba(color(0), color(1), color(2), 1.0);
+  } else {
+    connection_color_ = drake::geometry::Rgba(0.8, 0.8, 0.2, 1.0);
+  }
 
   lcmt_elastoplastic_network_input_port_ =
       this->DeclareAbstractInputPort(

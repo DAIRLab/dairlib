@@ -156,14 +156,15 @@ int do_main(int argc, char* argv[]) {
             reduced_model_params.connections);
     auto reduced_model_interpreter =
         builder.AddSystem<dairlib::systems::ElastoPlasticModelInterpreter>(
-            meshcat, reduced_model_params.support_directions.cols());
+            meshcat, reduced_model_params.support_directions.cols(),
+            vis_params.reduced_model_color);
     auto reduced_model_points_drawer =
         builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
             FindResourceOrThrow(vis_params.model_reduction_point_model),
             "network_points", "unused_orientation_name", "reduced",
             reduced_model_params.support_directions.cols(), false,
-            vis_params.model_reduction_point_color);
+            vis_params.reduced_model_color);
 
     builder.Connect(mpm_points_sub->get_output_port(),
                     mpm_reducer->get_input_port_lcmt_material_points());

@@ -21,7 +21,7 @@ class ElastoPlasticModelInterpreter
  public:
   ElastoPlasticModelInterpreter(
       const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-      int n_network_points);
+      int n_network_points, Eigen::VectorXd color);
 
   // Input port
   const drake::systems::InputPort<double>&
@@ -58,8 +58,7 @@ class ElastoPlasticModelInterpreter
   const drake::geometry::Cylinder cylinder_ =
       drake::geometry::Cylinder(0.002, 1.0);
   const std::string connection_path_ = "elastoplastic_connections";
-  drake::geometry::Rgba connection_color_ =
-      drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
+  drake::geometry::Rgba connection_color_;
 };
 
 }  // namespace systems

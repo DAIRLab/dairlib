@@ -6,7 +6,7 @@
 
 #include "assembly_c3_options.h"
 #include "lcm_channel_params.h"
-#include "target_poses.h"
+#include "osc_target_poses.h"
 #include "visualizer_params.h"
 
 #include "drake/common/yaml/yaml_io.h"
@@ -33,11 +33,11 @@ struct RoundBeltControllerParams {
 
   std::string assembly_c3_options_file;
   std::string lcm_channels_file;
-  std::string target_poses_file;
   std::string visualizer_params_file;
   AssemblyC3Options assembly_c3_options;
   MagnaLcmChannels lcm_channels;
-  dairlib::examples::magna::TargetPosesParams target_poses;
+  std::vector<dairlib::examples::magna::SingleOSCTargetPose> osc_target_poses;
+  std::vector<Eigen::VectorXd> target_lcs_states;
   MagnaVisualizerParams visualizer_params;
 
   template <typename Archive>
@@ -53,43 +53,33 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(task_board_orientation));
     a->Visit(DRAKE_NVP(target_lcs_positions));
     a->Visit(DRAKE_NVP(fixed_keypoint_position));
+    a->Visit(DRAKE_NVP(osc_target_poses));
     a->Visit(DRAKE_NVP(predefined_motion_position_tolerance));
     a->Visit(DRAKE_NVP(predefined_motion_orientation_tolerance));
     a->Visit(DRAKE_NVP(mpc_position_tolerance));
     a->Visit(DRAKE_NVP(mpc_orientation_tolerance));
     a->Visit(DRAKE_NVP(assembly_c3_options_file));
     a->Visit(DRAKE_NVP(lcm_channels_file));
-    a->Visit(DRAKE_NVP(target_poses_file));
     a->Visit(DRAKE_NVP(visualizer_params_file));
 
     // Initialize target_lcs_states after loading from YAML
     InitTargetLcsStates();
 
+    // Load other yaml files
     assembly_c3_options =
         drake::yaml::LoadYamlFile<AssemblyC3Options>(assembly_c3_options_file);
     lcm_channels =
         drake::yaml::LoadYamlFile<MagnaLcmChannels>(lcm_channels_file);
     visualizer_params = drake::yaml::LoadYamlFile<MagnaVisualizerParams>(
         visualizer_params_file);
-    target_poses =
-        drake::yaml::LoadYamlFile<dairlib::examples::magna::TargetPosesParams>(
-            target_poses_file);
-  }
-
-  /// Get target LCS states as Eigen vectors (positions + zero velocities).
-  const std::vector<Eigen::VectorXd>& GetTargetLcsStates() const {
-    return target_lcs_states_;
   }
 
  private:
-  // Converted target LCS states (positions + zero velocities)
-  std::vector<Eigen::VectorXd> target_lcs_states_;
-
   /// Convert target_lcs_positions to vector of Eigen::VectorXd and store in
   /// target_lcs_states_. Each target position is padded with zeros for
   /// velocities to form full LCS state (state_dim = 2 * position_dim).
   void InitTargetLcsStates() {
-    target_lcs_states_.clear();
+    target_lcs_states.clear();
     if (target_lcs_positions.empty()) {
       return;
     }
@@ -109,7 +99,7 @@ struct RoundBeltControllerParams {
       Eigen::VectorXd positions = Eigen::Map<const Eigen::VectorXd>(
           target_pos.data(), target_pos.size());
       target_x_lcs.segment(0, positions.size()) = positions;
-      target_lcs_states_.push_back(target_x_lcs);
+      target_lcs_states.push_back(target_x_lcs);
     }
   }
 };

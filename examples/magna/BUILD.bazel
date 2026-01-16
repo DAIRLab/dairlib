@@ -147,7 +147,7 @@ cc_library(
         "//common:update_context",
         "//examples/magna/parameter_headers:assembly_c3_options",
         "//examples/magna/parameter_headers:round_belt_controller_params",
-        "//examples/magna/parameter_headers:target_poses",
+        "//examples/magna/parameter_headers:osc_target_poses",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",

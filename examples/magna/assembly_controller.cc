@@ -10,7 +10,7 @@
 #include "dairlib/lcmt_force.hpp"
 #include "dairlib/lcmt_round_belt_state.hpp"
 #include "examples/magna/parameter_headers/assembly_c3_options.h"
-#include "examples/magna/parameter_headers/target_poses.h"
+#include "examples/magna/parameter_headers/osc_target_poses.h"
 #include "solvers/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -59,8 +59,8 @@ AssemblyController::AssemblyController(
       assembly_c3_options_(round_belt_controller_params.assembly_c3_options),
       N_(round_belt_controller_params.assembly_c3_options.N),
       dt_(round_belt_controller_params.assembly_c3_options.dt),
-      mpc_target_lcs_states_(round_belt_controller_params.GetTargetLcsStates()),
-      target_poses_(round_belt_controller_params.target_poses.ToTargetPoses()),
+      mpc_target_lcs_states_(round_belt_controller_params.target_lcs_states),
+      osc_target_poses_(round_belt_controller_params.osc_target_poses),
       verbose_(verbose) {
   this->set_name("assembly_controller");
 
@@ -194,7 +194,7 @@ AssemblyController::AssemblyController(
 
   // Discrete state for phase tracking
   // Initialize phase based on whether we have targets
-  AssemblyPhase initial_phase = target_poses_.empty()
+  AssemblyPhase initial_phase = osc_target_poses_.empty()
                                     ? AssemblyPhase::kMPC
                                     : AssemblyPhase::kMoveToTarget;
   phase_index_ = this->DeclareDiscreteState(
@@ -215,10 +215,10 @@ AssemblyController::AssemblyController(
   planned_keypoints_lcm_traj_ = dairlib::LcmTrajectory();
   c3_forces_output_ = dairlib::lcmt_c3_forces();
 
-  if (target_poses_.empty()) {
+  if (osc_target_poses_.empty()) {
     std::cout << "No targets found. Initial phase set to MPC." << std::endl;
   } else {
-    std::cout << "Found " << target_poses_.size()
+    std::cout << "Found " << osc_target_poses_.size()
               << " target(s). Initial phase set to MoveToTarget." << std::endl;
   }
 
@@ -265,7 +265,7 @@ bool AssemblyController::ShouldAdvanceToNextTarget(
     double target_reached_time) const {
   // Validate target index
   if (target_index < 0 ||
-      target_index >= static_cast<int>(target_poses_.size())) {
+      target_index >= static_cast<int>(osc_target_poses_.size())) {
     return false;
   }
 
@@ -275,7 +275,7 @@ bool AssemblyController::ShouldAdvanceToNextTarget(
   }
 
   // Target is reached - check dwell time
-  const TargetPose& target_pose = target_poses_[target_index];
+  const SingleOSCTargetPose& target_pose = osc_target_poses_[target_index];
 
   // If no dwell time required, can advance immediately
   if (target_pose.dwell_seconds <= 0.0) {
@@ -330,7 +330,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   state_data.plan_start_time = t_context;
 
   // If no targets exist, ensure we're in MPC phase
-  if (target_poses_.empty()) {
+  if (osc_target_poses_.empty()) {
     if (state_data.current_phase != AssemblyPhase::kMPC) {
       std::cout << "No targets available. Switching to MPC phase." << std::endl;
       state_data.current_phase = AssemblyPhase::kMPC;
@@ -340,17 +340,18 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
     // Validate and correct target index if we have targets
     if (state_data.current_target_idx < 0 ||
         state_data.current_target_idx >=
-            static_cast<int>(target_poses_.size())) {
+            static_cast<int>(osc_target_poses_.size())) {
       state_data.current_target_idx = 0;
       state_data.target_reached_time = -1.0;
     }
   }
 
   // Handle target progression in kMoveToTarget phase
-  if (!target_poses_.empty() &&
+  if (!osc_target_poses_.empty() &&
       state_data.current_phase == AssemblyPhase::kMoveToTarget &&
       state_data.current_target_idx >= 0 &&
-      state_data.current_target_idx < static_cast<int>(target_poses_.size())) {
+      state_data.current_target_idx <
+          static_cast<int>(osc_target_poses_.size())) {
     // Check if we just reached the target
     if (IsTargetReached(x_lcs_curr, state_data.current_target_idx)) {
       // Record the time when target was first reached
@@ -370,7 +371,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
 
         // Check if all targets are completed
         if (state_data.current_target_idx >=
-            static_cast<int>(target_poses_.size())) {
+            static_cast<int>(osc_target_poses_.size())) {
           std::cout << "All targets completed! Switching to MPC phase."
                     << std::endl;
           state_data.current_phase = AssemblyPhase::kMPC;
@@ -390,9 +391,9 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   // Generate trajectory based on current phase
   switch (state_data.current_phase) {
     case AssemblyPhase::kMoveToTarget:
-      if (!target_poses_.empty() && state_data.current_target_idx >= 0 &&
+      if (!osc_target_poses_.empty() && state_data.current_target_idx >= 0 &&
           state_data.current_target_idx <
-              static_cast<int>(target_poses_.size())) {
+              static_cast<int>(osc_target_poses_.size())) {
         GenerateMoveToTargetTrajectory(x_lcs_curr, t_context,
                                        &execution_lcm_traj_,
                                        state_data.current_target_idx);
@@ -428,11 +429,11 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
 bool AssemblyController::IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
                                          int target_index) const {
   if (target_index < 0 ||
-      target_index >= static_cast<int>(target_poses_.size())) {
+      target_index >= static_cast<int>(osc_target_poses_.size())) {
     return false;
   }
 
-  const TargetPose& target_pose = target_poses_[target_index];
+  const SingleOSCTargetPose& target_pose = osc_target_poses_[target_index];
 
   // Check position
   Eigen::Vector3d current_pos = x_lcs_curr.head(3);
@@ -535,13 +536,13 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     const Eigen::VectorXd& x_lcs_curr, double t_context, LcmTrajectory* traj,
     int target_index) const {
   if (target_index < 0 ||
-      target_index >= static_cast<int>(target_poses_.size())) {
+      target_index >= static_cast<int>(osc_target_poses_.size())) {
     std::cerr << "Warning: Invalid target index: " << target_index << std::endl;
     return;
   }
 
   // Get target pose from target_poses_ vector
-  const TargetPose& target_pose = target_poses_[target_index];
+  const SingleOSCTargetPose& target_pose = osc_target_poses_[target_index];
   Eigen::Vector3d target_pos = target_pose.position;
   Eigen::Vector4d target_orientation = target_pose.orientation;
 

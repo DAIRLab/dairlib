@@ -7,12 +7,11 @@
 #include <drake/systems/framework/leaf_system.h>
 
 #include "dairlib/lcmt_c3_forces.hpp"
-#include "dairlib/lcmt_round_belt_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
+#include "parameter_headers/osc_target_poses.h"
 #include "parameter_headers/round_belt_controller_params.h"
-#include "parameter_headers/target_poses.h"
 #include "solvers/c3_output.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
@@ -227,7 +226,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   // C3 forces output
   mutable dairlib::lcmt_c3_forces c3_forces_output_;
 
-  mutable std::vector<TargetPose> target_poses_;
+  mutable std::vector<SingleOSCTargetPose> osc_target_poses_;
 
   bool verbose_;
 

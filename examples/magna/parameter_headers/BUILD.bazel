@@ -29,8 +29,8 @@ cc_library(
 )
 
 cc_library(
-    name = "target_poses",
-    hdrs = ["target_poses.h"],
+    name = "osc_target_poses",
+    hdrs = ["osc_target_poses.h"],
     deps = ["@drake//:drake_shared_library"],
 )
 
@@ -40,7 +40,7 @@ cc_library(
     deps = [
         "//examples/magna/parameter_headers:assembly_c3_options",
         "//examples/magna/parameter_headers:lcm_channel_params",
-        "//examples/magna/parameter_headers:target_poses",
+        "//examples/magna/parameter_headers:osc_target_poses",
         "//examples/magna/parameter_headers:visualizer_params",
         "@drake//:drake_shared_library",
     ],

@@ -852,10 +852,10 @@ void AssemblyController::GenerateMPCTrajectory(
     if (mpc_warmup_count_ >=
         round_belt_controller_params_.mpc_warmup_iterations) {
       is_warmup_complete_ = true;
-      std::cout << "C3 warm-up complete after " << mpc_warmup_count_
+      std::cout << "C3+ warm-up complete after " << mpc_warmup_count_
                 << " iterations" << std::endl;
-    } else {
-      std::cout << "C3 warm-up iteration " << mpc_warmup_count_ << " of "
+    } else if (mpc_warmup_count_ % 100 == 0) {
+      std::cout << "C3+ warm-up iteration " << mpc_warmup_count_ << " of "
                 << round_belt_controller_params_.mpc_warmup_iterations
                 << std::endl;
     }

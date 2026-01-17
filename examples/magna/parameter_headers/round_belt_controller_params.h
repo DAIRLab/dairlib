@@ -38,7 +38,10 @@ struct RoundBeltControllerParams {
   std::string visualizer_params_file;
   AssemblyC3Options assembly_c3_options;
   MagnaLcmChannels lcm_channels;
-  std::vector<dairlib::examples::magna::SingleOSCTargetPose> osc_target_poses;
+  std::vector<dairlib::examples::magna::SingleOSCTargetPose>
+      osc_target_poses_pre_mpc;
+  std::vector<dairlib::examples::magna::SingleOSCTargetPose>
+      osc_target_poses_post_mpc;
   std::vector<Eigen::VectorXd> target_lcs_states;
   MagnaVisualizerParams visualizer_params;
 
@@ -55,7 +58,8 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(task_board_orientation));
     a->Visit(DRAKE_NVP(target_lcs_positions));
     a->Visit(DRAKE_NVP(fixed_keypoint_position));
-    a->Visit(DRAKE_NVP(osc_target_poses));
+    a->Visit(DRAKE_NVP(osc_target_poses_pre_mpc));
+    a->Visit(DRAKE_NVP(osc_target_poses_post_mpc));
     a->Visit(DRAKE_NVP(predefined_motion_position_tolerance));
     a->Visit(DRAKE_NVP(predefined_motion_orientation_tolerance));
     a->Visit(DRAKE_NVP(mpc_position_tolerance));

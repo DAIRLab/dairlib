@@ -22,7 +22,7 @@ namespace dairlib {
 namespace examples {
 namespace magna {
 
-enum class AssemblyPhase { kMoveToTarget, kMPC };
+enum class AssemblyPhase { kMoveToTargetPreMPC, kMPC, kMoveToTargetPostMPC };
 
 class AssemblyController : public drake::systems::LeafSystem<double> {
  public:
@@ -95,9 +95,11 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   struct DiscreteStateData {
     double plan_start_time;
     AssemblyPhase current_phase;
-    int current_target_idx;
+    int current_target_idx;  // For pre-MPC targets
     double target_reached_time;
     int mpc_current_target_idx;
+    int post_mpc_target_idx;  // For post-MPC targets
+    double post_mpc_target_reached_time;
   };
 
   DiscreteStateData ExtractDiscreteState(
@@ -108,20 +110,22 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   /// Check if we need to advance to the next target
-  bool ShouldAdvanceToNextOSCTarget(const Eigen::VectorXd& x_lcs_curr,
-                                    double current_time, int target_index,
-                                    double target_reached_time) const;
+  bool ShouldAdvanceToNextOSCTarget(
+      const Eigen::VectorXd& x_lcs_curr, double current_time, int target_index,
+      double target_reached_time,
+      const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Helper functions for different phases
-  void GenerateMoveToTargetTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                      double t_context,
-                                      LcmTrajectory* execution_traj,
-                                      LcmTrajectory* planned_traj,
-                                      int target_index) const;
+  void GenerateMoveToTargetTrajectory(
+      const Eigen::VectorXd& x_lcs_curr, double t_context,
+      LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
+      int target_index,
+      const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Check if target is reached and return true if so (for kMoveToTarget phase)
-  bool IsTargetReached(const Eigen::VectorXd& x_lcs_curr,
-                       int target_index) const;
+  bool IsTargetReached(
+      const Eigen::VectorXd& x_lcs_curr, int target_index,
+      const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Check if MPC target is reached (for kMPC phase)
   bool IsMpcTargetReached(const Eigen::VectorXd& x_lcs_curr,
@@ -224,6 +228,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex mpc_current_target_index_;
   mutable std::vector<Eigen::VectorXd> mpc_target_lcs_states_;
 
+  // Post-MPC target management
+  drake::systems::DiscreteStateIndex post_mpc_target_index_;
+  drake::systems::DiscreteStateIndex post_mpc_target_reached_time_index_;
+
   // MPC solver
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;
 
@@ -240,14 +248,13 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   // C3 forces output
   mutable dairlib::lcmt_c3_forces c3_forces_output_;
 
-  mutable std::vector<SingleOSCTargetPose> osc_target_poses_;
+  mutable std::vector<SingleOSCTargetPose> osc_target_poses_pre_mpc_;
+  mutable std::vector<SingleOSCTargetPose> osc_target_poses_post_mpc_;
 
   bool verbose_;
 
   mutable bool is_solve_succeeded_ = true;
   mutable bool mpc_reached_target_ = false;
-
-  mutable bool track_ee_force_ = true;
 
   // Warm-up tracking for C3 solver
   mutable int mpc_warmup_count_ = 0;  // Number of C3 solve iterations completed

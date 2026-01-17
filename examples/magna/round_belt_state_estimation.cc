@@ -56,21 +56,25 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
                         dairlib::lcmt_robot_output>(
           round_belt_controller_params.lcm_channels.franka_state_channel, lcm));
-  auto round_belt_state_wrt_taskboard_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<
-          dairlib::lcmt_round_belt_state>("RoundBeltState", lcm));
+  auto round_belt_state_wrt_taskboard_sub =
+      builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
+                        dairlib::lcmt_round_belt_state>(
+          round_belt_controller_params.lcm_channels.round_belt_state_channel,
+          lcm));
 
   auto round_belt_state_wrt_robot_pub =
       builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
                         dairlib::lcmt_round_belt_state>(
-          "ROUND_BELT_STATE_WRT_ROBOT", lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels
+              .round_belt_state_wrt_robot_channel,
+          lcm, TriggerTypeSet({TriggerType::kForced})));
 
   auto task_relevant_keypoints_pub =
       builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
                         dairlib::lcmt_round_belt_state>(
-          "TASK_RELEVANT_KEYPOINTS", lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels
+              .round_belt_task_relevant_keypoints_channel,
+          lcm, TriggerTypeSet({TriggerType::kForced})));
 
   // Create Franka plant and context
   MultibodyPlant<double> plant_franka(0.0);

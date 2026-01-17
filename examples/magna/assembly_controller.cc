@@ -320,7 +320,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       z_sum += task_relevant_keypoints_msg->point_positions[i][2];
     }
     task_relevant_keypoints_avg_z_ =
-        (num_points > 0) ? z_sum / num_points : 0.038;  // default value
+        (num_points > 0) ? z_sum / num_points : 0.03023;  // default value
     target_ee_height_ =
         groove_height_ + x_lcs_curr[2] - task_relevant_keypoints_avg_z_;
   }

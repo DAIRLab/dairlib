@@ -186,7 +186,9 @@ int DoMain(int argc, char* argv[]) {
   // Subscribe to TASK_RELEVANT_KEYPOINTS channel for task-relevant keypoints
   auto task_relevant_keypoints_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_round_belt_state>(
-          "TASK_RELEVANT_KEYPOINTS", &lcm));
+          round_belt_controller_params.lcm_channels
+              .round_belt_task_relevant_keypoints_channel,
+          &lcm));
 
   // Wire up connections
   // Robot state -> Receiver -> Kinematics -> AssemblyController (LCS state)

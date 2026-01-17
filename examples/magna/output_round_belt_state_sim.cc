@@ -42,14 +42,17 @@ int DoMain(int argc, char* argv[]) {
 
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-  auto deformable_state_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<
-          drake::lcmt_viewer_link_data>("DRAKE_VIEWER_DEFORMABLE", lcm));
+  auto deformable_state_sub =
+      builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<
+                        drake::lcmt_viewer_link_data>(
+          round_belt_controller_params.lcm_channels.deformable_geometry_channel,
+          lcm));
 
   auto round_belt_state_pub =
       builder.AddSystem(drake::systems::lcm::LcmPublisherSystem::Make<
                         dairlib::lcmt_round_belt_state>(
-          "ROUND_BELT_STATE", lcm, TriggerTypeSet({TriggerType::kPeriodic}),
+          round_belt_controller_params.lcm_channels.round_belt_state_channel,
+          lcm, TriggerTypeSet({TriggerType::kPeriodic}),
           1.0 / FLAGS_publish_rate));
   auto converter =
       builder.AddSystem<DrakeDeformableStateToRoundBeltStateConverter>(

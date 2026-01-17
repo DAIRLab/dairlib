@@ -237,9 +237,9 @@ int DoMain(int argc, char* argv[]) {
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
-  auto task_relevant_keypoints_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_round_belt_state>(
-          "TASK_RELEVANT_KEYPOINTS", lcm));
+  auto task_relevant_keypoints_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_round_belt_state>(
+          lcm_channel_params.round_belt_task_relevant_keypoints_channel, lcm));
   auto c3_actual_drawer = builder.AddSystem<
       dairlib::examples::magna::systems::visualization::C3BeltStateDrawer>(
       meshcat, 1, false, 6, 3, "c3_state",

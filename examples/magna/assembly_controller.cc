@@ -466,10 +466,9 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
         // Check if all post-MPC targets are completed
         if (state_data.post_mpc_target_idx >=
             static_cast<int>(osc_target_poses_post_mpc_.size())) {
-          std::cout << "All post-MPC targets completed!" << std::endl;
-          // Stay in post-MPC phase but at the last target
-          state_data.post_mpc_target_idx =
-              static_cast<int>(osc_target_poses_post_mpc_.size()) - 1;
+          std::cout << "All post-MPC targets completed! Switching to Terminate."
+                    << std::endl;
+          state_data.current_phase = AssemblyPhase::kTerminate;
         } else {
           std::cout << "Moving to post-MPC target "
                     << state_data.post_mpc_target_idx << std::endl;
@@ -524,6 +523,11 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
             state_data.current_phase = AssemblyPhase::kMoveToTargetPostMPC;
             state_data.post_mpc_target_idx = 0;
             state_data.post_mpc_target_reached_time = -1.0;
+          } else {
+            std::cout << "MPC completed! No post-MPC targets. Switching to "
+                         "Terminate."
+                      << std::endl;
+            state_data.current_phase = AssemblyPhase::kTerminate;
           }
         }
       }
@@ -538,6 +542,10 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
             state_data.post_mpc_target_idx, osc_target_poses_post_mpc_);
       }
+      break;
+
+    case AssemblyPhase::kTerminate:
+      // Do nothing - controller has completed all phases
       break;
   }
 

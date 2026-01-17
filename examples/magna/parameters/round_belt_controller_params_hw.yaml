@@ -9,7 +9,7 @@ task_board_position: [0.67826, -0.192, 0.01043]
 task_board_orientation: [0.0, 0.0, 1.57079]
 target_lcs_positions:
   - [0.4809, 0.185, 0.0345, 0.00711, 0.48298, -0.09346, 0.48185, -0.1, 0.025]
-  - [0.46938, 0.1804, 0.04633, 0.0310, 0.40235, 0.4344, 0.48185, -0.1, 0.025]
+  - [0.46938, 0.1804, 0.04033, 0.0310, 0.40235, 0.4344, 0.48185, -0.1, 0.025]
 fixed_keypoint_position: [0.48185, -0.103, 0.03]
 
 # Define target poses for OSC (before MPC)
@@ -37,7 +37,13 @@ osc_target_poses_post_mpc:
     radius: -1
   - position: [0.45005, 0.1244, 0.0327]
     orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-    gripper_pos_command: -0.05
+    gripper_pos_command: 0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.45005, 0.1244, 0.05]
+    orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
+    gripper_pos_command: 0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1

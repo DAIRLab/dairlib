@@ -22,7 +22,12 @@ namespace dairlib {
 namespace examples {
 namespace magna {
 
-enum class AssemblyPhase { kMoveToTargetPreMPC, kMPC, kMoveToTargetPostMPC };
+enum class AssemblyPhase {
+  kMoveToTargetPreMPC,
+  kMPC,
+  kMoveToTargetPostMPC,
+  kTerminate
+};
 
 class AssemblyController : public drake::systems::LeafSystem<double> {
  public:

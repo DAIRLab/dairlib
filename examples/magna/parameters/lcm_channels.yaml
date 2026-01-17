@@ -8,6 +8,7 @@ osc_channel: OSC_FRANKA                         # dairlib::lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA             # dairlib::lcmt_osc_output
 
 tracking_trajectory_actor_channel: TARGET_CARTESIAN_POSE_TRAJECTORY
+planned_trajectory_channel: PLANNED_TRAJECTORY  # C3 solution trajectory (for visualization)
 radio_channel: MAGNA_RADIO                # dairlib::lcmt_radio_out
 
 franka_hand_target_position_channel: GRIPPER_COMMAND  # dairlib::lcmt_franka_hand_target_position

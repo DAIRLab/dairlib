@@ -56,6 +56,11 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(traj_planned_keypoints_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_traj_planned()
+      const {
+    return this->get_output_port(traj_planned_port_);
+  }
+
   const drake::systems::OutputPort<double>&
   get_output_port_gripper_pos_command() const {
     return this->get_output_port(gripper_pos_command_port_);
@@ -103,13 +108,15 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   /// Check if we need to advance to the next target
-  bool ShouldAdvanceToNextTarget(const Eigen::VectorXd& x_lcs_curr,
-                                 double current_time, int target_index,
-                                 double target_reached_time) const;
+  bool ShouldAdvanceToNextOSCTarget(const Eigen::VectorXd& x_lcs_curr,
+                                    double current_time, int target_index,
+                                    double target_reached_time) const;
 
   /// Helper functions for different phases
   void GenerateMoveToTargetTrajectory(const Eigen::VectorXd& x_lcs_curr,
-                                      double t_context, LcmTrajectory* traj,
+                                      double t_context,
+                                      LcmTrajectory* execution_traj,
+                                      LcmTrajectory* planned_traj,
                                       int target_index) const;
 
   /// Check if target is reached and return true if so (for kMoveToTarget phase)
@@ -126,7 +133,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                               const Eigen::MatrixXd& orientation_knots,
                               const Eigen::MatrixXd& force_knots,
                               const Eigen::VectorXd& timestamps,
-                              LcmTrajectory* traj) const;
+                              LcmTrajectory* execution_traj,
+                              LcmTrajectory* planned_traj) const;
   void GenerateGripperControlTrajectory(const Eigen::VectorXd& x_lcs_curr,
                                         double t_context, LcmTrajectory* traj,
                                         double gripper_pos_command,
@@ -148,6 +156,8 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   void OutputTrajPlannedKeypoints(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
+  void OutputTrajPlanned(const drake::systems::Context<double>& context,
+                         dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputGripperPosCommand(const drake::systems::Context<double>& context,
                                drake::lcmt_schunk_wsg_command* output) const;
   void OutputC3Forces(const drake::systems::Context<double>& context,
@@ -165,6 +175,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex task_relevant_keypoints_input_port_;
   drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex traj_planned_keypoints_port_;
+  drake::systems::OutputPortIndex traj_planned_port_;
   drake::systems::OutputPortIndex gripper_pos_command_port_;
   drake::systems::OutputPortIndex c3_forces_port_;
   drake::systems::OutputPortIndex current_target_lcs_state_port_;
@@ -223,6 +234,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   // Planned keypoints trajectory
   mutable LcmTrajectory planned_keypoints_lcm_traj_;
 
+  // Planned trajectory (C3 solution, for visualization)
+  mutable LcmTrajectory planned_lcm_traj_;
+
   // C3 forces output
   mutable dairlib::lcmt_c3_forces c3_forces_output_;
 
@@ -234,6 +248,15 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable bool mpc_reached_target_ = false;
 
   mutable bool track_ee_force_ = true;
+
+  // Warm-up tracking for C3 solver
+  mutable int mpc_warmup_count_ = 0;  // Number of C3 solve iterations completed
+  mutable bool is_warmup_complete_ = false;  // Flag indicating warm-up is done
+
+  // Last OSC target pose for warm-up holding
+  mutable Eigen::Vector3d warmup_hold_position_;
+  mutable Eigen::Vector4d warmup_hold_orientation_;  // Quaternion (w, x, y, z)
+  mutable bool warmup_pose_initialized_ = false;
 
   // Task-relevant keypoints storage
   mutable std::vector<std::vector<double>> task_relevant_keypoints_;

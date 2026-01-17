@@ -8,6 +8,7 @@ struct MagnaLcmChannels {
   std::string franka_hand_state_channel;
   std::string franka_hand_input_channel;
   std::string tracking_trajectory_actor_channel;
+  std::string planned_trajectory_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
   std::string radio_channel;
@@ -27,6 +28,7 @@ struct MagnaLcmChannels {
     a->Visit(DRAKE_NVP(franka_hand_state_channel));
     a->Visit(DRAKE_NVP(franka_hand_input_channel));
     a->Visit(DRAKE_NVP(tracking_trajectory_actor_channel));
+    a->Visit(DRAKE_NVP(planned_trajectory_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(radio_channel));

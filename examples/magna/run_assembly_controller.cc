@@ -273,10 +273,16 @@ int DoMain(int argc, char* argv[]) {
           round_belt_controller_params.lcm_channels
               .planned_keypoints_trajectory_channel,
           &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto traj_planned_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          round_belt_controller_params.lcm_channels.planned_trajectory_channel,
+          &lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_traj_execute(),
                   traj_pub->get_input_port(0));
   builder.Connect(assembly_controller->get_output_port_traj_planned_keypoints(),
                   traj_planned_keypoints_pub->get_input_port(0));
+  builder.Connect(assembly_controller->get_output_port_traj_planned(),
+                  traj_planned_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // ----- Publish C3 forces via LCM messages ----- //

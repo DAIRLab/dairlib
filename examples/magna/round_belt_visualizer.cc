@@ -263,7 +263,7 @@ int DoMain(int argc, char* argv[]) {
   // Add visualization of the planned MPC trajectory
   auto planned_ee_traj_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_actor_channel, lcm));
+          lcm_channel_params.planned_trajectory_channel, lcm));
   auto planned_obj_traj_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.planned_keypoints_trajectory_channel, lcm));

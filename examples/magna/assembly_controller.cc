@@ -153,6 +153,12 @@ AssemblyController::AssemblyController(
               &AssemblyController::OutputTrajPlannedKeypoints)
           .get_index();
 
+  traj_planned_port_ =
+      this->DeclareAbstractOutputPort("traj_planned",
+                                      dairlib::lcmt_timestamped_saved_traj(),
+                                      &AssemblyController::OutputTrajPlanned)
+          .get_index();
+
   gripper_pos_command_port_ =
       this->DeclareAbstractOutputPort(
               "gripper_pos_command", drake::lcmt_schunk_wsg_command(),
@@ -213,6 +219,7 @@ AssemblyController::AssemblyController(
   // Initialize values of output ports
   execution_lcm_traj_ = dairlib::LcmTrajectory();
   planned_keypoints_lcm_traj_ = dairlib::LcmTrajectory();
+  planned_lcm_traj_ = dairlib::LcmTrajectory();
   c3_forces_output_ = dairlib::lcmt_c3_forces();
 
   if (osc_target_poses_.empty()) {
@@ -260,7 +267,7 @@ void AssemblyController::UpdateDiscreteState(
       static_cast<double>(data.mpc_current_target_idx);
 }
 
-bool AssemblyController::ShouldAdvanceToNextTarget(
+bool AssemblyController::ShouldAdvanceToNextOSCTarget(
     const Eigen::VectorXd& x_lcs_curr, double current_time, int target_index,
     double target_reached_time) const {
   // Validate target index
@@ -363,9 +370,9 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       }
 
       // Check if we should advance to the next target
-      if (ShouldAdvanceToNextTarget(x_lcs_curr, t_context,
-                                    state_data.current_target_idx,
-                                    state_data.target_reached_time)) {
+      if (ShouldAdvanceToNextOSCTarget(x_lcs_curr, t_context,
+                                       state_data.current_target_idx,
+                                       state_data.target_reached_time)) {
         state_data.current_target_idx++;
         state_data.target_reached_time = -1.0;
 
@@ -375,6 +382,14 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
           std::cout << "All targets completed! Switching to MPC phase."
                     << std::endl;
           state_data.current_phase = AssemblyPhase::kMPC;
+
+          // Store the last OSC target pose for warm-up holding
+          const auto& last_osc_target =
+              osc_target_poses_[osc_target_poses_.size() - 1];
+          warmup_hold_position_ = last_osc_target.position;
+          warmup_hold_orientation_ = last_osc_target.orientation;
+          warmup_hold_orientation_.normalize();
+          warmup_pose_initialized_ = true;
         } else {
           std::cout << "Moving to target " << state_data.current_target_idx
                     << std::endl;
@@ -394,8 +409,14 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       if (!osc_target_poses_.empty() && state_data.current_target_idx >= 0 &&
           state_data.current_target_idx <
               static_cast<int>(osc_target_poses_.size())) {
+        // Adjust z position of the last OSC target to align the keypoints with
+        // the small pulley's groove
+        if (state_data.current_target_idx == osc_target_poses_.size() - 1) {
+          osc_target_poses_[state_data.current_target_idx].position[2] =
+              target_ee_height_;
+        }
         GenerateMoveToTargetTrajectory(x_lcs_curr, t_context,
-                                       &execution_lcm_traj_,
+                                       &execution_lcm_traj_, &planned_lcm_traj_,
                                        state_data.current_target_idx);
       }
       break;
@@ -407,12 +428,6 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               static_cast<int>(mpc_target_lcs_states_.size())) {
         const VectorXd& x_lcs_des =
             mpc_target_lcs_states_[state_data.mpc_current_target_idx];
-
-        // Adjust the MPC target z position to align the keypoints with the
-        // small pulley's groove
-        if (state_data.mpc_current_target_idx == 0) {
-          mpc_target_lcs_states_[0][2] = target_ee_height_;
-        }
         GenerateMPCTrajectory(x_lcs_curr, x_lcs_des, t_context,
                               &execution_lcm_traj_,
                               &planned_keypoints_lcm_traj_, &state_data);
@@ -503,8 +518,8 @@ void AssemblyController::AddEETrajectoriesToLcm(
     const Eigen::MatrixXd& position_knots,
     const Eigen::MatrixXd& orientation_knots,
     const Eigen::MatrixXd& force_knots, const Eigen::VectorXd& timestamps,
-    LcmTrajectory* traj) const {
-  traj->ClearTrajectories();
+    LcmTrajectory* execution_traj, LcmTrajectory* planned_traj) const {
+  execution_traj->ClearTrajectories();
 
   // Add end effector position trajectory
   LcmTrajectory::Trajectory ee_traj;
@@ -512,7 +527,7 @@ void AssemblyController::AddEETrajectoriesToLcm(
   ee_traj.datatypes = std::vector<std::string>(position_knots.rows(), "double");
   ee_traj.datapoints = position_knots;
   ee_traj.time_vector = timestamps;
-  traj->AddTrajectory(ee_traj.traj_name, ee_traj);
+  execution_traj->AddTrajectory(ee_traj.traj_name, ee_traj);
 
   // Add end effector orientation trajectory
   LcmTrajectory::Trajectory ee_orientation_traj;
@@ -521,7 +536,8 @@ void AssemblyController::AddEETrajectoriesToLcm(
       std::vector<std::string>(orientation_knots.rows(), "double");
   ee_orientation_traj.datapoints = orientation_knots;
   ee_orientation_traj.time_vector = timestamps;
-  traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  execution_traj->AddTrajectory(ee_orientation_traj.traj_name,
+                                ee_orientation_traj);
 
   // Add end effector force trajectory
   LcmTrajectory::Trajectory force_traj;
@@ -529,11 +545,19 @@ void AssemblyController::AddEETrajectoriesToLcm(
   force_traj.datatypes = std::vector<std::string>(force_knots.rows(), "double");
   force_traj.datapoints = force_knots;
   force_traj.time_vector = timestamps;
-  traj->AddTrajectory(force_traj.traj_name, force_traj);
+  execution_traj->AddTrajectory(force_traj.traj_name, force_traj);
+
+  // Copy to planned trajectory for visualization
+  planned_traj->ClearTrajectories();
+  planned_traj->AddTrajectory(ee_traj.traj_name, ee_traj);
+  planned_traj->AddTrajectory(ee_orientation_traj.traj_name,
+                              ee_orientation_traj);
+  planned_traj->AddTrajectory(force_traj.traj_name, force_traj);
 }
 
 void AssemblyController::GenerateMoveToTargetTrajectory(
-    const Eigen::VectorXd& x_lcs_curr, double t_context, LcmTrajectory* traj,
+    const Eigen::VectorXd& x_lcs_curr, double t_context,
+    LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
     int target_index) const {
   if (target_index < 0 ||
       target_index >= static_cast<int>(osc_target_poses_.size())) {
@@ -578,7 +602,7 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     force_samples.col(1) = Eigen::Vector3d::Zero();
 
     AddEETrajectoriesToLcm(knots, orientation_single, force_samples, timestamps,
-                           traj);
+                           execution_traj, planned_traj);
     return;
   }
 
@@ -756,7 +780,7 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
 
   // Add all trajectories to LCM
   AddEETrajectoriesToLcm(knots, ee_orientations, force_samples, timestamps,
-                         traj);
+                         execution_traj, planned_traj);
 }
 
 void AssemblyController::GenerateMPCTrajectory(
@@ -822,6 +846,21 @@ void AssemblyController::GenerateMPCTrajectory(
     is_solve_succeeded_ = false;
   }
 
+  // Handle warm-up: check if we've completed enough C3 solve iterations
+  if (!is_warmup_complete_) {
+    mpc_warmup_count_++;
+    if (mpc_warmup_count_ >=
+        round_belt_controller_params_.mpc_warmup_iterations) {
+      is_warmup_complete_ = true;
+      std::cout << "C3 warm-up complete after " << mpc_warmup_count_
+                << " iterations" << std::endl;
+    } else {
+      std::cout << "C3 warm-up iteration " << mpc_warmup_count_ << " of "
+                << round_belt_controller_params_.mpc_warmup_iterations
+                << std::endl;
+    }
+  }
+
   // Get solution
   vector<VectorXd> u_sol = c3_mpc_->GetInputSolution();
   vector<VectorXd> x_sol = c3_mpc_->GetStateSolution();
@@ -831,8 +870,12 @@ void AssemblyController::GenerateMPCTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, N_);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
+  // During warm-up, hold last OSC pose; otherwise use C3 solution
   for (int i = 0; i < N_; i++) {
-    if (is_solve_succeeded_) {
+    if (!is_warmup_complete_ && warmup_pose_initialized_) {
+      // Warm-up: hold last OSC target position
+      knots.col(i) = warmup_hold_position_;
+    } else if (is_solve_succeeded_) {
       knots.col(i) = x_sol[i].segment(0, 3);
     } else {
       knots.col(i) = x_desired[i].segment(0, 3);
@@ -845,14 +888,20 @@ void AssemblyController::GenerateMPCTrajectory(
   Eigen::Vector3d rpy_curr = x_lcs_curr.segment(3, 3);
   Eigen::Vector3d rpy_desired = x_desired[0].segment(3, 3);
   Eigen::Vector3d step_angle = (rpy_desired - rpy_curr) / N_;
+
   for (int i = 0; i < N_; i++) {
-    Eigen::Vector3d rpy = rpy_curr + i * step_angle;
-    RollPitchYaw<double> rpy_obj(rpy);
-    Quaterniond quat = rpy_obj.ToQuaternion();
-    quat.normalize();
-    Eigen::Vector4d q_vec;
-    q_vec << quat.w(), quat.x(), quat.y(), quat.z();
-    ee_orientations.col(i) = q_vec;
+    if (!is_warmup_complete_ && warmup_pose_initialized_) {
+      // Warm-up: hold last OSC target orientation
+      ee_orientations.col(i) = warmup_hold_orientation_;
+    } else {
+      Eigen::Vector3d rpy = rpy_curr + i * step_angle;
+      RollPitchYaw<double> rpy_obj(rpy);
+      Quaterniond quat = rpy_obj.ToQuaternion();
+      quat.normalize();
+      Eigen::Vector4d q_vec;
+      q_vec << quat.w(), quat.x(), quat.y(), quat.z();
+      ee_orientations.col(i) = q_vec;
+    }
   }
 
   // Create trajectory
@@ -873,9 +922,11 @@ void AssemblyController::GenerateMPCTrajectory(
   traj->AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
 
   // Add force trajectory from C3 solution
+  // During warm-up, use zero force; otherwise use C3 solution
   Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, N_);
 
-  if (!mpc_reached_target_ && is_solve_succeeded_ && track_ee_force_) {
+  if (is_warmup_complete_ && !mpc_reached_target_ && is_solve_succeeded_ &&
+      track_ee_force_) {
     for (int i = 0; i < N_; i++) {
       force_samples.col(i) = u_sol[i].segment(0, 3);
     }
@@ -900,6 +951,59 @@ void AssemblyController::GenerateMPCTrajectory(
   keypoints_traj.time_vector = timestamps;
   planned_keypoints_traj->AddTrajectory(keypoints_traj.traj_name,
                                         keypoints_traj);
+
+  // Add planned trajectory (C3 solution) for visualization
+  // This shows the actual C3 plan, regardless of warm-up state
+  planned_lcm_traj_.ClearTrajectories();
+
+  // Planned positions from C3 solution
+  Eigen::MatrixXd planned_knots = Eigen::MatrixXd::Zero(3, N_);
+  for (int i = 0; i < N_; i++) {
+    if (is_solve_succeeded_) {
+      planned_knots.col(i) = x_sol[i].segment(0, 3);
+    } else {
+      planned_knots.col(i) = x_desired[i].segment(0, 3);
+    }
+  }
+  LcmTrajectory::Trajectory planned_ee_traj;
+  planned_ee_traj.traj_name = "end_effector_position_target";
+  planned_ee_traj.datatypes = std::vector<std::string>(3, "double");
+  planned_ee_traj.datapoints = planned_knots;
+  planned_ee_traj.time_vector = timestamps;
+  planned_lcm_traj_.AddTrajectory(planned_ee_traj.traj_name, planned_ee_traj);
+
+  // Planned orientations (interpolated from current to desired)
+  Eigen::MatrixXd planned_orientations = Eigen::MatrixXd::Zero(4, N_);
+  for (int i = 0; i < N_; i++) {
+    Eigen::Vector3d rpy = rpy_curr + i * step_angle;
+    RollPitchYaw<double> rpy_obj(rpy);
+    Quaterniond quat = rpy_obj.ToQuaternion();
+    quat.normalize();
+    planned_orientations.col(i) =
+        Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  }
+  LcmTrajectory::Trajectory planned_orientation_traj;
+  planned_orientation_traj.traj_name = "end_effector_orientation_target";
+  planned_orientation_traj.datatypes = std::vector<std::string>(4, "double");
+  planned_orientation_traj.datapoints = planned_orientations;
+  planned_orientation_traj.time_vector = timestamps;
+  planned_lcm_traj_.AddTrajectory(planned_orientation_traj.traj_name,
+                                  planned_orientation_traj);
+
+  // Planned forces from C3 solution
+  Eigen::MatrixXd planned_forces = Eigen::MatrixXd::Zero(3, N_);
+  if (!mpc_reached_target_ && is_solve_succeeded_ && track_ee_force_) {
+    for (int i = 0; i < N_; i++) {
+      planned_forces.col(i) = u_sol[i].segment(0, 3);
+    }
+  }
+  LcmTrajectory::Trajectory planned_force_traj;
+  planned_force_traj.traj_name = "end_effector_force_target";
+  planned_force_traj.datatypes = std::vector<std::string>(3, "double");
+  planned_force_traj.datapoints = planned_forces;
+  planned_force_traj.time_vector = timestamps;
+  planned_lcm_traj_.AddTrajectory(planned_force_traj.traj_name,
+                                  planned_force_traj);
 
   // Convert C3 planned forces from contact frame to world frame
   ConvertForcesToWorldFrame(resolved_contact_pairs, lambda_sol[0]);
@@ -962,6 +1066,13 @@ void AssemblyController::OutputTrajPlannedKeypoints(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
   output->saved_traj = planned_keypoints_lcm_traj_.GenerateLcmObject();
+  output->utime = context.get_time() * 1e6;
+}
+
+void AssemblyController::OutputTrajPlanned(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output) const {
+  output->saved_traj = planned_lcm_traj_.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
 }
 

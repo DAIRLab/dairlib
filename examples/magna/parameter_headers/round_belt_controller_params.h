@@ -32,6 +32,7 @@ struct RoundBeltControllerParams {
   double mpc_orientation_tolerance;                // rad
   int mpc_warmup_iterations;  // Number of C3 solve iterations before outputting
                               // trajectory (default 0 = no warm-up)
+  bool verbose{false};        // Enable verbose debug printing
 
   std::string assembly_c3_options_file;
   std::string lcm_channels_file;
@@ -65,6 +66,7 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(mpc_position_tolerance));
     a->Visit(DRAKE_NVP(mpc_orientation_tolerance));
     a->Visit(DRAKE_NVP(mpc_warmup_iterations));
+    a->Visit(DRAKE_NVP(verbose));
     a->Visit(DRAKE_NVP(assembly_c3_options_file));
     a->Visit(DRAKE_NVP(lcm_channels_file));
     a->Visit(DRAKE_NVP(visualizer_params_file));

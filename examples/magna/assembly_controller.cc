@@ -236,6 +236,7 @@ AssemblyController::AssemblyController(
     std::cout << "Found " << osc_target_poses_pre_mpc_.size()
               << " pre-MPC target(s). Initial phase set to MoveToTargetPreMPC."
               << std::endl;
+    std::cout << "Moving to pre-MPC target 0" << std::endl;
   }
   if (!osc_target_poses_post_mpc_.empty()) {
     std::cout << "Found " << osc_target_poses_post_mpc_.size()
@@ -599,6 +600,31 @@ bool AssemblyController::IsTargetReached(
   bool orientation_reached =
       angle <
       round_belt_controller_params_.predefined_motion_orientation_tolerance;
+
+  // Print current pose and target pose with differences (if verbose)
+  if (round_belt_controller_params_.verbose) {
+    Eigen::Vector3d pos_diff = current_pos - target_pos;
+    std::cout << "IsTargetReached (target " << target_index << "):" << std::endl;
+    std::cout << "  Current position: [" << current_pos.transpose() << "]"
+              << std::endl;
+    std::cout << "  Target position:  [" << target_pos.transpose() << "]"
+              << std::endl;
+    std::cout << "  Position diff:    [" << pos_diff.transpose()
+              << "], norm=" << distance << " (tol="
+              << round_belt_controller_params_.predefined_motion_position_tolerance
+              << ")" << std::endl;
+    std::cout << "  Current orientation (RPY): [" << rpy.transpose() << "]"
+              << std::endl;
+    std::cout << "  Target orientation (quat): ["
+              << target_orientation_normalized.transpose() << "]" << std::endl;
+    std::cout << "  Orientation diff: " << angle << " rad ("
+              << angle * 180.0 / M_PI << " deg, tol="
+              << round_belt_controller_params_.predefined_motion_orientation_tolerance
+              << " rad)" << std::endl;
+    std::cout << "  Position reached: " << (position_reached ? "YES" : "NO")
+              << ", Orientation reached: " << (orientation_reached ? "YES" : "NO")
+              << std::endl;
+  }
 
   return position_reached && orientation_reached;
 }

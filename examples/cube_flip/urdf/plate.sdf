@@ -7,11 +7,21 @@
       <!-- Plate -->
       <link name="plate">
         <pose>0 0 0 0 0 0</pose>
-        <inertial><mass>0.5</mass></inertial>
+        <inertial>
+          <mass>0.5</mass>
+           <inertia>
+            <ixx>0.005</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.005</iyy>
+            <iyz>0</iyz>
+            <izz>0.01</izz>
+          </inertia>
+        </inertial>
         <visual name="plate_visual">
           <geometry>
             <cylinder>
-              <radius>0.5</radius>
+              <radius>0.2</radius>
               <length> 0.02 </length>
             </cylinder>
           </geometry>
@@ -20,13 +30,13 @@
         <collision name="plate_collision">
           <geometry>
             <cylinder>
-              <radius>0.5</radius>
-              <length> 0.05 </length>
+              <radius>0.2</radius>
+              <length> 0.02 </length>
             </cylinder>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.5</drake:mu_static>
-            <drake:mu_dynamic>0.4</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.5</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
       </link>
@@ -84,27 +94,16 @@
         <child>link_roll</child>
         <axis>
           <xyz>1 0 0</xyz>
-          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
+          <limit><lower>-0.3</lower><upper>0.3</upper></limit>
         </axis>
       </joint>
 
-      <link name="link_pitch"/>
       <joint name="plate_pitch" type="revolute">
         <parent>link_roll</parent>
-        <child>link_pitch</child>
-        <axis>
-          <xyz>0 1 0</xyz>
-          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
-        </axis>
-      </joint>
-
-
-      <joint name="plate_yaw" type="revolute">
-        <parent>link_pitch</parent>
         <child>plate</child>
         <axis>
-          <xyz>0 0 1</xyz>
-          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
+          <xyz>0 1 0</xyz>
+          <limit><lower>-0.3</lower><upper>0.3</upper></limit>
         </axis>
       </joint>
 

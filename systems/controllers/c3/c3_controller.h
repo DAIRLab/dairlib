@@ -18,6 +18,8 @@
 
 #include "drake/systems/framework/leaf_system.h"
 
+using Eigen::VectorXd;
+
 namespace dairlib {
 namespace systems {
 
@@ -65,6 +67,9 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
 
+  void UpdateQuaternionCosts(
+      const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
+
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
@@ -93,10 +98,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   drake::systems::DiscreteStateIndex x_pred_index_;
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
-  std::vector<Eigen::MatrixXd> Q_;
-  std::vector<Eigen::MatrixXd> R_;
-  std::vector<Eigen::MatrixXd> G_;
-  std::vector<Eigen::MatrixXd> U_;
+  mutable std::vector<Eigen::MatrixXd> Q_;
+  mutable std::vector<Eigen::MatrixXd> R_;
+  mutable std::vector<Eigen::MatrixXd> G_;
+  mutable std::vector<Eigen::MatrixXd> U_;
   int N_;
 };
 

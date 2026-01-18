@@ -24,6 +24,7 @@ iC3TrajectoryGenerator::iC3TrajectoryGenerator(
     : plant_(plant), // Not used
 		ic3_options_(std::move(ic3_options)), 
 		num_iters_(ic3_options.num_iters),
+    iter_to_use_(ic3_options.iter_to_use),
 		N_(ic3_options.N),
 		dt_(ic3_options.dt) {
   this->set_name("iC3_trajectory_generator");
@@ -106,8 +107,9 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 	LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
   LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
 
-	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
-    
+	//const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+  const std::string final_trajectory_name = "iteration_" + std::to_string(iter_to_use_);
+
 	const std::string orientation_trajectory_name = "end_effector_orientation_target";
 	const std::string position_trajectory_name = "end_effector_position_target";
 	const std::string force_trajectory_name = "end_effector_force_target";
@@ -115,17 +117,20 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
   if ((context.get_time() - t0) <= 3 || (context.get_time() - t0) - 3 > N_ * dt_ * 1) {
 
-		MatrixXd positions = nominal_position.replicate(1, 5);
-	
-		MatrixXd orientations = MatrixXd::Zero(4, 5);
-		MatrixXd forces = MatrixXd::Zero(3, 5);
-		MatrixXd torques = MatrixXd::Zero(3, 5);
+    // std::cout << "not tracking ic3, time: " << (context.get_time() - t0) << std::endl;
 
-		VectorXd timestamps(5);
-    for (int t = 0; t < 5; t++) {
+		MatrixXd positions = nominal_position.replicate(1, 10);
+	
+		MatrixXd orientations = MatrixXd::Zero(4, 10);
+		MatrixXd forces = MatrixXd::Zero(3, 10);
+		MatrixXd torques = MatrixXd::Zero(3, 10);
+
+		VectorXd timestamps(10);
+    for (int t = 0; t < 10; t++) {
 		  orientations(0, t) = 1;
 			// orientations(0, t) = 0.968718;
 			// orientations(2, t) = -0.248163;
+
 
 
       timestamps(t) = t * dt_;
@@ -168,7 +173,6 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     x_trajectory.HasTrajectory(final_trajectory_name) && 
       u_trajectory.HasTrajectory(final_trajectory_name)) {
 
-		std::cout << "tracking ic3" << std::endl;
 
     // Get ee position/orientation trajectories
     LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
@@ -177,6 +181,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     LcmTrajectory::Trajectory force_trajectory = u_trajectory.GetTrajectory(final_trajectory_name);
     MatrixXd force_data = force_trajectory.datapoints;
 
+    // std::cout << "tracking ic3: " << force_data.col(segment_idx).transpose() << std::endl;
+
     int ee_pos_idx = 0;
     int ee_rot_idx = 3; 
     int ee_force_idx = 0; 
@@ -184,17 +190,22 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 3);
     MatrixXd full_positions = data.middleRows(ee_pos_idx, 3);
-		MatrixXd full_forces = force_data.middleRows(0, 6);
+
+    // Set yaw = 0 manually
+		MatrixXd full_forces(6, N_);
+    //full_forces.topRows(5) = force_data;
+    
+    full_forces.middleRows(2, 4) = force_data.bottomRows(3);
 
     // std::cout << "raw orientation size: " << raw_orientations.rows() << " x " << raw_orientations.cols() << std::endl;
     // std::cout << "full position size: " << full_positions.rows() << " x " << full_positions.cols() << std::endl;
 
-    MatrixXd orientations = MatrixXd::Zero(4, 5);
-    MatrixXd positions = MatrixXd::Zero(3, 5);
-    MatrixXd forces = MatrixXd::Zero(3, 5);
-    MatrixXd torques = MatrixXd::Zero(3, 5);
+    MatrixXd orientations = MatrixXd::Zero(4, 10);
+    MatrixXd positions = MatrixXd::Zero(3, 10);
+    MatrixXd forces = MatrixXd::Zero(3, 10);
+    MatrixXd torques = MatrixXd::Zero(3, 10);
 
-    for (int i = segment_idx; i < segment_idx + 5; ++i) {
+    for (int i = segment_idx; i < segment_idx + 10; ++i) {
 				int idx;	
 				if (i > N_) {
 					idx = N_;
@@ -219,11 +230,11 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
 				forces.col(idx - segment_idx) = full_forces.col(idx).segment(ee_force_idx, 3);
         torques.col(idx - segment_idx) = full_forces.col(idx).segment(ee_torque_idx, 3);
-
+      
     }
 
-    VectorXd timestamps(5);
-    for (int t = 0; t < 5; t++) {
+    VectorXd timestamps(10);
+    for (int t = 0; t < 10; t++) {
       timestamps(t) = t * dt_ * 1;
     }
 
@@ -233,8 +244,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     orientation_traj.datapoints = orientations;
     orientation_traj.time_vector = timestamps;
 
-		std::cout << segment_idx << std::endl;
-		std::cout << orientations.col(0).transpose() << std::endl << std::endl;
+		// std::cout << segment_idx << std::endl;
+		// std::cout << orientations.col(0).transpose() << std::endl << std::endl;
 
     LcmTrajectory::Trajectory position_traj;
     position_traj.traj_name = position_trajectory_name;
@@ -278,7 +289,8 @@ void iC3TrajectoryGenerator::OutputObjectTrajectory(
 	const auto& lcm_all_x_trajectories = x_input->get_value<lcmt_timestamped_saved_traj>();
 	LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
 
-	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+	//const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+  const std::string final_trajectory_name = "iteration_" + std::to_string(iter_to_use_);
 
 	if (x_trajectory.HasTrajectory(final_trajectory_name)) {
 
@@ -332,7 +344,8 @@ void iC3TrajectoryGenerator::OutputCurrXTrajectory(
 	const auto& lcm_all_x_trajectories = x_input->get_value<lcmt_timestamped_saved_traj>();
 	LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
 
-	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+	//const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+	const std::string final_trajectory_name = "iteration_" + std::to_string(iter_to_use_);
 
 	double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
 	int segment_idx = (int) std::max(((context.get_time() - t0) - 3) / (dt_ * 1), 0.0);
@@ -344,18 +357,18 @@ void iC3TrajectoryGenerator::OutputCurrXTrajectory(
 			LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
 
 			MatrixXd data;
-			if (segment_idx < N_ - 4) {
-				data = trajectory.datapoints.middleCols(segment_idx, 5);
+			if (segment_idx < N_ - 10) {
+				data = trajectory.datapoints.middleCols(segment_idx, 10);
 			} else {
 				MatrixXd raw_data = trajectory.datapoints;
-				data = MatrixXd::Zero(raw_data.rows(), 5);
+				data = MatrixXd::Zero(raw_data.rows(), 10);
 
-				for (int i = segment_idx; i < segment_idx + 5; i++) {
-					data.col(i - segment_idx) = raw_data.col(std::min(i, N_));
+				for (int i = 0; i < 10; i++) {
+					data.col(i) = raw_data.col(N_);
 				}
 			}
-      VectorXd timestamps(5);
-      for (int t = 0; t < 5; t++) {
+      VectorXd timestamps(10);
+      for (int t = 0; t < 10; t++) {
         timestamps(t) = t * dt_;
       }
 
@@ -369,6 +382,7 @@ void iC3TrajectoryGenerator::OutputCurrXTrajectory(
                                   trajectory_name, trajectory_name, false);
 
 			output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
+
 			output_traj->utime = context.get_time() * 1e6;
 	}
 }
@@ -384,7 +398,8 @@ void iC3TrajectoryGenerator::OutputCurrUTrajectory(
 	const auto& lcm_all_u_trajectories = u_input->get_value<lcmt_timestamped_saved_traj>();
 	LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
 
-	const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+	//const std::string final_trajectory_name = "iteration_" + std::to_string(num_iters_ - 1);
+	const std::string final_trajectory_name = "iteration_" + std::to_string(iter_to_use_);
 
 	double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
 	int segment_idx = (int) std::max(((context.get_time() - t0) - 3) / (dt_ * 1), 0.0);
@@ -396,21 +411,22 @@ void iC3TrajectoryGenerator::OutputCurrUTrajectory(
 			LcmTrajectory::Trajectory trajectory = u_trajectory.GetTrajectory(final_trajectory_name);
 
 			MatrixXd data;
-			if (segment_idx < N_ - 5) {
-				data = trajectory.datapoints.middleCols(segment_idx, 5);
+			if (segment_idx < N_ - 10) {
+				data = trajectory.datapoints.middleCols(segment_idx, 10);
 			} else {
 				MatrixXd raw_data = trajectory.datapoints;
-				data = MatrixXd::Zero(raw_data.rows(), 5);
+				data = MatrixXd::Zero(raw_data.rows(), 10);
 
-				for (int i = segment_idx; i < segment_idx + 5; i++) {
+				for (int i = segment_idx; i < segment_idx + 10; i++) {
 					data.col(i - segment_idx) = raw_data.col(std::min(i, N_-1));
 				}
 			}
 
-      VectorXd timestamps(5);
-      for (int t = 0; t < 5; t++) {
+      VectorXd timestamps(10);
+      for (int t = 0; t < 10; t++) {
         timestamps(t) = t * dt_;
       }
+
 
 			LcmTrajectory::Trajectory u_traj;
       u_traj.traj_name = trajectory_name;

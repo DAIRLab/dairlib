@@ -232,6 +232,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     c.segment(2 * n_contacts, n_lambda_with_tangential) =
         J_t * dt * d_v;
   } else if (contact_model == ContactModel::kAnitescu) {
+
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);

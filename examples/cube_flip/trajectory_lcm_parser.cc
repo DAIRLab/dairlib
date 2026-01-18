@@ -65,29 +65,31 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
       LcmTrajectory::Trajectory trajectory_i = trajectory.GetTrajectory(trajectory_i_name);
       MatrixXd data = trajectory_i.datapoints;
 
-      MatrixXd orientations = MatrixXd::Zero(4, N_+1);
-      MatrixXd positions = MatrixXd::Zero(3, N_+1);
+      MatrixXd orientations = MatrixXd::Zero(4, N_);
+      MatrixXd positions = MatrixXd::Zero(3, N_);
       if (object == 0) {
-        int cube_orientation_index = 6;
-        int cube_position_index = 10;
+        int cube_orientation_index = 5;
+        int cube_position_index = 9;
 
-        orientations = data.middleRows(cube_orientation_index, 4);
-        positions = data.middleRows(cube_position_index, 3);
+        orientations = data.block(cube_orientation_index, 0, 4, N_);
+        positions = data.block(cube_position_index, 0, 3, N_);
         
       } else if (object == 1) {
         
         int plate_position_index = 0;
-        int plate_orientation_index = 3;
+        int plate_orientation_index = 3
+        ;
 
-        MatrixXd raw_orientations = data.middleRows(plate_orientation_index, 3);
-        positions = data.middleRows(plate_position_index, 3);
+        MatrixXd raw_orientations = data.block(plate_orientation_index, 0, 2, N_);
+        positions = data.block(plate_position_index, 0, 3, N_);
 
         //std::cout << positions << std::endl;
 
-        // Convert orientations from roll, pitch to quaternions
+        // Convert orientations from roll, pitch, yaw to quaternions
         for (int i = 0; i < raw_orientations.cols(); ++i) {
             double roll = raw_orientations(0, i);
             double pitch = raw_orientations(1, i);
+            //std::cout << "yaw " << yaw << std::endl;
 
             AngleAxisd rollAngle(roll, Vector3d::UnitX());
             AngleAxisd pitchAngle(pitch, Vector3d::UnitY());
@@ -101,7 +103,7 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
         std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;
       }
 
-      int downsampled_cols =  (orientations.cols() + step - 1) / step;
+      int downsampled_cols =  (orientations.cols() + step - 2) / step;
       MatrixXd orientations_downsampled(orientations.rows(), downsampled_cols);
       MatrixXd positions_downsampled(positions.rows(), downsampled_cols);
 
@@ -122,8 +124,8 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
       orientation_traj.time_vector = timestamps;
 
       std::cout << i << std::endl;
-      std::cout << "o rows " <<  orientations_downsampled.cols() << std::endl;
-      std::cout << "p rows " << positions_downsampled.cols() << std::endl << std::endl;
+      std::cout << "o cols " <<  orientations_downsampled.cols() << std::endl;
+      std::cout << "p cols " << positions_downsampled.cols() << std::endl << std::endl;
 
       LcmTrajectory::Trajectory position_traj;
       position_traj.traj_name = position_trajectory_name;

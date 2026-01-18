@@ -230,7 +230,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         translation_breaks(i)),
         translation_trajectory.value(translation_breaks(i));
   }
-  //std::cout << "object poses cols: " << object_poses.cols() << std::endl;
+  std::cout << "object poses cols: " << object_poses.cols() << std::endl;
 
   multipose_visualizers_.at(0)->DrawPoses(object_poses);
 

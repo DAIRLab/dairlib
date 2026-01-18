@@ -98,6 +98,7 @@ class iC3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
   bool publish_end_effector_orientation_ = true;
 
   int num_iters_;
+  int iter_to_use_;
   int N_;
   double dt_;
 

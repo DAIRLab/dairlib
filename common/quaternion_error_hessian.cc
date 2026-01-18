@@ -9,12 +9,49 @@ using Eigen::MatrixXd;
 namespace dairlib{
 namespace systems{
 
+Eigen::Matrix4d small_angle_hessian_at(const Eigen::Vector4d& r_in) {
+    // Ensure r is unit (or normalize)
+    Eigen::Vector4d r = r_in.normalized();
+    double r_w = r(0);
+    double r_x = r(1);
+    double r_y = r(2);
+    double r_z = r(3);
+
+    // Build M_r (4x3)
+    Eigen::Matrix<double,4,3> M;
+    M << -r_x,   -r_y,   -r_z,
+          r_w,   -r_z,    r_y,
+          r_z,    r_w,   -r_x,
+         -r_y,    r_x,    r_w;
+    M *= 0.5;
+
+    // Left pseudoinverse for full-column-rank M_r:
+    Eigen::Matrix3d MtM = M.transpose() * M;       // 3x3
+    Eigen::Matrix3d MtM_inv = MtM.inverse();       // safe: MtM is PD for unit r
+    Eigen::Matrix<double,3,4> Mplus = MtM_inv * M.transpose(); // 3x4
+
+    // Limit Hessian in quaternion coords
+    Eigen::Matrix4d H = 2.0 * (Mplus.transpose() * Mplus);     // 4x4
+
+    // Force symmetry to avoid tiny numerical asymmetry
+    H = 0.5 * (H + H.transpose());
+    return H;
+}
+    
+
 Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
     const Eigen::VectorXd& quat, const Eigen::VectorXd& quat_desired)
 {
     // Check the inputs are of expected shape.
     DRAKE_DEMAND(quat.size() == 4);
     DRAKE_DEMAND(quat_desired.size() == 4);
+
+    // If difference is very small set to closed-form limit to avoid NaN's
+    if ((quat - quat_desired).norm() < 1e-3 ||
+        std::abs(quat.dot(quat_desired) - 1.0) < 1e-3) {
+        std::cout << "quaternion fallback" << std::endl;
+        return small_angle_hessian_at(quat);
+    }
 
     // Extract the quaternion components.
     double q_w = quat(0);

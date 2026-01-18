@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<robot name="cube_v2">
+    <link name="cube">
+        <contact>
+            <!-- TODO: not sure if these values make sense -->
+            <!-- TODO: are these values even read by pybullet? -->
+            <lateral_friction value="1.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="1.0"/>
+        </contact>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.094"/>
+            <inertia ixx="0.00006619" ixy="0" ixz="0" iyy="0.00006619" iyz="0" izz="0.00006619"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="cube_v2.obj" />
+            </geometry>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="cube_v2.obj" />
+            </geometry>
+        </collision>
+    </link>
+</robot>

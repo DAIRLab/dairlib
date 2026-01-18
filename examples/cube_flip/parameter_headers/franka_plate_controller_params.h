@@ -21,6 +21,7 @@ struct FrankaPlateC3ControllerParams {
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d ee_init_position;
+  Eigen::VectorXd x_target;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -39,6 +40,7 @@ struct FrankaPlateC3ControllerParams {
 
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ee_init_position));
+    a->Visit(DRAKE_NVP(x_target));
 
   }
 };

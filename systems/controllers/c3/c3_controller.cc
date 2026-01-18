@@ -5,6 +5,7 @@
 #include "solvers/c3_qp.h"
 #include "solvers/c3_plus.h"
 #include "solvers/lcs_factory.h"
+#include "common/quaternion_error_hessian.h"
 
 namespace dairlib {
 
@@ -50,6 +51,12 @@ C3Controller::C3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
+
+  std::cout << "n_q: " << n_q_ << std::endl;
+  std::cout << "n_v: " << n_v_ << std::endl;
+  std::cout << "n_u: " << n_u_ << std::endl;
+  std::cout << "n_x: " << n_x_ << std::endl;
+
   dt_ = c3_options_.dt;
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
@@ -203,6 +210,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
 
+  std::cout << "xd: " << x_des.value().transpose() << std::endl;
+
+
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
@@ -218,6 +228,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
                      c3_options_.workspace_margins);
   }
 
+  UpdateQuaternionCosts(x_lcs, x_des.value());
+  C3Base::CostMatrices new_costs(Q_, R_, G_, U_);
+  c3_->UpdateCostMatrices(new_costs);
+  
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
   c3_->Solve(x_lcs);
@@ -245,7 +259,62 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
   }
 
+  // std::cout << "c3 sol: " << z_sol[0].transpose() << std::endl;
+  // std::cout << "c3 sol: " << z_sol[1].transpose() << std::endl;
+  // std::cout << "c3 sol: " << z_sol[2].transpose() << std::endl;
+  // std::cout << "c3 sol: " << z_sol[3].transpose() << std::endl;
+  // std::cout << "c3 sol: " << z_sol[4].transpose() << std::endl;
+
   return drake::systems::EventStatus::Succeeded();
+}
+
+void C3Controller::UpdateQuaternionCosts(
+    const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
+    
+  Q_.clear();
+  R_.clear();
+  G_.clear();
+  U_.clear();
+
+  double discount_factor = 1;
+  for (int i = 0; i < N_; i++) {
+    Q_.push_back(discount_factor * c3_options_.Q);
+    discount_factor *=  c3_options_.gamma;
+    if (i < N_) {
+      R_.push_back(discount_factor *  c3_options_.R);
+      G_.push_back(c3_options_.G);
+      U_.push_back(c3_options_.U);
+    }
+  }  
+  Q_.push_back(discount_factor * c3_options_.Q); 
+
+  int index = 5;
+      
+  Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
+  Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
+
+  Eigen::MatrixXd quat_hessian_i = hessian_of_squared_quaternion_angle_difference(quat_curr_i, quat_des_i);
+
+  // Regularize hessian so Q is always PSD
+  double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+  Eigen::MatrixXd quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+  Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+  Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+  double Q_quaternion_weight = 1000;
+  double quaternion_regularizer_fraction = 0.0;
+
+  discount_factor = 1;
+  for (int i = 0; i < N_ + 1; i++) {
+    Q_[i].block(index, index, 4, 4) = 
+      discount_factor * Q_quaternion_weight * 
+      (quat_hessian_i + quat_regularizer_1 + 
+        quaternion_regularizer_fraction * quat_regularizer_2 + quat_regularizer_3);
+    discount_factor *= c3_options_.gamma;
+
+    double Q_min_eigenval = Q_[i].eigenvalues().real().minCoeff();
+  }
+  
 }
 
 void C3Controller::OutputC3Solution(

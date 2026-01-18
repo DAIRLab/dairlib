@@ -13,8 +13,9 @@
 #include "examples/cube_flip/parameter_headers/franka_plate_lcm_channels.h"
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
 #include "examples/cube_flip/systems/iC3_trajectory_generator.h"
-#include "examples/cube_flip/systems/c3_tracking_system.h"
+#include "examples/cube_flip/systems/c3_goal_generator.h"
 #include "examples/cube_flip/systems/c3_trajectory_generator.h"
+#include "examples/cube_flip/systems/timed_gate.h"
 #include "systems/franka_kinematics.h"
 
 
@@ -181,10 +182,7 @@ int DoMain(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-
-  auto object_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
+    builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
   auto nominal_position =
       builder.AddSystem<drake::systems::ConstantVectorSource<double>>(controller_params.ee_init_position);
@@ -200,16 +198,8 @@ int DoMain(int argc, char* argv[]) {
   auto ic3_target_generator =
       builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
 
-  auto c3_tracking_system = 
-      builder.AddSystem<C3TrackingSystem>(plant_for_lcs, &plant_lcs_context, 
-        *plant_for_lcs_autodiff, plant_lcs_context_ad.get(), contact_pairs, c3_options); 
-
-
-  auto controller = 
-      builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options); 
-
-  auto c3_trajectory_generator =
-      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options); 
+	auto timed_gate = 
+			builder.AddSystem<TimedGate>(0.4);    // TODO: make this not a hard coded time
 
   auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -220,12 +210,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));   
-
-  auto reduced_order_model_receiver =
-    builder.AddSystem<systems::FrankaKinematics>(
-        plant_franka, franka_context.get(), plant_object, object_context.get(),
-        controller_params.end_effector_name, "cube",
-        controller_params.include_end_effector_orientation);
 
   builder.Connect(nominal_position->get_output_port(),
                   ic3_target_generator->get_input_port_nominal_trajectory());
@@ -241,30 +225,75 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(ic3_target_generator->get_output_port_object_trajectory(),
                     c3_object_trajectory_sender->get_input_port()); 
   } else {
+  
+    auto object_state_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+            lcm_channel_params.object_state_channel, &lcm));
+
+    auto object_state_receiver =
+        builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
+
+    auto c3_goal_generator = 
+        builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, 
+            *plant_for_lcs_autodiff, plant_lcs_context_ad.get(), contact_pairs, c3_options, controller_params.x_target); 
+
+    auto reduced_order_model_receiver =
+      builder.AddSystem<systems::FrankaKinematics>(
+          plant_franka, franka_context.get(), plant_object, object_context.get(),
+          controller_params.end_effector_name, "cube",
+          controller_params.include_end_effector_orientation);
+
+    // Set nominal position of plate to init position
+    VectorXd xd = controller_params.x_target;
+    xd.segment(0, 3) = xd.segment(0, 3) + controller_params.ee_init_position;
+
+    auto x_desired_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
+
+    auto controller = 
+        builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options); 
+
+		std::cout << "Before c3 trajectory generator" << std::endl;
+    auto c3_trajectory_generator =
+        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options); 
+		std::cout << "After c3 trajectory generator" << std::endl;
+
+    builder.Connect(object_state_sub->get_output_port(),
+                    object_state_receiver->get_input_port());
+
     builder.Connect(franka_state_receiver->get_output_port(),
                     reduced_order_model_receiver->get_input_port_franka_state());  
     builder.Connect(object_state_receiver->get_output_port(),
                     reduced_order_model_receiver->get_input_port_object_state());
 
-    builder.Connect(ic3_target_generator->get_output_port_curr_x(),
-                  c3_tracking_system->get_input_port_curr_x_trajectory());
-    builder.Connect(ic3_target_generator->get_output_port_curr_u(),
-                  c3_tracking_system->get_input_port_curr_u_trajectory());
-
-
-    builder.Connect(c3_tracking_system->get_output_port_target(),
-                    controller->get_input_port_target());
-    builder.Connect(c3_tracking_system->get_output_port_lcs(),
-                    controller->get_input_port_lcs());
     builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
-                    controller->get_input_port_lcs_state());
+            c3_goal_generator->get_input_port_state());            
+    builder.Connect(nominal_position->get_output_port(),
+            c3_goal_generator->get_input_port_nominal_position());       
+
+    builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
+        controller->get_input_port_lcs_state());
+    builder.Connect(c3_goal_generator->get_output_port_target(),
+        controller->get_input_port_target());
+    builder.Connect(c3_goal_generator->get_output_port_lcs(),
+        controller->get_input_port_lcs());
 
     builder.Connect(controller->get_output_port_c3_solution(),
                     c3_trajectory_generator->get_input_port_c3_solution());
 
+										
     builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
-                    c3_actor_trajectory_sender->get_input_port());
+                    timed_gate->get_input_port_c3_actor());
     builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+                    timed_gate->get_input_port_c3_object());
+		builder.Connect(ic3_target_generator->get_output_port_actor_trajectory(),
+                    timed_gate->get_input_port_ic3_actor());
+    builder.Connect(ic3_target_generator->get_output_port_object_trajectory(),
+                    timed_gate->get_input_port_ic3_object());
+
+		builder.Connect(timed_gate->get_output_port_actor(),
+										c3_actor_trajectory_sender->get_input_port());
+    builder.Connect(timed_gate->get_output_port_object(),
                     c3_object_trajectory_sender->get_input_port());
   }
 

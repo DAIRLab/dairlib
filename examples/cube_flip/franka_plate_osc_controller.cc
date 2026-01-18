@@ -225,7 +225,7 @@ int DoMain(int argc, char* argv[]) {
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.6 * VectorXd::Ones(1));
+                            controller_params.mid_link_target * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->AddTorqueTrackingData(std::move(end_effector_torque_tracking_data));
@@ -306,7 +306,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("end_effector_torque"));
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("franka_osc_controller"));
+  shared_diagram->set_name(("franka_plate_osc_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

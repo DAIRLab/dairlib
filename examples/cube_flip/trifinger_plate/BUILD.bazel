@@ -1,0 +1,22 @@
+cc_binary(
+    name = "trifinger_plate_sim",
+    srcs = ["trifinger_plate_sim.cc"],
+    data = [
+        "//examples/cube_flip:urdfs",
+    ],
+    deps = [
+        # ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_lcm_channels",
+        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+
+    ],
+)

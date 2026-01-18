@@ -15,6 +15,8 @@
 #include "solvers/c3_options.h"
 #include "solvers/lcs.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/lcs_factory.h"
+#include "systems/framework/timestamped_vector.h"
 
 using dairlib::LcmTrajectory;
 using dairlib::lcmt_timestamped_saved_traj;
@@ -33,25 +35,22 @@ using dairlib::solvers::LCS;
 
 namespace dairlib {
 
-class C3TrackingSystem : public drake::systems::LeafSystem<double> {
+class C3GoalGenerator : public drake::systems::LeafSystem<double> {
   public:
-    explicit C3TrackingSystem(
+    explicit C3GoalGenerator(
         MultibodyPlant<double>& plant,
         Context<double>* context,
         MultibodyPlant<AutoDiffXd>& plant_ad,
         Context<AutoDiffXd>* context_ad,
         vector<SortedPair<GeometryId>>& contact_geoms,
-        C3Options c3_options);
+        C3Options c3_options, VectorXd x_des);
 
-    const drake::systems::InputPort<double>& get_input_port_curr_x_trajectory() const {
-      return this->get_input_port(curr_x_port_);
+    const drake::systems::InputPort<double>& get_input_port_state() const {
+      return this->get_input_port(state_port_);
     }
-
-    const drake::systems::InputPort<double>& get_input_port_curr_u_trajectory() const {
-      return this->get_input_port(curr_u_port_);
+    const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
+      return this->get_input_port(nominal_position_port_);
     }
-
-
     const drake::systems::OutputPort<double>& get_output_port_target() const {
       return this->get_output_port(target_port_);
     }
@@ -67,10 +66,8 @@ class C3TrackingSystem : public drake::systems::LeafSystem<double> {
     void OutputLCS(const Context<double>& context,
                   LCS* lcs) const;
 
-    LCS MakeTimeVaryingLCS(MatrixXd x_hat, MatrixXd u_hat) const;
-
-    drake::systems::InputPortIndex curr_x_port_;
-    drake::systems::InputPortIndex curr_u_port_;
+    drake::systems::InputPortIndex state_port_;
+    drake::systems::InputPortIndex nominal_position_port_;
 
     drake::systems::OutputPortIndex target_port_;
     drake::systems::OutputPortIndex lcs_port_;
@@ -81,13 +78,17 @@ class C3TrackingSystem : public drake::systems::LeafSystem<double> {
     Context<AutoDiffXd>* context_ad_;
     vector<SortedPair<GeometryId>>& contact_geoms_;
     C3Options c3_options_;
+    VectorXd x_des_;
+
+    int N_;
 
     int n_q_;
     int n_v_;
     int n_x_;
     int n_u_;
 
-    int n_lambda_with_tangential_;
+    int n_lambda_;
+    solvers::ContactModel contact_model_;
 
 };
 

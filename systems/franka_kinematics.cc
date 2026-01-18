@@ -6,7 +6,7 @@
 namespace dairlib {
 namespace systems {
 
-// This constructor hard-coded for cube flip example
+// This constructor hard-coded for cube flip example !!!!
 FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                    Context<double>* franka_context,
                                    const MultibodyPlant<double>& object_plant,
@@ -23,6 +23,8 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       object_name_(object_name),
       include_end_effector_orientation_(include_end_effector_orientation) {
   this->set_name("franka_kinematics");
+
+
   franka_state_port_ =
       this->DeclareVectorInputPort(
               "x_franka", OutputVector<double>(franka_plant.num_positions(),
@@ -35,9 +37,9 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
               "x_object", StateVector<double>(object_plant.num_positions(),
                                                object_plant.num_velocities()))
           .get_index();
-  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
+  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 2;
   num_object_positions_ = 7;
-  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
+  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 2;
   num_object_velocities_ = 6;
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
@@ -102,12 +104,21 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
 void FrankaKinematics::ComputeLCSState(
     const drake::systems::Context<double>& context,
     FrankaKinematicsVector<double>* lcs_state) const {
+
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
+	
+	const auto* input =
+		this->EvalVectorInput(context, object_state_port_);
+	if (input == nullptr) {
+					throw std::runtime_error("object_state_port_ not connected!");
+	}
+	auto object_output_uncasted = input->value();
 
 
-  auto object_output = (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
-  
+	const StateVector<double>* object_output =
+			(StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
+
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
 
@@ -143,7 +154,7 @@ void FrankaKinematics::ComputeLCSState(
       franka_plant_.EvalBodySpatialVelocityInWorld(
           *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
   auto end_effector_rotation_rpy =
-      end_effector_pose.rotation().ToRollPitchYaw().vector();
+      end_effector_pose.rotation().ToRollPitchYaw().vector().segment(0, 2); // ignore yaw
 
   VectorXd end_effector_positions = VectorXd::Zero(num_end_effector_positions_);
   VectorXd end_effector_velocities =
@@ -156,7 +167,7 @@ void FrankaKinematics::ComputeLCSState(
     end_effector_positions << end_effector_pose.translation();
   }
   if (num_end_effector_velocities_ > 3) {
-    end_effector_velocities << end_effector_spatial_velocity.rotational(),
+    end_effector_velocities << end_effector_spatial_velocity.rotational().segment(0, 2), // ignore yaw
         end_effector_spatial_velocity.translational();
   } else {
     end_effector_velocities << end_effector_spatial_velocity.translational();
@@ -168,6 +179,7 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
+
 }
 
 }  // namespace systems

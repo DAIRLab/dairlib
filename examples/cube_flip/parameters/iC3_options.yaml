@@ -1,4 +1,4 @@
-num_iters: 20
+num_iters: 10
 add_position_constraints: true
 
 num_segments: 20
@@ -8,3 +8,4 @@ print_costs: true
 N: 100 # REMOVE after importing all options from c3 repo
 dt: 0.01 # REMOVE after importing all options from c3 repo
 
+iter_to_use: 9

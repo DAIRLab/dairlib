@@ -1,0 +1,31 @@
+cc_library( 
+  name = "fixed_input",
+    srcs = [
+        "fixed_input.cc",
+    ],
+    hdrs = [
+        "fixed_input.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "toy_system",
+    srcs = [
+        "toy_system.cc", 
+    ],
+    data = [
+        "//examples/cube_flip:urdfs"
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        ":fixed_input",
+        "@gflags"
+    ]
+)

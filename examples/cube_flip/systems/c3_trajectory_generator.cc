@@ -1,6 +1,7 @@
 #include "examples/cube_flip/systems/c3_trajectory_generator.h"
 
 #include <utility>
+#include <iostream>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -26,6 +27,8 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
     : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
   this->set_name("c3_trajectory_generator");
+
+  std::cout << "HELLO INIT" << std::endl;
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -80,24 +83,46 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
+  std::cout << "Position: " << knots.col(0).transpose() << std::endl;
+  std::cout << "Position: " << knots.col(1).transpose() << std::endl;
+  std::cout << "Position: " << knots.col(2).transpose() << std::endl;
+  std::cout << "Position: " << knots.col(3).transpose() << std::endl;
+  std::cout << "Position: " << knots.col(4).transpose() << std::endl;
+
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
   force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
+      std::vector<std::string>(3, "double");
+  force_traj.datapoints = force_samples.topRows(3);
   force_traj.time_vector = c3_solution->time_vector_.cast<double>();
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
+  std::cout << "Force: " << force_traj.datapoints.col(0).transpose() << std::endl;
+  std::cout << "Force: " << force_traj.datapoints.col(1).transpose() << std::endl;
+  std::cout << "Force: " << force_traj.datapoints.col(2).transpose() << std::endl;
+  std::cout << "Force: " << force_traj.datapoints.col(3).transpose() << std::endl;
+  std::cout << "Force: " << force_traj.datapoints.col(4).transpose() << std::endl;
+
   if (publish_end_effector_orientation_) {
+    LcmTrajectory::Trajectory torque_traj;
+    torque_traj.traj_name = "end_effector_torque_target";
+    torque_traj.datatypes =
+        std::vector<std::string>(3, "double");
+    MatrixXd torque_matrix(3, N_);
+    torque_matrix.topRows(2) = force_samples.bottomRows(2);
+    torque_traj.datapoints = torque_matrix;
+    torque_traj.time_vector = c3_solution->time_vector_.cast<double>();
+    lcm_traj.AddTrajectory(torque_traj.traj_name, torque_traj);
+
     LcmTrajectory::Trajectory end_effector_orientation_traj;
     // first 3 rows are rpy, last 3 rows are angular velocity
     MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
-    orientation_samples.topRows(3) =
-        c3_solution->x_sol_.topRows(6).bottomRows(3).cast<double>();
-    orientation_samples.bottomRows(3) = c3_solution->x_sol_.bottomRows(n_v_)
-                                            .topRows(6)
-                                            .bottomRows(3)
+    orientation_samples.topRows(2) =
+        c3_solution->x_sol_.topRows(5).bottomRows(2).cast<double>();
+    orientation_samples.bottomRows(2) = c3_solution->x_sol_.bottomRows(n_v_)
+                                            .topRows(5)
+                                            .bottomRows(2)
                                             .cast<double>();
     end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
     end_effector_orientation_traj.datatypes =

@@ -12,6 +12,7 @@
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 namespace solvers {
@@ -961,7 +962,8 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (!result.is_success()) {
-    std::cout << "CAUTION: QP Step in C3 did not succeed" << std::endl;
+    drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
+                       result.get_solution_result());
   }
   if (warm_start_) {
     UpdateWarmStarts(result, admm_iteration);

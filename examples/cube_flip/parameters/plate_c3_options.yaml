@@ -1,5 +1,5 @@
 
-admm_iter: 5
+admm_iter: 3
 rho: 0 # unused
 rho_scale: 1.1
 num_threads: 10
@@ -13,14 +13,14 @@ end_on_qp_step: true
 solve_time_filter_alpha: 0
 publish_frequency: 0
 
-u_horizontal_limits: [-50, 50]
-u_vertical_limits: [-200, 200]
-workspace_limits: [[1, 0, 0, -10, 10], [0, 1, 0, -10, 0.10], [0, 0, 1, -10, 10]]
+u_horizontal_limits: [-20, 20]
+u_vertical_limits: [-100, 100]
+workspace_limits: [[1, 0, 0, -0, 1], [0, 1, 0, -1, 1], [0, 0, 1, 0, 2]]
 workspace_margins: 1
 
 mu: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-dt: 0.01
-solve_dt: 0.01
+dt: 0.05
+solve_dt: 0.05
 lcs_dt_resolution: 1
 dt_cost: 0.01
 num_friction_directions: 2
@@ -28,36 +28,36 @@ num_contacts: 8
 
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1
-penalize_changes_in_u_across_solves: true
+penalize_changes_in_u_across_solves: false
 
 N: 5
 gamma: 1.0
 
 w_Q: 5
-w_R: 1 #Penalty on all decision variables, assuming scalar
-w_G: 14 #Penalty on all decision variables, assuming scalar
-w_U: 5 #State Tracking Error, assuming diagonal
+w_R: 10 #Penalty on all decision variables, assuming scalar
+w_G: 1 #Penalty on all decision variables, assuming scalar
+w_U: 1 #State Tracking Error, assuming diagonal
 
 
-q_vector: [500, 500, 100,                # plate pos
-            200, 200, 200,                    # plate rot
+q_vector: [500, 500, 10,                # plate pos
+            1000, 1000,                     # plate rot
             1, 1, 1, 1,    # cube rot
-            500, 500, 30,           # cube pos              
-            1, 1, 1,                # plate velo
-            1, 1, 1,                   # plate ang velo
-            0.1, 0.1, 0.1,             # cube ang velo
-            1, 1, 15]                # cube velo
+            1, 1, 1,           # cube pos              
+            100, 100, 100,                # plate velo
+            100, 100,                   # plate ang velo
+            1, 1, 1,             # cube ang velo
+            1, 1, 1]                # cube velo
 
-r_vector: [0.7, 0.7, 0.7, 0.2, 0.2, 0.2]  
+r_vector: [1, 1, 1, 1, 1]  
 #r_vector: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01] 
 
 #Penalty on matching projected variables
-g_x: [1, 1, 1, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
 g_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-g_u: [0, 0, 0, 0, 0, 0] 
+g_u: [0, 0, 0, 0, 0] 
 
 g_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1]
 g_eta_n: [1, 1, 1, 1, 1, 1, 1, 1]
@@ -66,12 +66,12 @@ g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 
 
 #Penalty on matching the QP variables
-u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 u_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
 u_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
 u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 u_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-u_u: [1, 1, 1, 1, 1, 1]
+u_u: [1, 1, 1, 1, 1]
 
 u_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1]
 u_eta_n: [1, 1, 1, 1, 1, 1, 1, 1]

@@ -68,6 +68,7 @@ predefined_motion_orientation_tolerance: 0.1 # rad
 mpc_position_tolerance: 0.012
 mpc_orientation_tolerance: 0.3 # rad (0.2 radians = 11.5 degrees)
 mpc_warmup_iterations: 500 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
+verbose: false # Enable verbose debug printing
 
 assembly_c3_options_file: "examples/magna/parameters/assembly_c3_options.yaml"
 lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"

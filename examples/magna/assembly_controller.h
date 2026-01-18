@@ -7,6 +7,7 @@
 #include <drake/systems/framework/leaf_system.h>
 
 #include "dairlib/lcmt_c3_forces.hpp"
+#include "dairlib/lcmt_osc_target_tracking_debug.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "parameter_headers/assembly_c3_options.h"
@@ -90,6 +91,11 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(c3_solution_port_);
   }
 
+  const drake::systems::OutputPort<double>&
+  get_output_port_osc_target_tracking_debug() const {
+    return this->get_output_port(osc_target_tracking_debug_port_);
+  }
+
  private:
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
@@ -128,7 +134,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Check if target is reached and return true if so (for kMoveToTarget phase)
-  bool IsTargetReached(
+  bool IsOSCTargetReached(
       const Eigen::VectorXd& x_lcs_curr, int target_index,
       const std::vector<SingleOSCTargetPose>& target_poses) const;
 
@@ -178,6 +184,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
                              C3Output::C3Intermediates* c3_intermediates) const;
   void OutputC3Solution(const drake::systems::Context<double>& context,
                         C3Output::C3Solution* c3_solution) const;
+  void OutputOscTargetTrackingDebug(
+      const drake::systems::Context<double>& context,
+      dairlib::lcmt_osc_target_tracking_debug* output) const;
 
   // Input/output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
@@ -190,6 +199,7 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex current_target_lcs_state_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
+  drake::systems::OutputPortIndex osc_target_tracking_debug_port_;
 
   // Plant references
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -252,6 +262,9 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   // C3 forces output
   mutable dairlib::lcmt_c3_forces c3_forces_output_;
+
+  // OSC target tracking debug output
+  mutable dairlib::lcmt_osc_target_tracking_debug osc_target_tracking_debug_;
 
   mutable std::vector<SingleOSCTargetPose> osc_target_poses_pre_mpc_;
   mutable std::vector<SingleOSCTargetPose> osc_target_poses_post_mpc_;

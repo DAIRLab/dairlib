@@ -1,0 +1,46 @@
+package dairlib;
+
+struct lcmt_osc_target_tracking_debug
+{
+  int64_t utime;
+  
+  // Target index being tracked
+  int32_t target_index;
+  
+  // Current position (x, y, z)
+  double current_position[3];
+  
+  // Target position (x, y, z)
+  double target_position[3];
+  
+  // Position difference (current - target)
+  double position_diff[3];
+  
+  // Position error norm (distance)
+  double position_error_norm;
+  
+  // Position tolerance
+  double position_tolerance;
+  
+  // Current orientation as RPY (roll, pitch, yaw)
+  double current_orientation_rpy[3];
+  
+  // Target orientation as quaternion (w, x, y, z)
+  double target_orientation_quat[4];
+  
+  // Orientation error in radians
+  double orientation_error_rad;
+  
+  // Orientation error in degrees
+  double orientation_error_deg;
+  
+  // Orientation tolerance in radians
+  double orientation_tolerance;
+  
+  // Position reached flag
+  boolean position_reached;
+  
+  // Orientation reached flag
+  boolean orientation_reached;
+}
+

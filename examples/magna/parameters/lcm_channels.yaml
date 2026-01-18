@@ -22,3 +22,4 @@ c3_output_channel: C3_OUTPUT
 round_belt_state_channel: RoundBeltState
 round_belt_state_wrt_robot_channel: ROUND_BELT_STATE_WRT_ROBOT
 round_belt_task_relevant_keypoints_channel: TASK_RELEVANT_KEYPOINTS
+osc_target_tracking_debug_channel: OSC_TARGET_TRACKING_DEBUG

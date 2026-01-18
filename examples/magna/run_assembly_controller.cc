@@ -4,6 +4,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_output.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
+#include "dairlib/lcmt_osc_target_tracking_debug.hpp"
 #include "dairlib/lcmt_round_belt_state.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/magna/assembly_controller.h"
@@ -307,6 +308,17 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_sender->get_input_port_c3_intermediates());
   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
                   c3_output_pub->get_input_port(0));
+  // ------------------------------------------------------------- //
+
+  // ----- Publish OSC target tracking debug via LCM ----- //
+  auto osc_target_tracking_debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_osc_target_tracking_debug>(
+          round_belt_controller_params.lcm_channels
+              .osc_target_tracking_debug_channel,
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(
+      assembly_controller->get_output_port_osc_target_tracking_debug(),
+      osc_target_tracking_debug_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // Build diagram

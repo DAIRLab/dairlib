@@ -201,6 +201,14 @@ AssemblyController::AssemblyController(
                                       &AssemblyController::OutputC3Solution)
           .get_index();
 
+  // OSC target tracking debug output port
+  osc_target_tracking_debug_port_ =
+      this->DeclareAbstractOutputPort(
+              "osc_target_tracking_debug",
+              dairlib::lcmt_osc_target_tracking_debug(),
+              &AssemblyController::OutputOscTargetTrackingDebug)
+          .get_index();
+
   // Discrete state for phase tracking
   // Initialize phase based on whether we have pre-MPC targets
   AssemblyPhase initial_phase = osc_target_poses_pre_mpc_.empty()
@@ -300,7 +308,7 @@ bool AssemblyController::ShouldAdvanceToNextOSCTarget(
   }
 
   // Check if target is reached
-  if (!IsTargetReached(x_lcs_curr, target_index, target_poses)) {
+  if (!IsOSCTargetReached(x_lcs_curr, target_index, target_poses)) {
     return false;
   }
 
@@ -395,8 +403,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       state_data.current_target_idx <
           static_cast<int>(osc_target_poses_pre_mpc_.size())) {
     // Check if we just reached the target
-    if (IsTargetReached(x_lcs_curr, state_data.current_target_idx,
-                        osc_target_poses_pre_mpc_)) {
+    if (IsOSCTargetReached(x_lcs_curr, state_data.current_target_idx,
+                           osc_target_poses_pre_mpc_)) {
       // Record the time when target was first reached
       if (state_data.target_reached_time < 0.0) {
         state_data.target_reached_time = t_context;
@@ -446,8 +454,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       state_data.post_mpc_target_idx <
           static_cast<int>(osc_target_poses_post_mpc_.size())) {
     // Check if we just reached the target
-    if (IsTargetReached(x_lcs_curr, state_data.post_mpc_target_idx,
-                        osc_target_poses_post_mpc_)) {
+    if (IsOSCTargetReached(x_lcs_curr, state_data.post_mpc_target_idx,
+                           osc_target_poses_post_mpc_)) {
       // Record the time when target was first reached
       if (state_data.post_mpc_target_reached_time < 0.0) {
         state_data.post_mpc_target_reached_time = t_context;
@@ -556,7 +564,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-bool AssemblyController::IsTargetReached(
+bool AssemblyController::IsOSCTargetReached(
     const Eigen::VectorXd& x_lcs_curr, int target_index,
     const std::vector<SingleOSCTargetPose>& target_poses) const {
   if (target_index < 0 ||
@@ -601,30 +609,47 @@ bool AssemblyController::IsTargetReached(
       angle <
       round_belt_controller_params_.predefined_motion_orientation_tolerance;
 
-  // Print current pose and target pose with differences (if verbose)
-  if (round_belt_controller_params_.verbose) {
-    Eigen::Vector3d pos_diff = current_pos - target_pos;
-    std::cout << "IsTargetReached (target " << target_index << "):" << std::endl;
-    std::cout << "  Current position: [" << current_pos.transpose() << "]"
-              << std::endl;
-    std::cout << "  Target position:  [" << target_pos.transpose() << "]"
-              << std::endl;
-    std::cout << "  Position diff:    [" << pos_diff.transpose()
-              << "], norm=" << distance << " (tol="
-              << round_belt_controller_params_.predefined_motion_position_tolerance
-              << ")" << std::endl;
-    std::cout << "  Current orientation (RPY): [" << rpy.transpose() << "]"
-              << std::endl;
-    std::cout << "  Target orientation (quat): ["
-              << target_orientation_normalized.transpose() << "]" << std::endl;
-    std::cout << "  Orientation diff: " << angle << " rad ("
-              << angle * 180.0 / M_PI << " deg, tol="
-              << round_belt_controller_params_.predefined_motion_orientation_tolerance
-              << " rad)" << std::endl;
-    std::cout << "  Position reached: " << (position_reached ? "YES" : "NO")
-              << ", Orientation reached: " << (orientation_reached ? "YES" : "NO")
-              << std::endl;
-  }
+  // Populate OSC target tracking debug message
+  Eigen::Vector3d pos_diff = current_pos - target_pos;
+
+  osc_target_tracking_debug_.target_index = target_index;
+
+  osc_target_tracking_debug_.current_position[0] = current_pos[0];
+  osc_target_tracking_debug_.current_position[1] = current_pos[1];
+  osc_target_tracking_debug_.current_position[2] = current_pos[2];
+
+  osc_target_tracking_debug_.target_position[0] = target_pos[0];
+  osc_target_tracking_debug_.target_position[1] = target_pos[1];
+  osc_target_tracking_debug_.target_position[2] = target_pos[2];
+
+  osc_target_tracking_debug_.position_diff[0] = pos_diff[0];
+  osc_target_tracking_debug_.position_diff[1] = pos_diff[1];
+  osc_target_tracking_debug_.position_diff[2] = pos_diff[2];
+
+  osc_target_tracking_debug_.position_error_norm = distance;
+  osc_target_tracking_debug_.position_tolerance =
+      round_belt_controller_params_.predefined_motion_position_tolerance;
+
+  osc_target_tracking_debug_.current_orientation_rpy[0] = rpy[0];
+  osc_target_tracking_debug_.current_orientation_rpy[1] = rpy[1];
+  osc_target_tracking_debug_.current_orientation_rpy[2] = rpy[2];
+
+  osc_target_tracking_debug_.target_orientation_quat[0] =
+      target_orientation_normalized[0];
+  osc_target_tracking_debug_.target_orientation_quat[1] =
+      target_orientation_normalized[1];
+  osc_target_tracking_debug_.target_orientation_quat[2] =
+      target_orientation_normalized[2];
+  osc_target_tracking_debug_.target_orientation_quat[3] =
+      target_orientation_normalized[3];
+
+  osc_target_tracking_debug_.orientation_error_rad = angle;
+  osc_target_tracking_debug_.orientation_error_deg = angle * 180.0 / M_PI;
+  osc_target_tracking_debug_.orientation_tolerance =
+      round_belt_controller_params_.predefined_motion_orientation_tolerance;
+
+  osc_target_tracking_debug_.position_reached = position_reached;
+  osc_target_tracking_debug_.orientation_reached = orientation_reached;
 
   return position_reached && orientation_reached;
 }
@@ -726,7 +751,7 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
 
   // Already at target, create a two-point trajectory at target position (OSC
   // requires at least two points)
-  if (IsTargetReached(x_lcs_curr, target_index, target_poses)) {
+  if (IsOSCTargetReached(x_lcs_curr, target_index, target_poses)) {
     gripper_pos_command_ = target_pose.gripper_pos_command;
     Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
     Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(2);
@@ -1276,6 +1301,13 @@ void AssemblyController::OutputC3Solution(
     c3_solution->lambda_sol_.col(i) = lambda_sol[i].cast<float>();
     c3_solution->u_sol_.col(i) = u_sol[i].cast<float>();
   }
+}
+
+void AssemblyController::OutputOscTargetTrackingDebug(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_osc_target_tracking_debug* output) const {
+  *output = osc_target_tracking_debug_;
+  output->utime = context.get_time() * 1e6;
 }
 }  // namespace magna
 }  // namespace examples

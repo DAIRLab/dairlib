@@ -15,6 +15,7 @@ filegroup(
         "//common:headers",
         "//lcm:headers",
         "//multibody:headers", 
+        "//multibody/kinematic:headers",
         "//systems:headers",
         "//systems/controllers:headers",
         "//systems/framework:headers",

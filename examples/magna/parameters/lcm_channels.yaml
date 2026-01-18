@@ -17,6 +17,8 @@ c3_target_state_channel: C3_TARGET
 c3_actual_state_channel: C3_ACTUAL
 planned_keypoints_trajectory_channel: PLANNED_KEYPOINTS_TRAJECTORY
 c3_force_channel: C3_FORCES
+c3_output_channel: C3_OUTPUT
+
 round_belt_state_channel: RoundBeltState
 round_belt_state_wrt_robot_channel: ROUND_BELT_STATE_WRT_ROBOT
 round_belt_task_relevant_keypoints_channel: TASK_RELEVANT_KEYPOINTS

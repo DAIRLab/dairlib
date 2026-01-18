@@ -49,6 +49,7 @@ DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
+  drake::lcm::DrakeLcm local_lcm("udpm://239.255.76.67:7667?ttl=0");
 
   // --------------------- Load parameters ---------------------- //
   RoundBeltControllerParams round_belt_controller_params =
@@ -217,11 +218,11 @@ int DoMain(int argc, char* argv[]) {
   auto lcs_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           round_belt_controller_params.lcm_channels.c3_actual_state_channel,
-          &lcm, TriggerTypeSet({TriggerType::kForced})));
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   auto target_lcs_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           round_belt_controller_params.lcm_channels.c3_target_state_channel,
-          &lcm, TriggerTypeSet({TriggerType::kForced})));
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(franka_kinematics->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
@@ -257,7 +258,7 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<drake::lcmt_schunk_wsg_command>(
           round_belt_controller_params.lcm_channels
               .franka_hand_target_position_channel,
-          &lcm, TriggerTypeSet({TriggerType::kForced})));
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_gripper_pos_command(),
                   gripper_pos_command_pub->get_input_port(0));
   // ------------------------------------------------------------- //
@@ -272,11 +273,11 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           round_belt_controller_params.lcm_channels
               .planned_keypoints_trajectory_channel,
-          &lcm, TriggerTypeSet({TriggerType::kForced})));
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   auto traj_planned_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           round_belt_controller_params.lcm_channels.planned_trajectory_channel,
-          &lcm, TriggerTypeSet({TriggerType::kForced})));
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_traj_execute(),
                   traj_pub->get_input_port(0));
   builder.Connect(assembly_controller->get_output_port_traj_planned_keypoints(),
@@ -288,8 +289,8 @@ int DoMain(int argc, char* argv[]) {
   // ----- Publish C3 forces via LCM messages ----- //
   auto c3_forces_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-          round_belt_controller_params.lcm_channels.c3_force_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels.c3_force_channel,
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_c3_forces(),
                   c3_forces_pub->get_input_port(0));
   // ------------------------------------------------------------- //
@@ -298,7 +299,8 @@ int DoMain(int argc, char* argv[]) {
   auto c3_output_sender = builder.AddSystem<dairlib::systems::C3OutputSender>();
   auto c3_output_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-          "C3_OUTPUT", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          round_belt_controller_params.lcm_channels.c3_output_channel,
+          &local_lcm, TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(assembly_controller->get_output_port_c3_solution(),
                   c3_output_sender->get_input_port_c3_solution());
   builder.Connect(assembly_controller->get_output_port_c3_intermediates(),

@@ -122,18 +122,22 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
 
   /// Check if we need to advance to the next target
   bool ShouldAdvanceToNextOSCTarget(
-      const Eigen::VectorXd& x_lcs_curr, double current_time, int target_index,
-      double target_reached_time,
+      double current_time, int target_index, double target_reached_time,
+      bool target_reached,
       const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Helper functions for different phases
-  /// @param target_reached Pointer to flag - if true, target was reached and
-  /// we're dwelling at target pose
+  /// @param target_reached Pointer to flag - if true, target was reached
+  /// @param reached_position Pointer to store/use position when target first
+  /// reached
+  /// @param reached_orientation Pointer to store/use orientation when target
+  /// first reached
   void GenerateMoveToTargetTrajectory(
       const Eigen::VectorXd& x_lcs_curr, double t_context,
       LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
       int target_index, const std::vector<SingleOSCTargetPose>& target_poses,
-      bool* target_reached) const;
+      bool* target_reached, Eigen::Vector3d* reached_position,
+      Eigen::Vector4d* reached_orientation) const;
 
   /// Check if target is reached and return true if so (for kMoveToTarget phase)
   bool IsOSCTargetReached(
@@ -285,9 +289,15 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector4d warmup_hold_orientation_;  // Quaternion (w, x, y, z)
   mutable bool warmup_pose_initialized_ = false;
 
-  // Flags to track if target has been reached (for dwelling)
+  // Flags and poses for dwelling at targets (stores pose when target first
+  // reached within tolerance)
   mutable bool pre_mpc_target_reached_ = false;
+  mutable Eigen::Vector3d pre_mpc_reached_position_;
+  mutable Eigen::Vector4d pre_mpc_reached_orientation_;
+
   mutable bool post_mpc_target_reached_ = false;
+  mutable Eigen::Vector3d post_mpc_reached_position_;
+  mutable Eigen::Vector4d post_mpc_reached_orientation_;
 
   // Task-relevant keypoints storage
   mutable std::vector<std::vector<double>> task_relevant_keypoints_;

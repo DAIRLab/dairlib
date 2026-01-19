@@ -51,13 +51,13 @@ osc_target_poses_post_mpc:
     radius: -1
   - position: [0.45005, 0.1244, 0.0327]
     orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-    gripper_pos_command: 0.05
+    gripper_pos_command: 0.02
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
   - position: [0.45005, 0.1244, 0.05]
     orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-    gripper_pos_command: 0.05
+    gripper_pos_command: 0.02
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1

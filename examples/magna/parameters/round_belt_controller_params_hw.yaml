@@ -49,8 +49,8 @@ osc_target_poses_post_mpc: []
   #   radius: -1
 
 # Tolerances for reaching targets in predefined motion and MPC.
-predefined_motion_position_tolerance: 0.005 # m
-predefined_motion_orientation_tolerance: 0.1 # rad
+predefined_motion_position_tolerance: 0.002 # m
+predefined_motion_orientation_tolerance: 0.05 # rad
 mpc_position_tolerance: 0.011
 mpc_orientation_tolerance: 0.4 # rad (0.2 radians = 11.5 degrees)
 mpc_warmup_iterations: 1000 # Number of C3 solve iterations before outputting trajectory (0 = no warm-up)

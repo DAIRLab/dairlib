@@ -298,8 +298,8 @@ void AssemblyController::UpdateDiscreteState(
 }
 
 bool AssemblyController::ShouldAdvanceToNextOSCTarget(
-    const Eigen::VectorXd& x_lcs_curr, double current_time, int target_index,
-    double target_reached_time,
+    double current_time, int target_index, double target_reached_time,
+    bool target_reached,
     const std::vector<SingleOSCTargetPose>& target_poses) const {
   // Validate target index
   if (target_index < 0 ||
@@ -307,8 +307,8 @@ bool AssemblyController::ShouldAdvanceToNextOSCTarget(
     return false;
   }
 
-  // Check if target is reached
-  if (!IsOSCTargetReached(x_lcs_curr, target_index, target_poses)) {
+  // Check if target is reached using the flag
+  if (!target_reached) {
     return false;
   }
 
@@ -402,48 +402,52 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       state_data.current_target_idx >= 0 &&
       state_data.current_target_idx <
           static_cast<int>(osc_target_poses_pre_mpc_.size())) {
-    // Check if we just reached the target
-    if (IsOSCTargetReached(x_lcs_curr, state_data.current_target_idx,
+    // Check if we just reached the target (first time)
+    if (!pre_mpc_target_reached_ &&
+        IsOSCTargetReached(x_lcs_curr, state_data.current_target_idx,
                            osc_target_poses_pre_mpc_)) {
-      // Record the time when target was first reached and set flag
-      if (state_data.target_reached_time < 0.0) {
-        state_data.target_reached_time = t_context;
-        pre_mpc_target_reached_ = true;
-        std::cout << "Pre-MPC target " << state_data.current_target_idx
-                  << " reached at t=" << state_data.target_reached_time
+      // Record the time and pose when target was first reached
+      state_data.target_reached_time = t_context;
+      pre_mpc_target_reached_ = true;
+      pre_mpc_reached_position_ = x_lcs_curr.head(3);
+      // Convert RPY to quaternion
+      Eigen::Vector3d rpy = x_lcs_curr.segment(3, 3);
+      drake::math::RollPitchYaw<double> rpy_obj(rpy);
+      Eigen::Quaterniond q = rpy_obj.ToQuaternion();
+      pre_mpc_reached_orientation_ << q.w(), q.x(), q.y(), q.z();
+      std::cout << "Pre-MPC target " << state_data.current_target_idx
+                << " reached at t=" << state_data.target_reached_time
+                << std::endl;
+    }
+
+    // Check if we should advance to the next target (when dwelling)
+    if (ShouldAdvanceToNextOSCTarget(t_context, state_data.current_target_idx,
+                                     state_data.target_reached_time,
+                                     pre_mpc_target_reached_,
+                                     osc_target_poses_pre_mpc_)) {
+      state_data.current_target_idx++;
+      state_data.target_reached_time = -1.0;
+      pre_mpc_target_reached_ = false;  // Reset for next target
+
+      // Check if all pre-MPC targets are completed
+      if (state_data.current_target_idx >=
+          static_cast<int>(osc_target_poses_pre_mpc_.size())) {
+        std::cout << "All pre-MPC targets completed! Switching to MPC phase."
                   << std::endl;
-      }
+        state_data.current_phase = AssemblyPhase::kMPC;
 
-      // Check if we should advance to the next target
-      if (ShouldAdvanceToNextOSCTarget(
-              x_lcs_curr, t_context, state_data.current_target_idx,
-              state_data.target_reached_time, osc_target_poses_pre_mpc_)) {
-        state_data.current_target_idx++;
-        state_data.target_reached_time = -1.0;
-        pre_mpc_target_reached_ = false;  // Reset for next target
-
-        // Check if all pre-MPC targets are completed
-        if (state_data.current_target_idx >=
-            static_cast<int>(osc_target_poses_pre_mpc_.size())) {
-          std::cout << "All pre-MPC targets completed! Switching to MPC phase."
-                    << std::endl;
-          state_data.current_phase = AssemblyPhase::kMPC;
-
-          // Store the last OSC target pose for warm-up holding
-          const auto& last_osc_target =
-              osc_target_poses_pre_mpc_[osc_target_poses_pre_mpc_.size() - 1];
-          warmup_hold_position_ = last_osc_target.position;
-          warmup_hold_orientation_ = last_osc_target.orientation;
-          warmup_hold_orientation_.normalize();
-          warmup_pose_initialized_ = true;
-        } else {
-          std::cout << "Moving to pre-MPC target "
-                    << state_data.current_target_idx << std::endl;
-        }
+        // Store the last OSC target pose for warm-up holding
+        const auto& last_osc_target =
+            osc_target_poses_pre_mpc_[osc_target_poses_pre_mpc_.size() - 1];
+        warmup_hold_position_ = last_osc_target.position;
+        warmup_hold_orientation_ = last_osc_target.orientation;
+        warmup_hold_orientation_.normalize();
+        warmup_pose_initialized_ = true;
+      } else {
+        std::cout << "Moving to pre-MPC target "
+                  << state_data.current_target_idx << std::endl;
       }
     }
-    // Note: We no longer reset target_reached_time when moving away from
-    // target. This ensures the "target reached" message is only printed once.
   }
 
   // Handle target progression in kMoveToTargetPostMPC phase
@@ -452,42 +456,44 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
       state_data.post_mpc_target_idx >= 0 &&
       state_data.post_mpc_target_idx <
           static_cast<int>(osc_target_poses_post_mpc_.size())) {
-    // Check if we just reached the target
-    if (IsOSCTargetReached(x_lcs_curr, state_data.post_mpc_target_idx,
+    // Check if we just reached the target (first time)
+    if (!post_mpc_target_reached_ &&
+        IsOSCTargetReached(x_lcs_curr, state_data.post_mpc_target_idx,
                            osc_target_poses_post_mpc_)) {
-      // Record the time when target was first reached and set flag
-      if (state_data.post_mpc_target_reached_time < 0.0) {
-        state_data.post_mpc_target_reached_time = t_context;
-        post_mpc_target_reached_ = true;
-        std::cout << "Post-MPC target " << state_data.post_mpc_target_idx
-                  << " reached at t=" << state_data.post_mpc_target_reached_time
+      // Record the time and pose when target was first reached
+      state_data.post_mpc_target_reached_time = t_context;
+      post_mpc_target_reached_ = true;
+      post_mpc_reached_position_ = x_lcs_curr.head(3);
+      // Convert RPY to quaternion
+      Eigen::Vector3d rpy = x_lcs_curr.segment(3, 3);
+      drake::math::RollPitchYaw<double> rpy_obj(rpy);
+      Eigen::Quaterniond q = rpy_obj.ToQuaternion();
+      post_mpc_reached_orientation_ << q.w(), q.x(), q.y(), q.z();
+      std::cout << "Post-MPC target " << state_data.post_mpc_target_idx
+                << " reached at t=" << state_data.post_mpc_target_reached_time
+                << std::endl;
+    }
+
+    // Check if we should advance to the next target (when dwelling)
+    if (ShouldAdvanceToNextOSCTarget(t_context, state_data.post_mpc_target_idx,
+                                     state_data.post_mpc_target_reached_time,
+                                     post_mpc_target_reached_,
+                                     osc_target_poses_post_mpc_)) {
+      state_data.post_mpc_target_idx++;
+      state_data.post_mpc_target_reached_time = -1.0;
+      post_mpc_target_reached_ = false;  // Reset for next target
+
+      // Check if all post-MPC targets are completed
+      if (state_data.post_mpc_target_idx >=
+          static_cast<int>(osc_target_poses_post_mpc_.size())) {
+        std::cout << "All post-MPC targets completed! Switching to Terminate."
                   << std::endl;
-      }
-
-      // Check if we should advance to the next target
-      if (ShouldAdvanceToNextOSCTarget(x_lcs_curr, t_context,
-                                       state_data.post_mpc_target_idx,
-                                       state_data.post_mpc_target_reached_time,
-                                       osc_target_poses_post_mpc_)) {
-        state_data.post_mpc_target_idx++;
-        state_data.post_mpc_target_reached_time = -1.0;
-        post_mpc_target_reached_ = false;  // Reset for next target
-
-        // Check if all post-MPC targets are completed
-        if (state_data.post_mpc_target_idx >=
-            static_cast<int>(osc_target_poses_post_mpc_.size())) {
-          std::cout << "All post-MPC targets completed! Switching to Terminate."
-                    << std::endl;
-          state_data.current_phase = AssemblyPhase::kTerminate;
-        } else {
-          std::cout << "Moving to post-MPC target "
-                    << state_data.post_mpc_target_idx << std::endl;
-        }
+        state_data.current_phase = AssemblyPhase::kTerminate;
+      } else {
+        std::cout << "Moving to post-MPC target "
+                  << state_data.post_mpc_target_idx << std::endl;
       }
     }
-    // Note: We no longer reset post_mpc_target_reached_time when moving away
-    // from target. This ensures the "target reached" message is only printed
-    // once.
   }
 
   // Generate trajectory based on current phase
@@ -508,7 +514,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
             state_data.current_target_idx, osc_target_poses_pre_mpc_,
-            &pre_mpc_target_reached_);
+            &pre_mpc_target_reached_, &pre_mpc_reached_position_,
+            &pre_mpc_reached_orientation_);
       }
       break;
 
@@ -551,7 +558,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
             state_data.post_mpc_target_idx, osc_target_poses_post_mpc_,
-            &post_mpc_target_reached_);
+            &post_mpc_target_reached_, &post_mpc_reached_position_,
+            &post_mpc_reached_orientation_);
       }
       break;
 
@@ -727,7 +735,8 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     const Eigen::VectorXd& x_lcs_curr, double t_context,
     LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
     int target_index, const std::vector<SingleOSCTargetPose>& target_poses,
-    bool* target_reached) const {
+    bool* target_reached, Eigen::Vector3d* reached_position,
+    Eigen::Vector4d* reached_orientation) const {
   if (target_index < 0 ||
       target_index >= static_cast<int>(target_poses.size())) {
     std::cerr << "Warning: Invalid target index: " << target_index << std::endl;
@@ -751,20 +760,20 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     std::cout << "Distance to target: " << distance << std::endl;
   }
 
-  // If target_reached is true, hold the target pose (dwelling)
+  // If target_reached is true, hold the pose when target was first reached
   if (*target_reached) {
     gripper_pos_command_ = target_pose.gripper_pos_command;
 
     Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
     Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(2);
-    knots.col(0) = current_pos;
-    knots.col(1) = current_pos;
+    knots.col(0) = *reached_position;
+    knots.col(1) = *reached_position;
     timestamps[0] = t_context;
     timestamps[1] = t_context + dt_;
 
     Eigen::MatrixXd orientation_single = Eigen::MatrixXd::Zero(4, 2);
-    orientation_single.col(0) = target_orientation;
-    orientation_single.col(1) = target_orientation;
+    orientation_single.col(0) = *reached_orientation;
+    orientation_single.col(1) = *reached_orientation;
     Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(3, 2);
     force_samples.col(0) = Eigen::Vector3d::Zero();
     force_samples.col(1) = Eigen::Vector3d::Zero();

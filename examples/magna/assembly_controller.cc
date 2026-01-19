@@ -505,12 +505,13 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               static_cast<int>(osc_target_poses_pre_mpc_.size())) {
         // Adjust z position of the last pre-MPC OSC target to align the
         // keypoints with the small pulley's groove
-        // if (state_data.current_target_idx ==
-        //     static_cast<int>(osc_target_poses_pre_mpc_.size()) - 1) {
-        //   osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2]
-        //   =
-        //       target_ee_height_;
-        // }
+        if (state_data.current_target_idx ==
+            static_cast<int>(osc_target_poses_pre_mpc_.size()) - 1) {
+          std::cout << "Target ee height is: " << target_ee_height_ << std::endl;
+          // osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2]
+          // =
+          //     target_ee_height_;
+        }
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
             state_data.current_target_idx, osc_target_poses_pre_mpc_,

@@ -7,53 +7,52 @@ spring_rest_length: 0.26
 spring_damping: 1 
 task_board_position: [0.67826, -0.192, 0.01043]
 task_board_orientation: [0.0, 0.0, 1.57079]
-target_lcs_positions: []
-  # - [0.4809, 0.185, 0.0345, 0.00711, 0.48298, -0.09346, 0.48185, -0.1, 0.025]
-  # - [0.46938, 0.1804, 0.04033, 0.0310, 0.40235, 0.4344, 0.48185, -0.1, 0.025]
+target_lcs_positions:
+  - [0.4809, 0.185, 0.0345, 0.00711, 0.48298, -0.09346, 0.48185, -0.1, 0.025]
+  - [0.46938, 0.1804, 0.0345, 0.0310, 0.40235, 0.4344, 0.48185, -0.1, 0.025]
+  - [0.46055, 0.1726, 0.0316, 0.1481, 0.2642199, 1.1582, 0.48185, -0.1, 0.025]
 fixed_keypoint_position: [0.48185, -0.103, 0.03]
 
 # Define target poses for OSC (before MPC)
 osc_target_poses_pre_mpc:
-  - position: [0.5034, 0.17, 0.05]
-    orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936] 
-    gripper_pos_command: -0.05
+  - position: [0.512, 0.1716, 0.05]
+    # orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936]
+    # orientation: [0.9618252, -0.1080508, 0.2171865, -0.1266781 ]
+    orientation: [0.9654619, 0.1030745, 0.2338924, 0.0505309]
+    gripper_pos_command: 0.0
     dwell_seconds: 2.0 
     center: [0, 0, 0]
     radius: -1
-  - position: [0.5034, 0.17, 0.0388]
-    orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936] 
-    gripper_pos_command: -0.05
+  - position: [0.512, 0.1716, 0.04]
+    # orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936]
+    # orientation: [0.9618252, -0.1080508, 0.2171865, -0.1266781 ]
+    orientation: [0.9654619, 0.1030745, 0.2338924, 0.0505309]
+    gripper_pos_command: 0.0
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
 
 # Define target poses for OSC (after MPC)
-osc_target_poses_post_mpc: []
-  # - position: [0.46055, 0.1726, 0.0316]
-  #   orientation: [0.8220554, 0.1332726, 0.0698111, 0.5491718] 
-  #   gripper_pos_command: -0.05
-  #   dwell_seconds: 0.5
-  #   center: [0, 0, 0]
-  #   radius: -1
-  # - position: [0.45005, 0.1244, 0.0327]
-  #   orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-  #   gripper_pos_command: 0.05
-  #   dwell_seconds: 0.5
-  #   center: [0, 0, 0]
-  #   radius: -1
-  # - position: [0.45005, 0.1244, 0.05]
-  #   orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-  #   gripper_pos_command: 0.05
-  #   dwell_seconds: 0.5
-  #   center: [0, 0, 0]
-  #   radius: -1
+osc_target_poses_post_mpc:
+  - position: [0.45005, 0.1244, 0.0327]
+    orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
+    gripper_pos_command: 0.0
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.45005, 0.1244, 0.05]
+    orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
+    gripper_pos_command: 0.02
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
 
 # Tolerances for reaching targets in predefined motion and MPC.
-predefined_motion_position_tolerance: 0.0025 # m
-predefined_motion_orientation_tolerance: 0.12 # rad
-mpc_position_tolerance: 0.011
+predefined_motion_position_tolerance: 0.005 # m
+predefined_motion_orientation_tolerance: 0.15 # rad
+mpc_position_tolerance: 0.015
 mpc_orientation_tolerance: 0.4 # rad (0.2 radians = 11.5 degrees)
-mpc_warmup_iterations: 1000 # Number of C3 solve iterations before outputting trajectory (0 = no warm-up)
+mpc_warmup_iterations: 3000 # Number of C3 solve iterations before outputting trajectory (0 = no warm-up)
 verbose: true # Enable verbose debug printing for pose tracking
 
 assembly_c3_options_file: "examples/magna/parameters/assembly_c3_options.yaml"

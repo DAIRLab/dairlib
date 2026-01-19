@@ -359,8 +359,6 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
     }
     task_relevant_keypoints_avg_z_ =
         (num_points > 0) ? z_sum / num_points : 0.03023;  // default value
-    target_ee_height_ =
-        groove_height_ + x_lcs_curr[2] - task_relevant_keypoints_avg_z_;
   }
 
   // Extract and validate discrete state
@@ -439,8 +437,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
         // Store the last OSC target pose for warm-up holding
         const auto& last_osc_target =
             osc_target_poses_pre_mpc_[osc_target_poses_pre_mpc_.size() - 1];
-        warmup_hold_position_ = last_osc_target.position;
-        warmup_hold_orientation_ = last_osc_target.orientation;
+        warmup_hold_position_ = pre_mpc_reached_position_;
+        warmup_hold_orientation_ = pre_mpc_reached_orientation_;
         warmup_hold_orientation_.normalize();
         warmup_pose_initialized_ = true;
       } else {
@@ -507,10 +505,12 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
         // keypoints with the small pulley's groove
         if (state_data.current_target_idx ==
             static_cast<int>(osc_target_poses_pre_mpc_.size()) - 1) {
-          std::cout << "Target ee height is: " << target_ee_height_ << std::endl;
-          // osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2]
-          // =
-          //     target_ee_height_;
+          double modified_target_z =
+            groove_height_ + pre_mpc_reached_position_[2] - task_relevant_keypoints_avg_z_ - 0.008;
+          osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2] =
+            modified_target_z;
+          std::cout << "Average z height of keypoints: " << task_relevant_keypoints_avg_z_ << std::endl;
+          std::cout << "Modified target z: " << modified_target_z << std::endl;
         }
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
@@ -538,6 +538,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
           if (!osc_target_poses_post_mpc_.empty()) {
             std::cout << "MPC completed! Switching to post-MPC phase."
                       << std::endl;
+            std::cout << "Moving to post-MPC target 0" << std::endl;
             state_data.current_phase = AssemblyPhase::kMoveToTargetPostMPC;
             state_data.post_mpc_target_idx = 0;
             state_data.post_mpc_target_reached_time = -1.0;

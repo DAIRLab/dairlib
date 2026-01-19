@@ -5,12 +5,14 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct TrifingerPlateControllerParams : OSCGains {
+  std::string trifinger_model;
   std::string end_effector_model;
   std::string end_effector_name;
 
   std::vector<Eigen::VectorXd> finger_attachment_points;
+  double translation_stiffness;
+  double translation_damping;
 
-  Eigen::VectorXd tool_attachment_frame;
   double end_effector_acceleration;
   bool track_end_effector_orientation;
   bool cancel_gravity_compensation;
@@ -43,10 +45,13 @@ struct TrifingerPlateControllerParams : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
-
+    
+    a->Visit(DRAKE_NVP(trifinger_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(finger_attachment_points));
+    a->Visit(DRAKE_NVP(translation_stiffness));
+    a->Visit(DRAKE_NVP(translation_damping));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));
@@ -60,7 +65,6 @@ struct TrifingerPlateControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
     a->Visit(DRAKE_NVP(LambdaEndEffectorW));
     a->Visit(DRAKE_NVP(LambdaEndEffectorTauW));
-    a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));

@@ -5,8 +5,9 @@
 
 #include "common/eigen_utils.h"
 
-// #include "examples/cube_flip/parameter_headers/franka_plate_lcm_channels.h"
-// #include "examples/cube_flip/parameter_headers/franka_plate_osc_controller_params.h"
+#include "examples/cube_flip/trifinger_plate/parameter_headers/trifinger_plate_lcm_channels.h"
+#include "examples/cube_flip/trifinger_plate/parameter_headers/trifinger_plate_osc_controller_params.h"
+#include "multibody/kinematic/distance_evaluator.h"
 
 #include "systems/controllers/osc/end_effector_force.h"
 #include "systems/controllers/osc/end_effector_torque.h"
@@ -36,6 +37,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/multibody/tree/linear_bushing_roll_pitch_yaw.h"
 
 namespace dairlib {
 
@@ -47,11 +49,16 @@ using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::math::RigidTransformd;
+using drake::math::RotationMatrixd;
+
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
+using multibody::DistanceEvaluator;
+using multibody::KinematicEvaluatorSet;
 
 using systems::controllers::ExternalTorqueTrackingData;
 using systems::controllers::ExternalForceTrackingData;
@@ -61,14 +68,14 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(osqp_settings,
-              "examples/cube_flip/parameters/franka_plate_osc_qp_settings.yaml",
+              "examples/cube_flip/trifinger_plate/parameters/trifinger_plate_osc_qp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
-              "examples/cube_flip/parameters/franka_plate_osc_controller_params.yaml",
+              "examples/cube_flip/trifinger_plate/parameters/trifinger_plate_osc_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
 DEFINE_string(lcm_channels,
-              "examples/cube_flip/parameters/plate_lcm_channels_simulation.yaml",
+              "examples/cube_flip/trifinger_plate/parameters/trifinger_lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {
@@ -77,12 +84,12 @@ int DoMain(int argc, char* argv[]) {
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
-  FrankaPlateControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaPlateControllerParams>(
+  TrifingerPlateControllerParams controller_params =
+      drake::yaml::LoadYamlFile<TrifingerPlateControllerParams>(
           FLAGS_controller_parameters);
 
-  FrankaPlateLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
+  TrifingerPlateLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<TrifingerPlateLcmChannels>(FLAGS_lcm_channels);
 
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
@@ -96,30 +103,27 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModelsFromUrl(controller_params.franka_model);
+	parser.SetAutoRenaming(true);
+  
+	parser.package_map().Add(
+    "robot_properties_fingers", 
+    "examples/cube_flip/trifinger_plate/robot_properties_fingers"
+  );
+  drake::multibody::ModelInstanceIndex trifinger_index =
+      parser.AddModels(FindResourceOrThrow(controller_params.trifinger_model))[0];
 
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   X_WI);
+	// Add end effector to plant
+	drake::multibody::ModelInstanceIndex end_effector_index =
+		parser.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
 
-  if (!controller_params.end_effector_name.empty()) {
-    drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-        FindResourceOrThrow(controller_params.end_effector_model))[0];
-    RigidTransform<double> T_EE_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                               controller_params.tool_attachment_frame);
-    plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                     plant.GetFrameByName(controller_params.end_effector_name,
-                                          end_effector_index),
-                     T_EE_W);
-  } else {
-    std::cout << "OSC plant has been constructed with no end effector."
-              << std::endl;
-  }
-
+  Eigen::Vector3d base_translation(0.5 * Eigen::Vector3d::UnitZ());
+  RigidTransformd X_WI(RotationMatrixd::MakeXRotation(M_PI), base_translation);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
   plant.Finalize();
+
+
   auto plant_context = plant.CreateDefaultContext();
-  std::cout << plant.num_actuators() << std::endl;
+  std::cout << "n_u_: " << plant.num_actuators() << std::endl;
 
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
@@ -142,18 +146,19 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_orientation_receiver =
       builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
           "end_effector_orientation_target");
-  auto franka_command_pub =
+  auto trifinger_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.franka_input_channel, &lcm,
+          lcm_channel_params.trifinger_input_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto osc_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.osc_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto franka_command_sender =
+  auto trifinger_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
+
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(plant, 
           plant_context.get(), controller_params.neutral_position, false,
@@ -175,6 +180,7 @@ int DoMain(int argc, char* argv[]) {
           
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
+
   if (controller_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -183,6 +189,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_output_port_osc_debug(),
                     osc_debug_pub->get_input_port());
   }
+
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -195,13 +202,6 @@ int DoMain(int argc, char* argv[]) {
       controller_params.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);
-  auto mid_link_position_tracking_data_for_rel =
-      std::make_unique<JointSpaceTrackingData>(
-          "panda_joint2_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
-          plant);
-  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
-                                                           "panda_joint2dot");
 
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
@@ -223,9 +223,35 @@ int DoMain(int argc, char* argv[]) {
       controller_params.end_effector_name);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
+
+
+  // Add kinematic constraint between fingertips and plate
+	std::vector<VectorXd> plate_socket_offsets = controller_params.finger_attachment_points;
+	std::vector<std::string> tip_names = {
+			"finger_tip_link_0", 
+			"finger_tip_link_120", 
+			"finger_tip_link_240"
+	};
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+
+  const auto& plate_frame = plant.GetFrameByName("plate", end_effector_index);
+
+  const auto& tip_frame_0 = plant.GetFrameByName(tip_names[0], trifinger_index);
+  auto finger_plate_constraint_0 =
+    DistanceEvaluator(plant, Vector3d::Zero(), tip_frame_0, plate_socket_offsets[0], plate_frame, 0);
+  const auto& tip_frame_120 = plant.GetFrameByName(tip_names[1], trifinger_index);
+  auto finger_plate_constraint_120 =
+    DistanceEvaluator(plant, Vector3d::Zero(), tip_frame_120, plate_socket_offsets[1], plate_frame, 0);
+  const auto& tip_frame_240 = plant.GetFrameByName(tip_names[2], trifinger_index);
+  auto finger_plate_constraint_240 =
+    DistanceEvaluator(plant, Vector3d::Zero(), tip_frame_240, plate_socket_offsets[2], plate_frame, 0);
+
+  evaluators.add_evaluator(&finger_plate_constraint_0);
+	evaluators.add_evaluator(&finger_plate_constraint_120);
+  evaluators.add_evaluator(&finger_plate_constraint_240);
+
+  
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
-  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            controller_params.mid_link_target * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->AddTorqueTrackingData(std::move(end_effector_torque_tracking_data));
@@ -234,7 +260,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
   osc->SetAccelerationConstraints(
       controller_params.enforce_acceleration_constraints);
-
+  osc->AddKinematicConstraint(&evaluators);
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
@@ -247,7 +273,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(osc->get_output_port_osc_command(),
                     gravity_compensator->get_input_port());
     builder.Connect(gravity_compensator->get_output_port(),
-                    franka_command_sender->get_input_port());
+                    trifinger_command_sender->get_input_port());
   } else {
     if (FLAGS_lcm_channels ==
         "examples/franka/parameters/lcm_channels_hardware.yaml") {
@@ -257,7 +283,7 @@ int DoMain(int argc, char* argv[]) {
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),
-                    franka_command_sender->get_input_port(0));
+                    trifinger_command_sender->get_input_port(0));
   }
 
   builder.Connect(radio_sub->get_output_port(),
@@ -268,8 +294,8 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(radio_sub->get_output_port(),
                   end_effector_torque_trajectory->get_input_port_radio());
-  builder.Connect(franka_command_sender->get_output_port(),
-                  franka_command_pub->get_input_port());
+  builder.Connect(trifinger_command_sender->get_output_port(),
+                  trifinger_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
                   osc_command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
@@ -306,12 +332,13 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("end_effector_torque"));
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("franka_plate_osc_controller"));
+  shared_diagram->set_name(("trifinger_plate_osc_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
   // Run lcm-driven simulation
+  std::cout << "Before lcm driven loop" << std::endl;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+      lcm_channel_params.trifinger_state_channel, true);
   loop.Simulate();
   return 0;
 }

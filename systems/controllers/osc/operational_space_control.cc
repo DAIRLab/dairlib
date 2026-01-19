@@ -66,6 +66,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   n_v_ = plant_wo_spr.num_velocities();
   n_u_ = plant_wo_spr.num_actuators();
 
+  std::cout << "n_q_: " << n_q_ << std::endl;
+  std::cout << "n_v_: " <<  n_v_ << std::endl;
+  std::cout << "n_u_: " <<  n_u_ << std::endl;
+
   int n_q_w_spr = plant_w_spr.num_positions();
   int n_v_w_spr = plant_w_spr.num_velocities();
   int n_u_w_spr = plant_w_spr.num_actuators();
@@ -145,7 +149,9 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
   VectorXd q_min(n_revolute_joints_);
   VectorXd q_max(n_revolute_joints_);
-  int floating_base_offset = n_v_ - n_revolute_joints_;
+
+  // HARD CODED FOR TRIFINGER PLATE EXAMPLE (FLOATING BASE AT END OF q)
+  int floating_base_offset = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
     if (joint.type_name() == "revolute") {

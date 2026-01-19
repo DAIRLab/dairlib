@@ -10,13 +10,41 @@ cc_binary(
         "//examples/franka/systems:franka_systems",
         "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_lcm_channels",
         "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_sim_params",
+        "//examples/cube_flip/trifinger_plate/systems:trifinger_plate_lcm_systems",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives:radio_parser",
+        "//multibody/kinematic",
         "@drake//:drake_shared_library",
         "@gflags",
 
+    ],
+)
+
+
+cc_binary(
+    name = "trifinger_plate_osc_controller",
+    srcs = ["trifinger_plate_osc_controller.cc"],
+    data = [
+        "//examples/cube_flip:urdfs",
+    ],
+    deps = [
+        # ":parameters",
+        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_osc_controller_params",
+        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_lcm_channels",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

@@ -1,0 +1,17 @@
+cc_library(
+    name = "trifinger_plate_lcm_systems",
+    srcs = ["trifinger_plate_lcm_systems.cc"],
+    hdrs = [
+        "trifinger_plate_lcm_systems.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+    visibility = ["//visibility:public"],
+)

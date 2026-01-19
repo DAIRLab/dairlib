@@ -28,6 +28,7 @@
 
 #include "examples/cube_flip/trifinger_plate/parameter_headers/trifinger_plate_lcm_channels.h"
 #include "examples/cube_flip/trifinger_plate/parameter_headers/trifinger_plate_sim_params.h"
+#include "examples/cube_flip/trifinger_plate/systems/trifinger_plate_lcm_systems.h"
 
 #include "examples/franka/systems/external_force_generator.h"
 #include "multibody/multibody_utils.h"
@@ -55,7 +56,7 @@ using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
-using systems::AddActuationRecieverAndStateSenderLcm;
+using dairlib::AddActuationRecieverAndStateSenderTrifingerPlate;
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -86,11 +87,10 @@ int DoMain(int argc, char* argv[]) {
     "robot_properties_fingers", 
     "examples/cube_flip/trifinger_plate/robot_properties_fingers"
   );
-  drake::multibody::ModelInstanceIndex trifinger_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.trifinger_model))[0];
-		
-	// Add end effector and object
-  drake::multibody::ModelInstanceIndex end_effector_index =
+
+  drake::multibody::ModelInstanceIndex trifinger_index = 
+    parser.AddModels(FindResourceOrThrow(sim_params.trifinger_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = 
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex object_index =
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
 
 	const auto& plate_body = plant.GetBodyByName("plate", end_effector_index);
 
-	// Attach each finger to the bottom of the plate, with a ball-and-socket joint
+	// Attach each finger to the bottom of the plate
 	std::vector<VectorXd> plate_socket_offsets = sim_params.finger_attachment_points;
 	std::vector<std::string> tip_names = {
 			"finger_tip_link_0", 
@@ -118,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
 				plant.AddFrame(std::make_unique<drake::multibody::FixedOffsetFrame<double>>(
 								"plate_socket_" + std::to_string(i),
 								plate_body,
-								X_ParentSocket // To prevent gimbal lock
+								X_ParentSocket 
 				));
 
 		// const Eigen::Vector3d trans_stiffness(1e6, 1e6, 1e6);
@@ -165,7 +165,7 @@ int DoMain(int argc, char* argv[]) {
   
 
   // Weld trifinger base to world upside down
-  Eigen::Vector3d base_translation(0.5 * Eigen::Vector3d::UnitZ());
+  Eigen::Vector3d base_translation(0.3 * Eigen::Vector3d::UnitZ());
 	RigidTransformd X_WI(RotationMatrixd::MakeXRotation(M_PI), base_translation);
 	plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
 	plant.Finalize();
@@ -200,10 +200,11 @@ int DoMain(int argc, char* argv[]) {
 	std::cout << "nv: " << nv << std::endl;
 	std::cout << "nu: " << nu << std::endl;
 
-	AddActuationRecieverAndStateSenderLcm(
+	AddActuationRecieverAndStateSenderTrifingerPlate(
       &builder, plant, lcm, lcm_channel_params.trifinger_input_channel,
       lcm_channel_params.trifinger_state_channel, sim_params.trifinger_publish_rate,
-      trifinger_index, sim_params.publish_efforts, sim_params.actuator_delay);
+      trifinger_index, end_effector_index,
+      sim_params.publish_efforts, sim_params.actuator_delay);
 	
 	std::cout << "AFTER AddActuationRecieverAndStateSenderLcm" << std::endl;
   auto object_state_sender =

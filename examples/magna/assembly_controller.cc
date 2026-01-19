@@ -405,9 +405,10 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
     // Check if we just reached the target
     if (IsOSCTargetReached(x_lcs_curr, state_data.current_target_idx,
                            osc_target_poses_pre_mpc_)) {
-      // Record the time when target was first reached
+      // Record the time when target was first reached and set flag
       if (state_data.target_reached_time < 0.0) {
         state_data.target_reached_time = t_context;
+        pre_mpc_target_reached_ = true;
         std::cout << "Pre-MPC target " << state_data.current_target_idx
                   << " reached at t=" << state_data.target_reached_time
                   << std::endl;
@@ -419,6 +420,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               state_data.target_reached_time, osc_target_poses_pre_mpc_)) {
         state_data.current_target_idx++;
         state_data.target_reached_time = -1.0;
+        pre_mpc_target_reached_ = false;  // Reset for next target
 
         // Check if all pre-MPC targets are completed
         if (state_data.current_target_idx >=
@@ -439,12 +441,9 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
                     << state_data.current_target_idx << std::endl;
         }
       }
-    } else {
-      // Not at target yet - reset target reached time if it was set
-      if (state_data.target_reached_time >= 0.0) {
-        state_data.target_reached_time = -1.0;
-      }
     }
+    // Note: We no longer reset target_reached_time when moving away from
+    // target. This ensures the "target reached" message is only printed once.
   }
 
   // Handle target progression in kMoveToTargetPostMPC phase
@@ -456,9 +455,10 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
     // Check if we just reached the target
     if (IsOSCTargetReached(x_lcs_curr, state_data.post_mpc_target_idx,
                            osc_target_poses_post_mpc_)) {
-      // Record the time when target was first reached
+      // Record the time when target was first reached and set flag
       if (state_data.post_mpc_target_reached_time < 0.0) {
         state_data.post_mpc_target_reached_time = t_context;
+        post_mpc_target_reached_ = true;
         std::cout << "Post-MPC target " << state_data.post_mpc_target_idx
                   << " reached at t=" << state_data.post_mpc_target_reached_time
                   << std::endl;
@@ -471,6 +471,7 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
                                        osc_target_poses_post_mpc_)) {
         state_data.post_mpc_target_idx++;
         state_data.post_mpc_target_reached_time = -1.0;
+        post_mpc_target_reached_ = false;  // Reset for next target
 
         // Check if all post-MPC targets are completed
         if (state_data.post_mpc_target_idx >=
@@ -483,12 +484,10 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
                     << state_data.post_mpc_target_idx << std::endl;
         }
       }
-    } else {
-      // Not at target yet - reset target reached time if it was set
-      if (state_data.post_mpc_target_reached_time >= 0.0) {
-        state_data.post_mpc_target_reached_time = -1.0;
-      }
     }
+    // Note: We no longer reset post_mpc_target_reached_time when moving away
+    // from target. This ensures the "target reached" message is only printed
+    // once.
   }
 
   // Generate trajectory based on current phase
@@ -500,14 +499,16 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               static_cast<int>(osc_target_poses_pre_mpc_.size())) {
         // Adjust z position of the last pre-MPC OSC target to align the
         // keypoints with the small pulley's groove
-        if (state_data.current_target_idx ==
-            static_cast<int>(osc_target_poses_pre_mpc_.size()) - 1) {
-          osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2] =
-              target_ee_height_;
-        }
+        // if (state_data.current_target_idx ==
+        //     static_cast<int>(osc_target_poses_pre_mpc_.size()) - 1) {
+        //   osc_target_poses_pre_mpc_[state_data.current_target_idx].position[2]
+        //   =
+        //       target_ee_height_;
+        // }
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
-            state_data.current_target_idx, osc_target_poses_pre_mpc_);
+            state_data.current_target_idx, osc_target_poses_pre_mpc_,
+            &pre_mpc_target_reached_);
       }
       break;
 
@@ -549,7 +550,8 @@ drake::systems::EventStatus AssemblyController::ComputePlan(
               static_cast<int>(osc_target_poses_post_mpc_.size())) {
         GenerateMoveToTargetTrajectory(
             x_lcs_curr, t_context, &execution_lcm_traj_, &planned_lcm_traj_,
-            state_data.post_mpc_target_idx, osc_target_poses_post_mpc_);
+            state_data.post_mpc_target_idx, osc_target_poses_post_mpc_,
+            &post_mpc_target_reached_);
       }
       break;
 
@@ -724,8 +726,8 @@ void AssemblyController::AddEETrajectoriesToLcm(
 void AssemblyController::GenerateMoveToTargetTrajectory(
     const Eigen::VectorXd& x_lcs_curr, double t_context,
     LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
-    int target_index,
-    const std::vector<SingleOSCTargetPose>& target_poses) const {
+    int target_index, const std::vector<SingleOSCTargetPose>& target_poses,
+    bool* target_reached) const {
   if (target_index < 0 ||
       target_index >= static_cast<int>(target_poses.size())) {
     std::cerr << "Warning: Invalid target index: " << target_index << std::endl;
@@ -749,18 +751,17 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
     std::cout << "Distance to target: " << distance << std::endl;
   }
 
-  // Already at target, create a two-point trajectory at target position (OSC
-  // requires at least two points)
-  if (IsOSCTargetReached(x_lcs_curr, target_index, target_poses)) {
+  // If target_reached is true, hold the target pose (dwelling)
+  if (*target_reached) {
     gripper_pos_command_ = target_pose.gripper_pos_command;
+
     Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(3, 2);
     Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(2);
-    knots.col(0) = target_pos;
-    knots.col(1) = target_pos;
+    knots.col(0) = current_pos;
+    knots.col(1) = current_pos;
     timestamps[0] = t_context;
     timestamps[1] = t_context + dt_;
 
-    // Create minimal trajectory
     Eigen::MatrixXd orientation_single = Eigen::MatrixXd::Zero(4, 2);
     orientation_single.col(0) = target_orientation;
     orientation_single.col(1) = target_orientation;
@@ -899,7 +900,7 @@ void AssemblyController::GenerateMoveToTargetTrajectory(
 
     // Fall back to linear interpolation if circular arc is not used
     if (!use_circular_arc) {
-      const double avg_speed = 0.1;
+      const double avg_speed = 0.08;
       double step_size = avg_speed * dt_;
       for (int i = 0; i < n_knots; i++) {
         knots.col(i) = current_pos + i * step_size * displacement.normalized();

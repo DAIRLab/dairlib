@@ -127,11 +127,13 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
       const std::vector<SingleOSCTargetPose>& target_poses) const;
 
   /// Helper functions for different phases
+  /// @param target_reached Pointer to flag - if true, target was reached and
+  /// we're dwelling at target pose
   void GenerateMoveToTargetTrajectory(
       const Eigen::VectorXd& x_lcs_curr, double t_context,
       LcmTrajectory* execution_traj, LcmTrajectory* planned_traj,
-      int target_index,
-      const std::vector<SingleOSCTargetPose>& target_poses) const;
+      int target_index, const std::vector<SingleOSCTargetPose>& target_poses,
+      bool* target_reached) const;
 
   /// Check if target is reached and return true if so (for kMoveToTarget phase)
   bool IsOSCTargetReached(
@@ -282,6 +284,10 @@ class AssemblyController : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d warmup_hold_position_;
   mutable Eigen::Vector4d warmup_hold_orientation_;  // Quaternion (w, x, y, z)
   mutable bool warmup_pose_initialized_ = false;
+
+  // Flags to track if target has been reached (for dwelling)
+  mutable bool pre_mpc_target_reached_ = false;
+  mutable bool post_mpc_target_reached_ = false;
 
   // Task-relevant keypoints storage
   mutable std::vector<std::vector<double>> task_relevant_keypoints_;

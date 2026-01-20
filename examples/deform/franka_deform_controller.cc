@@ -76,7 +76,6 @@ int DoMain(int argc, char* argv[]) {
 
   // Piece together the diagram.
   DiagramBuilder<double> builder;
-  //   auto lcm = builder.AddSystem<LcmInterfaceSystem>();
 
   // 1) Franka state receiver.
   MultibodyPlant<double> plant_franka(0.0);
@@ -110,7 +109,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(mpm_reducer->get_output_port_lcmt_elastoplastic_network(),
                   reduced_model_publisher->get_input_port());
 
-  ///////////////////////////////////////////////////////////////////////////OLD
+  // 4) LCS state.
+  auto franka_kinematics = builder.AddSystem<systems::FrankaKinematics>(
+      plant_franka, franka_context.get(), kEndEffectorName, false);
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  franka_kinematics->get_input_port_franka_state());
+
+  //////////////////////////////////////////////////////////////////////////////
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("deform_controller"));

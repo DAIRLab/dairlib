@@ -184,7 +184,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(),
+          plant_franka, franka_context.get(), &plant_tray, tray_context.get(),
           scene_params.end_effector_name, "tray",
           controller_params.include_end_effector_orientation);
   auto actor_trajectory_sender = builder.AddSystem(

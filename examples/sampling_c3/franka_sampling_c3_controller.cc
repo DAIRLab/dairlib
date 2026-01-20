@@ -375,14 +375,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
-          controller_params.object_body_name,
-          controller_params.include_end_effector_orientation,
-		  controller_params.base_names
-    );
+          plant_franka, franka_context.get(), &plant_object,
+          object_context.get(), kEndEffectorName, controller_params.base_names,
+          controller_params.include_end_effector_orientation);
 
-  std::cout << "Before target generator" << std::endl;
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
   if (FLAGS_demo_name == "jacktoy") {

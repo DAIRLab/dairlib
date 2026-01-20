@@ -170,9 +170,9 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false, controller_params.base_names);
+          plant_franka, franka_context.get(), &plant_object,
+          object_context.get(), kEndEffectorName, controller_params.base_names,
+          false);
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());

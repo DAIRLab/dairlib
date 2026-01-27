@@ -121,6 +121,11 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     std::cout << "not tracking ic3, time: " << (context.get_time() - t0) << std::endl;
 
+    VectorXd nominal_position_offset = nominal_position;
+    if ((context.get_time() - t0) - 3 > num_timesteps * dt_ * 1) {
+      nominal_position(2) += ic3_options_.vertical_offset;
+    }
+
 		MatrixXd positions = nominal_position.replicate(1, 10);
 	
 		MatrixXd orientations = MatrixXd::Zero(4, 10);

@@ -126,6 +126,8 @@ OperationalSpaceControl::OperationalSpaceControl(
     u_min[i] = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
     u_max[i] = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
+  std::cout << "u min: " << u_min.transpose() << std::endl;
+  std::cout << "u max: " << u_max.transpose() << std::endl;  
   u_min_ = u_min;
   u_max_ = u_max;
 
@@ -137,6 +139,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       ddq_max[i] = plant_wo_spr_.get_joint(i).acceleration_upper_limits()[0];
     }
   }
+  std::cout << "ddq min: " << ddq_min.transpose() << std::endl;
+  std::cout << "ddq max: " << ddq_max.transpose() << std::endl;
   ddq_min_ = ddq_min;
   ddq_max_ = ddq_max;
 
@@ -175,8 +179,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   q_min_ = q_min;
   q_max_ = q_max;
 
-  std::cout << q_min_.transpose() << std::endl;
-  std::cout << q_max_.transpose() << std::endl;
+  std::cout << "q_min: " << q_min_.transpose() << std::endl;
+  std::cout << "q_max: " << q_max_.transpose() << std::endl;
 
   // Check if the model is floating based
   is_quaternion_ = multibody::HasQuaternion(plant_w_spr);

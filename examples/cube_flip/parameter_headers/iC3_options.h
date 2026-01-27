@@ -11,9 +11,11 @@ struct iC3Options {
 
   int iter_to_use;
   int num_timesteps_to_use;
+  double vertical_offset;
 
   int N;
   double dt; // REMOVE after importing all options from c3 repo
+
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -23,6 +25,7 @@ struct iC3Options {
     a->Visit(DRAKE_NVP(print_costs));
     a->Visit(DRAKE_NVP(iter_to_use));
     a->Visit(DRAKE_NVP(num_timesteps_to_use));
+    a->Visit(DRAKE_NVP(vertical_offset));
     a->Visit(DRAKE_NVP(N)); // REMOVE after importing all options from c3 repo
     a->Visit(DRAKE_NVP(dt)); // REMOVE after importing all options from c3 repo
 

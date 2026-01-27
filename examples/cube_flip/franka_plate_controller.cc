@@ -199,7 +199,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
 
 	auto timed_gate = 
-			builder.AddSystem<TimedGate>(0.4);    // TODO: make this not a hard coded time
+			builder.AddSystem<TimedGate>(ic3_options.num_timesteps_to_use * ic3_options.dt);   
 
   auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(

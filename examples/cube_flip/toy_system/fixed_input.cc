@@ -38,7 +38,7 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   //   std::cout << traj_names.at(i) << std::endl;
   // }
 
-	const std::string final_trajectory_name = "iteration_9";
+	const std::string final_trajectory_name = "iteration_4";
   Eigen::MatrixXd u_data = u_trajectory.GetTrajectory(final_trajectory_name).datapoints;
 
   std::unique_ptr<drake::systems::Context<double>> plant_context = plant_.CreateDefaultContext();		

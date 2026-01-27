@@ -7,7 +7,7 @@
 #include "common/find_resource.h"
 
 #include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
-#include "examples/cube_flip/trajectory_lcm_parser.h"
+#include "examples/cube_flip/trajectory_lcm_parser_franka.h"
 
 
 #include "multibody/multibody_utils.h"
@@ -40,6 +40,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::math::RigidTransformd;
+using drake::math::RigidTransform;
 using drake::math::RotationMatrixd;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
@@ -53,7 +54,7 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_franka.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -64,11 +65,23 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
 
-  parser.AddModels(vis_params.plate_file);
-  parser.AddModels(vis_params.cube_file);
+  ModelInstanceIndex franka_index = parser.AddModelsFromUrl("package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
+  ModelInstanceIndex end_effector_index = parser.AddModels(vis_params.plate_file)[0];
+  ModelInstanceIndex object_index = parser.AddModels(vis_params.cube_file)[0];
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("panda_link0"), X_WI);
+
+  Eigen::Vector3d tool_attachment_frame(0.15, 0, 0.107);
+  RigidTransform<double> T_EE_W =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             tool_attachment_frame);
+  plant.WeldFrames(
+      plant.GetFrameByName("panda_link7"),
+      plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant.Finalize();
-
   std::cout << "plant built" << std::endl;
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -85,18 +98,21 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           vis_params.trajectory_lcm_channel_x_real, lcm));
 
+  auto trajectory_sub_plate = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          vis_params.trajectory_lcm_channel_plate, lcm));
 
   auto trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "cube_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "cube_trajectory_splitter");
 
   auto plate_trajectory_splitter = 
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "plate_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 1, "plate_trajectory_splitter");
 
   auto c3_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "c3_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "c3_trajectory_splitter");
 
   auto real_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "real_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "real_trajectory_splitter");
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
@@ -160,7 +176,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   builder.Connect(trajectory_sub_x->get_output_port(), trajectory_splitter->get_input_port_trajectory());
-  builder.Connect(trajectory_sub_x_real->get_output_port(), plate_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_plate->get_output_port(), plate_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x_real->get_output_port(), real_trajectory_splitter->get_input_port_trajectory());
 

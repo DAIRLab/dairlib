@@ -37,6 +37,7 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::GeometrySet;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransform;
+using drake::math::RollPitchYaw;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -86,8 +87,13 @@ int DoMain(int argc, char* argv[]) {
 
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
+
+  // Hard-coded rotation for plate task
+  RollPitchYaw<double> ee_rpy(0, 0, 0);
+  //RollPitchYaw<double> ee_rpy(0, -M_PI / 2, M_PI);
+  RigidTransform<double> T_EE_W =
+      RigidTransform<double>(ee_rpy.ToRotationMatrix(),
+                              sim_params.tool_attachment_frame);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    T_X_W);

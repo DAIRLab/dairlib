@@ -69,12 +69,24 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
           ->get_value<drake::trajectories::Trajectory<double>>();
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
+
+  // std::cout << "Trajectory time range: ["
+  //         << trajectory_input.start_time() << ", "
+  //         << trajectory_input.end_time() << "]\n";
+
+	// for (double i = 0; i < 0.09; i+= 0.01) {
+	// 	std::cout << trajectory_input.value(i).transpose() << std::endl;
+	// }
+
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
-    std::cout << "0 force traj" << std::endl;
+    // std::cout << "11 "  << radio_out->channel[11]  << std::endl;
+    // std::cout << "14 "  << radio_out->channel[14]  << std::endl;
+    // std::cout << "is 0 "  << trajectory_input.value(0).isZero()  << std::endl;
+
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {

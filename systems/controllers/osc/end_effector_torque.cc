@@ -74,7 +74,6 @@ void EndEffectorTorqueTrajectoryGenerator::CalcTraj(
           traj);
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
-    std::cout << "0 torque traj" << std::endl;
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {

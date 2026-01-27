@@ -18,6 +18,8 @@ struct CubeFlipVisualizerParams {
   std::string trajectory_lcm_channel_x;
   std::string trajectory_lcm_channel_u;
   std::string trajectory_lcm_channel_c3;
+  std::string trajectory_lcm_channel_x_real;
+  std::string trajectory_lcm_channel_plate;
 
   std::vector<double> x_des;
   std::vector<double> x_init;
@@ -37,6 +39,8 @@ struct CubeFlipVisualizerParams {
     a->Visit(DRAKE_NVP(trajectory_lcm_channel_x));
     a->Visit(DRAKE_NVP(trajectory_lcm_channel_u));
     a->Visit(DRAKE_NVP(trajectory_lcm_channel_c3));
+    a->Visit(DRAKE_NVP(trajectory_lcm_channel_x_real));
+    a->Visit(DRAKE_NVP(trajectory_lcm_channel_plate));
     a->Visit(DRAKE_NVP(x_des));
     a->Visit(DRAKE_NVP(x_init));
     a->Visit(DRAKE_NVP(trace_color));

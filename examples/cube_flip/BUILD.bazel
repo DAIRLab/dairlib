@@ -42,10 +42,51 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "trajectory_visualizer_franka",
+    srcs = ["trajectory_visualizer_franka.cc"],
+    data = [
+        ":urdfs",
+        "//examples/cube_flip:parameters",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+        "//examples/cube_flip:trajectory_lcm_parser_franka",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
 cc_library(
     name = "trajectory_lcm_parser",
     srcs = ["trajectory_lcm_parser.cc"],
     hdrs = ["trajectory_lcm_parser.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+    ],
+)
+
+cc_library(
+    name = "trajectory_lcm_parser_franka",
+    srcs = ["trajectory_lcm_parser_franka.cc"],
+    hdrs = ["trajectory_lcm_parser_franka.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",

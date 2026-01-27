@@ -38,7 +38,7 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   //   std::cout << traj_names.at(i) << std::endl;
   // }
 
-	const std::string final_trajectory_name = "iteration_8";
+	const std::string final_trajectory_name = "iteration_9";
   Eigen::MatrixXd u_data = u_trajectory.GetTrajectory(final_trajectory_name).datapoints;
 
   std::unique_ptr<drake::systems::Context<double>> plant_context = plant_.CreateDefaultContext();		
@@ -47,9 +47,8 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
 
   Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
   u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
-  u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
-
-
+  u_gravity[4] = -(tau_g[4] + 0.13 * tau_g[10]); // Hard-coded cube + plate
+  // std::cout << "tau g: " << tau_g.transpose() << std::endl;
 
   if (t > dt_ * N_ + 5.0 || t < 5.0) { 
     // Just compensate gravity if time is past horizon

@@ -89,6 +89,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   std::cout << "Position: " << knots.col(3).transpose() << std::endl;
   std::cout << "Position: " << knots.col(4).transpose() << std::endl;
 
+
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
@@ -98,11 +99,12 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   force_traj.time_vector = c3_solution->time_vector_.cast<double>();
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
-  std::cout << "Force: " << force_traj.datapoints.col(0).transpose() << std::endl;
-  std::cout << "Force: " << force_traj.datapoints.col(1).transpose() << std::endl;
-  std::cout << "Force: " << force_traj.datapoints.col(2).transpose() << std::endl;
-  std::cout << "Force: " << force_traj.datapoints.col(3).transpose() << std::endl;
-  std::cout << "Force: " << force_traj.datapoints.col(4).transpose() << std::endl;
+//   std::cout << "Force: " << force_traj.datapoints.col(0).transpose() << std::endl;
+//   std::cout << "Force: " << force_traj.datapoints.col(1).transpose() << std::endl;
+//   std::cout << "Force: " << force_traj.datapoints.col(2).transpose() << std::endl;
+//   std::cout << "Force: " << force_traj.datapoints.col(3).transpose() << std::endl;
+//   std::cout << "Force: " << force_traj.datapoints.col(4).transpose() << std::endl;
+
 
   if (publish_end_effector_orientation_) {
     LcmTrajectory::Trajectory torque_traj;
@@ -120,10 +122,10 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
     orientation_samples.topRows(2) =
         c3_solution->x_sol_.topRows(5).bottomRows(2).cast<double>();
-    orientation_samples.bottomRows(2) = c3_solution->x_sol_.bottomRows(n_v_)
-                                            .topRows(5)
-                                            .bottomRows(2)
-                                            .cast<double>();
+    orientation_samples.bottomRows(3).topRows(2) = c3_solution->x_sol_.bottomRows(n_v_)
+                                                    .topRows(5)
+                                                    .bottomRows(2)
+                                                    .cast<double>();
     end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
     end_effector_orientation_traj.datatypes =
         std::vector<std::string>(orientation_samples.rows(), "double");
@@ -132,6 +134,12 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
         c3_solution->time_vector_.cast<double>();
     lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
                            end_effector_orientation_traj);
+
+    std::cout << "Orientation: " << orientation_samples.col(0).transpose() << std::endl;
+    std::cout << "Orientation: " << orientation_samples.col(1).transpose() << std::endl;
+    std::cout << "Orientation: " << orientation_samples.col(2).transpose() << std::endl;
+    std::cout << "Orientation: " << orientation_samples.col(3).transpose() << std::endl;
+    std::cout << "Orientation: " << orientation_samples.col(4).transpose() << std::endl;
   }
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();

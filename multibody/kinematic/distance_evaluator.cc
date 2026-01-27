@@ -1,4 +1,5 @@
 #include "multibody/kinematic/distance_evaluator.h"
+#include <iostream>
 
 using drake::MatrixX;
 using drake::Matrix3X;
@@ -38,6 +39,8 @@ VectorX<T> DistanceEvaluator<T>::EvalFull(const Context<T>& context) const {
   plant().CalcPointsPositions(context, frame_B_, pt_B_.template cast<T>(),
                               world, &pt_B_W);
   auto rel_pos = pt_A_W - pt_B_W;
+  std::cout << "rel pos: " << rel_pos.transpose() << std::endl;
+
   VectorX<T> difference(1);
   difference << rel_pos.norm() - distance_;
   return difference;
@@ -63,6 +66,7 @@ void DistanceEvaluator<T>::EvalFullJacobian(
   plant().CalcPointsPositions(context, frame_B_, pt_B_.template cast<T>(),
                               world, &pt_B_W);
   auto rel_pos = pt_A_W - pt_B_W;
+  std::cout << "rel pos: " << rel_pos.transpose() << std::endl;
 
   // .template cast<T> converts pt_A_, as a double, into type T
   plant().CalcJacobianTranslationalVelocity(

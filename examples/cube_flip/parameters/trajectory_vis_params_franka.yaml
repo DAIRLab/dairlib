@@ -1,0 +1,33 @@
+plate_file: "examples/cube_flip/urdf/plate_end_effector.sdf" 
+cube_file: "examples/cube_flip/urdf/cube.sdf" 
+
+visualizer_publish_rate: 30
+
+# match with iC3 params
+ic3_num_iters: 10
+trajectory_length: 100
+
+iter_downsampling_factor: 2
+downsampling_factor: 5
+
+trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
+trajectory_lcm_channel_u: "iC3_TRAJECTORY_U"
+trajectory_lcm_channel_c3: "iC3_TRAJECTORY_C3"
+trajectory_lcm_channel_x_real: "iC3_TRAJECTORY_X_REAL"
+trajectory_lcm_channel_plate: "iC3_TRAJECTORY_PLATE"
+
+# Just for drawing the init/target pose, no effect on trajectory
+x_init: [-1.6, 1, 1.46, -1.64, 2.13, 1.45, 0.02, 
+         1, 0, 0, 0, 
+         0.83, -0.35, 0.61,
+         0, 0, 0, 0, 0, 0, 0, 
+         0, 0, 0, 0, 0, 0]
+
+x_des: [-1.6, 1, 1.46, -1.64, 2.13, 1.45, 0.02, 
+        0, 0, 1, 0, 
+        0.83, -0.35, 0.61,
+        0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0]
+
+trace_color: [1.0, 0.64, 0.0]
+plate_trace_color: [0, 0.64, 1.0]

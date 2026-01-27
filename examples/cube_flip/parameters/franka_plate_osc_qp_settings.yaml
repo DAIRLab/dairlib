@@ -10,7 +10,7 @@ int_options:
   polish: 1
   polish_refine_iter: 1
   scaled_termination: 1
-  check_termination: 25
+  check_termination: 100
 double_options:
   rho: 0.001
   sigma: 1e-6

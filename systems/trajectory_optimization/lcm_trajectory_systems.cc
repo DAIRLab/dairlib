@@ -51,7 +51,7 @@ void LcmTrajectoryReceiver::OutputTrajectory(
           traj);
   if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
               context, trajectory_input_port_)
-          ->utime > 1e-3) {
+          ->utime > 1e-5) {
     const auto& lcmt_traj =
         this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
             context, trajectory_input_port_);
@@ -60,6 +60,10 @@ void LcmTrajectoryReceiver::OutputTrajectory(
     *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
         trajectory_block.time_vector, trajectory_block.datapoints);
     if (trajectory_block.datapoints.rows() == 3) {
+      // std::cout << trajectory_name_ << std::endl;
+      // std::cout << trajectory_block.time_vector.size() << std::endl;
+      // std::cout << trajectory_block.datapoints.rows() << " x " << trajectory_block.datapoints.cols() << std::endl;
+
       *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
           trajectory_block.time_vector, trajectory_block.datapoints);
     } else {
@@ -115,7 +119,7 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
     //std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
-    std::cout << "traj data: " << trajectory_block.datapoints << std::endl;
+    // std::cout << "traj data: " << trajectory_block.datapoints << std::endl;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {
       Eigen::Vector4d quat_vec = trajectory_block.datapoints.col(i);
       quaternion_datapoints.push_back(

@@ -150,8 +150,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   VectorXd q_min(n_revolute_joints_);
   VectorXd q_max(n_revolute_joints_);
 
-  // HARD CODED FOR TRIFINGER PLATE EXAMPLE (FLOATING BASE AT END OF q)
-  int floating_base_offset = 0;
+  // LINE BELOW HARD CODED FOR TRIFINGER PLATE (FLOATING BASE AT END OF q)
+  // int floating_base_offset = 0;
+
+  int floating_base_offset = n_v_ - n_revolute_joints_;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
     if (joint.type_name() == "revolute") {
@@ -172,6 +174,9 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
   q_min_ = q_min;
   q_max_ = q_max;
+
+  std::cout << q_min_.transpose() << std::endl;
+  std::cout << q_max_.transpose() << std::endl;
 
   // Check if the model is floating based
   is_quaternion_ = multibody::HasQuaternion(plant_w_spr);
@@ -559,7 +564,6 @@ void OperationalSpaceControl::Build() {
                             .evaluator()
                             .get();
   }
-
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
     epsilon_blend_ =
@@ -866,16 +870,21 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
+
+    VectorXd q_max = q_max_ - joint_limit_buffer_ * VectorXd::Ones(q_max_.size());
+    VectorXd q_min = q_min + joint_limit_buffer_ * VectorXd::Ones(q_max_.size());
+
     VectorXd w_joint_limit =
         K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
                             .tail(n_revolute_joints_) -
-                        q_max_)
+                        q_max)
                            .cwiseMax(0) +
         K_joint_pos_ * (x_wo_spr.head(plant_wo_spr_.num_positions())
                             .tail(n_revolute_joints_) -
-                        q_min_)
+                        q_min)
                            .cwiseMin(0);
     joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
+
   }
 
   // (Testing) 6. blend contact forces during double support phase
@@ -953,8 +962,33 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(epsilon_);
     *lambda_ext_sol_ = result.GetSolution(lambda_ext_);
     *lambda_ext_tau_sol_ = result.GetSolution(lambda_ext_tau_);
+
+    std::cout << "dv: " << dv_sol_->transpose() << std::endl;
+    std::cout << "u: " << u_sol_->transpose() << std::endl;
+    std::cout << "lambda c: " << lambda_c_sol_->transpose() << std::endl;
+    std::cout << "lambda h: " << lambda_h_sol_->transpose() << std::endl;
+    std::cout << "epsilon: " << epsilon_sol_->transpose() << std::endl;
+    std::cout << "lambda ext: " << lambda_ext_sol_->transpose() << std::endl;
+    std::cout << "tau ext: " << lambda_ext_tau_sol_->transpose() << std::endl;
+
+    if (!u_sol_->allFinite()) {
+      std::cerr << "u_sol contains NaN or Inf!" << std::endl;
+      std::cout << result.get_solution_result() << std::endl;
+      const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
+      
+      std::cout << "OSQP Status: " << details.status_val << std::endl;; 
+      std::cout << "Iterations: " << details.iter << std::endl;;
+      std::cout << "primal_res: " << details.primal_res << std::endl;
+      std::cout << "dual_res: " << details.dual_res << std::endl;
+    }
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
+
+      std::cout << "SOLVER FAILED" << std::endl;
+      const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
+      
+      drake::log()->warn("OSQP Status: {}", details.status_val); 
+      drake::log()->warn("Iterations: {}", details.iter);
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

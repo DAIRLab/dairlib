@@ -224,6 +224,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    * Currently unused
    */
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
+  void SetJointLimitBuffer(const double size) { joint_limit_buffer_ = size; }
 
   void DisableGravityCompensation() { with_gravity_compensation_ = false; }
 
@@ -472,6 +473,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double w_input_smoothing_constraint_ = 1;
   // Joint limit penalty
   double w_joint_limit_ = 0;
+  double joint_limit_buffer_ = 0;
   std::map<int, std::pair<int, double>>
       fsm_to_w_input_map_;  // each pair is (joint index, weight)
 

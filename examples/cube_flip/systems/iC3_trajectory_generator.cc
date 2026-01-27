@@ -115,9 +115,11 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 	const std::string force_trajectory_name = "end_effector_force_target";
 	const std::string torque_trajectory_name = "end_effector_torque_target";
 
-  if ((context.get_time() - t0) <= 3 || (context.get_time() - t0) - 3 > N_ * dt_ * 1) {
+  int num_timesteps = ic3_options_.num_timesteps_to_use;
 
-    // std::cout << "not tracking ic3, time: " << (context.get_time() - t0) << std::endl;
+  if ((context.get_time() - t0) <= 3 || (context.get_time() - t0) - 3 > num_timesteps * dt_ * 1) {
+
+    std::cout << "not tracking ic3, time: " << (context.get_time() - t0) << std::endl;
 
 		MatrixXd positions = nominal_position.replicate(1, 10);
 	
@@ -130,9 +132,6 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 		  orientations(0, t) = 1;
 			// orientations(0, t) = 0.968718;
 			// orientations(2, t) = -0.248163;
-
-
-
       timestamps(t) = t * dt_;
     }
 		
@@ -169,7 +168,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 		output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
     output_traj->utime = context.get_time() * 1e6;
 
-  } else if ((context.get_time() - t0) - 3 < N_ * dt_ * 1 && 
+  } else if ((context.get_time() - t0) - 3 < num_timesteps * dt_ * 1 && 
     x_trajectory.HasTrajectory(final_trajectory_name) && 
       u_trajectory.HasTrajectory(final_trajectory_name)) {
 
@@ -181,7 +180,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     LcmTrajectory::Trajectory force_trajectory = u_trajectory.GetTrajectory(final_trajectory_name);
     MatrixXd force_data = force_trajectory.datapoints;
 
-    // std::cout << "tracking ic3: " << force_data.col(segment_idx).transpose() << std::endl;
+    std::cout << "tracking ic3: " << force_data.col(segment_idx).transpose() << std::endl;
 
     int ee_pos_idx = 0;
     int ee_rot_idx = 3; 
@@ -193,10 +192,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     // Set yaw = 0 manually
 		MatrixXd full_forces(6, N_);
-    //full_forces.topRows(5) = force_data;
+    full_forces.topRows(5) = force_data;
     
-    full_forces.middleRows(2, 4) = force_data.bottomRows(3);
-
     // std::cout << "raw orientation size: " << raw_orientations.rows() << " x " << raw_orientations.cols() << std::endl;
     // std::cout << "full position size: " << full_positions.rows() << " x " << full_positions.cols() << std::endl;
 
@@ -207,8 +204,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     for (int i = segment_idx; i < segment_idx + 10; ++i) {
 				int idx;	
-				if (i > N_) {
-					idx = N_;
+				if (i >= N_) {
+					idx = N_-1;
 				} else {
 					idx = i;
 				}
@@ -221,7 +218,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
         Eigen::Quaterniond q = rollAngle * pitchAngle; 
         VectorXd q_vec(4); 
-        q_vec << q.w(), q.x(), -q.y(), q.z();
+        q_vec << q.w(), q.x(), q.y(), q.z();
 
         orientations.col(idx - segment_idx) = q_vec;
 

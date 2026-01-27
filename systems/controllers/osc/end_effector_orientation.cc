@@ -23,7 +23,12 @@ EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGener
           .get_index();
   radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
       drake::Value<dairlib::lcmt_radio_out>{}).get_index();
-  PiecewiseQuaternionSlerp<double> empty_slerp_traj;
+
+  // Set 1, 0, 0, 0 as default
+  Eigen::Quaterniond identity_quat(1.0, 0.0, 0.0, 0.0);    
+  std::vector<double> time_breaks = {0.0, 1.0};
+  std::vector<Eigen::Quaterniond> quat_samples = {identity_quat, identity_quat};
+  PiecewiseQuaternionSlerp<double> empty_slerp_traj(time_breaks, quat_samples);
   Trajectory<double>& traj_inst = empty_slerp_traj;
   this->DeclareAbstractOutputPort("end_effector_orientation", traj_inst,
                                   &EndEffectorOrientationTrajectoryGenerator::CalcTraj)

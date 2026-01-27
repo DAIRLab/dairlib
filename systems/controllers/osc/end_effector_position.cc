@@ -93,7 +93,9 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     *casted_traj = result;
   } else {
     if (trajectory_input.value(0).isZero()) {
+      
     } else {
+      std::cout << trajectory_input.value(0).transpose() << std::endl;
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);
     }

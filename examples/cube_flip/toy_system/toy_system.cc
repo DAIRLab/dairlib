@@ -103,7 +103,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           "iC3_TRAJECTORY_U", &lcm));
           
-  auto fixed_input = builder.AddSystem<dairlib::FixedInput>(plant, 100, 0.01);
+  auto fixed_input = builder.AddSystem<dairlib::FixedInput>(plant, 60, 0.01);
 	builder.Connect(ic3_u_sub->get_output_port(),
 									fixed_input->get_input_port_trajectory());
 	builder.Connect(fixed_input->get_output_port_u(),
@@ -179,7 +179,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
                                               std::move(diagram_context));
   simulator.set_target_realtime_rate(0.5);  // Run simulation at 0.5 speed.
   simulator.Initialize();
-  simulator.AdvanceTo(10.0 + 100 * 0.01);  
+  simulator.AdvanceTo(5.0 + 60 * 0.01);  
 
   return 0;
 }

@@ -253,11 +253,10 @@ int DoMain(int argc, char* argv[]) {
     auto controller = 
         builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options); 
 
-		std::cout << "Before c3 trajectory generator" << std::endl;
     auto c3_trajectory_generator =
         builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options); 
-		std::cout << "After c3 trajectory generator" << std::endl;
-
+    c3_trajectory_generator->SetPublishEndEffectorOrientation(true);
+    
     builder.Connect(object_state_sub->get_output_port(),
                     object_state_receiver->get_input_port());
 

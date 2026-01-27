@@ -24,8 +24,10 @@ struct FrankaPlateControllerParams : OSCGains {
   double w_elbow;
   double elbow_kp;
   double elbow_kd;
-
   double mid_link_target;
+
+  double w_joint_limit;
+  double joint_limit_buffer;
 
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
@@ -72,6 +74,8 @@ struct FrankaPlateControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(elbow_kp));
     a->Visit(DRAKE_NVP(elbow_kd));
     a->Visit(DRAKE_NVP(mid_link_target));
+    a->Visit(DRAKE_NVP(w_joint_limit));
+    a->Visit(DRAKE_NVP(joint_limit_buffer));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));

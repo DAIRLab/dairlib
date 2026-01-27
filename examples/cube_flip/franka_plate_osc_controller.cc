@@ -27,6 +27,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
+#include "multibody/kinematic/distance_evaluator.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -41,6 +42,7 @@ namespace dairlib {
 
 using drake::systems::Diagram;
 using drake::math::RigidTransform;
+using drake::math::RollPitchYaw;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
@@ -52,6 +54,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
+using multibody::DistanceEvaluator;
+using multibody::KinematicEvaluatorSet;
 
 using systems::controllers::ExternalTorqueTrackingData;
 using systems::controllers::ExternalForceTrackingData;
@@ -102,11 +106,16 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
 
+  drake::multibody::ModelInstanceIndex end_effector_index;
   if (!controller_params.end_effector_name.empty()) {
-    drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+    end_effector_index = parser.AddModels(
         FindResourceOrThrow(controller_params.end_effector_model))[0];
+    
+    // Hard-coded rotation for plate task
+    RollPitchYaw<double> ee_rpy(0, 0, 0);
+    //RollPitchYaw<double> ee_rpy(0, -M_PI / 2, M_PI);
     RigidTransform<double> T_EE_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+        RigidTransform<double>(ee_rpy.ToRotationMatrix(),
                                controller_params.tool_attachment_frame);
     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                      plant.GetFrameByName(controller_params.end_effector_name,
@@ -223,6 +232,7 @@ int DoMain(int argc, char* argv[]) {
       controller_params.end_effector_name);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
+
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             controller_params.mid_link_target * VectorXd::Ones(1));
@@ -234,8 +244,9 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
   osc->SetAccelerationConstraints(
       controller_params.enforce_acceleration_constraints);
-
   osc->SetContactFriction(controller_params.mu);
+  osc->SetJointLimitWeight(controller_params.w_joint_limit);
+  osc->SetJointLimitBuffer(controller_params.joint_limit_buffer);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();

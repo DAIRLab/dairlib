@@ -43,7 +43,19 @@
 
 
 
-      <link name="link_x"/>
+      <link name="link_x">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <joint name="plate_x" type="prismatic">
         <parent>world</parent>
         <child>link_x</child>
@@ -58,7 +70,19 @@
         </axis>
       </joint>
 
-      <link name="link_y"/>
+      <link name="link_y">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <joint name="plate_y" type="prismatic">
         <parent>link_x</parent>
         <child>link_y</child>
@@ -73,38 +97,62 @@
         </axis>
       </joint>
 
-      <link name="link_z"/>
+      <link name="link_z">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <joint name="plate_z" type="prismatic">
         <parent>link_y</parent>
         <child>link_z</child>
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>5.0 </effort>
-            <velocity>1.5</velocity>
+            <effort>50.0 </effort>
+            <velocity>5</velocity>
             <lower> -100.0 </lower>
             <upper> 100.0 </upper>
           </limit>  
         </axis>
       </joint>
 
-      <link name="link_roll"/>
+      <link name="link_roll">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <joint name="plate_roll" type="revolute">
         <parent>link_z</parent>
         <child>link_roll</child>
         <axis>
           <xyz>1 0 0</xyz>
-          <!-- <limit><lower>-0.5</lower><upper>0.5</upper></limit> -->
+          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
         </axis>
       </joint>
 
       <joint name="plate_pitch" type="revolute">
-        <pose>0 0 0 0 0 0</pose>
         <parent>link_roll</parent>
         <child>plate</child>
+        <pose>0 0 0 0 0 0</pose>
         <axis>
           <xyz>0 1 0</xyz>
-          <!-- e<limit><lower>-0.5</lower><upper>0.5</upper></limit> -->
+          <limit><lower>-0.5</lower><upper>0.5</upper></limit>
         </axis>
       </joint>
 

@@ -14,7 +14,7 @@ run_open_loop: true
 tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]
 
-ee_init_position: [0.45, -0.35, 0.55]
+ee_init_position: [0.35, -0.35, 0.55]
 
 x_target: [0, 0, 0,
            0, 0,

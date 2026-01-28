@@ -91,23 +91,39 @@ int DoMain(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_material_points>(
           lcm_channel_params.mpm_channel, &lcm));
 
-  // 3) Convert MPM points to a reduced elastoplastic network model.
+  // 3) Convert MPM points to a reduced elastoplastic network model.  This
+  // involves first converting the MPM points to tetrahedra, then converting to
+  // an elastoplastic network.
   if (reduced_model_params.reduction_type !=
       ReducedModelTypes::kSupportDirections) {
     throw std::runtime_error("Other model reduction types not implemented.");
   }
-  auto mpm_reducer =
-      builder.AddSystem<dairlib::systems::MpmPointsToReducedModel>(
-          reduced_model_params.support_directions,
-          reduced_model_params.connections);
-  auto reduced_model_publisher = builder.AddSystem(
+  auto mpm_to_tetrahedra =
+      builder.AddSystem<dairlib::systems::MpmPointsToTetrahedra>(
+          reduced_model_params);
+  auto tetrahedra_to_elastoplastic_network =
+      builder.AddSystem<dairlib::systems::TetrahedraToElastoPlasticNetwork>(
+          reduced_model_params.youngs_modulus,
+          reduced_model_params.yield_stress,
+          reduced_model_params.spring_constant_method);
+  auto tetrahedra_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_tetrahedra>(
+          lcm_channel_params.tetrahedra_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto elastoplastic_model_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_elastoplastic_network>(
           lcm_channel_params.reduced_model_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(mpm_points_sub->get_output_port(),
-                  mpm_reducer->get_input_port_lcmt_material_points());
-  builder.Connect(mpm_reducer->get_output_port_lcmt_elastoplastic_network(),
-                  reduced_model_publisher->get_input_port());
+                  mpm_to_tetrahedra->get_input_port_lcmt_material_points());
+  builder.Connect(
+      mpm_to_tetrahedra->get_output_port_lcmt_tetrahedra(),
+      tetrahedra_to_elastoplastic_network->get_input_port_lcmt_tetrahedra());
+  builder.Connect(mpm_to_tetrahedra->get_output_port_lcmt_tetrahedra(),
+                  tetrahedra_publisher->get_input_port());
+  builder.Connect(tetrahedra_to_elastoplastic_network
+                      ->get_output_port_lcmt_elastoplastic_network(),
+                  elastoplastic_model_publisher->get_input_port());
 
   // 4) LCS state.
   auto franka_kinematics = builder.AddSystem<systems::FrankaKinematics>(

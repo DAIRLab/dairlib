@@ -5,6 +5,7 @@ robot_state_channel: FRANKA_STATE_SIMULATION        # lcmt_robot_output
 robot_input_channel: FRANKA_INPUT                   # lcmt_robot_input
 
 mpm_channel: MPM_POINT_POSITIONS                    # lcmt_material_points
+tetrahedra_channel: TETRAHEDRA                      # lcmt_tetrahedra
 reduced_model_channel: ELASTOPLASTIC_REDUCED_MODEL  # lcmt_elastoplastic_network
 
 osc_channel: OSC_FRANKA                             # lcmt_robot_input

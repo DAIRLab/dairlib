@@ -7,4 +7,7 @@ struct lcmt_elastoplastic_network {
 
   float points[num_points][3];
   int32_t connections[num_connections][2];
+
+  double spring_constants[num_connections];
+  double yield_forces[num_connections];
 }

@@ -31,6 +31,7 @@ cc_library(
         "mpm_model_reducer.h",
     ],
     deps = [
+        "//examples/deform/parameter_headers:deform_params",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//common",

@@ -60,3 +60,11 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+)

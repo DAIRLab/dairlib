@@ -20,6 +20,7 @@ filegroup(
         "//systems/controllers:headers",
         "//systems/framework:headers",
         "//systems/primitives:headers",
+        "//systems/senders:headers",
         "//systems/trajectory_optimization:headers",
         "//systems/filters:headers",
         "//systems/controllers/osc:headers",

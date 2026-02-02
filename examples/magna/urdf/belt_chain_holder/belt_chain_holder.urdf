@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="belt_chain_holder">
+    <link name="belt_chain_holder_first_half">
+        <visual name="belt_chain_holder_first_half">
+            <origin rpy="-1.57079 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="belt_chain_holder_half.obj"/>
+            </geometry>
+            <material name="blue">
+              <color rgba="0.2 0.6 1.0 1"/>
+            </material>
+        </visual>
+        <collision name="bottom_plate">
+          <geometry>
+            <mesh filename="bottom_plate.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_bottom_1">
+          <origin rpy="0 0 0" xyz="0 0 0.005"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_bottom.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_top_1">
+          <origin rpy="0 0 0" xyz="0 0 0.015"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_top.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_bottom_2">
+          <origin rpy="0 0 3.14159" xyz="0 0 0.005"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_bottom.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_top_2">
+          <origin rpy="0 0 3.14159" xyz="0 0 0.015"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_top.obj"/>
+          </geometry>
+        </collision>
+    </link>
+    <link name="belt_chain_holder_second_half">
+        <visual name="belt_chain_holder_second_half">
+            <origin rpy="-1.57079 0 3.14159" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="belt_chain_holder_half.obj"/>
+            </geometry>
+            <material name="blue">
+              <color rgba="0.2 0.6 1.0 1"/>
+            </material>
+        </visual>
+        <collision name="quarter_ellipse_bottom_1">
+          <origin rpy="3.14159 0 0" xyz="0 0 0.015"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_bottom.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_top_1">
+          <origin rpy="3.14159 0 0" xyz="0 0 0.020"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_top.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_bottom_2">
+          <origin rpy="3.14159 0 3.14159" xyz="0 0 0.015"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_bottom.obj"/>
+          </geometry>
+        </collision>
+        <collision name="quarter_ellipse_top_2">
+          <origin rpy="3.14159 0 3.14159" xyz="0 0 0.020"/>
+          <geometry>
+            <mesh filename="quarter_ellipse_top.obj"/>
+          </geometry>
+        </collision>
+    </link>
+    <joint name="belt_chain_holder_first_half_to_second_half" type="fixed">
+        <parent link="belt_chain_holder_first_half"/>
+        <child link="belt_chain_holder_second_half"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+</robot>

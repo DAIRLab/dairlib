@@ -105,8 +105,8 @@ int DoMain(int argc, char* argv[]) {
                        X_WI);
   // Add pulley models
   ModelInstanceIndex task_board_index = parser.AddModels(
-      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
-                                   "round_belt_task_board.sdf"))[0];
+      dairlib::FindResourceOrThrow("examples/magna/urdf/belt_chain_holder/"
+                                   "belt_chain_holder.urdf"))[0];
   RigidTransform<double> task_board_pose = RigidTransform<double>(
       drake::math::RollPitchYaw<double>(
           round_belt_controller_params.task_board_orientation[0],
@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
           round_belt_controller_params.task_board_position[1],
           round_belt_controller_params.task_board_position[2]));
   plant_vis.WeldFrames(plant_vis.world_frame(),
-                       plant_vis.GetFrameByName("board", task_board_index),
+                       plant_vis.GetFrameByName("belt_chain_holder_first_half", task_board_index),
                        task_board_pose);
 
   // Add franka arm model

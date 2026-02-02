@@ -64,18 +64,23 @@ cc_library(
         "c3_qp.h",
         "c3_plus.h",
     ],
-    copts = [
-        "-fopenmp",
-    ],
-    linkopts = [
-        "-fopenmp",
-    ],
+    copts = select({
+        "@platforms//os:macos": ["-Xclang"],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    linkopts = select({
+        "@platforms//os:macos": ["-lomp"],
+        "//conditions:default": ["-lgomp"],
+    }),
     deps = [
         ":lcs",
         "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
-    ],
+    ] + select({
+        "@platforms//os:macos": ["@libomp"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

@@ -1,6 +1,6 @@
 ## MODULE.bazel
 module(
-    name = "dairlib"
+    name = "dairlib",
 )
 
 drake_dep_repositories = use_extension(
@@ -11,12 +11,14 @@ drake_dep_repositories = use_extension(
 # If you don't want to support building on macOS, you may remove the next line.
 # Note that it must appear prior to loading "rules_cc", per the documentation:
 #  https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
-bazel_dep(name = "apple_support", version = "1.17.1")
+bazel_dep(name = "apple_support", version = "2.0.0")
 
 # Add the Bazel rules we need.
-bazel_dep(name = "rules_cc", version = "0.1.1")
-bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "rules_cc", version = "0.2.13")
+bazel_dep(name = "rules_python", version = "1.2.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "platforms", version = "1.0.0")
 
 use_repo(
     drake_dep_repositories,
@@ -28,6 +30,7 @@ use_repo(
     "gflags",
     "glib",
     "gtest",
+    "gurobi",
     "lapack",
     "lcm",
     "meshcat",
@@ -40,11 +43,9 @@ use_repo(
     "styleguide",
     "x11",
     "zlib",
-    "gurobi",
 )
 
 bazel_dep(name = "gazelle", version = "0.44.0")
-
 bazel_dep(name = "osqp", version = "0.6.3.bcr.2")
 
 # Use gurobi_cxx, which Drake deprecated
@@ -61,17 +62,17 @@ override_repo(
 # published to any Bazel registry. Below, we'll override it with a github
 # source archive.
 bazel_dep(name = "drake")
-
 bazel_dep(name = "inekf")
 
 # By default, this example always uses the latest Drake master branch.
 
 # To use a local version of drake, use
 # build --override_module=drake=/home/user/stuff/drake
-# this will also work to override inekf 
+# this will also work to override inekf
 
 # You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
 DRAKE_VERSION = "v1.42.0"
+
 DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b"
 
 # Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
@@ -82,16 +83,16 @@ DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f
 # See README.md for instructions to use a local path, instead.
 archive_override(
     module_name = "drake",
+    sha256 = DRAKE_CHECKSUM,
+    strip_prefix = "drake-{}".format(DRAKE_VERSION.lstrip("v")),
     urls = [x.format(DRAKE_VERSION) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
-    sha256 = DRAKE_CHECKSUM,
-    strip_prefix = "drake-{}".format(DRAKE_VERSION.lstrip("v")),
 )
 
 INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"
-INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2edf"
 
+INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2edf"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -100,11 +101,11 @@ INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2e
 # This declares the `@inekf` module as a source code archive from github.
 archive_override(
     module_name = "inekf",
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
     urls = [x.format(INEKF_COMMIT) for x in [
         "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
     ]],
-    sha256 = INEKF_CHECKSUM,
-    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
 )
 
 # Use the host system /usr/bin/python3.
@@ -112,6 +113,10 @@ python_repository = use_repo_rule(
     "@drake//tools/workspace/python:repository.bzl",
     "python_repository",
 )
+
+# libomp for OpenMP on macOS
+libomp_extension = use_extension("@dairlib//tools/workspace/libomp:repository.bzl", "libomp_extension")
+use_repo(libomp_extension, "libomp")
 
 python_repository(
     name = "python",

@@ -46,7 +46,7 @@ build --host_cxxopt=-std=c++20
 build --action_env=CCACHE_DISABLE=1
 
 build --action_env=PATH=/usr/bin:/bin
-build --action_env=LD_LIBRARY_PATH=
+build --action_env=LD_LIBRARY_PATH=:
 
 # TODO(jwnimmer-tri) We should see if we can reuse more of Drake's
 # customizations somehow.
@@ -58,6 +58,13 @@ build --define=NO_CLARABEL=ON
 build:omp --copt=-DEIGEN_DONT_PARALLELIZE
 build:omp --copt=-fopenmp
 build:omp --linkopt=-fopenmp
+
+# macOS-specific OpenMP configuration (use libomp from Homebrew)
+build:omp_macos --copt=-DEIGEN_DONT_PARALLELIZE
+build:omp_macos --copt=-Xclang
+build:omp_macos --action_env=CPATH=/opt/homebrew/opt/libomp/include
+build:omp_macos --action_env=LIBRARY_PATH=/opt/homebrew/opt/libomp/lib
+build --java_runtime_version=remotejdk_11
 
 # use python3 by default
 build --python_path=python3

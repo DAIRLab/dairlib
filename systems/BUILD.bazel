@@ -17,6 +17,7 @@ cc_library(
         "//systems/primitives:primitives",
         "//systems/senders:senders",
         "//systems/trajectory_optimization:trajectory_optimization",
+        "//systems/visualization:visualization",
         "@drake//:drake_shared_library",
     ],
 )

@@ -4,6 +4,14 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "visualization",
+    deps = [
+        ":lcm_visualization_systems",
+        ":meshcat_dynamic_camera",
+    ],
+)
+
+cc_library(
     name = "lcm_visualization_systems",
     srcs = [
         "lcm_visualization_systems.cc",
@@ -29,4 +37,12 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
 )

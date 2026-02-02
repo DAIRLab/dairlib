@@ -24,6 +24,7 @@ filegroup(
         "//systems/trajectory_optimization:headers",
         "//systems/filters:headers",
         "//systems/controllers/osc:headers",
+        "//systems/visualization:headers",
         "//solvers:headers",
     ],
 )

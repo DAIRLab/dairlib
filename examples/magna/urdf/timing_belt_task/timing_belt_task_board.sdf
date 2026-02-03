@@ -1,0 +1,232 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<sdf version="1.7">
+  <model name="timing_belt_task_board">
+    <link name="board">
+      <visual name="board">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>timing_belt_task_board.obj</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="board_collision">
+        <pose>0.192 0.192 -0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.384 0.384 0.01</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+    <link name="small_timing_pulley">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.3</mass>
+        <inertia>
+          <ixx>3.06677e-05</ixx>
+          <iyy>3.0667375e-05</iyy>
+          <izz>6.0454911e-05</izz>
+          <ixy>5.7518697e-14</ixy>
+          <ixz>1.6724428e-11</ixz>
+          <iyz>-1.9003215e-11</iyz>
+        </inertia>
+      </inertial>
+      <visual name="small_timing_pulley">
+        <pose>0.348 0.058 0.041 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>timing_belt_small_pulley.obj</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
+        </material>
+      </visual>
+      <collision name="small_timing_pulley_body">
+        <pose>0.348 0.058 0.025 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.027</length>
+            <radius>0.02505</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="small_timing_pulley_top_plate">
+        <pose>0.348 0.058 0.03975 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0025</length>
+            <radius>0.0275</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="small_timing_pulley_bottom_plate">
+        <pose>0.348 0.058 0.01025 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0025</length>
+            <radius>0.0275</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="screw_head">
+        <pose>0.348 0.058 0.045 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.006</length>
+            <radius>0.005</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+    <link name="large_timing_pulley">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>3.06677e-05</ixx>
+          <iyy>3.0667375e-05</iyy>
+          <izz>6.0454911e-05</izz>
+          <ixy>5.7518697e-14</ixy>
+          <ixz>1.6724428e-11</ixz>
+          <iyz>-1.9003215e-11</iyz>
+        </inertia>
+      </inertial>
+      <visual name="large_timing_pulley">
+        <pose>0.134 0.058 0.043 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>timing_belt_large_pulley.obj</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
+        </material>
+      </visual>
+      <collision name="large_timing_pulley_body">
+        <pose>0.134 0.058 0.027 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.027</length>
+            <radius>0.047325</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="large_timing_pulley_top_plate">
+        <pose>0.134 0.058 0.04175 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0025</length>
+            <radius>0.0495</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="large_timing_pulley_bottom_plate">
+        <pose>0.134 0.058 0.01225 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0025</length>
+            <radius>0.0495</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+      <collision name="screw_head">
+        <pose>0.134 0.058 0.047 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.006</length>
+            <radius>0.005</radius>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:mu_dynamic>1.5</drake:mu_dynamic>
+          <drake:mu_static>1.5</drake:mu_static>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+    <joint name="small_timing_pulley_joint" type="fixed">
+      <parent>board</parent>
+      <child>small_timing_pulley</child>
+      <pose>0 0 0 0 0 0</pose>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>  
+    </joint>
+    <joint name="large_timing_pulley_joint" type="fixed">
+      <parent>board</parent>
+      <child>large_timing_pulley</child>
+      <pose>0 0 0 0 0 0</pose>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
+  </model>
+</sdf>

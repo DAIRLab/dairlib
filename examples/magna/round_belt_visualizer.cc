@@ -103,9 +103,9 @@ int DoMain(int argc, char* argv[]) {
       plant_vis.world_frame(),
       plant_vis.GetFrameByName("round_belt_task_scene", scene_index), X_WI);
   // Add pulley models
-  ModelInstanceIndex task_board_index = parser.AddModels(
-      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
-                                   "round_belt_task_board.sdf"))[0];
+  ModelInstanceIndex task_board_index =
+      parser.AddModels(dairlib::FindResourceOrThrow(
+          round_belt_controller_params.task_board_model))[0];
   RigidTransform<double> task_board_pose = RigidTransform<double>(
       drake::math::RollPitchYaw<double>(
           round_belt_controller_params.task_board_orientation[0],

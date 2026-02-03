@@ -2,6 +2,7 @@ franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm
 ee_model: "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"
 belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
 task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
+scene_model: "examples/magna/urdf/common/scene.urdf"
 spring_stiffness: 1300
 spring_rest_length: 0.26
 spring_damping: 1 

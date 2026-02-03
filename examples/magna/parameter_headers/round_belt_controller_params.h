@@ -16,6 +16,7 @@ struct RoundBeltControllerParams {
   std::string ee_model;
   std::string belt_element_model;
   std::string task_board_model;
+  std::string scene_model;
   double spring_stiffness;                     // N/m
   double spring_rest_length;                   // m
   double spring_damping;                       // Ns/m
@@ -52,6 +53,7 @@ struct RoundBeltControllerParams {
     a->Visit(DRAKE_NVP(ee_model));
     a->Visit(DRAKE_NVP(belt_element_model));
     a->Visit(DRAKE_NVP(task_board_model));
+    a->Visit(DRAKE_NVP(scene_model));
     a->Visit(DRAKE_NVP(spring_stiffness));
     a->Visit(DRAKE_NVP(spring_rest_length));
     a->Visit(DRAKE_NVP(spring_damping));

@@ -96,13 +96,12 @@ int DoMain(int argc, char* argv[]) {
   // Note: the task scene model has no collision geometry; only the pulley
   // models include it.
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  ModelInstanceIndex round_belt_task_scene_index = parser.AddModels(
-      dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"
-                                   "round_belt_task_scene.urdf"))[0];
-  plant_vis.WeldFrames(plant_vis.world_frame(),
-                       plant_vis.GetFrameByName("round_belt_task_scene",
-                                                round_belt_task_scene_index),
-                       X_WI);
+  ModelInstanceIndex scene_index =
+      parser.AddModels(dairlib::FindResourceOrThrow(
+          round_belt_controller_params.scene_model))[0];
+  plant_vis.WeldFrames(
+      plant_vis.world_frame(),
+      plant_vis.GetFrameByName("round_belt_task_scene", scene_index), X_WI);
   // Add pulley models
   ModelInstanceIndex task_board_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"

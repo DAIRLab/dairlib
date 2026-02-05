@@ -23,6 +23,8 @@ struct MagnaLcmChannels {
   std::string round_belt_state_wrt_robot_channel;
   std::string round_belt_task_relevant_keypoints_channel;
   std::string osc_target_tracking_debug_channel;
+  std::string timing_belt_state_channel;
+  std::string timing_belt_input_channel;
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
@@ -45,5 +47,7 @@ struct MagnaLcmChannels {
     a->Visit(DRAKE_NVP(round_belt_state_wrt_robot_channel));
     a->Visit(DRAKE_NVP(round_belt_task_relevant_keypoints_channel));
     a->Visit(DRAKE_NVP(osc_target_tracking_debug_channel));
+    a->Visit(DRAKE_NVP(timing_belt_state_channel));
+    a->Visit(DRAKE_NVP(timing_belt_input_channel));
   }
 };

@@ -137,6 +137,8 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex timing_belt_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/timing_belt_task/"
                                    "timing_belt.urdf"))[0];
+  plant_vis.WeldFrames(plant_vis.world_frame(),
+                       plant_vis.GetFrameByName("timing_belt_base_link"), X_WI);
   plant_vis.Finalize();
 
   // ----- Construct LCM subscriber to the franka state -----
@@ -173,12 +175,21 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(franka_hand_status_bridge_out->get_output_port(),
                     franka_hand_state_receiver->get_input_port());
   }
+  auto timing_belt_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          lcm_channel_params.timing_belt_state_channel, lcm));
+  auto timing_belt_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant_vis, timing_belt_index);
+  builder.Connect(*timing_belt_state_sub, *timing_belt_state_receiver);
 
   // Extract arm and hand positions for visualization (7 dims for arm, 2 dims
   // for hand), then combine them and send to the visualization system.
   auto franka_combined_mux = builder.AddSystem<Multiplexer<double>>(
       std::vector<int>{plant_vis.num_positions(franka_index),
-                       plant_vis.num_positions(franka_hand_index)});
+                       plant_vis.num_positions(franka_hand_index),
+                       plant_vis.num_positions(timing_belt_index)});
+  std::cout << "plant_vis.num_positions(timing_belt_index): "
+            << plant_vis.num_positions(timing_belt_index) << std::endl;
   auto franka_arm_positions_passthrough =
       builder.AddSystem<SubvectorPassThrough>(
           franka_state_receiver->get_output_port(0).size(), 0,
@@ -187,6 +198,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<SubvectorPassThrough>(
           franka_hand_state_receiver->get_output_port(0).size(), 0,
           plant_vis.num_positions(franka_hand_index));
+  auto timing_belt_positions_passthrough =
+      builder.AddSystem<SubvectorPassThrough>(
+          timing_belt_state_receiver->get_output_port(0).size(), 0,
+          plant_vis.num_positions(timing_belt_index));
   builder.Connect(franka_state_receiver->get_output_port(),
                   franka_arm_positions_passthrough->get_input_port());
   builder.Connect(franka_hand_state_receiver->get_output_port(),
@@ -195,6 +210,10 @@ int DoMain(int argc, char* argv[]) {
                   franka_combined_mux->get_input_port(0));
   builder.Connect(franka_hand_positions_passthrough->get_output_port(),
                   franka_combined_mux->get_input_port(1));
+  builder.Connect(timing_belt_state_receiver->get_output_port(),
+                  timing_belt_positions_passthrough->get_input_port());
+  builder.Connect(timing_belt_positions_passthrough->get_output_port(),
+                  franka_combined_mux->get_input_port(2));
 
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant_vis);
@@ -227,6 +246,7 @@ int DoMain(int argc, char* argv[]) {
   auto diagram = builder.Build();
   diagram->set_name("timing_belt_visualizer");
   dairlib::DrawAndSaveDiagramGraph(*diagram);
+  DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
 
   // Initialize the franka state receiver

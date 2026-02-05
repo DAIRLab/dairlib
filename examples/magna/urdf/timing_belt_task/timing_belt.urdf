@@ -1,5 +1,75 @@
 <?xml version="1.0"?>
-<robot name="elliptical_belt">
+<robot name="timing_belt">
+<link name="timing_belt_base_link"/>
+
+  <link name="fb_trans_x"/>
+
+
+  <link name="fb_trans_y"/>
+
+
+  <link name="fb_trans_z"/>
+
+
+  <link name="fb_rot_x"/>
+
+
+  <link name="fb_rot_y"/>
+
+
+  <joint name="float_joint_x" type="prismatic">
+    <parent link="timing_belt_base_link"/>
+    <child link="fb_trans_x"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
+
+  <joint name="float_joint_y" type="prismatic">
+    <parent link="fb_trans_x"/>
+    <child link="fb_trans_y"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
+
+  <joint name="float_joint_z" type="prismatic">
+    <parent link="fb_trans_y"/>
+    <child link="fb_trans_z"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
+
+  <joint name="float_joint_roll" type="revolute">
+    <parent link="fb_trans_z"/>
+    <child link="fb_rot_x"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
+
+  <joint name="float_joint_pitch" type="revolute">
+    <parent link="fb_rot_x"/>
+    <child link="fb_rot_y"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
+
+  <joint name="float_joint_yaw" type="revolute">
+    <parent link="fb_rot_y"/>
+    <child link="rod_0"/>
+    <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 0.000000 0.000000"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+  </joint>
+
 
   <link name="rod_0">
     <inertial>
@@ -27,12 +97,7 @@
   </link>
 
 
-  <link name="dummy_0_1">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_0_1"/>
 
 
   <link name="rod_1">
@@ -79,12 +144,7 @@
   </joint>
 
 
-  <link name="dummy_1_2">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_1_2"/>
 
 
   <link name="rod_2">
@@ -131,12 +191,7 @@
   </joint>
 
 
-  <link name="dummy_2_3">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_2_3"/>
 
 
   <link name="rod_3">
@@ -183,12 +238,7 @@
   </joint>
 
 
-  <link name="dummy_3_4">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_3_4"/>
 
 
   <link name="rod_4">
@@ -235,12 +285,7 @@
   </joint>
 
 
-  <link name="dummy_4_5">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_4_5"/>
 
 
   <link name="rod_5">
@@ -287,12 +332,7 @@
   </joint>
 
 
-  <link name="dummy_5_6">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_5_6"/>
 
 
   <link name="rod_6">
@@ -339,12 +379,7 @@
   </joint>
 
 
-  <link name="dummy_6_7">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_6_7"/>
 
 
   <link name="rod_7">
@@ -391,12 +426,7 @@
   </joint>
 
 
-  <link name="dummy_7_8">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_7_8"/>
 
 
   <link name="rod_8">
@@ -443,12 +473,7 @@
   </joint>
 
 
-  <link name="dummy_8_9">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_8_9"/>
 
 
   <link name="rod_9">
@@ -495,12 +520,7 @@
   </joint>
 
 
-  <link name="dummy_9_10">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_9_10"/>
 
 
   <link name="rod_10">
@@ -547,12 +567,7 @@
   </joint>
 
 
-  <link name="dummy_10_11">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_10_11"/>
 
 
   <link name="rod_11">
@@ -599,12 +614,7 @@
   </joint>
 
 
-  <link name="dummy_11_12">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_11_12"/>
 
 
   <link name="rod_12">
@@ -651,12 +661,7 @@
   </joint>
 
 
-  <link name="dummy_12_13">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_12_13"/>
 
 
   <link name="rod_13">
@@ -703,12 +708,7 @@
   </joint>
 
 
-  <link name="dummy_13_14">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_13_14"/>
 
 
   <link name="rod_14">
@@ -755,12 +755,7 @@
   </joint>
 
 
-  <link name="dummy_14_15">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_14_15"/>
 
 
   <link name="rod_15">
@@ -807,12 +802,7 @@
   </joint>
 
 
-  <link name="dummy_15_16">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_15_16"/>
 
 
   <link name="rod_16">
@@ -859,12 +849,7 @@
   </joint>
 
 
-  <link name="dummy_16_17">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_16_17"/>
 
 
   <link name="rod_17">
@@ -911,12 +896,7 @@
   </joint>
 
 
-  <link name="dummy_17_18">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_17_18"/>
 
 
   <link name="rod_18">
@@ -963,12 +943,7 @@
   </joint>
 
 
-  <link name="dummy_18_19">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_18_19"/>
 
 
   <link name="rod_19">
@@ -1015,12 +990,7 @@
   </joint>
 
 
-  <link name="dummy_19_20">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_19_20"/>
 
 
   <link name="rod_20">
@@ -1067,12 +1037,7 @@
   </joint>
 
 
-  <link name="dummy_20_21">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_20_21"/>
 
 
   <link name="rod_21">
@@ -1119,12 +1084,7 @@
   </joint>
 
 
-  <link name="dummy_21_22">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_21_22"/>
 
 
   <link name="rod_22">
@@ -1171,12 +1131,7 @@
   </joint>
 
 
-  <link name="dummy_22_23">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_22_23"/>
 
 
   <link name="rod_23">
@@ -1223,12 +1178,7 @@
   </joint>
 
 
-  <link name="dummy_23_24">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_23_24"/>
 
 
   <link name="rod_24">
@@ -1275,12 +1225,7 @@
   </joint>
 
 
-  <link name="dummy_24_25">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_24_25"/>
 
 
   <link name="rod_25">
@@ -1327,12 +1272,7 @@
   </joint>
 
 
-  <link name="dummy_25_26">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_25_26"/>
 
 
   <link name="rod_26">
@@ -1379,12 +1319,7 @@
   </joint>
 
 
-  <link name="dummy_26_27">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_26_27"/>
 
 
   <link name="rod_27">
@@ -1431,12 +1366,7 @@
   </joint>
 
 
-  <link name="dummy_27_28">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_27_28"/>
 
 
   <link name="rod_28">
@@ -1483,12 +1413,7 @@
   </joint>
 
 
-  <link name="dummy_28_29">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_28_29"/>
 
 
   <link name="rod_29">
@@ -1535,12 +1460,7 @@
   </joint>
 
 
-  <link name="dummy_29_30">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_29_30"/>
 
 
   <link name="rod_30">
@@ -1587,12 +1507,7 @@
   </joint>
 
 
-  <link name="dummy_30_31">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_30_31"/>
 
 
   <link name="rod_31">
@@ -1639,12 +1554,7 @@
   </joint>
 
 
-  <link name="dummy_31_32">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_31_32"/>
 
 
   <link name="rod_32">
@@ -1691,12 +1601,7 @@
   </joint>
 
 
-  <link name="dummy_32_33">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_32_33"/>
 
 
   <link name="rod_33">
@@ -1743,12 +1648,7 @@
   </joint>
 
 
-  <link name="dummy_33_34">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_33_34"/>
 
 
   <link name="rod_34">
@@ -1795,12 +1695,7 @@
   </joint>
 
 
-  <link name="dummy_34_35">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_34_35"/>
 
 
   <link name="rod_35">
@@ -1847,12 +1742,7 @@
   </joint>
 
 
-  <link name="dummy_35_36">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_35_36"/>
 
 
   <link name="rod_36">
@@ -1899,12 +1789,7 @@
   </joint>
 
 
-  <link name="dummy_36_37">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_36_37"/>
 
 
   <link name="rod_37">
@@ -1951,12 +1836,7 @@
   </joint>
 
 
-  <link name="dummy_37_38">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_37_38"/>
 
 
   <link name="rod_38">
@@ -2003,12 +1883,7 @@
   </joint>
 
 
-  <link name="dummy_38_39">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_38_39"/>
 
 
   <link name="rod_39">
@@ -2055,12 +1930,7 @@
   </joint>
 
 
-  <link name="dummy_39_40">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_39_40"/>
 
 
   <link name="rod_40">
@@ -2107,12 +1977,7 @@
   </joint>
 
 
-  <link name="dummy_40_41">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_40_41"/>
 
 
   <link name="rod_41">
@@ -2159,12 +2024,7 @@
   </joint>
 
 
-  <link name="dummy_41_42">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_41_42"/>
 
 
   <link name="rod_42">
@@ -2211,12 +2071,7 @@
   </joint>
 
 
-  <link name="dummy_42_43">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_42_43"/>
 
 
   <link name="rod_43">
@@ -2263,12 +2118,7 @@
   </joint>
 
 
-  <link name="dummy_43_44">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_43_44"/>
 
 
   <link name="rod_44">
@@ -2315,12 +2165,7 @@
   </joint>
 
 
-  <link name="dummy_44_45">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_44_45"/>
 
 
   <link name="rod_45">
@@ -2367,12 +2212,7 @@
   </joint>
 
 
-  <link name="dummy_45_46">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_45_46"/>
 
 
   <link name="rod_46">
@@ -2419,12 +2259,7 @@
   </joint>
 
 
-  <link name="dummy_46_47">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_46_47"/>
 
 
   <link name="rod_47">
@@ -2471,12 +2306,7 @@
   </joint>
 
 
-  <link name="dummy_47_48">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_47_48"/>
 
 
   <link name="rod_48">
@@ -2523,12 +2353,7 @@
   </joint>
 
 
-  <link name="dummy_48_49">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_48_49"/>
 
 
   <link name="rod_49">
@@ -2575,12 +2400,7 @@
   </joint>
 
 
-  <link name="dummy_49_50">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_49_50"/>
 
 
   <link name="rod_50">
@@ -2627,12 +2447,7 @@
   </joint>
 
 
-  <link name="dummy_50_51">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_50_51"/>
 
 
   <link name="rod_51">
@@ -2679,12 +2494,7 @@
   </joint>
 
 
-  <link name="dummy_51_52">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_51_52"/>
 
 
   <link name="rod_52">
@@ -2731,12 +2541,7 @@
   </joint>
 
 
-  <link name="dummy_52_53">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_52_53"/>
 
 
   <link name="rod_53">
@@ -2783,12 +2588,7 @@
   </joint>
 
 
-  <link name="dummy_53_54">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_53_54"/>
 
 
   <link name="rod_54">
@@ -2835,12 +2635,7 @@
   </joint>
 
 
-  <link name="dummy_54_55">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_54_55"/>
 
 
   <link name="rod_55">
@@ -2887,12 +2682,7 @@
   </joint>
 
 
-  <link name="dummy_55_56">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_55_56"/>
 
 
   <link name="rod_56">
@@ -2939,12 +2729,7 @@
   </joint>
 
 
-  <link name="dummy_56_57">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_56_57"/>
 
 
   <link name="rod_57">
@@ -2991,12 +2776,7 @@
   </joint>
 
 
-  <link name="dummy_57_58">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_57_58"/>
 
 
   <link name="rod_58">
@@ -3043,12 +2823,7 @@
   </joint>
 
 
-  <link name="dummy_58_59">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_58_59"/>
 
 
   <link name="rod_59">
@@ -3095,12 +2870,7 @@
   </joint>
 
 
-  <link name="dummy_59_60">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_59_60"/>
 
 
   <link name="rod_60">
@@ -3147,12 +2917,7 @@
   </joint>
 
 
-  <link name="dummy_60_61">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_60_61"/>
 
 
   <link name="rod_61">
@@ -3199,12 +2964,7 @@
   </joint>
 
 
-  <link name="dummy_61_62">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_61_62"/>
 
 
   <link name="rod_62">
@@ -3251,12 +3011,7 @@
   </joint>
 
 
-  <link name="dummy_62_63">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_62_63"/>
 
 
   <link name="rod_63">
@@ -3303,12 +3058,7 @@
   </joint>
 
 
-  <link name="dummy_63_64">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_63_64"/>
 
 
   <link name="rod_64">
@@ -3355,12 +3105,7 @@
   </joint>
 
 
-  <link name="dummy_64_65">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_64_65"/>
 
 
   <link name="rod_65">
@@ -3407,12 +3152,7 @@
   </joint>
 
 
-  <link name="dummy_65_66">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_65_66"/>
 
 
   <link name="rod_66">
@@ -3459,12 +3199,7 @@
   </joint>
 
 
-  <link name="dummy_66_67">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_66_67"/>
 
 
   <link name="rod_67">
@@ -3511,12 +3246,7 @@
   </joint>
 
 
-  <link name="dummy_67_68">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_67_68"/>
 
 
   <link name="rod_68">
@@ -3563,12 +3293,7 @@
   </joint>
 
 
-  <link name="dummy_68_69">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_68_69"/>
 
 
   <link name="rod_69">
@@ -3615,12 +3340,7 @@
   </joint>
 
 
-  <link name="dummy_69_70">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_69_70"/>
 
 
   <link name="rod_70">
@@ -3667,12 +3387,7 @@
   </joint>
 
 
-  <link name="dummy_70_71">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_70_71"/>
 
 
   <link name="rod_71">
@@ -3719,12 +3434,7 @@
   </joint>
 
 
-  <link name="dummy_71_72">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_71_72"/>
 
 
   <link name="rod_72">
@@ -3771,12 +3481,7 @@
   </joint>
 
 
-  <link name="dummy_72_73">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_72_73"/>
 
 
   <link name="rod_73">
@@ -3823,12 +3528,7 @@
   </joint>
 
 
-  <link name="dummy_73_74">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_73_74"/>
 
 
   <link name="rod_74">
@@ -3875,12 +3575,7 @@
   </joint>
 
 
-  <link name="dummy_74_75">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_74_75"/>
 
 
   <link name="rod_75">
@@ -3927,12 +3622,7 @@
   </joint>
 
 
-  <link name="dummy_75_76">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_75_76"/>
 
 
   <link name="rod_76">
@@ -3979,12 +3669,7 @@
   </joint>
 
 
-  <link name="dummy_76_77">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_76_77"/>
 
 
   <link name="rod_77">
@@ -4031,12 +3716,7 @@
   </joint>
 
 
-  <link name="dummy_77_78">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_77_78"/>
 
 
   <link name="rod_78">
@@ -4083,12 +3763,7 @@
   </joint>
 
 
-  <link name="dummy_78_79">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_78_79"/>
 
 
   <link name="rod_79">
@@ -4135,12 +3810,7 @@
   </joint>
 
 
-  <link name="dummy_79_80">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_79_80"/>
 
 
   <link name="rod_80">
@@ -4187,12 +3857,7 @@
   </joint>
 
 
-  <link name="dummy_80_81">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_80_81"/>
 
 
   <link name="rod_81">
@@ -4239,12 +3904,7 @@
   </joint>
 
 
-  <link name="dummy_81_82">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_81_82"/>
 
 
   <link name="rod_82">
@@ -4291,12 +3951,7 @@
   </joint>
 
 
-  <link name="dummy_82_83">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_82_83"/>
 
 
   <link name="rod_83">
@@ -4343,12 +3998,7 @@
   </joint>
 
 
-  <link name="dummy_83_84">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_83_84"/>
 
 
   <link name="rod_84">
@@ -4395,12 +4045,7 @@
   </joint>
 
 
-  <link name="dummy_84_85">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_84_85"/>
 
 
   <link name="rod_85">
@@ -4447,12 +4092,7 @@
   </joint>
 
 
-  <link name="dummy_85_86">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_85_86"/>
 
 
   <link name="rod_86">
@@ -4499,12 +4139,7 @@
   </joint>
 
 
-  <link name="dummy_86_87">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_86_87"/>
 
 
   <link name="rod_87">
@@ -4551,12 +4186,7 @@
   </joint>
 
 
-  <link name="dummy_87_88">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_87_88"/>
 
 
   <link name="rod_88">
@@ -4603,12 +4233,7 @@
   </joint>
 
 
-  <link name="dummy_88_89">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_88_89"/>
 
 
   <link name="rod_89">
@@ -4655,12 +4280,7 @@
   </joint>
 
 
-  <link name="dummy_89_90">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_89_90"/>
 
 
   <link name="rod_90">
@@ -4707,12 +4327,7 @@
   </joint>
 
 
-  <link name="dummy_90_91">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_90_91"/>
 
 
   <link name="rod_91">
@@ -4759,12 +4374,7 @@
   </joint>
 
 
-  <link name="dummy_91_92">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_91_92"/>
 
 
   <link name="rod_92">
@@ -4811,12 +4421,7 @@
   </joint>
 
 
-  <link name="dummy_92_93">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_92_93"/>
 
 
   <link name="rod_93">
@@ -4863,12 +4468,7 @@
   </joint>
 
 
-  <link name="dummy_93_94">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_93_94"/>
 
 
   <link name="rod_94">
@@ -4915,12 +4515,7 @@
   </joint>
 
 
-  <link name="dummy_94_95">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_94_95"/>
 
 
   <link name="rod_95">
@@ -4967,12 +4562,7 @@
   </joint>
 
 
-  <link name="dummy_95_96">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_95_96"/>
 
 
   <link name="rod_96">
@@ -5019,12 +4609,7 @@
   </joint>
 
 
-  <link name="dummy_96_97">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_96_97"/>
 
 
   <link name="rod_97">
@@ -5071,12 +4656,7 @@
   </joint>
 
 
-  <link name="dummy_97_98">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_97_98"/>
 
 
   <link name="rod_98">
@@ -5123,12 +4703,7 @@
   </joint>
 
 
-  <link name="dummy_98_99">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_98_99"/>
 
 
   <link name="rod_99">
@@ -5175,12 +4750,7 @@
   </joint>
 
 
-  <link name="dummy_99_100">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_99_100"/>
 
 
   <link name="rod_100">
@@ -5227,12 +4797,7 @@
   </joint>
 
 
-  <link name="dummy_100_101">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_100_101"/>
 
 
   <link name="rod_101">
@@ -5279,12 +4844,7 @@
   </joint>
 
 
-  <link name="dummy_101_102">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_101_102"/>
 
 
   <link name="rod_102">
@@ -5331,12 +4891,7 @@
   </joint>
 
 
-  <link name="dummy_102_103">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_102_103"/>
 
 
   <link name="rod_103">
@@ -5383,12 +4938,7 @@
   </joint>
 
 
-  <link name="dummy_103_104">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_103_104"/>
 
 
   <link name="rod_104">
@@ -5435,12 +4985,7 @@
   </joint>
 
 
-  <link name="dummy_104_105">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_104_105"/>
 
 
   <link name="rod_105">
@@ -5487,12 +5032,7 @@
   </joint>
 
 
-  <link name="dummy_105_106">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_105_106"/>
 
 
   <link name="rod_106">
@@ -5539,12 +5079,7 @@
   </joint>
 
 
-  <link name="dummy_106_107">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_106_107"/>
 
 
   <link name="rod_107">
@@ -5591,12 +5126,7 @@
   </joint>
 
 
-  <link name="dummy_107_108">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_107_108"/>
 
 
   <link name="rod_108">
@@ -5643,12 +5173,7 @@
   </joint>
 
 
-  <link name="dummy_108_109">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_108_109"/>
 
 
   <link name="rod_109">
@@ -5695,12 +5220,7 @@
   </joint>
 
 
-  <link name="dummy_109_110">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_109_110"/>
 
 
   <link name="rod_110">
@@ -5747,12 +5267,7 @@
   </joint>
 
 
-  <link name="dummy_110_111">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_110_111"/>
 
 
   <link name="rod_111">
@@ -5799,12 +5314,7 @@
   </joint>
 
 
-  <link name="dummy_111_112">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_111_112"/>
 
 
   <link name="rod_112">
@@ -5851,12 +5361,7 @@
   </joint>
 
 
-  <link name="dummy_112_113">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_112_113"/>
 
 
   <link name="rod_113">
@@ -5903,12 +5408,7 @@
   </joint>
 
 
-  <link name="dummy_113_114">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_113_114"/>
 
 
   <link name="rod_114">
@@ -5955,12 +5455,7 @@
   </joint>
 
 
-  <link name="dummy_114_115">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_114_115"/>
 
 
   <link name="rod_115">
@@ -6007,12 +5502,7 @@
   </joint>
 
 
-  <link name="dummy_115_116">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_115_116"/>
 
 
   <link name="rod_116">
@@ -6059,12 +5549,7 @@
   </joint>
 
 
-  <link name="dummy_116_117">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_116_117"/>
 
 
   <link name="rod_117">
@@ -6111,12 +5596,7 @@
   </joint>
 
 
-  <link name="dummy_117_118">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_117_118"/>
 
 
   <link name="rod_118">
@@ -6163,12 +5643,7 @@
   </joint>
 
 
-  <link name="dummy_118_119">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_118_119"/>
 
 
   <link name="rod_119">
@@ -6215,12 +5690,7 @@
   </joint>
 
 
-  <link name="dummy_119_120">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_119_120"/>
 
 
   <link name="rod_120">
@@ -6267,12 +5737,7 @@
   </joint>
 
 
-  <link name="dummy_120_121">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_120_121"/>
 
 
   <link name="rod_121">
@@ -6319,12 +5784,7 @@
   </joint>
 
 
-  <link name="dummy_121_122">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_121_122"/>
 
 
   <link name="rod_122">
@@ -6371,12 +5831,7 @@
   </joint>
 
 
-  <link name="dummy_122_123">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_122_123"/>
 
 
   <link name="rod_123">
@@ -6423,12 +5878,7 @@
   </joint>
 
 
-  <link name="dummy_123_124">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_123_124"/>
 
 
   <link name="rod_124">
@@ -6475,12 +5925,7 @@
   </joint>
 
 
-  <link name="dummy_124_125">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_124_125"/>
 
 
   <link name="rod_125">
@@ -6527,12 +5972,7 @@
   </joint>
 
 
-  <link name="dummy_125_126">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_125_126"/>
 
 
   <link name="rod_126">
@@ -6579,12 +6019,7 @@
   </joint>
 
 
-  <link name="dummy_126_127">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_126_127"/>
 
 
   <link name="rod_127">
@@ -6631,12 +6066,7 @@
   </joint>
 
 
-  <link name="dummy_127_128">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_127_128"/>
 
 
   <link name="rod_128">
@@ -6683,12 +6113,7 @@
   </joint>
 
 
-  <link name="dummy_128_129">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_128_129"/>
 
 
   <link name="rod_129">
@@ -6735,12 +6160,7 @@
   </joint>
 
 
-  <link name="dummy_129_130">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_129_130"/>
 
 
   <link name="rod_130">
@@ -6787,12 +6207,7 @@
   </joint>
 
 
-  <link name="dummy_130_131">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_130_131"/>
 
 
   <link name="rod_131">
@@ -6839,12 +6254,7 @@
   </joint>
 
 
-  <link name="dummy_131_132">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_131_132"/>
 
 
   <link name="rod_132">
@@ -6891,12 +6301,7 @@
   </joint>
 
 
-  <link name="dummy_132_133">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_132_133"/>
 
 
   <link name="rod_133">
@@ -6943,12 +6348,7 @@
   </joint>
 
 
-  <link name="dummy_133_134">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="dummy_133_134"/>
 
 
   <link name="rod_134">

@@ -102,6 +102,8 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex timing_belt_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/timing_belt_task/"
                                    "timing_belt.urdf"))[0];
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("timing_belt_base_link"), X_WI);
   plant.Finalize();
 
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
@@ -116,6 +118,12 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_hand_input_channel,
       lcm_channel_params.franka_hand_state_channel,
       sim_params.franka_publish_rate, franka_hand_index,
+      sim_params.publish_efforts, sim_params.actuator_delay);
+
+  AddActuationRecieverAndStateSenderLcm(
+      &builder, plant, lcm, lcm_channel_params.timing_belt_input_channel,
+      lcm_channel_params.timing_belt_state_channel,
+      sim_params.franka_publish_rate, timing_belt_index,
       sim_params.publish_efforts, sim_params.actuator_delay);
 
   int nq = plant.num_positions();
@@ -140,6 +148,11 @@ int DoMain(int argc, char* argv[]) {
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   q.segment(plant.num_positions(franka_index), 2) =
       sim_params.q_init_franka_hand;
+  
+  VectorXd q_timing_belt(6);
+  q_timing_belt << 0.45, -0.15, 0.018, 0, 0, 0;
+  q.segment(plant.num_positions(franka_index) + 2, 6) = q_timing_belt;
+
   plant.SetPositions(&plant_context, q);
   VectorXd v = VectorXd::Zero(nv);
   plant.SetVelocities(&plant_context, v);

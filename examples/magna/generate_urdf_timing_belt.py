@@ -172,12 +172,7 @@ def create_link_xml(name, l, w, h, mass, color="0.8 0.8 0.8 1"):
 def create_dummy_link_xml(name):
     """A tiny negligible link to serve as the connector between two joints."""
     return f"""
-  <link name="{name}">
-    <inertial>
-      <mass value="0.001"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
+  <link name="{name}"/>
 """
 
 
@@ -201,31 +196,94 @@ def create_joint_xml(name, type, parent, child, xyz, rpy, axis):
 def generate_urdf():
     xs, ys, yaws = get_equidistant_points_on_ellipse(SEMI_AXIS_A, SEMI_AXIS_B, NUM_RODS)
 
-    urdf_content = ['<?xml version="1.0"?>', '<robot name="elliptical_belt">']
+    urdf_content = ['<?xml version="1.0"?>', '<robot name="timing_belt">']
 
     # Calculate transforms for all rods in World Frame
     transforms = []
     for i in range(NUM_RODS):
         transforms.append(get_transform_matrix(xs[i], ys[i], yaws[i]))
 
-    # # 1. Create the Base Link (Rod 0)
-    # # Ideally, we ground the robot to a 'world' link, but here Rod 0 is the root
-    # urdf_content.append('<link name="world"/>')
-    # urdf_content.append(
-    #     create_joint_xml(
-    #         "fixed_base",
-    #         "fixed",
-    #         "world",
-    #         "rod_0",
-    #         [xs[0], ys[0], 0],
-    #         [0, 0, yaws[0]],
-    #         "0 0 1",
-    #     )
-    # )
+    urdf_content.append('<link name="timing_belt_base_link"/>')
 
-    # urdf_content.append(
-    #     create_link_xml("rod_0", ROD_LENGTH, ROD_WIDTH, ROD_HEIGHT, ROD_MASS, "1 0 0 1")
-    # )
+    # ---------------------------------------------------------
+    # 1. 6-DOF Floating Base Connection (World -> Rod_0)
+    # ---------------------------------------------------------
+    # We define the "Zero Pose" of this chain to be exactly where Rod 0
+    # should ideally start (xs[0], ys[0], yaws[0]).
+    # This ensures that if joint values are all 0, the belt is in the ellipse shape.
+
+    # Names for intermediate dummy links
+    d1 = "fb_trans_x"
+    d2 = "fb_trans_y"
+    d3 = "fb_trans_z"
+    d4 = "fb_rot_x"
+    d5 = "fb_rot_y"
+
+    # Create the 5 tiny dummy links
+    # We use a very small mass to avoid destabilizing the solver
+    urdf_content.append(create_dummy_link_xml(d1))
+    urdf_content.append(create_dummy_link_xml(d2))
+    urdf_content.append(create_dummy_link_xml(d3))
+    urdf_content.append(create_dummy_link_xml(d4))
+    urdf_content.append(create_dummy_link_xml(d5))
+
+    # --- JOINT 1: Prismatic X ---
+    # Origin: Set to Rod 0's initial X position
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_x",
+            "prismatic",
+            "timing_belt_base_link",
+            d1,
+            [0, 0, 0],
+            [0, 0, 0],
+            "1 0 0",
+        )
+    )
+
+    # --- JOINT 2: Prismatic Y ---
+    # Origin: Set to Rod 0's initial Y position
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_y", "prismatic", d1, d2, [0, 0, 0], [0, 0, 0], "0 1 0"
+        )
+    )
+
+    # --- JOINT 3: Prismatic Z ---
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_z", "prismatic", d2, d3, [0, 0, 0], [0, 0, 0], "0 0 1"
+        )
+    )
+
+    # --- JOINT 4: Revolute X (Roll) ---
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_roll", "revolute", d3, d4, [0, 0, 0], [0, 0, 0], "1 0 0"
+        )
+    )
+
+    # --- JOINT 5: Revolute Y (Pitch) ---
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_pitch", "revolute", d4, d5, [0, 0, 0], [0, 0, 0], "0 1 0"
+        )
+    )
+
+    # --- JOINT 6: Revolute Z (Yaw) ---
+    # Origin: Set to Rod 0's initial Yaw
+    # Connects finally to rod_0
+    urdf_content.append(
+        create_joint_xml(
+            "float_joint_yaw",
+            "revolute",
+            d5,
+            "rod_0",
+            [0, 0, 0],
+            [0, 0, 0],
+            "0 0 1",
+        )
+    )
     urdf_content.append(
         create_link_xml(
             "rod_0", ROD_LENGTH / 2, ROD_WIDTH, ROD_HEIGHT, ROD_MASS / 2, "0 1 0 1"

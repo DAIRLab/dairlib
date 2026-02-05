@@ -15,6 +15,7 @@ struct MagnaSimParams {
   Eigen::VectorXd q_init_franka_hand;
   std::vector<Eigen::VectorXd> init_belt_vertices;
   Eigen::Matrix3Xd q_init_belt;
+  std::vector<Eigen::VectorXd> init_timing_belt_points;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -27,6 +28,7 @@ struct MagnaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_franka_hand));
     a->Visit(DRAKE_NVP(init_belt_vertices));
+    a->Visit(DRAKE_NVP(init_timing_belt_points));
     ComputeBeltVerticesMatrix();
   }
 

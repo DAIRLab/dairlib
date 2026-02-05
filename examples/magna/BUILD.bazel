@@ -146,8 +146,8 @@ cc_library(
     deps = [
         "//common:update_context",
         "//examples/magna/parameter_headers:assembly_c3_options",
-        "//examples/magna/parameter_headers:round_belt_controller_params",
         "//examples/magna/parameter_headers:osc_target_poses",
+        "//examples/magna/parameter_headers:round_belt_controller_params",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",
@@ -230,6 +230,55 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "timing_belt_sim",
+    srcs = [
+        "timing_belt_sim.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "timing_belt_visualizer",
+    srcs = [
+        "timing_belt_visualizer.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:round_belt_controller_params",
+        "//examples/magna/parameter_headers:visualizer_params",
+        "//examples/magna/systems/franka_hand:franka_hand_status_bridge_out",
+        "//examples/magna/systems/visualization:c3_belt_state_drawer",
+        "//examples/magna/systems/visualization:deformable_drawer",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

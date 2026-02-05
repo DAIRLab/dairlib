@@ -1,0 +1,55 @@
+group "simulations" {
+    cmd "sim" {
+        exec = "bazel-bin/examples/magna/timing_belt_sim";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/magna/timing_belt_visualizer";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/magna/xbox_script";
+        host = "localhost";
+    }
+}
+
+group "controllers" {    
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/magna/franka_osc_controller";
+        host = "localhost";
+    }
+    cmd "hand_osc" {
+        exec = "bazel-bin/examples/magna/franka_hand_osc_controller";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+script "prepare"{
+    stop cmd "sim";
+    stop cmd "franka_osc";
+    stop cmd "hand_osc";
+    stop cmd "visualizer";
+    wait ms 50;
+    start cmd "franka_osc";
+    start cmd "hand_osc";
+    start cmd "sim";
+    wait ms 50;
+    start cmd "visualizer";
+}
+
+
+script "end_experiment"{
+    stop cmd "franka_osc";
+    stop cmd "hand_osc";
+    stop cmd "sim";
+}

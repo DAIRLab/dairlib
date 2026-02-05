@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<robot name="round_belt_task_scene">
-    <link name="round_belt_task_scene">
+<robot name="scene">
+    <link name="scene">
         <visual name="table">
             <origin rpy="-1.57079 0 1.57079" xyz="0.23008 0 -0.02858"/>
             <geometry>

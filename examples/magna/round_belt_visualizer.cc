@@ -99,9 +99,8 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex scene_index =
       parser.AddModels(dairlib::FindResourceOrThrow(
           round_belt_controller_params.scene_model))[0];
-  plant_vis.WeldFrames(
-      plant_vis.world_frame(),
-      plant_vis.GetFrameByName("round_belt_task_scene", scene_index), X_WI);
+  plant_vis.WeldFrames(plant_vis.world_frame(),
+                       plant_vis.GetFrameByName("scene", scene_index), X_WI);
   // Add pulley models
   ModelInstanceIndex task_board_index =
       parser.AddModels(dairlib::FindResourceOrThrow(

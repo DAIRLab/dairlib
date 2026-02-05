@@ -118,8 +118,7 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex scene_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/common/scene.urdf"))[0];
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("round_belt_task_scene", scene_index),
-                   X_WI);
+                   plant.GetFrameByName("scene", scene_index), X_WI);
   // Add pulley models
   ModelInstanceIndex task_board_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/round_belt_task/"

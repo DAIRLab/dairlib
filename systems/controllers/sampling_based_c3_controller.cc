@@ -1905,6 +1905,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         .num_friction_directions_per_contact =
             sampling_c3_options_.num_friction_directions_per_contact_for_cost,
         .mu = sampling_c3_options_.mu_for_cost,
+        .planar_normal_direction = sampling_c3_options_.planar_normal_direction,
+        .planar_normal_direction_per_contact = std::nullopt,
         .contact_pair_configs = std::nullopt,
         .N = N_ * sampling_c3_options_.lcs_dt_resolution,
         .dt = dt_ / sampling_c3_options_.lcs_dt_resolution};

@@ -415,6 +415,9 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     lcs_factory_options->N = N;
     lcs_factory_options->num_friction_directions_per_contact =
         num_friction_directions_per_contact;
+    lcs_factory_options->planar_normal_direction = planar_normal_direction;
+    lcs_factory_options->planar_normal_direction_per_contact =
+        planar_normal_direction_per_contact;
   }
 
   void SetPositionTrackingOptions(

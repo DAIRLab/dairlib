@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="timing_belt">
+
   <link name="rod_0">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>

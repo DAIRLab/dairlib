@@ -8,6 +8,8 @@
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
+#include <drake/multibody/tree/revolute_joint.h>
+#include <drake/multibody/tree/revolute_spring.h>
 #include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
@@ -43,6 +45,8 @@ using drake::multibody::DeformableBody;
 using drake::multibody::DeformableModel;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::Parser;
+using drake::multibody::RevoluteJoint;
+using drake::multibody::RevoluteSpring;
 using drake::systems::DiagramBuilder;
 using Eigen::VectorXd;
 
@@ -102,8 +106,21 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex timing_belt_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/timing_belt_task/"
                                    "timing_belt.urdf"))[0];
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("timing_belt_base_link"), X_WI);
+
+  // Add weld constraint to create the closed kinematic chain
+  plant.AddWeldConstraint(plant.GetBodyByName("rod_0"), X_WI,
+                          plant.GetBodyByName("rod_134"), X_WI);
+  int num_timing_belt_elements = 134;
+  for (int i = 0; i < num_timing_belt_elements; i++) {
+    std::string roll_joint_name = "joint_" + std::to_string(i) + "_roll";
+    std::string yaw_joint_name = "joint_" + std::to_string(i) + "_yaw";
+    plant.AddForceElement<RevoluteSpring>(
+        plant.GetJointByName<RevoluteJoint>(roll_joint_name, timing_belt_index),
+        0.0, 0.001);
+    plant.AddForceElement<RevoluteSpring>(
+        plant.GetJointByName<RevoluteJoint>(yaw_joint_name, timing_belt_index),
+        0.0, 0.001);
+  }
   plant.Finalize();
 
   drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
@@ -120,11 +137,23 @@ int DoMain(int argc, char* argv[]) {
       sim_params.franka_publish_rate, franka_hand_index,
       sim_params.publish_efforts, sim_params.actuator_delay);
 
-  AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, lcm_channel_params.timing_belt_input_channel,
-      lcm_channel_params.timing_belt_state_channel,
-      sim_params.franka_publish_rate, timing_belt_index,
-      sim_params.publish_efforts, sim_params.actuator_delay);
+  auto timing_belt_state_sender = builder.AddSystem<systems::ObjectStateSender>(
+      plant, false, timing_belt_index);
+  auto timing_belt_state_pub = builder.AddSystem(
+      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.timing_belt_state_channel, lcm,
+          1.0 / sim_params.franka_publish_rate));
+
+  builder.Connect(plant.get_state_output_port(timing_belt_index),
+                  timing_belt_state_sender->get_input_port_state());
+  builder.Connect(timing_belt_state_sender->get_output_port(),
+                  timing_belt_state_pub->get_input_port());
+
+  //   AddActuationRecieverAndStateSenderLcm(
+  //       &builder, plant, lcm, lcm_channel_params.timing_belt_input_channel,
+  //       lcm_channel_params.timing_belt_state_channel,
+  //       sim_params.franka_publish_rate, timing_belt_index,
+  //       sim_params.publish_efforts, sim_params.actuator_delay);
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -148,10 +177,10 @@ int DoMain(int argc, char* argv[]) {
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   q.segment(plant.num_positions(franka_index), 2) =
       sim_params.q_init_franka_hand;
-  
+
   VectorXd q_timing_belt(6);
-  q_timing_belt << 0.45, -0.15, 0.018, 0, 0, 0;
-  q.segment(plant.num_positions(franka_index) + 2, 6) = q_timing_belt;
+  q_timing_belt << 1, 0, 0, 0, 0.45, -0.15, 0.018;
+  q.segment(plant.num_positions(franka_index) + 2, 7) = q_timing_belt;
 
   plant.SetPositions(&plant_context, q);
   VectorXd v = VectorXd::Zero(nv);

@@ -45,6 +45,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::examples::magna::systems::franka_hand::FrankaHandStatusBridgeOut;
+using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
@@ -88,7 +89,7 @@ int DoMain(int argc, char* argv[]) {
 
   // TODO: This code is duplicated from the simulation plant. We should refactor
   // this.
-  MultibodyPlant<double> plant_vis(0.0);
+  MultibodyPlant<double> plant_vis(0.005);
   Parser parser(&plant_vis, &scene_graph);
   parser.SetAutoRenaming(true);
 
@@ -137,8 +138,6 @@ int DoMain(int argc, char* argv[]) {
   ModelInstanceIndex timing_belt_index = parser.AddModels(
       dairlib::FindResourceOrThrow("examples/magna/urdf/timing_belt_task/"
                                    "timing_belt.urdf"))[0];
-  plant_vis.WeldFrames(plant_vis.world_frame(),
-                       plant_vis.GetFrameByName("timing_belt_base_link"), X_WI);
   plant_vis.Finalize();
 
   // ----- Construct LCM subscriber to the franka state -----
@@ -176,10 +175,10 @@ int DoMain(int argc, char* argv[]) {
                     franka_hand_state_receiver->get_input_port());
   }
   auto timing_belt_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.timing_belt_state_channel, lcm));
   auto timing_belt_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant_vis, timing_belt_index);
+      builder.AddSystem<ObjectStateReceiver>(plant_vis, timing_belt_index);
   builder.Connect(*timing_belt_state_sub, *timing_belt_state_receiver);
 
   // Extract arm and hand positions for visualization (7 dims for arm, 2 dims
@@ -188,8 +187,6 @@ int DoMain(int argc, char* argv[]) {
       std::vector<int>{plant_vis.num_positions(franka_index),
                        plant_vis.num_positions(franka_hand_index),
                        plant_vis.num_positions(timing_belt_index)});
-  std::cout << "plant_vis.num_positions(timing_belt_index): "
-            << plant_vis.num_positions(timing_belt_index) << std::endl;
   auto franka_arm_positions_passthrough =
       builder.AddSystem<SubvectorPassThrough>(
           franka_state_receiver->get_output_port(0).size(), 0,
@@ -254,6 +251,12 @@ int DoMain(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant_vis, franka_state_sub_context);
+
+  // Initialize the timing belt state receiver
+  auto& timing_belt_state_sub_context = diagram->GetMutableSubsystemContext(
+      *timing_belt_state_sub, context.get());
+  timing_belt_state_receiver->InitializeSubscriberPositions(
+      plant_vis, timing_belt_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

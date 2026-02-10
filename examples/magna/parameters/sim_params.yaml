@@ -2,7 +2,7 @@ franka_publish_rate: 1000
 actuator_delay: 0.000
 publish_efforts: true
 object_publish_rate: 20
-dt: 0.005
+dt: 0.001
 realtime_rate: 1
 q_init_franka: [1.71717, 1.10002, -1.4548, -2.25837, 1.259265, 1.94719, 0.331838]
 q_init_franka_hand: [-0.004, 0.004]

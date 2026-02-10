@@ -121,12 +121,19 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
 
     std::cout << "not tracking ic3, time: " << (context.get_time() - t0) << std::endl;
 
+    int plate_position_idx = 0;
     VectorXd nominal_position_offset = nominal_position;
     if ((context.get_time() - t0) - 3 > num_timesteps * dt_ * 1) {
-      nominal_position(2) += ic3_options_.vertical_offset;
+      if (ic3_options_.hold_last_timestep_position) {
+        LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
+        VectorXd last_x = trajectory.datapoints.col(trajectory.datapoints.cols() - 1);
+        nominal_position_offset = nominal_position + last_x.segment(plate_position_idx, 3);
+      } else {
+        nominal_position_offset(2) += ic3_options_.vertical_offset;
+      }
     }
 
-		MatrixXd positions = nominal_position.replicate(1, 10);
+		MatrixXd positions = nominal_position_offset.replicate(1, 10);
 	
 		MatrixXd orientations = MatrixXd::Zero(4, 10);
 		MatrixXd forces = MatrixXd::Zero(3, 10);

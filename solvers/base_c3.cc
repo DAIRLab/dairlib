@@ -212,6 +212,13 @@ void C3Base::UpdateCostMatrices(const C3Base::CostMatrices& costs) {
   G_ = costs.G;
 }
 
+void C3Base::UpdateFinalCost(const Eigen::MatrixXd Qf, const Eigen::VectorXd bias) {
+  Q_[N_] = Qf;
+
+  auto* qf_evaluator = target_cost_[N_];
+  qf_evaluator->UpdateCoefficients(2 * Qf, bias);
+}
+
 void C3Base::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs.A_.size() == N_);
   DRAKE_DEMAND(lcs.A_[0].rows() == n_);
@@ -272,6 +279,17 @@ void C3Base::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
+void C3Base::UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des) {
+  u_desired_ = u_des;
+  for (int i = 0; i < N_; ++i) {
+    std::cout << "ud: " << u_desired_.at(i).transpose() << std::endl;
+    input_costs_[i]->UpdateCoefficients(
+                    2 * R_.at(i),
+                    -2 * R_.at(i) * u_desired_.at(i));
+  }
+}
+
+
 void C3Base::Solve(const VectorXd& x0, bool verbose) {
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -289,10 +307,6 @@ void C3Base::Solve(const VectorXd& x0, bool verbose) {
       // (u-u_prev)' * R * (u-u_prev).
       input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
                                           -2 * R_.at(i) * u_sol_->at(i));
-    } else {
-      // Penalize inputs:  input cost is u' * R * u.
-      input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-                                          Eigen::VectorXd::Zero(k_));
     }
   }
 
@@ -959,7 +973,13 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   // }
 
 
+  auto start = std::chrono::high_resolution_clock::now();
   MathematicalProgramResult result = osqp_.Solve(prog_);
+  auto finish = std::chrono::high_resolution_clock::now();
+  double solve_time = 
+    std::chrono::duration_cast<std::chrono::microseconds>(finish-start).count() /
+      1e6;
+  // std::cout << "QP solve time: " << solve_time << std::endl;
 
   if (!result.is_success()) {
     drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
@@ -1010,6 +1030,31 @@ void C3Base::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                                  double upper_bound, int constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; i++) {
+      user_constraints_.push_back(
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
+    }
+  }
+
+  if (constraint == 2) {
+    for (int i = 0; i < N_; i++) {
+      user_constraints_.push_back(
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
+    }
+  }
+
+  if (constraint == 3) {
+    for (int i = 0; i < N_; i++) {
+      user_constraints_.push_back(prog_.AddLinearConstraint(
+          A, lower_bound, upper_bound, lambda_.at(i)));
+    }
+  }
+}
+
+
+void C3Base::AddVectorLinearConstraint(MatrixXd& A, VectorXd& lower_bound,
+                                 VectorXd& upper_bound, int constraint) {
+  if (constraint == 1) {
+    for (int i = 1; i < N_; ++i) {
       user_constraints_.push_back(
           prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }

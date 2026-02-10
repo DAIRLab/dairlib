@@ -1,4 +1,4 @@
-#include "c3_controller.h"
+#include "ic3_tracking_controller.h"
 #include <Eigen/Dense>
 
 #include "solvers/c3_miqp.h"
@@ -7,7 +7,6 @@
 #include "solvers/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include <iostream>
-#include <filesystem>
 
 namespace dairlib {
 
@@ -30,20 +29,19 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-C3Controller::C3Controller(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
+iC3TrackingController::iC3TrackingController(
+    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options, 
+      iC3Options ic3_options, double time_to_wait)
     : plant_(plant),
       c3_options_(std::move(c3_options)),
+      ic3_options_(std::move(ic3_options)),
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
       U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
-      N_(c3_options_.N) {
-  this->set_name("c3_controller");
-  std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
-  if (std::filesystem::exists("osqp_options_default.yaml")) {
-      std::cout << "File found in current directory!" << std::endl;
-  } else {
-      std::cout << "File NOT found in current directory." << std::endl;
-  }
+      N_(c3_options_.N), 
+      time_to_wait_(time_to_wait) {
+  this->set_name("ic3_tracking_controller");
+
+
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * c3_options_.Q);
@@ -106,26 +104,6 @@ C3Controller::C3Controller(
 
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  // Set actor bounds,
-  // TODO(yangwill): move this out of here because it is task specific
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A.segment(0, 3) = c3_options_.workspace_limits[i].segment(0, 3);
-    c3_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
-                             c3_options_.workspace_limits[i][4], 1);
-  }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
-                             c3_options_.u_horizontal_limits[1], 2);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
-                             c3_options_.u_vertical_limits[1], 2);
-  }
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -136,6 +114,15 @@ C3Controller::C3Controller(
 
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+
+  // Stuff specific to tracking ic3
+  lqr_input_port_ =
+      this->DeclareAbstractInputPort("lqr_input", drake::Value<lcmt_lqr_output>())
+          .get_index();
+
+  ic3_u_port_ =
+      this->DeclareAbstractInputPort("ic3_u_port", drake::Value<lcmt_timestamped_saved_traj>())
+          .get_index();
 
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -149,11 +136,11 @@ C3Controller::C3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
-                                      &C3Controller::OutputC3Solution)
+                                      &iC3TrackingController::OutputC3Solution)
           .get_index();
   c3_intermediates_port_ =
       this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
-                                      &C3Controller::OutputC3Intermediates)
+                                      &iC3TrackingController::OutputC3Intermediates)
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
@@ -162,13 +149,13 @@ C3Controller::C3Controller(
 
   if (c3_options_.publish_frequency > 0) {
     DeclarePeriodicDiscreteUpdateEvent(1 / c3_options_.publish_frequency, 0.0,
-                                       &C3Controller::ComputePlan);
+                                       &iC3TrackingController::ComputePlan);
   } else {
-    DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
+    DeclareForcedDiscreteUpdateEvent(&iC3TrackingController::ComputePlan);
   }
 }
 
-LCS C3Controller::CreatePlaceholderLCS() const {
+LCS iC3TrackingController::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
@@ -180,7 +167,7 @@ LCS C3Controller::CreatePlaceholderLCS() const {
   return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
 }
 
-drake::systems::EventStatus C3Controller::ComputePlan(
+drake::systems::EventStatus iC3TrackingController::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
@@ -189,7 +176,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
-
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
@@ -197,6 +183,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
       discrete_state->get_mutable_value(filtered_solve_time_index_);
+
+  const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
+  const auto& lcm_all_u_trajectories = 
+    this->EvalAbstractInput(context, ic3_u_port_)->get_value<lcmt_timestamped_saved_traj>();
+  LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
+  LcmTrajectory::Trajectory force_trajectory = u_trajectory.GetTrajectory(trajectory_name);
+  MatrixXd force_data = force_trajectory.datapoints;
 
   if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
       !x_pred.isZero()) {
@@ -217,30 +210,112 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
 
-  std::cout << "xd: " << x_des.value().transpose() << std::endl;
 
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
-  // Force Checking of Workspace Limits
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) >
-                 c3_options_.workspace_limits[i][3] -
-                     c3_options_.workspace_margins);
-    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) <
-                 c3_options_.workspace_limits[i][4] +
-                     c3_options_.workspace_margins);
-  }
-
   UpdateQuaternionCosts(x_lcs, x_des.value());
   C3Base::CostMatrices new_costs(Q_, R_, G_, U_);
   c3_->UpdateCostMatrices(new_costs);
   
+  // Update final cost with LQR value function
+  double curr_time = context.get_time();  
+  
+  double ic3_dt = 0.01;
+  int ic3_timestep = (curr_time - time_to_wait_) / ic3_dt;
+    
+  const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
+  if (lqr_input != nullptr && 0 <= ic3_timestep && 
+        ic3_timestep <= ic3_options_.N - c3_options_.N * ic3_options_.c3_dt_scaling) {
+    const auto& lqr_all_inputs = lqr_input->get_value<lcmt_lqr_output>();
+    int idx = ic3_timestep + c3_options_.N * ic3_options_.c3_dt_scaling; // Want H[k + N]
+
+    const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H;
+    const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g;
+
+    vector<Eigen::MatrixXd> H;
+    vector<Eigen::VectorXd> g;
+
+    for (int i = 0; i < source_H.size(); i++) {
+
+      Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
+      for (int j = 0; j < source_H[i].size(); j++) {
+          mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
+      }
+      H.push_back(std::move(mat));
+      g.push_back(Eigen::VectorXd::Map(source_g[i].data(), source_g[i].size()));
+    }
+    std::cout << "lqr time: " << idx << std::endl;
+    //c3_->UpdateFinalCost(H[idx], g[idx]);
+  }
+
+  if (ic3_options_.add_position_constraints) {
+    // HARD CODED
+    MatrixXd A(MatrixXd::Zero(n_x_, n_x_));
+    A(0, 0) = 1;
+    A(1, 1) = 1;
+    A(2, 2) = 1;
+    A(3, 3) = 1;
+    A(4, 4) = 1;
+
+    VectorXd lower_bound(VectorXd::Zero(n_x_));
+    VectorXd upper_bound(VectorXd::Zero(n_x_));
+
+    // Plate position constraints
+    lower_bound[0] = -0.2;
+    lower_bound[1] = -0.2;
+    lower_bound[2] = -0.2; 
+    lower_bound[3] = -0.5;
+    lower_bound[4] = -0.5;
+    
+    // Plate rotation constraints
+    upper_bound[0] = 0.2;
+    upper_bound[1] = 0.2;
+    upper_bound[2] = 0.2;
+    upper_bound[3] = 0.5;
+    upper_bound[4] = 0.5;
+
+    c3_->AddVectorLinearConstraint(A, lower_bound, upper_bound, 1);
+    
+  }
+  
+  if (ic3_options_.add_input_constraints) {
+    // HARD CODED
+    MatrixXd A_u(MatrixXd::Zero(n_u_, n_u_));
+    A_u(2, 2) = 1;
+    A_u(3, 3) = 1;
+    A_u(4, 4) = 1;
+
+    VectorXd lower_bound_u(VectorXd::Zero(n_u_));
+    VectorXd upper_bound_u(VectorXd::Zero(n_u_));
+
+    lower_bound_u << 0, 0, 0, -2, -2;
+    upper_bound_u << 0, 0, 15, 2, 2;
+
+    c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);
+    
+   
+  }
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
+
+  
+  vector<VectorXd> u_target;
+  for (int i = 0; i < N_; i++) {
+    if (ic3_timestep >= 0 && ic3_timestep <= ic3_options_.N) {
+      if (i + ic3_timestep < ic3_options_.N) {
+        u_target.push_back(force_data.col(i + ic3_timestep));
+      } else {
+        u_target.push_back(force_data.col(ic3_options_.N-1));
+      }
+    } else {
+      u_target.push_back(VectorXd::Zero(n_u_));
+    }
+  }
+  c3_->UpdateInputTarget(u_target);
+
+  auto c3_start = std::chrono::high_resolution_clock::now();
   c3_->Solve(x_lcs);
 
   auto finish = std::chrono::high_resolution_clock::now();
@@ -248,9 +323,12 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   double solve_time =
       std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
       1e6;
+  double c3_solve_time =
+      std::chrono::duration_cast<std::chrono::microseconds>(finish - c3_start).count() /
+      1e6;
+  
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
                           solve_time_filter_constant_ * mutable_solve_time[0];
-
   if (c3_options_.publish_frequency > 0) {
     solve_time = 1.0 / c3_options_.publish_frequency;
     mutable_solve_time[0] = solve_time;
@@ -266,6 +344,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
   }
 
+  std::cout << "c3 solve time: " << c3_solve_time << std::endl;
+
+  if (ic3_timestep >= 0 && ic3_timestep <= ic3_options_.N) {
+    std::cout << "ic3_timestep: " << ic3_timestep << ": ";
+    std::cout << c3_->GetInputSolution()[0].transpose() << std::endl;    
+  }
+
   // std::cout << "c3 sol: " << z_sol[0].transpose() << std::endl;
   // std::cout << "c3 sol: " << z_sol[1].transpose() << std::endl;
   // std::cout << "c3 sol: " << z_sol[2].transpose() << std::endl;
@@ -275,7 +360,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void C3Controller::UpdateQuaternionCosts(
+void iC3TrackingController::UpdateQuaternionCosts(
     const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
     
   Q_.clear();
@@ -324,11 +409,12 @@ void C3Controller::UpdateQuaternionCosts(
   
 }
 
-void C3Controller::OutputC3Solution(
+void iC3TrackingController::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
+
 
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
@@ -341,7 +427,7 @@ void C3Controller::OutputC3Solution(
   }
 }
 
-void C3Controller::OutputC3Intermediates(
+void iC3TrackingController::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];

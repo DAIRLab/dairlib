@@ -89,6 +89,26 @@ cc_library(
 )
 
 cc_library(
+    name = "ic3_tracking_controller",
+    srcs = ["c3/ic3_tracking_controller.cc"],
+    hdrs = ["c3/ic3_tracking_controller.h"],
+    alwayslink = 1,
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//solvers:parameters",
+        "//systems/framework:vector",
+        "//common:quaternion_error_hessian",
+        "//examples/cube_flip/parameter_headers:iC3_options",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "sampling_c3_controller",
     srcs = ["sampling_based_c3_controller.cc"],
     hdrs = ["sampling_based_c3_controller.h"],

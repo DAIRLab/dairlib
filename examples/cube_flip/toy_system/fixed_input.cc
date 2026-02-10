@@ -5,10 +5,12 @@ using dairlib::lcmt_timestamped_saved_traj;
 
 namespace dairlib {
 
-FixedInput::FixedInput(const MultibodyPlant<double>& plant, int N, double dt) :
+FixedInput::FixedInput(const MultibodyPlant<double>& plant, int N, double dt, int iter_to_use, double time_to_wait) :
   plant_(plant),
   N_(N),
-  dt_(dt) {
+  dt_(dt),
+  iter_to_use_(iter_to_use),
+  time_to_wait_(time_to_wait) {
 
   input_port_index_ =
       this->DeclareAbstractInputPort("ic3_u_traj",
@@ -38,7 +40,7 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   //   std::cout << traj_names.at(i) << std::endl;
   // }
 
-	const std::string final_trajectory_name = "iteration_9";
+	const std::string final_trajectory_name = "iteration_" + std::to_string(iter_to_use_);
   Eigen::MatrixXd u_data = u_trajectory.GetTrajectory(final_trajectory_name).datapoints;
 
   std::unique_ptr<drake::systems::Context<double>> plant_context = plant_.CreateDefaultContext();		
@@ -48,10 +50,9 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
 
   u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
-  u_gravity[4] = -(tau_g[4] + 0.13 * tau_g[10]); // Hard-coded cube + plate
-  // std::cout << "tau g: " << tau_g.transpose() << std::endl;
+  u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
 
-  if (t > dt_ * N_ + 5.0 || t < 5.0) { 
+  if (t > dt_ * N_ + time_to_wait_ || t < time_to_wait_) { 
     // Just compensate gravity if time is past horizon
     
     if (t - (int)t == 0) {
@@ -61,10 +62,13 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
 
   } else {
 
-    int k = (int)((t - 5.0) / dt_);
+    int k = (int)((t - time_to_wait_) / dt_);
     // std::cout << "k " << k << std::endl;
     // std::cout << "u: " << u_data.col(k).transpose() << std::endl;
-    std::cout << "running: " << t << std::endl;
+    if (std::abs((t / dt_) - (int)(t / dt_)) < 1e-4) {
+      std::cout << "open " << k << ": " << u_data.col(k).transpose() << std::endl;
+    }
+    
     output->SetFromVector(u_data.col(k));
 
   }

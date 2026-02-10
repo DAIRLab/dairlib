@@ -4,6 +4,7 @@
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/moby_lcp_solver.h"
@@ -277,6 +278,67 @@ LCS LCSFactory::LinearizePlantToLCS(
   system.SetTangentGapLinearization(W_x, W_l, W_u, w);
   return system;
 }
+
+// void UpdateStateAndInput(
+//   const MultibodyPlant<double>& plant, 
+//   const Context<double>& context,
+//   const MultibodyPlant<AutoDiffXd>& plant_ad,
+//   const Context<AutoDiffXd>& context_ad,
+//   const Eigen::Ref<const drake::VectorX<double>>& state,
+//   const Eigen::Ref<const drake::VectorX<double>>& input) {
+  
+//   int n_x = plant.num_positions() + plant.num_velocities();
+//   int n_u = plant.num_actuators();
+
+//   multibodY::SetContext<double>(plant, state, input, &context);
+//   drake::VectorX<double> q_v_u(n_x + n_u);
+//   q_v_u << state, input;
+//   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+//   multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad, q_v_u_ad.head(n_x),
+//                                              &context_ad);
+//   multibody::SetInputsIfNew<AutoDiffXd>(plant_ad, q_v_u_ad.tail(n_u), &context_ad);
+// }
+
+// LCS MakeTimeVaryingLCS(const MultibodyPlant<double>& plant, 
+//   const Context<double>& context,
+//   const MultibodyPlant<AutoDiffXd>& plant_ad,
+//   const Context<AutoDiffXd>& context_ad,
+//   const vector<SortedPair<GeometryId>>& contact_geoms,
+//   const std::vector<double>& mu, double dt,
+//   int N, int n_lambda_with_tangential,
+//   const std::vector<int>& num_friction_directions_per_contact,
+//   const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
+//   ContactModel contact_model, MatrixXd x_hat, MatrixXd u_hat) {
+//   vector<Eigen::MatrixXd> A;
+//   vector<Eigen::MatrixXd> B;
+//   vector<Eigen::MatrixXd> D;
+//   vector<Eigen::VectorXd> d;
+//   vector<Eigen::MatrixXd> E;
+//   vector<Eigen::MatrixXd> F;
+//   vector<Eigen::MatrixXd> H;
+//   vector<Eigen::VectorXd> c;
+
+//   for (int k = 0; k < N; k++) {
+    
+//     // Linearize about kth xhat, uhat
+//     UpdateStateAndInput(x_hat.col(k), u_hat.col(k));
+
+//     LCS lcs = LinearizePlantToLCS(plant, context, plant_ad, context_ad, contact_geoms, mu, dt, N, 
+//       n_lambda_with_tangential, num_friction_directions_per_contact, 
+//       starting_index_per_contact_in_lambda_t_vector, contact_model);
+
+//     A.push_back(lcs.A_[0]);
+//     B.push_back(lcs.B_[0]);
+//     D.push_back(lcs.D_[0]);
+//     d.push_back(lcs.d_[0]);
+//     E.push_back(lcs.E_[0]);
+//     F.push_back(lcs.F_[0]);
+//     H.push_back(lcs.H_[0]);
+//     c.push_back(lcs.c_[0]);      
+//   }
+
+//   return LCS(A, B, D, d, E, F, H, c, dt);
+// }
 
 std::pair<Eigen::MatrixXd, std::vector<VectorXd>>
 LCSFactory::ComputeContactJacobian(

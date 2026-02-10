@@ -18,6 +18,11 @@ using drake::math::RigidTransform;
 using drake::geometry::FrameId;
 using drake::systems::Context;
 using drake::geometry::SignedDistancePair;
+using drake::AutoDiffXd;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
+
 namespace dairlib {
 namespace solvers {
 
@@ -78,6 +83,20 @@ class LCSFactory {
   /// @param inactive_lambda_inds The indices for lambda that must be 0
   static LCS FixSomeModes(const LCS& other, std::set<int> active_lambda_inds,
                           std::set<int> inactive_lambda_inds);
+
+// LCS MakeTimeVaryingLCS(const MultibodyPlant<double>& plant, const Context<double>& context,
+//   const MultibodyPlant<AutoDiffXd>& plant_ad,
+//   const Context<AutoDiffXd>& context_ad,
+//   const vector<SortedPair<GeometryId>>& contact_geoms,
+//   const std::vector<double>& mu, double dt,
+//   int N, int n_lambda_with_tangential,
+//   const std::vector<int>& num_friction_directions_per_contact,
+//   const std::vector<int>& starting_index_per_contact_in_lambda_t_vector,
+//   ContactModel contact_model, MatrixXd x_hat, MatrixXd u_hat);
+
+// void UpdateStateAndInput(
+//     const Eigen::Ref<const drake::VectorX<double>>& state,
+//     const Eigen::Ref<const drake::VectorX<double>>& input);
 
   /// Optionally preprocess contact pairs to select the closest contacts
   /// @param plant The MultibodyPlant

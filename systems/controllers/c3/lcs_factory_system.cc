@@ -109,10 +109,20 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   } else {
     throw std::runtime_error("unknown or unsupported contact model");
   }
+  
+	int n_lambda_with_tangential = 2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+
+	vector<int> starting_index_per_contact_in_lambda_t_vector;
+	vector<int> num_friction_directions_vector;
+	for (int i = 0; i < c3_options_.num_contacts; i++) {
+		starting_index_per_contact_in_lambda_t_vector.push_back(2 * c3_options_.num_friction_directions * i);
+		num_friction_directions_vector.push_back(c3_options_.num_friction_directions);
+	}
 
   *output_lcs = LCSFactory::LinearizePlantToLCS(
       plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-      c3_options_.mu, c3_options_.dt, c3_options_.N, 0, {}, {}, contact_model);
+      c3_options_.mu, c3_options_.dt, c3_options_.N, n_lambda_with_tangential, 
+      num_friction_directions_vector, starting_index_per_contact_in_lambda_t_vector, contact_model);
 }
 
 void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<double>& context,

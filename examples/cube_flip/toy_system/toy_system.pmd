@@ -1,0 +1,21 @@
+group "controllers" {
+    cmd "toy_controller" {
+        exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_controller";
+        host = "localhost";
+    }
+
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "simulations" {
+    cmd "toy_sim" {
+        exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_sim";
+        host = "localhost";
+    }
+}

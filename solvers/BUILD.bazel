@@ -4,6 +4,13 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "parameters",
+    data = [
+        "osqp_options_default.yaml",
+    ],
+)
+
+cc_library(
     name = "constraints",
     deps = [
         ":constraint_factory",

@@ -121,7 +121,8 @@ class C3Base {
   /// @param constraint inputconstraint, stateconstraint, forceconstraint
   void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, int constraint);
-
+  void AddVectorLinearConstraint(Eigen::MatrixXd& A, Eigen::VectorXd& lower_bound,
+                           Eigen::VectorXd& upper_bound, int constraint);
   /// remove all constraints
   void RemoveUserConstraints();
 
@@ -152,6 +153,8 @@ class C3Base {
   int GetZSize() { return z_size_; }
 
   void UpdateCostMatrices(const C3Base::CostMatrices& costs);
+	void UpdateFinalCost(const Eigen::MatrixXd Qf, const Eigen::VectorXd bias);
+
   virtual void UpdateLCS(const LCS& lcs);
 
   /// Update the LCS used for cost computation.  This can differ from the LCS
@@ -161,6 +164,7 @@ class C3Base {
   /// UpdateCostMatrices.
   void UpdateCostLCS(const LCS& lcs_for_cost);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+  void UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des);
 
  protected:
   /// @param lcs      Parameters defining the LCS.
@@ -238,6 +242,7 @@ class C3Base {
   std::vector<Eigen::MatrixXd> U_;
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
+  std::vector<Eigen::VectorXd> u_desired_;
   double dt_ = 0;
   double solve_time_ = 0;
   bool h_is_zero_;

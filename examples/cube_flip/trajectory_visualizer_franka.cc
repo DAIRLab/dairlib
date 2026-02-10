@@ -62,27 +62,27 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   // Build the visualizer plant.
-  Parser parser(&plant, &scene_graph);
-  parser.SetAutoRenaming(true);
+//   Parser parser(&plant, &scene_graph);
+//   parser.SetAutoRenaming(true);
 
-  ModelInstanceIndex franka_index = parser.AddModelsFromUrl("package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
-  ModelInstanceIndex end_effector_index = parser.AddModels(vis_params.plate_file)[0];
-  ModelInstanceIndex object_index = parser.AddModels(vis_params.cube_file)[0];
+//   ModelInstanceIndex franka_index = parser.AddModelsFromUrl("package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
+//   ModelInstanceIndex end_effector_index = parser.AddModels(vis_params.plate_file)[0];
+//   ModelInstanceIndex object_index = parser.AddModels(vis_params.cube_file)[0];
 
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("panda_link0"), X_WI);
+//   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+//   plant.WeldFrames(plant.world_frame(),
+//                    plant.GetFrameByName("panda_link0"), X_WI);
 
-  Eigen::Vector3d tool_attachment_frame(0.15, 0, 0.107);
-  RigidTransform<double> T_EE_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             tool_attachment_frame);
-  plant.WeldFrames(
-      plant.GetFrameByName("panda_link7"),
-      plant.GetFrameByName("plate", end_effector_index), T_EE_W);
+//   Eigen::Vector3d tool_attachment_frame(0.15, 0, 0.107);
+//   RigidTransform<double> T_EE_W =
+//       RigidTransform<double>(drake::math::RotationMatrix<double>(),
+//                              tool_attachment_frame);
+//   plant.WeldFrames(
+//       plant.GetFrameByName("panda_link7"),
+//       plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant.Finalize();
-  std::cout << "plant built" << std::endl;
+//   std::cout << "plant built" << std::endl;
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
@@ -236,12 +236,12 @@ int do_main(int argc, char* argv[]) {
   std::vector<double> x_init = vis_params.x_init;
   VectorXd x0 = Eigen::Map<Eigen::VectorXd>(x_init.data(), x_init.size());
 
-  std::cout << x0.transpose() << std::endl;
-  std::cout << plant.num_positions() << ", " << plant.num_velocities() << std::endl;
+//   std::cout << x0.transpose() << std::endl;
+//   std::cout << plant.num_positions() << ", " << plant.num_velocities() << std::endl;
 
-	auto& plant_context =
-      diagram->GetMutableSubsystemContext(plant, context.get());
-  plant.SetPositionsAndVelocities(&plant_context, x0);
+// 	auto& plant_context =
+//       diagram->GetMutableSubsystemContext(plant, context.get());
+//   plant.SetPositionsAndVelocities(&plant_context, x0);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

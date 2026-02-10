@@ -8,8 +8,8 @@
 #include "examples/Cassie/diagrams/osc_walking_controller_diagram.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/system_utils.h"
-
 #include "drake/systems/framework/diagram_builder.h"
+
 #include "drake/systems/primitives/zero_order_hold.h"
 
 namespace dairlib {

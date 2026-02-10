@@ -55,6 +55,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
   num_efforts_ = plant.num_actuators();
+  
   position_index_map_ =
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
@@ -307,7 +308,7 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
+  model_instance_ = drake::multibody::ModelInstanceIndex(-1); 
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;

@@ -9,12 +9,12 @@ ic3_options_file: examples/cube_flip/parameters/iC3_options.yaml
 c3_options_file: examples/cube_flip/parameters/plate_c3_options.yaml
 
 include_end_effector_orientation: true
-run_open_loop: true
+run_open_loop: false
 
 tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]
 
-ee_init_position: [0.35, -0.35, 0.55]
+ee_init_position: [0.4, -0.35, 0.5]
 
 x_target: [0, 0, 0,
            0, 0,

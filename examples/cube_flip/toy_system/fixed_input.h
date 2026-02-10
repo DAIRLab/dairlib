@@ -17,7 +17,7 @@ namespace dairlib {
 // Outputs a manually generated set of inputs
 class FixedInput : public drake::systems::LeafSystem<double> {
  public:
-  explicit FixedInput(const MultibodyPlant<double>& plant, int N, double dt);
+  explicit FixedInput(const MultibodyPlant<double>& plant, int N, double dt, int iter_to_use, double time_to_wait);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(input_port_index_);
@@ -36,6 +36,8 @@ class FixedInput : public drake::systems::LeafSystem<double> {
   const MultibodyPlant<double>& plant_;
   double dt_; 
   int N_;
+  int iter_to_use_;
+  double time_to_wait_;
 
   void ComputeFixedInput(const drake::systems::Context<double>& context,
                   drake::systems::BasicVector<double>* output) const;

@@ -1,0 +1,18 @@
+package dairlib;
+
+struct lcmt_lqr_output
+{
+  string trajectory_name;
+  
+  int32_t num_timesteps_x;
+  int32_t num_timesteps_u;
+
+  int32_t n_x;
+  int32_t n_u;
+
+  double H[num_timesteps_x][n_x][n_x];
+  double g[num_timesteps_x][n_x];
+
+  double K[num_timesteps_u][n_u][n_x];
+  double k_ff[num_timesteps_u][n_u];
+}

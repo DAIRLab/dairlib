@@ -109,17 +109,17 @@ int DoMain(int argc, char* argv[]) {
 
   // Add weld constraint to create the closed kinematic chain
   plant.AddWeldConstraint(plant.GetBodyByName("rod_0"), X_WI,
-                          plant.GetBodyByName("rod_134"), X_WI);
-  int num_timing_belt_elements = 134;
-  for (int i = 0; i < num_timing_belt_elements; i++) {
+                          plant.GetBodyByName("rod_67"), X_WI);
+  int num_timing_belt_elements = 67;
+  for (int i = 0; i < num_timing_belt_elements - 1; i++) {
     std::string roll_joint_name = "joint_" + std::to_string(i) + "_roll";
     std::string yaw_joint_name = "joint_" + std::to_string(i) + "_yaw";
     plant.AddForceElement<RevoluteSpring>(
         plant.GetJointByName<RevoluteJoint>(roll_joint_name, timing_belt_index),
-        0.0, 0.001);
+        0.0, 0.03);
     plant.AddForceElement<RevoluteSpring>(
         plant.GetJointByName<RevoluteJoint>(yaw_joint_name, timing_belt_index),
-        0.0, 0.001);
+        0.0, 0.015);
   }
   plant.Finalize();
 

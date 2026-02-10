@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 OUTPUT_FILE = "examples/magna/urdf/timing_belt_task/timing_belt.urdf"
 
 # Ellipse Parameters
-SEMI_AXIS_A = 0.120  # X-axis radius (meters)
-SEMI_AXIS_B = 0.075  # Y-axis radius (meters)
-NUM_RODS = 135  # Number of segments in the belt
+SEMI_AXIS_A = 0.130  # X-axis radius (meters)
+SEMI_AXIS_B = 0.080  # Y-axis radius (meters)
+NUM_RODS = 67  # Number of segments in the belt
 
 # Rod Geometry (Box)
-ROD_LENGTH = 0.004  # Dimension along the path (approximate)
+ROD_LENGTH = 0.009  # Dimension along the path (approximate)
 ROD_WIDTH = 0.0022  # Dimension perpendicular to path
 ROD_HEIGHT = 0.025  # Thickness (Z)
 ROD_MASS = 0.001
@@ -140,18 +140,18 @@ def matrix_to_rpy(R):
 # ==========================================
 
 
-def create_link_xml(name, l, w, h, mass, color="0.8 0.8 0.8 1"):
+def create_link_xml(name, l, w, h, mass, color="0.8 0.8 0.8 1", xyz="0 0 0"):
     return f"""
   <link name="{name}">
     <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="{xyz}" rpy="0 0 0"/>
       <mass value="{mass}"/>
       <inertia ixx="{mass/12*(w**2+h**2)}" ixy="0" ixz="0" 
                iyy="{mass/12*(l**2+h**2)}" iyz="0" 
                izz="{mass/12*(l**2+w**2)}"/>
     </inertial>
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="{xyz}" rpy="0 0 0"/>
       <geometry>
         <box size="{l} {w} {h}"/>
       </geometry>
@@ -160,7 +160,7 @@ def create_link_xml(name, l, w, h, mass, color="0.8 0.8 0.8 1"):
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="{xyz}" rpy="0 0 0"/>
       <geometry>
         <box size="{l} {w} {h}"/>
       </geometry>
@@ -202,15 +202,17 @@ def generate_urdf():
     transforms = []
     for i in range(NUM_RODS):
         transforms.append(get_transform_matrix(xs[i], ys[i], yaws[i]))
+    transforms.append(get_transform_matrix(SEMI_AXIS_A, 0, np.pi/2))
+    # import ipdb; ipdb.set_trace()
 
     urdf_content.append(
         create_link_xml(
-            "rod_0", ROD_LENGTH / 2, ROD_WIDTH, ROD_HEIGHT, ROD_MASS / 2, "0 1 0 1"
+            "rod_0", ROD_LENGTH / 2, ROD_WIDTH, ROD_HEIGHT, ROD_MASS / 2, "0 1 0 1", f"{ROD_LENGTH / 4} 0 0"
         )
     )  # Green for start
 
     # 2. Chain Generation
-    for i in range(NUM_RODS - 1):
+    for i in range(NUM_RODS):
         # Current Rod (Parent) -> Next Rod (Child)
         curr_idx = i
         next_idx = i + 1
@@ -238,16 +240,18 @@ def generate_urdf():
         dummy_name = f"dummy_{curr_idx}_{next_idx}"
         next_rod_name = f"rod_{next_idx}"
 
-        if next_idx == NUM_RODS - 1:
+        if next_idx == NUM_RODS:
             # This is the END rod (Last one)
             l_next = ROD_LENGTH / 2
             m_next = ROD_MASS / 2
             color_next = "0 0 1 1"  # Blue for end
+            xyz_next = f"-{ROD_LENGTH / 4} 0 0"
         else:
             # This is a standard middle rod
             l_next = ROD_LENGTH
             m_next = ROD_MASS
             color_next = "0.8 0.8 0.8 1"
+            xyz_next = "0 0 0"
 
         # Generate Dummy Link
         urdf_content.append(create_dummy_link_xml(dummy_name))
@@ -255,7 +259,7 @@ def generate_urdf():
         # Generate Next Rod
         urdf_content.append(
             create_link_xml(
-                next_rod_name, l_next, ROD_WIDTH, ROD_HEIGHT, m_next, color_next
+                next_rod_name, l_next, ROD_WIDTH, ROD_HEIGHT, m_next, color_next, xyz_next
             )
         )
 

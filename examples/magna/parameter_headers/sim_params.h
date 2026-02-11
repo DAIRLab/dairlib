@@ -15,7 +15,14 @@ struct MagnaSimParams {
   Eigen::VectorXd q_init_franka_hand;
   std::vector<Eigen::VectorXd> init_belt_vertices;
   Eigen::Matrix3Xd q_init_belt;
+  
+  // The following parameters are for the timing belt task.
   std::vector<Eigen::VectorXd> init_timing_belt_points;
+  Eigen::VectorXd q_init_base_timing_belt;
+  std::string timing_belt_start_body_name;
+  std::string timing_belt_end_body_name;
+  double bending_stiffness;
+  double twisting_stiffness;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -29,6 +36,11 @@ struct MagnaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka_hand));
     a->Visit(DRAKE_NVP(init_belt_vertices));
     a->Visit(DRAKE_NVP(init_timing_belt_points));
+    a->Visit(DRAKE_NVP(q_init_base_timing_belt));
+    a->Visit(DRAKE_NVP(timing_belt_start_body_name));
+    a->Visit(DRAKE_NVP(timing_belt_end_body_name));
+    a->Visit(DRAKE_NVP(bending_stiffness));
+    a->Visit(DRAKE_NVP(twisting_stiffness));
     ComputeBeltVerticesMatrix();
   }
 

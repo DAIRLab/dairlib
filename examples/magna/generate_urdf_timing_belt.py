@@ -184,6 +184,7 @@ def create_joint_xml(name, type, parent, child, xyz, rpy, axis):
     <origin xyz="{xyz[0]:.6f} {xyz[1]:.6f} {xyz[2]:.6f}" rpy="{rpy[0]:.6f} {rpy[1]:.6f} {rpy[2]:.6f}"/>
     <axis xyz="{axis}"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 """
 

@@ -62,6 +62,7 @@
     <origin xyz="0.009920 0.001003 0.000000" rpy="0.000000 0.000000 0.200333"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -71,6 +72,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -109,6 +111,7 @@
     <origin xyz="0.009927 0.000945 0.000000" rpy="0.000000 0.000000 0.186647"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -118,6 +121,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -156,6 +160,7 @@
     <origin xyz="0.009940 0.000841 0.000000" rpy="0.000000 0.000000 0.164954"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -165,6 +170,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -203,6 +209,7 @@
     <origin xyz="0.009952 0.000725 0.000000" rpy="0.000000 0.000000 0.141725"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -212,6 +219,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -250,6 +258,7 @@
     <origin xyz="0.009962 0.000619 0.000000" rpy="0.000000 0.000000 0.120830"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -259,6 +268,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -297,6 +307,7 @@
     <origin xyz="0.009968 0.000529 0.000000" rpy="0.000000 0.000000 0.103561"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -306,6 +317,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -344,6 +356,7 @@
     <origin xyz="0.009973 0.000458 0.000000" rpy="0.000000 0.000000 0.089834"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -353,6 +366,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -391,6 +405,7 @@
     <origin xyz="0.009976 0.000403 0.000000" rpy="0.000000 0.000000 0.079095"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -400,6 +415,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -438,6 +454,7 @@
     <origin xyz="0.009978 0.000359 0.000000" rpy="0.000000 0.000000 0.070735"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -447,6 +464,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -485,6 +503,7 @@
     <origin xyz="0.009980 0.000325 0.000000" rpy="0.000000 0.000000 0.064236"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -494,6 +513,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -532,6 +552,7 @@
     <origin xyz="0.009981 0.000299 0.000000" rpy="0.000000 0.000000 0.059193"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -541,6 +562,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -579,6 +601,7 @@
     <origin xyz="0.009982 0.000279 0.000000" rpy="0.000000 0.000000 0.055304"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -588,6 +611,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -626,6 +650,7 @@
     <origin xyz="0.009982 0.000263 0.000000" rpy="0.000000 0.000000 0.052347"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -635,6 +660,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -673,6 +699,7 @@
     <origin xyz="0.009983 0.000252 0.000000" rpy="0.000000 0.000000 0.050164"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -682,6 +709,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -720,6 +748,7 @@
     <origin xyz="0.009983 0.000244 0.000000" rpy="0.000000 0.000000 0.048642"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -729,6 +758,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -767,6 +797,7 @@
     <origin xyz="0.009983 0.000239 0.000000" rpy="0.000000 0.000000 0.047706"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -776,6 +807,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -814,6 +846,7 @@
     <origin xyz="0.009983 0.000236 0.000000" rpy="0.000000 0.000000 0.047313"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -823,6 +856,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -861,6 +895,7 @@
     <origin xyz="0.009983 0.000237 0.000000" rpy="0.000000 0.000000 0.047444"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -870,6 +905,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -908,6 +944,7 @@
     <origin xyz="0.009983 0.000239 0.000000" rpy="0.000000 0.000000 0.048104"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -917,6 +954,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -955,6 +993,7 @@
     <origin xyz="0.009983 0.000245 0.000000" rpy="0.000000 0.000000 0.049325"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -964,6 +1003,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1002,6 +1042,7 @@
     <origin xyz="0.009983 0.000254 0.000000" rpy="0.000000 0.000000 0.051167"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1011,6 +1052,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1049,6 +1091,7 @@
     <origin xyz="0.009982 0.000266 0.000000" rpy="0.000000 0.000000 0.053720"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1058,6 +1101,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1096,6 +1140,7 @@
     <origin xyz="0.009981 0.000282 0.000000" rpy="0.000000 0.000000 0.057120"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1105,6 +1150,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1143,6 +1189,7 @@
     <origin xyz="0.009981 0.000303 0.000000" rpy="0.000000 0.000000 0.061553"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1152,6 +1199,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1190,6 +1238,7 @@
     <origin xyz="0.009979 0.000330 0.000000" rpy="0.000000 0.000000 0.067281"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1199,6 +1248,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1237,6 +1287,7 @@
     <origin xyz="0.009978 0.000366 0.000000" rpy="0.000000 0.000000 0.074652"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1246,6 +1297,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1284,6 +1336,7 @@
     <origin xyz="0.009975 0.000411 0.000000" rpy="0.000000 0.000000 0.084130"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1293,6 +1346,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1331,6 +1385,7 @@
     <origin xyz="0.009972 0.000469 0.000000" rpy="0.000000 0.000000 0.096285"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1340,6 +1395,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1378,6 +1434,7 @@
     <origin xyz="0.009967 0.000543 0.000000" rpy="0.000000 0.000000 0.111728"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1387,6 +1444,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1425,6 +1483,7 @@
     <origin xyz="0.009959 0.000635 0.000000" rpy="0.000000 0.000000 0.130858"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1434,6 +1493,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1472,6 +1532,7 @@
     <origin xyz="0.009949 0.000744 0.000000" rpy="0.000000 0.000000 0.153217"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1481,6 +1542,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1519,6 +1581,7 @@
     <origin xyz="0.009937 0.000860 0.000000" rpy="0.000000 0.000000 0.176356"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1528,6 +1591,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1566,6 +1630,7 @@
     <origin xyz="0.009925 0.000959 0.000000" rpy="0.000000 0.000000 0.194930"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1575,6 +1640,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1613,6 +1679,7 @@
     <origin xyz="0.009919 0.001006 0.000000" rpy="0.000000 0.000000 0.202214"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1622,6 +1689,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1660,6 +1728,7 @@
     <origin xyz="0.009923 0.000982 0.000000" rpy="0.000000 0.000000 0.194930"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1669,6 +1738,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1707,6 +1777,7 @@
     <origin xyz="0.009934 0.000897 0.000000" rpy="0.000000 0.000000 0.176356"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1716,6 +1787,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1754,6 +1826,7 @@
     <origin xyz="0.009946 0.000783 0.000000" rpy="0.000000 0.000000 0.153217"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1763,6 +1836,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1801,6 +1875,7 @@
     <origin xyz="0.009957 0.000670 0.000000" rpy="0.000000 0.000000 0.130858"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1810,6 +1885,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1848,6 +1924,7 @@
     <origin xyz="0.009965 0.000572 0.000000" rpy="0.000000 0.000000 0.111728"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1857,6 +1934,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1895,6 +1973,7 @@
     <origin xyz="0.009971 0.000492 0.000000" rpy="0.000000 0.000000 0.096285"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1904,6 +1983,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1942,6 +2022,7 @@
     <origin xyz="0.009975 0.000429 0.000000" rpy="0.000000 0.000000 0.084130"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1951,6 +2032,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1989,6 +2071,7 @@
     <origin xyz="0.009977 0.000380 0.000000" rpy="0.000000 0.000000 0.074652"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -1998,6 +2081,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2036,6 +2120,7 @@
     <origin xyz="0.009979 0.000341 0.000000" rpy="0.000000 0.000000 0.067281"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2045,6 +2130,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2083,6 +2169,7 @@
     <origin xyz="0.009980 0.000311 0.000000" rpy="0.000000 0.000000 0.061553"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2092,6 +2179,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2130,6 +2218,7 @@
     <origin xyz="0.009981 0.000288 0.000000" rpy="0.000000 0.000000 0.057120"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2139,6 +2228,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2177,6 +2267,7 @@
     <origin xyz="0.009982 0.000271 0.000000" rpy="0.000000 0.000000 0.053720"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2186,6 +2277,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2224,6 +2316,7 @@
     <origin xyz="0.009982 0.000257 0.000000" rpy="0.000000 0.000000 0.051167"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2233,6 +2326,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2271,6 +2365,7 @@
     <origin xyz="0.009983 0.000248 0.000000" rpy="0.000000 0.000000 0.049325"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2280,6 +2375,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2318,6 +2414,7 @@
     <origin xyz="0.009983 0.000241 0.000000" rpy="0.000000 0.000000 0.048104"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2327,6 +2424,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2365,6 +2463,7 @@
     <origin xyz="0.009983 0.000237 0.000000" rpy="0.000000 0.000000 0.047444"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2374,6 +2473,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2412,6 +2512,7 @@
     <origin xyz="0.009983 0.000236 0.000000" rpy="0.000000 0.000000 0.047313"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2421,6 +2522,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2459,6 +2561,7 @@
     <origin xyz="0.009983 0.000238 0.000000" rpy="0.000000 0.000000 0.047706"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2468,6 +2571,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2506,6 +2610,7 @@
     <origin xyz="0.009983 0.000242 0.000000" rpy="0.000000 0.000000 0.048642"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2515,6 +2620,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2553,6 +2659,7 @@
     <origin xyz="0.009983 0.000249 0.000000" rpy="0.000000 0.000000 0.050164"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2562,6 +2669,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2600,6 +2708,7 @@
     <origin xyz="0.009982 0.000259 0.000000" rpy="0.000000 0.000000 0.052347"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2609,6 +2718,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2647,6 +2757,7 @@
     <origin xyz="0.009982 0.000273 0.000000" rpy="0.000000 0.000000 0.055304"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2656,6 +2767,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2694,6 +2806,7 @@
     <origin xyz="0.009981 0.000292 0.000000" rpy="0.000000 0.000000 0.059193"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2703,6 +2816,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2741,6 +2855,7 @@
     <origin xyz="0.009980 0.000316 0.000000" rpy="0.000000 0.000000 0.064236"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2750,6 +2865,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2788,6 +2904,7 @@
     <origin xyz="0.009979 0.000347 0.000000" rpy="0.000000 0.000000 0.070735"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2797,6 +2914,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2835,6 +2953,7 @@
     <origin xyz="0.009977 0.000387 0.000000" rpy="0.000000 0.000000 0.079095"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2844,6 +2963,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2882,6 +3002,7 @@
     <origin xyz="0.009974 0.000438 0.000000" rpy="0.000000 0.000000 0.089834"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2891,6 +3012,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2929,6 +3051,7 @@
     <origin xyz="0.009970 0.000504 0.000000" rpy="0.000000 0.000000 0.103561"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2938,6 +3061,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2976,6 +3100,7 @@
     <origin xyz="0.009964 0.000587 0.000000" rpy="0.000000 0.000000 0.120830"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -2985,6 +3110,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3023,6 +3149,7 @@
     <origin xyz="0.009955 0.000688 0.000000" rpy="0.000000 0.000000 0.141725"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3032,6 +3159,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3070,6 +3198,7 @@
     <origin xyz="0.009943 0.000802 0.000000" rpy="0.000000 0.000000 0.164954"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3079,6 +3208,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3117,6 +3247,7 @@
     <origin xyz="0.009930 0.000914 0.000000" rpy="0.000000 0.000000 0.186647"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3126,6 +3257,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3164,6 +3296,7 @@
     <origin xyz="0.009921 0.000991 0.000000" rpy="0.000000 0.000000 0.200333"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 
@@ -3173,6 +3306,7 @@
     <origin xyz="0.000000 0.000000 0.000000" rpy="0.000000 -0.000000 0.000000"/>
     <axis xyz="1 0 0"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
+    <dynamics damping="0.2" />
   </joint>
 
 </robot>

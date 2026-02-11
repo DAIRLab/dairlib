@@ -108,18 +108,19 @@ int DoMain(int argc, char* argv[]) {
                                    "timing_belt.urdf"))[0];
 
   // Add weld constraint to create the closed kinematic chain
-  plant.AddWeldConstraint(plant.GetBodyByName("rod_0"), X_WI,
-                          plant.GetBodyByName("rod_67"), X_WI);
+  plant.AddWeldConstraint(
+      plant.GetBodyByName(sim_params.timing_belt_start_body_name), X_WI,
+      plant.GetBodyByName(sim_params.timing_belt_end_body_name), X_WI);
   int num_timing_belt_elements = 67;
   for (int i = 0; i < num_timing_belt_elements - 1; i++) {
     std::string roll_joint_name = "joint_" + std::to_string(i) + "_roll";
     std::string yaw_joint_name = "joint_" + std::to_string(i) + "_yaw";
     plant.AddForceElement<RevoluteSpring>(
         plant.GetJointByName<RevoluteJoint>(roll_joint_name, timing_belt_index),
-        0.0, 0.03);
+        0.0, sim_params.twisting_stiffness);
     plant.AddForceElement<RevoluteSpring>(
         plant.GetJointByName<RevoluteJoint>(yaw_joint_name, timing_belt_index),
-        0.0, 0.015);
+        0.0, sim_params.bending_stiffness);
   }
   plant.Finalize();
 
@@ -149,12 +150,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(timing_belt_state_sender->get_output_port(),
                   timing_belt_state_pub->get_input_port());
 
-  //   AddActuationRecieverAndStateSenderLcm(
-  //       &builder, plant, lcm, lcm_channel_params.timing_belt_input_channel,
-  //       lcm_channel_params.timing_belt_state_channel,
-  //       sim_params.franka_publish_rate, timing_belt_index,
-  //       sim_params.publish_efforts, sim_params.actuator_delay);
-
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
 
@@ -178,9 +173,8 @@ int DoMain(int argc, char* argv[]) {
   q.segment(plant.num_positions(franka_index), 2) =
       sim_params.q_init_franka_hand;
 
-  VectorXd q_timing_belt(6);
-  q_timing_belt << 1, 0, 0, 0, 0.45, -0.15, 0.018;
-  q.segment(plant.num_positions(franka_index) + 2, 7) = q_timing_belt;
+  q.segment(plant.num_positions(franka_index) + 2, 7) =
+      sim_params.q_init_base_timing_belt;
 
   plant.SetPositions(&plant_context, q);
   VectorXd v = VectorXd::Zero(nv);

@@ -159,6 +159,7 @@ init_belt_vertices:
   - [0.406619, 0.00561944, 0.0312036]
   - [0.474974, -0.10039, 0.0312479]
 
+# The following parameters are for the timing belt task.
 init_timing_belt_points:
   - [0.12000000, 0.00000000, 0.01250000]
   - [0.11977617, 0.00457866, 0.01250000]
@@ -295,4 +296,9 @@ init_timing_belt_points:
   - [0.11909233, -0.00920716, 0.01250000]
   - [0.11977155, -0.00462570, 0.01250000]
   - [0.12000000, -0.00000000, 0.01250000]
-  
+
+q_init_base_timing_belt: [1, 0, 0, 0, 0.45, -0.15, 0.018]
+timing_belt_start_body_name: "rod_0"
+timing_belt_end_body_name: "rod_67"
+bending_stiffness: 3
+twisting_stiffness: 1

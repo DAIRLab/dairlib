@@ -33,6 +33,7 @@ robot_radius_limits: [0.28, 0.75]  # for big object like egg carton, the limits 
 workspace_margins: 0.03
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [-3, 3]
+ee_velocity_limits: [-0.14, 0.14]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true

@@ -1273,8 +1273,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     for (int i : vector<int>({0, 1, 2})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, -0.14, 0.14,
-                                          c3::ConstraintVariable::STATE);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.ee_velocity_limits[0],
+          sampling_c3_options_.ee_velocity_limits[1],
+          c3::ConstraintVariable::STATE);
     }
 
     // Add force constraints
@@ -1842,9 +1844,6 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
       auto [phi_i, J_i] =
           collider.EvalPolytope(context, num_friction_directions[i]);
       distances.push_back(phi_i);
-      // if (verbose) {
-      //   PrintVerboseContactInfo(plant, context, pair, phi_i);
-      // }
     }
 
     for (int j = 0; j < num_to_select; ++j) {

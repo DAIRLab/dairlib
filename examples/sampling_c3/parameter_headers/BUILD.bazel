@@ -2,7 +2,8 @@ cc_library(
     name = "sampling_c3_options",
     hdrs = ["sampling_c3_options.h"],
     visibility = ["//visibility:public"],  # Allow all subpackages to use it
-    deps = ["//solvers:c3"]
+    deps = ["@c3//:libc3", 
+    ],
 )
 
 cc_library(

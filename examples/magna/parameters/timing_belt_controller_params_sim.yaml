@@ -1,76 +1,80 @@
 franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm_hand_with_long_fingers.urdf"
 ee_model: "examples/magna/urdf/common/end_effector_simple_model.urdf"
-belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
-task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
+timing_belt_model: "examples/magna/urdf/timing_belt_task/timing_belt.urdf"
+task_board_model: "examples/magna/urdf/timing_belt_task/timing_belt_task_board.sdf"
 scene_model: "examples/magna/urdf/common/scene.urdf"
-spring_stiffness: 1000
-spring_rest_length: 0.26 
-spring_damping: 1 
+bending_stiffness: 0.01
+twisting_stiffness: 0.01
 task_board_position: [0.67826, -0.192, 0.00543]
 task_board_orientation: [0.0, 0.0, 1.57079]
+timing_belt_start_body_name: "rod_0"
+timing_belt_end_body_name: "rod_67"
+num_timing_belt_elements: 67
 
 # Define target LCS states for CI-MPC
-target_lcs_positions:
-  - [0.4809, 0.185, 0.0345, 0.00711, 0.48298, -0.09346, 0.48185, -0.1, 0.025]
-  - [0.46938, 0.1804, 0.03633, 0.0310, 0.40235, 0.4344, 0.48185, -0.1, 0.025]
-fixed_keypoint_position: [0.48185, -0.103, 0.03]
+target_lcs_positions: []
 
 # Define target poses for OSC (before MPC)
 osc_target_poses_pre_mpc:
-  - position: [0.48226, 0.168, 0.04]
+  - position: [0.48226, 0.15, 0.1]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: 0.03
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.15, 0.1]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: 0.03
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.15, 0.06]
     orientation: [1, 0, 0, 0]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.5204, 0.164, 0.04]
-    orientation: [0.9659258, 0, 0, -0.258819]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0.48985, -0.052, 0.04]
-    radius: 0.22
-  - position: [0.5034, 0.1801, 0.0388]
-    orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936] 
+  - position: [0.62, 0.15, 0.09]
+    orientation: [1, 0, 0, 0]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.5034, 0.1801, 0.0388]
-    orientation: [0.9509118, -0.0172123, 0.2539622, -0.1759936] 
+  - position: [0.62, 0.17, 0.09]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.17, 0.09]
+    orientation: [0.9659258, 0, -0.258819, 0, ]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.17, 0.09]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.17, 0.09]
+    orientation: [0.9659258, 0, 0.258819, 0, ]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
 
 # Define target poses for OSC (after MPC)
-osc_target_poses_post_mpc:
-  - position: [0.46055, 0.1726, 0.0316]
-    orientation: [0.8220554, 0.1332726, 0.0698111, 0.5491718] 
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.45005, 0.1244, 0.0327]
-    orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-    gripper_pos_command: 0.02
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.45005, 0.1244, 0.05]
-    orientation: [0.7369094, 0.0394716, -0.0334867, 0.6740068] 
-    gripper_pos_command: 0.02
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-
+osc_target_poses_post_mpc: []
 # Tolerances for reaching targets in predefined motion and MPC.
 predefined_motion_position_tolerance: 0.005 # m
 predefined_motion_orientation_tolerance: 0.1 # rad
 mpc_position_tolerance: 0.012
 mpc_orientation_tolerance: 0.3 # rad (0.2 radians = 11.5 degrees)
 mpc_warmup_iterations: 500 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
-verbose: false # Enable verbose debug printing
+verbose: true # Enable verbose debug printing
 
-assembly_c3_options_file: "examples/magna/parameters/assembly_c3_options.yaml"
+assembly_c3_options_file: "examples/magna/parameters/timing_belt_c3_options.yaml"
 lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"
 visualizer_params_file: "examples/magna/parameters/visualizer_params.yaml"

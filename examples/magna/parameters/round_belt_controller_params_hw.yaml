@@ -1,5 +1,5 @@
 franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm_hand_with_long_fingers.urdf"
-ee_model: "examples/magna/urdf/round_belt_task/end_effector_simple_model.urdf"
+ee_model: "examples/magna/urdf/common/end_effector_simple_model.urdf"
 belt_element_model: "examples/magna/urdf/round_belt_task/belt_element.urdf"
 task_board_model: "examples/magna/urdf/round_belt_task/round_belt_task_board.sdf"
 scene_model: "examples/magna/urdf/common/scene.urdf"

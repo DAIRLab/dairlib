@@ -4,6 +4,8 @@
 
 #include "common/find_resource.h"
 
+#include "drake/common/text_logging.h"
+
 namespace dairlib {
 namespace systems {
 

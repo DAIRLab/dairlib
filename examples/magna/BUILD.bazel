@@ -283,3 +283,50 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_library(
+    name = "timing_belt_controller",
+    srcs = [
+        "timing_belt_controller.cc",
+    ],
+    hdrs = [
+        "timing_belt_controller.h",
+    ],
+    deps = [
+        "//common:update_context",
+        "//examples/magna/parameter_headers:assembly_c3_options",
+        "//examples/magna/parameter_headers:osc_target_poses",
+        "//examples/magna/parameter_headers:timing_belt_controller_params",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:lcs",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "run_timing_belt_controller",
+    srcs = [
+        "run_timing_belt_controller.cc",
+    ],
+    data = [
+        ":all_parameter_yamls",
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":timing_belt_controller",
+        "//common:find_resource",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:timing_belt_controller_params",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/senders:c3_state_sender",
+        "@gflags",
+    ],
+)

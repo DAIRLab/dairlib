@@ -1,0 +1,38 @@
+franka_arm_hand_model: "package://drake_models/franka_description/urdf/panda_arm_hand_with_long_fingers.urdf"
+ee_model: "examples/magna/urdf/common/end_effector_simple_model.urdf"
+timing_belt_model: "examples/magna/urdf/timing_belt_task/timing_belt.urdf"
+task_board_model: "examples/magna/urdf/timing_belt_task/timing_belt_task_board.sdf"
+scene_model: "examples/magna/urdf/common/scene.urdf"
+bending_stiffness: 0.3
+twisting_stiffness: 0.3
+task_board_position: [0.67826, -0.192, 0.00543]
+task_board_orientation: [0.0, 0.0, 1.57079]
+timing_belt_start_body_name: "rod_0"
+timing_belt_end_body_name: "rod_67"
+num_timing_belt_elements: 67
+
+# Define target LCS states for CI-MPC
+target_lcs_positions: []
+
+# Define target poses for OSC (before MPC)
+osc_target_poses_pre_mpc:
+  - position: [0.48226, 0.168, 0.04]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: -0.05
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+
+# Define target poses for OSC (after MPC)
+osc_target_poses_post_mpc: []
+# Tolerances for reaching targets in predefined motion and MPC.
+predefined_motion_position_tolerance: 0.005 # m
+predefined_motion_orientation_tolerance: 0.1 # rad
+mpc_position_tolerance: 0.012
+mpc_orientation_tolerance: 0.3 # rad (0.2 radians = 11.5 degrees)
+mpc_warmup_iterations: 500 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
+verbose: false # Enable verbose debug printing
+
+assembly_c3_options_file: "examples/magna/parameters/timing_belt_c3_options.yaml"
+lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"
+visualizer_params_file: "examples/magna/parameters/visualizer_params.yaml"

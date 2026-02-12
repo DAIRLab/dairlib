@@ -45,3 +45,15 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "timing_belt_controller_params",
+    hdrs = ["timing_belt_controller_params.h"],
+    deps = [
+        "//examples/magna/parameter_headers:assembly_c3_options",
+        "//examples/magna/parameter_headers:lcm_channel_params",
+        "//examples/magna/parameter_headers:osc_target_poses",
+        "//examples/magna/parameter_headers:visualizer_params",
+        "@drake//:drake_shared_library",
+    ],
+)

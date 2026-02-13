@@ -34,31 +34,31 @@ osc_target_poses_pre_mpc:
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.15, 0.09]
+  - position: [0.62, 0.15, 0.08]
     orientation: [1, 0, 0, 0]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.17, 0.09]
+  - position: [0.62, 0.17, 0.08]
     orientation: [1, 0, 0, 0]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.17, 0.09]
+  - position: [0.62, 0.17, 0.08]
     orientation: [0.9659258, 0, -0.258819, 0, ]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.17, 0.09]
+  - position: [0.62, 0.17, 0.08]
     orientation: [1, 0, 0, 0]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.17, 0.09]
+  - position: [0.62, 0.17, 0.08]
     orientation: [0.9659258, 0, 0.258819, 0, ]
     gripper_pos_command: -0.05
     dwell_seconds: 0.5

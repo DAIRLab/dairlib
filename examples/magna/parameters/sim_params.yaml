@@ -300,5 +300,5 @@ init_timing_belt_points:
 q_init_base_timing_belt: [1, 0, 0, 0, 0.62, -0.108, 0.07]
 timing_belt_start_body_name: "rod_0"
 timing_belt_end_body_name: "rod_67"
-bending_stiffness: 0.3
-twisting_stiffness: 0.3
+bending_stiffness: 0.2
+twisting_stiffness: 0.2

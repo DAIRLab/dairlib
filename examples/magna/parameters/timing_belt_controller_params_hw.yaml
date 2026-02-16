@@ -33,6 +33,6 @@ mpc_orientation_tolerance: 0.3 # rad (0.2 radians = 11.5 degrees)
 mpc_warmup_iterations: 500 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
 verbose: false # Enable verbose debug printing
 
-assembly_c3_options_file: "examples/magna/parameters/timing_belt_c3_options.yaml"
+assembly_c3_options_file: "examples/magna/parameters/timing_belt_c3_options_generated.yaml"
 lcm_channels_file: "examples/magna/parameters/lcm_channels.yaml"
 visualizer_params_file: "examples/magna/parameters/visualizer_params.yaml"

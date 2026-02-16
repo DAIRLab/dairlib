@@ -140,6 +140,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<SortedPair<GeometryId>> belt_top_plate_small_pulley_contact_pairs;
   std::vector<SortedPair<GeometryId>> belt_body_small_pulley_contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_top_plate_small_pulley_contact_pairs;
+  std::vector<SortedPair<GeometryId>> ee_belt_contact_pairs;
 
   const GeometryId& ee_geom = plant_lcs.GetCollisionGeometriesForBody(
       plant_lcs.GetBodyByName("end_effector_simple"))[0];
@@ -186,9 +187,10 @@ int DoMain(int argc, char* argv[]) {
         small_pulley_top_plate_geom, segment_geom_id);
     belt_body_small_pulley_contact_pairs.emplace_back(small_pulley_body_geom,
                                                       segment_geom_id);
-    ee_top_plate_small_pulley_contact_pairs.emplace_back(ee_geom,
-                                                         segment_geom_id);
+    ee_belt_contact_pairs.emplace_back(ee_geom, segment_geom_id);
   }
+  ee_top_plate_small_pulley_contact_pairs.emplace_back(
+      ee_geom, small_pulley_top_plate_geom);
 
   if (timing_belt_controller_params.verbose) {
     drake::log()->info(
@@ -201,6 +203,8 @@ int DoMain(int argc, char* argv[]) {
         belt_top_plate_small_pulley_contact_pairs.size());
     drake::log()->info("number of belt-body-small-pulley contact pairs: {}",
                        belt_body_small_pulley_contact_pairs.size());
+    drake::log()->info("number of ee-belt contact pairs: {}",
+                       ee_belt_contact_pairs.size());
     drake::log()->info("number of ee-top-plate-small-pulley contact pairs: {}",
                        ee_top_plate_small_pulley_contact_pairs.size());
   }
@@ -210,6 +214,7 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.emplace_back(belt_top_plate_small_pulley_contact_pairs);
   contact_pairs.emplace_back(belt_body_small_pulley_contact_pairs);
   contact_pairs.emplace_back(ee_top_plate_small_pulley_contact_pairs);
+  contact_pairs.emplace_back(ee_belt_contact_pairs);
 
   auto timing_belt_controller = builder.AddSystem<TimingBeltController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_ad, plant_lcs_ad_context.get(),
@@ -342,37 +347,38 @@ int DoMain(int argc, char* argv[]) {
   // ------------------------------------------------------------- //
 
   // ----- Publish C3 forces via LCM messages ----- //
-//   auto c3_forces_pub =
-//       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-//           timing_belt_controller_params.lcm_channels.c3_force_channel,
-//           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
-//   builder.Connect(timing_belt_controller->get_output_port_c3_forces(),
-//                   c3_forces_pub->get_input_port(0));
+  //   auto c3_forces_pub =
+  //       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
+  //           timing_belt_controller_params.lcm_channels.c3_force_channel,
+  //           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
+  //   builder.Connect(timing_belt_controller->get_output_port_c3_forces(),
+  //                   c3_forces_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // ----- Publish C3 output (solution + intermediates) via LCM ----- //
-//   auto c3_output_sender = builder.AddSystem<dairlib::systems::C3OutputSender>();
-//   auto c3_output_pub =
-//       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-//           timing_belt_controller_params.lcm_channels.c3_output_channel,
-//           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
-//   builder.Connect(timing_belt_controller->get_output_port_c3_solution(),
-//                   c3_output_sender->get_input_port_c3_solution());
-//   builder.Connect(timing_belt_controller->get_output_port_c3_intermediates(),
-//                   c3_output_sender->get_input_port_c3_intermediates());
-//   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
-//                   c3_output_pub->get_input_port(0));
+  //   auto c3_output_sender =
+  //   builder.AddSystem<dairlib::systems::C3OutputSender>(); auto c3_output_pub
+  //   =
+  //       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+  //           timing_belt_controller_params.lcm_channels.c3_output_channel,
+  //           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
+  //   builder.Connect(timing_belt_controller->get_output_port_c3_solution(),
+  //                   c3_output_sender->get_input_port_c3_solution());
+  //   builder.Connect(timing_belt_controller->get_output_port_c3_intermediates(),
+  //                   c3_output_sender->get_input_port_c3_intermediates());
+  //   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
+  //                   c3_output_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // ----- Publish OSC target tracking debug via LCM ----- //
-//   auto osc_target_tracking_debug_pub = builder.AddSystem(
-//       LcmPublisherSystem::Make<dairlib::lcmt_osc_target_tracking_debug>(
-//           timing_belt_controller_params.lcm_channels
-//               .osc_target_tracking_debug_channel,
-//           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
-//   builder.Connect(
-//       timing_belt_controller->get_output_port_osc_target_tracking_debug(),
-//       osc_target_tracking_debug_pub->get_input_port(0));
+  //   auto osc_target_tracking_debug_pub = builder.AddSystem(
+  //       LcmPublisherSystem::Make<dairlib::lcmt_osc_target_tracking_debug>(
+  //           timing_belt_controller_params.lcm_channels
+  //               .osc_target_tracking_debug_channel,
+  //           &local_lcm, TriggerTypeSet({TriggerType::kForced})));
+  //   builder.Connect(
+  //       timing_belt_controller->get_output_port_osc_target_tracking_debug(),
+  //       osc_target_tracking_debug_pub->get_input_port(0));
   // ------------------------------------------------------------- //
 
   // Build diagram
